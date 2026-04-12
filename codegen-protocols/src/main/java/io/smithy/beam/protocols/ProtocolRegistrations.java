@@ -24,6 +24,9 @@ public final class ProtocolRegistrations {
             ProtocolAnalyzerFactory.register(new RestJsonProtocolAnalyzer());
             ProtocolAnalyzerFactory.register(new AwsJsonProtocolAnalyzer());
             ProtocolAnalyzerFactory.register(new AwsJson11ProtocolAnalyzer());
+            ProtocolAnalyzerFactory.register(new AwsQueryProtocolAnalyzer());
+            ProtocolAnalyzerFactory.register(new Ec2QueryProtocolAnalyzer());
+            ProtocolAnalyzerFactory.register(new RestXmlProtocolAnalyzer());
             registered = true;
         }
     }

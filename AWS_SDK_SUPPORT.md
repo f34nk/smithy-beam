@@ -40,12 +40,12 @@ Protocol implementations for AWS services. All built-in generators are discovere
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ❌ | Full implementation for EC2 |
+| [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ⚠️ | Operation analysis into IR implemented (`Ec2QueryProtocolAnalyzer`); pipeline wired; no examples yet |
 | [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ⚠️ | Operation analysis into IR implemented (`AwsJsonProtocolAnalyzer`); pipeline wired; no examples yet |
 | [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ⚠️ | Operation analysis into IR implemented (`AwsJson11ProtocolAnalyzer`); pipeline wired; no examples yet |
-| [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ❌ | Full implementation for SQS, SNS, RDS, etc. |
+| [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ⚠️ | Operation analysis into IR implemented (`AwsQueryProtocolAnalyzer`); `POST /` with form-encoded body and `aws_query.erl` runtime; pipeline wired; no examples yet |
 | [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ✅ | Fully implemented — operation analysis (`RestJsonProtocolAnalyzer`), pipeline wiring, and end-to-end examples (`weather-service`, `storage-service`) |
-| [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ❌ | Full implementation for S3, CloudFront, Route 53, etc. |
+| [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ⚠️ | Operation analysis into IR implemented (`RestXmlProtocolAnalyzer`); XML body encoding, `aws_xml.erl` runtime, S3 detection via `arnNamespace`; pipeline wired; no examples yet |
 | Custom protocols via `@protocolDefinition` | ❌ | Detect `@protocolDefinition` traits and resolve generators via Java `ServiceLoader`; fall back to a stub when none is registered |
 | [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ❌ | Emit language-appropriate tests from `@httpRequestTests` / `@httpResponseTests` |
 

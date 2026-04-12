@@ -25,4 +25,8 @@ public interface ProtocolAnalyzer {
     default boolean requiresQueryRuntime() {
         return false;
     }
+
+    default boolean requiresS3Runtime(ServiceShape service) {
+        return false;
+    }
 }

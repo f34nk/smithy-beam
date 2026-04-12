@@ -57,14 +57,14 @@ AWS-specific protocol traits.
 |-------|--------|-------|
 | [`aws.protocols#awsJson1_0`](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html#aws-protocols-awsjson1_0-trait) | ⚠️ | Operation analysis into IR implemented (`AwsJsonProtocolAnalyzer`); pipeline wired; no examples yet |
 | [`aws.protocols#awsJson1_1`](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html#aws-protocols-awsjson1_1-trait) | ⚠️ | Operation analysis into IR implemented (`AwsJson11ProtocolAnalyzer`); pipeline wired; no examples yet |
-| [`aws.protocols#awsQuery`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquery-trait) | ❌ | AWS Query protocol (SQS, SNS, RDS) |
-| [`aws.protocols#ec2Query`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2query-trait) | ❌ | EC2 Query protocol |
+| [`aws.protocols#awsQuery`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquery-trait) | ⚠️ | Operation analysis into IR implemented (`AwsQueryProtocolAnalyzer`); `POST /` with form-encoded body; `aws_query.erl` runtime copied; pipeline wired; no examples yet |
+| [`aws.protocols#ec2Query`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2query-trait) | ⚠️ | Operation analysis into IR implemented (`Ec2QueryProtocolAnalyzer`); extends `AwsQueryProtocolAnalyzer`; pipeline wired; no examples yet |
 | [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ✅ | Fully implemented — operation analysis, pipeline wiring, and end-to-end examples (`weather-service`, `storage-service`) |
-| [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ❌ | REST-XML protocol (S3, CloudFront, Route 53) |
+| [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ⚠️ | Operation analysis into IR implemented (`RestXmlProtocolAnalyzer`); XML body encoding; `aws_xml.erl` (and `aws_s3.erl` for S3) copied; pipeline wired; no examples yet |
 | [`aws.protocols#awsQueryCompatible`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquerycompatible-trait) | ❌ | Query protocol compatibility mode |
 | [`aws.protocols#httpChecksum`](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ❌ | HTTP checksum configuration |
 | [`aws.protocols#awsQueryError`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsqueryerror-trait) | ➖ | Custom error code for Query protocol |
-| [`aws.protocols#ec2QueryName`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2queryname-trait) | ➖ | Custom query parameter name for EC2 |
+| [`aws.protocols#ec2QueryName`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2queryname-trait) | ⚠️ | Read by `Ec2QueryProtocolAnalyzer` to record the custom wire name; actual title-casing and `@ec2QueryName` substitution performed by `aws_query.erl` at runtime |
 
 ---
 
