@@ -97,7 +97,7 @@ public final class ClientPipeline {
         String outPath = settings.outputDir() + "/" + moduleName + writer.fileExtension();
         output.write(outPath.replace('\\', '/'), buf.toString());
 
-        copyClientRuntime(ops, protocol, output, writer.languageId(), resourceLoader);
+        copyClientRuntime(ops, protocol, service, output, writer.languageId(), resourceLoader);
     }
 
     // -------------------------------------------------------------------------
@@ -539,6 +539,7 @@ public final class ClientPipeline {
     private void copyClientRuntime(
             List<OperationSpec> ops,
             ProtocolAnalyzer protocol,
+            ServiceShape service,
             FileOutput output,
             String languageId,
             ClassLoader resourceLoader) {
@@ -554,6 +555,9 @@ public final class ClientPipeline {
         }
         if (protocol.requiresQueryRuntime()) {
             output.copyRuntime(languageId, "client/aws_query.erl", resourceLoader);
+        }
+        if (protocol.requiresS3Runtime(service)) {
+            output.copyRuntime(languageId, "client/aws_s3.erl", resourceLoader);
         }
     }
 
