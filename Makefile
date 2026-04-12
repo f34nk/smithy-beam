@@ -1,5 +1,5 @@
-X:=$(shell find examples -type d -not -name examples -maxdepth 1 -exec basename {} \;)
-EXAMPLES:=$(foreach x,$(X),examples/$(x)/)
+X:=$(shell find examples/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \;)
+EXAMPLES:=$(foreach x,$(X),$(x)/)
 EXAMPLES_COUNT:=$(words $(EXAMPLES))
 
 .PHONY: all
@@ -17,7 +17,7 @@ build:
 	tree ~/.m2/repository/io/smithy/beam
 
 .PHONY: test
-test: test/java test/resources
+test: test/java test/runtime-erlang
 
 .PHONY: test/java
 test/java:
@@ -28,10 +28,10 @@ test/java:
 	./gradlew test 2>test-errors.log
 	[ -s test-errors.log ] || rm -rf test-errors.log
 
-.PHONY: test/resources
-test/resources:
+.PHONY: test/runtime-erlang
+test/runtime-erlang:
 	#
-	# Run resources tests
+	# Run runtime-erlang tests
 	#
 	temp="$$(pwd)/build/tmp" && \
 	rm -rf "$$temp" && \
@@ -65,18 +65,19 @@ clean:
 
 # Usage: make examples
 .PHONY: examples
-examples: examples/clean
+examples:
 	mkdir -p build
 	rm -rf build/*.log
 	#
 	# Run $(EXAMPLES_COUNT) examples in parallel
 	#
-	find examples -type d -not -name examples -maxdepth 1 -exec basename {} \; | xargs -S1024 -P $(EXAMPLES_COUNT) -I {} sh -c ' \
+	find examples/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \; | xargs -S1024 -P $(EXAMPLES_COUNT) -I {} sh -c ' \
 		example="{}"; \
-		logfile="build/$$example.log"; \
+		name="$$(basename $$example)"; \
+		logfile="build/$$name.log"; \
 		sleep 1; \
 		echo "Running: $$example" ; \
-		make examples/$$example > $$logfile 2>&1; \
+		make $$example > $$logfile 2>&1; \
 		if grep -q "make.*Error" $$logfile; then \
 			echo "$$example ...failed (see $$logfile)" ; \
 		else \
@@ -84,23 +85,24 @@ examples: examples/clean
 		fi; \
 	'
 
-# Usage: make examples/user-service
+# Usage: make examples/erlang/weather-service
 .PHONY: $(EXAMPLES)
 examples/%: $(EXAMPLES)
 	#
 	# Build $@
 	#
-	cd $@ && make clean && time make demo; \
-	make docker/stop
+	cd $@ && make clean && time make demo
 
 # Usage: make examples/clean
 .PHONY: examples/clean
 examples/clean:
 	#
-	# Build $(EXAMPLES)
+	# Clean $(EXAMPLES)
 	#
 	@for x in $(EXAMPLES); do \
+		echo "Cleaning: $$x" ; \
 		cd $$x ; \
 		make clean ; \
-		cd - ; \
+		echo ; \
+		cd - >/dev/null; \
 	done
