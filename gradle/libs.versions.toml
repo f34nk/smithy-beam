@@ -1,0 +1,14 @@
+[versions]
+smithy        = "1.54.0"
+smithy-aws    = "1.54.0"
+junit         = "5.11.0"
+assertj       = "3.26.0"
+
+[libraries]
+smithy-model          = { module = "software.amazon.smithy:smithy-model",         version.ref = "smithy" }
+smithy-build          = { module = "software.amazon.smithy:smithy-build",         version.ref = "smithy" }
+smithy-aws-traits     = { module = "software.amazon.smithy:smithy-aws-traits",    version.ref = "smithy-aws" }
+smithy-waiters        = { module = "software.amazon.smithy:smithy-waiters",       version.ref = "smithy" }
+junit-api             = { module = "org.junit.jupiter:junit-jupiter-api",         version.ref = "junit" }
+junit-engine          = { module = "org.junit.jupiter:junit-jupiter-engine",      version.ref = "junit" }
+assertj               = { module = "org.assertj:assertj-core",                    version.ref = "assertj" }
