@@ -1,6 +1,8 @@
 # AWS SDK Support
 
-This document lists all AWS SDK features from the [Smithy AWS integrations](https://smithy.io/2.0/aws/index.html) specification and their support status in smithy-beam.
+This document lists AWS-oriented features from the [Smithy AWS integrations](https://smithy.io/2.0/aws/index.html) specification and how they relate to **generated** Erlang and Elixir clients in smithy-beam.
+
+**Scope:** Most rows are not reflected in emitted code yet; the matrix records current support status and is revised when behavior changes.
 
 **Legend:**
 - ✅ Supported - Feature is implemented and affects code generation
@@ -21,7 +23,7 @@ General SDK features not specific to AWS traits.
 | Operations on resource shapes | ❌ | Client includes operations from the full service closure (`TopDownIndex`), not only `service`‑listed operations—required for services like Lambda where most APIs are resource-bound |
 | Pagination Helpers | ❌ | Auto-generated `{operation}_all/2,3` functions |
 | Retry with Exponential Backoff | ❌ | Configurable retry with jitter |
-| Error Handling | ❌ | **Target:** map protocol errors to generated types and helpers where the model exposes error shapes |
+| Error Handling | ❌ | Map protocol errors to generated types and helpers where the model exposes error shapes |
 | HTTP Prefix Headers | ❌ | `@httpPrefixHeaders` trait not implemented (used for S3 metadata) |
 | Idempotency Token | ❌ | `@idempotencyToken` trait not implemented |
 | Host Label | ❌ | `@hostLabel` trait not implemented |
@@ -44,8 +46,8 @@ Protocol implementations for AWS services. All built-in generators are discovere
 | [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ❌ | Full implementation for SQS, SNS, RDS, etc. |
 | [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ❌ | Full implementation for API Gateway, Step Functions, etc. |
 | [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ❌ | Full implementation for S3, CloudFront, Route 53, etc. |
-| Custom protocols via `@protocolDefinition` | ❌ | **Target:** detect `@protocolDefinition` traits and resolve generators via Java `ServiceLoader`; fall back to a stub when none is registered |
-| [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ❌ | **Target:** emit language-appropriate tests from `@httpRequestTests` / `@httpResponseTests` (parity TBD with other Smithy generators) |
+| Custom protocols via `@protocolDefinition` | ❌ | Detect `@protocolDefinition` traits and resolve generators via Java `ServiceLoader`; fall back to a stub when none is registered |
+| [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ❌ | Emit language-appropriate tests from `@httpRequestTests` / `@httpResponseTests` |
 
 ---
 
@@ -68,7 +70,7 @@ Authentication mechanisms for AWS services.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [AWS Signature Version 4 (SigV4)](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ❌ | **Target:** when `@aws.auth#sigv4` is present, generate or bundle Erlang/Elixir signing helpers and wire requests accordingly; without the trait, plain HTTP client calls |
+| [AWS Signature Version 4 (SigV4)](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ❌ | When `@aws.auth#sigv4` is present, generate or bundle Erlang/Elixir signing helpers and wire requests accordingly; without the trait, plain HTTP client calls |
 | [Credential Provider Chain](https://smithy.io/2.0/aws/aws-auth.html) | ❌ | Environment variables, `~/.aws/credentials`, provider chain; copied only for `@aws.auth#sigv4` services |
 | [AWS Signature Version 4A (SigV4A)](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4a-trait) | ❌ | Multi-region asymmetric signing not implemented |
 | [Cognito User Pools Authentication](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-cognitouserpools-trait) | ❌ | Cognito authentication not implemented |
@@ -82,7 +84,7 @@ Core AWS service traits and metadata.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [Service Trait (`aws.api#service`)](https://smithy.io/2.0/aws/aws-core.html#aws-api-service-trait) | ❌ | **Target:** read service metadata from the model (sdkId, endpoint prefix, etc.) |
+| [Service Trait (`aws.api#service`)](https://smithy.io/2.0/aws/aws-core.html#aws-api-service-trait) | ❌ | Read service metadata from the model (sdkId, endpoint prefix, etc.) |
 | [Endpoint Discovery](https://smithy.io/2.0/aws/aws-core.html#aws-api-clientendpointdiscovery-trait) | ❌ | Dynamic endpoint discovery not implemented |
 | [HTTP Checksum (`aws.protocols#httpChecksum`)](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ❌ | Request/response checksums not implemented |
 | [ARN References (`aws.api#arnReference`)](https://smithy.io/2.0/aws/aws-core.html#aws-api-arnreference-trait) | ➖ | Server-side resource modeling |
@@ -102,8 +104,8 @@ Endpoint resolution and regional configuration.
 | [Partition Support](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | aws, aws-cn, aws-us-gov partitions |
 | [Region Configuration](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Full region support via config |
 | [Static Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Uses bundled `endpoints.json` for region lookup |
-| [Dual-Stack Endpoints](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-dualstackonlyendpoints-trait) | ❌ | **Target:** honor dual-stack rules when endpoint resolution is implemented |
-| [FIPS Endpoints](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | **Target:** honor FIPS rules when endpoint resolution is implemented |
+| [Dual-Stack Endpoints](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-dualstackonlyendpoints-trait) | ❌ | Dual-stack rules not applied; requires endpoint resolution |
+| [FIPS Endpoints](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | FIPS rules not applied; requires endpoint resolution |
 | [Declarative Endpoint Traits](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Static endpoints.json used instead |
 | [Rules-Based Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-rulesbasedendpoints-trait) | ❌ | Dynamic rules engine not implemented |
 
@@ -199,4 +201,4 @@ CloudFormation resource generation traits. Not applicable to client code generat
 
 ---
 
-*Structure and categories follow [Smithy 2.0 AWS integrations](https://smithy.io/2.0/aws/index.html). Update this file when features ship.*
+*Structure and categories follow [Smithy 2.0 AWS integrations](https://smithy.io/2.0/aws/index.html). Revise rows when client behavior changes.*
