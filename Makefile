@@ -33,21 +33,21 @@ test/resources:
 	#
 	# Run resources tests
 	#
-	# temp="$$(pwd)/build/tmp" && \
-	# rm -rf "$$temp" && \
-	# mkdir -p "$$temp/test" && \
-	# find src/*/resources -type f -name *.erl -exec cp {} "$$temp/test/" \; && \
-	# echo \
-	# {erl_opts, [debug_info]}.\\n\
-	# {deps, []}.\\n\
-	# {eunit_opts, [verbose]}. > "$$temp/rebar.config" && \
-    # tree $$temp && \
-    # cd "$$temp" && \
-    # find test/ -type f -name "*_test.erl" | \
-    # xargs -I {} basename {} | \
-    # sed 's/_test.erl/_test/g' | \
-    # xargs -I {} echo "rebar3 eunit --module={}" | \
-    # xargs -I {} sh -c {}
+	temp="$$(pwd)/build/tmp" && \
+	rm -rf "$$temp" && \
+	mkdir -p "$$temp/test" && \
+	find runtime-erlang/*/* -type f -name *.erl -exec cp {} "$$temp/test/" \; && \
+	echo \
+	{erl_opts, [debug_info]}.\\n\
+	{deps, []}.\\n\
+	{eunit_opts, [verbose]}. > "$$temp/rebar.config" && \
+    tree $$temp && \
+    cd "$$temp" && \
+    find test/ -type f -name "*_test.erl" | \
+    xargs -I {} basename {} | \
+    sed 's/_test.erl/_test/g' | \
+    xargs -I {} echo "rebar3 eunit --module={}" | \
+    xargs -I {} sh -c {}
 
     # 1. Find all test modules
     # 2. Get the base name of the test module
