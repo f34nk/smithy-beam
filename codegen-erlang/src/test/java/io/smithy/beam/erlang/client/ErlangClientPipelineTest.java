@@ -35,8 +35,8 @@ class ErlangClientPipelineTest {
                 .generate(service, model, protocol, writer, settings, output, getClass().getClassLoader());
 
         assertThat(manifest.hasFile("src/generated/weather_client.erl")).isTrue();
-        assertThat(manifest.hasFile("client/aws_retry.erl")).isTrue();
-        assertThat(manifest.hasFile("client/aws_config.erl")).isTrue();
+        assertThat(manifest.hasFile("aws_retry.erl")).isTrue();
+        assertThat(manifest.hasFile("aws_config.erl")).isTrue();
     }
 
     @Test
@@ -44,7 +44,7 @@ class ErlangClientPipelineTest {
         MockManifest manifest = new MockManifest();
         FileOutput out = new FileOutput(manifest, ".erl");
         out.copyRuntime("erlang", "client/aws_sigv4.erl", ErlangClientPlugin.class.getClassLoader());
-        assertThat(manifest.hasFile("client/aws_sigv4.erl")).isTrue();
-        assertThat(manifest.expectFileBytes("client/aws_sigv4.erl").length).isPositive();
+        assertThat(manifest.hasFile("aws_sigv4.erl")).isTrue();
+        assertThat(manifest.expectFileBytes("aws_sigv4.erl").length).isPositive();
     }
 }
