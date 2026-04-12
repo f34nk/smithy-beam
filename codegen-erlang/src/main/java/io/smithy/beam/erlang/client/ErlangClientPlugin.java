@@ -26,7 +26,7 @@ public final class ErlangClientPlugin implements SmithyBuildPlugin {
         ServiceShape service = model.expectShape(settings.serviceShapeId(), ServiceShape.class);
         var protocol = ProtocolAnalyzerFactory.forService(service, model);
         var writer = new ErlangWriter();
-        var output = new FileOutput(context.getFileManifest(), writer.fileExtension());
+        var output = FileOutput.forPlugin(settings.outputDir());
         ClassLoader cl = ErlangClientPlugin.class.getClassLoader();
         new ClientPipeline().generate(service, model, protocol, writer, settings, output, cl);
     }
