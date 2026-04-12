@@ -22,6 +22,8 @@ public final class ProtocolRegistrations {
                 return;
             }
             ProtocolAnalyzerFactory.register(new RestJsonProtocolAnalyzer());
+            ProtocolAnalyzerFactory.register(new AwsJsonProtocolAnalyzer());
+            ProtocolAnalyzerFactory.register(new AwsJson11ProtocolAnalyzer());
             registered = true;
         }
     }

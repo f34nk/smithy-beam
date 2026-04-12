@@ -6,9 +6,13 @@
 
 ## Current state
 
-The **`codegen-core`** module provides shared **IR** (immutable records under `io.smithy.beam.core.ir`), the **`LanguageWriter`** and **`ProtocolAnalyzer`** interfaces, **codegen settings** and **file output** helpers, and **model utilities** (`UriTemplate`, `ShapeIndex`, `TypeSpecBuilder`, `ProtocolDetector`, `ProtocolAnalyzerFactory`). Unit tests cover `TypeSpecBuilder` against a small assembled model.
+**`codegen-core`** provides shared **IR** (immutable records under `io.smithy.beam.core.ir`), the **`LanguageWriter`** and **`ProtocolAnalyzer`** interfaces, **codegen settings** and **file output** helpers, model utilities (`UriTemplate`, `ShapeIndex`, `TypeSpecBuilder`, `ProtocolDetector`, `ProtocolAnalyzerFactory`), and the **`ClientPipeline`** / **`ServerPipeline`** orchestrators.
 
-The language modules do not yet ship end-to-end **pipelines**, **protocol analyzers** that populate `OperationSpec` from AWS protocols, or **Erlang/Elixir writer** implementations; the Gradle layout and `META-INF/services` placeholders support Smithy Build plugins.
+**`codegen-protocols`** implements three protocol analyzers that fully populate `OperationSpec` IR from the Smithy model: `RestJsonProtocolAnalyzer` (`aws.protocols#restJson1`), `AwsJsonProtocolAnalyzer` (`aws.protocols#awsJson1_0`), and `AwsJson11ProtocolAnalyzer` (`aws.protocols#awsJson1_1`). `ProtocolRegistrations.init()` registers all three at plugin startup.
+
+**`codegen-erlang`** ships `ErlangClientPlugin` (a working Smithy Build plugin registered via `META-INF/services`), `ErlangWriter` (stub — all render methods return empty strings), and eight Erlang client runtime modules bundled in the JAR so `FileOutput.copyRuntime` can copy them into the build output.
+
+End-to-end **writer rendering** (Erlang/Elixir source emission) and **server-side codegen** are not yet implemented; the pipeline skeletons and writer stub are in place for the next phase.
 
 ---
 

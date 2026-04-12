@@ -18,14 +18,14 @@ Traits for HTTP protocol bindings.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#http`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-http-trait) | ❌ | Defines HTTP method and URI pattern |
-| [`smithy.api#httpHeader`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpheader-trait) | ❌ | Binds member to HTTP header |
-| [`smithy.api#httpLabel`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httplabel-trait) | ❌ | Binds member to URI path segment |
-| [`smithy.api#httpPayload`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httppayload-trait) | ❌ | Binds member to HTTP body |
-| [`smithy.api#httpQuery`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpquery-trait) | ❌ | Binds member to query string parameter |
+| [`smithy.api#http`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-http-trait) | ⚠️ | Method, URI, and success code read into `HttpSpec` by protocol analyzers; not yet rendered in emitted code |
+| [`smithy.api#httpHeader`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpheader-trait) | ⚠️ | Read into `HeaderBinding` by protocol analyzers; not yet rendered in emitted code |
+| [`smithy.api#httpLabel`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httplabel-trait) | ⚠️ | Read into `LabelBinding` (with `requiresEncoding` flag) by protocol analyzers; not yet rendered in emitted code |
+| [`smithy.api#httpPayload`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httppayload-trait) | ⚠️ | Exclusive payload member detected in `BodySpec` by protocol analyzers; not yet rendered in emitted code |
+| [`smithy.api#httpQuery`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpquery-trait) | ⚠️ | Read into `QueryBinding` by protocol analyzers; not yet rendered in emitted code |
 | [`smithy.api#cors`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-cors-trait) | ❌ | CORS configuration for service |
 | [`smithy.api#httpChecksumRequired`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpchecksumrequired-trait) | ❌ | Requires checksum header |
-| [`smithy.api#httpError`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httperror-trait) | ❌ | Defines HTTP status code for error |
+| [`smithy.api#httpError`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httperror-trait) | ⚠️ | HTTP status code read into `ErrorBinding` by protocol analyzers; not yet rendered in emitted code |
 | [`smithy.api#httpPrefixHeaders`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpprefixheaders-trait) | ❌ | Binds map to prefixed headers |
 | [`smithy.api#httpQueryParams`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpqueryparams-trait) | ❌ | Binds map to query parameters |
 | [`smithy.api#httpResponseCode`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpresponsecode-trait) | ❌ | Binds member to HTTP response status |
@@ -55,11 +55,11 @@ AWS-specific protocol traits.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`aws.protocols#awsJson1_0`](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html#aws-protocols-awsjson1_0-trait) | ❌ | AWS JSON 1.0 protocol (DynamoDB, Kinesis) |
-| [`aws.protocols#awsJson1_1`](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html#aws-protocols-awsjson1_1-trait) | ❌ | AWS JSON 1.1 protocol (Lambda, ECS) |
+| [`aws.protocols#awsJson1_0`](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html#aws-protocols-awsjson1_0-trait) | ⚠️ | Operation analysis into IR implemented; writer rendering not yet emitted |
+| [`aws.protocols#awsJson1_1`](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html#aws-protocols-awsjson1_1-trait) | ⚠️ | Operation analysis into IR implemented; writer rendering not yet emitted |
 | [`aws.protocols#awsQuery`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquery-trait) | ❌ | AWS Query protocol (SQS, SNS, RDS) |
 | [`aws.protocols#ec2Query`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2query-trait) | ❌ | EC2 Query protocol |
-| [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ❌ | REST-JSON protocol (API Gateway, Step Functions) |
+| [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ⚠️ | Operation analysis into IR implemented; writer rendering not yet emitted |
 | [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ❌ | REST-XML protocol (S3, CloudFront, Route 53) |
 | [`aws.protocols#awsQueryCompatible`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquerycompatible-trait) | ❌ | Query protocol compatibility mode |
 | [`aws.protocols#httpChecksum`](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ❌ | HTTP checksum configuration |
@@ -74,7 +74,7 @@ AWS-specific authentication traits.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`aws.auth#sigv4`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ❌ | Gate SigV4 signing helpers in generated Erlang/Elixir and runtime; without trait, plain HTTP calls |
+| [`aws.auth#sigv4`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ⚠️ | Detected on service; signing name read into `AuthSpec` IR; `aws_sigv4.erl` runtime bundled; signing not yet wired in generated code |
 | [`aws.auth#cognitoUserPools`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-cognitouserpools-trait) | ❌ | Cognito User Pools authentication |
 | [`aws.auth#sigv4a`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4a-trait) | ❌ | Multi-region SigV4a signing |
 | [`aws.auth#unsignedPayload`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-unsignedpayload-trait) | ❌ | Skips payload signing |
@@ -142,7 +142,7 @@ Traits that define operation behavior.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#paginated`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-paginated-trait) | ❌ | Generates pagination helper functions (`{operation}_all/2,3`) |
+| [`smithy.api#paginated`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-paginated-trait) | ⚠️ | Token and items members read into `PaginationSpec` IR; helper functions not yet emitted |
 | [`smithy.api#idempotencyToken`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotencytoken-trait) | ❌ | Auto-generates unique token for idempotent operations |
 | [`smithy.api#idempotent`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotent-trait) | ❌ | Marks operation as idempotent |
 | [`smithy.api#readonly`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-readonly-trait) | ❌ | Marks operation as read-only |
