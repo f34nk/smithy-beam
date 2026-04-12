@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ErlangClientPipelineTest {
 
     @Test
-    void generateWritesEmptyClientModuleAndCopiesRuntime() {
+    void generateWritesClientModuleAndCopiesRuntime() {
         ProtocolRegistrations.init();
         Model model = Model.assembler(getClass().getClassLoader())
                 .discoverModels(getClass().getClassLoader())
@@ -35,7 +35,6 @@ class ErlangClientPipelineTest {
                 .generate(service, model, protocol, writer, settings, output, getClass().getClassLoader());
 
         assertThat(manifest.hasFile("src/generated/weather_client.erl")).isTrue();
-        assertThat(manifest.expectFileString("src/generated/weather_client.erl")).isEmpty();
         assertThat(manifest.hasFile("client/aws_retry.erl")).isTrue();
         assertThat(manifest.hasFile("client/aws_config.erl")).isTrue();
     }
