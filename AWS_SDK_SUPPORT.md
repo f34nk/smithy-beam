@@ -18,12 +18,12 @@ General SDK features not specific to AWS traits.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| HTTP Protocol Bindings | ❌ | `@httpLabel`, `@httpHeader`, `@httpQuery`, `@httpPayload` |
+| HTTP Protocol Bindings | ⚠️ | `@httpLabel`, `@httpHeader`, `@httpQuery`, `@httpPayload` read into IR by protocol analyzers; not yet rendered in emitted code |
 | Input Validation | ❌ | `@required` trait validation |
 | Operations on resource shapes | ❌ | Client includes operations from the full service closure (`TopDownIndex`), not only `service`‑listed operations—required for services like Lambda where most APIs are resource-bound |
-| Pagination Helpers | ❌ | Auto-generated `{operation}_all/2,3` functions |
-| Retry with Exponential Backoff | ❌ | Configurable retry with jitter |
-| Error Handling | ❌ | Map protocol errors to generated types and helpers where the model exposes error shapes |
+| Pagination Helpers | ⚠️ | `@paginated` tokens read into `PaginationSpec` IR; helper functions not yet emitted |
+| Retry with Exponential Backoff | ⚠️ | `RetrySpec.defaultRetry()` included in every `OperationSpec`; configurable retry with jitter not yet rendered |
+| Error Handling | ⚠️ | Error shapes and HTTP codes read into `ErrorSpec` IR via `@httpError`; generated error helpers not yet emitted |
 | HTTP Prefix Headers | ❌ | `@httpPrefixHeaders` trait not implemented (used for S3 metadata) |
 | Idempotency Token | ❌ | `@idempotencyToken` trait not implemented |
 | Host Label | ❌ | `@hostLabel` trait not implemented |
@@ -41,10 +41,10 @@ Protocol implementations for AWS services. All built-in generators are discovere
 | Feature | Status | Notes |
 |---------|--------|-------|
 | [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ❌ | Full implementation for EC2 |
-| [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ❌ | Full implementation for DynamoDB, Kinesis, etc. |
-| [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ❌ | Full implementation for Lambda, ECS, etc. |
+| [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ⚠️ | Operation analysis into IR implemented (`AwsJsonProtocolAnalyzer`); writer rendering not yet emitted |
+| [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ⚠️ | Operation analysis into IR implemented (`AwsJson11ProtocolAnalyzer`); writer rendering not yet emitted |
 | [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ❌ | Full implementation for SQS, SNS, RDS, etc. |
-| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ❌ | Full implementation for API Gateway, Step Functions, etc. |
+| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ⚠️ | Operation analysis into IR implemented (`RestJsonProtocolAnalyzer`); writer rendering not yet emitted |
 | [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ❌ | Full implementation for S3, CloudFront, Route 53, etc. |
 | Custom protocols via `@protocolDefinition` | ❌ | Detect `@protocolDefinition` traits and resolve generators via Java `ServiceLoader`; fall back to a stub when none is registered |
 | [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ❌ | Emit language-appropriate tests from `@httpRequestTests` / `@httpResponseTests` |
@@ -70,7 +70,7 @@ Authentication mechanisms for AWS services.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [AWS Signature Version 4 (SigV4)](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ❌ | When `@aws.auth#sigv4` is present, generate or bundle Erlang/Elixir signing helpers and wire requests accordingly; without the trait, plain HTTP client calls |
+| [AWS Signature Version 4 (SigV4)](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ⚠️ | `@aws.auth#sigv4` detected and signing name read into `AuthSpec` IR; `aws_sigv4.erl` runtime bundled in JAR; signing not yet wired in generated code |
 | [Credential Provider Chain](https://smithy.io/2.0/aws/aws-auth.html) | ❌ | Environment variables, `~/.aws/credentials`, provider chain; copied only for `@aws.auth#sigv4` services |
 | [AWS Signature Version 4A (SigV4A)](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4a-trait) | ❌ | Multi-region asymmetric signing not implemented |
 | [Cognito User Pools Authentication](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-cognitouserpools-trait) | ❌ | Cognito authentication not implemented |
