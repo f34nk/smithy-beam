@@ -18,12 +18,12 @@ General SDK features not specific to AWS traits.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| HTTP Protocol Bindings | ⚠️ | `@httpLabel`, `@httpHeader`, `@httpQuery`, `@httpPayload` read into IR by protocol analyzers; writer rendering methods implemented (`renderUriSubstitution`, `renderHeaderBuilder`, `renderQueryStringBuilder`); pipeline wiring pending |
-| Input Validation | ❌ | `@required` trait validation |
+| HTTP Protocol Bindings | ✅ | `@httpLabel` (URI substitution with optional percent-encoding), `@httpHeader`, `@httpQuery` (via `uri_string:compose_query`), `@httpPayload` (exclusive payload member) — all read into IR and emitted in generated operation functions |
+| Input Validation | ✅ | `validate_<struct>/1` helper generated for every struct with at least one `@required` member; returns `ok` or `{error, {missing_required_fields, [binary()]}}` |
 | Operations on resource shapes | ❌ | Client includes operations from the full service closure (`TopDownIndex`), not only `service`‑listed operations—required for services like Lambda where most APIs are resource-bound |
-| Pagination Helpers | ⚠️ | `@paginated` tokens read into `PaginationSpec` IR; `renderPaginationHelper` emits `<op>_stream/2,3`; pipeline wiring pending |
-| Retry with Exponential Backoff | ⚠️ | `RetrySpec.defaultRetry()` included in every `OperationSpec`; `renderRetryWrapper` emits `aws_retry:with_retry`; pipeline wiring pending |
-| Error Handling | ⚠️ | Error shapes and HTTP codes read into `ErrorSpec` IR via `@httpError`; `renderErrorSerializer` emits `parse_error/2`; pipeline wiring pending |
+| Pagination Helpers | ⚠️ | `@paginated` tokens read into `PaginationSpec` IR; `renderPaginationHelper` emits `<op>_stream/2,3`; wired in pipeline when `op.pagination()` is non-null |
+| Retry with Exponential Backoff | ✅ | Every operation gets a 3-arity wrapper that calls `aws_retry:with_retry/2`; retry can be disabled per-call via `#{enable_retry => false}` in the options map |
+| Error Handling | ✅ | Error shapes and HTTP codes read into `ErrorSpec` IR via `@httpError`; a single `parse_error/2` function is generated per module, deduplicating bindings across all operations, dispatching status codes to `{error, {atom, Body}}` tuples |
 | HTTP Prefix Headers | ❌ | `@httpPrefixHeaders` trait not implemented (used for S3 metadata) |
 | Idempotency Token | ❌ | `@idempotencyToken` trait not implemented |
 | Host Label | ❌ | `@hostLabel` trait not implemented |
@@ -41,10 +41,10 @@ Protocol implementations for AWS services. All built-in generators are discovere
 | Feature | Status | Notes |
 |---------|--------|-------|
 | [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ❌ | Full implementation for EC2 |
-| [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ⚠️ | Operation analysis into IR implemented (`AwsJsonProtocolAnalyzer`); writer rendering methods implemented; pipeline wiring pending |
-| [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ⚠️ | Operation analysis into IR implemented (`AwsJson11ProtocolAnalyzer`); writer rendering methods implemented; pipeline wiring pending |
+| [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ⚠️ | Operation analysis into IR implemented (`AwsJsonProtocolAnalyzer`); pipeline wired; no examples yet |
+| [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ⚠️ | Operation analysis into IR implemented (`AwsJson11ProtocolAnalyzer`); pipeline wired; no examples yet |
 | [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ❌ | Full implementation for SQS, SNS, RDS, etc. |
-| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ⚠️ | Operation analysis into IR implemented (`RestJsonProtocolAnalyzer`); writer rendering methods implemented; pipeline wiring pending |
+| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ✅ | Fully implemented — operation analysis (`RestJsonProtocolAnalyzer`), pipeline wiring, and end-to-end examples (`weather-service`, `storage-service`) |
 | [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ❌ | Full implementation for S3, CloudFront, Route 53, etc. |
 | Custom protocols via `@protocolDefinition` | ❌ | Detect `@protocolDefinition` traits and resolve generators via Java `ServiceLoader`; fall back to a stub when none is registered |
 | [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ❌ | Emit language-appropriate tests from `@httpRequestTests` / `@httpResponseTests` |
@@ -70,7 +70,7 @@ Authentication mechanisms for AWS services.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [AWS Signature Version 4 (SigV4)](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ⚠️ | `@aws.auth#sigv4` detected and signing name read into `AuthSpec` IR; `aws_sigv4.erl` runtime bundled in JAR; `renderAuthWrapper` emits the signing call; pipeline wiring pending |
+| [AWS Signature Version 4 (SigV4)](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ✅ | `@aws.auth#sigv4` detected; signing name read into `AuthSpec` IR; `aws_sigv4.erl` and `aws_credentials.erl` runtime modules copied into output when any operation requires signing; `aws_sigv4:sign_request/5` called inside `make_<op>_request/2` |
 | [Credential Provider Chain](https://smithy.io/2.0/aws/aws-auth.html) | ❌ | Environment variables, `~/.aws/credentials`, provider chain; copied only for `@aws.auth#sigv4` services |
 | [AWS Signature Version 4A (SigV4A)](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4a-trait) | ❌ | Multi-region asymmetric signing not implemented |
 | [Cognito User Pools Authentication](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-cognitouserpools-trait) | ❌ | Cognito authentication not implemented |

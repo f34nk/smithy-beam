@@ -18,14 +18,14 @@ Traits for HTTP protocol bindings.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#http`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-http-trait) | ⚠️ | Method, URI, and success code read into `HttpSpec` by protocol analyzers; `renderHttpClientBlock` emits `httpc:request` call with method and success-code pattern match; pipeline wiring pending |
-| [`smithy.api#httpHeader`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpheader-trait) | ⚠️ | Read into `HeaderBinding` by protocol analyzers; `renderHeaderBuilder` emits header list with required/optional member guards; pipeline wiring pending |
-| [`smithy.api#httpLabel`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httplabel-trait) | ⚠️ | Read into `LabelBinding` (with `requiresEncoding` flag) by protocol analyzers; `renderUriSubstitution` emits binary string with interpolated labels; pipeline wiring pending |
-| [`smithy.api#httpPayload`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httppayload-trait) | ⚠️ | Exclusive payload member detected in `BodySpec` by protocol analyzers; `renderHttpClientBlock` selects encoding based on `BodyEncoding`; pipeline wiring pending |
-| [`smithy.api#httpQuery`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpquery-trait) | ⚠️ | Read into `QueryBinding` by protocol analyzers; `renderQueryStringBuilder` emits `uri_string:compose_query` call; pipeline wiring pending |
+| [`smithy.api#http`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-http-trait) | ✅ | Method, URI, and success code read into `HttpSpec`; generated `make_<op>_request/2` uses the method, substitutes URI labels, and pattern-matches the success code in the `httpc` response |
+| [`smithy.api#httpHeader`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpheader-trait) | ✅ | Read into `HeaderBinding`; generated operation functions build a header list with content-type base and conditional member guards |
+| [`smithy.api#httpLabel`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httplabel-trait) | ✅ | Read into `LabelBinding` (with `requiresEncoding` flag); URI path segments are substituted as Erlang binary interpolation with optional `url_encode/1` |
+| [`smithy.api#httpPayload`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httppayload-trait) | ⚠️ | Exclusive payload member detected in `BodySpec`; JSON body encoding emitted; XML and form-urlencoded payload bodies not yet exercised |
+| [`smithy.api#httpQuery`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpquery-trait) | ✅ | Read into `QueryBinding`; generated operation functions append `uri_string:compose_query/1` output to the URL when query members are present |
 | [`smithy.api#cors`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-cors-trait) | ❌ | CORS configuration for service |
 | [`smithy.api#httpChecksumRequired`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpchecksumrequired-trait) | ❌ | Requires checksum header |
-| [`smithy.api#httpError`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httperror-trait) | ⚠️ | HTTP status code read into `ErrorBinding` by protocol analyzers; `renderErrorSerializer` emits `parse_error/2` dispatching status codes to error atoms; pipeline wiring pending |
+| [`smithy.api#httpError`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httperror-trait) | ✅ | HTTP status code read into `ErrorBinding`; a single `parse_error/2` function is generated per module, dispatching status codes to `{error, {atom, Body}}` tuples |
 | [`smithy.api#httpPrefixHeaders`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpprefixheaders-trait) | ❌ | Binds map to prefixed headers |
 | [`smithy.api#httpQueryParams`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpqueryparams-trait) | ❌ | Binds map to query parameters |
 | [`smithy.api#httpResponseCode`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpresponsecode-trait) | ❌ | Binds member to HTTP response status |
@@ -55,11 +55,11 @@ AWS-specific protocol traits.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`aws.protocols#awsJson1_0`](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html#aws-protocols-awsjson1_0-trait) | ⚠️ | Operation analysis into IR implemented; writer rendering methods implemented; pipeline wiring pending |
-| [`aws.protocols#awsJson1_1`](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html#aws-protocols-awsjson1_1-trait) | ⚠️ | Operation analysis into IR implemented; writer rendering methods implemented; pipeline wiring pending |
+| [`aws.protocols#awsJson1_0`](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html#aws-protocols-awsjson1_0-trait) | ⚠️ | Operation analysis into IR implemented (`AwsJsonProtocolAnalyzer`); pipeline wired; no examples yet |
+| [`aws.protocols#awsJson1_1`](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html#aws-protocols-awsjson1_1-trait) | ⚠️ | Operation analysis into IR implemented (`AwsJson11ProtocolAnalyzer`); pipeline wired; no examples yet |
 | [`aws.protocols#awsQuery`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquery-trait) | ❌ | AWS Query protocol (SQS, SNS, RDS) |
 | [`aws.protocols#ec2Query`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2query-trait) | ❌ | EC2 Query protocol |
-| [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ⚠️ | Operation analysis into IR implemented; writer rendering methods implemented; pipeline wiring pending |
+| [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ✅ | Fully implemented — operation analysis, pipeline wiring, and end-to-end examples (`weather-service`, `storage-service`) |
 | [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ❌ | REST-XML protocol (S3, CloudFront, Route 53) |
 | [`aws.protocols#awsQueryCompatible`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquerycompatible-trait) | ❌ | Query protocol compatibility mode |
 | [`aws.protocols#httpChecksum`](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ❌ | HTTP checksum configuration |
@@ -74,7 +74,7 @@ AWS-specific authentication traits.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`aws.auth#sigv4`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ⚠️ | Detected on service; signing name read into `AuthSpec` IR; `aws_sigv4.erl` runtime bundled; `renderAuthWrapper` emits `aws_sigv4:sign_request` prepend; pipeline wiring pending |
+| [`aws.auth#sigv4`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ✅ | Detected on service; signing name read into `AuthSpec` IR; `aws_sigv4.erl` and `aws_credentials.erl` runtime modules copied into output; `aws_sigv4:sign_request/5` called inside `make_<op>_request/2` for services that require signing |
 | [`aws.auth#cognitoUserPools`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-cognitouserpools-trait) | ❌ | Cognito User Pools authentication |
 | [`aws.auth#sigv4a`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4a-trait) | ❌ | Multi-region SigV4a signing |
 | [`aws.auth#unsignedPayload`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-unsignedpayload-trait) | ❌ | Skips payload signing |
@@ -87,11 +87,11 @@ Traits that refine or modify type semantics.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#enumValue`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-enumvalue-trait) | ❌ | Wire values for Smithy 2.0 `enum` members in generated encode/decode helpers |
-| [`smithy.api#error`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-error-trait) | ⚠️ | Marks structure as an error shape; `renderErrorSerializer` emits `parse_error/2` for error shapes; pipeline wiring pending |
+| [`smithy.api#enumValue`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-enumvalue-trait) | ✅ | Wire values (e.g. `"Celsius"`) are used in generated `encode_<enum>/1` and `decode_<enum>/1` helpers instead of member names (e.g. `"CELSIUS"`) |
+| [`smithy.api#error`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-error-trait) | ✅ | Error shapes are rendered as struct types; HTTP status codes are dispatched in `parse_error/2` |
 | [`smithy.api#input`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-input-trait) | ❌ | Marks structure as operation input |
 | [`smithy.api#output`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-output-trait) | ❌ | Marks structure as operation output |
-| [`smithy.api#required`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-required-trait) | ⚠️ | Read from `FieldSpec`; `renderStructType` uses `:=` for required fields and `=>` for optional; validation helpers not yet emitted |
+| [`smithy.api#required`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-required-trait) | ✅ | Required fields use `:=` in struct map types; `validate_<struct>/1` helpers generated for structs with at least one required member, returning `{error, {missing_required_fields, [binary()]}}` |
 | [`smithy.api#addedDefault`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-addeddefault-trait) | ❌ | Indicates member had default added after initial release |
 | [`smithy.api#clientOptional`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-clientoptional-trait) | ❌ | Indicates a member is optional for clients |
 | [`smithy.api#default`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-default-trait) | ❌ | Sets default value for a member |
@@ -106,7 +106,7 @@ Traits that constrain or validate values.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#enum`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-enum-trait) | ⚠️ | `EnumSpec` assembled from both legacy `@enum` strings and Smithy 2.0 `enum` shapes; `renderEnumType` emits `-type name() :: 'V1' | 'V2'.`; encode/decode helpers not yet emitted |
+| [`smithy.api#enum`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-enum-trait) | ✅ | `EnumSpec` assembled from both legacy `@enum` strings and Smithy 2.0 `enum` shapes; `-type name() :: 'V1' | 'V2'.` emitted; `encode_<enum>/1` and `decode_<enum>/1` helpers generated using wire values |
 | [`smithy.api#idRef`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-idref-trait) | ❌ | Constrains string to be a valid shape ID |
 | [`smithy.api#length`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-length-trait) | ❌ | Constrains length of strings, lists, or blobs |
 | [`smithy.api#pattern`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-pattern-trait) | ❌ | Requires string values to match a regular expression |
@@ -142,7 +142,7 @@ Traits that define operation behavior.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#paginated`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-paginated-trait) | ⚠️ | Token and items members read into `PaginationSpec` IR; `renderPaginationHelper` emits `<op>_stream/2,3` accumulation loop; pipeline wiring pending |
+| [`smithy.api#paginated`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-paginated-trait) | ⚠️ | Token and items members read into `PaginationSpec` IR; `renderPaginationHelper` emits `<op>_stream/2,3` accumulation loop; wired in pipeline when `op.pagination()` is non-null; no examples yet |
 | [`smithy.api#idempotencyToken`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotencytoken-trait) | ❌ | Auto-generates unique token for idempotent operations |
 | [`smithy.api#idempotent`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotent-trait) | ❌ | Marks operation as idempotent |
 | [`smithy.api#readonly`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-readonly-trait) | ❌ | Marks operation as read-only |

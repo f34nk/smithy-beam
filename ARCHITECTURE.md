@@ -14,7 +14,15 @@
 
 The `ErlangWriter` covers: module header/exports/behaviour, struct/enum/union type declarations, function specs and callback declarations, map operations, JSON/XML/form serialization, URI substitution, query-string and header builders, `httpc` request blocks, SigV4 auth and retry wrappers, response handlers, `parse_error/2` error dispatchers, and pagination stream helpers.
 
-End-to-end **pipeline wiring** (calling writer methods in the right order from `ClientPipeline`) and **server-side codegen** are not yet implemented; the writer rendering methods are ready for the next phase.
+**`ClientPipeline`** is fully implemented and drives end-to-end Erlang client generation. For each service it emits: module/export/type-export attributes, all type definitions (structs, enums, unions, error shapes), a `new/1` constructor, a 3-function block per operation (2-arity wrapper → 3-arity retry wrapper → internal `make_<op>_request/2` with URL construction, body building, headers, optional SigV4, `httpc` call, and response/error decoding), enum/union encode–decode helpers, required-field `validate_*` functions, `url_encode/1`, `ensure_binary/1`, and a unified `parse_error/2`. Runtime modules are copied selectively based on the protocol and auth requirements.
+
+`FileOutput` supports two modes: **manifest mode** (for tests, delegates to Smithy `FileManifest`) and **filesystem mode** (for plugins, via `FileOutput.forPlugin(outputDir)`, writes directly to the project source tree).
+
+Working **examples** under `examples/erlang/` demonstrate the full `smithy build` → Erlang compilation → Dialyzer → EUnit pipeline:
+- **`weather-service`** — `restJson1` with GET + path label, enum, POST + JSON body, error shape.
+- **`storage-service`** — `restJson1` with union types, enums, required-field validation, and path labels.
+
+**Server-side codegen** is not yet implemented.
 
 ---
 
@@ -52,7 +60,10 @@ smithy-beam/
 ├── codegen-elixir/        # Java: Elixir codegen + META-INF/services
 ├── runtime-erlang/        # Erlang sources (client / server)
 ├── runtime-elixir/        # Elixir sources (client / server)
-└── examples/              # Smithy models + demos (erlang / elixir)
+└── examples/
+    └── erlang/
+        ├── weather-service/   # restJson1: GET+label, enum, POST body, error
+        └── storage-service/   # restJson1: union types, enum, validation, path label
 ```
 
 ---
