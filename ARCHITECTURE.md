@@ -8,7 +8,18 @@
 
 **`codegen-core`** provides shared **IR** (immutable records under `io.smithy.beam.core.ir`), the **`LanguageWriter`** and **`ProtocolAnalyzer`** interfaces, **codegen settings** and **file output** helpers, model utilities (`UriTemplate`, `ShapeIndex`, `TypeSpecBuilder`, `ProtocolDetector`, `ProtocolAnalyzerFactory`), and the **`ClientPipeline`** / **`ServerPipeline`** orchestrators.
 
-**`codegen-protocols`** implements three protocol analyzers that fully populate `OperationSpec` IR from the Smithy model: `RestJsonProtocolAnalyzer` (`aws.protocols#restJson1`), `AwsJsonProtocolAnalyzer` (`aws.protocols#awsJson1_0`), and `AwsJson11ProtocolAnalyzer` (`aws.protocols#awsJson1_1`). `ProtocolRegistrations.init()` registers all three at plugin startup.
+**`codegen-protocols`** implements six protocol analyzers that fully populate `OperationSpec` IR from the Smithy model:
+
+| Analyzer | Protocol | Notes |
+|---|---|---|
+| `RestJsonProtocolAnalyzer` | `aws.protocols#restJson1` | Full HTTP binding analysis; end-to-end examples |
+| `AwsJsonProtocolAnalyzer` | `aws.protocols#awsJson1_0` | `POST /`, JSON body, `X-Amz-Target` header |
+| `AwsJson11ProtocolAnalyzer` | `aws.protocols#awsJson1_1` | Extends `AwsJsonProtocolAnalyzer` |
+| `AwsQueryProtocolAnalyzer` | `aws.protocols#awsQuery` | `POST /`, form-encoded body, `requiresQueryRuntime` |
+| `Ec2QueryProtocolAnalyzer` | `aws.protocols#ec2Query` | Extends `AwsQueryProtocolAnalyzer` |
+| `RestXmlProtocolAnalyzer` | `aws.protocols#restXml` | Full HTTP binding, XML body, `requiresXmlRuntime`; S3 detection via `requiresS3Runtime` |
+
+`ProtocolRegistrations.init()` registers all six at plugin startup.
 
 **`codegen-erlang`** ships `ErlangClientPlugin` (a working Smithy Build plugin registered via `META-INF/services`), `ErlangWriter` (fully implemented — all `LanguageWriter` methods emit real Erlang text), `ErlangSymbolProvider` (Smithy name → Erlang identifier conversions), `ErlangReservedWords` (reserved-word escaping), and eight Erlang client runtime modules bundled in the JAR so `FileOutput.copyRuntime` can copy them into the build output.
 
