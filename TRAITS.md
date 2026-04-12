@@ -1,6 +1,8 @@
 # Smithy Trait Support
 
-This document lists all Smithy 2.0 traits and their support status in smithy-beam.
+This document lists Smithy 2.0 traits and how they relate to **generated** Erlang and Elixir in smithy-beam.
+
+**Scope:** Most traits still show as not supported in emitted code; rows are revised when generator behavior changes. Core libraries may read the Smithy model without emitting trait-specific output yet.
 
 **Legend:**
 - ✅ Supported - Trait is read and affects code generation
@@ -72,7 +74,7 @@ AWS-specific authentication traits.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`aws.auth#sigv4`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ❌ | **Target:** gate SigV4 signing helpers in generated Erlang/Elixir and runtime; without trait, plain HTTP calls |
+| [`aws.auth#sigv4`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ❌ | Gate SigV4 signing helpers in generated Erlang/Elixir and runtime; without trait, plain HTTP calls |
 | [`aws.auth#cognitoUserPools`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-cognitouserpools-trait) | ❌ | Cognito User Pools authentication |
 | [`aws.auth#sigv4a`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4a-trait) | ❌ | Multi-region SigV4a signing |
 | [`aws.auth#unsignedPayload`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-unsignedpayload-trait) | ❌ | Skips payload signing |
@@ -85,7 +87,7 @@ Traits that refine or modify type semantics.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#enumValue`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-enumvalue-trait) | ❌ | **Target:** wire values for Smithy 2.0 `enum` members in generated encode/decode helpers |
+| [`smithy.api#enumValue`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-enumvalue-trait) | ❌ | Wire values for Smithy 2.0 `enum` members in generated encode/decode helpers |
 | [`smithy.api#error`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-error-trait) | ❌ | Marks structure as an error shape |
 | [`smithy.api#input`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-input-trait) | ❌ | Marks structure as operation input |
 | [`smithy.api#output`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-output-trait) | ❌ | Marks structure as operation output |
@@ -104,7 +106,7 @@ Traits that constrain or validate values.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#enum`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-enum-trait) | ❌ | **Target:** support legacy string enums and Smithy 2.0 `enum` shapes with `@enumValue` in generated types and codecs |
+| [`smithy.api#enum`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-enum-trait) | ❌ | Support legacy string enums and Smithy 2.0 `enum` shapes with `@enumValue` in generated types and codecs |
 | [`smithy.api#idRef`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-idref-trait) | ❌ | Constrains string to be a valid shape ID |
 | [`smithy.api#length`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-length-trait) | ❌ | Constrains length of strings, lists, or blobs |
 | [`smithy.api#pattern`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-pattern-trait) | ❌ | Requires string values to match a regular expression |
@@ -153,7 +155,7 @@ Traits that define operation behavior.
 
 Traits for modeling resources and attaching operations to resource shapes.
 
-**Client codegen (target):** walk the **service closure** with `TopDownIndex` and emit client functions for every operation reachable from the service, including operations attached via **resource** shapes. The table below lists resource metadata traits; many are server- or documentation-oriented and may not change client surface area.
+**Client codegen** typically walks the **service closure** with `TopDownIndex` and emit client functions for every operation reachable from the service, including operations attached via **resource** shapes. The table below lists resource metadata traits; many are server- or documentation-oriented and may not change client surface area.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
@@ -345,13 +347,13 @@ Traits from additional Smithy specifications.
 
 ### Test Traits (`smithy.test#*`)
 
-[HTTP protocol compliance tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) define expected wire requests/responses. **Target:** parse these traits and emit test modules appropriate for Erlang (e.g. EUnit) and/or Elixir.
+[HTTP protocol compliance tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) define expected wire requests/responses. A full generator would parse these traits and emit test modules appropriate for Erlang (e.g. EUnit) and/or Elixir.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
 | [`smithy.test#httpMalformedRequestTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httpmalformedrequesttests-trait) | ➖ | Server-focused malformed-request tests; not used by client codegen |
-| [`smithy.test#httpRequestTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httprequesttests-trait) | ❌ | **Target:** request-side assertions (method, URI, headers, body) |
-| [`smithy.test#httpResponseTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httpresponsetests-trait) | ❌ | **Target:** response-side assertions (status, headers, body) |
+| [`smithy.test#httpRequestTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httprequesttests-trait) | ❌ | Request-side assertions (method, URI, headers, body) |
+| [`smithy.test#httpResponseTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httpresponsetests-trait) | ❌ | Response-side assertions (status, headers, body) |
 | [`smithy.test#smokeTests`](https://smithy.io/2.0/additional-specs/smoke-tests.html#smithy-test-smoketests-trait) | ➖ | Smoke test definitions |
 
 ### Waiter Traits (`smithy.waiters#*`)
@@ -360,7 +362,7 @@ Traits from additional Smithy specifications.
 |-------|--------|-------|
 | [`smithy.waiters#waitable`](https://smithy.io/2.0/additional-specs/waiters.html#smithy-waiters-waitable-trait) | ❌ | Defines waiter for polling long-running operations |
 
-## Custom protocol traits (planned SPI)
+## Custom protocol traits (SPI)
 
 Custom **protocol traits** use `@protocolDefinition` so tooling can discover them as first-class protocols:
 
@@ -375,10 +377,10 @@ service GreetingService { ... }
 
 (The service body would list `version`, `operations`, and the usual operation and shape definitions.)
 
-**Target design:** Java code resolves the active protocol `ShapeId` on a service and looks up a matching analyzer/writer implementation via **`ServiceLoader`** (JARs register implementations under `META-INF/services/`). Third-party JARs can extend smithy-beam without forking the core repo. If no implementation is registered, generation may emit stubs or fail with a clear diagnostic.
+**Integration:** Java resolves the active protocol `ShapeId` on a service and looks up a matching analyzer or writer implementation via **`ServiceLoader`** (JARs register implementations under `META-INF/services/`). Third-party JARs can ship additional protocols without modifying the core repositories. If no implementation is registered, generation may emit stubs or fail with a clear diagnostic.
 
-Arbitrary **non-protocol** custom traits are not expected to drive ad hoc codegen unless we add explicit extension points later.
+Arbitrary **non-protocol** custom traits do not drive codegen unless explicit extension points are added later.
 
 ---
 
-*Trait inventory structure follows [Smithy 2.0 Trait Index](https://smithy.io/2.0/trait-index.html). Update rows as features land.*
+*Trait inventory structure follows [Smithy 2.0 Trait Index](https://smithy.io/2.0/trait-index.html). Rows reflect the current generators and are revised when behavior changes.*
