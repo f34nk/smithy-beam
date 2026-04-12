@@ -10,9 +10,11 @@
 
 **`codegen-protocols`** implements three protocol analyzers that fully populate `OperationSpec` IR from the Smithy model: `RestJsonProtocolAnalyzer` (`aws.protocols#restJson1`), `AwsJsonProtocolAnalyzer` (`aws.protocols#awsJson1_0`), and `AwsJson11ProtocolAnalyzer` (`aws.protocols#awsJson1_1`). `ProtocolRegistrations.init()` registers all three at plugin startup.
 
-**`codegen-erlang`** ships `ErlangClientPlugin` (a working Smithy Build plugin registered via `META-INF/services`), `ErlangWriter` (stub — all render methods return empty strings), and eight Erlang client runtime modules bundled in the JAR so `FileOutput.copyRuntime` can copy them into the build output.
+**`codegen-erlang`** ships `ErlangClientPlugin` (a working Smithy Build plugin registered via `META-INF/services`), `ErlangWriter` (fully implemented — all `LanguageWriter` methods emit real Erlang text), `ErlangSymbolProvider` (Smithy name → Erlang identifier conversions), `ErlangReservedWords` (reserved-word escaping), and eight Erlang client runtime modules bundled in the JAR so `FileOutput.copyRuntime` can copy them into the build output.
 
-End-to-end **writer rendering** (Erlang/Elixir source emission) and **server-side codegen** are not yet implemented; the pipeline skeletons and writer stub are in place for the next phase.
+The `ErlangWriter` covers: module header/exports/behaviour, struct/enum/union type declarations, function specs and callback declarations, map operations, JSON/XML/form serialization, URI substitution, query-string and header builders, `httpc` request blocks, SigV4 auth and retry wrappers, response handlers, `parse_error/2` error dispatchers, and pagination stream helpers.
+
+End-to-end **pipeline wiring** (calling writer methods in the right order from `ClientPipeline`) and **server-side codegen** are not yet implemented; the writer rendering methods are ready for the next phase.
 
 ---
 
