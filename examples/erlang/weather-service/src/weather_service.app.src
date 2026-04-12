@@ -1,0 +1,17 @@
+{application, weather_service,
+ [{description, "Weather Service - smithy-beam restJson1 example"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications, [
+   kernel,
+   stdlib,
+   jsx,
+   inets,
+   ssl,
+   crypto
+  ]},
+  {env, []},
+  {modules, []},
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.

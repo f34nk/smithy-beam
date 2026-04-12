@@ -144,13 +144,15 @@ public final class TypeSpecBuilder {
                 TypeRef v = memberToTypeRef(map.getValue(), model);
                 yield new TypeRef.MapOf(k, v);
             }
-            case STRUCTURE, UNION, ENUM, INT_ENUM, DOCUMENT -> new TypeRef.Named(shape.getId().toString());
-            default -> new TypeRef.Named(shape.getId().toString());
+            case STRUCTURE, UNION, ENUM, INT_ENUM, DOCUMENT -> new TypeRef.Named(shape.getId().getName());
+            default -> new TypeRef.Named(shape.getId().getName());
         };
     }
 
     private static EnumSpec toEnumSpec(EnumShape shape) {
-        List<String> values = new ArrayList<>(shape.getEnumValues().keySet());
+        // Use wire values (string representations), not member names,
+        // so generated encode/decode helpers match the wire format.
+        List<String> values = new ArrayList<>(shape.getEnumValues().values());
         values.sort(String::compareTo);
         return new EnumSpec(shape.getId().getName(), values);
     }
