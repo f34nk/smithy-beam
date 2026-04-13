@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-04-13
+
 ### Added
 
 - **`OperationSpec`** extended with three new response-binding fields in `codegen-core/ir`: `responsePayloadMember` (name of the `@httpPayload` output member; the raw response body is placed under this key without JSON-decoding), `responseCodeMember` (name of the `@httpResponseCode` output member; the HTTP status integer is placed under this key), and `responseHeaders` (list of `HeaderBinding` entries for `@httpHeader`-annotated output members; each is extracted from the response headers and placed in the result map). A backward-compatible 18-arg convenience constructor delegates to the canonical 21-arg form with `null`/`List.of()` defaults, so all existing non-restJson protocol analyzers are unaffected.
@@ -88,6 +90,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`examples/erlang/dynamodb-demo`**: working end-to-end example using `aws.protocols#awsJson1_0` (Amazon DynamoDB) — covers `Content-Type: application/x-amz-json-1.0`, literal `X-Amz-Target` header, direct `jsx:encode(Input)` body encoding, SigV4 signing, `parse_error/2` dispatch by JSON `__type` error code string, and structured `#{error_type => ..., message => ...}` error maps. Includes `smithy-build.json`, `rebar.config`, `app.src`, Makefile, and Terraform config.
 - Unit tests for `RestJsonProtocolAnalyzer`, `AwsJsonProtocolAnalyzer`/`AwsJson11ProtocolAnalyzer`, `AwsQueryProtocolAnalyzer`, `Ec2QueryProtocolAnalyzer`, and `RestXmlProtocolAnalyzer` covering protocol ID, content type, HTTP spec, body encoding, binding classification, auth, error strategy, and S3 runtime detection. Test fixtures: `sqs.smithy` (awsQuery), `ec2.smithy` (ec2Query), `s3.smithy` (restXml — includes both S3 and CloudFront services).
 - Unit test `ErlangClientPipelineTest` covering pipeline execution and JAR-bundled runtime resource copying.
+- Gradle multi-project build (`codegen-core`, `codegen-protocols`, `codegen-erlang`, `codegen-elixir`) with Java 17, JUnit 5, AssertJ, and `publishToMavenLocal` via `maven-publish`.
+- Version catalog for Smithy (`1.54.0`), Smithy AWS traits, and test libraries.
+- Gradle wrapper (8.5) and GitHub Actions CI workflow.
+- Source tree placeholders under `runtime-erlang`, `runtime-elixir`, and `examples` for future runtimes and demos.
+- **Core IR** (`io.smithy.beam.core.ir`): primitive/binding enums, `TypeRef`, operation records (`OperationSpec`, HTTP/bindings, errors, auth, retry, pagination), and type records (`StructSpec`, `EnumSpec`, `UnionSpec`, `ModuleTypeSpec`, etc.).
+- **Interfaces** (`io.smithy.beam.core.writer`, `io.smithy.beam.core.protocol`): `LanguageWriter`, `ProtocolAnalyzer`, supporting value types (`ExportSpec`, `MapEntrySpec`, `ParamSpec`), and `ProtocolAnalyzerFactory` for registering analyzers by protocol `ShapeId`.
+- **Infrastructure** (`io.smithy.beam.core`): `CodegenException`; `CodegenSettings`; `CodeBuffer` and `FileOutput`; `UriTemplate`, `ShapeIndex`, `TypeSpecBuilder`, `ProtocolDetector`.
+- Unit test: `TypeSpecBuilderTest` for `ModuleTypeSpec` assembly from a minimal Smithy model.
+- Public documentation: `ARCHITECTURE.md`, `AWS_SDK_SUPPORT.md`, `TRAITS.md` (support matrices for AWS and traits vs. generated output).
 
 ### Fixed
 
@@ -116,16 +127,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ClientPipeline`** — `-export` / `-export_type` declarations are now emitted as multiline blocks (one entry per line) matching standard Erlang style.
 - **`ErlangSymbolProvider`** — Erlang reserved words used as enum values or union variant names (e.g. `AND` → `and`) are quoted as `'and'` in generated code instead of being appended with `_`, so the original wire name is preserved.
 
-## [0.1.0] — 2026-04-12
 
-### Added
-
-- Gradle multi-project build (`codegen-core`, `codegen-protocols`, `codegen-erlang`, `codegen-elixir`) with Java 17, JUnit 5, AssertJ, and `publishToMavenLocal` via `maven-publish`.
-- Version catalog for Smithy (`1.54.0`), Smithy AWS traits, and test libraries.
-- Gradle wrapper (8.5) and GitHub Actions CI workflow.
-- Source tree placeholders under `runtime-erlang`, `runtime-elixir`, and `examples` for future runtimes and demos.
-- **Core IR** (`io.smithy.beam.core.ir`): primitive/binding enums, `TypeRef`, operation records (`OperationSpec`, HTTP/bindings, errors, auth, retry, pagination), and type records (`StructSpec`, `EnumSpec`, `UnionSpec`, `ModuleTypeSpec`, etc.).
-- **Interfaces** (`io.smithy.beam.core.writer`, `io.smithy.beam.core.protocol`): `LanguageWriter`, `ProtocolAnalyzer`, supporting value types (`ExportSpec`, `MapEntrySpec`, `ParamSpec`), and `ProtocolAnalyzerFactory` for registering analyzers by protocol `ShapeId`.
-- **Infrastructure** (`io.smithy.beam.core`): `CodegenException`; `CodegenSettings`; `CodeBuffer` and `FileOutput`; `UriTemplate`, `ShapeIndex`, `TypeSpecBuilder`, `ProtocolDetector`.
-- Unit test: `TypeSpecBuilderTest` for `ModuleTypeSpec` assembly from a minimal Smithy model.
-- Public documentation: `ARCHITECTURE.md`, `AWS_SDK_SUPPORT.md`, `TRAITS.md` (support matrices for AWS and traits vs. generated output).
+[Unreleased]: https://github.com/f34nk/smithy-beam/compare/0.1.0...HEAD
+[0.1.0]: https://github.com/f34nk/smithy-beam/releases/tag/0.1.0
