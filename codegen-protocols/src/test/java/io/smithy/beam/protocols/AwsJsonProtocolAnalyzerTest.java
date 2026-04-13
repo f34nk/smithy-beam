@@ -3,6 +3,7 @@ package io.smithy.beam.protocols;
 import io.smithy.beam.core.ir.BodyEncoding;
 import io.smithy.beam.core.ir.ErrorCodeStrategy;
 import io.smithy.beam.core.ir.OperationSpec;
+import io.smithy.beam.core.ir.Role;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
@@ -120,5 +121,92 @@ class AwsJsonProtocolAnalyzerTest {
         OperationSpec spec = analyzer11.analyzeClientOperation(invokeFunction, model, lambdaService);
         assertThat(spec.auth().requiresSigV4()).isTrue();
         assertThat(spec.auth().signingName()).isEqualTo("lambda");
+    }
+
+    // ── analyzeServerOperation ────────────────────────────────────────────────
+
+    @Test
+    void serverRoleIsServer() {
+        OperationSpec spec = analyzer10.analyzeServerOperation(getItem, model, dynamoService);
+        assertThat(spec.role()).isEqualTo(Role.SERVER);
+    }
+
+    @Test
+    void serverAuthIsNone() {
+        OperationSpec spec = analyzer10.analyzeServerOperation(getItem, model, dynamoService);
+        assertThat(spec.auth().requiresSigV4()).isFalse();
+        assertThat(spec.auth().signingName()).isNull();
+    }
+
+    @Test
+    void serverRetryIsDisabled() {
+        OperationSpec spec = analyzer10.analyzeServerOperation(getItem, model, dynamoService);
+        assertThat(spec.retry().enabled()).isFalse();
+    }
+
+    @Test
+    void serverPaginationIsNull() {
+        OperationSpec spec = analyzer10.analyzeServerOperation(getItem, model, dynamoService);
+        assertThat(spec.pagination()).isNull();
+    }
+
+    @Test
+    void serverHttpSpecIsPostRoot() {
+        OperationSpec spec = analyzer10.analyzeServerOperation(getItem, model, dynamoService);
+        assertThat(spec.http().method()).isEqualTo("POST");
+        assertThat(spec.http().uriTemplate()).isEqualTo("/");
+        assertThat(spec.http().successCode()).isEqualTo(200);
+    }
+
+    @Test
+    void serverHasXAmzTargetHeader() {
+        OperationSpec spec = analyzer10.analyzeServerOperation(getItem, model, dynamoService);
+        assertThat(spec.headers()).hasSize(1);
+        assertThat(spec.headers().get(0).headerName()).isEqualTo("X-Amz-Target");
+    }
+
+    @Test
+    void serverXAmzTargetLiteralValueContainsServiceAndOperation() {
+        OperationSpec spec = analyzer10.analyzeServerOperation(getItem, model, dynamoService);
+        String literal = spec.headers().get(0).literalValue();
+        assertThat(literal).isEqualTo("DynamoService.GetItem");
+    }
+
+    @Test
+    void serverAllInputMembersInBody() {
+        OperationSpec spec = analyzer10.analyzeServerOperation(getItem, model, dynamoService);
+        assertThat(spec.body().encoding()).isEqualTo(BodyEncoding.JSON);
+        assertThat(spec.body().bodyMemberNames()).containsExactlyInAnyOrder("tableName", "key");
+    }
+
+    @Test
+    void serverHasNoLabelsOrQueries() {
+        OperationSpec spec = analyzer10.analyzeServerOperation(getItem, model, dynamoService);
+        assertThat(spec.labels()).isEmpty();
+        assertThat(spec.queries()).isEmpty();
+    }
+
+    @Test
+    void serverErrorStrategyIsAwsJson() {
+        OperationSpec spec = analyzer10.analyzeServerOperation(getItem, model, dynamoService);
+        assertThat(spec.errors().codeStrategy()).isEqualTo(ErrorCodeStrategy.AWS_JSON);
+    }
+
+    @Test
+    void awsJson11ServerRoleIsServer() {
+        OperationSpec spec = analyzer11.analyzeServerOperation(invokeFunction, model, lambdaService);
+        assertThat(spec.role()).isEqualTo(Role.SERVER);
+    }
+
+    @Test
+    void awsJson11ServerAuthIsNone() {
+        OperationSpec spec = analyzer11.analyzeServerOperation(invokeFunction, model, lambdaService);
+        assertThat(spec.auth().requiresSigV4()).isFalse();
+    }
+
+    @Test
+    void awsJson11ServerXAmzTargetLiteralValue() {
+        OperationSpec spec = analyzer11.analyzeServerOperation(invokeFunction, model, lambdaService);
+        assertThat(spec.headers().get(0).literalValue()).isEqualTo("LambdaService.InvokeFunction");
     }
 }

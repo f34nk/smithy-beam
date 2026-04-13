@@ -1,1 +1,2 @@
 io.smithy.beam.erlang.client.ErlangClientPlugin
+io.smithy.beam.erlang.server.ErlangServerPlugin

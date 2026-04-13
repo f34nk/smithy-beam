@@ -57,6 +57,43 @@ public class AwsJsonProtocolAnalyzer implements ProtocolAnalyzer {
     }
 
     @Override
+    public OperationSpec analyzeServerOperation(OperationShape op, Model model, ServiceShape service) {
+        HttpSpec http = new HttpSpec("POST", "/", 200);
+
+        StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
+        List<String> bodyMembers = new ArrayList<>();
+        for (MemberShape member : input.getAllMembers().values()) {
+            bodyMembers.add(member.getMemberName());
+        }
+        BodySpec body = new BodySpec(BodyEncoding.JSON, bodyMembers, null);
+
+        // The server reads X-Amz-Target to route requests to the correct operation handler.
+        String targetValue = service.getId().getName() + "." + op.getId().getName();
+        List<HeaderBinding> headers = List.of(new HeaderBinding("__target__", "X-Amz-Target", true, targetValue));
+
+        ErrorSpec errors = RestJsonProtocolAnalyzer.buildErrors(op, model, ErrorCodeStrategy.AWS_JSON);
+
+        return new OperationSpec(
+                op.getId().getName(),
+                service.getId().getName(),
+                Role.SERVER,
+                http,
+                List.<LabelBinding>of(),
+                List.<QueryBinding>of(),
+                headers,
+                body,
+                errors,
+                AuthSpec.none(),
+                RetrySpec.disabled(),
+                null,
+                RestJsonProtocolAnalyzer.outputTypeName(op, model),
+                RestJsonProtocolAnalyzer.inputTypeName(op, model),
+                BodyEncoding.JSON,
+                baseContentType(),
+                ErrorCodeStrategy.AWS_JSON);
+    }
+
+    @Override
     public OperationSpec analyzeClientOperation(OperationShape op, Model model, ServiceShape service) {
         HttpSpec http = new HttpSpec("POST", "/", 200);
 

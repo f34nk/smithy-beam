@@ -32,12 +32,19 @@ The `ErlangWriter` covers: module header, multiline `-export` / `-export_type` d
 `FileOutput` supports two modes: **manifest mode** (for tests, delegates to Smithy `FileManifest`) and **filesystem mode** (for plugins, via `FileOutput.forPlugin(outputDir)`, writes directly to the project source tree).
 
 Working **examples** under `examples/erlang/` demonstrate the full `smithy build` → Erlang compilation → Dialyzer → EUnit pipeline:
-- **`weather-service`** — `restJson1` with GET + path label, enum, POST + JSON body, error shape.
+- **`weather-service`** — `restJson1` with GET + path label, enum, POST + JSON body, error shape. Also wired as a full Cowboy 2.x HTTP server (`erlang-server-codegen`); includes an HTTP round-trip EUnit test (`weather_roundtrip_test`) that starts the server, issues real `httpc` requests, and asserts status codes and JSON response bodies.
 - **`storage-service`** — `restJson1` with union types, enums, required-field validation, and path labels.
 - **`s3-demo`** — `restXml` with XML body encoding, S3-specific URL building (`aws_s3:build_url`), SigV4 signing, and `parse_error/2` dispatch by XML error code string.
 - **`dynamodb-demo`** — `awsJson1_0` with `Content-Type: application/x-amz-json-1.0`, literal `X-Amz-Target` header, direct `jsx:encode(Input)` body, SigV4 signing, and `parse_error/2` dispatch by JSON `__type` error code string.
 
-**Server-side codegen** (pipeline, protocol analyzers, and plugin) is not yet implemented. The server runtime modules in `runtime-erlang/server/` are the foundational layer that generated server dispatchers will depend on.
+**`ErlangServerPlugin`** (`erlang-server-codegen`) in `codegen-erlang` is fully implemented. It generates two files per service:
+
+- **`<svc>_server.erl`** — a single consolidated module that combines, in one file: module header, `-behaviour(cowboy_handler)`, multiline `-export([init/2, handle/3, route/2])`, type definitions (structs, enums, unions, errors), `-callback` declarations (one per operation), `init/2` Cowboy 2.x glue (delegates to `handle/3` and replies via `cowboy_req:reply/4`), `handle/3` (extracts the request with `smithy_server:extract/1` and calls the local `route/2`), `route/2` clauses (one per operation, plus a `{error, not_found}` catch-all), and per-operation `dispatch_<op>/5`, `deserialize_<op>/3`, and `serialize_<op>/1` functions.
+- **`<svc>_impl.erl`** — a once-written stub scaffold declaring `-behaviour(<svc>_server)`, one `-spec`-annotated stub per operation (types qualified as `<svc>_server:<type>()`), and `{error, not_implemented}` bodies. Written on first run only; never overwritten.
+
+`ServerPipeline` in `codegen-core` orchestrates generation by calling `writer.renderServerModule(base, ops, types)` (guarded so writers that don't override it are safe) and `writeIfAbsent` for the impl scaffold. It contains no target-language string literals.
+
+`analyzeServerOperation` is implemented in both `RestJsonProtocolAnalyzer` and `AwsJsonProtocolAnalyzer`, producing the same `OperationSpec` IR used for routing and deserialization on the server side.
 
 ---
 
@@ -58,7 +65,7 @@ Custom protocol traits are expected to integrate via **Java `ServiceLoader`**, w
 |--------|------|
 | **codegen-core** | Shared IR, `LanguageWriter` / `ProtocolAnalyzer`, model helpers (`TypeSpecBuilder`, …), `CodegenSettings`, `FileOutput`. Depends on Smithy model and build APIs. |
 | **codegen-protocols** | Protocol analyzers and AWS-oriented traits. Depends on `codegen-core` and Smithy AWS traits. |
-| **codegen-erlang** | Erlang writer, symbols, client/server plugins. Depends on `codegen-core` and `codegen-protocols`. |
+| **codegen-erlang** | Erlang writer, symbols, `ErlangClientPlugin` and `ErlangServerPlugin`. Depends on `codegen-core` and `codegen-protocols`. |
 | **codegen-elixir** | Elixir writer, symbols, client/server plugins. Same dependency pattern as Erlang. |
 
 Maven coordinates: **`io.smithy.beam`** (see root `build.gradle.kts`). **`./gradlew publishToMavenLocal`** publishes all four JARs to the local Maven repository.

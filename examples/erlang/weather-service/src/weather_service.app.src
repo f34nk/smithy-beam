@@ -8,7 +8,8 @@
    jsx,
    inets,
    ssl,
-   crypto
+   crypto,
+   cowboy
   ]},
   {env, []},
   {modules, []},

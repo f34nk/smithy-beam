@@ -2,6 +2,7 @@ package io.smithy.beam.protocols;
 
 import io.smithy.beam.core.ir.BodyEncoding;
 import io.smithy.beam.core.ir.OperationSpec;
+import io.smithy.beam.core.ir.Role;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
@@ -108,5 +109,80 @@ class RestJsonProtocolAnalyzerTest {
         OperationSpec spec = analyzer.analyzeClientOperation(getWeather, model, service);
         assertThat(spec.retry().enabled()).isTrue();
         assertThat(spec.retry().maxRetries()).isEqualTo(3);
+    }
+
+    // ── analyzeServerOperation ────────────────────────────────────────────────
+
+    @Test
+    void serverRoleIsServer() {
+        OperationSpec spec = analyzer.analyzeServerOperation(getWeather, model, service);
+        assertThat(spec.role()).isEqualTo(Role.SERVER);
+    }
+
+    @Test
+    void serverAuthIsNone() {
+        OperationSpec spec = analyzer.analyzeServerOperation(getWeather, model, service);
+        assertThat(spec.auth().requiresSigV4()).isFalse();
+        assertThat(spec.auth().signingName()).isNull();
+    }
+
+    @Test
+    void serverRetryIsDisabled() {
+        OperationSpec spec = analyzer.analyzeServerOperation(getWeather, model, service);
+        assertThat(spec.retry().enabled()).isFalse();
+    }
+
+    @Test
+    void serverPaginationIsNull() {
+        OperationSpec spec = analyzer.analyzeServerOperation(getWeather, model, service);
+        assertThat(spec.pagination()).isNull();
+    }
+
+    @Test
+    void serverPaginationIsNullEvenForPaginatedOperation() {
+        OperationSpec spec = analyzer.analyzeServerOperation(listCities, model, service);
+        assertThat(spec.pagination()).isNull();
+    }
+
+    @Test
+    void serverHttpSpecMatchesClient() {
+        OperationSpec client = analyzer.analyzeClientOperation(getWeather, model, service);
+        OperationSpec server = analyzer.analyzeServerOperation(getWeather, model, service);
+        assertThat(server.http()).isEqualTo(client.http());
+    }
+
+    @Test
+    void serverLabelsMatchClient() {
+        OperationSpec client = analyzer.analyzeClientOperation(getWeather, model, service);
+        OperationSpec server = analyzer.analyzeServerOperation(getWeather, model, service);
+        assertThat(server.labels()).isEqualTo(client.labels());
+    }
+
+    @Test
+    void serverQueriesMatchClient() {
+        OperationSpec client = analyzer.analyzeClientOperation(listCities, model, service);
+        OperationSpec server = analyzer.analyzeServerOperation(listCities, model, service);
+        assertThat(server.queries()).isEqualTo(client.queries());
+    }
+
+    @Test
+    void serverHeadersMatchClient() {
+        OperationSpec client = analyzer.analyzeClientOperation(listCities, model, service);
+        OperationSpec server = analyzer.analyzeServerOperation(listCities, model, service);
+        assertThat(server.headers()).isEqualTo(client.headers());
+    }
+
+    @Test
+    void serverBodyMatchesClient() {
+        OperationSpec client = analyzer.analyzeClientOperation(getWeather, model, service);
+        OperationSpec server = analyzer.analyzeServerOperation(getWeather, model, service);
+        assertThat(server.body()).isEqualTo(client.body());
+    }
+
+    @Test
+    void serverErrorsMatchClient() {
+        OperationSpec client = analyzer.analyzeClientOperation(getWeather, model, service);
+        OperationSpec server = analyzer.analyzeServerOperation(getWeather, model, service);
+        assertThat(server.errors()).isEqualTo(client.errors());
     }
 }

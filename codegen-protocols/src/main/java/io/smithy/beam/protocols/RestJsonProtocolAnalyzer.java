@@ -88,6 +88,37 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 ErrorCodeStrategy.REST_JSON);
     }
 
+    @Override
+    public OperationSpec analyzeServerOperation(OperationShape op, Model model, ServiceShape service) {
+        HttpSpec http = buildHttpSpec(op);
+        StructureShape input = inputShape(op, model);
+
+        List<LabelBinding> labels = buildLabels(input, model);
+        List<QueryBinding> queries = buildQueries(input);
+        List<HeaderBinding> headers = buildHeaders(input);
+        BodySpec body = buildBody(input, labels, queries, headers, model);
+        ErrorSpec errors = buildErrors(op, model, ErrorCodeStrategy.REST_JSON);
+
+        return new OperationSpec(
+                op.getId().getName(),
+                service.getId().getName(),
+                Role.SERVER,
+                http,
+                labels,
+                queries,
+                headers,
+                body,
+                errors,
+                AuthSpec.none(),
+                RetrySpec.disabled(),
+                null,
+                outputTypeName(op, model),
+                inputTypeName(op, model),
+                BodyEncoding.JSON,
+                "application/json",
+                ErrorCodeStrategy.REST_JSON);
+    }
+
     // ── HttpSpec ─────────────────────────────────────────────────────────────
 
     static HttpSpec buildHttpSpec(OperationShape op) {

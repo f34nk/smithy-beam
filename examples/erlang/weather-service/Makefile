@@ -39,7 +39,7 @@ test:
 
 .PHONY: clean
 clean:
-	rm -rf build _build src/generated/*.erl src/generated/*.hrl rebar3.crashdump test/*.beam
+	rm -rf build _build src/generated rebar3.crashdump test/*.beam
 
 .PHONY: demo
 demo: clean generate compile analyze test

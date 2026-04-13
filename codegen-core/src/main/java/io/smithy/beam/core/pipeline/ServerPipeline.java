@@ -8,6 +8,7 @@ import io.smithy.beam.core.model.TypeSpecBuilder;
 import io.smithy.beam.core.output.FileOutput;
 import io.smithy.beam.core.protocol.ProtocolAnalyzer;
 import io.smithy.beam.core.settings.CodegenSettings;
+import io.smithy.beam.core.writer.ExportSpec;
 import io.smithy.beam.core.writer.LanguageWriter;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.TopDownIndex;
@@ -20,7 +21,11 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Orchestrates server-side generation: handler, router, dispatcher, and a once-written impl scaffold.
+ * Orchestrates server-side generation: handler behaviour, router, dispatcher, and a
+ * once-written impl scaffold.
+ *
+ * <p>Contains zero target-language string literals — all source-text emission is
+ * delegated to {@link LanguageWriter}.
  */
 public final class ServerPipeline {
 
@@ -31,21 +36,41 @@ public final class ServerPipeline {
             LanguageWriter writer,
             CodegenSettings settings,
             FileOutput output) {
-        List<OperationSpec> ops = analyzeOperations(service, model, protocol, Role.SERVER);
-        ModuleTypeSpec types = buildTypeSpec(service, model);
+        generate(service, model, protocol, writer, settings, output, ClassLoader.getSystemClassLoader());
+    }
 
-        String baseName = moduleBaseName(service, settings);
-        String ext = writer.fileExtension();
-        String outDir = settings.outputDir().replace('\\', '/');
+    public void generate(
+            ServiceShape service,
+            Model model,
+            ProtocolAnalyzer protocol,
+            LanguageWriter writer,
+            CodegenSettings settings,
+            FileOutput output,
+            ClassLoader resourceLoader) {
 
-        output.write(outDir + "/" + baseName + "_handler" + ext, buildHandler(service, ops, types, writer));
-        output.write(outDir + "/" + baseName + "_router" + ext, buildRouter(service, ops, writer));
-        output.write(outDir + "/" + baseName + "_dispatcher" + ext, buildDispatcher(service, ops, protocol, writer));
+        List<OperationSpec> ops    = analyzeOperations(service, model, protocol, Role.SERVER);
+        ModuleTypeSpec      types  = buildTypeSpec(service, model);
+        String              base   = moduleBaseName(service, settings);
+        String              ext    = writer.fileExtension();
+        String              outDir = settings.outputDir().replace('\\', '/');
+
+        String server = writer.renderServerModule(base, ops, types);
+        if (!server.isEmpty()) {
+            output.write(outDir + "/" + base + "_server" + ext, server);
+        }
         output.writeIfAbsent(
                 settings.scaffoldDir().replace('\\', '/'),
-                baseName + "_impl" + ext,
-                buildImplScaffold(service, ops, types, writer));
+                base + "_impl" + ext,
+                buildImplScaffold(base, ops, writer));
+
+        for (String path : writer.serverRuntimeModules()) {
+            output.copyRuntime(writer.languageId(), path, resourceLoader);
+        }
     }
+
+    // -------------------------------------------------------------------------
+    // IR assembly
+    // -------------------------------------------------------------------------
 
     private ModuleTypeSpec buildTypeSpec(ServiceShape service, Model model) {
         Set<Shape> reachable = ShapeIndex.reachable(service, model);
@@ -69,21 +94,40 @@ public final class ServerPipeline {
         return settings.moduleName().orElse(service.getId().getName());
     }
 
-    private String buildHandler(ServiceShape service, List<OperationSpec> ops, ModuleTypeSpec types, LanguageWriter writer) {
-        return "";
-    }
+    // -------------------------------------------------------------------------
+    // File builders
+    // -------------------------------------------------------------------------
 
-    private String buildRouter(ServiceShape service, List<OperationSpec> ops, LanguageWriter writer) {
-        return "";
-    }
-
-    private String buildDispatcher(
-            ServiceShape service, List<OperationSpec> ops, ProtocolAnalyzer protocol, LanguageWriter writer) {
-        return "";
-    }
-
+    /**
+     * Builds the {@code <svc>_impl.erl} stub scaffold (written once, never overwritten).
+     *
+     * <p>Declares the behaviour and provides one stub function per operation that
+     * returns {@code {error, not_implemented}}.
+     */
     private String buildImplScaffold(
-            ServiceShape service, List<OperationSpec> ops, ModuleTypeSpec types, LanguageWriter writer) {
-        return "";
+            String baseName, List<OperationSpec> ops,
+            LanguageWriter writer) {
+
+        StringBuilder buf = new StringBuilder();
+        buf.append(writer.moduleHeader(baseName + "_impl"));
+        buf.append(writer.renderModuleComment(
+                "This file will NOT be overwritten. Add your business logic here."));
+        buf.append(writer.behaviourDeclaration(baseName + "_server"));
+        buf.append("\n");
+
+        // Export one function per operation (arity 2: input map + context map).
+        List<ExportSpec> exports = new ArrayList<>();
+        for (OperationSpec op : ops) {
+            exports.add(new ExportSpec(writer.functionName(op.operationName()), 2));
+        }
+        buf.append(writer.exportSection(exports));
+        buf.append("\n");
+
+        String handlerModuleName = baseName + "_server";
+        for (OperationSpec op : ops) {
+            buf.append(writer.renderServerImplStub(op, handlerModuleName));
+            buf.append("\n");
+        }
+        return buf.toString();
     }
 }
