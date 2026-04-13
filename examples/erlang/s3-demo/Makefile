@@ -73,7 +73,7 @@ run:
 
 .PHONY: clean
 clean: docker/stop
-	rm -rf build _build src/generated/*.erl src/generated/*.hrl rebar3.crashdump erl_crash.dump test/*.beam
+	rm -rf build _build src/generated rebar3.crashdump erl_crash.dump test/*.beam
 	rm -rf model/*.json
 	rm -rf terraform/.terraform terraform/terraform.tfstate terraform/terraform.tfstate.backup terraform/.terraform.lock.hcl
 
