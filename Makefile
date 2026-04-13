@@ -33,13 +33,14 @@ test/runtime-erlang:
 	#
 	# Run runtime-erlang tests
 	#
+	logfile="$$(pwd)/erlang-runtime-test.log" && \
 	temp="$$(pwd)/build/tmp" && \
-	rm -rf "$$temp" && \
+	rm -rf "$$temp" "$$logfile" && \
 	mkdir -p "$$temp/test" && \
 	find runtime-erlang/*/* -type f -name *.erl -exec cp {} "$$temp/test/" \; && \
 	echo \
 	{erl_opts, [debug_info]}.\\n\
-	{deps, []}.\\n\
+	{deps, [{jsx, \"3.1.0\"}]}.\\n\
 	{eunit_opts, [verbose]}. > "$$temp/rebar.config" && \
     tree $$temp && \
     cd "$$temp" && \
@@ -47,7 +48,13 @@ test/runtime-erlang:
     xargs -I {} basename {} | \
     sed 's/_test.erl/_test/g' | \
     xargs -I {} echo "rebar3 eunit --module={}" | \
-    xargs -I {} sh -c {}
+    xargs -I {} sh -c {} > "$$logfile"; \
+	if grep -E "failed|syntax error" "$$logfile"; then \
+		echo "Runtime Erlang tests failed (see $$(basename $$logfile))" ; \
+		exit 1 ; \
+	else \
+		echo "Runtime Erlang tests passed" ; \
+	fi
 
     # 1. Find all test modules
     # 2. Get the base name of the test module
@@ -60,7 +67,7 @@ clean:
 	#
 	# Clear the build
 	#
-	rm -rf build bin codegen-*/build codegen-*/bin test-errors.log build-errors.log
+	rm -rf build bin codegen-*/build codegen-*/bin *.log
 	rm -rf ~/.m2/repository/io/smithy/beam
 
 # Usage: make examples
@@ -78,7 +85,7 @@ examples:
 		sleep 1; \
 		echo "Running: $$example" ; \
 		make $$example > $$logfile 2>&1; \
-		if grep -q "make.*Error" $$logfile; then \
+		if grep -E "make.*Error" $$logfile; then \
 			echo "$$example ...failed (see $$logfile)" ; \
 		else \
 			echo "$$example ...ok" ; \
