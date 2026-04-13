@@ -1558,7 +1558,16 @@ public final class ErlangWriter implements LanguageWriter {
         sb.append(ind).append("            <<>> -> {ok, #{}};\n");
         sb.append(ind).append("            _ ->\n");
         if (op.responseEncoding() == BodyEncoding.XML) {
-            sb.append(ind).append("                aws_xml:decode(ResponseBody)\n");
+            if (op.protocolErrorStrategy() == ErrorCodeStrategy.AWS_QUERY) {
+                // AwsQuery responses are wrapped in <XyzResponse><XyzResult>; strip both layers
+                sb.append(ind).append("                case aws_xml:decode(ResponseBody) of\n");
+                sb.append(ind).append("                    {ok, Decoded} -> aws_query:unwrap_response(Decoded);\n");
+                sb.append(ind).append("                    DecodeError -> DecodeError\n");
+                sb.append(ind).append("                end\n");
+            } else {
+                // REST-XML (S3 etc.): no envelope wrapper, return decoded tree directly
+                sb.append(ind).append("                aws_xml:decode(ResponseBody)\n");
+            }
         } else {
             sb.append(ind).append("                try jsx:decode(ResponseBody, [return_maps]) of\n");
             sb.append(ind).append("                    DecodedBody -> {ok, DecodedBody}\n");
@@ -1592,10 +1601,15 @@ public final class ErlangWriter implements LanguageWriter {
             sb.append(ind).append("            _:_ -> {error, {http_error, ErrStatusCode, ErrorBody}}\n");
             sb.append(ind).append("        end;\n");
         } else if (errStrategy == ErrorCodeStrategy.AWS_QUERY) {
-            // AWS Query: error body is XML <ErrorResponse><Error><Code>…</Code></Error></ErrorResponse>
+            // AWS Query / EC2 Query: error body is XML; two possible formats:
+            //   IAM/SNS: <ErrorResponse><Error><Code>…</Code></Error></ErrorResponse>
+            //   EC2:     <Response><Errors><Error><Code>…</Code></Error></Errors></Response>
             sb.append(ind).append("    {ok, {{_, _ErrStatusCode, _}, _RespHeaders, ErrorBody}} ->\n");
             sb.append(ind).append("        case aws_xml:decode(ErrorBody) of\n");
             sb.append(ind).append("            {ok, #{<<\"ErrorResponse\">> := #{<<\"Error\">> := ErrorMap}}} ->\n");
+            sb.append(ind).append("                Code = maps:get(<<\"Code\">>, ErrorMap, <<\"Unknown\">>),\n");
+            sb.append(ind).append("                parse_error(Code, ErrorMap);\n");
+            sb.append(ind).append("            {ok, #{<<\"Response\">> := #{<<\"Errors\">> := #{<<\"Error\">> := ErrorMap}}}} ->\n");
             sb.append(ind).append("                Code = maps:get(<<\"Code\">>, ErrorMap, <<\"Unknown\">>),\n");
             sb.append(ind).append("                parse_error(Code, ErrorMap);\n");
             sb.append(ind).append("            _ ->\n");
