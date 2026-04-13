@@ -7,6 +7,7 @@ import io.smithy.beam.core.ir.ErrorCodeStrategy;
 import io.smithy.beam.core.ir.ErrorSpec;
 import io.smithy.beam.core.ir.HeaderBinding;
 import io.smithy.beam.core.ir.LabelBinding;
+import io.smithy.beam.core.ir.ModuleTypeSpec;
 import io.smithy.beam.core.ir.OperationSpec;
 import io.smithy.beam.core.ir.PaginationSpec;
 import io.smithy.beam.core.ir.QueryBinding;
@@ -328,5 +329,20 @@ public interface LanguageWriter {
      */
     default List<String> serverRuntimeModules() {
         return List.of();
+    }
+
+    /**
+     * Returns the complete source of a single consolidated server module that
+     * combines type definitions, behaviour callbacks, routing, dispatch, and the
+     * framework HTTP entry point into one file.
+     *
+     * <p>The default returns an empty string; override in language-specific writers.
+     *
+     * @param baseName the module base name (e.g. {@code "weather_service"})
+     * @param ops      the list of analysed server operations
+     * @param types    the reachable type shapes
+     */
+    default String renderServerModule(String baseName, List<OperationSpec> ops, ModuleTypeSpec types) {
+        return "";
     }
 }
