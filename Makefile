@@ -85,10 +85,10 @@ examples:
 		sleep 1; \
 		echo "Running: $$example" ; \
 		make $$example > $$logfile 2>&1; \
-		if grep -E "make.*Error" $$logfile; then \
-			echo "$$example ...failed (see $$logfile)" ; \
+		if grep -q "make.*Error" $$logfile; then \
+			echo "$$logfile ...failed" ; \
 		else \
-			echo "$$example ...ok" ; \
+			echo "$$logfile ...ok" ; \
 		fi; \
 	'
 
