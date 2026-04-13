@@ -1437,6 +1437,12 @@ public final class ErlangWriter implements LanguageWriter {
                 sb.append("    Body = jsx:encode(Input),\n");
                 return;
             }
+            // @httpPayload: the single designated member IS the raw request body; skip the map wrapper.
+            if (body.payloadMember() != null) {
+                sb.append("    Body = maps:get(<<\"").append(body.payloadMember())
+                  .append("\">>, Input, <<>>),\n");
+                return;
+            }
             sb.append("    BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
             List<String> members = body.bodyMemberNames();
             java.util.Map<String, String> wireOverrides = body.wireNameOverrides() != null
@@ -1556,29 +1562,88 @@ public final class ErlangWriter implements LanguageWriter {
         sb.append(ind).append("case httpc:request(binary_to_atom(string:lowercase(Method), utf8), Request, [], [{body_format, binary}]) of\n");
 
         // Success branch
-        sb.append(ind).append("    {ok, {{_, StatusCode, _}, _RespHeaders, ResponseBody}} when StatusCode >= 200, StatusCode < 300 ->\n");
-        sb.append(ind).append("        case ResponseBody of\n");
-        sb.append(ind).append("            <<>> -> {ok, #{}};\n");
-        sb.append(ind).append("            _ ->\n");
-        if (op.responseEncoding() == BodyEncoding.XML) {
-            if (op.protocolErrorStrategy() == ErrorCodeStrategy.AWS_QUERY) {
-                // AwsQuery responses are wrapped in <XyzResponse><XyzResult>; strip both layers
-                sb.append(ind).append("                case aws_xml:decode(ResponseBody) of\n");
-                sb.append(ind).append("                    {ok, Decoded} -> aws_query:unwrap_response(Decoded);\n");
-                sb.append(ind).append("                    DecodeError -> DecodeError\n");
-                sb.append(ind).append("                end\n");
-            } else {
-                // REST-XML (S3 etc.): no envelope wrapper, return decoded tree directly
-                sb.append(ind).append("                aws_xml:decode(ResponseBody)\n");
+        boolean hasResponseBindings = op.responsePayloadMember() != null
+                || op.responseCodeMember() != null
+                || (op.responseHeaders() != null && !op.responseHeaders().isEmpty());
+
+        // Bind RespHeaders when we need to extract values from it; otherwise discard.
+        String respHeadersVar = hasResponseBindings ? "RespHeaders" : "_RespHeaders";
+        sb.append(ind).append("    {ok, {{_, StatusCode, _}, ").append(respHeadersVar)
+          .append(", ResponseBody}} when StatusCode >= 200, StatusCode < 300 ->\n");
+
+        if (hasResponseBindings) {
+            // Build the response map from HTTP bindings rather than JSON-decoding the body.
+            // Response headers come back from httpc as [{string(), string()}] with lowercase names.
+            List<io.smithy.beam.core.ir.HeaderBinding> rhdrs =
+                    op.responseHeaders() != null ? op.responseHeaders() : List.of();
+
+            // Extract each response header into a uniquely-named variable.
+            for (int i = 0; i < rhdrs.size(); i++) {
+                io.smithy.beam.core.ir.HeaderBinding h = rhdrs.get(i);
+                String varName = "RespH" + i;
+                String hdrKey  = h.headerName().toLowerCase();
+                sb.append(ind).append("        ").append(varName)
+                  .append(" = case proplists:get_value(\"").append(hdrKey)
+                  .append("\", RespHeaders) of\n");
+                sb.append(ind).append("            undefined -> undefined;\n");
+                sb.append(ind).append("            ").append(varName).append("Str -> list_to_binary(")
+                  .append(varName).append("Str)\n");
+                sb.append(ind).append("        end,\n");
             }
+
+            // Assemble the result map.
+            sb.append(ind).append("        {ok, maps:filter(fun(_, V) -> V =/= undefined end, #{\n");
+
+            // @httpResponseCode member
+            if (op.responseCodeMember() != null) {
+                sb.append(ind).append("            <<\"").append(op.responseCodeMember())
+                  .append("\">> => StatusCode");
+                if (op.responsePayloadMember() != null || !rhdrs.isEmpty()) sb.append(",");
+                sb.append("\n");
+            }
+
+            // @httpPayload member — raw response body blob
+            if (op.responsePayloadMember() != null) {
+                sb.append(ind).append("            <<\"").append(op.responsePayloadMember())
+                  .append("\">> => ResponseBody");
+                if (!rhdrs.isEmpty()) sb.append(",");
+                sb.append("\n");
+            }
+
+            // @httpHeader members
+            for (int i = 0; i < rhdrs.size(); i++) {
+                sb.append(ind).append("            <<\"").append(rhdrs.get(i).smithyMemberName())
+                  .append("\">> => RespH").append(i);
+                if (i < rhdrs.size() - 1) sb.append(",");
+                sb.append("\n");
+            }
+
+            sb.append(ind).append("        })};\n");
         } else {
-            sb.append(ind).append("                try jsx:decode(ResponseBody, [return_maps]) of\n");
-            sb.append(ind).append("                    DecodedBody -> {ok, DecodedBody}\n");
-            sb.append(ind).append("                catch\n");
-            sb.append(ind).append("                    _:DecodeError -> {error, {json_decode_error, DecodeError}}\n");
-            sb.append(ind).append("                end\n");
+            // Standard path: decode the body (JSON/XML/AwsQuery).
+            sb.append(ind).append("        case ResponseBody of\n");
+            sb.append(ind).append("            <<>> -> {ok, #{}};\n");
+            sb.append(ind).append("            _ ->\n");
+            if (op.responseEncoding() == BodyEncoding.XML) {
+                if (op.protocolErrorStrategy() == ErrorCodeStrategy.AWS_QUERY) {
+                    // AwsQuery responses are wrapped in <XyzResponse><XyzResult>; strip both layers
+                    sb.append(ind).append("                case aws_xml:decode(ResponseBody) of\n");
+                    sb.append(ind).append("                    {ok, Decoded} -> aws_query:unwrap_response(Decoded);\n");
+                    sb.append(ind).append("                    DecodeError -> DecodeError\n");
+                    sb.append(ind).append("                end\n");
+                } else {
+                    // REST-XML (S3 etc.): no envelope wrapper, return decoded tree directly
+                    sb.append(ind).append("                aws_xml:decode(ResponseBody)\n");
+                }
+            } else {
+                sb.append(ind).append("                try jsx:decode(ResponseBody, [return_maps]) of\n");
+                sb.append(ind).append("                    DecodedBody -> {ok, DecodedBody}\n");
+                sb.append(ind).append("                catch\n");
+                sb.append(ind).append("                    _:DecodeError -> {error, {json_decode_error, DecodeError}}\n");
+                sb.append(ind).append("                end\n");
+            }
+            sb.append(ind).append("        end;\n");
         }
-        sb.append(ind).append("        end;\n");
 
         // Error branch — protocol-specific dispatch
         ErrorCodeStrategy errStrategy = op.protocolErrorStrategy() != null
