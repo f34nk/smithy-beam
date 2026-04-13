@@ -40,7 +40,7 @@ General SDK features not specific to AWS traits.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| HTTP Protocol Bindings | ✅ | `@httpLabel` (URI substitution with optional percent-encoding), `@httpHeader`, `@httpQuery` (via `uri_string:compose_query`), `@httpPayload` (exclusive payload member) — all read into IR and emitted in generated operation functions |
+| HTTP Protocol Bindings | ✅ | `@httpLabel` (URI substitution with optional percent-encoding), `@httpQuery` (via `uri_string:compose_query`), `@httpHeader` (request headers and response header extraction), `@httpPayload` (request: raw member value sent as body; response: raw body blob returned under member name), `@httpResponseCode` (response: HTTP status integer placed in result map) — all read into IR and emitted in generated operation functions |
 | Input Validation | ✅ | `validate_<struct>/1` helper generated for every struct with at least one `@required` member; returns `ok` or `{error, {missing_required_fields, [binary()]}}` |
 | Operations on resource shapes | ❌ | Client includes operations from the full service closure (`TopDownIndex`), not only `service`‑listed operations—required for services like Lambda where most APIs are resource-bound |
 | Pagination Helpers | ⚠️ | `@paginated` tokens read into `PaginationSpec` IR; `renderPaginationHelper` emits `<op>_stream/2,3`; wired in pipeline when `op.pagination()` is non-null |

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`OperationSpec`** extended with three new response-binding fields in `codegen-core/ir`: `responsePayloadMember` (name of the `@httpPayload` output member; the raw response body is placed under this key without JSON-decoding), `responseCodeMember` (name of the `@httpResponseCode` output member; the HTTP status integer is placed under this key), and `responseHeaders` (list of `HeaderBinding` entries for `@httpHeader`-annotated output members; each is extracted from the response headers and placed in the result map). A backward-compatible 18-arg convenience constructor delegates to the canonical 21-arg form with `null`/`List.of()` defaults, so all existing non-restJson protocol analyzers are unaffected.
+
 - **`BodySpec.wireNameOverrides()`** — new `Map<String, String>` field on the `BodySpec` IR record storing per-member Smithy-name → wire-name overrides collected at codegen time. A backward-compatible 3-arg convenience constructor delegates to the canonical 4-arg form with an empty map, so all non-EC2 protocol analyzers are unaffected.
 - **`apiVersion` field** on `OperationSpec` IR record: carries the service API version string (e.g. `"2016-11-15"`) so the Erlang writer can pass it as the third argument to `aws_query:encode/3` without re-analyzing the model. Null for protocols that do not embed a version in the request body.
 - **`aws_query:unwrap_response/1`** — new function in the `aws_query.erl` runtime module. Strips the outer `<XyzResponse>` wrapper always present in AwsQuery and EC2 Query responses, then strips an inner `<XyzResult>` wrapper when one exists, returning `{ok, InnerMap}` with the actual response data.
@@ -88,6 +90,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unit test `ErlangClientPipelineTest` covering pipeline execution and JAR-bundled runtime resource copying.
 
 ### Fixed
+
+- **`ErlangWriter` — `appendBody`**: when an operation's input has an `@httpPayload` member, the generated code now sends that member's value directly as the raw request body (`Body = maps:get(<<"Member">>, Input, <<>>)`) instead of wrapping it in a JSON map (`#{<<"Member">> => ...}`). Previously the generated client sent `{"Payload": "..."}` rather than the raw blob.
+- **`ErlangWriter` — `appendHttpcCall`**: when an operation's output has any `@httpPayload`, `@httpResponseCode`, or `@httpHeader` binding, the success branch now builds the result map from those HTTP bindings instead of JSON-decoding the body. Specifically: the raw response body is placed under the `@httpPayload` member name without decoding; the HTTP status code integer is placed under the `@httpResponseCode` member name; each `@httpHeader`-bound output member is extracted from the response header list via `proplists:get_value/2` and converted from a string to a binary. `maps:filter` removes any absent (undefined) headers from the result map.
+- **`RestJsonProtocolAnalyzer`**: `analyzeClientOperation` now inspects the output shape in addition to the input shape. Three new static helpers — `buildResponsePayloadMember`, `buildResponseCodeMember`, and `buildResponseHeaders` — walk the output `StructureShape` and populate the corresponding new `OperationSpec` fields so the writer can emit correct response-handling code without re-analyzing the model.
 
 - **`AwsQueryProtocolAnalyzer`**: `requiresXmlRuntime()` now returns `true` so that `aws_xml.erl` is copied into the build output for awsQuery services, matching the behavior already present for EC2 Query.
 - **`AwsQueryProtocolAnalyzer`**: `apiVersion` is now propagated from the service shape into `OperationSpec`, enabling `aws_query:encode/3` to include the `Version` parameter in form-encoded bodies.

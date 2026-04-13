@@ -28,6 +28,7 @@ import software.amazon.smithy.model.traits.HttpHeaderTrait;
 import software.amazon.smithy.model.traits.HttpLabelTrait;
 import software.amazon.smithy.model.traits.HttpPayloadTrait;
 import software.amazon.smithy.model.traits.HttpQueryTrait;
+import software.amazon.smithy.model.traits.HttpResponseCodeTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 import software.amazon.smithy.model.traits.PaginatedTrait;
 import software.amazon.smithy.model.traits.RequiredTrait;
@@ -59,6 +60,7 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
     public OperationSpec analyzeClientOperation(OperationShape op, Model model, ServiceShape service) {
         HttpSpec http = buildHttpSpec(op);
         StructureShape input = inputShape(op, model);
+        StructureShape output = outputShape(op, model);
 
         List<LabelBinding> labels = buildLabels(input, model);
         List<QueryBinding> queries = buildQueries(input);
@@ -67,6 +69,10 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
         ErrorSpec errors = buildErrors(op, model, ErrorCodeStrategy.REST_JSON);
         AuthSpec auth = buildAuth(service);
         PaginationSpec pagination = buildPagination(op);
+
+        String responsePayloadMember = buildResponsePayloadMember(output);
+        String responseCodeMember    = buildResponseCodeMember(output);
+        List<HeaderBinding> responseHeaders = buildResponseHeaders(output);
 
         return new OperationSpec(
                 op.getId().getName(),
@@ -86,7 +92,10 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 BodyEncoding.JSON,
                 "application/json",
                 ErrorCodeStrategy.REST_JSON,
-                null);
+                null,
+                responsePayloadMember,
+                responseCodeMember,
+                responseHeaders);
     }
 
     @Override
@@ -129,10 +138,14 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 .orElse(new HttpSpec("POST", "/", 200));
     }
 
-    // ── Input shape ──────────────────────────────────────────────────────────
+    // ── Input / output shapes ─────────────────────────────────────────────────
 
     static StructureShape inputShape(OperationShape op, Model model) {
         return model.expectShape(op.getInputShape(), StructureShape.class);
+    }
+
+    static StructureShape outputShape(OperationShape op, Model model) {
+        return model.expectShape(op.getOutputShape(), StructureShape.class);
     }
 
     // ── Labels ───────────────────────────────────────────────────────────────
@@ -204,6 +217,49 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
         }
         BodyEncoding encoding = bodyMembers.isEmpty() ? BodyEncoding.NONE : BodyEncoding.JSON;
         return new BodySpec(encoding, bodyMembers, null);
+    }
+
+    // ── Response bindings (output shape) ──────────────────────────────────────
+
+    /**
+     * Returns the Smithy member name of the {@code @httpPayload} member in the output shape,
+     * or {@code null} if there is no such member.
+     */
+    static String buildResponsePayloadMember(StructureShape output) {
+        return output.getAllMembers().values().stream()
+                .filter(m -> m.hasTrait(HttpPayloadTrait.class))
+                .map(MemberShape::getMemberName)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Returns the Smithy member name of the {@code @httpResponseCode} member in the output
+     * shape, or {@code null} if there is no such member.
+     */
+    static String buildResponseCodeMember(StructureShape output) {
+        return output.getAllMembers().values().stream()
+                .filter(m -> m.hasTrait(HttpResponseCodeTrait.class))
+                .map(MemberShape::getMemberName)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Returns {@link HeaderBinding} entries for every {@code @httpHeader}-annotated member in
+     * the output shape. These represent response headers that the client should extract and
+     * place into the response map.
+     */
+    static List<HeaderBinding> buildResponseHeaders(StructureShape output) {
+        List<HeaderBinding> result = new ArrayList<>();
+        for (MemberShape member : output.getAllMembers().values()) {
+            member.getTrait(HttpHeaderTrait.class).ifPresent(t ->
+                    result.add(new HeaderBinding(
+                            member.getMemberName(),
+                            t.getValue(),
+                            member.hasTrait(RequiredTrait.class))));
+        }
+        return result;
     }
 
     // ── Errors ───────────────────────────────────────────────────────────────
