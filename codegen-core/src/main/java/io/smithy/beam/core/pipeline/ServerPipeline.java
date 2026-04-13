@@ -1,11 +1,8 @@
 package io.smithy.beam.core.pipeline;
 
-import io.smithy.beam.core.ir.EnumSpec;
 import io.smithy.beam.core.ir.ModuleTypeSpec;
 import io.smithy.beam.core.ir.OperationSpec;
 import io.smithy.beam.core.ir.Role;
-import io.smithy.beam.core.ir.StructSpec;
-import io.smithy.beam.core.ir.UnionSpec;
 import io.smithy.beam.core.model.ShapeIndex;
 import io.smithy.beam.core.model.TypeSpecBuilder;
 import io.smithy.beam.core.output.FileOutput;
@@ -57,13 +54,14 @@ public final class ServerPipeline {
         String              ext    = writer.fileExtension();
         String              outDir = settings.outputDir().replace('\\', '/');
 
-        output.write(outDir + "/" + base + "_handler"    + ext, buildHandler(base, service, ops, types, writer));
-        output.write(outDir + "/" + base + "_router"     + ext, buildRouter(base, service, ops, writer));
-        output.write(outDir + "/" + base + "_dispatcher" + ext, buildDispatcher(base, service, ops, writer));
+        String server = writer.renderServerModule(base, ops, types);
+        if (!server.isEmpty()) {
+            output.write(outDir + "/" + base + "_server" + ext, server);
+        }
         output.writeIfAbsent(
                 settings.scaffoldDir().replace('\\', '/'),
                 base + "_impl" + ext,
-                buildImplScaffold(base, service, ops, types, writer));
+                buildImplScaffold(base, ops, writer));
 
         for (String path : writer.serverRuntimeModules()) {
             output.copyRuntime(writer.languageId(), path, resourceLoader);
@@ -101,102 +99,20 @@ public final class ServerPipeline {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds the {@code <svc>_handler.erl} behaviour module.
-     *
-     * <p>Contains type definitions for all reachable shapes and one
-     * {@code -callback} per operation.
-     */
-    private String buildHandler(
-            String baseName, ServiceShape service, List<OperationSpec> ops,
-            ModuleTypeSpec types, LanguageWriter writer) {
-
-        StringBuilder buf = new StringBuilder();
-        buf.append(writer.moduleHeader(baseName + "_handler"));
-        buf.append(writer.renderModuleComment(
-                "Behaviour definition for " + service.getId().getName() + " server implementations."));
-        buf.append("\n");
-
-        // Type definitions — identical set to the client module for self-contained use.
-        for (StructSpec s : types.structures()) buf.append(writer.renderStructType(s));
-        for (EnumSpec   e : types.enums())       buf.append(writer.renderEnumType(e));
-        for (UnionSpec  u : types.unions())      buf.append(writer.renderUnionType(u));
-        for (StructSpec e : types.errors())      buf.append(writer.renderStructType(e));
-
-        buf.append("\n");
-
-        for (OperationSpec op : ops) {
-            buf.append(writer.renderServerCallbackDeclaration(op));
-        }
-        return buf.toString();
-    }
-
-    /**
-     * Builds the {@code <svc>_router.erl} module.
-     *
-     * <p>Exports {@code route/2} with one clause per operation and a catch-all
-     * {@code {error, not_found}} clause.
-     */
-    private String buildRouter(
-            String baseName, ServiceShape service, List<OperationSpec> ops, LanguageWriter writer) {
-
-        StringBuilder buf = new StringBuilder();
-        buf.append(writer.moduleHeader(baseName + "_router"));
-        buf.append(writer.renderModuleComment(
-                "Request router for " + service.getId().getName() + "."));
-        buf.append(writer.exportSection(List.of(new ExportSpec("route", 2))));
-        buf.append("\n");
-
-        for (OperationSpec op : ops) {
-            buf.append(writer.renderServerRouteClause(op));
-        }
-        buf.append(writer.renderServerRouteFallback());
-        return buf.toString();
-    }
-
-    /**
-     * Builds the {@code <svc>_dispatcher.erl} module.
-     *
-     * <p>Exports {@code handle/3} which routes the request and dispatches to per-operation
-     * private helpers that deserialize input, call the implementation, and serialize output.
-     */
-    private String buildDispatcher(
-            String baseName, ServiceShape service, List<OperationSpec> ops, LanguageWriter writer) {
-
-        StringBuilder buf = new StringBuilder();
-        buf.append(writer.moduleHeader(baseName + "_dispatcher"));
-        buf.append(writer.renderModuleComment(
-                "Request dispatcher for " + service.getId().getName() + "."));
-        buf.append(writer.exportSection(List.of(new ExportSpec("handle", 3))));
-        buf.append("\n");
-
-        buf.append(writer.renderServerHandleFunction(ops, baseName));
-
-        for (OperationSpec op : ops) {
-            buf.append("\n");
-            buf.append(writer.renderServerDispatchClause(op));
-            buf.append("\n");
-            buf.append(writer.renderServerDeserialize(op));
-            buf.append("\n");
-            buf.append(writer.renderServerSerialize(op));
-        }
-        return buf.toString();
-    }
-
-    /**
      * Builds the {@code <svc>_impl.erl} stub scaffold (written once, never overwritten).
      *
      * <p>Declares the behaviour and provides one stub function per operation that
      * returns {@code {error, not_implemented}}.
      */
     private String buildImplScaffold(
-            String baseName, ServiceShape service, List<OperationSpec> ops,
-            ModuleTypeSpec types, LanguageWriter writer) {
+            String baseName, List<OperationSpec> ops,
+            LanguageWriter writer) {
 
         StringBuilder buf = new StringBuilder();
         buf.append(writer.moduleHeader(baseName + "_impl"));
         buf.append(writer.renderModuleComment(
                 "This file will NOT be overwritten. Add your business logic here."));
-        buf.append(writer.behaviourDeclaration(baseName + "_handler"));
+        buf.append(writer.behaviourDeclaration(baseName + "_server"));
         buf.append("\n");
 
         // Export one function per operation (arity 2: input map + context map).
@@ -207,7 +123,7 @@ public final class ServerPipeline {
         buf.append(writer.exportSection(exports));
         buf.append("\n");
 
-        String handlerModuleName = baseName + "_handler";
+        String handlerModuleName = baseName + "_server";
         for (OperationSpec op : ops) {
             buf.append(writer.renderServerImplStub(op, handlerModuleName));
             buf.append("\n");
