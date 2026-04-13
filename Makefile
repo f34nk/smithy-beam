@@ -60,7 +60,7 @@ clean:
 	#
 	# Clear the build
 	#
-	rm -rf build codegen-*/build bin test-errors.log build-errors.log
+	rm -rf build bin codegen-*/build codegen-*/bin test-errors.log build-errors.log
 	rm -rf ~/.m2/repository/io/smithy/beam
 
 # Usage: make examples

@@ -14,3 +14,5 @@ out/
 Thumbs.db
 
 *.log
+
+codegen-*/bin/
