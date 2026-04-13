@@ -25,6 +25,8 @@
 
 The `ErlangWriter` covers: module header, multiline `-export` / `-export_type` declarations, module-level comment, `-behaviour`, struct/enum/union type declarations (enums as lowercase atoms; struct fields all use `=>`), function specs and callback declarations, map operations, JSON/XML/form serialization, URI substitution, protocol-aware query-string and header builders (with `ensure_binary/1` coercion and indexed accumulator variables), `httpc` request blocks, SigV4 auth and retry wrappers, response handlers, protocol-aware `parse_error/2` error dispatchers (string-dispatch for REST_XML and AWS_JSON; status-code-dispatch for REST_JSON and AWS_QUERY), and pagination stream helpers.
 
+**Erlang server runtime modules** in `runtime-erlang/server/` provide the runtime foundation for generated server dispatchers: `smithy_server` (HTTP abstraction — `extract/1` reads method, path, headers, and body from a Cowboy request; `response/2`, `error_response/1`, `validation_error/1`, and `not_found/0` return framework-agnostic `{StatusCode, Headers, Body}` tuples), `smithy_validator` (required-field input validation returning `ok` or `{error, {missing_required_fields, [binary()]}}`), and `smithy_error_map` (generic Smithy error atom/tuple → HTTP status mapping, overridden by generated per-service modules for modeled `@httpError` shapes).
+
 **`ClientPipeline`** is fully implemented and drives end-to-end Erlang client generation. For each service it emits: module/export/type-export attributes, all type definitions (structs, enums, unions, error shapes), a `new/1` constructor, a 3-function block per operation (2-arity wrapper → 3-arity retry wrapper → internal `make_<op>_request/2` with URL construction, body building with protocol-correct `Content-Type`, optional `aws_s3:build_url` for S3 services, optional SigV4, `httpc` call, and protocol-aware response/error decoding), enum/union encode–decode helpers, required-field `validate_*` functions (restricted to operation input types), `url_encode/1`, `ensure_binary/1`, and a unified `parse_error/2` deduplicated by Smithy error name. Runtime modules are copied selectively based on the protocol and auth requirements. All language-specific string emission is delegated to `LanguageWriter`; `ClientPipeline` contains no target-language literals.
 
 `FileOutput` supports two modes: **manifest mode** (for tests, delegates to Smithy `FileManifest`) and **filesystem mode** (for plugins, via `FileOutput.forPlugin(outputDir)`, writes directly to the project source tree).
@@ -35,7 +37,7 @@ Working **examples** under `examples/erlang/` demonstrate the full `smithy build
 - **`s3-demo`** — `restXml` with XML body encoding, S3-specific URL building (`aws_s3:build_url`), SigV4 signing, and `parse_error/2` dispatch by XML error code string.
 - **`dynamodb-demo`** — `awsJson1_0` with `Content-Type: application/x-amz-json-1.0`, literal `X-Amz-Target` header, direct `jsx:encode(Input)` body, SigV4 signing, and `parse_error/2` dispatch by JSON `__type` error code string.
 
-**Server-side codegen** is not yet implemented.
+**Server-side codegen** (pipeline, protocol analyzers, and plugin) is not yet implemented. The server runtime modules in `runtime-erlang/server/` are the foundational layer that generated server dispatchers will depend on.
 
 ---
 
@@ -71,9 +73,11 @@ smithy-beam/
 ├── codegen-protocols/     # Java: protocol analyzers
 ├── codegen-erlang/        # Java: Erlang codegen + META-INF/services
 ├── codegen-elixir/        # Java: Elixir codegen + META-INF/services
-├── runtime-erlang/        # Erlang sources (client / server)
+├── runtime-erlang/
+│   ├── client/            # Erlang client runtime (aws_sigv4, aws_credentials, aws_retry, …)
+│   └── server/            # Erlang server runtime (smithy_server, smithy_validator, smithy_error_map)
 ├── runtime-elixir/        # Elixir sources (client / server)
-    └── examples/
+└── examples/
     └── erlang/
         ├── weather-service/   # restJson1: GET+label, enum, POST body, error
         ├── storage-service/   # restJson1: union types, enum, validation, path label
