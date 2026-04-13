@@ -16,10 +16,11 @@
     ]
   },
   "plugins": {
-    "erlang-client-codegen": {
+    "erlang-server-codegen": {
       "service": "example.weather#WeatherService",
-      "module": "weather_client",
-      "outputDir": "src/generated"
+      "module": "weather_service",
+      "outputDir": "src/generated",
+      "scaffoldDir": "src"
     }
   }
 }
