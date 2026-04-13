@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Erlang server runtime modules** in `runtime-erlang/server/`: three new modules providing HTTP dispatch helpers, input validation, and error mapping as the runtime foundation for generated Erlang server dispatchers.
+  - **`smithy_server`**: HTTP abstraction layer — `extract/1` reads method, path, headers, and body from a Cowboy request; `response/2`, `error_response/1`, `validation_error/1`, and `not_found/0` return framework-agnostic `{StatusCode, Headers, Body}` tuples consumed by the generated dispatcher and the application's Cowboy handler.
+  - **`smithy_validator`**: required-field validation — `validate/2` checks that all required binary-keyed fields are present in an input map and returns `ok` or `{error, {missing_required_fields, [binary()]}}`. `format/1` converts the error term to a human-readable binary message (`<<"Missing required fields: …">>`).
+  - **`smithy_error_map`**: error-to-HTTP mapping — `to_http/1` maps Smithy error atoms and tuples (`{not_found, Msg}`, `{conflict, Msg}`, `{unauthorized, Msg}`, etc.) to `{HttpStatusCode, MessageBinary}` pairs. Serves as the generic fallback for generated per-service overrides that add modeled `@httpError` shapes.
+- **Unit tests** for all three Erlang server runtime modules in `runtime-erlang/server/test/`, verified with `rebar3 eunit`. Includes `cowboy_req.erl` — a test-only mock accepting plain maps — so `smithy_server:extract/1` can be exercised without a live Cowboy server.
+- **Test harness improvement** (`Makefile`, `test/runtime-erlang` target): adds `jsx` as an eunit dependency, redirects all output to `erlang-runtime-test.log`, and detects failures and syntax errors via `grep` with a clear exit code and log reference.
+
 - **`ErlangReservedWords`** in `codegen-erlang` (`symbol` package): complete set of Erlang reserved words with `isReserved()` and `escape()` helpers; reserved words are escaped by appending `_`.
 - **`ErlangSymbolProvider`** in `codegen-erlang` (`symbol` package): converts Smithy names to Erlang identifiers — `toModuleName`/`toFunctionName` (PascalCase → snake_case), `toTypeName` (snake_case with trailing `()`), `toVarName` (PascalCase for Erlang variable syntax), and internal `toSnakeCase`/`toPascalCase` helpers. New `toAtomTag(name)` static helper converts member names to Erlang atom tags, wrapping Erlang reserved words in single quotes (e.g. `'and'`, `'end'`) so they remain syntactically valid.
 - **`ErlangWriter`** in `codegen-erlang`: full `LanguageWriter` implementation replacing the empty stub.
