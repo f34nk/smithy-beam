@@ -1439,11 +1439,14 @@ public final class ErlangWriter implements LanguageWriter {
             }
             sb.append("    BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
             List<String> members = body.bodyMemberNames();
+            java.util.Map<String, String> wireOverrides = body.wireNameOverrides() != null
+                    ? body.wireNameOverrides() : java.util.Map.of();
             for (int i = 0; i < members.size(); i++) {
-                String m = members.get(i);
+                String smithyName = members.get(i);
+                String wireName = wireOverrides.getOrDefault(smithyName, smithyName);
                 if (i > 0) sb.append(", ");
-                sb.append("<<\"").append(m).append("\">> => maps:get(<<\"")
-                  .append(m).append("\">>, Input, undefined)");
+                sb.append("<<\"").append(wireName).append("\">> => maps:get(<<\"")
+                  .append(smithyName).append("\">>, Input, undefined)");
             }
             sb.append("}),\n");
             switch (body.encoding()) {
