@@ -341,10 +341,10 @@ public final class ErlangWriter implements LanguageWriter {
         return "aws_xml:decode(" + bodyVar + ")";
     }
 
-    /** Example: {@code aws_query:encode(Map)} */
+    /** Example: {@code aws_query:encode(<<"ListUsers">>, Map)} */
     @Override
-    public String renderFormEncode(String mapVar) {
-        return "aws_query:encode(" + mapVar + ")";
+    public String renderFormEncode(String actionName, String mapVar) {
+        return "aws_query:encode(<<\"" + actionName + "\">>, " + mapVar + ")";
     }
 
     // -------------------------------------------------------------------------
@@ -1439,11 +1439,14 @@ public final class ErlangWriter implements LanguageWriter {
             }
             sb.append("    BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
             List<String> members = body.bodyMemberNames();
+            java.util.Map<String, String> wireOverrides = body.wireNameOverrides() != null
+                    ? body.wireNameOverrides() : java.util.Map.of();
             for (int i = 0; i < members.size(); i++) {
-                String m = members.get(i);
+                String smithyName = members.get(i);
+                String wireName = wireOverrides.getOrDefault(smithyName, smithyName);
                 if (i > 0) sb.append(", ");
-                sb.append("<<\"").append(m).append("\">> => maps:get(<<\"")
-                  .append(m).append("\">>, Input, undefined)");
+                sb.append("<<\"").append(wireName).append("\">> => maps:get(<<\"")
+                  .append(smithyName).append("\">>, Input, undefined)");
             }
             sb.append("}),\n");
             switch (body.encoding()) {
@@ -1451,7 +1454,17 @@ public final class ErlangWriter implements LanguageWriter {
                     sb.append("    Body = aws_xml:encode(BodyMap, <<\"Body\">>),\n");
                     break;
                 case FORM_URLENCODED:
-                    sb.append("    Body = aws_query:encode(BodyMap),\n");
+                    if (op.apiVersion() != null && !op.apiVersion().isEmpty()) {
+                        sb.append("    Body = aws_query:encode(<<\"")
+                          .append(op.operationName())
+                          .append("\">>, BodyMap, <<\"")
+                          .append(op.apiVersion())
+                          .append("\">>),\n");
+                    } else {
+                        sb.append("    Body = aws_query:encode(<<\"")
+                          .append(op.operationName())
+                          .append("\">>, BodyMap),\n");
+                    }
                     break;
                 default:
                     sb.append("    Body = jsx:encode(BodyMap),\n");
@@ -1548,7 +1561,16 @@ public final class ErlangWriter implements LanguageWriter {
         sb.append(ind).append("            <<>> -> {ok, #{}};\n");
         sb.append(ind).append("            _ ->\n");
         if (op.responseEncoding() == BodyEncoding.XML) {
-            sb.append(ind).append("                aws_xml:decode(ResponseBody)\n");
+            if (op.protocolErrorStrategy() == ErrorCodeStrategy.AWS_QUERY) {
+                // AwsQuery responses are wrapped in <XyzResponse><XyzResult>; strip both layers
+                sb.append(ind).append("                case aws_xml:decode(ResponseBody) of\n");
+                sb.append(ind).append("                    {ok, Decoded} -> aws_query:unwrap_response(Decoded);\n");
+                sb.append(ind).append("                    DecodeError -> DecodeError\n");
+                sb.append(ind).append("                end\n");
+            } else {
+                // REST-XML (S3 etc.): no envelope wrapper, return decoded tree directly
+                sb.append(ind).append("                aws_xml:decode(ResponseBody)\n");
+            }
         } else {
             sb.append(ind).append("                try jsx:decode(ResponseBody, [return_maps]) of\n");
             sb.append(ind).append("                    DecodedBody -> {ok, DecodedBody}\n");
@@ -1581,8 +1603,23 @@ public final class ErlangWriter implements LanguageWriter {
             sb.append(ind).append("        catch\n");
             sb.append(ind).append("            _:_ -> {error, {http_error, ErrStatusCode, ErrorBody}}\n");
             sb.append(ind).append("        end;\n");
+        } else if (errStrategy == ErrorCodeStrategy.AWS_QUERY) {
+            // AWS Query / EC2 Query: error body is XML; two possible formats:
+            //   IAM/SNS: <ErrorResponse><Error><Code>…</Code></Error></ErrorResponse>
+            //   EC2:     <Response><Errors><Error><Code>…</Code></Error></Errors></Response>
+            sb.append(ind).append("    {ok, {{_, _ErrStatusCode, _}, _RespHeaders, ErrorBody}} ->\n");
+            sb.append(ind).append("        case aws_xml:decode(ErrorBody) of\n");
+            sb.append(ind).append("            {ok, #{<<\"ErrorResponse\">> := #{<<\"Error\">> := ErrorMap}}} ->\n");
+            sb.append(ind).append("                Code = maps:get(<<\"Code\">>, ErrorMap, <<\"Unknown\">>),\n");
+            sb.append(ind).append("                parse_error(Code, ErrorMap);\n");
+            sb.append(ind).append("            {ok, #{<<\"Response\">> := #{<<\"Errors\">> := #{<<\"Error\">> := ErrorMap}}}} ->\n");
+            sb.append(ind).append("                Code = maps:get(<<\"Code\">>, ErrorMap, <<\"Unknown\">>),\n");
+            sb.append(ind).append("                parse_error(Code, ErrorMap);\n");
+            sb.append(ind).append("            _ ->\n");
+            sb.append(ind).append("                {error, {http_error, ErrorBody}}\n");
+            sb.append(ind).append("        end;\n");
         } else {
-            // REST-JSON / AWS-Query: dispatch by HTTP status code integer
+            // REST-JSON: dispatch by HTTP status code integer
             sb.append(ind).append("    {ok, {{_, ErrStatusCode, _}, _RespHeaders, ErrorBody}} ->\n");
             sb.append(ind).append("        parse_error(ErrStatusCode, ErrorBody);\n");
         }

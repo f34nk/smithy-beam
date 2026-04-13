@@ -9,7 +9,7 @@
 %% - Flattened nested structures using dot notation
 %% - List indexing with .N suffix (1-based numeric suffixes)
 
--export([encode/2, encode/3]).
+-export([encode/2, encode/3, unwrap_response/1]).
 
 %% Internal functions (exported for testing)
 -export([
@@ -113,6 +113,35 @@ flatten_value(Key, Value, Acc) when is_list(Value) ->
 flatten_value(Key, Value, Acc) ->
     %% Scalar value
     [{Key, to_query_value(Value)} | Acc].
+
+%% @doc Strip the outer <XyzResponse> wrapper and optional inner <XyzResult>
+%% wrapper that the AWS Query protocol always adds around actual response data.
+%%
+%% AWS Query responses have two layers of wrapping:
+%%   <ListUsersResponse>           ← outer: always present
+%%     <ListUsersResult>           ← inner: present for most operations
+%%       … actual data …
+%%     </ListUsersResult>
+%%   </ListUsersResponse>
+%%
+%% EC2 responses only have the outer wrapper (no *Result element).
+-spec unwrap_response(map()) -> {ok, map()}.
+unwrap_response(OuterMap) when is_map(OuterMap), map_size(OuterMap) =:= 1 ->
+    [{_, InnerMap}] = maps:to_list(OuterMap),
+    case is_map(InnerMap) of
+        true ->
+            ResultKeys = [K || K <- maps:keys(InnerMap),
+                               is_binary(K),
+                               byte_size(K) >= 6,
+                               binary:part(K, byte_size(K) - 6, 6) =:= <<"Result">>],
+            case ResultKeys of
+                [ResultKey] -> {ok, maps:get(ResultKey, InnerMap)};
+                _           -> {ok, InnerMap}
+            end;
+        _ -> {ok, #{}}
+    end;
+unwrap_response(Map) ->
+    {ok, Map}.
 
 %% ============================================================================
 %% Internal helper functions

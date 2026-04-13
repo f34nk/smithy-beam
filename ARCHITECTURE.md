@@ -16,14 +16,14 @@
 | `AwsJsonProtocolAnalyzer` | `aws.protocols#awsJson1_0` | `POST /`, JSON body, `X-Amz-Target` header |
 | `AwsJson11ProtocolAnalyzer` | `aws.protocols#awsJson1_1` | Extends `AwsJsonProtocolAnalyzer` |
 | `AwsQueryProtocolAnalyzer` | `aws.protocols#awsQuery` | `POST /`, form-encoded body, `requiresQueryRuntime` |
-| `Ec2QueryProtocolAnalyzer` | `aws.protocols#ec2Query` | Extends `AwsQueryProtocolAnalyzer` |
+| `Ec2QueryProtocolAnalyzer` | `aws.protocols#ec2Query` | Extends `AwsQueryProtocolAnalyzer`; reads `@ec2QueryName` traits at codegen time and stores wire-name overrides in `BodySpec.wireNameOverrides()` |
 | `RestXmlProtocolAnalyzer` | `aws.protocols#restXml` | Full HTTP binding, XML body, `requiresXmlRuntime`; S3 detection via `requiresS3Runtime` |
 
 `ProtocolRegistrations.init()` registers all six at plugin startup.
 
 **`codegen-erlang`** ships `ErlangClientPlugin` (a working Smithy Build plugin registered via `META-INF/services`), `ErlangWriter` (fully implemented — all `LanguageWriter` methods emit real Erlang text), `ErlangSymbolProvider` (Smithy name → Erlang identifier conversions, including `toAtomTag` for reserved-word-safe atom tags), `ErlangReservedWords` (reserved-word detection and escaping), and eight Erlang client runtime modules bundled in the JAR so `FileOutput.copyRuntime` can copy them into the build output.
 
-The `ErlangWriter` covers: module header, multiline `-export` / `-export_type` declarations, module-level comment, `-behaviour`, struct/enum/union type declarations (enums as lowercase atoms; struct fields all use `=>`), function specs and callback declarations, map operations, JSON/XML/form serialization, URI substitution, protocol-aware query-string and header builders (with `ensure_binary/1` coercion and indexed accumulator variables), `httpc` request blocks, SigV4 auth and retry wrappers, response handlers, protocol-aware `parse_error/2` error dispatchers (string-dispatch for REST_XML and AWS_JSON; status-code-dispatch for REST_JSON and AWS_QUERY), and pagination stream helpers.
+The `ErlangWriter` covers: module header, multiline `-export` / `-export_type` declarations, module-level comment, `-behaviour`, struct/enum/union type declarations (enums as lowercase atoms; struct fields all use `=>`), function specs and callback declarations, map operations, JSON/XML/form serialization, URI substitution, protocol-aware query-string and header builders (with `ensure_binary/1` coercion and indexed accumulator variables), `httpc` request blocks, SigV4 auth and retry wrappers, response handlers, protocol-aware `parse_error/2` error dispatchers (string-dispatch for REST_XML and AWS_JSON; status-code-dispatch for REST_JSON and AWS_QUERY), AwsQuery/EC2 response envelope unwrapping via `aws_query:unwrap_response/1`, EC2 dual-format error dispatch (`<ErrorResponse>` for IAM/SNS; `<Response><Errors>` for EC2), `@ec2QueryName` wire-name overrides applied from `BodySpec.wireNameOverrides()`, and pagination stream helpers.
 
 **Erlang server runtime modules** in `runtime-erlang/server/` provide the runtime foundation for generated server dispatchers: `smithy_server` (HTTP abstraction — `extract/1` reads method, path, headers, and body from a Cowboy request; `response/2`, `error_response/1`, `validation_error/1`, and `not_found/0` return framework-agnostic `{StatusCode, Headers, Body}` tuples), `smithy_validator` (required-field input validation returning `ok` or `{error, {missing_required_fields, [binary()]}}`), and `smithy_error_map` (generic Smithy error atom/tuple → HTTP status mapping, overridden by generated per-service modules for modeled `@httpError` shapes).
 
@@ -34,8 +34,17 @@ The `ErlangWriter` covers: module header, multiline `-export` / `-export_type` d
 Working **examples** under `examples/erlang/` demonstrate the full `smithy build` → Erlang compilation → Dialyzer → EUnit pipeline:
 - **`weather-service`** — `restJson1` with GET + path label, enum, POST + JSON body, error shape. Also wired as a full Cowboy 2.x HTTP server (`erlang-server-codegen`); includes an HTTP round-trip EUnit test (`weather_roundtrip_test`) that starts the server, issues real `httpc` requests, and asserts status codes and JSON response bodies.
 - **`storage-service`** — `restJson1` with union types, enums, required-field validation, and path labels.
+- **`lambda-demo`** — `restJson1` (AWS Lambda) with function lifecycle operations.
 - **`s3-demo`** — `restXml` with XML body encoding, S3-specific URL building (`aws_s3:build_url`), SigV4 signing, and `parse_error/2` dispatch by XML error code string.
 - **`dynamodb-demo`** — `awsJson1_0` with `Content-Type: application/x-amz-json-1.0`, literal `X-Amz-Target` header, direct `jsx:encode(Input)` body, SigV4 signing, and `parse_error/2` dispatch by JSON `__type` error code string.
+- **`sqs-demo`** — `awsJson1_0` (Amazon SQS) with queue and message lifecycle operations.
+- **`firehose-demo`** — `awsJson1_1` (Amazon Kinesis Data Firehose) with delivery stream lifecycle.
+- **`kinesis-demo`** — `awsJson1_1` (Amazon Kinesis) with data stream and record operations.
+- **`ssm-demo`** — `awsJson1_1` (Amazon Systems Manager) with parameter lifecycle operations.
+- **`iam-demo`** — `awsQuery` (Amazon IAM) with user and group lifecycle; response envelopes unwrapped by `aws_query:unwrap_response/1`.
+- **`sns-demo`** — `awsQuery` (Amazon SNS) with topic and subscription lifecycle.
+- **`rds-demo`** — `awsQuery` (Amazon RDS) with DB instance lifecycle.
+- **`ec2-demo`** — `ec2Query` (Amazon EC2) with instance, VPC, and security-group lifecycle; `@ec2QueryName` wire-name overrides applied at codegen time; dual-format EC2 error dispatch.
 
 **`ErlangServerPlugin`** (`erlang-server-codegen`) in `codegen-erlang` is fully implemented. It generates two files per service:
 
@@ -84,12 +93,21 @@ smithy-beam/
 │   ├── client/            # Erlang client runtime (aws_sigv4, aws_credentials, aws_retry, …)
 │   └── server/            # Erlang server runtime (smithy_server, smithy_validator, smithy_error_map)
 ├── runtime-elixir/        # Elixir sources (client / server)
-└── examples/
+    └── examples/
     └── erlang/
-        ├── weather-service/   # restJson1: GET+label, enum, POST body, error
+        ├── weather-service/   # restJson1: GET+label, enum, POST body, error; Cowboy server
         ├── storage-service/   # restJson1: union types, enum, validation, path label
+        ├── lambda-demo/       # restJson1: AWS Lambda function lifecycle
         ├── s3-demo/           # restXml: XML body, S3 URL building, SigV4, XML error dispatch
-        └── dynamodb-demo/     # awsJson1_0: X-Amz-Target, jsx body, SigV4, __type error dispatch
+        ├── dynamodb-demo/     # awsJson1_0: X-Amz-Target, jsx body, SigV4, __type error dispatch
+        ├── sqs-demo/          # awsJson1_0: Amazon SQS queue and message lifecycle
+        ├── firehose-demo/     # awsJson1_1: Kinesis Data Firehose delivery stream lifecycle
+        ├── kinesis-demo/      # awsJson1_1: Kinesis data stream and record operations
+        ├── ssm-demo/          # awsJson1_1: Systems Manager parameter lifecycle
+        ├── iam-demo/          # awsQuery: IAM user/group lifecycle; response envelope unwrapping
+        ├── sns-demo/          # awsQuery: SNS topic/subscription lifecycle
+        ├── rds-demo/          # awsQuery: RDS DB instance lifecycle
+        └── ec2-demo/          # ec2Query: EC2 instance/VPC/SG lifecycle; @ec2QueryName overrides
 ```
 
 ---

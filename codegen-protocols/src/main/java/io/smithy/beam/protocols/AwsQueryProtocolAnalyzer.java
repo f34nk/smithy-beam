@@ -28,8 +28,9 @@ import java.util.List;
  * {@code aws.protocols#awsQuery} protocol analyzer.
  *
  * <p>All operations are {@code POST /} with {@code Content-Type: application/x-www-form-urlencoded}.
- * All input members go into the form-encoded body alongside the implicit {@code Action} and
- * {@code Version} parameters (added by the {@code aws_query.erl} runtime, not the analyzer).
+ * All input members go into the form-encoded body; the {@code Action} (operation name) and
+ * {@code Version} (service API version) parameters are supplied by the generated
+ * {@code make_*_request} functions via {@code aws_query:encode/2,3}.
  * Responses and errors are returned as XML.
  */
 public class AwsQueryProtocolAnalyzer implements ProtocolAnalyzer {
@@ -49,6 +50,11 @@ public class AwsQueryProtocolAnalyzer implements ProtocolAnalyzer {
     @Override
     public String contentType(ServiceShape service) {
         return "application/x-www-form-urlencoded";
+    }
+
+    @Override
+    public boolean requiresXmlRuntime() {
+        return true;
     }
 
     @Override
@@ -88,6 +94,7 @@ public class AwsQueryProtocolAnalyzer implements ProtocolAnalyzer {
                 RestJsonProtocolAnalyzer.inputTypeName(op, model),
                 BodyEncoding.XML,                          // AwsQuery responses are XML
                 "application/x-www-form-urlencoded",
-                ErrorCodeStrategy.AWS_QUERY);
+                ErrorCodeStrategy.AWS_QUERY,
+                service.getVersion());
     }
 }

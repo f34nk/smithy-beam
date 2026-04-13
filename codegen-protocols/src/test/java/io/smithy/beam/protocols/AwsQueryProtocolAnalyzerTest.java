@@ -46,8 +46,8 @@ class AwsQueryProtocolAnalyzerTest {
     }
 
     @Test
-    void requiresXmlRuntimeIsFalse() {
-        assertThat(analyzer.requiresXmlRuntime()).isFalse();
+    void requiresXmlRuntimeIsTrue() {
+        assertThat(analyzer.requiresXmlRuntime()).isTrue();
     }
 
     @Test

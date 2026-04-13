@@ -65,10 +65,20 @@ class Ec2QueryProtocolAnalyzerTest {
     void allInputMembersInFormEncodedBody() {
         OperationSpec spec = analyzer.analyzeClientOperation(describeInstances, model, ec2Service);
         assertThat(spec.body().encoding()).isEqualTo(BodyEncoding.FORM_URLENCODED);
-        // Both members, including the one with @ec2QueryName, are present by their Smithy member name.
-        // Wire-level title-casing / @ec2QueryName rewriting is performed by aws_query.erl at runtime.
+        // Both Smithy member names are present as body members (used for Input lookup).
         assertThat(spec.body().bodyMemberNames())
                 .containsExactlyInAnyOrder("filters", "maxResults");
+    }
+
+    @Test
+    void ec2QueryNameOverridesApplied() {
+        OperationSpec spec = analyzer.analyzeClientOperation(describeInstances, model, ec2Service);
+        // @ec2QueryName("Filter") on the "filters" member must produce a wire-name override.
+        assertThat(spec.body().wireNameOverrides())
+                .containsEntry("filters", "Filter");
+        // Members without @ec2QueryName produce no override entry.
+        assertThat(spec.body().wireNameOverrides())
+                .doesNotContainKey("maxResults");
     }
 
     @Test

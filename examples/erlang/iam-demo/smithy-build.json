@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "sources": [
+    "model"
+  ],
+  "maven": {
+    "dependencies": [
+      "software.amazon.smithy:smithy-aws-traits:1.64.0",
+      "software.amazon.smithy:smithy-aws-endpoints:1.64.0",
+      "software.amazon.smithy:smithy-aws-smoke-test-model:1.64.0",
+      "software.amazon.smithy:smithy-aws-iam-traits:1.64.0",
+      "software.amazon.smithy:smithy-waiters:1.64.0",
+      "io.smithy.beam:codegen-erlang:0.1.0"
+    ],
+    "repositories": [
+      {
+        "url": "https://repo1.maven.org/maven2"
+      },
+      {
+        "url": "file://${user.home}/.m2/repository"
+      }
+    ]
+  },
+  "plugins": {
+    "erlang-client-codegen": {
+      "service": "com.amazonaws.iam#AWSIdentityManagementV20100508",
+      "module": "aws_iam_client",
+      "outputDir": "src/generated"
+    }
+  }
+}

@@ -78,7 +78,7 @@ public interface LanguageWriter {
 
     String renderXmlDecode(String bodyVar);
 
-    String renderFormEncode(String mapVar);
+    String renderFormEncode(String actionName, String mapVar);
 
     String renderUriSubstitution(String template, List<LabelBinding> labels, String inputVar);
 
