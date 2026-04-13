@@ -2,7 +2,7 @@
 
 This document lists Smithy 2.0 traits and how they relate to **generated** Erlang and Elixir in smithy-beam.
 
-**Scope:** Rows cover both client (`erlang-client-codegen`) and server (`erlang-server-codegen`) generation where applicable. Most traits still show as not supported in emitted code; rows are revised when generator behavior changes.
+**Scope:** Rows cover both client (`erlang-client-codegen`) and server (`erlang-server-codegen`) generation where applicable. Elixir runtime modules (`SmithyServer`, `SmithyValidator`, `SmithyAuth`, `SmithyClient`) are implemented but the `codegen-elixir` plugin is not yet wired, so Elixir code generation does not yet appear in trait rows. Most traits still show as not supported in emitted code; rows are revised when generator behavior changes.
 
 **Legend:**
 - ✅ Supported - Trait is read and affects code generation

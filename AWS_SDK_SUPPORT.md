@@ -34,6 +34,43 @@ Features of the generated Erlang server (`erlang-server-codegen`). The generated
 
 ---
 
+## Elixir Server Runtime
+
+Runtime modules in `runtime-elixir/server/` that support generated Elixir server dispatchers. These are hand-written Plug-compatible modules; the `codegen-elixir` server plugin that will call them is not yet wired.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Plug-compatible request extraction | ✅ | `SmithyServer.extract/1` reads method, path, headers (as a `%{}` map), and body from a `Plug.Conn`. |
+| JSON response helpers | ✅ | `SmithyServer.response/3` sets `content-type: application/json` and JSON-encodes the body with `Jason`. |
+| Error response | ✅ | `SmithyServer.error_response/2` delegates status code and message lookup to `SmithyErrorMap.to_http/1` and sends a `%{message: …}` JSON body. |
+| Validation error response | ✅ | `SmithyServer.validation_error/2` sends a 400 response with the message from `SmithyValidator.format/1`. |
+| Not found response | ✅ | `SmithyServer.not_found/1` sends a plain-text 404 response. |
+| Input validation | ✅ | `SmithyValidator.validate/2` checks required keys in an input map; returns `:ok` or `{:error, {:missing_required_fields, [term()]}}`. `SmithyValidator.format/1` formats the error as a human-readable string. |
+| Cowboy / Phoenix integration | ❌ | `SmithyServer` is Plug-compatible; adapter wiring for Cowboy or Bandit is not yet generated. |
+| Request streaming | ❌ | `@streaming` not implemented. |
+| WebSocket / event streams | ❌ | Not implemented. |
+
+---
+
+## Elixir Client Runtime
+
+Runtime modules in `runtime-elixir/client/` that support generated Elixir clients. These are hand-written modules; the `codegen-elixir` client plugin that will call them is not yet wired.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Operation execution | ✅ | `SmithyClient.request/2` accepts a `%SmithyClient.Operation{}` value, builds the URL, encodes the body with `Jason`, optionally signs, sends via `Req`, and decodes the JSON response. |
+| Pagination helpers | ✅ | `SmithyClient.stream/2` follows `next_token` automatically, emitting individual items via `Stream.unfold/2`. |
+| Retry | ✅ | `SmithyClient.with_retry/2` retries on error up to a configurable limit (default: 3 additional attempts). |
+| AWS Signature Version 4 (SigV4) | ✅ | `SmithyAuth.sign_request/2` adds `Authorization` and `X-Amz-Date` headers; `X-Amz-Security-Token` added when a session token is present. Service name derived from endpoint URL when absent from config. |
+| Session token support | ✅ | `X-Amz-Security-Token` header included when `:session_token` is set in config. |
+| HTTP transport | ✅ | `Req` used for all HTTP calls; 2xx responses decoded with `Jason`; non-2xx returned as `{:error, {:http_error, status, body}}`. |
+| Credential Provider Chain | ❌ | Environment variables, `~/.aws/credentials`, provider chain not implemented. |
+| AWS Signature Version 4A (SigV4A) | ❌ | Multi-region asymmetric signing not implemented. |
+| Request streaming | ❌ | `@streaming` not implemented. |
+| Waiters | ❌ | `@waitable` not implemented. |
+
+---
+
 ## Client SDK Features
 
 General SDK features not specific to AWS traits.
