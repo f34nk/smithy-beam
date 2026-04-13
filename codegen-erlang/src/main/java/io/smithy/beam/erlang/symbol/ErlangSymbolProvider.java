@@ -43,6 +43,25 @@ public final class ErlangSymbolProvider {
     }
 
     /**
+     * Converts a Smithy member/variant name to an Erlang atom suitable for use
+     * as a map key or tagged-tuple tag.
+     *
+     * <p>Unlike {@link #toFunctionName}, which appends {@code _} to reserved words,
+     * this method wraps them in single quotes so the original name is preserved.
+     *
+     * <p>Examples:
+     * <ul>
+     *   <li>{@code "Prefix" → "prefix"}</li>
+     *   <li>{@code "And"    → "'and'"}</li>
+     *   <li>{@code "End"    → "'end'"}</li>
+     * </ul>
+     */
+    public static String toAtomTag(String smithyName) {
+        String snake = toSnakeCase(smithyName);
+        return ErlangReservedWords.isReserved(snake) ? "'" + snake + "'" : snake;
+    }
+
+    /**
      * Converts a Smithy name to an Erlang variable name (PascalCase).
      *
      * <p>Erlang variables must start with an uppercase letter. Reserved words
