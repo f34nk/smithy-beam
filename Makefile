@@ -53,7 +53,7 @@ test/runtime-erlang:
 		echo "Runtime Erlang tests failed (see $$(basename $$logfile))" ; \
 		exit 1 ; \
 	else \
-		echo "Runtime Erlang tests passed" ; \
+		echo "Runtime Erlang tests passed (see $$(basename $$logfile))" ; \
 	fi
 
     # 1. Find all test modules
