@@ -940,6 +940,248 @@ public final class ErlangWriter implements LanguageWriter {
         return modules;
     }
 
+    // -------------------------------------------------------------------------
+    // Step 17 — Server-side rendering
+    // -------------------------------------------------------------------------
+
+    /**
+     * Renders a {@code -callback} declaration for one server operation.
+     *
+     * <p>Example output:
+     * <pre>
+     * -callback get_weather(Input :: get_weather_input(), Context :: map()) ->
+     *     {ok, get_weather_output()} | {error, term()}.
+     * </pre>
+     */
+    @Override
+    public String renderServerCallbackDeclaration(OperationSpec op) {
+        String opName     = ErlangSymbolProvider.toFunctionName(op.operationName());
+        String inputType  = op.inputTypeName()  != null
+                ? ErlangSymbolProvider.toSnakeCase(op.inputTypeName())  + "()" : "map()";
+        String outputType = op.outputTypeName() != null
+                ? ErlangSymbolProvider.toSnakeCase(op.outputTypeName()) + "()" : "map()";
+        return "-callback " + opName + "(Input :: " + inputType + ", Context :: map()) ->\n"
+             + "    {ok, " + outputType + "} | {error, term()}.\n";
+    }
+
+    /**
+     * Renders one {@code route/2} clause for a server operation (semicolon-terminated).
+     *
+     * <p>For restJson1: routes on HTTP method + URI path prefix.
+     * <p>For awsJson:   routes on the {@code X-Amz-Target} literal header value.
+     */
+    @Override
+    public String renderServerRouteClause(OperationSpec op) {
+        String opAtom = ErlangSymbolProvider.toFunctionName(op.operationName());
+        if (isAwsJsonOp(op)) {
+            String target = op.headers().stream()
+                    .filter(h -> "__target__".equals(h.smithyMemberName()))
+                    .findFirst().map(HeaderBinding::literalValue).orElse("");
+            return "route(<<\"" + target + "\">>, _) -> {ok, " + opAtom + "};\n";
+        }
+        String method   = op.http().method();
+        String template = op.http().uriTemplate();
+        List<LabelBinding> labels = op.labels() != null ? op.labels() : List.of();
+        if (labels.isEmpty()) {
+            return "route(<<\"" + method + "\">>, <<\"" + template + "\">>) -> {ok, " + opAtom + "};\n";
+        }
+        int firstBrace = template.indexOf('{');
+        String prefix  = firstBrace >= 0 ? template.substring(0, firstBrace) : template;
+        return "route(<<\"" + method + "\">>, <<\"" + prefix + "\", _/binary>>) -> {ok, " + opAtom + "};\n";
+    }
+
+    /** Returns the catch-all route clause that terminates the {@code route/2} function. */
+    @Override
+    public String renderServerRouteFallback() {
+        return "route(_, _) -> {error, not_found}.\n";
+    }
+
+    /**
+     * Renders the {@code handle/3} function for the dispatcher module.
+     *
+     * <p>For restJson1: extracts method + path from the request and calls the router.
+     * <p>For awsJson:   extracts the {@code X-Amz-Target} header and calls the router.
+     */
+    @Override
+    public String renderServerHandleFunction(List<OperationSpec> ops, String svcModuleName) {
+        boolean isAwsJson = !ops.isEmpty() && isAwsJsonOp(ops.get(0));
+        String routerMod  = ErlangSymbolProvider.toModuleName(svcModuleName + "_router");
+        StringBuilder sb  = new StringBuilder();
+
+        sb.append("-spec handle(module(), term(), map()) -> {pos_integer(), list(), binary()}.\n");
+        sb.append("handle(Impl, Req, Context) ->\n");
+
+        if (isAwsJson) {
+            sb.append("    {_Method, _Path, Headers, Body} = smithy_server:extract(Req),\n");
+            sb.append("    Target = maps:get(<<\"x-amz-target\">>, maps:from_list(Headers), <<>>),\n");
+            sb.append("    case ").append(routerMod).append(":route(Target, <<>>) of\n");
+        } else {
+            sb.append("    {Method, Path, Headers, Body} = smithy_server:extract(Req),\n");
+            sb.append("    case ").append(routerMod).append(":route(Method, Path) of\n");
+        }
+
+        for (OperationSpec op : ops) {
+            String opAtom = ErlangSymbolProvider.toFunctionName(op.operationName());
+            if (isAwsJson) {
+                sb.append("        {ok, ").append(opAtom).append("} -> dispatch_").append(opAtom)
+                  .append("(Impl, <<>>, Headers, Body, Context);\n");
+            } else {
+                sb.append("        {ok, ").append(opAtom).append("} -> dispatch_").append(opAtom)
+                  .append("(Impl, Path, Headers, Body, Context);\n");
+            }
+        }
+
+        sb.append("        {error, not_found} -> smithy_server:not_found()\n");
+        sb.append("    end.\n");
+        return sb.toString();
+    }
+
+    /**
+     * Renders the {@code dispatch_<op>/5} private function for one server operation.
+     *
+     * <p>Deserializes the input, calls the implementation, and serializes the response.
+     */
+    @Override
+    public String renderServerDispatchClause(OperationSpec op) {
+        String opAtom    = ErlangSymbolProvider.toFunctionName(op.operationName());
+        int successCode  = op.http().successCode();
+        StringBuilder sb = new StringBuilder();
+        sb.append("dispatch_").append(opAtom).append("(Impl, Path, Headers, Body, Context) ->\n");
+        sb.append("    Input = deserialize_").append(opAtom).append("(Path, Headers, Body),\n");
+        sb.append("    case Impl:").append(opAtom).append("(Input, Context) of\n");
+        sb.append("        {ok, Output} -> smithy_server:response(")
+          .append(successCode).append(", serialize_").append(opAtom).append("(Output));\n");
+        sb.append("        {error, Err} -> smithy_server:error_response(Err)\n");
+        sb.append("    end.\n");
+        return sb.toString();
+    }
+
+    /**
+     * Renders the {@code deserialize_<op>/3} private function.
+     *
+     * <p>Extracts path labels, header values, and body members and combines them
+     * into the operation input map. For awsJson the entire body is decoded directly.
+     */
+    @Override
+    public String renderServerDeserialize(OperationSpec op) {
+        String opAtom      = ErlangSymbolProvider.toFunctionName(op.operationName());
+        List<LabelBinding> labels      = op.labels()  != null ? op.labels()  : List.of();
+        List<String>       bodyMembers = op.body()    != null && !op.body().bodyMemberNames().isEmpty()
+                                        ? op.body().bodyMemberNames() : List.of();
+        StringBuilder sb = new StringBuilder();
+        sb.append("deserialize_").append(opAtom).append("(Path, _Headers, Body) ->\n");
+
+        if (isAwsJsonOp(op)) {
+            // AWS JSON: the entire body IS the input map.
+            sb.append("    _ = Path,\n");
+            sb.append("    jsx:decode(Body, [return_maps]).\n");
+            return sb.toString();
+        }
+
+        // Extract the first path label via binary pattern-matching (covers the common case).
+        if (!labels.isEmpty()) {
+            String template  = op.http().uriTemplate();
+            int firstBrace   = template.indexOf('{');
+            String prefix    = firstBrace >= 0 ? template.substring(0, firstBrace) : template;
+            LabelBinding lbl = labels.get(0);
+            String varName   = ErlangSymbolProvider.toVarName(lbl.smithyMemberName());
+            sb.append("    <<\"").append(prefix).append("\", ").append(varName)
+              .append("/binary>> = Path,\n");
+        } else {
+            sb.append("    _ = Path,\n");
+        }
+
+        if (!bodyMembers.isEmpty()) {
+            sb.append("    Decoded = jsx:decode(Body, [return_maps]),\n");
+            sb.append("    #{");
+            boolean firstEntry = true;
+            for (String m : bodyMembers) {
+                if (!firstEntry) sb.append(",\n      ");
+                sb.append("<<\"").append(m).append("\">> => maps:get(<<\"")
+                  .append(m).append("\">>, Decoded, undefined)");
+                firstEntry = false;
+            }
+            for (LabelBinding lbl : labels) {
+                String varName = ErlangSymbolProvider.toVarName(lbl.smithyMemberName());
+                sb.append(",\n      <<\"").append(lbl.smithyMemberName())
+                  .append("\">> => ").append(varName);
+            }
+            sb.append("}.\n");
+        } else if (!labels.isEmpty()) {
+            sb.append("    _ = Body,\n");
+            sb.append("    #{");
+            for (int i = 0; i < labels.size(); i++) {
+                if (i > 0) sb.append(", ");
+                LabelBinding lbl = labels.get(i);
+                String varName   = ErlangSymbolProvider.toVarName(lbl.smithyMemberName());
+                sb.append("<<\"").append(lbl.smithyMemberName())
+                  .append("\">> => ").append(varName);
+            }
+            sb.append("}.\n");
+        } else {
+            sb.append("    _ = Body,\n");
+            sb.append("    #{}.\n");
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * Renders the {@code serialize_<op>/1} private function.
+     *
+     * <p>Encodes the output map to a JSON binary for the response body.
+     */
+    @Override
+    public String renderServerSerialize(OperationSpec op) {
+        String opAtom = ErlangSymbolProvider.toFunctionName(op.operationName());
+        return "serialize_" + opAtom + "(Output) ->\n"
+             + "    jsx:encode(Output).\n";
+    }
+
+    /**
+     * Renders one stub function for the impl scaffold.
+     *
+     * <p>Example output:
+     * <pre>
+     * -spec get_weather(get_weather_input(), map()) -> {ok, get_weather_output()} | {error, term()}.
+     * get_weather(_Input, _Context) ->
+     *     {error, not_implemented}.
+     * </pre>
+     */
+    @Override
+    public String renderServerImplStub(OperationSpec op) {
+        String opAtom     = ErlangSymbolProvider.toFunctionName(op.operationName());
+        String inputType  = op.inputTypeName()  != null
+                ? ErlangSymbolProvider.toSnakeCase(op.inputTypeName())  + "()" : "map()";
+        String outputType = op.outputTypeName() != null
+                ? ErlangSymbolProvider.toSnakeCase(op.outputTypeName()) + "()" : "map()";
+        return "-spec " + opAtom + "(" + inputType + ", map()) ->\n"
+             + "    {ok, " + outputType + "} | {error, term()}.\n"
+             + opAtom + "(_Input, _Context) ->\n"
+             + "    {error, not_implemented}.\n";
+    }
+
+    /** Returns the paths of server runtime modules to copy alongside generated files. */
+    @Override
+    public List<String> serverRuntimeModules() {
+        return List.of(
+                "server/smithy_server.erl",
+                "server/smithy_validator.erl",
+                "server/smithy_error_map.erl"
+        );
+    }
+
+    // ── Private helper ────────────────────────────────────────────────────────
+
+    /**
+     * Returns true if the operation belongs to an AWS JSON protocol, detected by the presence
+     * of a {@code __target__} header binding with a literal value.
+     */
+    private static boolean isAwsJsonOp(OperationSpec op) {
+        return op.headers() != null && op.headers().stream()
+                .anyMatch(h -> "__target__".equals(h.smithyMemberName()));
+    }
+
     // ── Private helpers for renderClientOperation ─────────────────────────────
 
     private void appendQueryString(StringBuilder sb, OperationSpec op) {
