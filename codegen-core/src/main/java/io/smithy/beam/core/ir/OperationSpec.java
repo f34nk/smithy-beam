@@ -19,5 +19,6 @@ public record OperationSpec(
         String inputTypeName,              // actual Smithy input shape name
         BodyEncoding responseEncoding,     // how to decode the HTTP response body
         String protocolContentType,        // wire Content-Type (e.g. "application/x-amz-json-1.0")
-        ErrorCodeStrategy protocolErrorStrategy  // how to dispatch errors for this protocol
+        ErrorCodeStrategy protocolErrorStrategy,  // how to dispatch errors for this protocol
+        String apiVersion                  // service API version (e.g. "2010-05-08"); null for non-query protocols
         ) {}
