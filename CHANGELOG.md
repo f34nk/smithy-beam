@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Elixir server runtime modules** in `runtime-elixir/server/`: two new modules providing HTTP dispatch helpers and input validation as the runtime foundation for generated Elixir server dispatchers.
+  - **`SmithyServer`**: Plug-compatible HTTP abstraction layer — `extract/1` reads method, path, headers, and body from a `Plug.Conn`; `response/3`, `error_response/2`, `validation_error/2`, and `not_found/1` build and send JSON responses. Delegates error-to-status mapping to `SmithyErrorMap.to_http/1` and validation message formatting to `SmithyValidator.format/1`.
+  - **`SmithyValidator`**: required-field validation — `validate/2` checks that all required keys are present in an input map and returns `:ok` or `{:error, {:missing_required_fields, [term()]}}`. `format/1` converts the error term to a human-readable string (`"Missing required fields: …"`).
+- **Elixir client runtime modules** in `runtime-elixir/client/`: two new modules providing the HTTP operation pipeline and AWS SigV4 signing for generated Elixir clients.
+  - **`SmithyClient`**: operation execution pipeline using an operations-as-values (`%SmithyClient.Operation{}`) pattern. `request/2` builds the URL from the configured endpoint, encodes the request body with `Jason`, optionally signs with SigV4 via `SmithyAuth`, sends via `Req`, and decodes the JSON response. `stream/2` automatically follows `next_token` pagination and emits individual items. `with_retry/2` retries on error up to a configurable limit (default: 3 additional attempts).
+  - **`SmithyAuth`**: AWS Signature Version 4 (SigV4) signing — `sign_request/2` adds `Authorization` and `X-Amz-Date` headers (and `X-Amz-Security-Token` when a session token is present). Internal helpers cover canonical request construction, query string canonicalization, header canonicalization, HMAC-SHA256 key derivation, and signature calculation. Service name is derived from the endpoint URL when not supplied in config.
+- **Unit tests** for all four Elixir runtime modules in `runtime-elixir/client/test/` and `runtime-elixir/server/test/`, verified with `mix test`.
+- **`test/runtime-elixir` target** in `Makefile`: assembles all `.ex` and `.exs` sources from `runtime-elixir/` into a temporary `build/runtime-elixir` Mix project, generates `mix.exs` and `test_helper.exs`, fetches Hex dependencies (`plug`, `jason`, `req`), runs `mix test`, and exits non-zero with a clear log reference when any test leaves a stacktrace.
+
+### Fixed
+
+- **`Makefile` — `test/runtime-erlang`**: corrected log file name (`erlang-runtime-test.log` → `runtime-erlang-test.log`) and build directory (`build/tmp` → `build/runtime-erlang`) to be consistent with the Elixir naming convention.
+
 ## [0.1.0] — 2026-04-13
 
 ### Added

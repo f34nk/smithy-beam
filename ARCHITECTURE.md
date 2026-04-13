@@ -27,6 +27,10 @@ The `ErlangWriter` covers: module header, multiline `-export` / `-export_type` d
 
 **Erlang server runtime modules** in `runtime-erlang/server/` provide the runtime foundation for generated server dispatchers: `smithy_server` (HTTP abstraction — `extract/1` reads method, path, headers, and body from a Cowboy request; `response/2`, `error_response/1`, `validation_error/1`, and `not_found/0` return framework-agnostic `{StatusCode, Headers, Body}` tuples), `smithy_validator` (required-field input validation returning `ok` or `{error, {missing_required_fields, [binary()]}}`), and `smithy_error_map` (generic Smithy error atom/tuple → HTTP status mapping, overridden by generated per-service modules for modeled `@httpError` shapes).
 
+**Elixir server runtime modules** in `runtime-elixir/server/` provide the runtime foundation for generated Elixir server dispatchers: `SmithyServer` (Plug-compatible HTTP abstraction — `extract/1` reads method, path, headers, and body from a `Plug.Conn`; `response/3`, `error_response/2`, `validation_error/2`, and `not_found/1` send JSON responses; error-to-status mapping delegated to `SmithyErrorMap.to_http/1`) and `SmithyValidator` (required-field input validation returning `:ok` or `{:error, {:missing_required_fields, [term()]}}` with `format/1` for human-readable messages).
+
+**Elixir client runtime modules** in `runtime-elixir/client/` provide the HTTP operation pipeline and AWS SigV4 signing for generated Elixir clients: `SmithyClient` (operations-as-values pattern via `%SmithyClient.Operation{}` structs — `request/2` builds URLs, encodes bodies with `Jason`, optionally signs, and sends via `Req`; `stream/2` follows `next_token` pagination automatically; `with_retry/2` retries on error) and `SmithyAuth` (AWS Signature Version 4 — `sign_request/2` constructs canonical requests, derives HMAC-SHA256 signing keys, and prepends `Authorization`, `X-Amz-Date`, and optionally `X-Amz-Security-Token` headers).
+
 **`ClientPipeline`** is fully implemented and drives end-to-end Erlang client generation. For each service it emits: module/export/type-export attributes, all type definitions (structs, enums, unions, error shapes), a `new/1` constructor, a 3-function block per operation (2-arity wrapper → 3-arity retry wrapper → internal `make_<op>_request/2` with URL construction, body building with protocol-correct `Content-Type`, optional `aws_s3:build_url` for S3 services, optional SigV4, `httpc` call, and protocol-aware response/error decoding), enum/union encode–decode helpers, required-field `validate_*` functions (restricted to operation input types), `url_encode/1`, `ensure_binary/1`, and a unified `parse_error/2` deduplicated by Smithy error name. Runtime modules are copied selectively based on the protocol and auth requirements. All language-specific string emission is delegated to `LanguageWriter`; `ClientPipeline` contains no target-language literals.
 
 `FileOutput` supports two modes: **manifest mode** (for tests, delegates to Smithy `FileManifest`) and **filesystem mode** (for plugins, via `FileOutput.forPlugin(outputDir)`, writes directly to the project source tree).
@@ -77,22 +81,24 @@ smithy-beam/
 ├── runtime-erlang/
 │   ├── client/            # Erlang client runtime (aws_sigv4, aws_credentials, aws_retry, …)
 │   └── server/            # Erlang server runtime (smithy_server, smithy_validator, smithy_error_map)
-├── runtime-elixir/        # Elixir sources (client / server)
-    └── examples/
-    └── erlang/
-        ├── weather-service/   # restJson1: GET+label, enum, POST body, error; Cowboy server
-        ├── storage-service/   # restJson1: union types, enum, validation, path label
-        ├── lambda-demo/       # restJson1: AWS Lambda function lifecycle
-        ├── s3-demo/           # restXml: XML body, S3 URL building, SigV4, XML error dispatch
-        ├── dynamodb-demo/     # awsJson1_0: X-Amz-Target, jsx body, SigV4, __type error dispatch
-        ├── sqs-demo/          # awsJson1_0: Amazon SQS queue and message lifecycle
-        ├── firehose-demo/     # awsJson1_1: Kinesis Data Firehose delivery stream lifecycle
-        ├── kinesis-demo/      # awsJson1_1: Kinesis data stream and record operations
-        ├── ssm-demo/          # awsJson1_1: Systems Manager parameter lifecycle
-        ├── iam-demo/          # awsQuery: IAM user/group lifecycle; response envelope unwrapping
-        ├── sns-demo/          # awsQuery: SNS topic/subscription lifecycle
-        ├── rds-demo/          # awsQuery: RDS DB instance lifecycle
-        └── ec2-demo/          # ec2Query: EC2 instance/VPC/SG lifecycle; @ec2QueryName overrides
+├── runtime-elixir/
+│   ├── client/            # Elixir client runtime (SmithyAuth, SmithyClient)
+│   └── server/            # Elixir server runtime (SmithyServer, SmithyValidator)
+├── examples/
+│   └── erlang/
+│       ├── weather-service/   # restJson1: GET+label, enum, POST body, error; Cowboy server
+│       ├── storage-service/   # restJson1: union types, enum, validation, path label
+│       ├── lambda-demo/       # restJson1: AWS Lambda function lifecycle
+│       ├── s3-demo/           # restXml: XML body, S3 URL building, SigV4, XML error dispatch
+│       ├── dynamodb-demo/     # awsJson1_0: X-Amz-Target, jsx body, SigV4, __type error dispatch
+│       ├── sqs-demo/          # awsJson1_0: Amazon SQS queue and message lifecycle
+│       ├── firehose-demo/     # awsJson1_1: Kinesis Data Firehose delivery stream lifecycle
+│       ├── kinesis-demo/      # awsJson1_1: Kinesis data stream and record operations
+│       ├── ssm-demo/          # awsJson1_1: Systems Manager parameter lifecycle
+│       ├── iam-demo/          # awsQuery: IAM user/group lifecycle; response envelope unwrapping
+│       ├── sns-demo/          # awsQuery: SNS topic/subscription lifecycle
+│       ├── rds-demo/          # awsQuery: RDS DB instance lifecycle
+│       └── ec2-demo/          # ec2Query: EC2 instance/VPC/SG lifecycle; @ec2QueryName overrides
 ```
 
 ---

@@ -17,7 +17,7 @@ build:
 	tree ~/.m2/repository/io/smithy/beam
 
 .PHONY: test
-test: test/java test/runtime-erlang
+test: test/java test/runtime-erlang test/runtime-elixir
 
 .PHONY: test/java
 test/java:
@@ -33,8 +33,8 @@ test/runtime-erlang:
 	#
 	# Run runtime-erlang tests
 	#
-	logfile="$$(pwd)/erlang-runtime-test.log" && \
-	temp="$$(pwd)/build/tmp" && \
+	logfile="$$(pwd)/runtime-erlang-test.log" && \
+	temp="$$(pwd)/build/runtime-erlang" && \
 	rm -rf "$$temp" "$$logfile" && \
 	mkdir -p "$$temp/test" && \
 	find runtime-erlang/*/* -type f -name *.erl -exec cp {} "$$temp/test/" \; && \
@@ -61,6 +61,44 @@ test/runtime-erlang:
     # 3. Remove the _test.erl suffix
     # 4. Echo the command to run the test module
     # 5. Execute the command
+
+.PHONY: test/runtime-elixir
+test/runtime-elixir:
+	#
+	# Run runtime-elixir tests
+	#
+	logfile="$$(pwd)/runtime-elixir-test.log" && \
+	temp="$$(pwd)/build/runtime-elixir" && \
+	rm -rf "$$temp" "$$logfile" && \
+	mkdir -p "$$temp/test" && \
+	mkdir -p "$$temp/lib" && \
+	find runtime-elixir/*/* -type f -name *.exs -exec cp {} "$$temp/test/" \; && \
+	find runtime-elixir/*/* -type f -name *.ex -exec cp {} "$$temp/lib/" \; && \
+	echo \
+	defmodule Foo.MixProject do\\n\
+  		use Mix.Project\\n\
+		def project do\\n\
+			[app: :foo, version: \"0.1.0\", elixir: \"~\> 1.19\", deps: deps\(\)]\\n\
+		end\\n\
+		def application do\\n\
+			[extra_applications: [:logger, :crypto]]\\n\
+		end\\n\
+		defp deps do\\n\
+			[{:plug, \"~\> 1.16\"}, {:jason, \"~\> 1.4\"}, {:req, \"~\> 0.5\"}]\\n\
+		end\\n\
+	end > "$$temp/mix.exs" && \
+	echo \
+	ExUnit.start\(\) > "$$temp/test/test_helper.exs" && \
+	tree $$temp && \
+    cd "$$temp" && \
+	elixir -S mix deps.get > "$$logfile" 2>&1 && \
+	elixir -S mix test >> "$$logfile" 2>&1 ;\
+	if grep -q "stacktrace" "$$logfile"; then \
+		echo "Runtime Elixir tests failed (see $$(basename $$logfile))" ; \
+		exit 1 ; \
+	else \
+		echo "Runtime Elixir tests passed (see $$(basename $$logfile))" ; \
+	fi
 
 .PHONY: clean
 clean:
