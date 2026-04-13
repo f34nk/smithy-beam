@@ -14,11 +14,11 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 /**
  * Smithy Build plugin that generates an Erlang server skeleton from a Smithy model.
  *
- * <p>For each service, four files are generated:
+ * <p>For each service, two files are generated:
  * <ol>
- *   <li>{@code <svc>_handler.erl} — {@code -behaviour} definition with one {@code -callback} per operation.</li>
- *   <li>{@code <svc>_router.erl} — {@code route/2} function mapping requests to operation atoms.</li>
- *   <li>{@code <svc>_dispatcher.erl} — {@code handle/3} that routes, deserializes, dispatches, and serializes.</li>
+ *   <li>{@code <svc>_server.erl} — consolidated module containing type definitions,
+ *       {@code -callback} declarations, the Cowboy {@code init/2} entry point, routing,
+ *       dispatch, deserialization, and serialization.</li>
  *   <li>{@code <svc>_impl.erl} — once-written stub scaffold; never overwritten on subsequent runs.</li>
  * </ol>
  *
@@ -35,12 +35,13 @@ public final class ErlangServerPlugin implements SmithyBuildPlugin {
     public void execute(PluginContext context) {
         ProtocolRegistrations.init();
         CodegenSettings settings = CodegenSettings.fromNode(context.getSettings());
-        Model         model      = context.getModel();
-        ServiceShape  service    = model.expectShape(settings.serviceShapeId(), ServiceShape.class);
+        Model        model   = context.getModel();
+        ServiceShape service = model.expectShape(settings.serviceShapeId(), ServiceShape.class);
         var protocol = ProtocolAnalyzerFactory.forService(service, model);
         var writer   = new ErlangWriter();
         var output   = FileOutput.forPlugin(settings.outputDir());
         ClassLoader cl = ErlangServerPlugin.class.getClassLoader();
+
         new ServerPipeline().generate(service, model, protocol, writer, settings, output, cl);
     }
 }
