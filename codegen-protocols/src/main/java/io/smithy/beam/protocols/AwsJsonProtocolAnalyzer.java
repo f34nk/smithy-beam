@@ -90,7 +90,8 @@ public class AwsJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 RestJsonProtocolAnalyzer.inputTypeName(op, model),
                 BodyEncoding.JSON,
                 baseContentType(),
-                ErrorCodeStrategy.AWS_JSON);
+                ErrorCodeStrategy.AWS_JSON,
+                null);
     }
 
     @Override
@@ -128,6 +129,7 @@ public class AwsJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 RestJsonProtocolAnalyzer.inputTypeName(op, model),
                 BodyEncoding.JSON,
                 baseContentType(),
-                ErrorCodeStrategy.AWS_JSON);
+                ErrorCodeStrategy.AWS_JSON,
+                null);
     }
 }

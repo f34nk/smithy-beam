@@ -85,7 +85,8 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 inputTypeName(op, model),
                 BodyEncoding.JSON,
                 "application/json",
-                ErrorCodeStrategy.REST_JSON);
+                ErrorCodeStrategy.REST_JSON,
+                null);
     }
 
     @Override
@@ -116,7 +117,8 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 inputTypeName(op, model),
                 BodyEncoding.JSON,
                 "application/json",
-                ErrorCodeStrategy.REST_JSON);
+                ErrorCodeStrategy.REST_JSON,
+                null);
     }
 
     // ── HttpSpec ─────────────────────────────────────────────────────────────
