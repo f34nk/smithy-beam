@@ -14,5 +14,10 @@ public record OperationSpec(
         ErrorSpec errors,
         AuthSpec auth,
         RetrySpec retry,
-        PaginationSpec pagination // null if not @paginated
+        PaginationSpec pagination,         // null if not @paginated
+        String outputTypeName,             // actual Smithy output shape name
+        String inputTypeName,              // actual Smithy input shape name
+        BodyEncoding responseEncoding,     // how to decode the HTTP response body
+        String protocolContentType,        // wire Content-Type (e.g. "application/x-amz-json-1.0")
+        ErrorCodeStrategy protocolErrorStrategy  // how to dispatch errors for this protocol
         ) {}
