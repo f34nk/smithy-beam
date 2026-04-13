@@ -78,10 +78,9 @@ run() ->
 
     %% 4. Describe Instances to see the running instance
     io:format("--- DescribeInstances ---~n"),
-    %% Note: EC2 Query protocol expects InstanceId.N format for lists
     DescribeInput = case InstanceId of
         undefined -> #{};
-        _ -> #{<<"InstanceId">> => [InstanceId]}
+        _ -> #{<<"InstanceIds">> => [InstanceId]}
     end,
     case aws_ec2_client:describe_instances(Client, DescribeInput, #{enable_retry => false}) of
         {ok, DescribeOutput} ->
@@ -99,8 +98,7 @@ run() ->
             io:format("--- TerminateInstances (skipped - no instance) ---~n");
         TerminateId ->
             io:format("--- TerminateInstances ---~n"),
-            %% Use InstanceId (singular) as the key - aws_query will add .1, .2, etc.
-            TerminateInput = #{<<"InstanceId">> => [TerminateId]},
+            TerminateInput = #{<<"InstanceIds">> => [TerminateId]},
             case aws_ec2_client:terminate_instances(Client, TerminateInput, #{enable_retry => false}) of
                 {ok, TerminateOutput} ->
                     io:format("SUCCESS: TerminateInstances returned~n"),
