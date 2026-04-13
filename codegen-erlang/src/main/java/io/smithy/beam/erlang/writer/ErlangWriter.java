@@ -2,8 +2,10 @@ package io.smithy.beam.erlang.writer;
 
 import io.smithy.beam.core.ir.AuthSpec;
 import io.smithy.beam.core.ir.BodyEncoding;
+import io.smithy.beam.core.ir.BodySpec;
 import io.smithy.beam.core.ir.EnumSpec;
 import io.smithy.beam.core.ir.ErrorBinding;
+import io.smithy.beam.core.ir.ErrorCodeStrategy;
 import io.smithy.beam.core.ir.ErrorSpec;
 import io.smithy.beam.core.ir.FieldSpec;
 import io.smithy.beam.core.ir.HeaderBinding;
@@ -22,7 +24,10 @@ import io.smithy.beam.core.writer.MapEntrySpec;
 import io.smithy.beam.core.writer.ParamSpec;
 import io.smithy.beam.erlang.symbol.ErlangSymbolProvider;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
@@ -99,11 +104,24 @@ public final class ErlangWriter implements LanguageWriter {
     }
 
     /**
-     * Generates an {@code -export([...])} attribute.
+     * Returns a module-level Erlang comment followed by a blank line.
+     *
+     * <p>Example: {@code "%% Generated Smithy client for AmazonS3\n\n"}
+     */
+    @Override
+    public String renderModuleComment(String text) {
+        return "\n%% " + text + "\n";
+    }
+
+    /**
+     * Generates a multiline {@code -export([...])} attribute, one entry per line.
      *
      * <p>Example output:
      * <pre>
-     * -export([get_weather/2, new/1]).
+     * -export([
+     *     get_weather/2,
+     *     new/1
+     * ]).
      * </pre>
      */
     @Override
@@ -111,10 +129,15 @@ public final class ErlangWriter implements LanguageWriter {
         if (exports.isEmpty()) {
             return "-export([]).\n";
         }
-        String entries = exports.stream()
-            .map(e -> e.functionName() + "/" + e.arity())
-            .collect(Collectors.joining(", "));
-        return "-export([" + entries + "]).\n";
+        StringBuilder sb = new StringBuilder("-export([\n");
+        for (int i = 0; i < exports.size(); i++) {
+            ExportSpec e = exports.get(i);
+            String comma = (i < exports.size() - 1) ? "," : "";
+            sb.append("    ").append(e.functionName()).append("/").append(e.arity())
+              .append(comma).append("\n");
+        }
+        sb.append("]).\n");
+        return sb.toString();
     }
 
     /**
@@ -137,10 +160,15 @@ public final class ErlangWriter implements LanguageWriter {
     /**
      * Renders an Erlang map type for a Smithy structure.
      *
+     * <p>All fields use {@code =>} (optional presence); required fields are
+     * distinguished at the call site via validation, not in the type spec.
+     * Optional fields omit {@code | undefined} — the {@code =>} operator
+     * already implies the key may be absent.
+     *
      * <p>Example output:
      * <pre>
      * -type get_weather_input() :: #{
-     *     city := binary(),
+     *     city => binary(),
      *     unit => temperature_unit()
      * }.
      * </pre>
@@ -156,10 +184,10 @@ public final class ErlangWriter implements LanguageWriter {
         List<FieldSpec> fields = struct.fields();
         for (int i = 0; i < fields.size(); i++) {
             FieldSpec f = fields.get(i);
-            String separator = f.required() ? " :=" : " =>";
             String comma = (i < fields.size() - 1) ? "," : "";
-            sb.append("    ").append(f.name()).append(separator)
-              .append(" ").append(typeRefToErlang(f.type()))
+            // Use => for all fields; required annotation lives in validate_* helpers
+            sb.append("    ").append(ErlangSymbolProvider.toAtomTag(f.name())).append(" => ")
+              .append(typeRefToErlang(f.type()))
               .append(comma).append("\n");
         }
         sb.append("}.\n");
@@ -167,18 +195,18 @@ public final class ErlangWriter implements LanguageWriter {
     }
 
     /**
-     * Renders an Erlang union type for a Smithy enum.
+     * Renders an Erlang union type for a Smithy enum, using lowercase atoms.
      *
      * <p>Example output:
      * <pre>
-     * -type temperature_unit() :: 'Celsius' | 'Fahrenheit'.
+     * -type temperature_unit() :: celsius | fahrenheit.
      * </pre>
      */
     @Override
     public String renderEnumType(EnumSpec e) {
         String typeName = ErlangSymbolProvider.toSnakeCase(e.name());
         String variants = e.values().stream()
-            .map(v -> "'" + v + "'")
+            .map(ErlangWriter::toErlangAtom)
             .collect(Collectors.joining(" | "));
         return "-type " + typeName + "() :: " + variants + ".\n";
     }
@@ -195,7 +223,7 @@ public final class ErlangWriter implements LanguageWriter {
     public String renderUnionType(UnionSpec u) {
         String typeName = ErlangSymbolProvider.toSnakeCase(u.name());
         String variants = u.variants().stream()
-            .map(f -> "{" + f.name() + ", " + typeRefToErlang(f.type()) + "}")
+            .map(f -> "{" + ErlangSymbolProvider.toAtomTag(f.name()) + ", " + typeRefToErlang(f.type()) + "}")
             .collect(Collectors.joining(" | "));
         return "-type " + typeName + "() :: " + variants + ".\n";
     }
@@ -220,7 +248,7 @@ public final class ErlangWriter implements LanguageWriter {
     }
 
     /**
-     * Renders an Erlang {@code -spec} declaration.
+     * Renders an Erlang {@code -spec} declaration with unnamed parameters.
      *
      * <p>Example output:
      * <pre>
@@ -338,8 +366,6 @@ public final class ErlangWriter implements LanguageWriter {
             return "<<\"" + template + "\">>";
         }
 
-        // Build a list of binary segments from the template
-        // Replace each {label} placeholder with the appropriate Erlang expression
         String processed = template;
         for (LabelBinding label : labels) {
             String mapGet = "maps:get(<<\"" + label.smithyMemberName() + "\">>, " + inputVar + ")";
@@ -567,30 +593,29 @@ public final class ErlangWriter implements LanguageWriter {
     }
 
     /**
-     * Renders a {@code parse_error/2} function that dispatches HTTP status codes
-     * to modeled error atoms.
+     * Renders a {@code parse_error/2} function that dispatches on error code strings
+     * extracted from XML error responses.
      *
      * <p>Example output:
      * <pre>
-     * parse_error(StatusCode, Body) ->
-     *     case StatusCode of
-     *         404 -> {error, {not_found_error, Body}};
-     *         _ -> {error, {unknown_error, StatusCode, Body}}
-     *     end.
+     * parse_error(<<"NoSuchKey">>, Body) ->
+     *     {error, #{error_type => no_such_key, message => maps:get(<<"Message">>, Body, <<"">>)}};
+     * parse_error(_, Body) ->
+     *     {error, #{error_type => unknown, body => Body}}.
      * </pre>
      */
     @Override
     public String renderErrorSerializer(ErrorSpec errors) {
         StringBuilder sb = new StringBuilder();
-        sb.append("parse_error(StatusCode, Body) ->\n");
-        sb.append("    case StatusCode of\n");
+        sb.append("-spec parse_error(binary(), map()) -> {error, term()}.\n");
         for (ErrorBinding eb : errors.errors()) {
             String errorAtom = ErlangSymbolProvider.toFunctionName(eb.smithyName());
-            sb.append("        ").append(eb.httpCode())
-              .append(" -> {error, {").append(errorAtom).append(", Body}};\n");
+            sb.append("parse_error(<<\"").append(eb.smithyName()).append("\">>, Body) ->\n");
+            sb.append("    {error, #{error_type => ").append(errorAtom)
+              .append(", message => maps:get(<<\"Message\">>, Body, <<\"\">>)}};\n");
         }
-        sb.append("        _ -> {error, {unknown_error, StatusCode, Body}}\n");
-        sb.append("    end.\n");
+        sb.append("parse_error(_, Body) ->\n");
+        sb.append("    {error, #{error_type => unknown, body => Body}}.\n");
         return sb.toString();
     }
 
@@ -600,33 +625,6 @@ public final class ErlangWriter implements LanguageWriter {
 
     /**
      * Renders a streaming helper function that loops through paginated results.
-     *
-     * <p>Generates an {@code op_name_stream/2} function that:
-     * <ol>
-     *   <li>Calls the operation</li>
-     *   <li>Extracts the output token from the response</li>
-     *   <li>Accumulates items</li>
-     *   <li>Recurses until no more pages</li>
-     * </ol>
-     *
-     * <p>Example output:
-     * <pre>
-     * list_items_stream(Input, Config) ->
-     *     list_items_stream(Input, Config, []).
-     * list_items_stream(Input, Config, Acc) ->
-     *     case list_items(Input, Config) of
-     *         {ok, Response} ->
-     *             Items = maps:get(<<"items">>, Response, []),
-     *             NewAcc = Acc ++ Items,
-     *             case maps:get(<<"nextToken">>, Response, undefined) of
-     *                 undefined -> {ok, NewAcc};
-     *                 NextToken ->
-     *                     NextInput = Input#{<<"pageToken">> => NextToken},
-     *                     list_items_stream(NextInput, Config, NewAcc)
-     *             end;
-     *         Error -> Error
-     *     end.
-     * </pre>
      */
     @Override
     public String renderPaginationHelper(OperationSpec spec, PaginationSpec pagination) {
@@ -689,11 +687,572 @@ public final class ErlangWriter implements LanguageWriter {
     }
 
     // -------------------------------------------------------------------------
+    // LanguageWriter delegation methods
+    // -------------------------------------------------------------------------
+
+    @Override
+    public String renderToolingAttributes() {
+        return "-dialyzer([no_contracts, no_match]).\n\n";
+    }
+
+    @Override
+    public String exportTypes(List<String> typeNames) {
+        if (typeNames.isEmpty()) return "";
+        StringJoiner sj = new StringJoiner(",\n    ", "-export_type([\n    ", "\n]).\n");
+        for (String name : typeNames) {
+            sj.add(name);
+        }
+        return sj.toString();
+    }
+
+    @Override
+    public String renderClientConstructor() {
+        return "\n-spec new(Config :: map()) -> {ok, map()}.\n"
+             + "new(Config) ->\n"
+             + "    {ok, Config}.\n";
+    }
+
+    @Override
+    public String renderClientOperation(OperationSpec op) {
+        String opName  = ErlangSymbolProvider.toFunctionName(op.operationName());
+        String inType  = ErlangSymbolProvider.toTypeName(op.inputTypeName());
+        String outType = ErlangSymbolProvider.toTypeName(op.outputTypeName());
+        String makeOp  = "make_" + opName + "_request";
+        // Human-readable Smithy name for doc comments
+        String smithyName = op.operationName();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n");
+
+        // 2-arity public spec + wrapper
+        sb.append("%% Calls the ").append(smithyName).append(" operation\n");
+        sb.append("-spec ").append(opName)
+          .append("(Client :: map(), Input :: ").append(inType).append(") ->\n");
+        sb.append("    {ok, ").append(outType).append("} | {error, term()}.\n");
+        sb.append(opName).append("(Client, Input) ->\n");
+        sb.append("    ").append(opName).append("(Client, Input, #{}).\n\n");
+
+        // 3-arity public spec + retry dispatcher
+        sb.append("%% Calls the ").append(smithyName).append(" operation with options\n");
+        sb.append("-spec ").append(opName)
+          .append("(Client :: map(), Input :: ").append(inType).append(", Options :: map()) ->\n");
+        sb.append("    {ok, ").append(outType).append("} | {error, term()}.\n");
+        sb.append(opName).append("(Client, Input, Options) when is_map(Input), is_map(Options) ->\n");
+        sb.append("    RequestFun = fun() -> ").append(makeOp).append("(Client, Input) end,\n");
+        sb.append("    case maps:get(enable_retry, Options, true) of\n");
+        sb.append("        true -> aws_retry:with_retry(RequestFun, Options);\n");
+        sb.append("        false -> RequestFun()\n");
+        sb.append("    end.\n\n");
+
+        // internal make_<op>_request/2 spec + body
+        sb.append("%% Internal function to make the ").append(smithyName).append(" request\n");
+        sb.append("-spec ").append(makeOp)
+          .append("(Client :: map(), Input :: ").append(inType).append(") ->\n");
+        sb.append("    {ok, ").append(outType).append("} | {error, term()}.\n");
+        sb.append(makeOp).append("(Client, Input) when is_map(Input) ->\n");
+        sb.append("    Method = <<\"").append(op.http().method()).append("\">>,\n");
+
+        appendQueryString(sb, op);
+        appendUrlBuilding(sb, op);
+        appendBody(sb, op);
+        appendHeaders(sb, op);
+        appendHttpcCall(sb, op);
+
+        return sb.toString();
+    }
+
+    @Override
+    public String renderEnumCodec(EnumSpec e) {
+        String baseName = ErlangSymbolProvider.toFunctionName(e.name());
+        String typeName = ErlangSymbolProvider.toTypeName(e.name());
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("-spec encode_").append(baseName).append("(").append(typeName).append(") -> binary().\n");
+        for (String v : e.values()) {
+            sb.append("encode_").append(baseName).append("(").append(toErlangAtom(v))
+              .append(") -> <<\"").append(v).append("\">>;\n");
+        }
+        // Remove last ";\n" and replace with ".\n\n"
+        int lastSemi = sb.lastIndexOf(";\n");
+        sb.replace(lastSemi, lastSemi + 2, ".\n\n");
+
+        sb.append("-spec decode_").append(baseName).append("(binary()) ->\n");
+        sb.append("    {ok, ").append(typeName).append("} | {error, {invalid_enum_value, binary()}}.\n");
+        for (String v : e.values()) {
+            sb.append("decode_").append(baseName).append("(<<\"").append(v)
+              .append("\">>) -> {ok, ").append(toErlangAtom(v)).append("};\n");
+        }
+        sb.append("decode_").append(baseName).append("(Other) -> {error, {invalid_enum_value, Other}}.\n\n");
+
+        return sb.toString();
+    }
+
+    @Override
+    public String renderUnionCodec(UnionSpec u) {
+        String baseName = ErlangSymbolProvider.toFunctionName(u.name());
+        String typeName = ErlangSymbolProvider.toTypeName(u.name());
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("-spec encode_").append(baseName).append("(").append(typeName).append(") -> map().\n");
+        for (FieldSpec variant : u.variants()) {
+            String atomTag = ErlangSymbolProvider.toAtomTag(variant.name());
+            sb.append("encode_").append(baseName).append("({").append(atomTag).append(", Value}) ->\n");
+            sb.append("    #{<<\"").append(variant.name()).append("\">> => Value};\n");
+        }
+        sb.append("encode_").append(baseName).append("({unknown, Value}) ->\n")
+          .append("    #{<<\"unknown\">> => Value}.\n\n");
+
+        sb.append("-spec decode_").append(baseName).append("(map()) -> ").append(typeName).append(".\n");
+        sb.append("decode_").append(baseName).append("(Map) when is_map(Map) ->\n");
+        renderUnionDecodeBody(sb, u.variants(), 0);
+        sb.append(".\n\n");
+
+        return sb.toString();
+    }
+
+    @Override
+    public String renderValidateHelper(StructSpec s) {
+        List<String> required = s.fields().stream()
+                .filter(FieldSpec::required)
+                .map(FieldSpec::name)
+                .collect(Collectors.toList());
+        if (required.isEmpty()) return "";
+
+        String funcName = "validate_" + ErlangSymbolProvider.toFunctionName(s.name());
+        StringBuilder sb = new StringBuilder();
+        sb.append("-spec ").append(funcName).append("(map()) ->\n");
+        sb.append("    ok | {error, {missing_required_fields, [binary()]}}.\n");
+        sb.append(funcName).append("(Input) ->\n");
+        sb.append("    RequiredFields = [");
+        for (int i = 0; i < required.size(); i++) {
+            if (i > 0) sb.append(", ");
+            sb.append("<<\"").append(required.get(i)).append("\">>");
+        }
+        sb.append("],\n");
+        sb.append("    Missing = [F || F <- RequiredFields, not maps:is_key(F, Input)],\n");
+        sb.append("    case Missing of\n");
+        sb.append("        [] -> ok;\n");
+        sb.append("        _ -> {error, {missing_required_fields, Missing}}\n");
+        sb.append("    end.\n\n");
+        return sb.toString();
+    }
+
+    @Override
+    public String renderSharedHelpers() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\nurl_encode(Binary) when is_binary(Binary) ->\n");
+        sb.append("    url_encode(binary_to_list(Binary));\n");
+        sb.append("url_encode(String) when is_list(String) ->\n");
+        sb.append("    list_to_binary(uri_string:quote(String)).\n\n");
+        sb.append("ensure_binary(Bin) when is_binary(Bin) -> Bin;\n");
+        sb.append("ensure_binary(List) when is_list(List) -> list_to_binary(List);\n");
+        sb.append("ensure_binary(Int) when is_integer(Int) -> integer_to_binary(Int);\n");
+        sb.append("ensure_binary(Float) when is_float(Float) -> float_to_binary(Float);\n");
+        sb.append("ensure_binary(Atom) when is_atom(Atom) -> atom_to_binary(Atom, utf8);\n");
+        sb.append("ensure_binary(Other) -> list_to_binary(io_lib:format(\"~p\", [Other])).\n\n");
+        return sb.toString();
+    }
+
+    /**
+     * Renders a {@code parse_error/2} function — JSON-protocol fallback that dispatches
+     * on HTTP status codes. Called by the protocol-aware overload when not XML.
+     *
+     * <p>Example output:
+     * <pre>
+     * -spec parse_error(integer(), binary()) -> {error, term()}.
+     * parse_error(404, Body) -> {error, {not_found_error, Body}};
+     * parse_error(_, Body) -> {error, {http_error, unknown, Body}}.
+     * </pre>
+     */
+    @Override
+    public String renderModuleParseError(List<ErrorBinding> errors) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("-spec parse_error(integer(), binary()) -> {error, term()}.\n");
+        if (errors.isEmpty()) {
+            sb.append("parse_error(StatusCode, Body) ->\n");
+            sb.append("    {error, {http_error, StatusCode, Body}}.\n");
+        } else {
+            // Deduplicate by HTTP status code: many errors may share the same code (e.g. 400).
+            // Keep the first error name encountered for each code.
+            LinkedHashMap<Integer, ErrorBinding> byCode = new LinkedHashMap<>();
+            for (ErrorBinding eb : errors) {
+                byCode.putIfAbsent(eb.httpCode(), eb);
+            }
+            for (ErrorBinding eb : byCode.values()) {
+                String atom = ErlangSymbolProvider.toFunctionName(eb.smithyName());
+                sb.append("parse_error(").append(eb.httpCode()).append(", Body) ->\n");
+                sb.append("    {error, {").append(atom).append(", Body}};\n");
+            }
+            sb.append("parse_error(StatusCode, Body) ->\n");
+            sb.append("    {error, {http_error, StatusCode, Body}}.\n");
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Protocol-aware overload.
+     *
+     * <ul>
+     *   <li>{@code REST_XML} and {@code AWS_JSON} — dispatch on error code binary string;
+     *       return {@code #{error_type => atom, message => binary()}} structured maps.</li>
+     *   <li>{@code REST_JSON} / {@code AWS_QUERY} — dispatch on HTTP status code integer;
+     *       return {@code {error, {atom, Body}}} tuples.</li>
+     * </ul>
+     */
+    @Override
+    public String renderModuleParseError(List<ErrorBinding> errors, ErrorCodeStrategy strategy) {
+        boolean useStringDispatch = strategy == ErrorCodeStrategy.REST_XML
+                                 || strategy == ErrorCodeStrategy.AWS_JSON;
+        if (!useStringDispatch) {
+            return renderModuleParseError(errors);
+        }
+        // String-code dispatch: used for REST_XML and AWS_JSON.
+        // Returns structured #{error_type => atom, message => binary()} maps.
+        StringBuilder sb = new StringBuilder();
+        sb.append("-spec parse_error(binary(), map()) -> {error, term()}.\n");
+        for (ErrorBinding eb : errors) {
+            String atom = ErlangSymbolProvider.toFunctionName(eb.smithyName());
+            sb.append("parse_error(<<\"").append(eb.smithyName()).append("\">>, Body) ->\n");
+            sb.append("    {error, #{error_type => ").append(atom)
+              .append(", message => maps:get(<<\"Message\">>, Body, <<\"\">>)}};\n");
+        }
+        sb.append("parse_error(_, Body) ->\n");
+        sb.append("    {error, #{error_type => unknown, body => Body}}.\n");
+        return sb.toString();
+    }
+
+    @Override
+    public List<String> clientRuntimeModules(
+            boolean needsSigV4,
+            boolean needsXml,
+            boolean needsQuery,
+            boolean needsS3) {
+        List<String> modules = new ArrayList<>();
+        if (needsSigV4) {
+            modules.add("client/aws_sigv4.erl");
+            modules.add("client/aws_credentials.erl");
+        }
+        modules.add("client/aws_retry.erl");
+        modules.add("client/aws_config.erl");
+        if (needsXml)   modules.add("client/aws_xml.erl");
+        if (needsQuery) modules.add("client/aws_query.erl");
+        if (needsS3)    modules.add("client/aws_s3.erl");
+        return modules;
+    }
+
+    // ── Private helpers for renderClientOperation ─────────────────────────────
+
+    private void appendQueryString(StringBuilder sb, OperationSpec op) {
+        List<QueryBinding> queries = op.queries() != null ? op.queries() : List.of();
+        if (queries.isEmpty()) {
+            sb.append("    QueryString = <<>>,\n");
+        } else {
+            sb.append("    QsParams = [");
+            for (int i = 0; i < queries.size(); i++) {
+                QueryBinding q = queries.get(i);
+                if (i > 0) sb.append(", ");
+                sb.append("{<<\"").append(q.queryKey()).append("\">>, ")
+                  .append("maps:get(<<\"").append(q.smithyMemberName()).append("\">>, Input, undefined)}");
+            }
+            sb.append("],\n");
+            sb.append("    QsFiltered = [{K, ensure_binary(V)} || {K, V} <- QsParams, V =/= undefined],\n");
+            sb.append("    QueryString = case QsFiltered of\n");
+            sb.append("        [] -> <<>>;\n");
+            sb.append("        _ -> <<\"?\", (uri_string:compose_query(QsFiltered))/binary>>\n");
+            sb.append("    end,\n");
+        }
+    }
+
+    /**
+     * Appends URL-building code. For S3-style operations (those with a {@code Bucket} label),
+     * delegates to {@code aws_s3:build_url/4} which handles virtual-hosted-style routing.
+     * For all other operations, constructs the URL from the client endpoint and URI template.
+     */
+    private void appendUrlBuilding(StringBuilder sb, OperationSpec op) {
+        List<LabelBinding> labels = op.labels() != null ? op.labels() : List.of();
+        boolean hasBucketLabel = labels.stream()
+            .anyMatch(l -> "Bucket".equals(l.smithyMemberName()));
+
+        if (hasBucketLabel) {
+            // S3-specific: delegate bucket routing to aws_s3:build_url
+            sb.append("    Bucket = maps:get(<<\"Bucket\">>, Input, <<>>),\n");
+            boolean hasKeyLabel = labels.stream()
+                .anyMatch(l -> "Key".equals(l.smithyMemberName()));
+            if (hasKeyLabel) {
+                sb.append("    Key = maps:get(<<\"Key\">>, Input, <<>>),\n");
+            } else {
+                sb.append("    Key = <<>>,\n");
+            }
+            sb.append("    Url = aws_s3:build_url(Client, Bucket, Key, QueryString),\n");
+        } else {
+            // Standard: Endpoint + URI template substitution
+            sb.append("    Endpoint = maps:get(endpoint, Client),\n");
+            if (labels.isEmpty()) {
+                sb.append("    Uri = <<\"").append(op.http().uriTemplate()).append("\">>,\n");
+            } else {
+                sb.append("    Uri0 = <<\"").append(op.http().uriTemplate()).append("\">>,\n");
+                for (int i = 0; i < labels.size(); i++) {
+                    LabelBinding label = labels.get(i);
+                    String varName = ErlangSymbolProvider.toVarName(label.smithyMemberName());
+                    sb.append("    ").append(varName).append("Value = maps:get(<<\"")
+                      .append(label.smithyMemberName()).append("\">>, Input),\n");
+                    sb.append("    ").append(varName).append("Encoded = url_encode(ensure_binary(")
+                      .append(varName).append("Value)),\n");
+                    sb.append("    Uri").append(i + 1)
+                      .append(" = binary:replace(Uri").append(i).append(", <<\"{")
+                      .append(label.uriPlaceholder()).append("}\">>, ").append(varName).append("Encoded),\n");
+                }
+                sb.append("    Uri = Uri").append(labels.size()).append(",\n");
+            }
+            sb.append("    Url = <<Endpoint/binary, Uri/binary, QueryString/binary>>,\n");
+        }
+    }
+
+    private void appendBody(StringBuilder sb, OperationSpec op) {
+        BodySpec body = op.body();
+        boolean hasBodyMembers = body != null
+                && body.encoding() != BodyEncoding.NONE
+                && !body.bodyMemberNames().isEmpty();
+
+        if (hasBodyMembers) {
+            // AWS JSON 1.0/1.1: encode the full Input map directly — the protocol places
+            // all members in the body with no HTTP label/query/header bindings.
+            if (op.protocolErrorStrategy() == ErrorCodeStrategy.AWS_JSON) {
+                sb.append("    Body = jsx:encode(Input),\n");
+                return;
+            }
+            sb.append("    BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
+            List<String> members = body.bodyMemberNames();
+            for (int i = 0; i < members.size(); i++) {
+                String m = members.get(i);
+                if (i > 0) sb.append(", ");
+                sb.append("<<\"").append(m).append("\">> => maps:get(<<\"")
+                  .append(m).append("\">>, Input, undefined)");
+            }
+            sb.append("}),\n");
+            switch (body.encoding()) {
+                case XML:
+                    sb.append("    Body = aws_xml:encode(BodyMap, <<\"Body\">>),\n");
+                    break;
+                case FORM_URLENCODED:
+                    sb.append("    Body = aws_query:encode(BodyMap),\n");
+                    break;
+                default:
+                    sb.append("    Body = jsx:encode(BodyMap),\n");
+            }
+        } else if (op.auth().requiresSigV4()) {
+            sb.append("    Body = <<>>,\n");
+        }
+    }
+
+    private void appendHeaders(StringBuilder sb, OperationSpec op) {
+        // Use the protocol-level Content-Type (e.g. "application/x-amz-json-1.0" for awsJson1.0,
+        // "application/xml" for S3). This is set by the protocol analyzer and stored in the IR,
+        // so we never fall back to the generic BodyEncoding → string mapping here.
+        String contentType = op.protocolContentType() != null
+                ? op.protocolContentType()
+                : resolveBodyContentType(op.body(), op.responseEncoding());
+        List<HeaderBinding> headerBindings = op.headers() != null ? op.headers() : List.of();
+
+        // Reference style: numbered accumulator variables, one case expression per optional header.
+        sb.append("    Headers0 = [{<<\"Content-Type\">>, <<\"").append(contentType).append("\">>}],\n");
+
+        int idx = 0;
+        for (HeaderBinding h : headerBindings) {
+            String prev = "Headers" + idx;
+            String next = "Headers" + (idx + 1);
+            // Each case uses a unique variable name to avoid Erlang's single-assignment restriction.
+            String valVar = "Val" + (idx + 1);
+            if (h.literalValue() != null) {
+                sb.append("    ").append(next).append(" = [{<<\"").append(h.headerName())
+                  .append("\">>, <<\"").append(h.literalValue()).append("\">>} | ").append(prev).append("],\n");
+            } else if (h.required()) {
+                sb.append("    ").append(next).append(" = [{<<\"").append(h.headerName())
+                  .append("\">>, ensure_binary(maps:get(<<\"").append(h.smithyMemberName())
+                  .append("\">>, Input))} | ").append(prev).append("],\n");
+            } else {
+                sb.append("    ").append(next).append(" = case maps:get(<<\"")
+                  .append(h.smithyMemberName()).append("\">>, Input, undefined) of\n");
+                sb.append("        undefined -> ").append(prev).append(";\n");
+                sb.append("        ").append(valVar).append(" -> [{<<\"").append(h.headerName())
+                  .append("\">>, ensure_binary(").append(valVar).append(")} | ").append(prev).append("]\n");
+                sb.append("    end,\n");
+            }
+            idx++;
+        }
+
+        sb.append("    Headers = Headers").append(idx).append(",\n");
+    }
+
+    /**
+     * Appends the signing wrapper and httpc dispatch block.
+     *
+     * <p>When SigV4 is required, wraps the HTTP call in a {@code case} expression
+     * so that signing failures produce {@code {error, {signing_error, Reason}}}
+     * rather than a function_clause crash.
+     *
+     * <p>Error responses are parsed as REST-XML: the {@code <Code>} element is
+     * extracted and used to dispatch {@code parse_error/2} by error name string,
+     * which gives unambiguous mapping even when multiple errors share an HTTP code.
+     */
+    private void appendHttpcCall(StringBuilder sb, OperationSpec op) {
+        BodySpec body = op.body();
+        boolean hasBodyMembers = body != null
+                && body.encoding() != BodyEncoding.NONE
+                && !body.bodyMemberNames().isEmpty();
+        String contentType = op.protocolContentType() != null
+                ? op.protocolContentType()
+                : resolveBodyContentType(body, op.responseEncoding());
+        boolean hasSigV4 = op.auth().requiresSigV4();
+
+        // Determine indentation prefix (deeper inside signing case when sigv4 is required)
+        String i1 = "    ";   // 4 spaces — top-level statement indent
+        String i2 = "        "; // 8 spaces — inside signing {ok, SignedHeaders} branch
+
+        if (hasSigV4) {
+            sb.append(i1).append("case aws_sigv4:sign_request(Method, Url, Headers, Body, Client) of\n");
+            sb.append(i1).append("    {ok, SignedHeaders} ->\n");
+        }
+
+        String ind = hasSigV4 ? i2 + "    " : i1; // 12 or 4 spaces for the body
+
+        sb.append(ind).append("StringUrl = binary_to_list(Url),\n");
+        sb.append(ind).append("StringHeaders = [{binary_to_list(K), binary_to_list(V)} || {K, V} <- ")
+          .append(hasSigV4 ? "SignedHeaders" : "Headers").append("],\n");
+        if (hasBodyMembers) {
+            sb.append(ind).append("Request = {StringUrl, StringHeaders, \"").append(contentType).append("\", Body},\n");
+        } else {
+            sb.append(ind).append("Request = {StringUrl, StringHeaders},\n");
+        }
+        sb.append(ind).append("case httpc:request(binary_to_atom(string:lowercase(Method), utf8), Request, [], [{body_format, binary}]) of\n");
+
+        // Success branch
+        sb.append(ind).append("    {ok, {{_, StatusCode, _}, _RespHeaders, ResponseBody}} when StatusCode >= 200, StatusCode < 300 ->\n");
+        sb.append(ind).append("        case ResponseBody of\n");
+        sb.append(ind).append("            <<>> -> {ok, #{}};\n");
+        sb.append(ind).append("            _ ->\n");
+        if (op.responseEncoding() == BodyEncoding.XML) {
+            sb.append(ind).append("                aws_xml:decode(ResponseBody)\n");
+        } else {
+            sb.append(ind).append("                try jsx:decode(ResponseBody, [return_maps]) of\n");
+            sb.append(ind).append("                    DecodedBody -> {ok, DecodedBody}\n");
+            sb.append(ind).append("                catch\n");
+            sb.append(ind).append("                    _:DecodeError -> {error, {json_decode_error, DecodeError}}\n");
+            sb.append(ind).append("                end\n");
+        }
+        sb.append(ind).append("        end;\n");
+
+        // Error branch — protocol-specific dispatch
+        ErrorCodeStrategy errStrategy = op.protocolErrorStrategy() != null
+                ? op.protocolErrorStrategy() : ErrorCodeStrategy.REST_JSON;
+        if (errStrategy == ErrorCodeStrategy.REST_XML) {
+            // REST-XML (S3 etc.): parse XML body, extract <Code> element, dispatch by name string
+            sb.append(ind).append("    {ok, {{_, _ErrStatusCode, _}, _RespHeaders, ErrorBody}} ->\n");
+            sb.append(ind).append("        case aws_xml:decode(ErrorBody) of\n");
+            sb.append(ind).append("            {ok, #{<<\"Error\">> := ErrorMap}} ->\n");
+            sb.append(ind).append("                Code = maps:get(<<\"Code\">>, ErrorMap, <<\"Unknown\">>),\n");
+            sb.append(ind).append("                parse_error(Code, ErrorMap);\n");
+            sb.append(ind).append("            _ ->\n");
+            sb.append(ind).append("                {error, {http_error, ErrorBody}}\n");
+            sb.append(ind).append("        end;\n");
+        } else if (errStrategy == ErrorCodeStrategy.AWS_JSON) {
+            // AWS JSON 1.0/1.1 (DynamoDB etc.): decode JSON body, extract __type, dispatch by name string
+            sb.append(ind).append("    {ok, {{_, ErrStatusCode, _}, _RespHeaders, ErrorBody}} ->\n");
+            sb.append(ind).append("        try\n");
+            sb.append(ind).append("            ErrorMap = jsx:decode(ErrorBody, [return_maps]),\n");
+            sb.append(ind).append("            ErrorType = maps:get(<<\"__type\">>, ErrorMap, <<\"Unknown\">>),\n");
+            sb.append(ind).append("            parse_error(ErrorType, ErrorMap)\n");
+            sb.append(ind).append("        catch\n");
+            sb.append(ind).append("            _:_ -> {error, {http_error, ErrStatusCode, ErrorBody}}\n");
+            sb.append(ind).append("        end;\n");
+        } else {
+            // REST-JSON / AWS-Query: dispatch by HTTP status code integer
+            sb.append(ind).append("    {ok, {{_, ErrStatusCode, _}, _RespHeaders, ErrorBody}} ->\n");
+            sb.append(ind).append("        parse_error(ErrStatusCode, ErrorBody);\n");
+        }
+
+        sb.append(ind).append("    {error, Reason} ->\n");
+        sb.append(ind).append("        {error, {http_error, Reason}}\n");
+        sb.append(ind).append("end");
+
+        if (hasSigV4) {
+            sb.append(";\n");
+            sb.append(i1).append("    {error, SignError} ->\n");
+            sb.append(i1).append("        {error, {signing_error, SignError}}\n");
+            sb.append(i1).append("end");
+        }
+        sb.append(".\n");
+    }
+
+    private void renderUnionDecodeBody(StringBuilder sb, List<FieldSpec> variants, int depth) {
+        String indent = "    ".repeat(depth + 1);
+        if (variants.isEmpty()) {
+            sb.append(indent).append("{unknown, Map}");
+            return;
+        }
+        FieldSpec head = variants.get(0);
+        List<FieldSpec> tail = variants.subList(1, variants.size());
+        String atomTag = ErlangSymbolProvider.toAtomTag(head.name());
+        sb.append(indent).append("case maps:find(<<\"").append(head.name()).append("\">>, Map) of\n");
+        sb.append(indent).append("    {ok, Value} -> {").append(atomTag).append(", Value};\n");
+        sb.append(indent).append("    error ->\n");
+        renderUnionDecodeBody(sb, tail, depth + 1);
+        sb.append("\n").append(indent).append("end");
+    }
+
+    /**
+     * Resolves the Content-Type for a request.
+     *
+     * <p>When the operation has body members, the encoding of those members determines
+     * the type. When there are no body members (body is null or NONE), falls back to
+     * {@code fallbackEncoding} — typically the response encoding — so that XML-protocol
+     * operations (like S3) correctly advertise {@code application/xml} even on requests
+     * that carry no body.
+     */
+    private static String resolveBodyContentType(BodySpec body, BodyEncoding fallbackEncoding) {
+        if (body == null || body.encoding() == BodyEncoding.NONE) {
+            return resolveContentType(fallbackEncoding != null ? fallbackEncoding : BodyEncoding.JSON);
+        }
+        return resolveContentType(body.encoding());
+    }
+
+    // -------------------------------------------------------------------------
     // Internal helpers
     // -------------------------------------------------------------------------
 
     /**
+     * Erlang reserved words that cannot appear as unquoted atoms in pattern position.
+     *
+     * <p>These must be single-quoted even though they are lowercase.
+     */
+    private static final Set<String> ERLANG_RESERVED = Set.of(
+        "after", "and", "andalso", "band", "begin", "bnot", "bor", "bsl", "bsr", "bxor",
+        "case", "catch", "cond", "div", "end", "fun", "if", "let", "not", "of", "or",
+        "orelse", "receive", "rem", "try", "when", "xor"
+    );
+
+    /**
+     * Converts a Smithy enum value string to an Erlang atom literal.
+     *
+     * <p>Values are always lowercased for idiomatic Erlang style ("Enabled" → {@code enabled}).
+     * Atoms that need quoting (start with non-lowercase, contain special chars, or are Erlang
+     * reserved words) are wrapped in single quotes.
+     */
+    static String toErlangAtom(String value) {
+        String lower = value.toLowerCase().replace('-', '_');
+        // Unquoted atoms: start with lowercase letter, contain only [a-z0-9_@], not reserved
+        if (lower.matches("[a-z][a-z0-9_@]*") && !ERLANG_RESERVED.contains(lower)) {
+            return lower;
+        }
+        return "'" + lower + "'";
+    }
+
+    /**
      * Converts a {@link TypeRef} to the corresponding Erlang type string.
+     *
+     * <p>Optional wrappers are stripped — the {@code =>} map operator already implies
+     * a field may be absent, so adding {@code | undefined} would be redundant noise.
+     * Lists use the {@code [T]} bracket notation instead of {@code list(T)}.
      */
     private String typeRefToErlang(TypeRef ref) {
         if (ref instanceof TypeRef.Primitive p) {
@@ -701,11 +1260,12 @@ public final class ErlangWriter implements LanguageWriter {
         } else if (ref instanceof TypeRef.Named n) {
             return ErlangSymbolProvider.toSnakeCase(n.name()) + "()";
         } else if (ref instanceof TypeRef.ListOf l) {
-            return "list(" + typeRefToErlang(l.element()) + ")";
+            return "[" + typeRefToErlang(l.element()) + "]";
         } else if (ref instanceof TypeRef.MapOf) {
             return "map()";
         } else if (ref instanceof TypeRef.Optional o) {
-            return typeRefToErlang(o.inner()) + " | undefined";
+            // Strip the Optional wrapper — => in map types already implies optionality
+            return typeRefToErlang(o.inner());
         }
         return "term()";
     }
