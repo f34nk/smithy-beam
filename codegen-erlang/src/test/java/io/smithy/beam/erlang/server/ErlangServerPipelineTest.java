@@ -20,19 +20,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ErlangServerPipelineTest {
 
-    private static final String SVC = "example.weather#WeatherService";
+    private static final String SVC  = "example.weather#WeatherService";
     private static final String BASE = "weather_server";
 
     private static Model loadWeatherModel(ClassLoader cl) {
         ProtocolRegistrations.init();
         return Model.assembler(cl)
                 .discoverModels(cl)
-                // Re-use the weather.smithy fixture from the client test resources.
                 .addImport(cl.getResource("io/smithy/beam/erlang/client/weather.smithy"))
                 .assemble()
                 .unwrap();
     }
 
+    /** Runs the {@link ServerPipeline} — produces the consolidated _server.erl and _impl.erl. */
     private static MockManifest runPipeline(String moduleName) {
         ClassLoader cl = ErlangServerPipelineTest.class.getClassLoader();
         Model model = loadWeatherModel(cl);
@@ -49,24 +49,36 @@ class ErlangServerPipelineTest {
         return manifest;
     }
 
-    // ── Four-file generation ──────────────────────────────────────────────────
+    // ── File existence ────────────────────────────────────────────────────────
 
     @Test
-    void generatesHandlerFile() {
+    void generatesServerFile() {
         MockManifest manifest = runPipeline(BASE);
-        assertThat(manifest.hasFile("src/generated/" + BASE + "_handler.erl")).isTrue();
+        assertThat(manifest.hasFile("src/generated/" + BASE + "_server.erl")).isTrue();
     }
 
     @Test
-    void generatesRouterFile() {
+    void doesNotGenerateHandlerFile() {
         MockManifest manifest = runPipeline(BASE);
-        assertThat(manifest.hasFile("src/generated/" + BASE + "_router.erl")).isTrue();
+        assertThat(manifest.hasFile("src/generated/" + BASE + "_handler.erl")).isFalse();
     }
 
     @Test
-    void generatesDispatcherFile() {
+    void doesNotGenerateRouterFile() {
         MockManifest manifest = runPipeline(BASE);
-        assertThat(manifest.hasFile("src/generated/" + BASE + "_dispatcher.erl")).isTrue();
+        assertThat(manifest.hasFile("src/generated/" + BASE + "_router.erl")).isFalse();
+    }
+
+    @Test
+    void doesNotGenerateDispatcherFile() {
+        MockManifest manifest = runPipeline(BASE);
+        assertThat(manifest.hasFile("src/generated/" + BASE + "_dispatcher.erl")).isFalse();
+    }
+
+    @Test
+    void doesNotGenerateCowboyFile() {
+        MockManifest manifest = runPipeline(BASE);
+        assertThat(manifest.hasFile("src/generated/" + BASE + "_cowboy.erl")).isFalse();
     }
 
     @Test
@@ -95,69 +107,86 @@ class ErlangServerPipelineTest {
         assertThat(manifest.hasFile("smithy_error_map.erl")).isTrue();
     }
 
-    // ── Content correctness ───────────────────────────────────────────────────
+    // ── Server module content ─────────────────────────────────────────────────
 
     @Test
-    void handlerContainsCallbackForGetWeather() {
+    void serverModuleDeclaration() {
         MockManifest manifest = runPipeline(BASE);
-        String handler = new String(manifest.expectFileBytes("src/generated/" + BASE + "_handler.erl"));
-        assertThat(handler).contains("-callback get_weather(");
+        String server = new String(manifest.expectFileBytes("src/generated/" + BASE + "_server.erl"));
+        assertThat(server).contains("-module(" + BASE + "_server).");
     }
 
     @Test
-    void handlerContainsModuleDeclaration() {
+    void serverModuleDeclaresCowboyBehaviour() {
         MockManifest manifest = runPipeline(BASE);
-        String handler = new String(manifest.expectFileBytes("src/generated/" + BASE + "_handler.erl"));
-        assertThat(handler).contains("-module(" + BASE + "_handler).");
+        String server = new String(manifest.expectFileBytes("src/generated/" + BASE + "_server.erl"));
+        assertThat(server).contains("-behaviour(cowboy_handler).");
     }
 
     @Test
-    void routerContainsRouteClauseForGetWeather() {
+    void serverModuleExportsInit2() {
         MockManifest manifest = runPipeline(BASE);
-        String router = new String(manifest.expectFileBytes("src/generated/" + BASE + "_router.erl"));
-        assertThat(router).contains("{ok, get_weather}");
+        String server = new String(manifest.expectFileBytes("src/generated/" + BASE + "_server.erl"));
+        assertThat(server).contains("init/2");
     }
 
     @Test
-    void routerContainsFallbackClause() {
+    void serverModuleContainsCallbackForGetWeather() {
         MockManifest manifest = runPipeline(BASE);
-        String router = new String(manifest.expectFileBytes("src/generated/" + BASE + "_router.erl"));
-        assertThat(router).contains("{error, not_found}");
+        String server = new String(manifest.expectFileBytes("src/generated/" + BASE + "_server.erl"));
+        assertThat(server).contains("-callback get_weather(");
     }
 
     @Test
-    void dispatcherExportsHandle3() {
+    void serverModuleContainsInit2WithImplModule() {
         MockManifest manifest = runPipeline(BASE);
-        String dispatcher = new String(manifest.expectFileBytes("src/generated/" + BASE + "_dispatcher.erl"));
-        assertThat(dispatcher).contains("handle/3");
+        String server = new String(manifest.expectFileBytes("src/generated/" + BASE + "_server.erl"));
+        assertThat(server).contains("init(Req0, State)");
+        assertThat(server).contains(BASE + "_impl");
     }
 
     @Test
-    void dispatcherCallsSmithyServerExtract() {
+    void serverModuleContainsHandle3() {
         MockManifest manifest = runPipeline(BASE);
-        String dispatcher = new String(manifest.expectFileBytes("src/generated/" + BASE + "_dispatcher.erl"));
-        assertThat(dispatcher).contains("smithy_server:extract(");
+        String server = new String(manifest.expectFileBytes("src/generated/" + BASE + "_server.erl"));
+        assertThat(server).contains("handle(Impl, Req, Context)");
     }
 
     @Test
-    void dispatcherContainsDeserializeForGetWeather() {
+    void serverModuleContainsRouteClauseForGetWeather() {
         MockManifest manifest = runPipeline(BASE);
-        String dispatcher = new String(manifest.expectFileBytes("src/generated/" + BASE + "_dispatcher.erl"));
-        assertThat(dispatcher).contains("deserialize_get_weather(");
+        String server = new String(manifest.expectFileBytes("src/generated/" + BASE + "_server.erl"));
+        assertThat(server).contains("route(<<\"GET\">>,");
     }
 
     @Test
-    void dispatcherContainsSerializeForGetWeather() {
+    void serverModuleContainsFallbackClause() {
         MockManifest manifest = runPipeline(BASE);
-        String dispatcher = new String(manifest.expectFileBytes("src/generated/" + BASE + "_dispatcher.erl"));
-        assertThat(dispatcher).contains("serialize_get_weather(");
+        String server = new String(manifest.expectFileBytes("src/generated/" + BASE + "_server.erl"));
+        assertThat(server).contains("{error, not_found}");
     }
+
+    @Test
+    void serverModuleContainsDeserializeForGetWeather() {
+        MockManifest manifest = runPipeline(BASE);
+        String server = new String(manifest.expectFileBytes("src/generated/" + BASE + "_server.erl"));
+        assertThat(server).contains("deserialize_get_weather(");
+    }
+
+    @Test
+    void serverModuleContainsSerializeForGetWeather() {
+        MockManifest manifest = runPipeline(BASE);
+        String server = new String(manifest.expectFileBytes("src/generated/" + BASE + "_server.erl"));
+        assertThat(server).contains("serialize_get_weather(");
+    }
+
+    // ── Impl scaffold content ─────────────────────────────────────────────────
 
     @Test
     void implScaffoldDeclaresCorrectBehaviour() {
         MockManifest manifest = runPipeline(BASE);
         String impl = new String(manifest.expectFileBytes("src/generated/" + BASE + "_impl.erl"));
-        assertThat(impl).contains("-behaviour(" + BASE + "_handler).");
+        assertThat(impl).contains("-behaviour(" + BASE + "_server).");
     }
 
     @Test
@@ -196,7 +225,7 @@ class ErlangServerPipelineTest {
         assertThat(secondBytes).isEqualTo(firstBytes);
     }
 
-    // ── ServerPipeline source contains no Erlang literals ─────────────────────
+    // ── ServerPipeline source contains no Erlang/framework literals ───────────
 
     @Test
     void serverPipelineShouldContainNoErlangLiterals() throws IOException {
@@ -212,6 +241,10 @@ class ErlangServerPipelineTest {
                 .doesNotContain("binary_to_list")
                 .doesNotContain("-spec ")
                 .doesNotContain("-type ")
-                .doesNotContain("<<\"");
+                .doesNotContain("<<\"")
+                .doesNotContain("cowboy")
+                .doesNotContain("\"_handler\"")
+                .doesNotContain("\"_router\"")
+                .doesNotContain("\"_dispatcher\"");
     }
 }
