@@ -341,10 +341,10 @@ public final class ErlangWriter implements LanguageWriter {
         return "aws_xml:decode(" + bodyVar + ")";
     }
 
-    /** Example: {@code aws_query:encode(Map)} */
+    /** Example: {@code aws_query:encode(<<"ListUsers">>, Map)} */
     @Override
-    public String renderFormEncode(String mapVar) {
-        return "aws_query:encode(" + mapVar + ")";
+    public String renderFormEncode(String actionName, String mapVar) {
+        return "aws_query:encode(<<\"" + actionName + "\">>, " + mapVar + ")";
     }
 
     // -------------------------------------------------------------------------
@@ -1451,7 +1451,17 @@ public final class ErlangWriter implements LanguageWriter {
                     sb.append("    Body = aws_xml:encode(BodyMap, <<\"Body\">>),\n");
                     break;
                 case FORM_URLENCODED:
-                    sb.append("    Body = aws_query:encode(BodyMap),\n");
+                    if (op.apiVersion() != null && !op.apiVersion().isEmpty()) {
+                        sb.append("    Body = aws_query:encode(<<\"")
+                          .append(op.operationName())
+                          .append("\">>, BodyMap, <<\"")
+                          .append(op.apiVersion())
+                          .append("\">>),\n");
+                    } else {
+                        sb.append("    Body = aws_query:encode(<<\"")
+                          .append(op.operationName())
+                          .append("\">>, BodyMap),\n");
+                    }
                     break;
                 default:
                     sb.append("    Body = jsx:encode(BodyMap),\n");
@@ -1581,8 +1591,18 @@ public final class ErlangWriter implements LanguageWriter {
             sb.append(ind).append("        catch\n");
             sb.append(ind).append("            _:_ -> {error, {http_error, ErrStatusCode, ErrorBody}}\n");
             sb.append(ind).append("        end;\n");
+        } else if (errStrategy == ErrorCodeStrategy.AWS_QUERY) {
+            // AWS Query: error body is XML <ErrorResponse><Error><Code>…</Code></Error></ErrorResponse>
+            sb.append(ind).append("    {ok, {{_, _ErrStatusCode, _}, _RespHeaders, ErrorBody}} ->\n");
+            sb.append(ind).append("        case aws_xml:decode(ErrorBody) of\n");
+            sb.append(ind).append("            {ok, #{<<\"ErrorResponse\">> := #{<<\"Error\">> := ErrorMap}}} ->\n");
+            sb.append(ind).append("                Code = maps:get(<<\"Code\">>, ErrorMap, <<\"Unknown\">>),\n");
+            sb.append(ind).append("                parse_error(Code, ErrorMap);\n");
+            sb.append(ind).append("            _ ->\n");
+            sb.append(ind).append("                {error, {http_error, ErrorBody}}\n");
+            sb.append(ind).append("        end;\n");
         } else {
-            // REST-JSON / AWS-Query: dispatch by HTTP status code integer
+            // REST-JSON: dispatch by HTTP status code integer
             sb.append(ind).append("    {ok, {{_, ErrStatusCode, _}, _RespHeaders, ErrorBody}} ->\n");
             sb.append(ind).append("        parse_error(ErrStatusCode, ErrorBody);\n");
         }
