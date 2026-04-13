@@ -25,7 +25,7 @@ Traits for HTTP protocol bindings.
 | [`smithy.api#httpQuery`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpquery-trait) | ✅ | Read into `QueryBinding`; generated operation functions append `uri_string:compose_query/1` output to the URL when query members are present |
 | [`smithy.api#cors`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-cors-trait) | ❌ | CORS configuration for service |
 | [`smithy.api#httpChecksumRequired`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpchecksumrequired-trait) | ❌ | Requires checksum header |
-| [`smithy.api#httpError`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httperror-trait) | ✅ | HTTP status code read into `ErrorBinding`; a single `parse_error/2` function is generated per module, dispatching status codes to `{error, {atom, Body}}` tuples |
+| [`smithy.api#httpError`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httperror-trait) | ✅ | HTTP status code read into `ErrorBinding`; a single `parse_error/2` is generated per module, deduplicated by Smithy error name. For REST_XML / AWS_JSON the error code string (XML `<Code>` or JSON `__type`) is extracted at runtime and used for dispatch, returning `#{error_type => atom, message => binary()}` maps; for REST_JSON / AWS_QUERY the HTTP status code integer is used, returning `{error, {atom, Body}}` tuples |
 | [`smithy.api#httpPrefixHeaders`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpprefixheaders-trait) | ❌ | Binds map to prefixed headers |
 | [`smithy.api#httpQueryParams`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpqueryparams-trait) | ❌ | Binds map to query parameters |
 | [`smithy.api#httpResponseCode`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpresponsecode-trait) | ❌ | Binds member to HTTP response status |
@@ -55,12 +55,12 @@ AWS-specific protocol traits.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`aws.protocols#awsJson1_0`](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html#aws-protocols-awsjson1_0-trait) | ⚠️ | Operation analysis into IR implemented (`AwsJsonProtocolAnalyzer`); pipeline wired; no examples yet |
+| [`aws.protocols#awsJson1_0`](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html#aws-protocols-awsjson1_0-trait) | ✅ | Fully implemented — `AwsJsonProtocolAnalyzer`, `Content-Type: application/x-amz-json-1.0`, literal `X-Amz-Target` header, `jsx:encode(Input)` body, `__type`-based error dispatch, structured error maps; end-to-end example (`dynamodb-demo`) |
 | [`aws.protocols#awsJson1_1`](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html#aws-protocols-awsjson1_1-trait) | ⚠️ | Operation analysis into IR implemented (`AwsJson11ProtocolAnalyzer`); pipeline wired; no examples yet |
 | [`aws.protocols#awsQuery`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquery-trait) | ⚠️ | Operation analysis into IR implemented (`AwsQueryProtocolAnalyzer`); `POST /` with form-encoded body; `aws_query.erl` runtime copied; pipeline wired; no examples yet |
 | [`aws.protocols#ec2Query`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2query-trait) | ⚠️ | Operation analysis into IR implemented (`Ec2QueryProtocolAnalyzer`); extends `AwsQueryProtocolAnalyzer`; pipeline wired; no examples yet |
 | [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ✅ | Fully implemented — operation analysis, pipeline wiring, and end-to-end examples (`weather-service`, `storage-service`) |
-| [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ⚠️ | Operation analysis into IR implemented (`RestXmlProtocolAnalyzer`); XML body encoding; `aws_xml.erl` (and `aws_s3.erl` for S3) copied; pipeline wired; no examples yet |
+| [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ✅ | Fully implemented — `RestXmlProtocolAnalyzer`, XML body encoding, `aws_xml.erl` runtime, `aws_s3.erl` for S3 services (URL building via `aws_s3:build_url`), XML error code string dispatch; end-to-end example (`s3-demo`) |
 | [`aws.protocols#awsQueryCompatible`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquerycompatible-trait) | ❌ | Query protocol compatibility mode |
 | [`aws.protocols#httpChecksum`](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ❌ | HTTP checksum configuration |
 | [`aws.protocols#awsQueryError`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsqueryerror-trait) | ➖ | Custom error code for Query protocol |
@@ -87,11 +87,11 @@ Traits that refine or modify type semantics.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#enumValue`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-enumvalue-trait) | ✅ | Wire values (e.g. `"Celsius"`) are used in generated `encode_<enum>/1` and `decode_<enum>/1` helpers instead of member names (e.g. `"CELSIUS"`) |
-| [`smithy.api#error`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-error-trait) | ✅ | Error shapes are rendered as struct types; HTTP status codes are dispatched in `parse_error/2` |
+| [`smithy.api#enumValue`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-enumvalue-trait) | ✅ | Wire values (e.g. `"Celsius"`) are used in generated `encode_<enum>/1` and `decode_<enum>/1` helpers; enum atoms in generated code are lowercase (e.g. `celsius`) |
+| [`smithy.api#error`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-error-trait) | ✅ | Error shapes are rendered as struct types; dispatched in the protocol-aware `parse_error/2` |
 | [`smithy.api#input`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-input-trait) | ❌ | Marks structure as operation input |
 | [`smithy.api#output`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-output-trait) | ❌ | Marks structure as operation output |
-| [`smithy.api#required`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-required-trait) | ✅ | Required fields use `:=` in struct map types; `validate_<struct>/1` helpers generated for structs with at least one required member, returning `{error, {missing_required_fields, [binary()]}}` |
+| [`smithy.api#required`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-required-trait) | ✅ | All struct map fields use `=>`; required members are enforced at call sites via `validate_<struct>/1` helpers (generated only for operation input types) which return `{error, {missing_required_fields, [binary()]}}` |
 | [`smithy.api#addedDefault`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-addeddefault-trait) | ❌ | Indicates member had default added after initial release |
 | [`smithy.api#clientOptional`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-clientoptional-trait) | ❌ | Indicates a member is optional for clients |
 | [`smithy.api#default`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-default-trait) | ❌ | Sets default value for a member |
@@ -106,7 +106,7 @@ Traits that constrain or validate values.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#enum`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-enum-trait) | ✅ | `EnumSpec` assembled from both legacy `@enum` strings and Smithy 2.0 `enum` shapes; `-type name() :: 'V1' | 'V2'.` emitted; `encode_<enum>/1` and `decode_<enum>/1` helpers generated using wire values |
+| [`smithy.api#enum`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-enum-trait) | ✅ | `EnumSpec` assembled from both legacy `@enum` strings and Smithy 2.0 `enum` shapes; `-type name() :: celsius \| fahrenheit.` emitted as lowercase atoms; `encode_<enum>/1` and `decode_<enum>/1` helpers generated using wire values; Erlang reserved words quoted (e.g. `'and'`) |
 | [`smithy.api#idRef`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-idref-trait) | ❌ | Constrains string to be a valid shape ID |
 | [`smithy.api#length`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-length-trait) | ❌ | Constrains length of strings, lists, or blobs |
 | [`smithy.api#pattern`](https://smithy.io/2.0/spec/constraint-traits.html#smithy-api-pattern-trait) | ❌ | Requires string values to match a regular expression |

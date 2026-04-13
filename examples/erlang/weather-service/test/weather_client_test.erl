@@ -18,13 +18,14 @@ enum_type_defined_test() ->
     ?assert(binary:match(Content, <<"-type temperature_unit()">>) =/= nomatch).
 
 %% Encode/decode round-trip for TemperatureUnit.
+%% Enum atoms are lowercase to follow idiomatic Erlang style.
 encode_temperature_unit_test() ->
-    ?assertEqual(<<"Celsius">>,    weather_client:encode_temperature_unit('Celsius')),
-    ?assertEqual(<<"Fahrenheit">>, weather_client:encode_temperature_unit('Fahrenheit')).
+    ?assertEqual(<<"Celsius">>,    weather_client:encode_temperature_unit(celsius)),
+    ?assertEqual(<<"Fahrenheit">>, weather_client:encode_temperature_unit(fahrenheit)).
 
 decode_temperature_unit_test() ->
-    ?assertEqual({ok, 'Celsius'},    weather_client:decode_temperature_unit(<<"Celsius">>)),
-    ?assertEqual({ok, 'Fahrenheit'}, weather_client:decode_temperature_unit(<<"Fahrenheit">>)),
+    ?assertEqual({ok, celsius},    weather_client:decode_temperature_unit(<<"Celsius">>)),
+    ?assertEqual({ok, fahrenheit}, weather_client:decode_temperature_unit(<<"Fahrenheit">>)),
     ?assertMatch({error, {invalid_enum_value, _}},
                  weather_client:decode_temperature_unit(<<"unknown">>)).
 

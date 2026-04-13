@@ -83,6 +83,11 @@ public class AwsQueryProtocolAnalyzer implements ProtocolAnalyzer {
                 errors,
                 auth,
                 RetrySpec.defaultRetry(),
-                pagination);
+                pagination,
+                RestJsonProtocolAnalyzer.outputTypeName(op, model),
+                RestJsonProtocolAnalyzer.inputTypeName(op, model),
+                BodyEncoding.XML,                          // AwsQuery responses are XML
+                "application/x-www-form-urlencoded",
+                ErrorCodeStrategy.AWS_QUERY);
     }
 }

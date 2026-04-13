@@ -12,6 +12,10 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ErlangClientPipelineTest {
@@ -37,6 +41,23 @@ class ErlangClientPipelineTest {
         assertThat(manifest.hasFile("src/generated/weather_client.erl")).isTrue();
         assertThat(manifest.hasFile("aws_retry.erl")).isTrue();
         assertThat(manifest.hasFile("aws_config.erl")).isTrue();
+    }
+
+    @Test
+    void clientPipelineShouldContainNoErlangLiterals() throws IOException {
+        Path source = Path.of("../codegen-core/src/main/java/io/smithy/beam/core/pipeline/ClientPipeline.java");
+        String code = Files.readString(source);
+        assertThat(code)
+                .doesNotContain("jsx:")
+                .doesNotContain("maps:get")
+                .doesNotContain("maps:find")
+                .doesNotContain("httpc:")
+                .doesNotContain("aws_sigv4")
+                .doesNotContain("aws_retry")
+                .doesNotContain("binary_to_list")
+                .doesNotContain("-spec ")
+                .doesNotContain("-type ")
+                .doesNotContain("<<\"");
     }
 
     @Test
