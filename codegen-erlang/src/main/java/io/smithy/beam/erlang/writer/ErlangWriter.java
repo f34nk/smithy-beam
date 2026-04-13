@@ -1141,20 +1141,25 @@ public final class ErlangWriter implements LanguageWriter {
     /**
      * Renders one stub function for the impl scaffold.
      *
+     * <p>Types are qualified with the handler module name (e.g.
+     * {@code weather_service_handler:get_weather_input()}) so the impl module compiles
+     * without re-declaring or importing them locally.
+     *
      * <p>Example output:
      * <pre>
-     * -spec get_weather(get_weather_input(), map()) -> {ok, get_weather_output()} | {error, term()}.
+     * -spec get_weather(weather_service_handler:get_weather_input(), map()) ->
+     *     {ok, weather_service_handler:get_weather_output()} | {error, term()}.
      * get_weather(_Input, _Context) ->
      *     {error, not_implemented}.
      * </pre>
      */
     @Override
-    public String renderServerImplStub(OperationSpec op) {
+    public String renderServerImplStub(OperationSpec op, String handlerModuleName) {
         String opAtom     = ErlangSymbolProvider.toFunctionName(op.operationName());
         String inputType  = op.inputTypeName()  != null
-                ? ErlangSymbolProvider.toSnakeCase(op.inputTypeName())  + "()" : "map()";
+                ? handlerModuleName + ":" + ErlangSymbolProvider.toSnakeCase(op.inputTypeName())  + "()" : "map()";
         String outputType = op.outputTypeName() != null
-                ? ErlangSymbolProvider.toSnakeCase(op.outputTypeName()) + "()" : "map()";
+                ? handlerModuleName + ":" + ErlangSymbolProvider.toSnakeCase(op.outputTypeName()) + "()" : "map()";
         return "-spec " + opAtom + "(" + inputType + ", map()) ->\n"
              + "    {ok, " + outputType + "} | {error, term()}.\n"
              + opAtom + "(_Input, _Context) ->\n"

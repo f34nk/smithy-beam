@@ -305,14 +305,20 @@ public interface LanguageWriter {
     /**
      * Returns a stub function body for the impl scaffold (written once, never overwritten).
      *
+     * <p>{@code handlerModuleName} is the fully-qualified name of the companion behaviour module
+     * (e.g. {@code weather_service_handler}). Implementations that emit typed specs should use
+     * remote type references ({@code handlerModuleName:type_name()}) so the impl module compiles
+     * without needing to re-declare or import types from the handler.
+     *
      * <p>Erlang example:
      * <pre>
-     * -spec get_weather(get_weather_input(), map()) -> {ok, get_weather_output()} | {error, term()}.
+     * -spec get_weather(weather_service_handler:get_weather_input(), map()) ->
+     *     {ok, weather_service_handler:get_weather_output()} | {error, term()}.
      * get_weather(_Input, _Context) ->
      *     {error, not_implemented}.
      * </pre>
      */
-    default String renderServerImplStub(OperationSpec op) {
+    default String renderServerImplStub(OperationSpec op, String handlerModuleName) {
         return "";
     }
 

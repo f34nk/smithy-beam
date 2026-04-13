@@ -207,8 +207,9 @@ public final class ServerPipeline {
         buf.append(writer.exportSection(exports));
         buf.append("\n");
 
+        String handlerModuleName = baseName + "_handler";
         for (OperationSpec op : ops) {
-            buf.append(writer.renderServerImplStub(op));
+            buf.append(writer.renderServerImplStub(op, handlerModuleName));
             buf.append("\n");
         }
         return buf.toString();
