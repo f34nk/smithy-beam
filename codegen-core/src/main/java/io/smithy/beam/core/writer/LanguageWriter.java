@@ -216,4 +216,111 @@ public interface LanguageWriter {
             boolean needsXml,
             boolean needsQuery,
             boolean needsS3);
+
+    // ── Server-side rendering ─────────────────────────────────────────────────
+
+    /**
+     * Returns a {@code -callback} declaration for one server operation.
+     *
+     * <p>Erlang example:
+     * <pre>
+     * -callback get_weather(Input :: get_weather_input(), Context :: map()) ->
+     *     {ok, get_weather_output()} | {error, term()}.
+     * </pre>
+     */
+    default String renderServerCallbackDeclaration(OperationSpec op) {
+        return "";
+    }
+
+    /**
+     * Returns one routing clause for the given operation (semicolon-terminated,
+     * not period-terminated — the pipeline appends the fall-through clause last).
+     *
+     * <p>Erlang/restJson1 example:
+     * <pre>
+     * route(<<"GET">>, <<"/weather/", _/binary>>) -> {ok, get_weather};
+     * </pre>
+     * <p>Erlang/awsJson example:
+     * <pre>
+     * route(<<"WeatherService.GetWeather">>, _) -> {ok, get_weather};
+     * </pre>
+     */
+    default String renderServerRouteClause(OperationSpec op) {
+        return "";
+    }
+
+    /**
+     * Returns the catch-all routing clause that terminates the {@code route/2} function.
+     *
+     * <p>Erlang example: {@code route(_, _) -> {error, not_found}.\n}
+     */
+    default String renderServerRouteFallback() {
+        return "";
+    }
+
+    /**
+     * Returns the {@code handle/3} function that extracts the request, routes it,
+     * and dispatches to a per-operation helper.  Generated once per service.
+     *
+     * @param ops           all server-side operation specs for the service
+     * @param svcModuleName base module name of the service (e.g. {@code "weather_service"})
+     */
+    default String renderServerHandleFunction(List<OperationSpec> ops, String svcModuleName) {
+        return "";
+    }
+
+    /**
+     * Returns the {@code dispatch_<op>/5} private function for one server operation.
+     *
+     * <p>Erlang example:
+     * <pre>
+     * dispatch_get_weather(Impl, Path, Headers, Body, Context) ->
+     *     Input = deserialize_get_weather(Path, Headers, Body),
+     *     case Impl:get_weather(Input, Context) of
+     *         {ok, Output} -> smithy_server:response(200, serialize_get_weather(Output));
+     *         {error, Err} -> smithy_server:error_response(Err)
+     *     end.
+     * </pre>
+     */
+    default String renderServerDispatchClause(OperationSpec op) {
+        return "";
+    }
+
+    /**
+     * Returns the {@code deserialize_<op>/3} private function that builds the
+     * operation input map from the raw path, headers, and body binaries.
+     */
+    default String renderServerDeserialize(OperationSpec op) {
+        return "";
+    }
+
+    /**
+     * Returns the {@code serialize_<op>/1} private function that encodes the
+     * operation output map to a response body binary.
+     */
+    default String renderServerSerialize(OperationSpec op) {
+        return "";
+    }
+
+    /**
+     * Returns a stub function body for the impl scaffold (written once, never overwritten).
+     *
+     * <p>Erlang example:
+     * <pre>
+     * -spec get_weather(get_weather_input(), map()) -> {ok, get_weather_output()} | {error, term()}.
+     * get_weather(_Input, _Context) ->
+     *     {error, not_implemented}.
+     * </pre>
+     */
+    default String renderServerImplStub(OperationSpec op) {
+        return "";
+    }
+
+    /**
+     * Returns the list of server runtime resource paths that must be copied into
+     * the output directory alongside the generated server files.
+     */
+    default List<String> serverRuntimeModules() {
+        return List.of();
+    }
 }
