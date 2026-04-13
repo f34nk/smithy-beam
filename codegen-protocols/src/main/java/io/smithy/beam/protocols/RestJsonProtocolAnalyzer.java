@@ -80,7 +80,12 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 errors,
                 auth,
                 RetrySpec.defaultRetry(),
-                pagination);
+                pagination,
+                outputTypeName(op, model),
+                inputTypeName(op, model),
+                BodyEncoding.JSON,
+                "application/json",
+                ErrorCodeStrategy.REST_JSON);
     }
 
     // ── HttpSpec ─────────────────────────────────────────────────────────────
@@ -188,6 +193,32 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
         return service.getTrait(SigV4Trait.class)
                 .map(t -> new AuthSpec(true, t.getName()))
                 .orElse(AuthSpec.none());
+    }
+
+    // ── Output type name ─────────────────────────────────────────────────────
+
+    /**
+     * Returns the actual Smithy output shape name for the operation.
+     * Returns {@code "map"} for unit outputs (no meaningful output type).
+     */
+    static String outputTypeName(OperationShape op, Model model) {
+        ShapeId outputId = op.getOutputShape();
+        if ("smithy.api".equals(outputId.getNamespace()) && "Unit".equals(outputId.getName())) {
+            return "map";
+        }
+        return model.expectShape(outputId).getId().getName();
+    }
+
+    /**
+     * Returns the actual Smithy input shape name for the operation.
+     * Returns {@code "map"} for unit inputs.
+     */
+    static String inputTypeName(OperationShape op, Model model) {
+        ShapeId inputId = op.getInputShape();
+        if ("smithy.api".equals(inputId.getNamespace()) && "Unit".equals(inputId.getName())) {
+            return "map";
+        }
+        return model.expectShape(inputId).getId().getName();
     }
 
     // ── Pagination ───────────────────────────────────────────────────────────

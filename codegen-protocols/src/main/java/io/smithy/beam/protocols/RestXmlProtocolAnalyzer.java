@@ -92,7 +92,12 @@ public final class RestXmlProtocolAnalyzer implements ProtocolAnalyzer {
                 errors,
                 auth,
                 RetrySpec.defaultRetry(),
-                pagination);
+                pagination,
+                RestJsonProtocolAnalyzer.outputTypeName(op, model),
+                RestJsonProtocolAnalyzer.inputTypeName(op, model),
+                BodyEncoding.XML,
+                "application/xml",
+                ErrorCodeStrategy.REST_XML);
     }
 
     // ── Body ─────────────────────────────────────────────────────────────────

@@ -68,7 +68,7 @@ public class AwsJsonProtocolAnalyzer implements ProtocolAnalyzer {
         BodySpec body = new BodySpec(BodyEncoding.JSON, bodyMembers, null);
 
         String targetValue = service.getId().getName() + "." + op.getId().getName();
-        List<HeaderBinding> headers = List.of(new HeaderBinding("__target__", "X-Amz-Target", true));
+        List<HeaderBinding> headers = List.of(new HeaderBinding("__target__", "X-Amz-Target", true, targetValue));
 
         ErrorSpec errors = RestJsonProtocolAnalyzer.buildErrors(op, model, ErrorCodeStrategy.AWS_JSON);
         AuthSpec auth = RestJsonProtocolAnalyzer.buildAuth(service);
@@ -86,6 +86,11 @@ public class AwsJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 errors,
                 auth,
                 RetrySpec.defaultRetry(),
-                pagination);
+                pagination,
+                RestJsonProtocolAnalyzer.outputTypeName(op, model),
+                RestJsonProtocolAnalyzer.inputTypeName(op, model),
+                BodyEncoding.JSON,
+                baseContentType(),
+                ErrorCodeStrategy.AWS_JSON);
     }
 }
