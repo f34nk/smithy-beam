@@ -97,7 +97,8 @@ public final class RestXmlProtocolAnalyzer implements ProtocolAnalyzer {
                 RestJsonProtocolAnalyzer.inputTypeName(op, model),
                 BodyEncoding.XML,
                 "application/xml",
-                ErrorCodeStrategy.REST_XML);
+                ErrorCodeStrategy.REST_XML,
+                null);
     }
 
     // ── Body ─────────────────────────────────────────────────────────────────
