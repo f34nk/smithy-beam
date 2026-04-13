@@ -2,7 +2,7 @@
 
 This document lists Smithy 2.0 traits and how they relate to **generated** Erlang and Elixir in smithy-beam.
 
-**Scope:** Most traits still show as not supported in emitted code; rows are revised when generator behavior changes. Core libraries may read the Smithy model without emitting trait-specific output yet.
+**Scope:** Rows cover both client (`erlang-client-codegen`) and server (`erlang-server-codegen`) generation where applicable. Most traits still show as not supported in emitted code; rows are revised when generator behavior changes.
 
 **Legend:**
 - ✅ Supported - Trait is read and affects code generation
@@ -18,14 +18,14 @@ Traits for HTTP protocol bindings.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#http`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-http-trait) | ✅ | Method, URI, and success code read into `HttpSpec`; generated `make_<op>_request/2` uses the method, substitutes URI labels, and pattern-matches the success code in the `httpc` response |
-| [`smithy.api#httpHeader`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpheader-trait) | ✅ | Read into `HeaderBinding`; generated operation functions build a header list with content-type base and conditional member guards |
-| [`smithy.api#httpLabel`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httplabel-trait) | ✅ | Read into `LabelBinding` (with `requiresEncoding` flag); URI path segments are substituted as Erlang binary interpolation with optional `url_encode/1` |
+| [`smithy.api#http`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-http-trait) | ✅ | Method, URI, and success code read into `HttpSpec`. **Client:** `make_<op>_request/2` uses the method, substitutes URI labels, and pattern-matches the success code in the `httpc` response. **Server:** `route/2` dispatches on method + URI prefix; `dispatch_<op>/5` returns the success code via `smithy_server:response/2`. |
+| [`smithy.api#httpHeader`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpheader-trait) | ✅ | Read into `HeaderBinding`. **Client:** operation functions build a header list with content-type base and conditional member guards. **Server:** `awsJson` routing reads `X-Amz-Target` from headers extracted by `smithy_server:extract/1`. |
+| [`smithy.api#httpLabel`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httplabel-trait) | ✅ | Read into `LabelBinding` (with `requiresEncoding` flag). **Client:** URI path segments are substituted as Erlang binary interpolation with optional `url_encode/1`. **Server:** `deserialize_<op>/3` extracts label values via binary pattern matching on the request path. |
 | [`smithy.api#httpPayload`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httppayload-trait) | ⚠️ | Exclusive payload member detected in `BodySpec`; JSON body encoding emitted; XML and form-urlencoded payload bodies not yet exercised |
-| [`smithy.api#httpQuery`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpquery-trait) | ✅ | Read into `QueryBinding`; generated operation functions append `uri_string:compose_query/1` output to the URL when query members are present |
+| [`smithy.api#httpQuery`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpquery-trait) | ✅ | Read into `QueryBinding`. **Client:** operation functions append `uri_string:compose_query/1` output to the URL when query members are present. **Server:** not yet extracted from the request in `deserialize_<op>/3`. |
 | [`smithy.api#cors`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-cors-trait) | ❌ | CORS configuration for service |
 | [`smithy.api#httpChecksumRequired`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpchecksumrequired-trait) | ❌ | Requires checksum header |
-| [`smithy.api#httpError`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httperror-trait) | ✅ | HTTP status code read into `ErrorBinding`; a single `parse_error/2` is generated per module, deduplicated by Smithy error name. For REST_XML / AWS_JSON the error code string (XML `<Code>` or JSON `__type`) is extracted at runtime and used for dispatch, returning `#{error_type => atom, message => binary()}` maps; for REST_JSON / AWS_QUERY the HTTP status code integer is used, returning `{error, {atom, Body}}` tuples |
+| [`smithy.api#httpError`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httperror-trait) | ✅ | HTTP status code read into `ErrorBinding`. **Client:** a single `parse_error/2` is generated per module, deduplicated by Smithy error name; for REST_XML / AWS_JSON dispatch is on the error code string, returning `#{error_type => atom, message => binary()}` maps; for REST_JSON / AWS_QUERY dispatch is on the HTTP status integer, returning `{error, {atom, Body}}` tuples. **Server:** error shapes are typed in `-callback` declarations; `smithy_server:error_response/1` and `smithy_error_map:to_http/1` map errors to HTTP responses. |
 | [`smithy.api#httpPrefixHeaders`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpprefixheaders-trait) | ❌ | Binds map to prefixed headers |
 | [`smithy.api#httpQueryParams`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpqueryparams-trait) | ❌ | Binds map to query parameters |
 | [`smithy.api#httpResponseCode`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpresponsecode-trait) | ❌ | Binds member to HTTP response status |

@@ -12,6 +12,28 @@ This document lists AWS-oriented features from the [Smithy AWS integrations](htt
 
 ---
 
+## Server Generation
+
+Features of the generated Erlang server (`erlang-server-codegen`). The generated `<svc>_server.erl` module acts as both the Cowboy handler and the Smithy behaviour definition; user code implements only `<svc>_impl.erl`.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Cowboy 2.x HTTP handler | ✅ | `init/2` generated inside `<svc>_server.erl`; delegates to `handle/3` and replies via `cowboy_req:reply/4`. No separate handler module needed. |
+| Request routing | ✅ | `route/2` generated with one clause per operation; `restJson1` routes on HTTP method + URI prefix; `awsJson1.0` routes on `X-Amz-Target` header; catch-all returns `{error, not_found}`. |
+| Request deserialization | ✅ | `deserialize_<op>/3` extracts path labels (binary pattern match), header values, and body members; `restJson1` decodes JSON body with `jsx:decode`; `awsJson` passes the full decoded body map as input. |
+| Response serialization | ✅ | `serialize_<op>/1` encodes the output map with `jsx:encode`. |
+| Behaviour callbacks | ✅ | One `-callback <op>(Input :: <op>_input(), Context :: map()) -> {ok, <op>_output()} \| {error, term()}.` per operation. |
+| Impl scaffold | ✅ | `<svc>_impl.erl` generated once (never overwritten); declares `-behaviour(<svc>_server)`, remote-typed `-spec` annotations (`<svc>_server:<type>()`), and `{error, not_implemented}` stubs. |
+| Input validation | ✅ | `smithy_validator` runtime module available; generated dispatch functions expose the `validate_<struct>/1` pattern from the server runtime. |
+| Error mapping | ✅ | `smithy_error_map` runtime module maps Smithy error atoms/tuples to HTTP status codes; called from `smithy_server:error_response/1`. |
+| `restJson1` server | ✅ | Fully implemented — `analyzeServerOperation` in `RestJsonProtocolAnalyzer`; round-trip tested (`weather-service` example). |
+| `awsJson1.0` server | ⚠️ | `analyzeServerOperation` implemented in `AwsJsonProtocolAnalyzer`; routing via `X-Amz-Target`; no example yet. |
+| `restXml` / `awsQuery` / `ec2Query` server | ❌ | `analyzeServerOperation` not yet implemented for these protocols. |
+| Request streaming | ❌ | `@streaming` not implemented. |
+| WebSocket / event streams | ❌ | Not implemented. |
+
+---
+
 ## Client SDK Features
 
 General SDK features not specific to AWS traits.
