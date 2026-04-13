@@ -23,7 +23,7 @@ General SDK features not specific to AWS traits.
 | Operations on resource shapes | ❌ | Client includes operations from the full service closure (`TopDownIndex`), not only `service`‑listed operations—required for services like Lambda where most APIs are resource-bound |
 | Pagination Helpers | ⚠️ | `@paginated` tokens read into `PaginationSpec` IR; `renderPaginationHelper` emits `<op>_stream/2,3`; wired in pipeline when `op.pagination()` is non-null |
 | Retry with Exponential Backoff | ✅ | Every operation gets a 3-arity wrapper that calls `aws_retry:with_retry/2`; retry can be disabled per-call via `#{enable_retry => false}` in the options map |
-| Error Handling | ✅ | Error shapes and HTTP codes read into `ErrorSpec` IR via `@httpError`; a single `parse_error/2` function is generated per module, deduplicating bindings across all operations, dispatching status codes to `{error, {atom, Body}}` tuples |
+| Error Handling | ✅ | Error shapes read into `ErrorSpec` IR; a single `parse_error/2` is generated per module, deduplicated by Smithy error name. Dispatch and return format are protocol-specific: REST_XML and AWS_JSON dispatch by error code string and return `{error, #{error_type => atom, message => binary()}}` maps; REST_JSON and AWS_QUERY dispatch by HTTP status code integer and return `{error, {atom, Body}}` tuples |
 | HTTP Prefix Headers | ❌ | `@httpPrefixHeaders` trait not implemented (used for S3 metadata) |
 | Idempotency Token | ❌ | `@idempotencyToken` trait not implemented |
 | Host Label | ❌ | `@hostLabel` trait not implemented |
@@ -41,11 +41,11 @@ Protocol implementations for AWS services. All built-in generators are discovere
 | Feature | Status | Notes |
 |---------|--------|-------|
 | [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ⚠️ | Operation analysis into IR implemented (`Ec2QueryProtocolAnalyzer`); pipeline wired; no examples yet |
-| [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ⚠️ | Operation analysis into IR implemented (`AwsJsonProtocolAnalyzer`); pipeline wired; no examples yet |
+| [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ✅ | Fully implemented — `AwsJsonProtocolAnalyzer`, `Content-Type: application/x-amz-json-1.0`, literal `X-Amz-Target` header, `jsx:encode(Input)` body, `__type`-based error dispatch; end-to-end example (`dynamodb-demo`) |
 | [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ⚠️ | Operation analysis into IR implemented (`AwsJson11ProtocolAnalyzer`); pipeline wired; no examples yet |
 | [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ⚠️ | Operation analysis into IR implemented (`AwsQueryProtocolAnalyzer`); `POST /` with form-encoded body and `aws_query.erl` runtime; pipeline wired; no examples yet |
 | [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ✅ | Fully implemented — operation analysis (`RestJsonProtocolAnalyzer`), pipeline wiring, and end-to-end examples (`weather-service`, `storage-service`) |
-| [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ⚠️ | Operation analysis into IR implemented (`RestXmlProtocolAnalyzer`); XML body encoding, `aws_xml.erl` runtime, S3 detection via `arnNamespace`; pipeline wired; no examples yet |
+| [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ✅ | Fully implemented — `RestXmlProtocolAnalyzer`, XML body encoding, `aws_xml.erl` runtime, `aws_s3.erl` for S3 services (URL building via `aws_s3:build_url`), XML error code string dispatch; end-to-end example (`s3-demo`) |
 | Custom protocols via `@protocolDefinition` | ❌ | Detect `@protocolDefinition` traits and resolve generators via Java `ServiceLoader`; fall back to a stub when none is registered |
 | [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ❌ | Emit language-appropriate tests from `@httpRequestTests` / `@httpResponseTests` |
 
