@@ -1,0 +1,22 @@
+# Generated code
+generated/
+
+# Smithy build output (intermediate JSON AST)
+build/
+
+# Erlang build
+_build/
+.rebar3/
+*.beam
+erl_crash.dump
+
+terraform/.terraform
+terraform/.terraform.lock*
+terraform/terraform.tfstate*
+
+# ignore copied files
+model/*.json
+test/aws_sigv4_test.erl
+test/aws_credentials_test.erl
+test/aws_config_test.erl
+test/aws_s3_test.erl
