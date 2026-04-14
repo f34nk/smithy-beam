@@ -1,110 +1,171 @@
-# smithy-beam architecture
+# Architecture
 
-**smithy-beam** is a [Smithy](https://smithy.io/) code generation project targeting **Erlang** and **Elixir** clients and servers. Codegen is implemented in **Java** (Smithy Build plugins and libraries under `codegen-*`). Hand-written runtimes and examples live under `runtime-*` and `examples/`.
+**smithy-beam** is a [Smithy](https://smithy.io/) code generator targeting BEAM languages (**Erlang**, **Elixir**, **Gleam**). 
 
----
+It is designed to generate idiomatic client and server code from Smithy models.
 
-## Current state
+The generator is implemented in **Java** following the official [Codegen guidelines](https://smithy.io/2.0/guides/index.html).
 
-**`codegen-core`** provides shared **IR** (immutable records under `io.smithy.beam.core.ir`), the **`LanguageWriter`** and **`ProtocolAnalyzer`** interfaces, **codegen settings** and **file output** helpers, model utilities (`UriTemplate`, `ShapeIndex`, `TypeSpecBuilder`, `ProtocolDetector`, `ProtocolAnalyzerFactory`), and the **`ClientPipeline`** / **`ServerPipeline`** orchestrators.
+Smithy Build plugins and libraries are under `codegen-`*.
+Hand-written runtimes and examples live under `runtime-*` and `examples/`.
 
-**`codegen-protocols`** implements six protocol analyzers that fully populate `OperationSpec` IR from the Smithy model:
+Please refer to [TRAITS](https://github.com/f34nk/smithy-beam/blob/v1/TRAITS.md) and [AWS_SDK_SUPPORT](https://github.com/f34nk/smithy-beam/blob/v1/AWS_SDK_SUPPORT.md) for supported features.
 
-| Analyzer | Protocol | Notes |
-|---|---|---|
-| `RestJsonProtocolAnalyzer` | `aws.protocols#restJson1` | Full HTTP binding analysis of both input and output shapes; populates `responsePayloadMember`, `responseCodeMember`, and `responseHeaders` on `OperationSpec`; end-to-end examples |
-| `AwsJsonProtocolAnalyzer` | `aws.protocols#awsJson1_0` | `POST /`, JSON body, `X-Amz-Target` header |
-| `AwsJson11ProtocolAnalyzer` | `aws.protocols#awsJson1_1` | Extends `AwsJsonProtocolAnalyzer` |
-| `AwsQueryProtocolAnalyzer` | `aws.protocols#awsQuery` | `POST /`, form-encoded body, `requiresQueryRuntime` |
-| `Ec2QueryProtocolAnalyzer` | `aws.protocols#ec2Query` | Extends `AwsQueryProtocolAnalyzer`; reads `@ec2QueryName` traits at codegen time and stores wire-name overrides in `BodySpec.wireNameOverrides()` |
-| `RestXmlProtocolAnalyzer` | `aws.protocols#restXml` | Full HTTP binding, XML body, `requiresXmlRuntime`; S3 detection via `requiresS3Runtime` |
+> Erlang client and server generators are fully supported.
+> (Elixir and Gleam is coming soon)
 
-`ProtocolRegistrations.init()` registers all six at plugin startup.
-
-**`codegen-erlang`** ships `ErlangClientPlugin` (a working Smithy Build plugin registered via `META-INF/services`), `ErlangWriter` (fully implemented — all `LanguageWriter` methods emit real Erlang text), `ErlangSymbolProvider` (Smithy name → Erlang identifier conversions, including `toAtomTag` for reserved-word-safe atom tags), `ErlangReservedWords` (reserved-word detection and escaping), and eight Erlang client runtime modules bundled in the JAR so `FileOutput.copyRuntime` can copy them into the build output.
-
-The `ErlangWriter` covers: module header, multiline `-export` / `-export_type` declarations, module-level comment, `-behaviour`, struct/enum/union type declarations (enums as lowercase atoms; struct fields all use `=>`), function specs and callback declarations, map operations, JSON/XML/form serialization, URI substitution, protocol-aware query-string and header builders (with `ensure_binary/1` coercion and indexed accumulator variables), `httpc` request blocks, SigV4 auth and retry wrappers, response handlers, protocol-aware `parse_error/2` error dispatchers (string-dispatch for REST_XML and AWS_JSON; status-code-dispatch for REST_JSON and AWS_QUERY), AwsQuery/EC2 response envelope unwrapping via `aws_query:unwrap_response/1`, EC2 dual-format error dispatch (`<ErrorResponse>` for IAM/SNS; `<Response><Errors>` for EC2), `@ec2QueryName` wire-name overrides applied from `BodySpec.wireNameOverrides()`, `@httpPayload` request binding (raw member value sent as body without JSON wrapping), `@httpPayload` response binding (raw body blob returned under the member name without decoding), `@httpResponseCode` response binding (HTTP status integer placed in the result map), `@httpHeader` response bindings (each response header extracted via `proplists:get_value/2` and converted to binary), and pagination stream helpers.
-
-**Erlang server runtime modules** in `runtime-erlang/server/` provide the runtime foundation for generated server dispatchers: `smithy_server` (HTTP abstraction — `extract/1` reads method, path, headers, and body from a Cowboy request; `response/2`, `error_response/1`, `validation_error/1`, and `not_found/0` return framework-agnostic `{StatusCode, Headers, Body}` tuples), `smithy_validator` (required-field input validation returning `ok` or `{error, {missing_required_fields, [binary()]}}`), and `smithy_error_map` (generic Smithy error atom/tuple → HTTP status mapping, overridden by generated per-service modules for modeled `@httpError` shapes).
-
-**Elixir server runtime modules** in `runtime-elixir/server/` provide the runtime foundation for generated Elixir server dispatchers: `SmithyServer` (Plug-compatible HTTP abstraction — `extract/1` reads method, path, headers, and body from a `Plug.Conn`; `response/3`, `error_response/2`, `validation_error/2`, and `not_found/1` send JSON responses; error-to-status mapping delegated to `SmithyErrorMap.to_http/1`) and `SmithyValidator` (required-field input validation returning `:ok` or `{:error, {:missing_required_fields, [term()]}}` with `format/1` for human-readable messages).
-
-**Elixir client runtime modules** in `runtime-elixir/client/` provide the HTTP operation pipeline and AWS SigV4 signing for generated Elixir clients: `SmithyClient` (operations-as-values pattern via `%SmithyClient.Operation{}` structs — `request/2` builds URLs, encodes bodies with `Jason`, optionally signs, and sends via `Req`; `stream/2` follows `next_token` pagination automatically; `with_retry/2` retries on error) and `SmithyAuth` (AWS Signature Version 4 — `sign_request/2` constructs canonical requests, derives HMAC-SHA256 signing keys, and prepends `Authorization`, `X-Amz-Date`, and optionally `X-Amz-Security-Token` headers).
-
-**`ClientPipeline`** is fully implemented and drives end-to-end Erlang client generation. For each service it emits: module/export/type-export attributes, all type definitions (structs, enums, unions, error shapes), a `new/1` constructor, a 3-function block per operation (2-arity wrapper → 3-arity retry wrapper → internal `make_<op>_request/2` with URL construction, body building with protocol-correct `Content-Type`, optional `aws_s3:build_url` for S3 services, optional SigV4, `httpc` call, and protocol-aware response/error decoding), enum/union encode–decode helpers, required-field `validate_*` functions (restricted to operation input types), `url_encode/1`, `ensure_binary/1`, and a unified `parse_error/2` deduplicated by Smithy error name. Runtime modules are copied selectively based on the protocol and auth requirements. All language-specific string emission is delegated to `LanguageWriter`; `ClientPipeline` contains no target-language literals.
-
-`FileOutput` supports two modes: **manifest mode** (for tests, delegates to Smithy `FileManifest`) and **filesystem mode** (for plugins, via `FileOutput.forPlugin(outputDir)`, writes directly to the project source tree).
-
-**`ErlangServerPlugin`** (`erlang-server-codegen`) in `codegen-erlang` is fully implemented. It generates two files per service:
-
-- **`<svc>_server.erl`** — a single consolidated module that combines, in one file: module header, `-behaviour(cowboy_handler)`, multiline `-export([init/2, handle/3, route/2])`, type definitions (structs, enums, unions, errors), `-callback` declarations (one per operation), `init/2` Cowboy 2.x glue (delegates to `handle/3` and replies via `cowboy_req:reply/4`), `handle/3` (extracts the request with `smithy_server:extract/1` and calls the local `route/2`), `route/2` clauses (one per operation, plus a `{error, not_found}` catch-all), and per-operation `dispatch_<op>/5`, `deserialize_<op>/3`, and `serialize_<op>/1` functions.
-- **`<svc>_impl.erl`** — a once-written stub scaffold declaring `-behaviour(<svc>_server)`, one `-spec`-annotated stub per operation (types qualified as `<svc>_server:<type>()`), and `{error, not_implemented}` bodies. Written on first run only; never overwritten.
-
-`ServerPipeline` in `codegen-core` orchestrates generation by calling `writer.renderServerModule(base, ops, types)` (guarded so writers that don't override it are safe) and `writeIfAbsent` for the impl scaffold. It contains no target-language string literals.
-
-`analyzeServerOperation` is implemented in both `RestJsonProtocolAnalyzer` and `AwsJsonProtocolAnalyzer`, producing the same `OperationSpec` IR used for routing and deserialization on the server side.
-
----
-
-## Pipeline
-
-1. **Model** — Smithy semantic model (`software.amazon.smithy:smithy-model`) is the source of truth.
-2. **Protocol analysis** — Per-protocol **analyzers** (in `codegen-protocols`, depending on `codegen-core`) map services and operations to **IR** (`io.smithy.beam.core.ir`).
-3. **Pipeline** — Build plugins orchestrate analysis, then **writers** emit Erlang and/or Elixir sources.
-4. **Runtime** — Erlang and Elixir modules under `runtime-erlang` and `runtime-elixir` support generated code (HTTP, auth, etc.).
-
-Custom protocol traits are expected to integrate via **Java `ServiceLoader`**, with registrations under each codegen module’s `src/main/resources/META-INF/services/`.
-
----
-
-## Gradle modules
-
-| Module | Role |
-|--------|------|
-| **codegen-core** | Shared IR, `LanguageWriter` / `ProtocolAnalyzer`, model helpers (`TypeSpecBuilder`, …), `CodegenSettings`, `FileOutput`. Depends on Smithy model and build APIs. |
-| **codegen-protocols** | Protocol analyzers and AWS-oriented traits. Depends on `codegen-core` and Smithy AWS traits. |
-| **codegen-erlang** | Erlang writer, symbols, `ErlangClientPlugin` and `ErlangServerPlugin`. Depends on `codegen-core` and `codegen-protocols`. |
-| **codegen-elixir** | Elixir writer, symbols, client/server plugins. Same dependency pattern as Erlang. |
-
-Maven coordinates: **`io.smithy.beam`** (see root `build.gradle.kts`). **`./gradlew publishToMavenLocal`** publishes all four JARs to the local Maven repository.
-
----
-
-## Repository layout (not exhaustive)
-
-```text
-smithy-beam/
-├── codegen-core/          # Java: IR, writer/protocol interfaces, settings, output, model
-├── codegen-protocols/     # Java: protocol analyzers
-├── codegen-erlang/        # Java: Erlang codegen + META-INF/services
-├── codegen-elixir/        # Java: Elixir codegen + META-INF/services
-├── runtime-erlang/
-│   ├── client/            # Erlang client runtime (aws_sigv4, aws_credentials, aws_retry, …)
-│   └── server/            # Erlang server runtime (smithy_server, smithy_validator, smithy_error_map)
-├── runtime-elixir/
-│   ├── client/            # Elixir client runtime (SmithyAuth, SmithyClient)
-│   └── server/            # Elixir server runtime (SmithyServer, SmithyValidator)
-├── examples/
-│   └── erlang/
-│       ├── weather-service/   # restJson1: GET+label, enum, POST body, error; Cowboy server
-│       ├── storage-service/   # restJson1: union types, enum, validation, path label
-│       ├── lambda-demo/       # restJson1: AWS Lambda function lifecycle
-│       ├── s3-demo/           # restXml: XML body, S3 URL building, SigV4, XML error dispatch
-│       ├── dynamodb-demo/     # awsJson1_0: X-Amz-Target, jsx body, SigV4, __type error dispatch
-│       ├── sqs-demo/          # awsJson1_0: Amazon SQS queue and message lifecycle
-│       ├── firehose-demo/     # awsJson1_1: Kinesis Data Firehose delivery stream lifecycle
-│       ├── kinesis-demo/      # awsJson1_1: Kinesis data stream and record operations
-│       ├── ssm-demo/          # awsJson1_1: Systems Manager parameter lifecycle
-│       ├── iam-demo/          # awsQuery: IAM user/group lifecycle; response envelope unwrapping
-│       ├── sns-demo/          # awsQuery: SNS topic/subscription lifecycle
-│       ├── rds-demo/          # awsQuery: RDS DB instance lifecycle
-│       └── ec2-demo/          # ec2Query: EC2 instance/VPC/SG lifecycle; @ec2QueryName overrides
+```shell
+.
+├── codegen-core // shared
+├── codegen-erlang // Erlang plugin and code writer
+├── codegen-elixir // Elixir plugin and code writer
+├── codegen-protocols // detect and implement protocol from Smithy model
+├── runtime-erlang // static, re-usable Erlang modules
+│   ├── client
+│   └── server
+├── runtime-elixir // static, re-usable Elixir modules
+│   ├── client
+│   └── server
+└── examples
+    ├── elixir
+    └── erlang
 ```
 
----
+## Smithy Model DSL
 
-## Related documentation
+A smithy model, for example `weather.smithy`, consists of a `namespace` and a `service` shape.
 
-- **`TRAITS.md`** — Smithy trait inventory vs. support in **generated** Erlang/Elixir.
-- **`AWS_SDK_SUPPORT.md`** — AWS-oriented features vs. support in **generated** clients.
-- **`CHANGELOG.md`** — Release history.
+A `resource` is contained within a `service` or another `resource`. Resources have identifiers, operations, and any number of child resources.
+
+```smithy
+$version: "2"
+namespace example.weather
+
+use aws.protocols#restJson1
+
+@restJson1
+service Weather {
+    version: "1.0"
+    operations: [
+        GetWeather
+    ]
+}
+
+@readonly
+@http(method: "GET", uri: "/weather/{city}", code: 200)
+operation GetWeather {
+    input: GetWeatherInput
+    output: GetWeatherOutput
+    errors: [WeatherServiceError]
+}
+
+@input
+structure GetWeatherInput {
+    @required
+    @httpLabel
+    city: String
+}
+
+@output
+structure GetWeatherOutput {
+    temperature: Float
+    unit: TemperatureUnit
+}
+
+/// Temperature unit enum.
+enum TemperatureUnit {
+    CELSIUS    = "Celsius"
+    FAHRENHEIT = "Fahrenheit"
+}
+
+/// Returned when the weather service encounters an error.
+@error("client")
+@httpError(400)
+structure WeatherServiceError {
+    @required
+    message: String
+    code: String
+}
+```
+
+## smithy-build.json
+
+The build configuration is used to describe how a model is created and what projections of the model to create.
+
+In this example, we will generate an Erlang `erlang-server-codegen` server module `src/generated/weather_service_server.erl` from the model inside `./model`.
+
+The service is identified by `example.weather#Weather`.
+
+The runtime modules are copied into the `scaffoldDir`, which is defined as `./src`.
+
+```json
+{
+  "version": "1.0",
+  "sources": ["model"],
+  "maven": {
+    "dependencies": [
+      "software.amazon.smithy:smithy-aws-traits:1.53.0",
+      "io.smithy.beam:codegen-erlang:0.1.0"
+    ],
+    "repositories": [
+      {
+        "url": "https://repo1.maven.org/maven2"
+      }
+    ]
+  },
+  "plugins": {
+    "erlang-server-codegen": {
+      "service": "example.weather#WeatherService",
+      "module": "weather_service",
+      "outputDir": "src/generated",
+      "scaffoldDir": "src"
+    }
+  }
+}
+```
+
+Generate code:
+
+```shell
+smithy build
+```
+
+## Code Generation
+
+The entry point is a Smithy Build plugin (e.g. `ErlangClientPlugin`). Smithy loads and validates the model, then calls `execute(PluginContext)`.
+
+### 1. Detect the protocol
+
+`ProtocolDetector` inspects the service shape for a known protocol trait (e.g. `aws.protocols#restJson1`). `ProtocolAnalyzerFactory` resolves the matching `ProtocolAnalyzer` registered via Java `ServiceLoader`.
+
+### 2. Analyze operations
+
+For each operation in the service closure, the analyzer calls `analyzeClientOperation` (or `analyzeServerOperation`). It reads the Smithy model — HTTP spec, input/output members, trait bindings (`@httpLabel`, `@httpHeader`, `@httpQuery`, `@httpPayload`, `@required`, `@paginated`, `@aws.auth#sigv4`, etc.) — and produces an `OperationSpec` as an intermediate representation. Type shapes (structs, enums, unions, errors) are converted to `StructSpec` / `EnumSpec` / `UnionSpec` by `TypeSpecBuilder`.
+
+### 3. Run the pipeline
+
+`ClientPipeline` (or `ServerPipeline`) iterates the collected spec. For every item it calls the appropriate `LanguageWriter` method — e.g. `renderStructType`, `renderFunctionSpec`, `renderHttpClientBlock` — which emits target-language source text into a `CodeBuffer`. The pipeline contains no language-specific string literals; all target-language text is owned by the writer.
+
+### 4. Map Smithy types to target-language types
+
+Inside the writer, `ErlangSymbolProvider` (or the Elixir equivalent) converts Smithy names to idiomatic identifiers:
+
+**Example:**
+
+
+| Smithy           | Erlang                                                    | Elixir                  |
+| ---------------- | --------------------------------------------------------- | ----------------------- |
+| `PascalCaseName` | `pascal_case_name` (module) / `pascal_case_name()` (type) | `PascalCaseName`        |
+| struct member    | `<<"member_name">>` binary key                            | `:member_name` atom key |
+| enum value       | lowercase atom (`celsius`)                                | atom (`celsius`)        |
+| union variant    | tagged tuple (`{ok, Value}`)                              | tagged tuple            |
+| reserved word    | quoted atom (`'end'`)                                     | —                       |
+
+
+### 5. Write output files
+
+`FileOutput` writes each `CodeBuffer` to the configured `outputDir`. In plugin mode (`FileOutput.forPlugin`) files are written directly to the filesystem; in test mode a Smithy `FileManifest` is used instead.
+
+### 6. Copy runtime modules
+
+After source files are written, the pipeline calls `writer.clientRuntimeModules()` (or `serverRuntimeModules()`). `FileOutput.copyRuntime` extracts the listed resource paths from the JAR (bundled under `META-INF/smithy-beam/runtime/<lang>/`) and copies them into the output directory alongside the generated files. Which modules are copied depends on the protocol and auth requirements (e.g. `aws_sigv4.erl` only when SigV4 is required; `aws_xml.erl` only for XML protocols).

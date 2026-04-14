@@ -2,8 +2,6 @@
 
 This document lists AWS-oriented features from the [Smithy AWS integrations](https://smithy.io/2.0/aws/index.html) specification and how they relate to **generated** Erlang and Elixir clients in smithy-beam.
 
-**Scope:** Most rows are not reflected in emitted code yet; the matrix records current support status and is revised when behavior changes.
-
 **Legend:**
 - ✅ Supported - Feature is implemented and affects code generation
 - ⚠️ Partial - Feature is partially implemented with limitations
