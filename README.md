@@ -1,3 +1,6 @@
+
+## *WORK IN PROGRESS*
+
 # smithy-beam
 
 Code generator for the [Smithy](https://smithy.io/) interface modelling language. 
@@ -12,8 +15,6 @@ Targeting **BEAM languages**: Erlang, Elixir, Gleam.
 
 > Erlang client and server generators are fully supported.
 > (Elixir and Gleam is coming soon)
-
-See [awesome-smithy](https://github.com/smithy-lang/awesome-smithy?tab=readme-ov-file#client-code-generators) for other languages.
 
 ## Documentation
 
@@ -31,19 +32,20 @@ Prerequisites:
 - rebar3
 - Elixir
 
-Build:
 ```shell
 make build
+make test
 ```
 
-Test:
-```shell
-make test
-make examples
-```
+## Example
 
 Any of the [examples](https://github.com/f34nk/smithy-beam/tree/v1/examples/erlang) can be run like this:
 
 ```shell
 make examples/erlang/dynamodb-demo
+```
+
+Or run all examples in parallel:
+```shell
+make examples
 ```
