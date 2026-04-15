@@ -6,24 +6,24 @@ It is designed to generate idiomatic client and server code from Smithy models.
 
 The generator is implemented in **Java** following the official [Codegen guidelines](https://smithy.io/2.0/guides/index.html).
 
-Smithy Build plugins and libraries are under `codegen-`*.
-Hand-written runtimes and examples live under `runtime-*` and `examples/`.
+Separate build plugins and libraries are under `codegen-*` for each target language.
+Re-usable runtime modules and examples live under `runtime-*` and `examples/`.
 
-Please refer to [TRAITS](https://github.com/f34nk/smithy-beam/blob/v1/TRAITS.md) and [AWS_SDK_SUPPORT](https://github.com/f34nk/smithy-beam/blob/v1/AWS_SDK_SUPPORT.md) for supported features.
+Please refer to [TRAITS](https://github.com/f34nk/smithy-beam/blob/v1/TRAITS.md) and [AWS_SDK_SUPPORT](https://github.com/f34nk/smithy-beam/blob/v1/AWS_SDK_SUPPORT.md) for a full list of supported features.
 
 > Erlang client and server generators are fully supported.
 > (Elixir and Gleam is coming soon)
 
 ```shell
 .
-├── codegen-core // shared
+├── codegen-core // shared generator logic
 ├── codegen-erlang // Erlang plugin and code writer
 ├── codegen-elixir // Elixir plugin and code writer
-├── codegen-protocols // detect and implement protocol from Smithy model
-├── runtime-erlang // static, re-usable Erlang modules
+├── codegen-protocols // detect protocols from Smithy model
+├── runtime-erlang // re-usable Erlang modules
 │   ├── client
 │   └── server
-├── runtime-elixir // static, re-usable Elixir modules
+├── runtime-elixir // re-usable Elixir modules
 │   ├── client
 │   └── server
 └── examples
@@ -36,6 +36,8 @@ Please refer to [TRAITS](https://github.com/f34nk/smithy-beam/blob/v1/TRAITS.md)
 A smithy model, for example `weather.smithy`, consists of a `namespace` and a `service` shape.
 
 A `resource` is contained within a `service` or another `resource`. Resources have identifiers, operations, and any number of child resources.
+
+See [quickstart](https://smithy.io/2.0/quickstart.html) for more.
 
 ```smithy
 $version: "2"
@@ -88,7 +90,7 @@ structure WeatherServiceError {
 }
 ```
 
-## smithy-build.json
+## Build Configuration
 
 The build configuration is used to describe how a model is created and what projections of the model to create.
 
@@ -97,6 +99,8 @@ In this example, we will generate an Erlang `erlang-server-codegen` server modul
 The service is identified by `example.weather#Weather`.
 
 The runtime modules are copied into the `scaffoldDir`, which is defined as `./src`.
+
+See [using smithy-build.json](https://smithy.io/2.0/guides/smithy-build-json.html) for more.
 
 ```json
 {
@@ -140,7 +144,15 @@ The entry point is a Smithy Build plugin (e.g. `ErlangClientPlugin`). Smithy loa
 
 ### 2. Analyze operations
 
-For each operation in the service closure, the analyzer calls `analyzeClientOperation` (or `analyzeServerOperation`). It reads the Smithy model — HTTP spec, input/output members, trait bindings (`@httpLabel`, `@httpHeader`, `@httpQuery`, `@httpPayload`, `@required`, `@paginated`, `@aws.auth#sigv4`, etc.) — and produces an `OperationSpec` as an intermediate representation. Type shapes (structs, enums, unions, errors) are converted to `StructSpec` / `EnumSpec` / `UnionSpec` by `TypeSpecBuilder`.
+For each operation in the service closure, the analyzer calls `analyzeClientOperation` (or `analyzeServerOperation`). It reads the Smithy model — HTTP spec, input/output members, trait bindings (`@httpLabel`, `@httpHeader`, `@httpQuery`, `@httpPayload`, `@required`, `@paginated`, `@aws.auth#sigv4`, etc.) — and produces an `OperationSpec` as an intermediate representation.
+
+A **client** `OperationSpec` captures what the *caller* needs:
+outgoing HTTP method, body serialisation, SigV4 signing, retry config.
+
+A **server** `OperationSpec` would capture what the *handler* needs:
+incoming request parsing, response serialisation, routing metadata.
+
+Type shapes (structs, enums, unions, errors) are converted to `StructSpec` / `EnumSpec` / `UnionSpec` by `TypeSpecBuilder`.
 
 ### 3. Run the pipeline
 

@@ -8,10 +8,10 @@ Code generator for the [Smithy](https://smithy.io/) interface modelling language
 Targeting **BEAM languages**: Erlang, Elixir, Gleam.
 
 - **Contract-first** API development
-- Generates **client** and **server** code from the *same* Smithy service models. 
+- Generates **client** and **server** code from the *same* Smithy service model
 - Produces idiomatic, standardized client and server modules, type definitions, and HTTP request/response handling for service operations
 - **Protocol agnostic**: supports many [AWS protocols](https://smithy.io/2.0/aws/protocols/index.html)
-- **Idempotent builds**: integrate your business logic with behaviours  
+- **Idempotent builds**: integrate with your business logic using behaviours  
 
 > Erlang client and server generators are fully supported.
 > (Elixir and Gleam is coming soon)
