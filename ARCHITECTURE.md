@@ -6,8 +6,7 @@ It is designed to generate idiomatic client and server code from Smithy models.
 
 The generator is implemented in **Java** following the official [Codegen guidelines](https://smithy.io/2.0/guides/index.html).
 
-Separate build plugins and libraries are under `codegen-*` for each target language.
-Re-usable runtime modules and examples live under `runtime-*` and `examples/`.
+Language plugins live under `codegen-*`. Shared protocol analyzers live in `protocol-analyzer/`. Re-usable runtime modules and examples live under `runtime-*` and `examples/`.
 
 Please refer to [TRAITS](https://github.com/f34nk/smithy-beam/blob/v1/TRAITS.md) and [AWS_SDK_SUPPORT](https://github.com/f34nk/smithy-beam/blob/v1/AWS_SDK_SUPPORT.md) for a full list of supported features.
 
@@ -19,7 +18,7 @@ Please refer to [TRAITS](https://github.com/f34nk/smithy-beam/blob/v1/TRAITS.md)
 ├── codegen-core // shared generator logic
 ├── codegen-erlang // Erlang plugin and code writer
 ├── codegen-elixir // Elixir plugin and code writer
-├── codegen-protocols // detect protocols from Smithy model
+├── protocol-analyzer // protocol-specific operation analyzers (shared across language plugins)
 ├── runtime-erlang // re-usable Erlang modules
 │   ├── client
 │   └── server

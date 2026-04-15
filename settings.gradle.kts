@@ -8,7 +8,7 @@ dependencyResolutionManagement {
 
 include(
     "codegen-core",
-    "codegen-protocols",
+    "protocol-analyzer",
     "codegen-erlang",
     "codegen-elixir"
 )

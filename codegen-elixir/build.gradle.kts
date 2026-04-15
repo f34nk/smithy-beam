@@ -1,4 +1,4 @@
 dependencies {
     api(project(":codegen-core"))
-    implementation(project(":codegen-protocols"))
+    implementation(project(":protocol-analyzer"))
 }
