@@ -116,9 +116,10 @@ examples:
 	mkdir -p build
 	rm -rf build/*.log
 	#
-	# Run $(EXAMPLES_COUNT) examples in parallel
+	# Run examples in parallel
 	#
-	find examples/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \; | xargs -S1024 -P $(EXAMPLES_COUNT) -I {} sh -c ' \
+	find examples/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \; |\
+	xargs -S1024 -P $(EXAMPLES_COUNT) -I {} sh -c ' \
 		example="{}"; \
 		name="$$(basename $$example)"; \
 		lang="$$(echo $$example | cut -d/ -f2)"; \
