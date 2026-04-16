@@ -480,15 +480,10 @@ class ElixirWriterTest {
     @Nested
     class SharedHelpers {
         @Test
-        void renderSharedHelpersIncludesUrlEncode() {
-            String result = writer.renderSharedHelpers();
-            assertThat(result).contains("url_encode");
-            assertThat(result).contains("URI.encode_www_form");
-        }
-
-        @Test
-        void renderSharedHelpersIncludesEnsureString() {
-            assertThat(writer.renderSharedHelpers()).contains("ensure_string");
+        void renderSharedHelpersReturnsEmpty() {
+            // Elixir clients delegate all HTTP mechanics to SmithyClient, so no
+            // shared helper functions need to be emitted in the generated module.
+            assertThat(writer.renderSharedHelpers()).isEmpty();
         }
     }
 

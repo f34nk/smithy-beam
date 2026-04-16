@@ -343,14 +343,19 @@ public final class ElixirWriter implements LanguageWriter {
 
         String result = template;
         for (LabelBinding label : labels) {
-            String atomKey = ElixirSymbolProvider.toAtomTag(label.smithyMemberName());
-            String mapGet = "Map.get(" + inputVar + ", " + atomKey + ", \"\")";
+            String atomKey  = ElixirSymbolProvider.toAtomTag(label.smithyMemberName());
+            String strKey   = "\"" + label.smithyMemberName() + "\"";
+            // Accept both snake_case atom (:bucket) and original string key ("Bucket")
+            // so callers can use either key convention.
+            String mapGet   = "(Map.get(" + inputVar + ", " + atomKey + ") || Map.get(" + inputVar + ", " + strKey + ") || \"\")";
             String segment;
             if (label.requiresEncoding()) {
                 segment = "#{URI.encode_www_form(" + mapGet + ")}";
             } else {
                 segment = "#{" + mapGet + "}";
             }
+            // Replace both greedy {name+} and plain {name} forms in the URI template.
+            result = result.replace("{" + label.uriPlaceholder() + "+}", segment);
             result = result.replace("{" + label.uriPlaceholder() + "}", segment);
         }
         return "\"" + result + "\"";
@@ -656,34 +661,54 @@ public final class ElixirWriter implements LanguageWriter {
      * Returns the complete source block for one Elixir client operation.
      *
      * <p>Elixir client operations return {@code %SmithyClient.Operation{}} structs
-     * rather than making HTTP calls directly.  The struct carries the HTTP method,
-     * URI template, serialised input, output shape atom, and auth mode, so
-     * {@code SmithyClient.request/2} can execute the request with full context.
+     * rather than making HTTP calls directly.  The struct carries all the protocol
+     * context needed by {@code SmithyClient.request/2} to execute the request:
+     * HTTP method, resolved URI (labels substituted), body encoding, response
+     * decoding, static headers (e.g. {@code X-Amz-Target}), auth mode, and a
+     * reference to the generated {@code parse_error/2} function.
      *
-     * <p>Example output:
+     * <p>Example output for an AWS JSON operation:
      * <pre>
-     *   @doc "Calls the GetWeather operation"
-     *   @spec get_weather(map()) :: SmithyClient.Operation.t()
-     *   def get_weather(input) do
+     *   @doc "Calls the GetParameter operation"
+     *   @spec get_parameter(map(), map(), map()) :: {:ok, map()} | {:error, term()}
+     *   def get_parameter(client, input, opts \\ %{}) do
+     *     SmithyClient.request(client, get_parameter_op(input), opts)
+     *   end
+     *
+     *   defp get_parameter_op(input) do
      *     %SmithyClient.Operation{
-     *       name: :get_weather,
-     *       http: %{method: "GET", uri: "/weather/{city}"},
+     *       name: :get_parameter,
+     *       action: "GetParameter",
+     *       http: %{method: "POST", uri: "/"},
      *       input: input,
-     *       output_shape: :get_weather_output,
-     *       auth: :none
+     *       output_shape: :get_parameter_result,
+     *       auth: :sigv4,
+     *       static_headers: [{"X-Amz-Target", "AmazonSSM.GetParameter"}],
+     *       content_type: "application/x-amz-json-1.1",
+     *       encoding: :json,
+     *       decoding: :json,
+     *       api_version: nil,
+     *       parse_error_fn: &parse_error/2
      *     }
      *   end
      * </pre>
      */
     @Override
     public String renderClientOperation(OperationSpec op) {
-        String opName   = ElixirSymbolProvider.toFunctionName(op.operationName());
-        String method   = op.http() != null ? op.http().method() : "POST";
-        String uri      = op.http() != null ? op.http().uriTemplate() : "/";
-        String authAtom = op.auth() != null && op.auth().requiresSigV4() ? ":sigv4" : ":none";
-        String outShape = op.outputTypeName() != null
+        String opName    = ElixirSymbolProvider.toFunctionName(op.operationName());
+        String method    = op.http() != null ? op.http().method() : "POST";
+        String rawUri    = op.http() != null ? op.http().uriTemplate() : "/";
+        String authAtom  = op.auth() != null && op.auth().requiresSigV4() ? ":sigv4" : ":none";
+        String outShape  = op.outputTypeName() != null
                 ? ":" + ElixirSymbolProvider.toSnakeCase(op.outputTypeName())
                 : ":unknown";
+
+        String contentType  = op.protocolContentType() != null ? op.protocolContentType() : "application/json";
+        String encodingAtom = bodyEncodingAtom(op);
+        String decodingAtom = responseDecodingAtom(op);
+        String staticHdrs   = buildStaticHeaders(op);
+
+        List<LabelBinding> labels = op.labels() != null ? op.labels() : List.of();
 
         StringBuilder sb = new StringBuilder();
         sb.append("\n");
@@ -698,12 +723,33 @@ public final class ElixirWriter implements LanguageWriter {
         // Private operation struct builder
         sb.append("\n");
         sb.append("  defp ").append(opName).append("_op(input) do\n");
+
+        // URI label substitution — compute the resolved URI inside the function body
+        // so that path parameters from `input` are interpolated at call time.
+        String uriExpr;
+        if (!labels.isEmpty()) {
+            String substituted = renderUriSubstitution(rawUri, labels, "input");
+            sb.append("    uri = ").append(substituted).append("\n");
+            uriExpr = "uri";
+        } else {
+            uriExpr = "\"" + rawUri + "\"";
+        }
+
         sb.append("    %SmithyClient.Operation{\n");
         sb.append("      name: :").append(opName).append(",\n");
-        sb.append("      http: %{method: \"").append(method).append("\", uri: \"").append(uri).append("\"},\n");
+        sb.append("      action: \"").append(op.operationName()).append("\",\n");
+        sb.append("      http: %{method: \"").append(method).append("\", uri: ").append(uriExpr).append("},\n");
         sb.append("      input: input,\n");
         sb.append("      output_shape: ").append(outShape).append(",\n");
-        sb.append("      auth: ").append(authAtom).append("\n");
+        sb.append("      auth: ").append(authAtom).append(",\n");
+        sb.append("      static_headers: ").append(staticHdrs).append(",\n");
+        sb.append("      content_type: \"").append(contentType).append("\",\n");
+        sb.append("      encoding: :").append(encodingAtom).append(",\n");
+        sb.append("      decoding: :").append(decodingAtom).append(",\n");
+        if (op.apiVersion() != null) {
+            sb.append("      api_version: \"").append(op.apiVersion()).append("\",\n");
+        }
+        sb.append("      parse_error_fn: &parse_error/2\n");
         sb.append("    }\n");
         sb.append("  end\n");
 
@@ -712,6 +758,51 @@ public final class ElixirWriter implements LanguageWriter {
         }
 
         return sb.toString();
+    }
+
+    /** Maps an operation's body encoding to the Elixir atom used by SmithyClient. */
+    private static String bodyEncodingAtom(OperationSpec op) {
+        if (op.body() == null) return "none";
+        switch (op.body().encoding()) {
+            case JSON:           return "json";
+            case FORM_URLENCODED: return "form";
+            case XML:            return "xml";
+            default:             return "none";
+        }
+    }
+
+    /** Maps an operation's response encoding to the Elixir atom used by SmithyClient. */
+    private static String responseDecodingAtom(OperationSpec op) {
+        // @httpPayload operations (e.g. S3 GetObject) return a raw binary blob.
+        // Skip all parsing and return the body as-is.
+        if (op.responsePayloadMember() != null) return "raw";
+        if (op.responseEncoding() == null) return "json";
+        switch (op.responseEncoding()) {
+            case XML:
+                // awsQuery and ec2Query use form-urlencoded request bodies but XML responses
+                // that are wrapped in an operation-specific response envelope.
+                // REST-XML (S3, CloudFront) returns plain XML with no envelope.
+                boolean isQueryProtocol = op.body() != null
+                        && op.body().encoding() == io.smithy.beam.core.ir.BodyEncoding.FORM_URLENCODED;
+                return isQueryProtocol ? "query_xml" : "xml";
+            default:
+                return "json";
+        }
+    }
+
+    /**
+     * Builds an Elixir list literal of {@code {"HeaderName", "value"}} tuples for headers
+     * that carry a hard-coded literal value (e.g. {@code X-Amz-Target}).
+     */
+    private static String buildStaticHeaders(OperationSpec op) {
+        if (op.headers() == null || op.headers().isEmpty()) return "[]";
+        List<String> pairs = new ArrayList<>();
+        for (var h : op.headers()) {
+            if (h.literalValue() != null) {
+                pairs.add("{\"" + h.headerName() + "\", \"" + h.literalValue() + "\"}");
+            }
+        }
+        return pairs.isEmpty() ? "[]" : "[" + String.join(", ", pairs) + "]";
     }
 
     /**
@@ -831,14 +922,13 @@ public final class ElixirWriter implements LanguageWriter {
     /**
      * Returns shared Elixir helper functions.
      *
-     * <p>Includes {@code url_encode/1} which wraps {@code URI.encode_www_form/1}.
+     * <p>Returns an empty string — the Elixir client delegates all HTTP mechanics to
+     * the {@code SmithyClient} runtime, so no shared helpers are needed in the
+     * generated module itself.
      */
     @Override
     public String renderSharedHelpers() {
-        return "\n  defp url_encode(value) when is_binary(value), do: URI.encode_www_form(value)\n"
-             + "  defp url_encode(value), do: URI.encode_www_form(to_string(value))\n\n"
-             + "  defp ensure_string(value) when is_binary(value), do: value\n"
-             + "  defp ensure_string(value), do: to_string(value)\n\n";
+        return "";
     }
 
     /**
