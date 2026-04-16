@@ -1,4 +1,4 @@
-defmodule SmithyAuth do
+defmodule SmithySigV4 do
   @moduledoc """
   AWS Signature Version 4 (SigV4) signing for Smithy-generated Elixir clients.
 
@@ -32,11 +32,14 @@ defmodule SmithyAuth do
   def sign_request(%{method: method, url: url, headers: headers, body: body}, opts) do
     config = Keyword.fetch!(opts, :config)
 
-    access_key_id = Map.fetch!(config, :access_key_id)
-    secret_access_key = Map.fetch!(config, :secret_access_key)
+    # Credentials may be nested under :credentials or flat at the top level.
+    creds = Map.get(config, :credentials, config)
+    access_key_id = Map.fetch!(creds, :access_key_id)
+    secret_access_key = Map.fetch!(creds, :secret_access_key)
+    session_token = Map.get(creds, :session_token)
+
     region = Map.fetch!(config, :region)
     service = Map.get_lazy(config, :service, fn -> derive_service_from_url(url) end)
-    session_token = Map.get(config, :session_token)
 
     datetime = iso8601_datetime()
     date = binary_part(datetime, 0, 8)
