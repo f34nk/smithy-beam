@@ -58,10 +58,14 @@ public final class ServerPipeline {
         if (!server.isEmpty()) {
             output.write(outDir + "/" + base + "_server" + ext, server);
         }
+        String implContent = writer.renderServerImplContent(base, ops);
+        if (implContent.isEmpty()) {
+            implContent = buildImplScaffold(base, ops, writer);
+        }
         output.writeIfAbsent(
                 settings.scaffoldDir().replace('\\', '/'),
                 base + "_impl" + ext,
-                buildImplScaffold(base, ops, writer));
+                implContent);
 
         for (String path : writer.serverRuntimeModules()) {
             output.copyRuntime(writer.languageId(), path, resourceLoader);
@@ -128,6 +132,7 @@ public final class ServerPipeline {
             buf.append(writer.renderServerImplStub(op, handlerModuleName));
             buf.append("\n");
         }
+        buf.append(writer.moduleFooter());
         return buf.toString();
     }
 }
