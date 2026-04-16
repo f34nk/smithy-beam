@@ -16,3 +16,4 @@ Thumbs.db
 *.log
 
 codegen-*/bin/
+protocol-analyzer/bin/

@@ -107,7 +107,7 @@ clean:
 	#
 	# Clean the build
 	#
-	rm -rf build bin codegen-*/build codegen-*/bin *.log
+	rm -rf build bin codegen-*/build codegen-*/bin protocol-analyzer/bin *.log
 	rm -rf ~/.m2/repository/io/smithy/beam
 
 # Usage: make examples
@@ -121,7 +121,8 @@ examples:
 	find examples/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \; | xargs -S1024 -P $(EXAMPLES_COUNT) -I {} sh -c ' \
 		example="{}"; \
 		name="$$(basename $$example)"; \
-		logfile="build/$$name.log"; \
+		lang="$$(echo $$example | cut -d/ -f2)"; \
+		logfile="build/$$lang-$$name.log"; \
 		sleep 1; \
 		echo "Running: $$example" ; \
 		make $$example > $$logfile 2>&1; \
