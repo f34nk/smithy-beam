@@ -9,17 +9,17 @@
 %% Test: Basic encoding
 %%--------------------------------------------------------------------
 encode_simple_action_test() ->
-    Result = aws_query:encode(<<"SendMessage">>, #{}),
+    Result = smithy_query:encode(<<"SendMessage">>, #{}),
     ?assert(is_binary(Result)),
     ?assert(binary:match(Result, <<"Action=SendMessage">>) =/= nomatch).
 
 encode_with_version_test() ->
-    Result = aws_query:encode(<<"SendMessage">>, #{}, <<"2012-11-05">>),
+    Result = smithy_query:encode(<<"SendMessage">>, #{}, <<"2012-11-05">>),
     ?assert(binary:match(Result, <<"Action=SendMessage">>) =/= nomatch),
     ?assert(binary:match(Result, <<"Version=2012-11-05">>) =/= nomatch).
 
 encode_string_action_test() ->
-    Result = aws_query:encode("CreateQueue", #{}),
+    Result = smithy_query:encode("CreateQueue", #{}),
     ?assert(binary:match(Result, <<"Action=CreateQueue">>) =/= nomatch).
 
 %%--------------------------------------------------------------------
@@ -27,7 +27,7 @@ encode_string_action_test() ->
 %%--------------------------------------------------------------------
 encode_simple_params_test() ->
     Params = #{<<"QueueName">> => <<"my-queue">>},
-    Result = aws_query:encode(<<"CreateQueue">>, Params),
+    Result = smithy_query:encode(<<"CreateQueue">>, Params),
     ?assert(binary:match(Result, <<"QueueName=my-queue">>) =/= nomatch).
 
 encode_multiple_params_test() ->
@@ -35,23 +35,23 @@ encode_multiple_params_test() ->
         <<"QueueName">> => <<"my-queue">>,
         <<"DelaySeconds">> => <<"10">>
     },
-    Result = aws_query:encode(<<"CreateQueue">>, Params),
+    Result = smithy_query:encode(<<"CreateQueue">>, Params),
     ?assert(binary:match(Result, <<"QueueName=my-queue">>) =/= nomatch),
     ?assert(binary:match(Result, <<"DelaySeconds=10">>) =/= nomatch).
 
 encode_integer_value_test() ->
     Params = #{<<"MaxNumberOfMessages">> => 10},
-    Result = aws_query:encode(<<"ReceiveMessage">>, Params),
+    Result = smithy_query:encode(<<"ReceiveMessage">>, Params),
     ?assert(binary:match(Result, <<"MaxNumberOfMessages=10">>) =/= nomatch).
 
 encode_boolean_true_test() ->
     Params = #{<<"Enabled">> => true},
-    Result = aws_query:encode(<<"TestAction">>, Params),
+    Result = smithy_query:encode(<<"TestAction">>, Params),
     ?assert(binary:match(Result, <<"Enabled=true">>) =/= nomatch).
 
 encode_boolean_false_test() ->
     Params = #{<<"Enabled">> => false},
-    Result = aws_query:encode(<<"TestAction">>, Params),
+    Result = smithy_query:encode(<<"TestAction">>, Params),
     ?assert(binary:match(Result, <<"Enabled=false">>) =/= nomatch).
 
 %%--------------------------------------------------------------------
@@ -64,7 +64,7 @@ encode_nested_map_test() ->
             <<"Value">> => <<"12345">>
         }
     },
-    Result = aws_query:encode(<<"SetQueueAttributes">>, Params),
+    Result = smithy_query:encode(<<"SetQueueAttributes">>, Params),
     ?assert(binary:match(Result, <<"Attribute.Name=Key">>) =/= nomatch),
     ?assert(binary:match(Result, <<"Attribute.Value=12345">>) =/= nomatch).
 
@@ -76,7 +76,7 @@ encode_deeply_nested_test() ->
             }
         }
     },
-    Result = aws_query:encode(<<"TestAction">>, Params),
+    Result = smithy_query:encode(<<"TestAction">>, Params),
     ?assert(binary:match(Result, <<"Level1.Level2.Level3=value">>) =/= nomatch).
 
 %%--------------------------------------------------------------------
@@ -86,7 +86,7 @@ encode_list_of_strings_test() ->
     Params = #{
         <<"Tags">> => [<<"tag1">>, <<"tag2">>, <<"tag3">>]
     },
-    Result = aws_query:encode(<<"TestAction">>, Params),
+    Result = smithy_query:encode(<<"TestAction">>, Params),
     ?assert(binary:match(Result, <<"Tags.1=tag1">>) =/= nomatch),
     ?assert(binary:match(Result, <<"Tags.2=tag2">>) =/= nomatch),
     ?assert(binary:match(Result, <<"Tags.3=tag3">>) =/= nomatch).
@@ -98,7 +98,7 @@ encode_list_of_maps_test() ->
             #{<<"Name">> => <<"Key2">>, <<"Value">> => <<"Val2">>}
         ]
     },
-    Result = aws_query:encode(<<"TestAction">>, Params),
+    Result = smithy_query:encode(<<"TestAction">>, Params),
     ?assert(binary:match(Result, <<"Attributes.1.Name=Key1">>) =/= nomatch),
     ?assert(binary:match(Result, <<"Attributes.1.Value=Val1">>) =/= nomatch),
     ?assert(binary:match(Result, <<"Attributes.2.Name=Key2">>) =/= nomatch),
@@ -106,7 +106,7 @@ encode_list_of_maps_test() ->
 
 encode_empty_list_test() ->
     Params = #{<<"Items">> => []},
-    Result = aws_query:encode(<<"TestAction">>, Params),
+    Result = smithy_query:encode(<<"TestAction">>, Params),
     %% Empty list should not add any Items.N parameters
     ?assertEqual(nomatch, binary:match(Result, <<"Items">>)).
 
@@ -127,7 +127,7 @@ encode_sqs_message_attributes_test() ->
             }
         ]
     },
-    Result = aws_query:encode(<<"SendMessage">>, Params),
+    Result = smithy_query:encode(<<"SendMessage">>, Params),
     ?assert(binary:match(Result, <<"MessageAttribute.1.Name=CustomAttribute">>) =/= nomatch),
     ?assert(binary:match(Result, <<"MessageAttribute.1.Value.DataType=String">>) =/= nomatch),
     ?assert(
@@ -139,19 +139,19 @@ encode_sqs_message_attributes_test() ->
 %%--------------------------------------------------------------------
 encode_special_chars_test() ->
     Params = #{<<"Message">> => <<"Hello World!">>},
-    Result = aws_query:encode(<<"TestAction">>, Params),
+    Result = smithy_query:encode(<<"TestAction">>, Params),
     %% Space should be encoded as %20
     ?assert(binary:match(Result, <<"Message=Hello%20World%21">>) =/= nomatch).
 
 encode_ampersand_test() ->
     Params = #{<<"Query">> => <<"a&b">>},
-    Result = aws_query:encode(<<"TestAction">>, Params),
+    Result = smithy_query:encode(<<"TestAction">>, Params),
     %% & should be encoded as %26
     ?assert(binary:match(Result, <<"Query=a%26b">>) =/= nomatch).
 
 encode_equals_sign_test() ->
     Params = #{<<"Expression">> => <<"a=b">>},
-    Result = aws_query:encode(<<"TestAction">>, Params),
+    Result = smithy_query:encode(<<"TestAction">>, Params),
     %% = should be encoded as %3D
     ?assert(binary:match(Result, <<"Expression=a%3Db">>) =/= nomatch).
 
@@ -159,30 +159,30 @@ encode_equals_sign_test() ->
 %% Test: Helper functions
 %%--------------------------------------------------------------------
 flatten_params_empty_test() ->
-    Result = aws_query:flatten_params(#{}),
+    Result = smithy_query:flatten_params(#{}),
     ?assertEqual([], Result).
 
 flatten_params_simple_test() ->
-    Result = aws_query:flatten_params(#{<<"Key">> => <<"Value">>}),
+    Result = smithy_query:flatten_params(#{<<"Key">> => <<"Value">>}),
     ?assertEqual([{<<"Key">>, <<"Value">>}], Result).
 
 to_query_key_binary_test() ->
-    ?assertEqual(<<"Key">>, aws_query:to_query_key(<<"Key">>)).
+    ?assertEqual(<<"Key">>, smithy_query:to_query_key(<<"Key">>)).
 
 to_query_key_atom_test() ->
-    ?assertEqual(<<"key">>, aws_query:to_query_key(key)).
+    ?assertEqual(<<"key">>, smithy_query:to_query_key(key)).
 
 to_query_key_string_test() ->
-    ?assertEqual(<<"Key">>, aws_query:to_query_key("Key")).
+    ?assertEqual(<<"Key">>, smithy_query:to_query_key("Key")).
 
 to_query_value_binary_test() ->
-    ?assertEqual(<<"value">>, aws_query:to_query_value(<<"value">>)).
+    ?assertEqual(<<"value">>, smithy_query:to_query_value(<<"value">>)).
 
 to_query_value_integer_test() ->
-    ?assertEqual(<<"42">>, aws_query:to_query_value(42)).
+    ?assertEqual(<<"42">>, smithy_query:to_query_value(42)).
 
 to_query_value_atom_test() ->
-    ?assertEqual(<<"enabled">>, aws_query:to_query_value(enabled)).
+    ?assertEqual(<<"enabled">>, smithy_query:to_query_value(enabled)).
 
 %%--------------------------------------------------------------------
 %% Test: Real AWS service examples
@@ -197,7 +197,7 @@ sqs_create_queue_test() ->
             #{<<"Name">> => <<"MaximumMessageSize">>, <<"Value">> => <<"262144">>}
         ]
     },
-    Result = aws_query:encode(<<"CreateQueue">>, Params, <<"2012-11-05">>),
+    Result = smithy_query:encode(<<"CreateQueue">>, Params, <<"2012-11-05">>),
     ?assert(binary:match(Result, <<"Action=CreateQueue">>) =/= nomatch),
     ?assert(binary:match(Result, <<"Version=2012-11-05">>) =/= nomatch),
     ?assert(binary:match(Result, <<"QueueName=my-queue">>) =/= nomatch).
@@ -208,7 +208,7 @@ sns_publish_test() ->
         <<"TopicArn">> => <<"arn:aws:sns:us-east-1:123456789012:my-topic">>,
         <<"Message">> => <<"Hello from SNS">>
     },
-    Result = aws_query:encode(<<"Publish">>, Params, <<"2010-03-31">>),
+    Result = smithy_query:encode(<<"Publish">>, Params, <<"2010-03-31">>),
     ?assert(binary:match(Result, <<"Action=Publish">>) =/= nomatch),
     ?assert(binary:match(Result, <<"TopicArn=arn">>) =/= nomatch).
 
@@ -221,7 +221,7 @@ cloudformation_create_stack_test() ->
             #{<<"ParameterKey">> => <<"KeyName">>, <<"ParameterValue">> => <<"my-key">>}
         ]
     },
-    Result = aws_query:encode(<<"CreateStack">>, Params),
+    Result = smithy_query:encode(<<"CreateStack">>, Params),
     ?assert(binary:match(Result, <<"StackName=my-stack">>) =/= nomatch),
     ?assert(binary:match(Result, <<"Parameters.1.ParameterKey=KeyName">>) =/= nomatch),
     ?assert(binary:match(Result, <<"Parameters.1.ParameterValue=my-key">>) =/= nomatch).
@@ -232,30 +232,30 @@ cloudformation_create_stack_test() ->
 rename_map_keys_renames_key_in_map_test() ->
     Input   = #{<<"Tags">> => [#{<<"Key">> => <<"Name">>, <<"Value">> => <<"demo">>}]},
     Renames = #{<<"Tags">> => <<"Tag">>},
-    Result  = aws_query:rename_map_keys(Input, Renames),
+    Result  = smithy_query:rename_map_keys(Input, Renames),
     ?assert(maps:is_key(<<"Tag">>, Result)),
     ?assertNot(maps:is_key(<<"Tags">>, Result)).
 
 rename_map_keys_leaves_unknown_keys_unchanged_test() ->
     Input   = #{<<"ResourceType">> => <<"instance">>, <<"Tags">> => []},
     Renames = #{<<"Tags">> => <<"Tag">>},
-    Result  = aws_query:rename_map_keys(Input, Renames),
+    Result  = smithy_query:rename_map_keys(Input, Renames),
     ?assert(maps:is_key(<<"ResourceType">>, Result)),
     ?assert(maps:is_key(<<"Tag">>, Result)).
 
 rename_map_keys_applies_to_list_items_test() ->
     Items   = [#{<<"Tags">> => <<"a">>}, #{<<"Tags">> => <<"b">>}],
     Renames = #{<<"Tags">> => <<"Tag">>},
-    Result  = aws_query:rename_map_keys(Items, Renames),
+    Result  = smithy_query:rename_map_keys(Items, Renames),
     ?assertEqual(2, length(Result)),
     [First | _] = Result,
     ?assert(maps:is_key(<<"Tag">>, First)).
 
 rename_map_keys_handles_undefined_test() ->
-    ?assertEqual(undefined, aws_query:rename_map_keys(undefined, #{<<"x">> => <<"y">>})).
+    ?assertEqual(undefined, smithy_query:rename_map_keys(undefined, #{<<"x">> => <<"y">>})).
 
 rename_map_keys_handles_scalar_test() ->
-    ?assertEqual(<<"hello">>, aws_query:rename_map_keys(<<"hello">>, #{<<"x">> => <<"y">>})).
+    ?assertEqual(<<"hello">>, smithy_query:rename_map_keys(<<"hello">>, #{<<"x">> => <<"y">>})).
 
 rename_map_keys_roundtrip_with_encode_test() ->
     TagSpec = #{
@@ -263,9 +263,9 @@ rename_map_keys_roundtrip_with_encode_test() ->
         <<"Tags">> => [#{<<"Key">> => <<"Name">>, <<"Value">> => <<"demo">>}]
     },
     Renames = #{<<"Tags">> => <<"Tag">>},
-    Renamed = aws_query:rename_map_keys(TagSpec, Renames),
+    Renamed = smithy_query:rename_map_keys(TagSpec, Renames),
     Params  = #{<<"TagSpecification">> => [Renamed]},
-    Result  = aws_query:encode(<<"RunInstances">>, Params, <<"2016-11-15">>),
+    Result  = smithy_query:encode(<<"RunInstances">>, Params, <<"2016-11-15">>),
     ?assert(binary:match(Result, <<"TagSpecification.1.Tag.1.Key=Name">>) =/= nomatch),
     ?assertEqual(nomatch, binary:match(Result, <<"TagSpecification.1.Tags.1.Key=Name">>)).
 
@@ -274,12 +274,12 @@ rename_map_keys_roundtrip_with_encode_test() ->
 %%--------------------------------------------------------------------
 encode_empty_string_value_test() ->
     Params = #{<<"Key">> => <<>>},
-    Result = aws_query:encode(<<"TestAction">>, Params),
+    Result = smithy_query:encode(<<"TestAction">>, Params),
     ?assert(binary:match(Result, <<"Key=">>) =/= nomatch).
 
 encode_atom_key_test() ->
     Params = #{queue_name => <<"my-queue">>},
-    Result = aws_query:encode(<<"TestAction">>, Params),
+    Result = smithy_query:encode(<<"TestAction">>, Params),
     ?assert(binary:match(Result, <<"queue_name=my-queue">>) =/= nomatch).
 
 encode_mixed_key_types_test() ->
@@ -288,7 +288,7 @@ encode_mixed_key_types_test() ->
         atom_key => <<"value2">>,
         "StringKey" => <<"value3">>
     },
-    Result = aws_query:encode(<<"TestAction">>, Params),
+    Result = smithy_query:encode(<<"TestAction">>, Params),
     ?assert(binary:match(Result, <<"BinaryKey=value1">>) =/= nomatch),
     ?assert(binary:match(Result, <<"atom_key=value2">>) =/= nomatch),
     ?assert(binary:match(Result, <<"StringKey=value3">>) =/= nomatch).

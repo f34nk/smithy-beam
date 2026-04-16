@@ -18,7 +18,7 @@ get_region_from_aws_region_env_test() ->
     os:unsetenv("AWS_DEFAULT_REGION"),
 
     %% Get region
-    {ok, Region} = aws_config:get_region(),
+    {ok, Region} = smithy_config:get_region(),
 
     %% Cleanup
     os:unsetenv("AWS_REGION"),
@@ -35,7 +35,7 @@ get_region_from_aws_default_region_env_test() ->
     os:putenv("AWS_DEFAULT_REGION", "ap-southeast-1"),
 
     %% Get region
-    {ok, Region} = aws_config:get_region(),
+    {ok, Region} = smithy_config:get_region(),
 
     %% Cleanup
     os:unsetenv("AWS_DEFAULT_REGION"),
@@ -50,7 +50,7 @@ get_region_aws_region_precedence_test() ->
     os:putenv("AWS_DEFAULT_REGION", "us-east-1"),
 
     %% Get region
-    {ok, Region} = aws_config:get_region(),
+    {ok, Region} = smithy_config:get_region(),
 
     %% Cleanup
     os:unsetenv("AWS_REGION"),
@@ -65,7 +65,7 @@ get_region_explicit_option_test() ->
     os:putenv("AWS_REGION", "us-west-2"),
 
     %% Get region with explicit option (should override environment)
-    {ok, Region} = aws_config:get_region(#{region => <<"eu-central-1">>}),
+    {ok, Region} = smithy_config:get_region(#{region => <<"eu-central-1">>}),
 
     %% Cleanup
     os:unsetenv("AWS_REGION"),
@@ -76,7 +76,7 @@ get_region_explicit_option_test() ->
 %% Test get_region with explicit region as string
 get_region_explicit_string_test() ->
     %% Get region with string option
-    {ok, Region} = aws_config:get_region(#{region => "ap-northeast-1"}),
+    {ok, Region} = smithy_config:get_region(#{region => "ap-northeast-1"}),
 
     %% Verify converted to binary
     ?assertEqual(<<"ap-northeast-1">>, Region).
@@ -99,7 +99,7 @@ get_region_default_test() ->
         end,
 
     %% Get region (should default to us-east-1)
-    {ok, Region} = aws_config:get_region(),
+    {ok, Region} = smithy_config:get_region(),
 
     %% Restore config file
     _ =
@@ -137,7 +137,7 @@ get_region_from_config_file_default_test() ->
     _ = file:write_file(ConfigFile, Content),
 
     %% Get region
-    {ok, Region} = aws_config:get_region(),
+    {ok, Region} = smithy_config:get_region(),
 
     %% Cleanup
     _ = file:delete(ConfigFile),
@@ -177,7 +177,7 @@ get_region_from_config_file_custom_profile_test() ->
     _ = file:write_file(ConfigFile, Content),
 
     %% Get region with production profile
-    {ok, Region} = aws_config:get_region(#{profile => <<"production">>}),
+    {ok, Region} = smithy_config:get_region(#{profile => <<"production">>}),
 
     %% Cleanup
     _ = file:delete(ConfigFile),
@@ -213,7 +213,7 @@ get_region_from_config_file_whitespace_test() ->
     Content = <<"  [default]  \n", "  region  =  ca-central-1  \n">>,
     _ = file:write_file(ConfigFile, Content),
 
-    {ok, Region} = aws_config:get_region(),
+    {ok, Region} = smithy_config:get_region(),
 
     _ = file:delete(ConfigFile),
     _ =
@@ -247,7 +247,7 @@ get_region_environment_precedence_test() ->
     _ = file:write_file(ConfigFile, Content),
 
     %% Get region - environment should win
-    {ok, Region} = aws_config:get_region(),
+    {ok, Region} = smithy_config:get_region(),
 
     _ = file:delete(ConfigFile),
     _ =
@@ -282,7 +282,7 @@ get_region_explicit_precedence_test() ->
     _ = file:write_file(ConfigFile, Content),
 
     %% Get region with explicit option - should override everything
-    {ok, Region} = aws_config:get_region(#{region => <<"ap-south-1">>}),
+    {ok, Region} = smithy_config:get_region(#{region => <<"ap-south-1">>}),
 
     _ = file:delete(ConfigFile),
     _ =
@@ -318,7 +318,7 @@ get_region_profile_not_found_test() ->
     _ = file:write_file(ConfigFile, Content),
 
     %% Try to get region with non-existent profile
-    {ok, Region} = aws_config:get_region(#{profile => <<"nonexistent">>}),
+    {ok, Region} = smithy_config:get_region(#{profile => <<"nonexistent">>}),
 
     _ = file:delete(ConfigFile),
     _ =
@@ -352,7 +352,7 @@ get_region_valid_regions_test() ->
 
     lists:foreach(
         fun(Region) ->
-            {ok, ReturnedRegion} = aws_config:get_region(#{region => Region}),
+            {ok, ReturnedRegion} = smithy_config:get_region(#{region => Region}),
             ?assertEqual(Region, ReturnedRegion)
         end,
         Regions

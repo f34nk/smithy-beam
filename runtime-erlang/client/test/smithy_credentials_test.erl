@@ -19,7 +19,7 @@ from_environment_with_credentials_test() ->
     os:unsetenv("AWS_SESSION_TOKEN"),
 
     %% Load credentials
-    Result = aws_credentials:from_environment(),
+    Result = smithy_credentials:from_environment(),
 
     %% Verify success
     ?assertMatch({ok, _}, Result),
@@ -46,7 +46,7 @@ from_environment_with_session_token_test() ->
     os:putenv("AWS_SESSION_TOKEN", "FQoGZXIvYXdzEBoaDNt5ZW1zY2..."),
 
     %% Load credentials
-    Result = aws_credentials:from_environment(),
+    Result = smithy_credentials:from_environment(),
 
     %% Verify success
     ?assertMatch({ok, _}, Result),
@@ -71,7 +71,7 @@ from_environment_missing_access_key_test() ->
     os:putenv("AWS_SECRET_ACCESS_KEY", "secret"),
 
     %% Load credentials
-    Result = aws_credentials:from_environment(),
+    Result = smithy_credentials:from_environment(),
 
     %% Should return error
     ?assertEqual({error, no_access_key}, Result),
@@ -88,7 +88,7 @@ from_environment_missing_secret_key_test() ->
     os:unsetenv("AWS_SECRET_ACCESS_KEY"),
 
     %% Load credentials
-    Result = aws_credentials:from_environment(),
+    Result = smithy_credentials:from_environment(),
 
     %% Should return error
     ?assertEqual({error, no_secret_key}, Result),
@@ -104,7 +104,7 @@ from_environment_missing_both_test() ->
     os:unsetenv("AWS_SESSION_TOKEN"),
 
     %% Load credentials
-    Result = aws_credentials:from_environment(),
+    Result = smithy_credentials:from_environment(),
 
     %% Should return error (no_access_key checked first)
     ?assertEqual({error, no_access_key}, Result).
@@ -116,7 +116,7 @@ from_environment_empty_string_test() ->
     os:putenv("AWS_SECRET_ACCESS_KEY", ""),
 
     %% Load credentials
-    Result = aws_credentials:from_environment(),
+    Result = smithy_credentials:from_environment(),
 
     %% Should succeed (empty strings are valid, though not useful)
     ?assertMatch({ok, _}, Result),
@@ -136,7 +136,7 @@ from_environment_special_chars_test() ->
     os:putenv("AWS_SECRET_ACCESS_KEY", "secret+/=with+special/chars=="),
 
     %% Load credentials
-    Result = aws_credentials:from_environment(),
+    Result = smithy_credentials:from_environment(),
 
     %% Should succeed
     ?assertMatch({ok, _}, Result),
@@ -160,12 +160,12 @@ get_credentials_no_credentials_test() ->
     os:unsetenv("AWS_SECRET_ACCESS_KEY"),
     os:unsetenv("AWS_SESSION_TOKEN"),
 
-    CredentialsFilePath = aws_credentials:get_credentials_filepath(),
+    CredentialsFilePath = smithy_credentials:get_credentials_filepath(),
     %% delete the credentials file
     _ = file:delete(CredentialsFilePath),
 
     %% Get credentials
-    Result = aws_credentials:get_credentials(),
+    Result = smithy_credentials:get_credentials(),
 
     %% Should return error (no credentials found in chain)
     ?assertEqual({error, no_credentials}, Result).
@@ -177,7 +177,7 @@ get_credentials_from_environment_test() ->
     os:putenv("AWS_SECRET_ACCESS_KEY", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"),
 
     %% Get credentials using default chain
-    Result = aws_credentials:get_credentials(),
+    Result = smithy_credentials:get_credentials(),
 
     %% Should succeed
     ?assertMatch({ok, _}, Result),
@@ -196,7 +196,7 @@ get_credentials_first_provider_test() ->
     os:putenv("AWS_SECRET_ACCESS_KEY", "envSecret"),
 
     %% Get credentials
-    Result = aws_credentials:get_credentials(),
+    Result = smithy_credentials:get_credentials(),
 
     %% Should return environment credentials (first provider)
     ?assertMatch({ok, _}, Result),
@@ -218,7 +218,7 @@ integration_environment_workflow_test() ->
     os:putenv("AWS_SECRET_ACCESS_KEY", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"),
 
     %% Get credentials
-    {ok, Credentials} = aws_credentials:get_credentials(),
+    {ok, Credentials} = smithy_credentials:get_credentials(),
 
     %% Verify credentials structure is correct for use with client
     ?assert(maps:is_key(access_key_id, Credentials)),
@@ -226,7 +226,7 @@ integration_environment_workflow_test() ->
     ?assert(is_binary(maps:get(access_key_id, Credentials))),
     ?assert(is_binary(maps:get(secret_access_key, Credentials))),
 
-    %% Credentials should be ready to use with aws_sigv4
+    %% Credentials should be ready to use with smithy_sigv4
     %% (Simulate client creation)
     Client = #{
         endpoint => <<"https://s3.amazonaws.com">>,
@@ -249,7 +249,7 @@ integration_temporary_credentials_test() ->
     os:putenv("AWS_SESSION_TOKEN", "FQoGZXIvYXdzEBoa..."),
 
     %% Get credentials
-    {ok, Credentials} = aws_credentials:from_environment(),
+    {ok, Credentials} = smithy_credentials:from_environment(),
 
     %% Verify session token present
     ?assert(maps:is_key(session_token, Credentials)),
@@ -274,7 +274,7 @@ credentials_binary_type_test() ->
     os:putenv("AWS_ACCESS_KEY_ID", "test123"),
     os:putenv("AWS_SECRET_ACCESS_KEY", "secret456"),
 
-    {ok, Credentials} = aws_credentials:from_environment(),
+    {ok, Credentials} = smithy_credentials:from_environment(),
 
     %% All values should be binary
     lists:foreach(
@@ -294,7 +294,7 @@ credentials_map_structure_test() ->
     os:putenv("AWS_ACCESS_KEY_ID", "test"),
     os:putenv("AWS_SECRET_ACCESS_KEY", "secret"),
 
-    {ok, Credentials} = aws_credentials:from_environment(),
+    {ok, Credentials} = smithy_credentials:from_environment(),
 
     %% Should be a map
     ?assert(is_map(Credentials)),
@@ -339,7 +339,7 @@ from_credentials_file_default_test() ->
     _ = file:write_file(CredFile, Content),
 
     %% Test
-    Result = aws_credentials:from_credentials_file(),
+    Result = smithy_credentials:from_credentials_file(),
 
     %% Cleanup
     _ = file:delete(CredFile),
@@ -380,7 +380,7 @@ from_credentials_file_custom_profile_test() ->
     _ = file:write_file(CredFile, Content),
 
     %% Test
-    Result = aws_credentials:from_credentials_file(<<"production">>),
+    Result = smithy_credentials:from_credentials_file(<<"production">>),
 
     %% Cleanup
     _ = file:delete(CredFile),
@@ -417,7 +417,7 @@ from_credentials_file_with_session_token_test() ->
             "aws_secret_access_key = tempSecret\n", "aws_session_token = FQoGZXIvYXdzEBoa...\n">>,
     _ = file:write_file(CredFile, Content),
 
-    Result = aws_credentials:from_credentials_file(),
+    Result = smithy_credentials:from_credentials_file(),
 
     _ = file:delete(CredFile),
     _ =
@@ -445,7 +445,7 @@ from_credentials_file_not_found_test() ->
         end,
 
     %% Test
-    Result = aws_credentials:from_credentials_file(),
+    Result = smithy_credentials:from_credentials_file(),
 
     %% Restore file
     _ =
@@ -479,7 +479,7 @@ from_credentials_file_profile_not_found_test() ->
     _ = file:write_file(CredFile, Content),
 
     %% Try to load non-existent profile
-    Result = aws_credentials:from_credentials_file(<<"production">>),
+    Result = smithy_credentials:from_credentials_file(<<"production">>),
 
     _ = file:delete(CredFile),
     _ =
@@ -511,7 +511,7 @@ from_credentials_file_with_whitespace_test() ->
             "  aws_secret_access_key  =  testSecret456  \n">>,
     _ = file:write_file(CredFile, Content),
 
-    Result = aws_credentials:from_credentials_file(),
+    Result = smithy_credentials:from_credentials_file(),
 
     _ = file:delete(CredFile),
     _ =
@@ -552,7 +552,7 @@ get_credentials_fallback_to_file_test() ->
     _ = file:write_file(CredFile, Content),
 
     %% Test - should get credentials from file since environment is empty
-    Result = aws_credentials:get_credentials(),
+    Result = smithy_credentials:get_credentials(),
 
     _ = file:delete(CredFile),
     _ =
@@ -592,7 +592,7 @@ get_credentials_environment_precedence_test() ->
     _ = file:write_file(CredFile, Content),
 
     %% Test - should get credentials from environment (takes precedence)
-    Result = aws_credentials:get_credentials(),
+    Result = smithy_credentials:get_credentials(),
 
     _ = file:delete(CredFile),
     _ =
@@ -639,7 +639,7 @@ get_credentials_with_default_profile_test() ->
     _ = file:write_file(CredFile, Content),
 
     %% Test with explicit default profile
-    Result = aws_credentials:get_credentials(#{profile => <<"default">>}),
+    Result = smithy_credentials:get_credentials(#{profile => <<"default">>}),
 
     _ = file:delete(CredFile),
     _ =
@@ -679,7 +679,7 @@ get_credentials_with_custom_profile_test() ->
     _ = file:write_file(CredFile, Content),
 
     %% Test with production profile
-    Result = aws_credentials:get_credentials(#{profile => <<"production">>}),
+    Result = smithy_credentials:get_credentials(#{profile => <<"production">>}),
 
     _ = file:delete(CredFile),
     _ =
@@ -719,7 +719,7 @@ get_credentials_with_empty_options_test() ->
     _ = file:write_file(CredFile, Content),
 
     %% Test with empty options (should default to "default" profile)
-    Result = aws_credentials:get_credentials(#{}),
+    Result = smithy_credentials:get_credentials(#{}),
 
     _ = file:delete(CredFile),
     _ =
@@ -759,7 +759,7 @@ get_credentials_with_profile_environment_precedence_test() ->
     _ = file:write_file(CredFile, Content),
 
     %% Test with production profile - environment should still win
-    Result = aws_credentials:get_credentials(#{profile => <<"production">>}),
+    Result = smithy_credentials:get_credentials(#{profile => <<"production">>}),
 
     _ = file:delete(CredFile),
     _ =
@@ -806,7 +806,7 @@ provider_chain_order_test() ->
     _ = file:write_file(CredFile, Content),
 
     %% Get credentials - should get from environment
-    Result = aws_credentials:get_credentials(#{}),
+    Result = smithy_credentials:get_credentials(#{}),
 
     _ = file:delete(CredFile),
     _ =
@@ -841,7 +841,7 @@ no_credentials_in_chain_test() ->
         end,
 
     %% Test - should fail with no_credentials (or find credentials from other sources)
-    Result = aws_credentials:get_credentials(),
+    Result = smithy_credentials:get_credentials(),
 
     %% Restore file
     _ =

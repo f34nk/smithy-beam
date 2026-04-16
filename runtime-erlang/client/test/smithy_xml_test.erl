@@ -10,19 +10,19 @@
 %%--------------------------------------------------------------------
 encode_simple_map_test() ->
     Map = #{<<"Name">> => <<"John">>, <<"Age">> => <<"30">>},
-    Result = aws_xml:encode(Map),
+    Result = smithy_xml:encode(Map),
     ?assert(is_list(Result) orelse is_binary(Result)).
 
 encode_with_root_element_test() ->
     Map = #{<<"Name">> => <<"John">>},
-    Result = aws_xml:encode(Map, <<"Person">>),
+    Result = smithy_xml:encode(Map, <<"Person">>),
     ResultBin = iolist_to_binary(Result),
     ?assert(binary:match(ResultBin, <<"<Person>">>) =/= nomatch),
     ?assert(binary:match(ResultBin, <<"</Person>">>) =/= nomatch).
 
 encode_empty_map_test() ->
     Map = #{},
-    Result = aws_xml:encode(Map),
+    Result = smithy_xml:encode(Map),
     ?assertEqual([], Result).
 
 %%--------------------------------------------------------------------
@@ -38,7 +38,7 @@ encode_nested_map_test() ->
             }
         }
     },
-    Result = aws_xml:encode(Map),
+    Result = smithy_xml:encode(Map),
     ?assert(is_list(Result)).
 
 encode_deeply_nested_test() ->
@@ -51,7 +51,7 @@ encode_deeply_nested_test() ->
             }
         }
     },
-    Result = aws_xml:encode(Map),
+    Result = smithy_xml:encode(Map),
     ?assert(is_list(Result)).
 
 %%--------------------------------------------------------------------
@@ -59,7 +59,7 @@ encode_deeply_nested_test() ->
 %%--------------------------------------------------------------------
 encode_list_of_strings_test() ->
     Map = #{<<"Items">> => [<<"a">>, <<"b">>, <<"c">>]},
-    Result = aws_xml:encode(Map),
+    Result = smithy_xml:encode(Map),
     ?assert(is_list(Result)).
 
 encode_list_of_maps_test() ->
@@ -69,38 +69,38 @@ encode_list_of_maps_test() ->
             #{<<"Name">> => <<"Item2">>}
         ]
     },
-    Result = aws_xml:encode(Map),
+    Result = smithy_xml:encode(Map),
     ?assert(is_list(Result)).
 
 %%--------------------------------------------------------------------
 %% Test: Value type encoding
 %%--------------------------------------------------------------------
 encode_binary_value_test() ->
-    Result = aws_xml:encode_value(<<"hello">>),
+    Result = smithy_xml:encode_value(<<"hello">>),
     ?assertEqual(["hello"], Result).
 
 encode_atom_value_test() ->
-    Result = aws_xml:encode_value(hello),
+    Result = smithy_xml:encode_value(hello),
     ?assertEqual(["hello"], Result).
 
 encode_integer_value_test() ->
-    Result = aws_xml:encode_value(42),
+    Result = smithy_xml:encode_value(42),
     ?assertEqual(["42"], Result).
 
 encode_float_value_test() ->
-    Result = aws_xml:encode_value(3.14),
+    Result = smithy_xml:encode_value(3.14),
     ?assert(is_list(Result)).
 
 encode_boolean_true_test() ->
-    Result = aws_xml:encode_value(true),
+    Result = smithy_xml:encode_value(true),
     ?assertEqual(["true"], Result).
 
 encode_boolean_false_test() ->
-    Result = aws_xml:encode_value(false),
+    Result = smithy_xml:encode_value(false),
     ?assertEqual(["false"], Result).
 
 encode_undefined_value_test() ->
-    Result = aws_xml:encode_value(undefined),
+    Result = smithy_xml:encode_value(undefined),
     ?assertEqual([], Result).
 
 %%--------------------------------------------------------------------
@@ -108,23 +108,23 @@ encode_undefined_value_test() ->
 %%--------------------------------------------------------------------
 decode_simple_xml_test() ->
     Xml = <<"<Person><Name>John</Name></Person>">>,
-    {ok, Result} = aws_xml:decode(Xml),
+    {ok, Result} = smithy_xml:decode(Xml),
     ?assert(is_map(Result)),
     ?assert(maps:is_key(<<"Person">>, Result)).
 
 decode_with_text_content_test() ->
     Xml = <<"<Name>John</Name>">>,
-    {ok, Result} = aws_xml:decode(Xml),
+    {ok, Result} = smithy_xml:decode(Xml),
     ?assertEqual(#{<<"Name">> => <<"John">>}, Result).
 
 decode_empty_element_test() ->
     Xml = <<"<Empty></Empty>">>,
-    {ok, Result} = aws_xml:decode(Xml),
+    {ok, Result} = smithy_xml:decode(Xml),
     ?assert(is_map(Result)).
 
 decode_string_input_test() ->
     Xml = "<Name>John</Name>",
-    {ok, Result} = aws_xml:decode(Xml),
+    {ok, Result} = smithy_xml:decode(Xml),
     ?assert(is_map(Result)).
 
 %%--------------------------------------------------------------------
@@ -132,12 +132,12 @@ decode_string_input_test() ->
 %%--------------------------------------------------------------------
 decode_nested_xml_test() ->
     Xml = <<"<Person><Name>John</Name><Address><City>Seattle</City></Address></Person>">>,
-    {ok, Result} = aws_xml:decode(Xml),
+    {ok, Result} = smithy_xml:decode(Xml),
     ?assert(maps:is_key(<<"Person">>, Result)).
 
 decode_deeply_nested_test() ->
     Xml = <<"<A><B><C><D>value</D></C></B></A>">>,
-    {ok, Result} = aws_xml:decode(Xml),
+    {ok, Result} = smithy_xml:decode(Xml),
     ?assert(is_map(Result)).
 
 %%--------------------------------------------------------------------
@@ -145,7 +145,7 @@ decode_deeply_nested_test() ->
 %%--------------------------------------------------------------------
 decode_duplicate_elements_test() ->
     Xml = <<"<Root><Item>1</Item><Item>2</Item><Item>3</Item></Root>">>,
-    {ok, Result} = aws_xml:decode(Xml),
+    {ok, Result} = smithy_xml:decode(Xml),
     Root = maps:get(<<"Root">>, Result),
     Items = maps:get(<<"Item">>, Root),
     ?assert(is_list(Items)),
@@ -156,11 +156,11 @@ decode_duplicate_elements_test() ->
 %%--------------------------------------------------------------------
 decode_invalid_xml_test() ->
     Xml = <<"<Invalid><Unclosed>">>,
-    Result = aws_xml:decode(Xml),
+    Result = smithy_xml:decode(Xml),
     ?assertMatch({error, {xml_parse_error, _}}, Result).
 
 decode_empty_input_test() ->
-    Result = aws_xml:decode(<<>>),
+    Result = smithy_xml:decode(<<>>),
     ?assertMatch({error, {xml_parse_error, _}}, Result).
 
 %%--------------------------------------------------------------------
@@ -174,7 +174,7 @@ decode_s3_list_buckets_response_test() ->
             "<Bucket><Name>bucket1</Name><CreationDate>2024-01-01T00:00:00.000Z</CreationDate></Bucket>",
             "<Bucket><Name>bucket2</Name><CreationDate>2024-01-02T00:00:00.000Z</CreationDate></Bucket>",
             "</Buckets>", "</ListAllMyBucketsResult>">>,
-    {ok, Result} = aws_xml:decode(Xml),
+    {ok, Result} = smithy_xml:decode(Xml),
     ?assert(maps:is_key(<<"ListAllMyBucketsResult">>, Result)).
 
 decode_s3_error_response_test() ->
@@ -182,7 +182,7 @@ decode_s3_error_response_test() ->
         <<"<?xml version=\"1.0\" encoding=\"UTF-8\"?>", "<Error>", "<Code>NoSuchBucket</Code>",
             "<Message>The specified bucket does not exist</Message>",
             "<BucketName>mybucket</BucketName>", "<RequestId>abc123</RequestId>", "</Error>">>,
-    {ok, Result} = aws_xml:decode(Xml),
+    {ok, Result} = smithy_xml:decode(Xml),
     ErrorMap = maps:get(<<"Error">>, Result),
     ?assertEqual(<<"NoSuchBucket">>, maps:get(<<"Code">>, ErrorMap)).
 
@@ -191,20 +191,20 @@ decode_s3_error_response_test() ->
 %%--------------------------------------------------------------------
 roundtrip_simple_test() ->
     Original = #{<<"Name">> => <<"John">>, <<"Age">> => <<"30">>},
-    Encoded = aws_xml:encode(Original, <<"Person">>),
+    Encoded = smithy_xml:encode(Original, <<"Person">>),
     EncodedBin = iolist_to_binary(Encoded),
-    {ok, Decoded} = aws_xml:decode(EncodedBin),
+    {ok, Decoded} = smithy_xml:decode(EncodedBin),
     ?assert(is_map(Decoded)).
 
 %%--------------------------------------------------------------------
 %% Test: Helper functions
 %%--------------------------------------------------------------------
 encode_element_test() ->
-    Element = aws_xml:encode_element(<<"Name">>, <<"John">>),
+    Element = smithy_xml:encode_element(<<"Name">>, <<"John">>),
     ?assertMatch({'Name', [], _}, Element).
 
 extract_text_empty_test() ->
-    Result = aws_xml:extract_text([]),
+    Result = smithy_xml:extract_text([]),
     ?assertEqual(<<>>, Result).
 
 %%--------------------------------------------------------------------
@@ -212,7 +212,7 @@ extract_text_empty_test() ->
 %%--------------------------------------------------------------------
 encode_special_chars_test() ->
     Map = #{<<"Content">> => <<"Hello & Goodbye">>},
-    Result = aws_xml:encode(Map),
+    Result = smithy_xml:encode(Map),
     ?assert(is_list(Result)).
 
 %%--------------------------------------------------------------------
@@ -224,10 +224,10 @@ decode_with_whitespace_test() ->
         "              <Name>John</Name>\n"
         "              <City>Seattle</City>\n"
         "            </Root>">>,
-    {ok, Result} = aws_xml:decode(Xml),
+    {ok, Result} = smithy_xml:decode(Xml),
     ?assert(maps:is_key(<<"Root">>, Result)).
 
 decode_preserves_text_content_test() ->
     Xml = <<"<Message>Hello World</Message>">>,
-    {ok, Result} = aws_xml:decode(Xml),
+    {ok, Result} = smithy_xml:decode(Xml),
     ?assertEqual(#{<<"Message">> => <<"Hello World">>}, Result).

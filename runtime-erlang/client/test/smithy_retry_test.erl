@@ -10,12 +10,12 @@
 %%--------------------------------------------------------------------
 success_on_first_attempt_test() ->
     Fun = fun() -> {ok, success} end,
-    Result = aws_retry:with_retry(Fun),
+    Result = smithy_retry:with_retry(Fun),
     ?assertEqual({ok, success}, Result).
 
 success_with_options_test() ->
     Fun = fun() -> {ok, <<"data">>} end,
-    Result = aws_retry:with_retry(Fun, #{max_retries => 3}),
+    Result = smithy_retry:with_retry(Fun, #{max_retries => 3}),
     ?assertEqual({ok, <<"data">>}, Result).
 
 %%--------------------------------------------------------------------
@@ -34,7 +34,7 @@ retry_500_error_test() ->
         end
     end,
 
-    Result = aws_retry:with_retry(Fun, #{
+    Result = smithy_retry:with_retry(Fun, #{
         max_retries => 3,
         initial_backoff => 10,
         jitter => false
@@ -55,7 +55,7 @@ retry_429_too_many_requests_test() ->
         end
     end,
 
-    Result = aws_retry:with_retry(Fun, #{
+    Result = smithy_retry:with_retry(Fun, #{
         max_retries => 2,
         initial_backoff => 10,
         jitter => false
@@ -76,7 +76,7 @@ retry_timeout_error_test() ->
         end
     end,
 
-    Result = aws_retry:with_retry(Fun, #{
+    Result = smithy_retry:with_retry(Fun, #{
         max_retries => 2,
         initial_backoff => 10
     }),
@@ -97,7 +97,7 @@ retry_connection_errors_test() ->
         end
     end,
 
-    Result = aws_retry:with_retry(Fun, #{
+    Result = smithy_retry:with_retry(Fun, #{
         max_retries => 5,
         initial_backoff => 10,
         jitter => false
@@ -117,7 +117,7 @@ no_retry_on_400_error_test() ->
         {error, {400, #{<<"message">> => <<"Bad Request">>}}}
     end,
 
-    Result = aws_retry:with_retry(Fun, #{max_retries => 3}),
+    Result = smithy_retry:with_retry(Fun, #{max_retries => 3}),
 
     ?assertEqual({error, {400, #{<<"message">> => <<"Bad Request">>}}}, Result),
     % Only called once
@@ -131,7 +131,7 @@ no_retry_on_404_error_test() ->
         {error, {404, #{<<"message">> => <<"Not Found">>}}}
     end,
 
-    Result = aws_retry:with_retry(Fun, #{max_retries => 3}),
+    Result = smithy_retry:with_retry(Fun, #{max_retries => 3}),
 
     ?assertMatch({error, {404, _}}, Result),
     ?assertEqual(1, counters:get(Counter, 1)).
@@ -144,7 +144,7 @@ no_retry_on_unknown_error_test() ->
         {error, custom_error}
     end,
 
-    Result = aws_retry:with_retry(Fun, #{max_retries => 3}),
+    Result = smithy_retry:with_retry(Fun, #{max_retries => 3}),
 
     ?assertEqual({error, custom_error}, Result),
     ?assertEqual(1, counters:get(Counter, 1)).
@@ -160,7 +160,7 @@ max_retries_exceeded_test() ->
         {error, {500, #{<<"message">> => <<"Server Error">>}}}
     end,
 
-    Result = aws_retry:with_retry(Fun, #{
+    Result = smithy_retry:with_retry(Fun, #{
         max_retries => 2,
         initial_backoff => 10,
         jitter => false
@@ -178,7 +178,7 @@ max_retries_with_zero_test() ->
         {error, {503, #{}}}
     end,
 
-    Result = aws_retry:with_retry(Fun, #{
+    Result = smithy_retry:with_retry(Fun, #{
         max_retries => 0,
         initial_backoff => 10
     }),
@@ -202,7 +202,7 @@ exponential_backoff_timing_test() ->
         end
     end,
 
-    Result = aws_retry:with_retry(Fun, #{
+    Result = smithy_retry:with_retry(Fun, #{
         max_retries => 3,
         initial_backoff => 50,
         backoff_multiplier => 2,
@@ -219,7 +219,7 @@ exponential_backoff_timing_test() ->
 backoff_with_max_limit_test() ->
     Fun = fun() -> {error, {500, #{}}} end,
 
-    Result = aws_retry:with_retry(Fun, #{
+    Result = smithy_retry:with_retry(Fun, #{
         max_retries => 5,
         initial_backoff => 100,
         max_backoff => 200,
@@ -245,7 +245,7 @@ measure_retry_delay() ->
 
     Fun = fun() -> {error, {500, #{}}} end,
 
-    _ = aws_retry:with_retry(Fun, #{
+    _ = smithy_retry:with_retry(Fun, #{
         max_retries => 1,
         initial_backoff => 50,
         jitter => true
@@ -267,7 +267,7 @@ measure_retry_delay_no_jitter() ->
 
     Fun = fun() -> {error, {500, #{}}} end,
 
-    _ = aws_retry:with_retry(Fun, #{
+    _ = smithy_retry:with_retry(Fun, #{
         max_retries => 1,
         initial_backoff => 50,
         jitter => false
@@ -296,7 +296,7 @@ custom_retryable_check_test() ->
         (_) -> false
     end,
 
-    Result = aws_retry:with_retry(Fun, #{
+    Result = smithy_retry:with_retry(Fun, #{
         max_retries => 2,
         initial_backoff => 10,
         retryable_errors => CustomCheck
@@ -325,7 +325,7 @@ logger_callback_test() ->
         Pid ! {log, LogData}
     end,
 
-    Result = aws_retry:with_retry(Fun, #{
+    Result = smithy_retry:with_retry(Fun, #{
         max_retries => 3,
         initial_backoff => 10,
         jitter => false,
@@ -348,34 +348,34 @@ logger_callback_test() ->
 %% Test: is_retryable_error/1
 %%--------------------------------------------------------------------
 is_retryable_error_500_test() ->
-    ?assert(aws_retry:is_retryable_error({500, #{}})).
+    ?assert(smithy_retry:is_retryable_error({500, #{}})).
 
 is_retryable_error_503_test() ->
-    ?assert(aws_retry:is_retryable_error({503, <<"Service Unavailable">>})).
+    ?assert(smithy_retry:is_retryable_error({503, <<"Service Unavailable">>})).
 
 is_retryable_error_429_test() ->
-    ?assert(aws_retry:is_retryable_error({429, #{}})).
+    ?assert(smithy_retry:is_retryable_error({429, #{}})).
 
 is_retryable_error_timeout_test() ->
-    ?assert(aws_retry:is_retryable_error({error, timeout})).
+    ?assert(smithy_retry:is_retryable_error({error, timeout})).
 
 is_retryable_error_etimedout_test() ->
-    ?assert(aws_retry:is_retryable_error({error, etimedout})).
+    ?assert(smithy_retry:is_retryable_error({error, etimedout})).
 
 is_retryable_error_econnrefused_test() ->
-    ?assert(aws_retry:is_retryable_error({error, econnrefused})).
+    ?assert(smithy_retry:is_retryable_error({error, econnrefused})).
 
 is_retryable_error_connection_test() ->
-    ?assert(aws_retry:is_retryable_error({error, {failed_connect, []}})).
+    ?assert(smithy_retry:is_retryable_error({error, {failed_connect, []}})).
 
 is_not_retryable_error_400_test() ->
-    ?assertNot(aws_retry:is_retryable_error({400, #{}})).
+    ?assertNot(smithy_retry:is_retryable_error({400, #{}})).
 
 is_not_retryable_error_404_test() ->
-    ?assertNot(aws_retry:is_retryable_error({404, #{}})).
+    ?assertNot(smithy_retry:is_retryable_error({404, #{}})).
 
 is_not_retryable_error_custom_test() ->
-    ?assertNot(aws_retry:is_retryable_error({error, custom_error})).
+    ?assertNot(smithy_retry:is_retryable_error({error, custom_error})).
 
 %%--------------------------------------------------------------------
 %% Test: Integration scenarios
@@ -394,7 +394,7 @@ api_call_with_retry_test() ->
         end
     end,
 
-    Result = aws_retry:with_retry(ApiCall, #{
+    Result = smithy_retry:with_retry(ApiCall, #{
         max_retries => 3,
         initial_backoff => 50,
         max_backoff => 1000
@@ -419,7 +419,7 @@ mixed_error_types_test() ->
         end
     end,
 
-    Result = aws_retry:with_retry(Fun, #{
+    Result = smithy_retry:with_retry(Fun, #{
         max_retries => 5,
         initial_backoff => 10,
         jitter => false
@@ -436,7 +436,7 @@ performance_no_retry_test() ->
     Fun = fun() -> {ok, success} end,
 
     StartTime = erlang:monotonic_time(microsecond),
-    _ = [aws_retry:with_retry(Fun) || _ <- lists:seq(1, 100)],
+    _ = [smithy_retry:with_retry(Fun) || _ <- lists:seq(1, 100)],
     EndTime = erlang:monotonic_time(microsecond),
 
     Duration = EndTime - StartTime,

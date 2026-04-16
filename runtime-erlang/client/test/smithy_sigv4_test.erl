@@ -7,10 +7,10 @@
 %% Test that the module compiles and exports are correct
 module_info_test() ->
     %% Verify module exists and loads
-    ?assertEqual(aws_sigv4, aws_sigv4:module_info(module)),
+    ?assertEqual(smithy_sigv4, smithy_sigv4:module_info(module)),
 
     %% Verify sign_request/5 is exported
-    Exports = aws_sigv4:module_info(exports),
+    Exports = smithy_sigv4:module_info(exports),
     ?assert(lists:member({sign_request, 5}, Exports)).
 
 %%====================================================================
@@ -21,20 +21,20 @@ module_info_test() ->
 hash_sha256_empty_test() ->
     %% SHA256 of empty string (AWS test vector)
     Expected = <<"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855">>,
-    Result = aws_sigv4:hash_sha256(<<>>),
+    Result = smithy_sigv4:hash_sha256(<<>>),
     ?assertEqual(Expected, Result).
 
 %% Test hash_sha256/1 with known value
 hash_sha256_known_test() ->
     %% SHA256 of "hello"
     Expected = <<"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824">>,
-    Result = aws_sigv4:hash_sha256(<<"hello">>),
+    Result = smithy_sigv4:hash_sha256(<<"hello">>),
     ?assertEqual(Expected, Result).
 
 %% Test hash_sha256/1 with JSON body
 hash_sha256_json_test() ->
     Body = <<"{\"TableName\":\"Test\"}">>,
-    Result = aws_sigv4:hash_sha256(Body),
+    Result = smithy_sigv4:hash_sha256(Body),
     %% Should return lowercase hex string of 64 characters (32 bytes * 2)
     ?assertEqual(64, byte_size(Result)),
     %% Should be all lowercase hex
@@ -43,7 +43,7 @@ hash_sha256_json_test() ->
 %% Test signed_header_list/1 with single header
 signed_header_list_single_test() ->
     Headers = [{<<"Host">>, <<"example.com">>}],
-    Result = aws_sigv4:signed_header_list(Headers),
+    Result = smithy_sigv4:signed_header_list(Headers),
     ?assertEqual(<<"host">>, Result).
 
 %% Test signed_header_list/1 with multiple headers (sorted)
@@ -53,7 +53,7 @@ signed_header_list_multiple_test() ->
         {<<"Host">>, <<"s3.amazonaws.com">>},
         {<<"Content-Type">>, <<"application/json">>}
     ],
-    Result = aws_sigv4:signed_header_list(Headers),
+    Result = smithy_sigv4:signed_header_list(Headers),
     %% Should be sorted alphabetically
     ?assertEqual(<<"content-type;host;x-amz-date">>, Result).
 
@@ -63,14 +63,14 @@ signed_header_list_mixed_case_test() ->
         {<<"HOST">>, <<"example.com">>},
         {<<"X-AMZ-DATE">>, <<"20230101T120000Z">>}
     ],
-    Result = aws_sigv4:signed_header_list(Headers),
+    Result = smithy_sigv4:signed_header_list(Headers),
     %% Should be lowercase and sorted
     ?assertEqual(<<"host;x-amz-date">>, Result).
 
 %% Test canonicalize_headers/1 with single header
 canonicalize_headers_single_test() ->
     Headers = [{<<"Host">>, <<"example.com">>}],
-    Result = aws_sigv4:canonicalize_headers(Headers),
+    Result = smithy_sigv4:canonicalize_headers(Headers),
     Expected = <<"host:example.com\n">>,
     ?assertEqual(Expected, Result).
 
@@ -80,7 +80,7 @@ canonicalize_headers_sorting_test() ->
         {<<"X-Amz-Date">>, <<"20230101T120000Z">>},
         {<<"Host">>, <<"s3.amazonaws.com">>}
     ],
-    Result = aws_sigv4:canonicalize_headers(Headers),
+    Result = smithy_sigv4:canonicalize_headers(Headers),
     %% host should come before x-amz-date alphabetically
     Expected = <<"host:s3.amazonaws.com\nx-amz-date:20230101T120000Z\n">>,
     ?assertEqual(Expected, Result).
@@ -91,7 +91,7 @@ canonicalize_headers_trim_test() ->
         {<<"Host">>, <<"  example.com  ">>},
         {<<"X-Custom">>, <<"  value with spaces  ">>}
     ],
-    Result = aws_sigv4:canonicalize_headers(Headers),
+    Result = smithy_sigv4:canonicalize_headers(Headers),
     %% Whitespace should be trimmed from values
     Expected = <<"host:example.com\nx-custom:value with spaces\n">>,
     ?assertEqual(Expected, Result).
@@ -102,40 +102,40 @@ canonicalize_headers_lowercase_test() ->
         {<<"HOST">>, <<"example.com">>},
         {<<"Content-TYPE">>, <<"application/json">>}
     ],
-    Result = aws_sigv4:canonicalize_headers(Headers),
+    Result = smithy_sigv4:canonicalize_headers(Headers),
     Expected = <<"content-type:application/json\nhost:example.com\n">>,
     ?assertEqual(Expected, Result).
 
 %% Test canonicalize_query_string/1 with empty string
 canonicalize_query_empty_test() ->
-    ?assertEqual(<<>>, aws_sigv4:canonicalize_query_string(<<>>)),
-    ?assertEqual(<<>>, aws_sigv4:canonicalize_query_string(undefined)).
+    ?assertEqual(<<>>, smithy_sigv4:canonicalize_query_string(<<>>)),
+    ?assertEqual(<<>>, smithy_sigv4:canonicalize_query_string(undefined)).
 
 %% Test canonicalize_query_string/1 with single parameter
 canonicalize_query_single_test() ->
     Query = <<"key=value">>,
-    Result = aws_sigv4:canonicalize_query_string(Query),
+    Result = smithy_sigv4:canonicalize_query_string(Query),
     %% Should be URL-encoded
     ?assertEqual(<<"key=value">>, Result).
 
 %% Test canonicalize_query_string/1 with multiple parameters (sorted)
 canonicalize_query_sorting_test() ->
     Query = <<"zebra=last&apple=first&middle=center">>,
-    Result = aws_sigv4:canonicalize_query_string(Query),
+    Result = smithy_sigv4:canonicalize_query_string(Query),
     %% Should be sorted by key
     ?assertEqual(<<"apple=first&middle=center&zebra=last">>, Result).
 
 %% Test canonicalize_query_string/1 with URL encoding
 canonicalize_query_encoding_test() ->
     Query = <<"key=value with spaces">>,
-    Result = aws_sigv4:canonicalize_query_string(Query),
+    Result = smithy_sigv4:canonicalize_query_string(Query),
     %% Spaces should be encoded as %20
     ?assert(binary:match(Result, <<"%20">>) =/= nomatch).
 
 %% Test canonicalize_query_string/1 with leading ?
 canonicalize_query_leading_question_test() ->
     Query = <<"?key=value">>,
-    Result = aws_sigv4:canonicalize_query_string(Query),
+    Result = smithy_sigv4:canonicalize_query_string(Query),
     ?assertEqual(<<"key=value">>, Result).
 
 %% Test create_canonical_request/4 with GET request
@@ -148,7 +148,7 @@ create_canonical_request_get_test() ->
     ],
     Body = <<>>,
 
-    Result = aws_sigv4:create_canonical_request(Method, Uri, Headers, Body),
+    Result = smithy_sigv4:create_canonical_request(Method, Uri, Headers, Body),
 
     %% Should contain all components
     ?assert(binary:match(Result, <<"GET">>) =/= nomatch),
@@ -169,7 +169,7 @@ create_canonical_request_post_test() ->
     ],
     Body = <<"{\"TableName\":\"Test\"}">>,
 
-    Result = aws_sigv4:create_canonical_request(Method, Uri, Headers, Body),
+    Result = smithy_sigv4:create_canonical_request(Method, Uri, Headers, Body),
 
     %% Should contain POST method
     ?assert(binary:match(Result, <<"POST">>) =/= nomatch),
@@ -184,7 +184,7 @@ create_canonical_request_query_test() ->
     Headers = [{<<"Host">>, <<"s3.amazonaws.com">>}],
     Body = <<>>,
 
-    Result = aws_sigv4:create_canonical_request(Method, Uri, Headers, Body),
+    Result = smithy_sigv4:create_canonical_request(Method, Uri, Headers, Body),
 
     %% Should contain sorted query parameters
     ?assert(binary:match(Result, <<"max-keys">>) =/= nomatch),
@@ -197,7 +197,7 @@ create_canonical_request_root_path_test() ->
     Headers = [{<<"Host">>, <<"s3.amazonaws.com">>}],
     Body = <<>>,
 
-    Result = aws_sigv4:create_canonical_request(Method, Uri, Headers, Body),
+    Result = smithy_sigv4:create_canonical_request(Method, Uri, Headers, Body),
 
     %% Should have / as path
     Lines = binary:split(Result, <<"\n">>, [global]),
@@ -212,7 +212,7 @@ create_canonical_request_no_path_test() ->
     Headers = [{<<"Host">>, <<"s3.amazonaws.com">>}],
     Body = <<>>,
 
-    Result = aws_sigv4:create_canonical_request(Method, Uri, Headers, Body),
+    Result = smithy_sigv4:create_canonical_request(Method, Uri, Headers, Body),
 
     %% Should have / as path even if not specified
     Lines = binary:split(Result, <<"\n">>, [global]),
@@ -229,7 +229,7 @@ credential_scope_basic_test() ->
     Region = <<"us-east-1">>,
     Service = <<"s3">>,
 
-    Result = aws_sigv4:credential_scope(DateTime, Region, Service),
+    Result = smithy_sigv4:credential_scope(DateTime, Region, Service),
 
     Expected = <<"20230101/us-east-1/s3/aws4_request">>,
     ?assertEqual(Expected, Result).
@@ -240,7 +240,7 @@ credential_scope_different_region_test() ->
     Region = <<"eu-west-1">>,
     Service = <<"dynamodb">>,
 
-    Result = aws_sigv4:credential_scope(DateTime, Region, Service),
+    Result = smithy_sigv4:credential_scope(DateTime, Region, Service),
 
     Expected = <<"20230515/eu-west-1/dynamodb/aws4_request">>,
     ?assertEqual(Expected, Result).
@@ -253,8 +253,8 @@ credential_scope_date_extraction_test() ->
     Region = <<"us-west-2">>,
     Service = <<"s3">>,
 
-    Result1 = aws_sigv4:credential_scope(DateTime1, Region, Service),
-    Result2 = aws_sigv4:credential_scope(DateTime2, Region, Service),
+    Result1 = smithy_sigv4:credential_scope(DateTime1, Region, Service),
+    Result2 = smithy_sigv4:credential_scope(DateTime2, Region, Service),
 
     %% Both should have same credential scope (same date)
     ?assertEqual(Result1, Result2),
@@ -269,7 +269,7 @@ credential_scope_services_test() ->
 
     lists:foreach(
         fun(Service) ->
-            Result = aws_sigv4:credential_scope(DateTime, Region, Service),
+            Result = smithy_sigv4:credential_scope(DateTime, Region, Service),
             Expected = <<"20230101/us-east-1/", Service/binary, "/aws4_request">>,
             ?assertEqual(Expected, Result)
         end,
@@ -278,7 +278,7 @@ credential_scope_services_test() ->
 
 %% Test iso8601_datetime/0 format
 iso8601_datetime_format_test() ->
-    Result = aws_sigv4:iso8601_datetime(),
+    Result = smithy_sigv4:iso8601_datetime(),
 
     %% Should be 16 characters: YYYYMMDDTHHMMSSZ
     ?assertEqual(16, byte_size(Result)),
@@ -306,8 +306,8 @@ iso8601_datetime_format_test() ->
 %% Test iso8601_datetime/0 sequential calls
 iso8601_datetime_sequential_test() ->
     %% Call twice in quick succession
-    Time1 = aws_sigv4:iso8601_datetime(),
-    Time2 = aws_sigv4:iso8601_datetime(),
+    Time1 = smithy_sigv4:iso8601_datetime(),
+    Time2 = smithy_sigv4:iso8601_datetime(),
 
     %% Both should be valid timestamps
     ?assertEqual(16, byte_size(Time1)),
@@ -323,7 +323,7 @@ create_string_to_sign_basic_test() ->
     CanonicalRequest =
         <<"GET\n/\n\nhost:s3.amazonaws.com\n\nhost\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855">>,
 
-    Result = aws_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
+    Result = smithy_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
 
     %% Should start with algorithm
     ?assert(binary:match(Result, <<"AWS4-HMAC-SHA256">>) =/= nomatch),
@@ -345,7 +345,7 @@ create_string_to_sign_structure_test() ->
     CanonicalRequest =
         <<"POST\n/\n\nhost:dynamodb.eu-west-1.amazonaws.com\n\nhost\n44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a">>,
 
-    Result = aws_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
+    Result = smithy_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
 
     %% Split into lines
     Lines = binary:split(Result, <<"\n">>, [global]),
@@ -374,7 +374,7 @@ create_string_to_sign_aws_example_test() ->
     CanonicalRequest =
         <<"GET\n/\n\nhost:example.amazonaws.com\nx-amz-date:20150830T123600Z\n\nhost;x-amz-date\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855">>,
 
-    Result = aws_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
+    Result = smithy_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
 
     %% Verify structure
     Lines = binary:split(Result, <<"\n">>, [global]),
@@ -393,7 +393,7 @@ create_string_to_sign_empty_canonical_test() ->
     CredentialScope = <<"20230101/us-east-1/s3/aws4_request">>,
     CanonicalRequest = <<>>,
 
-    Result = aws_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
+    Result = smithy_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
 
     %% Should still have 4 lines
     Lines = binary:split(Result, <<"\n">>, [global]),
@@ -410,12 +410,12 @@ integration_credential_scope_test() ->
     Service = <<"s3">>,
 
     %% Create credential scope
-    CredentialScope = aws_sigv4:credential_scope(DateTime, Region, Service),
+    CredentialScope = smithy_sigv4:credential_scope(DateTime, Region, Service),
 
     %% Use in string to sign
     CanonicalRequest =
         <<"GET\n/\n\nhost:example.com\n\nhost\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855">>,
-    StringToSign = aws_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
+    StringToSign = smithy_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
 
     %% Verify credential scope is in string to sign
     ?assert(binary:match(StringToSign, CredentialScope) =/= nomatch),
@@ -432,16 +432,16 @@ integration_full_flow_test() ->
     ],
     Body = <<>>,
 
-    CanonicalRequest = aws_sigv4:create_canonical_request(Method, Uri, Headers, Body),
+    CanonicalRequest = smithy_sigv4:create_canonical_request(Method, Uri, Headers, Body),
 
     %% Create credential scope
     DateTime = <<"20230101T120000Z">>,
     Region = <<"us-east-1">>,
     Service = <<"s3">>,
-    CredentialScope = aws_sigv4:credential_scope(DateTime, Region, Service),
+    CredentialScope = smithy_sigv4:credential_scope(DateTime, Region, Service),
 
     %% Create string to sign
-    StringToSign = aws_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
+    StringToSign = smithy_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
 
     %% Verify result structure
     Lines = binary:split(StringToSign, <<"\n">>, [global]),
@@ -465,7 +465,7 @@ hmac_sha256_known_test() ->
     Key = <<"key">>,
     Data = <<"The quick brown fox jumps over the lazy dog">>,
 
-    Result = aws_sigv4:hmac_sha256(Key, Data),
+    Result = smithy_sigv4:hmac_sha256(Key, Data),
 
     %% Should be 32 bytes
     ?assertEqual(32, byte_size(Result)),
@@ -478,7 +478,7 @@ hmac_sha256_empty_data_test() ->
     Key = <<"secret">>,
     Data = <<>>,
 
-    Result = aws_sigv4:hmac_sha256(Key, Data),
+    Result = smithy_sigv4:hmac_sha256(Key, Data),
 
     ?assertEqual(32, byte_size(Result)).
 
@@ -487,7 +487,7 @@ hmac_sha256_empty_key_test() ->
     Key = <<>>,
     Data = <<"data">>,
 
-    Result = aws_sigv4:hmac_sha256(Key, Data),
+    Result = smithy_sigv4:hmac_sha256(Key, Data),
 
     ?assertEqual(32, byte_size(Result)).
 
@@ -496,8 +496,8 @@ hmac_sha256_deterministic_test() ->
     Key = <<"testkey">>,
     Data = <<"testdata">>,
 
-    Result1 = aws_sigv4:hmac_sha256(Key, Data),
-    Result2 = aws_sigv4:hmac_sha256(Key, Data),
+    Result1 = smithy_sigv4:hmac_sha256(Key, Data),
+    Result2 = smithy_sigv4:hmac_sha256(Key, Data),
 
     %% Should produce same result
     ?assertEqual(Result1, Result2).
@@ -509,7 +509,7 @@ derive_signing_key_basic_test() ->
     Region = <<"us-east-1">>,
     Service = <<"iam">>,
 
-    SigningKey = aws_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
+    SigningKey = smithy_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
 
     %% Should be 32 bytes (HMAC-SHA256 output)
     ?assertEqual(32, byte_size(SigningKey)),
@@ -525,7 +525,7 @@ derive_signing_key_aws_example_test() ->
     Region = <<"us-east-1">>,
     Service = <<"iam">>,
 
-    SigningKey = aws_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
+    SigningKey = smithy_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
 
     %% Expected value from AWS test suite
     %% c4afb1cc5771d871763a393e44b703571b55cc28424d1a5e86da6ed3c154a4b9
@@ -542,8 +542,8 @@ derive_signing_key_deterministic_test() ->
     Region = <<"us-west-2">>,
     Service = <<"s3">>,
 
-    Key1 = aws_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
-    Key2 = aws_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
+    Key1 = smithy_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
+    Key2 = smithy_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
 
     %% Should produce same key
     ?assertEqual(Key1, Key2).
@@ -554,8 +554,8 @@ derive_signing_key_different_dates_test() ->
     Region = <<"us-east-1">>,
     Service = <<"s3">>,
 
-    Key1 = aws_sigv4:derive_signing_key(SecretAccessKey, <<"20230101">>, Region, Service),
-    Key2 = aws_sigv4:derive_signing_key(SecretAccessKey, <<"20230102">>, Region, Service),
+    Key1 = smithy_sigv4:derive_signing_key(SecretAccessKey, <<"20230101">>, Region, Service),
+    Key2 = smithy_sigv4:derive_signing_key(SecretAccessKey, <<"20230102">>, Region, Service),
 
     %% Different dates should produce different keys
     ?assertNotEqual(Key1, Key2).
@@ -566,8 +566,8 @@ derive_signing_key_different_regions_test() ->
     Date = <<"20230101">>,
     Service = <<"s3">>,
 
-    Key1 = aws_sigv4:derive_signing_key(SecretAccessKey, Date, <<"us-east-1">>, Service),
-    Key2 = aws_sigv4:derive_signing_key(SecretAccessKey, Date, <<"eu-west-1">>, Service),
+    Key1 = smithy_sigv4:derive_signing_key(SecretAccessKey, Date, <<"us-east-1">>, Service),
+    Key2 = smithy_sigv4:derive_signing_key(SecretAccessKey, Date, <<"eu-west-1">>, Service),
 
     %% Different regions should produce different keys
     ?assertNotEqual(Key1, Key2).
@@ -578,8 +578,8 @@ derive_signing_key_different_services_test() ->
     Date = <<"20230101">>,
     Region = <<"us-east-1">>,
 
-    Key1 = aws_sigv4:derive_signing_key(SecretAccessKey, Date, Region, <<"s3">>),
-    Key2 = aws_sigv4:derive_signing_key(SecretAccessKey, Date, Region, <<"dynamodb">>),
+    Key1 = smithy_sigv4:derive_signing_key(SecretAccessKey, Date, Region, <<"s3">>),
+    Key2 = smithy_sigv4:derive_signing_key(SecretAccessKey, Date, Region, <<"dynamodb">>),
 
     %% Different services should produce different keys
     ?assertNotEqual(Key1, Key2).
@@ -587,7 +587,7 @@ derive_signing_key_different_services_test() ->
 %% Test calculate_signature/2 basic
 calculate_signature_basic_test() ->
     %% Create a signing key
-    SigningKey = aws_sigv4:derive_signing_key(
+    SigningKey = smithy_sigv4:derive_signing_key(
         <<"secret">>,
         <<"20230101">>,
         <<"us-east-1">>,
@@ -597,7 +597,7 @@ calculate_signature_basic_test() ->
     StringToSign =
         <<"AWS4-HMAC-SHA256\n20230101T120000Z\n20230101/us-east-1/s3/aws4_request\nabc123">>,
 
-    Signature = aws_sigv4:calculate_signature(SigningKey, StringToSign),
+    Signature = smithy_sigv4:calculate_signature(SigningKey, StringToSign),
 
     %% Should be 64 character hex string (32 bytes * 2)
     ?assertEqual(64, byte_size(Signature)),
@@ -614,13 +614,13 @@ calculate_signature_aws_example_test() ->
     Service = <<"iam">>,
 
     %% Derive signing key
-    SigningKey = aws_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
+    SigningKey = smithy_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
 
     %% String to sign from AWS test suite
     StringToSign =
         <<"AWS4-HMAC-SHA256\n20150830T123600Z\n20150830/us-east-1/iam/aws4_request\nf536975d06c0309214f805bb90ccff089219ecd68b2577efef23edd43b7e1a59">>,
 
-    Signature = aws_sigv4:calculate_signature(SigningKey, StringToSign),
+    Signature = smithy_sigv4:calculate_signature(SigningKey, StringToSign),
 
     %% Expected signature from AWS test suite
     Expected = <<"5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7">>,
@@ -633,8 +633,8 @@ calculate_signature_deterministic_test() ->
     SigningKey = <<"testkey12345678901234567890123456789012">>,
     StringToSign = <<"test string to sign">>,
 
-    Sig1 = aws_sigv4:calculate_signature(SigningKey, StringToSign),
-    Sig2 = aws_sigv4:calculate_signature(SigningKey, StringToSign),
+    Sig1 = smithy_sigv4:calculate_signature(SigningKey, StringToSign),
+    Sig2 = smithy_sigv4:calculate_signature(SigningKey, StringToSign),
 
     ?assertEqual(Sig1, Sig2).
 
@@ -642,8 +642,8 @@ calculate_signature_deterministic_test() ->
 calculate_signature_different_inputs_test() ->
     SigningKey = <<"testkey12345678901234567890123456789012">>,
 
-    Sig1 = aws_sigv4:calculate_signature(SigningKey, <<"string1">>),
-    Sig2 = aws_sigv4:calculate_signature(SigningKey, <<"string2">>),
+    Sig1 = smithy_sigv4:calculate_signature(SigningKey, <<"string1">>),
+    Sig2 = smithy_sigv4:calculate_signature(SigningKey, <<"string2">>),
 
     ?assertNotEqual(Sig1, Sig2).
 
@@ -660,10 +660,10 @@ integration_derive_and_sign_test() ->
         <<"AWS4-HMAC-SHA256\n20230101T120000Z\n20230101/us-east-1/s3/aws4_request\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855">>,
 
     %% Derive signing key
-    SigningKey = aws_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
+    SigningKey = smithy_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
 
     %% Calculate signature
-    Signature = aws_sigv4:calculate_signature(SigningKey, StringToSign),
+    Signature = smithy_sigv4:calculate_signature(SigningKey, StringToSign),
 
     %% Verify signature properties
     ?assertEqual(64, byte_size(Signature)),
@@ -681,29 +681,29 @@ integration_full_sigv4_flow_test() ->
     Body = <<>>,
 
     %% Create canonical request
-    CanonicalRequest = aws_sigv4:create_canonical_request(Method, Uri, Headers, Body),
+    CanonicalRequest = smithy_sigv4:create_canonical_request(Method, Uri, Headers, Body),
 
     %% Create string to sign
     DateTime = <<"20230101T120000Z">>,
     Region = <<"us-east-1">>,
     Service = <<"s3">>,
-    CredentialScope = aws_sigv4:credential_scope(DateTime, Region, Service),
-    StringToSign = aws_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
+    CredentialScope = smithy_sigv4:credential_scope(DateTime, Region, Service),
+    StringToSign = smithy_sigv4:create_string_to_sign(DateTime, CredentialScope, CanonicalRequest),
 
     %% Calculate signature
     SecretAccessKey = <<"wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY">>,
     % Extract date: 20230101
     Date = binary:part(DateTime, 0, 8),
-    SigningKey = aws_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
-    Signature = aws_sigv4:calculate_signature(SigningKey, StringToSign),
+    SigningKey = smithy_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
+    Signature = smithy_sigv4:calculate_signature(SigningKey, StringToSign),
 
     %% Verify final signature
     ?assertEqual(64, byte_size(Signature)),
     ?assert(is_hex_string(Signature)),
 
     %% Signature should be deterministic
-    SigningKey2 = aws_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
-    Signature2 = aws_sigv4:calculate_signature(SigningKey2, StringToSign),
+    SigningKey2 = smithy_sigv4:derive_signing_key(SecretAccessKey, Date, Region, Service),
+    Signature2 = smithy_sigv4:calculate_signature(SigningKey2, StringToSign),
     ?assertEqual(Signature, Signature2).
 
 %%====================================================================
@@ -717,7 +717,7 @@ format_auth_header_basic_test() ->
     SignedHeaders = <<"host;x-amz-date">>,
     Signature = <<"5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7">>,
 
-    Result = aws_sigv4:format_auth_header(AccessKeyId, CredentialScope, SignedHeaders, Signature),
+    Result = smithy_sigv4:format_auth_header(AccessKeyId, CredentialScope, SignedHeaders, Signature),
 
     %% Should start with algorithm
     ?assert(binary:match(Result, <<"AWS4-HMAC-SHA256">>) =/= nomatch),
@@ -742,7 +742,7 @@ format_auth_header_format_test() ->
     SignedHeaders = <<"host;x-amz-date">>,
     Signature = <<"abc123">>,
 
-    Result = aws_sigv4:format_auth_header(AccessKeyId, CredentialScope, SignedHeaders, Signature),
+    Result = smithy_sigv4:format_auth_header(AccessKeyId, CredentialScope, SignedHeaders, Signature),
 
     Expected =
         <<"AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/20230101/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-date, Signature=abc123">>,
@@ -762,7 +762,7 @@ sign_request_basic_test() ->
         service => <<"s3">>
     },
 
-    {ok, Result} = aws_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
+    {ok, Result} = smithy_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
 
     %% Should return a list of headers
     ?assert(is_list(Result)),
@@ -790,7 +790,7 @@ sign_request_with_session_token_test() ->
         service => <<"dynamodb">>
     },
 
-    {ok, Result} = aws_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
+    {ok, Result} = smithy_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
 
     %% Should have Authorization header
     ?assert(lists:keyfind(<<"Authorization">>, 1, Result) =/= false),
@@ -812,7 +812,7 @@ sign_request_without_session_token_test() ->
         service => <<"s3">>
     },
 
-    {ok, Result} = aws_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
+    {ok, Result} = smithy_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
 
     %% Should NOT have X-Amz-Security-Token header
     ?assertEqual(false, lists:keyfind(<<"X-Amz-Security-Token">>, 1, Result)).
@@ -830,7 +830,7 @@ sign_request_authorization_format_test() ->
         service => <<"s3">>
     },
 
-    {ok, Result} = aws_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
+    {ok, Result} = smithy_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
 
     {_, AuthHeader} = lists:keyfind(<<"Authorization">>, 1, Result),
 
@@ -855,7 +855,7 @@ sign_request_date_format_test() ->
         service => <<"s3">>
     },
 
-    {ok, Result} = aws_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
+    {ok, Result} = smithy_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
 
     {_, DateTime} = lists:keyfind(<<"X-Amz-Date">>, 1, Result),
 
@@ -884,7 +884,7 @@ sign_request_post_with_body_test() ->
         service => <<"dynamodb">>
     },
 
-    {ok, Result} = aws_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
+    {ok, Result} = smithy_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
 
     %% Should have all required headers
     ?assert(lists:keyfind(<<"Authorization">>, 1, Result) =/= false),
@@ -906,8 +906,8 @@ sign_request_deterministic_test() ->
     },
 
     %% Call twice
-    {ok, Result1} = aws_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
-    {ok, Result2} = aws_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
+    {ok, Result1} = smithy_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
+    {ok, Result2} = smithy_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
 
     %% Both should have Authorization header
     {_, Auth1} = lists:keyfind(<<"Authorization">>, 1, Result1),
@@ -930,7 +930,7 @@ integration_sign_request_complete_test() ->
         service => <<"s3">>
     },
 
-    {ok, Result} = aws_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
+    {ok, Result} = smithy_sigv4:sign_request(Method, Url, Headers, Body, Credentials),
 
     %% Extract headers
     {_, AuthHeader} = lists:keyfind(<<"Authorization">>, 1, Result),
