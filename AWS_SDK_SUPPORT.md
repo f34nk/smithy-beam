@@ -34,7 +34,7 @@ Features of the generated Erlang server (`erlang-server-codegen`). The generated
 
 ## Elixir Server Runtime
 
-Runtime modules in `runtime-elixir/server/` that support generated Elixir server dispatchers. These are hand-written Plug-compatible modules; the `codegen-elixir` server plugin that will call them is not yet wired.
+Runtime modules in `runtime-elixir/server/` that support generated Elixir server dispatchers. These are hand-written Plug-compatible modules. `ElixirWriter` implements all server rendering methods; the `codegen-elixir` Smithy Build plugin is not yet registered.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -52,7 +52,7 @@ Runtime modules in `runtime-elixir/server/` that support generated Elixir server
 
 ## Elixir Client Runtime
 
-Runtime modules in `runtime-elixir/client/` that support generated Elixir clients. These are hand-written modules; the `codegen-elixir` client plugin that will call them is not yet wired.
+Runtime modules in `runtime-elixir/client/` that support generated Elixir clients. These are hand-written modules. `ElixirWriter` implements all client rendering methods; the `codegen-elixir` Smithy Build plugin is not yet registered.
 
 | Feature | Status | Notes |
 |---------|--------|-------|

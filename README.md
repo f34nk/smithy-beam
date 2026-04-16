@@ -27,7 +27,7 @@ Targeting **BEAM languages**: Erlang, Elixir, Gleam.
 Prerequisites:
 - Java 11+
 - Gradle 7.0+
-- Smithy CLI
+- [Smithy CLI](https://smithy.io/2.0/guides/smithy-cli/cli_installation.html)
 - Erlang/OTP 24+
 - rebar3
 - Elixir
