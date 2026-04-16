@@ -1,0 +1,2 @@
+io.smithy.beam.elixir.client.ElixirClientPlugin
+io.smithy.beam.elixir.server.ElixirServerPlugin
