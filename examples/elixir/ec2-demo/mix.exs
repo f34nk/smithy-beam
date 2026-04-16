@@ -12,7 +12,7 @@ defmodule AwsDemo.MixProject do
   end
 
   def application do
-    [extra_applications: [:logger]]
+    [extra_applications: [:logger, :xmerl]]
   end
 
   defp deps do
