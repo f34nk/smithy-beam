@@ -10,6 +10,7 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.traits.XmlNameTrait;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,8 +47,14 @@ public final class Ec2QueryProtocolAnalyzer extends AwsQueryProtocolAnalyzer {
         for (MemberShape member : input.getAllMembers().values()) {
             String smithyName = member.getMemberName();
             bodyMembers.add(smithyName);
-            member.getTrait(Ec2QueryNameTrait.class)
-                  .ifPresent(trait -> overrides.put(smithyName, trait.getValue()));
+            // ec2Query name resolution: @ec2QueryName takes precedence, then @xmlName as fallback.
+            // AWS EC2 models frequently use @xmlName (e.g. "InstanceId" on the "InstanceIds" member)
+            // instead of @ec2QueryName to specify the wire serialization key.
+            if (member.hasTrait(Ec2QueryNameTrait.class)) {
+                overrides.put(smithyName, member.expectTrait(Ec2QueryNameTrait.class).getValue());
+            } else if (member.hasTrait(XmlNameTrait.class)) {
+                overrides.put(smithyName, member.expectTrait(XmlNameTrait.class).getValue());
+            }
         }
 
         BodySpec body = new BodySpec(
