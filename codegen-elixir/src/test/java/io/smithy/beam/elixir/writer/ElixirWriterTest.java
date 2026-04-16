@@ -2,6 +2,7 @@ package io.smithy.beam.elixir.writer;
 
 import io.smithy.beam.core.ir.AuthSpec;
 import io.smithy.beam.core.ir.BodyEncoding;
+import io.smithy.beam.core.ir.BodySpec;
 import io.smithy.beam.core.ir.EnumSpec;
 import io.smithy.beam.core.ir.ErrorBinding;
 import io.smithy.beam.core.ir.ErrorCodeStrategy;
@@ -591,6 +592,25 @@ class ElixirWriterTest {
         }
 
         @Test
+        void renderServerDeserializeReadsRawBodyForBodyMembers() {
+            BodySpec body = new BodySpec(BodyEncoding.JSON, List.of("city", "temperature"), null);
+            OperationSpec op = new OperationSpec(
+                    "CreateReport", "WeatherService", Role.SERVER,
+                    new HttpSpec("POST", "/report", 201),
+                    List.of(), List.of(), List.of(),
+                    body,
+                    new ErrorSpec(List.of(), ErrorCodeStrategy.REST_JSON),
+                    AuthSpec.none(), RetrySpec.disabled(), null,
+                    "CreateReportOutput", "CreateReportInput",
+                    BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null);
+            String result = writer.renderServerDeserialize(op);
+            assertThat(result).contains("Plug.Conn.read_body(conn)");
+            assertThat(result).contains("Jason.decode(body_raw)");
+            assertThat(result).contains(":city => Map.get(body, \"city\")");
+            assertThat(result).contains(":temperature => Map.get(body, \"temperature\")");
+        }
+
+        @Test
         void renderServerSerializeUsesJason() {
             String result = writer.renderServerSerialize(makeGetWeatherOp());
             assertThat(result).contains("defp serialize_get_weather(output)");
@@ -633,10 +653,9 @@ class ElixirWriterTest {
             assertThat(result).contains("defmodule WeatherService.Handler do");
             assertThat(result).contains("@callback get_weather(");
 
-            // Impl scaffold
-            assertThat(result).contains("defmodule WeatherService.Impl do");
-            assertThat(result).contains("@behaviour WeatherService.Handler");
-            assertThat(result).contains("{:error, :not_implemented}");
+            // Impl scaffold is written separately — not embedded in the server module
+            assertThat(result).doesNotContain("@behaviour WeatherService.Handler");
+            assertThat(result).doesNotContain("{:error, :not_implemented}");
         }
 
         @Test
@@ -646,6 +665,18 @@ class ElixirWriterTest {
                     "WeatherService", List.of(), List.of(), List.of(), List.of(), false);
             String result = writer.renderServerModule("weather_service", List.of(op), types);
             assertThat(result).contains("defp handler, do: WeatherService.Impl");
+        }
+
+        @Test
+        void renderServerImplContentEmitsCorrectModuleNames() {
+            OperationSpec op = makeGetWeatherOp();
+            String result = writer.renderServerImplContent("weather_service", List.of(op));
+
+            assertThat(result).contains("defmodule WeatherService.Impl do");
+            assertThat(result).contains("@behaviour WeatherService.Handler");
+            assertThat(result).contains("def get_weather(_input, _ctx)");
+            assertThat(result).contains("{:error, :not_implemented}");
+            assertThat(result).endsWith("end\n");
         }
     }
 
