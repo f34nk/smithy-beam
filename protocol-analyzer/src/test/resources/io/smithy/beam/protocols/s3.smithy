@@ -39,6 +39,11 @@ structure GetObjectInput {
 
 @output
 structure GetObjectOutput {
+    /// Raw object body returned as a streaming blob payload.
+    @httpPayload
+    Body: Blob
+
+    @httpHeader("Content-Type")
     ContentType: String
 }
 
