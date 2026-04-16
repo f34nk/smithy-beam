@@ -176,7 +176,7 @@ public final class ErlangWriter implements LanguageWriter {
      */
     @Override
     public String renderStructType(StructSpec struct) {
-        String typeName = ErlangSymbolProvider.toSnakeCase(struct.name());
+        String typeName = ErlangSymbolProvider.toSafeSnakeCase(struct.name());
         if (struct.fields().isEmpty()) {
             return "-type " + typeName + "() :: #{}.\n";
         }
@@ -205,7 +205,7 @@ public final class ErlangWriter implements LanguageWriter {
      */
     @Override
     public String renderEnumType(EnumSpec e) {
-        String typeName = ErlangSymbolProvider.toSnakeCase(e.name());
+        String typeName = ErlangSymbolProvider.toSafeSnakeCase(e.name());
         String variants = e.values().stream()
             .map(ErlangWriter::toErlangAtom)
             .collect(Collectors.joining(" | "));
@@ -222,7 +222,7 @@ public final class ErlangWriter implements LanguageWriter {
      */
     @Override
     public String renderUnionType(UnionSpec u) {
-        String typeName = ErlangSymbolProvider.toSnakeCase(u.name());
+        String typeName = ErlangSymbolProvider.toSafeSnakeCase(u.name());
         String variants = u.variants().stream()
             .map(f -> "{" + ErlangSymbolProvider.toAtomTag(f.name()) + ", " + typeRefToErlang(f.type()) + "}")
             .collect(Collectors.joining(" | "));
@@ -840,17 +840,61 @@ public final class ErlangWriter implements LanguageWriter {
 
     @Override
     public String renderSharedHelpers() {
+        return renderSharedHelpersImpl(true, true);
+    }
+
+    /**
+     * Operations-aware overload: only emits {@code url_encode/1} and {@code ensure_binary/1}
+     * when at least one operation actually uses them, avoiding unused-function warnings in
+     * generated Erlang modules that have no URI labels or query/header parameters.
+     *
+     * <ul>
+     *   <li>{@code url_encode/1} is needed when any operation has non-S3 URI label bindings.</li>
+     *   <li>{@code ensure_binary/1} is needed when any operation has query bindings, non-literal
+     *       header bindings, or non-S3 URI label bindings.</li>
+     * </ul>
+     */
+    @Override
+    public String renderSharedHelpers(List<OperationSpec> ops) {
+        boolean needsUrlEncode = ops.stream().anyMatch(op -> {
+            List<LabelBinding> labels = op.labels() != null ? op.labels() : List.of();
+            if (labels.isEmpty()) return false;
+            // S3-style operations delegate to aws_s3:build_url; url_encode not called directly.
+            boolean hasBucketLabel = labels.stream()
+                    .anyMatch(l -> "Bucket".equals(l.smithyMemberName()));
+            return !hasBucketLabel;
+        });
+
+        boolean needsEnsureBinary = needsUrlEncode
+                || ops.stream().anyMatch(op -> {
+                    // Query params use ensure_binary when filtering non-undefined values.
+                    if (op.queries() != null && !op.queries().isEmpty()) return true;
+                    // Non-literal, non-required headers use ensure_binary for value conversion.
+                    if (op.headers() != null && op.headers().stream()
+                            .anyMatch(h -> h.literalValue() == null)) return true;
+                    return false;
+                });
+
+        return renderSharedHelpersImpl(needsUrlEncode, needsEnsureBinary);
+    }
+
+    private String renderSharedHelpersImpl(boolean needsUrlEncode, boolean needsEnsureBinary) {
+        if (!needsUrlEncode && !needsEnsureBinary) return "";
         StringBuilder sb = new StringBuilder();
-        sb.append("\nurl_encode(Binary) when is_binary(Binary) ->\n");
-        sb.append("    url_encode(binary_to_list(Binary));\n");
-        sb.append("url_encode(String) when is_list(String) ->\n");
-        sb.append("    list_to_binary(uri_string:quote(String)).\n\n");
-        sb.append("ensure_binary(Bin) when is_binary(Bin) -> Bin;\n");
-        sb.append("ensure_binary(List) when is_list(List) -> list_to_binary(List);\n");
-        sb.append("ensure_binary(Int) when is_integer(Int) -> integer_to_binary(Int);\n");
-        sb.append("ensure_binary(Float) when is_float(Float) -> float_to_binary(Float);\n");
-        sb.append("ensure_binary(Atom) when is_atom(Atom) -> atom_to_binary(Atom, utf8);\n");
-        sb.append("ensure_binary(Other) -> list_to_binary(io_lib:format(\"~p\", [Other])).\n\n");
+        if (needsUrlEncode) {
+            sb.append("\nurl_encode(Binary) when is_binary(Binary) ->\n");
+            sb.append("    url_encode(binary_to_list(Binary));\n");
+            sb.append("url_encode(String) when is_list(String) ->\n");
+            sb.append("    list_to_binary(uri_string:quote(String)).\n\n");
+        }
+        if (needsEnsureBinary) {
+            sb.append("ensure_binary(Bin) when is_binary(Bin) -> Bin;\n");
+            sb.append("ensure_binary(List) when is_list(List) -> list_to_binary(List);\n");
+            sb.append("ensure_binary(Int) when is_integer(Int) -> integer_to_binary(Int);\n");
+            sb.append("ensure_binary(Float) when is_float(Float) -> float_to_binary(Float);\n");
+            sb.append("ensure_binary(Atom) when is_atom(Atom) -> atom_to_binary(Atom, utf8);\n");
+            sb.append("ensure_binary(Other) -> list_to_binary(io_lib:format(\"~p\", [Other])).\n\n");
+        }
         return sb.toString();
     }
 
@@ -958,9 +1002,9 @@ public final class ErlangWriter implements LanguageWriter {
     public String renderServerCallbackDeclaration(OperationSpec op) {
         String opName     = ErlangSymbolProvider.toFunctionName(op.operationName());
         String inputType  = op.inputTypeName()  != null
-                ? ErlangSymbolProvider.toSnakeCase(op.inputTypeName())  + "()" : "map()";
+                ? ErlangSymbolProvider.toSafeSnakeCase(op.inputTypeName())  + "()" : "map()";
         String outputType = op.outputTypeName() != null
-                ? ErlangSymbolProvider.toSnakeCase(op.outputTypeName()) + "()" : "map()";
+                ? ErlangSymbolProvider.toSafeSnakeCase(op.outputTypeName()) + "()" : "map()";
         return "-callback " + opName + "(Input :: " + inputType + ", Context :: map()) ->\n"
              + "    {ok, " + outputType + "} | {error, term()}.\n";
     }
@@ -1158,9 +1202,9 @@ public final class ErlangWriter implements LanguageWriter {
     public String renderServerImplStub(OperationSpec op, String handlerModuleName) {
         String opAtom     = ErlangSymbolProvider.toFunctionName(op.operationName());
         String inputType  = op.inputTypeName()  != null
-                ? handlerModuleName + ":" + ErlangSymbolProvider.toSnakeCase(op.inputTypeName())  + "()" : "map()";
+                ? handlerModuleName + ":" + ErlangSymbolProvider.toSafeSnakeCase(op.inputTypeName())  + "()" : "map()";
         String outputType = op.outputTypeName() != null
-                ? handlerModuleName + ":" + ErlangSymbolProvider.toSnakeCase(op.outputTypeName()) + "()" : "map()";
+                ? handlerModuleName + ":" + ErlangSymbolProvider.toSafeSnakeCase(op.outputTypeName()) + "()" : "map()";
         return "-spec " + opAtom + "(" + inputType + ", map()) ->\n"
              + "    {ok, " + outputType + "} | {error, term()}.\n"
              + opAtom + "(_Input, _Context) ->\n"
@@ -1776,7 +1820,7 @@ public final class ErlangWriter implements LanguageWriter {
         if (ref instanceof TypeRef.Primitive p) {
             return primitiveToErlang(p.kind());
         } else if (ref instanceof TypeRef.Named n) {
-            return ErlangSymbolProvider.toSnakeCase(n.name()) + "()";
+            return ErlangSymbolProvider.toSafeSnakeCase(n.name()) + "()";
         } else if (ref instanceof TypeRef.ListOf l) {
             return "[" + typeRefToErlang(l.element()) + "]";
         } else if (ref instanceof TypeRef.MapOf) {
