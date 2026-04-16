@@ -2,16 +2,26 @@ defmodule SmithyClient do
   @moduledoc """
   Operation execution pipeline for Smithy-generated Elixir clients.
 
-  Operations are values (`%SmithyClient.Operation{}` structs) that are built
-  by generated code and executed explicitly via `request/2` or `stream/2`.
-  This follows the ExAws-style operations-as-values pattern.
+  Generated operation functions follow the 3-argument pattern matching the
+  Erlang SDK convention:
 
-  ## Usage
+      {:ok, result} = MyService.list_items(client, %{max_results: 10}, %{})
 
-      op = MyService.list_items(%{max_results: 10})
-      {:ok, result} = SmithyClient.request(op, config: config)
+  Where `client` is the map returned by `MyService.new/1`, `input` is the
+  request parameters, and `opts` is a map of call-level options.
 
-      SmithyClient.stream(op, config: config) |> Enum.to_list()
+  ## Options
+
+    * `:enable_retry` — boolean, default `true`. Set to `false` to disable
+      automatic retries.
+
+  ## Configuration keys (in the client map)
+
+    * `:endpoint` — base URL, e.g. `"https://ssm.us-east-1.amazonaws.com"`
+    * `:region` — AWS region string
+    * `:service` — AWS service identifier (e.g. `"ssm"`, `"s3"`)
+    * `:credentials` — map with `:access_key_id`, `:secret_access_key`,
+      and optionally `:session_token`
   """
 
   defmodule Operation do
@@ -31,31 +41,14 @@ defmodule SmithyClient do
   end
 
   @doc """
-  Execute an operation and return the decoded response.
+  Execute an operation against the given client config and return the decoded response.
 
-  ## Options
-
-    * `:config` (required) — a map with at minimum `:endpoint`, and for SigV4
-      auth: `:access_key_id`, `:secret_access_key`, `:region`, `:service`.
-      Optionally `:session_token`.
-
-  ## Return values
-
-    * `{:ok, map()}` on success (2xx).
-    * `{:error, {:http_error, status, body}}` on non-2xx responses.
-    * `{:error, reason}` on transport or decode errors.
+  `client` is the map returned by `MyService.new/1`.
+  `opts` is a plain map of call-level options (e.g. `%{enable_retry: false}`).
   """
-  @spec request(Operation.t(), keyword()) :: {:ok, map()} | {:error, term()}
-  def request(%Operation{} = op, opts \\ []) do
-    config = Keyword.fetch!(opts, :config)
-
-    with {:ok, url} <- build_url(op, config),
-         {:ok, headers} <- build_headers(op, config),
-         {:ok, body} <- encode_body(op),
-         {:ok, headers} <- maybe_sign(op, url, headers, body, config),
-         {:ok, response} <- send_request(op.http.method, url, headers, body) do
-      decode_response(response)
-    end
+  @spec request(map(), Operation.t(), map()) :: {:ok, map()} | {:error, term()}
+  def request(client, %Operation{} = op, opts \\ %{}) when is_map(client) do
+    do_execute(client, op, opts)
   end
 
   @doc """
@@ -63,19 +56,15 @@ defmodule SmithyClient do
 
   Automatically follows `next_token` pagination, emitting individual items
   from each page. Halts on the first error and emits it as the last element.
-
-  ## Options
-
-  Same as `request/2`.
   """
-  @spec stream(Operation.t(), keyword()) :: Enumerable.t()
-  def stream(%Operation{} = op, opts \\ []) do
+  @spec stream(map(), Operation.t(), map()) :: Enumerable.t()
+  def stream(client, %Operation{} = op, opts \\ %{}) when is_map(client) do
     Stream.unfold(op, fn
       nil ->
         nil
 
       current_op ->
-        case request(current_op, opts) do
+        case do_execute(client, current_op, opts) do
           {:ok, response} ->
             items = Map.get(response, :items, [])
             next_token = Map.get(response, :next_token)
@@ -116,6 +105,16 @@ defmodule SmithyClient do
   # Private helpers
   # ---------------------------------------------------------------------------
 
+  defp do_execute(client, %Operation{} = op, _opts) do
+    with {:ok, url}     <- build_url(op, client),
+         {:ok, headers} <- build_headers(op, client),
+         {:ok, body}    <- encode_body(op),
+         {:ok, headers} <- maybe_sign(op, url, headers, body, client),
+         {:ok, response} <- send_request(op.http.method, url, headers, body) do
+      decode_response(response)
+    end
+  end
+
   defp build_url(%Operation{http: %{uri: uri}}, config) do
     endpoint = Map.fetch!(config, :endpoint)
     url = String.trim_trailing(endpoint, "/") <> uri
@@ -141,7 +140,7 @@ defmodule SmithyClient do
   end
 
   defp maybe_sign(%Operation{auth: :sigv4}, url, headers, body, config) do
-    SmithyAuth.sign_request(
+    SmithySigV4.sign_request(
       %{method: "POST", url: url, headers: headers, body: body},
       config: config
     )
