@@ -101,7 +101,6 @@ defmodule SmithyQuery do
         URI.encode(to_string(v), &URI.char_unreserved?/1)
     end)
     |> Enum.join("&")
-    |> :erlang.list_to_binary()
   end
 
   defp string_charlist?([]), do: true
