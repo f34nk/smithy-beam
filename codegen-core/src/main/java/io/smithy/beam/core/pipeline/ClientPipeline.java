@@ -103,11 +103,9 @@ public final class ClientPipeline {
         buf.append(writer.renderSharedHelpers());
 
         // ── Operations ────────────────────────────────────────────────────────
+        // Pagination helpers are emitted by renderClientOperation itself.
         for (OperationSpec op : ops) {
             buf.append(writer.renderClientOperation(op));
-            if (op.pagination() != null) {
-                buf.append(writer.renderPaginationHelper(op, op.pagination()));
-            }
         }
 
         // ── Validation helpers (only for operation input types) ───────────────
