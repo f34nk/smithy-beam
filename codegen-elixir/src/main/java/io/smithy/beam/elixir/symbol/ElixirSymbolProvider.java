@@ -70,10 +70,13 @@ public final class ElixirSymbolProvider {
      * Returns the snake_case form of the name, suitable for inline type annotations
      * within the same module.
      *
-     * <p>Example: {@code "GetWeatherInput" → "get_weather_input()"}
+     * <p>Built-in type names that cannot be redefined (e.g. {@code node}) are
+     * suffixed with {@code "_t"} to avoid a compile error.
+     *
+     * <p>Examples: {@code "GetWeatherInput" → "get_weather_input()"}, {@code "Node" → "node_t()"}
      */
     public static String toInlineTypeName(String smithyName) {
-        return toSnakeCase(smithyName) + "()";
+        return ElixirReservedWords.escapeTypeName(toSnakeCase(smithyName)) + "()";
     }
 
     /**
