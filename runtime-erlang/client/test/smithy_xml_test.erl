@@ -1,4 +1,4 @@
--module(aws_xml_test).
+-module(smithy_xml_test).
 -include_lib("eunit/include/eunit.hrl").
 
 %%%===================================================================

@@ -1,4 +1,4 @@
--module(aws_config_test).
+-module(smithy_config_test).
 
 -include_lib("eunit/include/eunit.hrl").
 

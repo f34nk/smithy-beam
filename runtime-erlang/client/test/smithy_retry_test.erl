@@ -1,4 +1,4 @@
--module(aws_retry_test).
+-module(smithy_retry_test).
 -include_lib("eunit/include/eunit.hrl").
 
 %%%===================================================================

@@ -1,4 +1,4 @@
--module(aws_sigv4_test).
+-module(smithy_sigv4_test).
 
 -include_lib("eunit/include/eunit.hrl").
 

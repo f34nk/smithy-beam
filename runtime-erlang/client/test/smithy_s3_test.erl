@@ -1,4 +1,4 @@
--module(aws_s3_test).
+-module(smithy_s3_test).
 
 -include_lib("eunit/include/eunit.hrl").
 

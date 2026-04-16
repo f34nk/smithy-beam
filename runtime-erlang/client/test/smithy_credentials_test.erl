@@ -1,4 +1,4 @@
--module(aws_credentials_test).
+-module(smithy_credentials_test).
 
 -include_lib("eunit/include/eunit.hrl").
 

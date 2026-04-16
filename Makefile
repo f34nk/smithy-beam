@@ -129,6 +129,7 @@ examples:
 		make $$example > $$logfile 2>&1; \
 		if grep -q "make.*Error" $$logfile; then \
 			echo "$$logfile ...failed" ; \
+			exit 1 ; \
 		else \
 			echo "$$logfile ...ok" ; \
 		fi; \
