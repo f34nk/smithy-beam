@@ -1,4 +1,4 @@
--module(aws_query).
+-module(smithy_query).
 
 %% AWS Query protocol encoding module
 %% Used by services like SQS, SNS, RDS, CloudFormation, Elastic Load Balancing

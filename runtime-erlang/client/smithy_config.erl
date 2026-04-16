@@ -1,4 +1,4 @@
--module(aws_config).
+-module(smithy_config).
 
 %% AWS Configuration Management
 %% Handles AWS region configuration and resolution
@@ -24,7 +24,7 @@
 %%
 %% Example:
 %% ```
-%% case aws_config:get_region() of
+%% case smithy_config:get_region() of
 %%     {ok, Region} ->
 %%         io:format("Using region: ~s~n", [Region]),
 %%         Client = #{
@@ -60,13 +60,13 @@ get_region() ->
 %% Example:
 %% ```
 %% %% Use explicit region
-%% {ok, Region1} = aws_config:get_region(#{region => <<"us-west-2">>}),
+%% {ok, Region1} = smithy_config:get_region(#{region => <<"us-west-2">>}),
 %%
 %% %% Use production profile from config file
-%% {ok, Region2} = aws_config:get_region(#{profile => <<"production">>}),
+%% {ok, Region2} = smithy_config:get_region(#{profile => <<"production">>}),
 %%
 %% %% Let it auto-detect
-%% {ok, Region3} = aws_config:get_region(#{}).
+%% {ok, Region3} = smithy_config:get_region(#{}).
 %% ```
 -spec get_region(map()) -> {ok, binary()}.
 get_region(Options) when is_map(Options) ->

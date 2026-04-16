@@ -1,4 +1,4 @@
--module(aws_s3).
+-module(smithy_s3).
 
 %% AWS S3 Special Handling Module
 %%

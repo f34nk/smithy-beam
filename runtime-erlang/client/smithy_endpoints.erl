@@ -1,4 +1,4 @@
--module(aws_endpoints).
+-module(smithy_endpoints).
 
 %% AWS Endpoint Resolution Module
 %% Resolves AWS service endpoints based on service name, region, and options.
@@ -94,7 +94,7 @@
 %%
 %% Example:
 %% ```
-%% Info = aws_endpoints:resolve(<<"s3">>, <<"us-east-1">>),
+%% Info = smithy_endpoints:resolve(<<"s3">>, <<"us-east-1">>),
 %% Url = maps:get(url, Info).
 %% %% -> <<"https://s3.us-east-1.amazonaws.com">>
 %% ```
@@ -117,10 +117,10 @@ resolve(Service, Region) ->
 %% Example:
 %% ```
 %% %% Use FIPS endpoint
-%% Info1 = aws_endpoints:resolve(<<"s3">>, <<"us-east-1">>, #{use_fips => true}),
+%% Info1 = smithy_endpoints:resolve(<<"s3">>, <<"us-east-1">>, #{use_fips => true}),
 %%
 %% %% Use custom endpoint (for LocalStack, etc.)
-%% Info2 = aws_endpoints:resolve(<<"s3">>, <<"us-east-1">>, 
+%% Info2 = smithy_endpoints:resolve(<<"s3">>, <<"us-east-1">>, 
 %%     #{endpoint_override => <<"http://localhost:4566">>}).
 %% ```
 -spec resolve(service(), region(), options()) -> endpoint_info().

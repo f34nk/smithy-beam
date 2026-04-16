@@ -1,4 +1,4 @@
--module(aws_sigv4).
+-module(smithy_sigv4).
 
 %% AWS Signature Version 4 signing implementation
 %% Reference: https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html

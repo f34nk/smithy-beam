@@ -1,4 +1,4 @@
--module(aws_credentials).
+-module(smithy_credentials).
 
 %% AWS Credentials Provider
 %% Loads AWS credentials from various sources following the AWS credentials chain
@@ -31,7 +31,7 @@
 %%
 %% Example:
 %% ```
-%% case aws_credentials:get_credentials() of
+%% case smithy_credentials:get_credentials() of
 %%     {ok, Credentials} ->
 %%         Client = #{
 %%             endpoint => <<"https://s3.amazonaws.com">>,
@@ -65,7 +65,7 @@ get_credentials() ->
 %% Example:
 %% ```
 %% %% Use production profile from credentials file
-%% case aws_credentials:get_credentials(#{profile => <<"production">>}) of
+%% case smithy_credentials:get_credentials(#{profile => <<"production">>}) of
 %%     {ok, Credentials} ->
 %%         %% Use production credentials
 %%         Client = #{credentials => Credentials, ...};
@@ -96,7 +96,7 @@ get_credentials(Options) when is_map(Options) ->
 %%
 %% Example:
 %% ```
-%% case aws_credentials:get_credentials_filepath() of
+%% case smithy_credentials:get_credentials_filepath() of
 %%     {ok, CredentialsFilePath} ->
 %%         %% Use credentials file
 %%         {ok, CredentialsFilePath};
@@ -132,7 +132,7 @@ get_credentials_filepath() ->
 %% %% export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
 %% %% export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 %%
-%% case aws_credentials:from_environment() of
+%% case smithy_credentials:from_environment() of
 %%     {ok, Credentials} ->
 %%         %% Credentials = #{
 %%         %%     access_key_id => <<"AKIAIOSFODNN7EXAMPLE">>,
@@ -190,7 +190,7 @@ from_environment() ->
 %%
 %% Example:
 %% ```
-%% case aws_credentials:from_credentials_file() of
+%% case smithy_credentials:from_credentials_file() of
 %%     {ok, Credentials} ->
 %%         %% Use credentials
 %%         {ok, Credentials};
@@ -226,7 +226,7 @@ from_credentials_file() ->
 %%
 %% Example:
 %% ```
-%% case aws_credentials:from_credentials_file(<<"production">>) of
+%% case smithy_credentials:from_credentials_file(<<"production">>) of
 %%     {ok, Credentials} ->
 %%         %% Use production credentials
 %%         {ok, Credentials};

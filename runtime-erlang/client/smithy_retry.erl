@@ -1,4 +1,4 @@
--module(aws_retry).
+-module(smithy_retry).
 
 %% Retry logic with exponential backoff for AWS API calls
 %% Handles transient errors (5xx, 429) with configurable retry strategy

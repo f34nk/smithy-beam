@@ -1,4 +1,4 @@
--module(aws_xml).
+-module(smithy_xml).
 
 %% AWS XML encoding/decoding module for REST-XML protocol support
 %% Used by services like S3, CloudFront, Route 53, SES
