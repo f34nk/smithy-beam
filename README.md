@@ -13,8 +13,7 @@ Targeting **BEAM languages**: Erlang, Elixir, Gleam.
 - **Protocol agnostic**: supports many [AWS protocols](https://smithy.io/2.0/aws/protocols/index.html)
 - **Idempotent builds**: integrate with your business logic using behaviours  
 
-> Erlang client and server generators are fully supported.
-> Exlixir client and server generators are fully supported.
+> Erlang and Elixir client and server generators are fully supported.
 > (Gleam is coming soon)
 
 ## Documentation
