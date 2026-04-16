@@ -64,13 +64,16 @@ Runtime modules in `runtime-elixir/client/` that support generated Elixir client
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Operation execution | ✅ | `SmithyClient.request/2` accepts a `%SmithyClient.Operation{}` value, builds the URL, encodes the body with `Jason`, optionally signs, sends via `Req`, and decodes the JSON response. |
-| Pagination helpers | ✅ | `SmithyClient.stream/2` follows `next_token` automatically, emitting individual items via `Stream.unfold/2`. |
+| Operation execution | ✅ | `SmithyClient.request/3` accepts `(client, %SmithyClient.Operation{}, opts)`, builds the URL, encodes the body with `Jason`, optionally signs with `SmithySigV4`, sends via `Req`, and decodes the JSON or XML response. `client` is the config map returned by `new/1`; `opts` is a plain map (e.g. `%{enable_retry: false}`). |
+| Pagination helpers | ✅ | `SmithyClient.stream/3` follows `next_token` automatically, emitting individual items via `Stream.unfold/2`. |
 | Retry | ✅ | `SmithyClient.with_retry/2` retries on error up to a configurable limit (default: 3 additional attempts). |
-| AWS Signature Version 4 (SigV4) | ✅ | `SmithyAuth.sign_request/2` adds `Authorization` and `X-Amz-Date` headers; `X-Amz-Security-Token` added when a session token is present. Service name derived from endpoint URL when absent from config. |
-| Session token support | ✅ | `X-Amz-Security-Token` header included when `:session_token` is set in config. |
-| HTTP transport | ✅ | `Req` used for all HTTP calls; 2xx responses decoded with `Jason`; non-2xx returned as `{:error, {:http_error, status, body}}`. |
-| Credential Provider Chain | ❌ | Environment variables, `~/.aws/credentials`, provider chain not implemented. |
+| AWS Signature Version 4 (SigV4) | ✅ | `SmithySigV4.sign_request/2` adds `Authorization` and `X-Amz-Date` headers; `X-Amz-Security-Token` added when a session token is present. Reads credentials from `config.credentials` when nested, or directly from the config. Service name derived from endpoint URL when absent from config. |
+| Session token support | ✅ | `X-Amz-Security-Token` header included when `:session_token` is set in credentials. |
+| Credential Provider Chain | ✅ | `SmithyCredentials` loads credentials from environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`) or `~/.aws/credentials`. |
+| XML encode/decode | ✅ | `SmithyXml` — encode and decode XML for `restXml` and `ec2Query` protocols. Uses Erlang's `:xmerl` at runtime via `elem/2` tuple access (no compile-time header dependency). |
+| Query protocol encoding | ✅ | `SmithyQuery` — encodes nested maps into dot-notation form parameters with 1-based list indexing for `awsQuery` and `ec2Query` protocols. |
+| S3 URL building | ✅ | `SmithyS3` — builds virtual-hosted and path-style S3 URLs and computes `Content-MD5` headers. |
+| HTTP transport | ✅ | `Req` used for all HTTP calls; 2xx responses decoded; non-2xx returned as `{:error, {:http_error, status, body}}`. |
 | AWS Signature Version 4A (SigV4A) | ❌ | Multi-region asymmetric signing not implemented. |
 | Request streaming | ❌ | `@streaming` not implemented. |
 | Waiters | ❌ | `@waitable` not implemented. |
@@ -105,12 +108,12 @@ Protocol implementations for AWS services. All built-in generators are discovere
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ✅ | Fully implemented — `Ec2QueryProtocolAnalyzer` reads `@ec2QueryName` traits at codegen time and emits wire-name overrides; response envelopes stripped by `aws_query:unwrap_response/1`; EC2 `<Response><Errors>` error format dispatched; end-to-end example (`ec2-demo`) |
+| [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ✅ | Fully implemented — `Ec2QueryProtocolAnalyzer` reads `@ec2QueryName` traits at codegen time and emits wire-name overrides; response envelopes stripped by `aws_query:unwrap_response/1`; EC2 `<Response><Errors>` error format dispatched; end-to-end examples (`erlang/ec2-demo`, `elixir/ec2-demo`) |
 | [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ✅ | Fully implemented — `AwsJsonProtocolAnalyzer`, `Content-Type: application/x-amz-json-1.0`, literal `X-Amz-Target` header, `jsx:encode(Input)` body, `__type`-based error dispatch; end-to-end examples (`dynamodb-demo`, `sqs-demo`) |
-| [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ✅ | Fully implemented — `AwsJson11ProtocolAnalyzer` with `application/x-amz-json-1.1`; end-to-end examples (`firehose-demo`, `kinesis-demo`, `ssm-demo`) |
+| [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ✅ | Fully implemented — `AwsJson11ProtocolAnalyzer` with `application/x-amz-json-1.1`; end-to-end examples (`erlang/ssm-demo`, `elixir/ssm-demo`, `firehose-demo`, `kinesis-demo`) |
 | [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ✅ | Fully implemented — `AwsQueryProtocolAnalyzer`, `POST /` with form-encoded body, `aws_query:encode/3` with `Action` + `Version`, response envelopes stripped by `aws_query:unwrap_response/1`; end-to-end examples (`iam-demo`, `sns-demo`, `rds-demo`) |
-| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ✅ | Fully implemented — operation analysis (`RestJsonProtocolAnalyzer`), pipeline wiring, and end-to-end examples (`weather-service`, `storage-service`, `lambda-demo`) |
-| [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ✅ | Fully implemented — `RestXmlProtocolAnalyzer`, XML body encoding, `aws_xml.erl` runtime, `aws_s3.erl` for S3 services (URL building via `aws_s3:build_url`), XML error code string dispatch; end-to-end example (`s3-demo`) |
+| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ✅ | Fully implemented — operation analysis (`RestJsonProtocolAnalyzer`), pipeline wiring, and end-to-end examples (`erlang/weather-service`, `erlang/storage-service`, `erlang/lambda-demo`, `elixir/weather-service`) |
+| [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ✅ | Fully implemented — `RestXmlProtocolAnalyzer`, XML body encoding, `aws_xml.erl` / `SmithyXml` runtime, `aws_s3.erl` / `SmithyS3` for S3 services (URL building), XML error code string dispatch; end-to-end examples (`erlang/s3-demo`, `elixir/s3-demo`) |
 | Custom protocols via `@protocolDefinition` | ❌ | Detect `@protocolDefinition` traits and resolve generators via Java `ServiceLoader`; fall back to a stub when none is registered |
 | [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ❌ | Emit language-appropriate tests from `@httpRequestTests` / `@httpResponseTests` |
 
