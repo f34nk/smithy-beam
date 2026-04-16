@@ -110,13 +110,13 @@ public final class FileOutput {
      * <p>The resource is located at
      * {@code META-INF/smithy-beam/runtime/{languageId}/{resourcePath}} inside the plugin JAR.
      * Only the file's <em>base name</em> is used for the output path (directory segments in
-     * {@code resourcePath} are stripped), so e.g. {@code "client/aws_retry.erl"} is written
-     * as {@code aws_retry.erl} directly under {@code outputDir}.
+     * {@code resourcePath} are stripped), so e.g. {@code "client/smithy_retry.erl"} is written
+     * as {@code smithy_retry.erl} directly under {@code outputDir}.
      *
      * <p>Idempotent: skips the write if an identical file already exists.
      *
      * @param languageId   e.g. {@code "erlang"}
-     * @param resourcePath path under the language folder, e.g. {@code "client/aws_sigv4.erl"}
+     * @param resourcePath path under the language folder, e.g. {@code "client/smithy_sigv4.erl"}
      */
     public void copyRuntime(String languageId, String resourcePath, ClassLoader resourceLoader) {
         String classpath = RUNTIME_PREFIX + languageId + "/" + resourcePath;

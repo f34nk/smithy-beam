@@ -34,11 +34,11 @@ import java.util.Set;
  *
  * <p>Uses the same HTTP binding analysis as {@link RestJsonProtocolAnalyzer} ({@code @http},
  * {@code @httpLabel}, {@code @httpQuery}, {@code @httpHeader}) but serializes the request body
- * as XML rather than JSON.  Requires the {@code aws_xml.erl} runtime module.
+ * as XML rather than JSON.  Requires the {@code smithy_xml.erl} runtime module.
  *
  * <p>For S3-like services (where the {@code aws.api#service} trait's {@code arnNamespace} starts
  * with {@code "s3"}), {@link #requiresS3Runtime} returns {@code true} so that the pipeline also
- * copies {@code aws_s3.erl} into the build output.
+ * copies {@code smithy_s3.erl} into the build output.
  */
 public final class RestXmlProtocolAnalyzer implements ProtocolAnalyzer {
 
