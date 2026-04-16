@@ -1,6 +1,6 @@
 # Smithy Trait Support
 
-This document lists Smithy 2.0 traits and how they relate to **generated** Erlang and Elixir code in smithy-beam. Notes describe Erlang output unless marked otherwise; the `ElixirWriter` is implemented but the `codegen-elixir` Smithy Build plugin is not yet registered, so traits do not yet affect generated Elixir code.
+This document lists Smithy 2.0 traits and how they relate to **generated** Erlang and Elixir code in smithy-beam. Notes describe Erlang output unless marked otherwise; the `elixir-client-codegen` and `elixir-server-codegen` Smithy Build plugins are fully registered — trait support for Elixir mirrors Erlang unless noted.
 
 **Legend:**
 - ✅ Supported - Trait is read and affects code generation
@@ -53,12 +53,12 @@ AWS-specific protocol traits.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`aws.protocols#awsJson1_0`](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html#aws-protocols-awsjson1_0-trait) | ✅ | Fully implemented — `AwsJsonProtocolAnalyzer`, `Content-Type: application/x-amz-json-1.0`, literal `X-Amz-Target` header, `jsx:encode(Input)` body, `__type`-based error dispatch, structured error maps; end-to-end example (`dynamodb-demo`) |
-| [`aws.protocols#awsJson1_1`](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html#aws-protocols-awsjson1_1-trait) | ✅ | Fully implemented — `AwsJson11ProtocolAnalyzer` with `application/x-amz-json-1.1`; end-to-end examples (`firehose-demo`, `kinesis-demo`, `ssm-demo`) |
-| [`aws.protocols#awsQuery`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquery-trait) | ✅ | Fully implemented — `AwsQueryProtocolAnalyzer`, `POST /` with form-encoded body, `aws_query:encode/3` with `Action` + `Version`, response envelopes stripped by `aws_query:unwrap_response/1`; end-to-end examples (`iam-demo`, `sns-demo`, `rds-demo`) |
-| [`aws.protocols#ec2Query`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2query-trait) | ✅ | Fully implemented — `Ec2QueryProtocolAnalyzer` reads `@ec2QueryName` traits at codegen time; wire-name overrides stored in `BodySpec.wireNameOverrides()`; response envelopes stripped by `aws_query:unwrap_response/1`; EC2 error format dispatched; end-to-end example (`ec2-demo`) |
-| [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ✅ | Fully implemented — operation analysis, pipeline wiring, and end-to-end examples (`weather-service`, `storage-service`) |
-| [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ✅ | Fully implemented — `RestXmlProtocolAnalyzer`, XML body encoding, `aws_xml.erl` runtime, `aws_s3.erl` for S3 services (URL building via `aws_s3:build_url`), XML error code string dispatch; end-to-end example (`s3-demo`) |
+| [`aws.protocols#awsJson1_0`](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html#aws-protocols-awsjson1_0-trait) | ✅ | Fully implemented — `AwsJsonProtocolAnalyzer`, `Content-Type: application/x-amz-json-1.0`, literal `X-Amz-Target` header, `jsx:encode(Input)` body, `__type`-based error dispatch, structured error maps |
+| [`aws.protocols#awsJson1_1`](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html#aws-protocols-awsjson1_1-trait) | ✅ | Fully implemented — `AwsJson11ProtocolAnalyzer` with `application/x-amz-json-1.1` |
+| [`aws.protocols#awsQuery`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquery-trait) | ✅ | Fully implemented — `AwsQueryProtocolAnalyzer`, `POST /` with form-encoded body, `aws_query:encode/3` with `Action` + `Version`, response envelopes stripped by `aws_query:unwrap_response/1` |
+| [`aws.protocols#ec2Query`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2query-trait) | ✅ | Fully implemented — `Ec2QueryProtocolAnalyzer` reads `@ec2QueryName` traits at codegen time; wire-name overrides stored in `BodySpec.wireNameOverrides()`; response envelopes stripped by `aws_query:unwrap_response/1`; EC2 error format dispatched |
+| [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ✅ | Fully implemented — operation analysis and pipeline wiring for both Erlang and Elixir |
+| [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ✅ | Fully implemented — `RestXmlProtocolAnalyzer`, XML body encoding, `aws_xml.erl` runtime, `aws_s3.erl` for S3 services (URL building via `aws_s3:build_url`), XML error code string dispatch |
 | [`aws.protocols#awsQueryCompatible`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquerycompatible-trait) | ❌ | Query protocol compatibility mode |
 | [`aws.protocols#httpChecksum`](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ❌ | HTTP checksum configuration |
 | [`aws.protocols#awsQueryError`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsqueryerror-trait) | ➖ | Custom error code for Query protocol |
@@ -140,7 +140,7 @@ Traits that define operation behavior.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#paginated`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-paginated-trait) | ⚠️ | Token and items members read into `PaginationSpec` IR; `renderPaginationHelper` emits `<op>_stream/2,3` accumulation loop; wired in pipeline when `op.pagination()` is non-null; no examples yet |
+| [`smithy.api#paginated`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-paginated-trait) | ⚠️ | Token and items members read into `PaginationSpec` IR; `renderPaginationHelper` emits `<op>_stream/2,3` accumulation loop; wired in pipeline when `op.pagination()` is non-null |
 | [`smithy.api#idempotencyToken`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotencytoken-trait) | ❌ | Auto-generates unique token for idempotent operations |
 | [`smithy.api#idempotent`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotent-trait) | ❌ | Marks operation as idempotent |
 | [`smithy.api#readonly`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-readonly-trait) | ❌ | Marks operation as read-only |
