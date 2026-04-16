@@ -345,4 +345,20 @@ public interface LanguageWriter {
     default String renderServerModule(String baseName, List<OperationSpec> ops, ModuleTypeSpec types) {
         return "";
     }
+
+    /**
+     * Returns the complete source of the once-written impl scaffold file, or an
+     * empty string to let {@link io.smithy.beam.core.pipeline.ServerPipeline} use
+     * its generic fallback implementation.
+     *
+     * <p>Override this method when the language's module-naming conventions differ
+     * from the pipeline's default snake_case derivation (e.g. Elixir uses
+     * {@code WeatherService.Impl} rather than {@code WeatherServiceImpl}).
+     *
+     * @param baseName the module base name (e.g. {@code "weather_service"})
+     * @param ops      the list of analysed server operations
+     */
+    default String renderServerImplContent(String baseName, List<OperationSpec> ops) {
+        return "";
+    }
 }

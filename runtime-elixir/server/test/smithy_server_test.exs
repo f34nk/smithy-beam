@@ -1,18 +1,3 @@
-# ---------------------------------------------------------------------------
-# Stub for SmithyErrorMap — mirrors smithy_error_map.erl.
-# Defined at top level so SmithyServer can resolve it as SmithyErrorMap.
-# Phase 22 will produce the real generated module.
-# ---------------------------------------------------------------------------
-defmodule SmithyErrorMap do
-  def to_http({:not_found, msg}), do: {404, msg}
-  def to_http({:conflict, msg}), do: {409, msg}
-  def to_http({:validation, msg}), do: {400, msg}
-  def to_http({:internal, msg}), do: {500, msg}
-  def to_http({:unauthorized, msg}), do: {401, msg}
-  def to_http({:forbidden, msg}), do: {403, msg}
-  def to_http(:not_implemented), do: {501, "Not implemented"}
-  def to_http(_), do: {500, "Internal server error"}
-end
 
 defmodule SmithyServerTest do
   use ExUnit.Case, async: true

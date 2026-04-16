@@ -1071,7 +1071,8 @@ public final class ElixirWriter implements LanguageWriter {
             entries.add(key + " => " + access);
         }
         if (!bodyMembers.isEmpty()) {
-            sb.append("    {:ok, body} = Jason.decode(conn.body_params)\n");
+            sb.append("    {:ok, body_raw, _conn} = Plug.Conn.read_body(conn)\n");
+            sb.append("    {:ok, body} = Jason.decode(body_raw)\n");
             for (String m : bodyMembers) {
                 String key    = ":" + ElixirSymbolProvider.toSnakeCase(m);
                 String access = "Map.get(body, \"" + m + "\")";
@@ -1151,7 +1152,7 @@ public final class ElixirWriter implements LanguageWriter {
     public String renderServerModule(String baseName, List<OperationSpec> ops, ModuleTypeSpec types) {
         String moduleName  = ElixirSymbolProvider.toModuleName(baseName);
         String implModule  = moduleName + ".Impl";
-        String handlerModule = moduleName + ".Handler";
+        String handlerModule    = moduleName + ".Handler";
         String dispatcherModule = moduleName + ".Dispatcher";
 
         StringBuilder sb = new StringBuilder();
@@ -1201,8 +1202,35 @@ public final class ElixirWriter implements LanguageWriter {
         }
         sb.append("end\n");
 
-        // ── Impl scaffold (written once, never overwritten) ────────────────────
-        sb.append("\n");
+        return sb.toString();
+    }
+
+    /**
+     * Returns the complete source of the once-written Elixir impl scaffold.
+     *
+     * <p>Uses Elixir dot-notation module names ({@code WeatherService.Impl},
+     * {@code WeatherService.Handler}) that the generic pipeline fallback cannot
+     * produce from the snake_case base name.
+     *
+     * <p>Example output:
+     * <pre>
+     * defmodule WeatherService.Impl do
+     *   @moduledoc false
+     *   @behaviour WeatherService.Handler
+     *
+     *   # This file will NOT be overwritten. Add your business logic here.
+     *
+     *   def get_weather(_input, _ctx), do: {:error, :not_implemented}
+     * end
+     * </pre>
+     */
+    @Override
+    public String renderServerImplContent(String baseName, List<OperationSpec> ops) {
+        String moduleName    = ElixirSymbolProvider.toModuleName(baseName);
+        String implModule    = moduleName + ".Impl";
+        String handlerModule = moduleName + ".Handler";
+
+        StringBuilder sb = new StringBuilder();
         sb.append("defmodule ").append(implModule).append(" do\n");
         sb.append("  @moduledoc false\n");
         sb.append("  @behaviour ").append(handlerModule).append("\n\n");
@@ -1211,7 +1239,6 @@ public final class ElixirWriter implements LanguageWriter {
             sb.append(renderServerImplStub(op, handlerModule));
         }
         sb.append("end\n");
-
         return sb.toString();
     }
 

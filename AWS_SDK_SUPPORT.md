@@ -34,17 +34,25 @@ Features of the generated Erlang server (`erlang-server-codegen`). The generated
 
 ## Elixir Server Runtime
 
-Runtime modules in `runtime-elixir/server/` that support generated Elixir server dispatchers. These are hand-written Plug-compatible modules. `ElixirWriter` implements all server rendering methods; the `codegen-elixir` Smithy Build plugin is not yet registered.
+Runtime modules in `runtime-elixir/server/` that support generated Elixir server dispatchers. `elixir-server-codegen` generates a consolidated `<svc>_server.ex` using `Plug.Router` for routing and dispatching; the impl scaffold is written once to `<scaffoldDir>`. Round-trip tested via `examples/elixir/weather-service`.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
+| Plug.Router dispatcher | ✅ | `elixir-server-codegen` generates a `<svc>_server.ex` containing `<Svc>.Dispatcher` (Plug.Router with one route block per operation and a catch-all 404), `<Svc>.Handler` (behaviour), and writes `<Svc>.Impl` once as a separate editable file. |
+| Request routing | ✅ | One `get`/`post`/… macro block per operation; `match _ do` catch-all returns 404. |
+| Request deserialization | ✅ | `deserialize_<op>/1` extracts path params via `conn.path_params` and reads raw body via `Plug.Conn.read_body` + `Jason.decode` for JSON body members. |
+| Response serialization | ✅ | `serialize_<op>/1` encodes the output map with `Jason.encode!`. |
+| Behaviour callbacks | ✅ | `@callback <op>(input :: map(), ctx :: map()) :: {:ok, map()} \| {:error, term()}` per operation in the `<Svc>.Handler` module. |
+| Impl scaffold | ✅ | `<svc>_impl.ex` generated once (never overwritten); declares `@behaviour <Svc>.Handler` and `{:error, :not_implemented}` stubs with correct Elixir dot-notation module names. |
 | Plug-compatible request extraction | ✅ | `SmithyServer.extract/1` reads method, path, headers (as a `%{}` map), and body from a `Plug.Conn`. |
-| JSON response helpers | ✅ | `SmithyServer.response/3` sets `content-type: application/json` and JSON-encodes the body with `Jason`. |
+| JSON response helpers | ✅ | `SmithyServer.response/3` sets `content-type: application/json`; accepts either a pre-encoded `binary()` or any term (encoded via `Jason.encode!`). |
 | Error response | ✅ | `SmithyServer.error_response/2` delegates status code and message lookup to `SmithyErrorMap.to_http/1` and sends a `%{message: …}` JSON body. |
 | Validation error response | ✅ | `SmithyServer.validation_error/2` sends a 400 response with the message from `SmithyValidator.format/1`. |
 | Not found response | ✅ | `SmithyServer.not_found/1` sends a plain-text 404 response. |
 | Input validation | ✅ | `SmithyValidator.validate/2` checks required keys in an input map; returns `:ok` or `{:error, {:missing_required_fields, [term()]}}`. `SmithyValidator.format/1` formats the error as a human-readable string. |
-| Cowboy / Phoenix integration | ❌ | `SmithyServer` is Plug-compatible; adapter wiring for Cowboy or Bandit is not yet generated. |
+| Error mapping | ✅ | `SmithyErrorMap.to_http/1` maps Smithy error atoms/tuples (`{:not_found, msg}`, `{:conflict, msg}`, `{:unauthorized, msg}`, etc.) to `{http_status_code, message}` pairs; called from `SmithyServer.error_response/2`. |
+| `restJson1` server | ✅ | Fully implemented — `analyzeServerOperation` in `RestJsonProtocolAnalyzer`; round-trip tested (`elixir/weather-service` example). |
+| Bandit / Plug.Cowboy integration | ⚠️ | Generated dispatcher is a standard `Plug`; wiring to a transport (Bandit, Plug.Cowboy, etc.) is left to the application. |
 | Request streaming | ❌ | `@streaming` not implemented. |
 | WebSocket / event streams | ❌ | Not implemented. |
 
@@ -52,7 +60,7 @@ Runtime modules in `runtime-elixir/server/` that support generated Elixir server
 
 ## Elixir Client Runtime
 
-Runtime modules in `runtime-elixir/client/` that support generated Elixir clients. These are hand-written modules. `ElixirWriter` implements all client rendering methods; the `codegen-elixir` Smithy Build plugin is not yet registered.
+Runtime modules in `runtime-elixir/client/` that support generated Elixir clients. `elixir-client-codegen` is fully registered and delegates to `ClientPipeline` with `ElixirWriter`.
 
 | Feature | Status | Notes |
 |---------|--------|-------|

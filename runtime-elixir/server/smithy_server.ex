@@ -41,13 +41,21 @@ defmodule SmithyServer do
   @doc """
   Send a successful JSON response.
 
-  Sets `content-type: application/json` and serialises `body` with `Jason`.
+  Accepts either a pre-encoded `binary()` (returned by generated `serialize_*` helpers,
+  which call `Jason.encode!` themselves) or any other term that will be JSON-encoded
+  here via `Jason.encode!`.
+
+  Sets `content-type: application/json`.
   """
-  @spec response(Plug.Conn.t(), pos_integer(), term()) :: Plug.Conn.t()
-  def response(conn, code, body) do
+  @spec response(Plug.Conn.t(), pos_integer(), binary() | term()) :: Plug.Conn.t()
+  def response(conn, code, body) when is_binary(body) do
     conn
     |> Plug.Conn.put_resp_content_type("application/json")
-    |> Plug.Conn.send_resp(code, Jason.encode!(body))
+    |> Plug.Conn.send_resp(code, body)
+  end
+
+  def response(conn, code, body) do
+    response(conn, code, Jason.encode!(body))
   end
 
   @doc """
