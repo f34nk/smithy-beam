@@ -31,7 +31,7 @@ import java.util.Map;
  *
  * <p>It also collects {@link BodySpec#nestedWireNameOverrides()} — the shallow {@code @xmlName}
  * rename maps for the members of each top-level member's target structure (or list element
- * structure).  The Erlang writer uses these to emit {@code aws_query:rename_map_keys/2} calls
+ * structure).  The Erlang writer uses these to emit {@code smithy_query:rename_map_keys/2} calls
  * that apply the nested renames before the query encoder sees them.
  */
 public final class Ec2QueryProtocolAnalyzer extends AwsQueryProtocolAnalyzer {

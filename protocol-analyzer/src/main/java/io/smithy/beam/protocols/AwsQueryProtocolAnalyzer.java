@@ -30,7 +30,7 @@ import java.util.List;
  * <p>All operations are {@code POST /} with {@code Content-Type: application/x-www-form-urlencoded}.
  * All input members go into the form-encoded body; the {@code Action} (operation name) and
  * {@code Version} (service API version) parameters are supplied by the generated
- * {@code make_*_request} functions via {@code aws_query:encode/2,3}.
+ * {@code make_*_request} functions via {@code smithy_query:encode/2,3}.
  * Responses and errors are returned as XML.
  */
 public class AwsQueryProtocolAnalyzer implements ProtocolAnalyzer {
