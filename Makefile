@@ -44,16 +44,17 @@ test/runtime-erlang:
 	{eunit_opts, [verbose]}. > "$$temp/rebar.config" && \
     tree $$temp && \
     cd "$$temp" && \
+	echo "Running: runtime-erlang tests" && \
     find test/ -type f -name "*_test.erl" | \
     xargs -I {} basename {} | \
     sed 's/_test.erl/_test/g' | \
     xargs -I {} echo "rebar3 eunit --module={}" | \
     xargs -I {} sh -c {} > "$$logfile"; \
 	if grep -E "failed|syntax error" "$$logfile"; then \
-		echo "Runtime Erlang tests failed (see $$(basename $$logfile))" ; \
+		echo "$$(basename $$logfile) ...failed" ; \
 		exit 1 ; \
 	else \
-		echo "Runtime Erlang tests passed (see $$(basename $$logfile))" ; \
+		echo "$$(basename $$logfile) ...ok" ; \
 	fi
 
     # 1. Find all test modules
@@ -91,19 +92,20 @@ test/runtime-elixir:
 	ExUnit.start\(\) > "$$temp/test/test_helper.exs" && \
 	tree $$temp && \
     cd "$$temp" && \
+	echo "Running: runtime-elixir tests" && \
 	elixir -S mix deps.get > "$$logfile" 2>&1 && \
 	elixir -S mix test >> "$$logfile" 2>&1 ;\
 	if grep -q "stacktrace" "$$logfile"; then \
-		echo "Runtime Elixir tests failed (see $$(basename $$logfile))" ; \
+		echo "$$(basename $$logfile) ...failed" ; \
 		exit 1 ; \
 	else \
-		echo "Runtime Elixir tests passed (see $$(basename $$logfile))" ; \
+		echo "$$(basename $$logfile) ...ok" ; \
 	fi
 
 .PHONY: clean
 clean:
 	#
-	# Clear the build
+	# Clean the build
 	#
 	rm -rf build bin codegen-*/build codegen-*/bin *.log
 	rm -rf ~/.m2/repository/io/smithy/beam
