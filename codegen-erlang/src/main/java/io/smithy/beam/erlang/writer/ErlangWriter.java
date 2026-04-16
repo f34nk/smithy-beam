@@ -329,22 +329,22 @@ public final class ErlangWriter implements LanguageWriter {
         return "jsx:decode(" + bodyVar + ", [return_maps])";
     }
 
-    /** Example: {@code aws_xml:encode(Map, <<"RootElement">>)} */
+    /** Example: {@code smithy_xml:encode(Map, <<"RootElement">>)} */
     @Override
     public String renderXmlEncode(String mapVar, String rootElement) {
-        return "aws_xml:encode(" + mapVar + ", <<\"" + rootElement + "\">>)";
+        return "smithy_xml:encode(" + mapVar + ", <<\"" + rootElement + "\">>)";
     }
 
-    /** Example: {@code aws_xml:decode(Body)} */
+    /** Example: {@code smithy_xml:decode(Body)} */
     @Override
     public String renderXmlDecode(String bodyVar) {
-        return "aws_xml:decode(" + bodyVar + ")";
+        return "smithy_xml:decode(" + bodyVar + ")";
     }
 
-    /** Example: {@code aws_query:encode(<<"ListUsers">>, Map)} */
+    /** Example: {@code smithy_query:encode(<<"ListUsers">>, Map)} */
     @Override
     public String renderFormEncode(String actionName, String mapVar) {
-        return "aws_query:encode(<<\"" + actionName + "\">>, " + mapVar + ")";
+        return "smithy_query:encode(<<\"" + actionName + "\">>, " + mapVar + ")";
     }
 
     // -------------------------------------------------------------------------
@@ -529,7 +529,7 @@ public final class ErlangWriter implements LanguageWriter {
      *
      * <p>If SigV4 auth is needed, prepends a signing call:
      * <pre>
-     * SignedHeaders = aws_sigv4:sign_request(Method, Url, Headers, Body, Config),
+     * SignedHeaders = smithy_sigv4:sign_request(Method, Url, Headers, Body, Config),
      * &lt;innerBlock&gt;
      * </pre>
      * If no auth is required, returns {@code innerBlock} unchanged.
@@ -539,7 +539,7 @@ public final class ErlangWriter implements LanguageWriter {
         if (!auth.requiresSigV4()) {
             return innerBlock;
         }
-        return "SignedHeaders = aws_sigv4:sign_request(Method, Url, Headers, Body, Config),\n"
+        return "SignedHeaders = smithy_sigv4:sign_request(Method, Url, Headers, Body, Config),\n"
              + innerBlock;
     }
 
@@ -548,7 +548,7 @@ public final class ErlangWriter implements LanguageWriter {
      *
      * <p>Example output:
      * <pre>
-     * aws_retry:with_retry(RequestFun, #{max_retries => 3})
+     * smithy_retry:with_retry(RequestFun, #{max_retries => 3})
      * </pre>
      * If retry is disabled, returns the bare function variable.
      */
@@ -557,7 +557,7 @@ public final class ErlangWriter implements LanguageWriter {
         if (!retry.enabled()) {
             return requestFunVar + "()";
         }
-        return "aws_retry:with_retry(" + requestFunVar + ", #{max_retries => " + retry.maxRetries() + "})";
+        return "smithy_retry:with_retry(" + requestFunVar + ", #{max_retries => " + retry.maxRetries() + "})";
     }
 
     // -------------------------------------------------------------------------
@@ -675,16 +675,16 @@ public final class ErlangWriter implements LanguageWriter {
         return "jsx:decode(" + expr + ", [return_maps])";
     }
 
-    /** Returns the SigV4 signing function reference {@code aws_sigv4:sign_request}. */
+    /** Returns the SigV4 signing function reference {@code smithy_sigv4:sign_request}. */
     @Override
     public String sigv4SignCall() {
-        return "aws_sigv4:sign_request";
+        return "smithy_sigv4:sign_request";
     }
 
-    /** Returns {@code aws_retry:with_retry(<fun>, <opts>)}. */
+    /** Returns {@code smithy_retry:with_retry(<fun>, <opts>)}. */
     @Override
     public String retryCall(String funExpr, String optsExpr) {
-        return "aws_retry:with_retry(" + funExpr + ", " + optsExpr + ")";
+        return "smithy_retry:with_retry(" + funExpr + ", " + optsExpr + ")";
     }
 
     // -------------------------------------------------------------------------
@@ -741,7 +741,7 @@ public final class ErlangWriter implements LanguageWriter {
         sb.append(opName).append("(Client, Input, Options) when is_map(Input), is_map(Options) ->\n");
         sb.append("    RequestFun = fun() -> ").append(makeOp).append("(Client, Input) end,\n");
         sb.append("    case maps:get(enable_retry, Options, true) of\n");
-        sb.append("        true -> aws_retry:with_retry(RequestFun, Options);\n");
+        sb.append("        true -> smithy_retry:with_retry(RequestFun, Options);\n");
         sb.append("        false -> RequestFun()\n");
         sb.append("    end.\n\n");
 
@@ -859,7 +859,7 @@ public final class ErlangWriter implements LanguageWriter {
         boolean needsUrlEncode = ops.stream().anyMatch(op -> {
             List<LabelBinding> labels = op.labels() != null ? op.labels() : List.of();
             if (labels.isEmpty()) return false;
-            // S3-style operations delegate to aws_s3:build_url; url_encode not called directly.
+            // S3-style operations delegate to smithy_s3:build_url; url_encode not called directly.
             boolean hasBucketLabel = labels.stream()
                     .anyMatch(l -> "Bucket".equals(l.smithyMemberName()));
             return !hasBucketLabel;
@@ -974,14 +974,14 @@ public final class ErlangWriter implements LanguageWriter {
             boolean needsS3) {
         List<String> modules = new ArrayList<>();
         if (needsSigV4) {
-            modules.add("client/aws_sigv4.erl");
-            modules.add("client/aws_credentials.erl");
+            modules.add("client/smithy_sigv4.erl");
+            modules.add("client/smithy_credentials.erl");
         }
-        modules.add("client/aws_retry.erl");
-        modules.add("client/aws_config.erl");
-        if (needsXml)   modules.add("client/aws_xml.erl");
-        if (needsQuery) modules.add("client/aws_query.erl");
-        if (needsS3)    modules.add("client/aws_s3.erl");
+        modules.add("client/smithy_retry.erl");
+        modules.add("client/smithy_config.erl");
+        if (needsXml)   modules.add("client/smithy_xml.erl");
+        if (needsQuery) modules.add("client/smithy_query.erl");
+        if (needsS3)    modules.add("client/smithy_s3.erl");
         return modules;
     }
 
@@ -1425,7 +1425,7 @@ public final class ErlangWriter implements LanguageWriter {
 
     /**
      * Appends URL-building code. For S3-style operations (those with a {@code Bucket} label),
-     * delegates to {@code aws_s3:build_url/4} which handles virtual-hosted-style routing.
+     * delegates to {@code smithy_s3:build_url/4} which handles virtual-hosted-style routing.
      * For all other operations, constructs the URL from the client endpoint and URI template.
      */
     private void appendUrlBuilding(StringBuilder sb, OperationSpec op) {
@@ -1434,7 +1434,7 @@ public final class ErlangWriter implements LanguageWriter {
             .anyMatch(l -> "Bucket".equals(l.smithyMemberName()));
 
         if (hasBucketLabel) {
-            // S3-specific: delegate bucket routing to aws_s3:build_url
+            // S3-specific: delegate bucket routing to smithy_s3:build_url
             sb.append("    Bucket = maps:get(<<\"Bucket\">>, Input, <<>>),\n");
             boolean hasKeyLabel = labels.stream()
                 .anyMatch(l -> "Key".equals(l.smithyMemberName()));
@@ -1443,7 +1443,7 @@ public final class ErlangWriter implements LanguageWriter {
             } else {
                 sb.append("    Key = <<>>,\n");
             }
-            sb.append("    Url = aws_s3:build_url(Client, Bucket, Key, QueryString),\n");
+            sb.append("    Url = smithy_s3:build_url(Client, Bucket, Key, QueryString),\n");
         } else {
             // Standard: Endpoint + URI template substitution
             sb.append("    Endpoint = maps:get(endpoint, Client),\n");
@@ -1500,13 +1500,13 @@ public final class ErlangWriter implements LanguageWriter {
                 if (i > 0) sb.append(", ");
                 java.util.Map<String, String> nested = nestedOverrides.get(smithyName);
                 if (nested != null && !nested.isEmpty()) {
-                    // Wrap with aws_query:rename_map_keys/2 to apply @xmlName overrides on
+                    // Wrap with smithy_query:rename_map_keys/2 to apply @xmlName overrides on
                     // the members of the nested structure (e.g. Tags → Tag inside TagSpecification).
                     String renameMapLiteral = nested.entrySet().stream()
                             .map(e -> "<<\"" + e.getKey() + "\">> => <<\"" + e.getValue() + "\">>")
                             .collect(java.util.stream.Collectors.joining(", ", "#{", "}"));
                     sb.append("<<\"").append(wireName)
-                      .append("\">> => aws_query:rename_map_keys(maps:get(<<\"")
+                      .append("\">> => smithy_query:rename_map_keys(maps:get(<<\"")
                       .append(smithyName).append("\">>, Input, undefined), ")
                       .append(renameMapLiteral).append(")");
                 } else {
@@ -1517,17 +1517,17 @@ public final class ErlangWriter implements LanguageWriter {
             sb.append("}),\n");
             switch (body.encoding()) {
                 case XML:
-                    sb.append("    Body = aws_xml:encode(BodyMap, <<\"Body\">>),\n");
+                    sb.append("    Body = smithy_xml:encode(BodyMap, <<\"Body\">>),\n");
                     break;
                 case FORM_URLENCODED:
                     if (op.apiVersion() != null && !op.apiVersion().isEmpty()) {
-                        sb.append("    Body = aws_query:encode(<<\"")
+                        sb.append("    Body = smithy_query:encode(<<\"")
                           .append(op.operationName())
                           .append("\">>, BodyMap, <<\"")
                           .append(op.apiVersion())
                           .append("\">>),\n");
                     } else {
-                        sb.append("    Body = aws_query:encode(<<\"")
+                        sb.append("    Body = smithy_query:encode(<<\"")
                           .append(op.operationName())
                           .append("\">>, BodyMap),\n");
                     }
@@ -1605,7 +1605,7 @@ public final class ErlangWriter implements LanguageWriter {
         String i2 = "        "; // 8 spaces — inside signing {ok, SignedHeaders} branch
 
         if (hasSigV4) {
-            sb.append(i1).append("case aws_sigv4:sign_request(Method, Url, Headers, Body, Client) of\n");
+            sb.append(i1).append("case smithy_sigv4:sign_request(Method, Url, Headers, Body, Client) of\n");
             sb.append(i1).append("    {ok, SignedHeaders} ->\n");
         }
 
@@ -1700,16 +1700,16 @@ public final class ErlangWriter implements LanguageWriter {
             sb.append(ind).append("            _ ->\n");
             if (op.responseEncoding() == BodyEncoding.XML) {
                 if (op.protocolErrorStrategy() == ErrorCodeStrategy.AWS_QUERY) {
-                    sb.append(ind).append("                case aws_xml:decode(ResponseBody) of\n");
+                    sb.append(ind).append("                case smithy_xml:decode(ResponseBody) of\n");
                     sb.append(ind).append("                    {ok, Decoded} ->\n");
-                    sb.append(ind).append("                        case aws_query:unwrap_response(Decoded) of\n");
+                    sb.append(ind).append("                        case smithy_query:unwrap_response(Decoded) of\n");
                     sb.append(ind).append("                            {ok, BodyMap} -> {ok, maps:merge(BodyMap, HeaderMap)};\n");
                     sb.append(ind).append("                            Err -> Err\n");
                     sb.append(ind).append("                        end;\n");
                     sb.append(ind).append("                    DecodeError -> DecodeError\n");
                     sb.append(ind).append("                end\n");
                 } else {
-                    sb.append(ind).append("                case aws_xml:decode(ResponseBody) of\n");
+                    sb.append(ind).append("                case smithy_xml:decode(ResponseBody) of\n");
                     sb.append(ind).append("                    {ok, BodyMap} -> {ok, maps:merge(BodyMap, HeaderMap)};\n");
                     sb.append(ind).append("                    DecodeError -> DecodeError\n");
                     sb.append(ind).append("                end\n");
@@ -1731,13 +1731,13 @@ public final class ErlangWriter implements LanguageWriter {
             if (op.responseEncoding() == BodyEncoding.XML) {
                 if (op.protocolErrorStrategy() == ErrorCodeStrategy.AWS_QUERY) {
                     // AwsQuery responses are wrapped in <XyzResponse><XyzResult>; strip both layers
-                    sb.append(ind).append("                case aws_xml:decode(ResponseBody) of\n");
-                    sb.append(ind).append("                    {ok, Decoded} -> aws_query:unwrap_response(Decoded);\n");
+                    sb.append(ind).append("                case smithy_xml:decode(ResponseBody) of\n");
+                    sb.append(ind).append("                    {ok, Decoded} -> smithy_query:unwrap_response(Decoded);\n");
                     sb.append(ind).append("                    DecodeError -> DecodeError\n");
                     sb.append(ind).append("                end\n");
                 } else {
                     // REST-XML (S3 etc.): no envelope wrapper, return decoded tree directly
-                    sb.append(ind).append("                aws_xml:decode(ResponseBody)\n");
+                    sb.append(ind).append("                smithy_xml:decode(ResponseBody)\n");
                 }
             } else {
                 sb.append(ind).append("                try jsx:decode(ResponseBody, [return_maps]) of\n");
@@ -1755,7 +1755,7 @@ public final class ErlangWriter implements LanguageWriter {
         if (errStrategy == ErrorCodeStrategy.REST_XML) {
             // REST-XML (S3 etc.): parse XML body, extract <Code> element, dispatch by name string
             sb.append(ind).append("    {ok, {{_, _ErrStatusCode, _}, _RespHeaders, ErrorBody}} ->\n");
-            sb.append(ind).append("        case aws_xml:decode(ErrorBody) of\n");
+            sb.append(ind).append("        case smithy_xml:decode(ErrorBody) of\n");
             sb.append(ind).append("            {ok, #{<<\"Error\">> := ErrorMap}} ->\n");
             sb.append(ind).append("                Code = maps:get(<<\"Code\">>, ErrorMap, <<\"Unknown\">>),\n");
             sb.append(ind).append("                parse_error(Code, ErrorMap);\n");
@@ -1777,7 +1777,7 @@ public final class ErlangWriter implements LanguageWriter {
             //   IAM/SNS: <ErrorResponse><Error><Code>…</Code></Error></ErrorResponse>
             //   EC2:     <Response><Errors><Error><Code>…</Code></Error></Errors></Response>
             sb.append(ind).append("    {ok, {{_, _ErrStatusCode, _}, _RespHeaders, ErrorBody}} ->\n");
-            sb.append(ind).append("        case aws_xml:decode(ErrorBody) of\n");
+            sb.append(ind).append("        case smithy_xml:decode(ErrorBody) of\n");
             sb.append(ind).append("            {ok, #{<<\"ErrorResponse\">> := #{<<\"Error\">> := ErrorMap}}} ->\n");
             sb.append(ind).append("                Code = maps:get(<<\"Code\">>, ErrorMap, <<\"Unknown\">>),\n");
             sb.append(ind).append("                parse_error(Code, ErrorMap);\n");
