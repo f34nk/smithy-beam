@@ -292,18 +292,18 @@ class ErlangWriterTest {
         @Test
         void renderXmlEncodeUsesAwsXml() {
             assertThat(writer.renderXmlEncode("Map", "Body"))
-                    .isEqualTo("aws_xml:encode(Map, <<\"Body\">>)");
+                    .isEqualTo("smithy_xml:encode(Map, <<\"Body\">>)");
         }
 
         @Test
         void renderXmlDecodeUsesAwsXml() {
-            assertThat(writer.renderXmlDecode("Body")).isEqualTo("aws_xml:decode(Body)");
+            assertThat(writer.renderXmlDecode("Body")).isEqualTo("smithy_xml:decode(Body)");
         }
 
         @Test
         void renderFormEncodeUsesAwsQuery() {
             assertThat(writer.renderFormEncode("ListUsers", "Map"))
-                    .isEqualTo("aws_query:encode(<<\"ListUsers\">>, Map)");
+                    .isEqualTo("smithy_query:encode(<<\"ListUsers\">>, Map)");
         }
 
         @Test
@@ -319,13 +319,13 @@ class ErlangWriterTest {
 
         @Test
         void sigv4SignCallReturnsAwsSigv4Function() {
-            assertThat(writer.sigv4SignCall()).isEqualTo("aws_sigv4:sign_request");
+            assertThat(writer.sigv4SignCall()).isEqualTo("smithy_sigv4:sign_request");
         }
 
         @Test
         void retryCallUsesAwsRetry() {
             assertThat(writer.retryCall("Fun", "#{max_retries => 3}"))
-                    .isEqualTo("aws_retry:with_retry(Fun, #{max_retries => 3})");
+                    .isEqualTo("smithy_retry:with_retry(Fun, #{max_retries => 3})");
         }
     }
 
@@ -423,7 +423,7 @@ class ErlangWriterTest {
         @Test
         void renderAuthWrapperWithSigv4PrependsSigning() {
             String result = writer.renderAuthWrapper(new AuthSpec(true, "s3"), "inner_call()");
-            assertThat(result).contains("aws_sigv4:sign_request(");
+            assertThat(result).contains("smithy_sigv4:sign_request(");
             assertThat(result).contains("SignedHeaders");
             assertThat(result).contains("inner_call()");
         }
@@ -437,7 +437,7 @@ class ErlangWriterTest {
         @Test
         void renderRetryWrapperEnabledUsesAwsRetry() {
             String result = writer.renderRetryWrapper(RetrySpec.defaultRetry(), "RequestFun");
-            assertThat(result).contains("aws_retry:with_retry(RequestFun,");
+            assertThat(result).contains("smithy_retry:with_retry(RequestFun,");
             assertThat(result).contains("max_retries =>");
         }
     }
@@ -671,7 +671,7 @@ class ErlangWriterTest {
         void renderClientOperationUsesRetryWhenEnabled() {
             OperationSpec op = makeGetWeatherOp(Role.CLIENT);
             String result = writer.renderClientOperation(op);
-            assertThat(result).contains("aws_retry:with_retry");
+            assertThat(result).contains("smithy_retry:with_retry");
         }
     }
 
@@ -690,33 +690,33 @@ class ErlangWriterTest {
         @Test
         void clientRuntimeModulesAlwaysIncludesRetryAndConfig() {
             List<String> modules = writer.clientRuntimeModules(false, false, false, false);
-            assertThat(modules).anyMatch(m -> m.contains("aws_retry.erl"));
-            assertThat(modules).anyMatch(m -> m.contains("aws_config.erl"));
+            assertThat(modules).anyMatch(m -> m.contains("smithy_retry.erl"));
+            assertThat(modules).anyMatch(m -> m.contains("smithy_config.erl"));
         }
 
         @Test
         void clientRuntimeModulesIncludesSigv4WhenRequired() {
             List<String> modules = writer.clientRuntimeModules(true, false, false, false);
-            assertThat(modules).anyMatch(m -> m.contains("aws_sigv4.erl"));
-            assertThat(modules).anyMatch(m -> m.contains("aws_credentials.erl"));
+            assertThat(modules).anyMatch(m -> m.contains("smithy_sigv4.erl"));
+            assertThat(modules).anyMatch(m -> m.contains("smithy_credentials.erl"));
         }
 
         @Test
         void clientRuntimeModulesIncludesXmlWhenRequired() {
             List<String> modules = writer.clientRuntimeModules(false, true, false, false);
-            assertThat(modules).anyMatch(m -> m.contains("aws_xml.erl"));
+            assertThat(modules).anyMatch(m -> m.contains("smithy_xml.erl"));
         }
 
         @Test
         void clientRuntimeModulesIncludesQueryWhenRequired() {
             List<String> modules = writer.clientRuntimeModules(false, false, true, false);
-            assertThat(modules).anyMatch(m -> m.contains("aws_query.erl"));
+            assertThat(modules).anyMatch(m -> m.contains("smithy_query.erl"));
         }
 
         @Test
         void clientRuntimeModulesIncludesS3WhenRequired() {
             List<String> modules = writer.clientRuntimeModules(false, false, false, true);
-            assertThat(modules).anyMatch(m -> m.contains("aws_s3.erl"));
+            assertThat(modules).anyMatch(m -> m.contains("smithy_s3.erl"));
         }
     }
 
