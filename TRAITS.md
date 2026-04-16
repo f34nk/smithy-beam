@@ -1,6 +1,6 @@
 # Smithy Trait Support
 
-This document lists Smithy 2.0 traits and how they relate to **generated** Erlang and Elixir in smithy-beam.
+This document lists Smithy 2.0 traits and how they relate to **generated** Erlang and Elixir code in smithy-beam. Notes describe Erlang output unless marked otherwise; the `ElixirWriter` is implemented but the `codegen-elixir` Smithy Build plugin is not yet registered, so traits do not yet affect generated Elixir code.
 
 **Legend:**
 - ✅ Supported - Trait is read and affects code generation

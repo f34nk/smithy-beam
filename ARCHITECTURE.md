@@ -11,7 +11,8 @@ Language plugins live under `codegen-*`. Shared protocol analyzers live in `prot
 Please refer to [TRAITS](https://github.com/f34nk/smithy-beam/blob/v1/TRAITS.md) and [AWS_SDK_SUPPORT](https://github.com/f34nk/smithy-beam/blob/v1/AWS_SDK_SUPPORT.md) for a full list of supported features.
 
 > Erlang client and server generators are fully supported.
-> (Elixir and Gleam is coming soon)
+> Elixir: `ElixirWriter` is fully implemented; Smithy Build plugin registration is coming soon.
+> Gleam is coming soon.
 
 ```shell
 .
@@ -159,7 +160,7 @@ Type shapes (structs, enums, unions, errors) are converted to `StructSpec` / `En
 
 ### 4. Map Smithy types to target-language types
 
-Inside the writer, `ErlangSymbolProvider` (or the Elixir equivalent) converts Smithy names to idiomatic identifiers:
+Inside the writer, `ErlangSymbolProvider` / `ElixirSymbolProvider` converts Smithy names to idiomatic identifiers:
 
 **Example:**
 

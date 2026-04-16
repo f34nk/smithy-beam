@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ElixirSymbolProvider`** in `codegen-elixir` (`symbol` package): converts Smithy names to idiomatic Elixir identifiers — `moduleName` (PascalCase preserved), `functionName`/`varName` (PascalCase → `snake_case`), `typeName` (`ModuleName.t()`), `mapKey` (`:atom` key). `ElixirReservedWords` guards against collisions with Elixir and Kernel built-in names by appending `_`.
+- **`ElixirWriter`** in `codegen-elixir`: full `LanguageWriter` implementation for Elixir.
+  - Module structure: `moduleHeader` (`defmodule … do`), `moduleFooter` (`end`), `exportSection` (no-op — all `def` functions are public in Elixir), `renderModuleComment` (`@moduledoc`), `behaviourDeclaration` (`@behaviour`), `renderToolingAttributes` (no-op).
+  - Type rendering: `renderStructType` (`@type name :: %{key: type}` with `| nil` for optional fields), `renderEnumType` (union of atoms), `renderUnionType` (tagged tuples), `renderCallbackDeclaration` (`@callback`), `renderFunctionSpec` (`@spec`), `renderFunctionHead` (`def name(params) do`), `renderFunctionEnd` (`end`).
+  - Map operations: `renderMapGet` (`Map.get/3` with atom key), `renderMapBuild` (`%{key: value}` map literal).
+  - JSON helpers: `renderJsonEncode`/`renderJsonDecode`/`jsonEncodeCall`/`jsonDecodeCall` (Jason), `sigv4SignCall` (`SmithyClient.Sigv4.sign_request`).
+  - HTTP: `renderUriSubstitution` (Elixir string interpolation with optional `URI.encode_www_form`), `renderQueryStringBuilder` (`URI.encode_query`), `renderHeaderBuilder` (`[{"Content-Type", "…"}]` list), `renderHttpClientBlock` (`%SmithyClient.Operation{}` struct value).
+  - Auth and retry: `renderAuthWrapper` (returns inner block unchanged — auth handled at runtime), `renderRetryWrapper` (`SmithyClient.Retry.with_retry`).
+  - Codec helpers: `renderEnumCodec` (`encode_<enum>/1` and `decode_<enum>/1`), `renderUnionCodec` (`encode_<union>/1` and `decode_<union>/1`), `renderValidateHelper` (`validate_<struct>/1` returning `:ok` or `{:error, {:missing_required_fields, missing}}`).
+  - Shared helpers: `renderSharedHelpers` (`url_encode/1` and `ensure_string/1`).
+  - Client: `renderClientConstructor` (`def new(config)`), `renderClientOperation` (`def <op>(input)` returning `%SmithyClient.Operation{}`; additionally emits a streaming variant `def <op>_stream/2` via `SmithyClient.stream` when `@paginated`), `renderPaginationHelper`, `clientRuntimeModules` (selects `.ex` runtime files based on SigV4/XML/query/S3 requirements).
+  - Error serialization: `renderErrorSerializer` and `renderModuleParseError` (protocol-aware; by error code string for REST-XML, by HTTP status code for REST-JSON).
+  - Server: `renderServerCallbackDeclaration` (`@callback`), `renderServerRouteClause` (Plug `get`/`post`/`match` macro), `renderServerRouteFallback` (`match _ do`), `renderServerDeserialize` (extracts path params via `conn.path_params`), `renderServerSerialize` (`Jason.encode!`), `renderServerImplStub` (`{:error, :not_implemented}`), `serverRuntimeModules`.
+- **Unit tests** for `ElixirSymbolProvider`, `ElixirWriter`, and `ErlangWriter`.
+  - `ElixirSymbolProviderTest`: covers all naming conversions and reserved word handling.
+  - `ElixirWriterTest`: 18 nested test classes covering identity, naming, module structure, type rendering, map operations, JSON/XML helpers, URI and header building, HTTP client and server blocks, auth/retry wrappers, pagination, codec helpers, shared helpers, and runtime module lists.
+  - `ErlangWriterTest`: 90 tests across 14 nested classes covering the complete `ErlangWriter` surface — naming, module structure, type rendering, map/encoding helpers, URI/header building, auth/retry, error serializers, pagination, codec helpers, server patterns, and the `toErlangAtom` static helper.
+
 - **Elixir server runtime modules** in `runtime-elixir/server/`: two new modules providing HTTP dispatch helpers and input validation as the runtime foundation for generated Elixir server dispatchers.
   - **`SmithyServer`**: Plug-compatible HTTP abstraction layer — `extract/1` reads method, path, headers, and body from a `Plug.Conn`; `response/3`, `error_response/2`, `validation_error/2`, and `not_found/1` build and send JSON responses. Delegates error-to-status mapping to `SmithyErrorMap.to_http/1` and validation message formatting to `SmithyValidator.format/1`.
   - **`SmithyValidator`**: required-field validation — `validate/2` checks that all required keys are present in an input map and returns `:ok` or `{:error, {:missing_required_fields, [term()]}}`. `format/1` converts the error term to a human-readable string (`"Missing required fields: …"`).
