@@ -70,6 +70,7 @@ public final class RestXmlProtocolAnalyzer implements ProtocolAnalyzer {
     public OperationSpec analyzeClientOperation(OperationShape op, Model model, ServiceShape service) {
         HttpSpec http = RestJsonProtocolAnalyzer.buildHttpSpec(op);
         StructureShape input = RestJsonProtocolAnalyzer.inputShape(op, model);
+        StructureShape output = RestJsonProtocolAnalyzer.outputShape(op, model);
 
         List<LabelBinding> labels = RestJsonProtocolAnalyzer.buildLabels(input, model);
         List<QueryBinding> queries = RestJsonProtocolAnalyzer.buildQueries(input);
@@ -79,6 +80,10 @@ public final class RestXmlProtocolAnalyzer implements ProtocolAnalyzer {
         ErrorSpec errors = RestJsonProtocolAnalyzer.buildErrors(op, model, ErrorCodeStrategy.REST_XML);
         AuthSpec auth = RestJsonProtocolAnalyzer.buildAuth(service);
         PaginationSpec pagination = RestJsonProtocolAnalyzer.buildPagination(op);
+
+        String responsePayloadMember = RestJsonProtocolAnalyzer.buildResponsePayloadMember(output);
+        String responseCodeMember    = RestJsonProtocolAnalyzer.buildResponseCodeMember(output);
+        List<HeaderBinding> responseHeaders = RestJsonProtocolAnalyzer.buildResponseHeaders(output);
 
         return new OperationSpec(
                 op.getId().getName(),
@@ -98,7 +103,10 @@ public final class RestXmlProtocolAnalyzer implements ProtocolAnalyzer {
                 BodyEncoding.XML,
                 "application/xml",
                 ErrorCodeStrategy.REST_XML,
-                null);
+                null,
+                responsePayloadMember,
+                responseCodeMember,
+                responseHeaders);
     }
 
     // ── Body ─────────────────────────────────────────────────────────────────
