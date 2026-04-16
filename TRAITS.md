@@ -72,7 +72,7 @@ AWS-specific authentication traits.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`aws.auth#sigv4`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ✅ | Detected on service; signing name read into `AuthSpec` IR; `aws_sigv4.erl` and `aws_credentials.erl` runtime modules copied into output; `aws_sigv4:sign_request/5` called inside `make_<op>_request/2` for services that require signing |
+| [`aws.auth#sigv4`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ✅ | Detected on service; signing name read into `AuthSpec` IR. **Erlang:** `aws_sigv4.erl` and `aws_credentials.erl` copied into output; `aws_sigv4:sign_request/5` called inside `make_<op>_request/2`. **Elixir:** `SmithySigV4` and `SmithyCredentials` copied into output; `SmithySigV4.sign_request/2` called by `SmithyClient`. |
 | [`aws.auth#cognitoUserPools`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-cognitouserpools-trait) | ❌ | Cognito User Pools authentication |
 | [`aws.auth#sigv4a`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4a-trait) | ❌ | Multi-region SigV4a signing |
 | [`aws.auth#unsignedPayload`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-unsignedpayload-trait) | ❌ | Skips payload signing |
@@ -140,7 +140,7 @@ Traits that define operation behavior.
 
 | Trait | Status | Notes |
 |-------|--------|-------|
-| [`smithy.api#paginated`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-paginated-trait) | ⚠️ | Token and items members read into `PaginationSpec` IR; `renderPaginationHelper` emits `<op>_stream/2,3` accumulation loop; wired in pipeline when `op.pagination()` is non-null |
+| [`smithy.api#paginated`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-paginated-trait) | ⚠️ | Token and items members read into `PaginationSpec` IR; `renderPaginationHelper` emits `<op>_stream` helpers; wired in pipeline when `op.pagination()` is non-null. **Erlang:** `<op>_stream/2,3`. **Elixir:** `<op>_stream(client, input, opts \\ %{})` calling `SmithyClient.stream/3`. |
 | [`smithy.api#idempotencyToken`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotencytoken-trait) | ❌ | Auto-generates unique token for idempotent operations |
 | [`smithy.api#idempotent`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotent-trait) | ❌ | Marks operation as idempotent |
 | [`smithy.api#readonly`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-readonly-trait) | ❌ | Marks operation as read-only |

@@ -114,14 +114,15 @@ defmodule SmithyClientTest do
   end
 
   # -------------------------------------------------------------------------
-  # stream/2 — pure structural tests (no HTTP)
+  # stream/3 — pure structural tests (no HTTP)
   # -------------------------------------------------------------------------
 
-  describe "stream/2 contract" do
-    test "stream/2 returns an enumerable (function)" do
+  describe "stream/3 contract" do
+    test "stream/3 returns an enumerable (function)" do
+      client = %{endpoint: "http://localhost"}
       op = %Operation{name: :list, http: %{method: "POST", uri: "/"}, input: %{}, output_shape: :Out, auth: :none}
       # We cannot execute the stream (requires HTTP), but we can verify the return type.
-      result = SmithyClient.stream(op, config: %{endpoint: "http://localhost"})
+      result = SmithyClient.stream(client, op, %{})
       assert is_function(result) or (is_struct(result) and Enumerable.impl_for(result) != nil)
     end
   end

@@ -11,7 +11,7 @@ Language plugins live under `codegen-*`. Shared protocol analyzers live in `prot
 Please refer to [TRAITS](https://github.com/f34nk/smithy-beam/blob/v1/TRAITS.md) and [AWS_SDK_SUPPORT](https://github.com/f34nk/smithy-beam/blob/v1/AWS_SDK_SUPPORT.md) for a full list of supported features.
 
 > Erlang client (`erlang-client-codegen`) and server (`erlang-server-codegen`) generators are fully supported.
-> Elixir client (`elixir-client-codegen`) and server (`elixir-server-codegen`) generators are fully supported; see `examples/elixir/weather-service` for an end-to-end demo.
+> Elixir client (`elixir-client-codegen`) and server (`elixir-server-codegen`) generators are fully supported.
 > Gleam is coming soon.
 
 ```shell

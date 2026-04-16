@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir.writer;
 
+import io.smithy.beam.elixir.symbol.ElixirReservedWords;
 import io.smithy.beam.core.ir.AuthSpec;
 import io.smithy.beam.core.ir.EnumSpec;
 import io.smithy.beam.core.ir.ErrorBinding;
@@ -148,7 +149,7 @@ public final class ElixirWriter implements LanguageWriter {
      */
     @Override
     public String renderStructType(StructSpec struct) {
-        String typeName = ElixirSymbolProvider.toSnakeCase(struct.name());
+        String typeName = ElixirReservedWords.escapeTypeName(ElixirSymbolProvider.toSnakeCase(struct.name()));
         if (struct.fields().isEmpty()) {
             return "  @type " + typeName + " :: %{}\n";
         }
@@ -176,9 +177,9 @@ public final class ElixirWriter implements LanguageWriter {
      */
     @Override
     public String renderEnumType(EnumSpec e) {
-        String typeName = ElixirSymbolProvider.toSnakeCase(e.name());
+        String typeName = ElixirReservedWords.escapeTypeName(ElixirSymbolProvider.toSnakeCase(e.name()));
         String variants = e.values().stream()
-            .map(v -> ":" + toElixirAtomValue(v))
+            .map(ElixirWriter::toElixirAtom)
             .collect(Collectors.joining(" | "));
         return "  @type " + typeName + " :: " + variants + "\n";
     }
@@ -578,11 +579,11 @@ public final class ElixirWriter implements LanguageWriter {
      */
     @Override
     public String renderPaginationHelper(OperationSpec spec, PaginationSpec pagination) {
-        String opName    = ElixirSymbolProvider.toFunctionName(spec.operationName());
+        String opName     = ElixirSymbolProvider.toFunctionName(spec.operationName());
         String streamName = opName + "_stream";
-        return "\n  @spec " + streamName + "(map(), keyword()) :: Enumerable.t()\n"
-             + "  def " + streamName + "(input, opts \\\\ []) do\n"
-             + "    SmithyClient.stream(" + opName + "(input), opts)\n"
+        return "\n  @spec " + streamName + "(map(), map(), map()) :: Enumerable.t()\n"
+             + "  def " + streamName + "(client, input, opts \\\\ %{}) do\n"
+             + "    SmithyClient.stream(client, " + opName + "_op(input), opts)\n"
              + "  end\n";
     }
 
@@ -686,9 +687,17 @@ public final class ElixirWriter implements LanguageWriter {
 
         StringBuilder sb = new StringBuilder();
         sb.append("\n");
+
+        // Public 3-arg function: (client, input, opts \\ %{}) -> {:ok, map()} | {:error, term()}
         sb.append("  @doc \"Calls the ").append(op.operationName()).append(" operation\"\n");
-        sb.append("  @spec ").append(opName).append("(map()) :: SmithyClient.Operation.t()\n");
-        sb.append("  def ").append(opName).append("(input) do\n");
+        sb.append("  @spec ").append(opName).append("(map(), map(), map()) :: {:ok, map()} | {:error, term()}\n");
+        sb.append("  def ").append(opName).append("(client, input, opts \\\\ %{}) do\n");
+        sb.append("    SmithyClient.request(client, ").append(opName).append("_op(input), opts)\n");
+        sb.append("  end\n");
+
+        // Private operation struct builder
+        sb.append("\n");
+        sb.append("  defp ").append(opName).append("_op(input) do\n");
         sb.append("    %SmithyClient.Operation{\n");
         sb.append("      name: :").append(opName).append(",\n");
         sb.append("      http: %{method: \"").append(method).append("\", uri: \"").append(uri).append("\"},\n");
@@ -698,7 +707,6 @@ public final class ElixirWriter implements LanguageWriter {
         sb.append("    }\n");
         sb.append("  end\n");
 
-        // Append pagination helper when the operation is paginated
         if (op.pagination() != null) {
             sb.append(renderPaginationHelper(op, op.pagination()));
         }
@@ -725,14 +733,14 @@ public final class ElixirWriter implements LanguageWriter {
         StringBuilder sb = new StringBuilder();
 
         for (String v : e.values()) {
-            String atom = ":" + toElixirAtomValue(v);
+            String atom = toElixirAtom(v);
             sb.append("  def encode_").append(baseName).append("(").append(atom)
               .append("), do: \"").append(v).append("\"\n");
         }
         sb.append("\n");
 
         for (String v : e.values()) {
-            String atom = ":" + toElixirAtomValue(v);
+            String atom = toElixirAtom(v);
             sb.append("  def decode_").append(baseName).append("(\"").append(v)
               .append("\"), do: {:ok, ").append(atom).append("}\n");
         }
@@ -1262,12 +1270,29 @@ public final class ElixirWriter implements LanguageWriter {
     }
 
     /**
-     * Converts a Smithy enum value to a lowercase Elixir atom value string (no colon prefix).
+     * Converts a Smithy enum value to a full Elixir atom literal (with colon prefix).
      *
-     * <p>Hyphens are replaced with underscores for valid atom syntax.
+     * <p>Simple atoms (only {@code [a-z0-9_]}, starting with a letter) are rendered as
+     * {@code :name}. Atoms that contain dots or other special characters are quoted:
+     * {@code :"automation.changetemplate"}.
      *
-     * <p>Example: {@code "CELSIUS" → "celsius"}, {@code "US-EAST-1" → "us_east_1"}
+     * <p>Examples:
+     * <ul>
+     *   <li>{@code "CELSIUS"} → {@code :celsius}</li>
+     *   <li>{@code "US-EAST-1"} → {@code :us_east_1}</li>
+     *   <li>{@code "Automation.ChangeTemplate"} → {@code :"automation.changetemplate"}</li>
+     * </ul>
      */
+    private static String toElixirAtom(String smithyValue) {
+        String lower = smithyValue.toLowerCase().replace('-', '_');
+        if (lower.matches("[a-z][a-z0-9_]*[?!]?")) {
+            return ":" + lower;
+        }
+        // Atom contains special chars (e.g. dots); use quoted-atom syntax :"..."
+        return ":\"" + lower + "\"";
+    }
+
+    /** @deprecated Use {@link #toElixirAtom(String)} which handles quoting. */
     private static String toElixirAtomValue(String value) {
         return value.toLowerCase().replace('-', '_');
     }

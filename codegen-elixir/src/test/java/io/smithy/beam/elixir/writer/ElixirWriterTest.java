@@ -365,11 +365,13 @@ class ElixirWriterTest {
         void renderClientOperationEmitsDefFunction() {
             OperationSpec op = makeGetWeatherOp();
             String result = writer.renderClientOperation(op);
-            assertThat(result).contains("def get_weather(input) do");
+            assertThat(result).contains("def get_weather(client, input, opts \\\\ %{})");
+            assertThat(result).contains("SmithyClient.request(client, get_weather_op(input), opts)");
+            assertThat(result).contains("defp get_weather_op(input)");
             assertThat(result).contains("%SmithyClient.Operation{");
             assertThat(result).contains("name: :get_weather");
             assertThat(result).contains("@doc \"Calls the GetWeather operation\"");
-            assertThat(result).contains("@spec get_weather(map()) :: SmithyClient.Operation.t()");
+            assertThat(result).contains("@spec get_weather(map(), map(), map()) :: {:ok, map()} | {:error, term()}");
         }
 
         @Test
@@ -417,8 +419,8 @@ class ElixirWriterTest {
             );
             PaginationSpec pagination = new PaginationSpec("NextToken", "NextPageToken", "Items", null);
             String result = writer.renderPaginationHelper(op, pagination);
-            assertThat(result).contains("def list_items_stream(input, opts \\\\ [])");
-            assertThat(result).contains("SmithyClient.stream(list_items(input), opts)");
+            assertThat(result).contains("def list_items_stream(client, input, opts \\\\ %{})");
+            assertThat(result).contains("SmithyClient.stream(client, list_items_op(input), opts)");
         }
     }
 
