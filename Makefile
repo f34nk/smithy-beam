@@ -82,7 +82,7 @@ test/runtime-elixir:
 			[app: :foo, version: \"0.1.0\", elixir: \"~\> 1.19\", deps: deps\(\)]\\n\
 		end\\n\
 		def application do\\n\
-			[extra_applications: [:logger, :crypto]]\\n\
+			[extra_applications: [:logger, :crypto, :xmerl]]\\n\
 		end\\n\
 		defp deps do\\n\
 			[{:plug, \"~\> 1.16\"}, {:jason, \"~\> 1.4\"}, {:req, \"~\> 0.5\"}]\\n\

@@ -100,7 +100,7 @@ public final class ClientPipeline {
 
         // ── Client constructor + shared helpers (url_encode, ensure_binary) ───
         buf.append(writer.renderClientConstructor());
-        buf.append(writer.renderSharedHelpers());
+        buf.append(writer.renderSharedHelpers(ops));
 
         // ── Operations ────────────────────────────────────────────────────────
         // Pagination helpers are emitted by renderClientOperation itself.
@@ -192,11 +192,26 @@ public final class ClientPipeline {
 
     private List<String> buildExportTypeNames(ModuleTypeSpec types, LanguageWriter writer) {
         List<String> names = new ArrayList<>();
-        for (StructSpec s : types.structures()) names.add(writer.functionName(s.name()) + "/0");
-        for (EnumSpec e : types.enums())        names.add(writer.functionName(e.name()) + "/0");
-        for (UnionSpec u : types.unions())      names.add(writer.functionName(u.name()) + "/0");
-        for (StructSpec e : types.errors())     names.add(writer.functionName(e.name()) + "/0");
+        // Use typeName() to derive the export arity-0 name, stripping the trailing "()" that
+        // Erlang type declarations include. This ensures built-in-type-safe renames (e.g. "node_t")
+        // are reflected consistently in both the declaration and the export_type attribute.
+        for (StructSpec s : types.structures()) names.add(typeExportName(writer, s.name()));
+        for (EnumSpec e : types.enums())        names.add(typeExportName(writer, e.name()));
+        for (UnionSpec u : types.unions())      names.add(typeExportName(writer, u.name()));
+        for (StructSpec e : types.errors())     names.add(typeExportName(writer, e.name()));
         return names;
+    }
+
+    /**
+     * Returns the arity-0 export name for a type (e.g. {@code "get_weather_input/0"}).
+     * Strips any trailing {@code ()} from {@link LanguageWriter#typeName} before appending {@code /0}.
+     */
+    private static String typeExportName(LanguageWriter writer, String smithyName) {
+        String t = writer.typeName(smithyName);
+        if (t.endsWith("()")) {
+            t = t.substring(0, t.length() - 2);
+        }
+        return t + "/0";
     }
 
     // -------------------------------------------------------------------------

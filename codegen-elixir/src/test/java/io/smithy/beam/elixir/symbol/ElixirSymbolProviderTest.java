@@ -211,4 +211,26 @@ class ElixirSymbolProviderTest {
         assertThat(ElixirReservedWords.isReserved(null)).isFalse();
         assertThat(ElixirReservedWords.escape(null)).isNull();
     }
+
+    // ── toInlineTypeName ──────────────────────────────────────────────────────
+
+    @Test
+    void toInlineTypeNameConvertsNonClashingName() {
+        assertThat(ElixirSymbolProvider.toInlineTypeName("GetWeatherInput")).isEqualTo("get_weather_input()");
+    }
+
+    @Test
+    void toInlineTypeNameEscapesBuiltinMap() {
+        assertThat(ElixirSymbolProvider.toInlineTypeName("Map")).isEqualTo("map_t()");
+    }
+
+    @Test
+    void toInlineTypeNameEscapesBuiltinNode() {
+        assertThat(ElixirSymbolProvider.toInlineTypeName("Node")).isEqualTo("node_t()");
+    }
+
+    @Test
+    void toInlineTypeNameEscapesBuiltinList() {
+        assertThat(ElixirSymbolProvider.toInlineTypeName("List")).isEqualTo("list_t()");
+    }
 }

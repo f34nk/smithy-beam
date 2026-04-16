@@ -227,6 +227,49 @@ cloudformation_create_stack_test() ->
     ?assert(binary:match(Result, <<"Parameters.1.ParameterValue=my-key">>) =/= nomatch).
 
 %%--------------------------------------------------------------------
+%% Test: rename_map_keys/2
+%%--------------------------------------------------------------------
+rename_map_keys_renames_key_in_map_test() ->
+    Input   = #{<<"Tags">> => [#{<<"Key">> => <<"Name">>, <<"Value">> => <<"demo">>}]},
+    Renames = #{<<"Tags">> => <<"Tag">>},
+    Result  = aws_query:rename_map_keys(Input, Renames),
+    ?assert(maps:is_key(<<"Tag">>, Result)),
+    ?assertNot(maps:is_key(<<"Tags">>, Result)).
+
+rename_map_keys_leaves_unknown_keys_unchanged_test() ->
+    Input   = #{<<"ResourceType">> => <<"instance">>, <<"Tags">> => []},
+    Renames = #{<<"Tags">> => <<"Tag">>},
+    Result  = aws_query:rename_map_keys(Input, Renames),
+    ?assert(maps:is_key(<<"ResourceType">>, Result)),
+    ?assert(maps:is_key(<<"Tag">>, Result)).
+
+rename_map_keys_applies_to_list_items_test() ->
+    Items   = [#{<<"Tags">> => <<"a">>}, #{<<"Tags">> => <<"b">>}],
+    Renames = #{<<"Tags">> => <<"Tag">>},
+    Result  = aws_query:rename_map_keys(Items, Renames),
+    ?assertEqual(2, length(Result)),
+    [First | _] = Result,
+    ?assert(maps:is_key(<<"Tag">>, First)).
+
+rename_map_keys_handles_undefined_test() ->
+    ?assertEqual(undefined, aws_query:rename_map_keys(undefined, #{<<"x">> => <<"y">>})).
+
+rename_map_keys_handles_scalar_test() ->
+    ?assertEqual(<<"hello">>, aws_query:rename_map_keys(<<"hello">>, #{<<"x">> => <<"y">>})).
+
+rename_map_keys_roundtrip_with_encode_test() ->
+    TagSpec = #{
+        <<"ResourceType">> => <<"instance">>,
+        <<"Tags">> => [#{<<"Key">> => <<"Name">>, <<"Value">> => <<"demo">>}]
+    },
+    Renames = #{<<"Tags">> => <<"Tag">>},
+    Renamed = aws_query:rename_map_keys(TagSpec, Renames),
+    Params  = #{<<"TagSpecification">> => [Renamed]},
+    Result  = aws_query:encode(<<"RunInstances">>, Params, <<"2016-11-15">>),
+    ?assert(binary:match(Result, <<"TagSpecification.1.Tag.1.Key=Name">>) =/= nomatch),
+    ?assertEqual(nomatch, binary:match(Result, <<"TagSpecification.1.Tags.1.Key=Name">>)).
+
+%%--------------------------------------------------------------------
 %% Test: Edge cases
 %%--------------------------------------------------------------------
 encode_empty_string_value_test() ->

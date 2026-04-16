@@ -120,6 +120,28 @@ class RestXmlProtocolAnalyzerTest {
         assertThat(spec.queries()).hasSize(2);
     }
 
+    // ── Response bindings (output shape) ────────────────────────────────────
+
+    @Test
+    void responsePayloadMemberSetFromHttpPayloadTrait() {
+        OperationSpec spec = analyzer.analyzeClientOperation(getObject, model, s3Service);
+        assertThat(spec.responsePayloadMember()).isEqualTo("Body");
+    }
+
+    @Test
+    void responsePayloadMemberNullWhenNoHttpPayloadTrait() {
+        OperationSpec spec = analyzer.analyzeClientOperation(putObject, model, s3Service);
+        assertThat(spec.responsePayloadMember()).isNull();
+    }
+
+    @Test
+    void responseHeadersExtractedFromOutputShape() {
+        OperationSpec spec = analyzer.analyzeClientOperation(getObject, model, s3Service);
+        assertThat(spec.responseHeaders()).hasSize(1);
+        assertThat(spec.responseHeaders().get(0).smithyMemberName()).isEqualTo("ContentType");
+        assertThat(spec.responseHeaders().get(0).headerName()).isEqualTo("Content-Type");
+    }
+
     // ── Error strategy ───────────────────────────────────────────────────────
 
     @Test

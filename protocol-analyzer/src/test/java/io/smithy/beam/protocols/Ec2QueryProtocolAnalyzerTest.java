@@ -17,6 +17,7 @@ class Ec2QueryProtocolAnalyzerTest {
     private static Model model;
     private static ServiceShape ec2Service;
     private static OperationShape describeInstances;
+    private static OperationShape runInstances;
     private static final Ec2QueryProtocolAnalyzer analyzer = new Ec2QueryProtocolAnalyzer();
 
     @BeforeAll
@@ -26,8 +27,9 @@ class Ec2QueryProtocolAnalyzerTest {
                 .addImport(Ec2QueryProtocolAnalyzerTest.class.getResource("ec2.smithy"))
                 .assemble()
                 .unwrap();
-        ec2Service         = model.expectShape(ShapeId.from("example.ec2#Ec2Service"),         ServiceShape.class);
-        describeInstances  = model.expectShape(ShapeId.from("example.ec2#DescribeInstances"),  OperationShape.class);
+        ec2Service        = model.expectShape(ShapeId.from("example.ec2#Ec2Service"),        ServiceShape.class);
+        describeInstances = model.expectShape(ShapeId.from("example.ec2#DescribeInstances"), OperationShape.class);
+        runInstances      = model.expectShape(ShapeId.from("example.ec2#RunInstances"),      OperationShape.class);
     }
 
     @Test
@@ -99,5 +101,32 @@ class Ec2QueryProtocolAnalyzerTest {
         OperationSpec spec = analyzer.analyzeClientOperation(describeInstances, model, ec2Service);
         assertThat(spec.retry().enabled()).isTrue();
         assertThat(spec.retry().maxRetries()).isEqualTo(3);
+    }
+
+    // ── nestedWireNameOverrides ───────────────────────────────────────────────
+
+    @Test
+    void nestedWireNameOverridesEmptyWhenMembersAreNotStructures() {
+        // DescribeInstances has only a String and an Integer — no nested structure renames.
+        OperationSpec spec = analyzer.analyzeClientOperation(describeInstances, model, ec2Service);
+        assertThat(spec.body().nestedWireNameOverrides()).isEmpty();
+    }
+
+    @Test
+    void nestedXmlNameCollectedForListOfStructures() {
+        // RunInstances.TagSpecifications → list of TagSpecification.
+        // TagSpecification.Tags carries @xmlName("Tag") → must appear in nestedWireNameOverrides.
+        OperationSpec spec = analyzer.analyzeClientOperation(runInstances, model, ec2Service);
+        assertThat(spec.body().nestedWireNameOverrides()).containsKey("TagSpecifications");
+        var tagSpecRenames = spec.body().nestedWireNameOverrides().get("TagSpecifications");
+        assertThat(tagSpecRenames).containsEntry("Tags", "Tag");
+        assertThat(tagSpecRenames).doesNotContainKey("ResourceType"); // no @xmlName, unchanged
+    }
+
+    @Test
+    void nestedWireNameOverridesAbsentForPlainMember() {
+        // RunInstances.MaxCount is a plain Integer — must not appear in nestedWireNameOverrides.
+        OperationSpec spec = analyzer.analyzeClientOperation(runInstances, model, ec2Service);
+        assertThat(spec.body().nestedWireNameOverrides()).doesNotContainKey("MaxCount");
     }
 }

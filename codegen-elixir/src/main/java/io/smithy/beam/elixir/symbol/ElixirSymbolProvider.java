@@ -74,6 +74,9 @@ public final class ElixirSymbolProvider {
      * suffixed with {@code "_t"} to avoid a compile error.
      *
      * <p>Examples: {@code "GetWeatherInput" → "get_weather_input()"}, {@code "Node" → "node_t()"}
+     *
+     * <p>Called by {@code ElixirWriter.typeRefToElixir} for all {@link io.smithy.beam.core.ir.TypeRef.Named}
+     * references in field types, {@code @spec} parameters, and {@code @callback} return types.
      */
     public static String toInlineTypeName(String smithyName) {
         return ElixirReservedWords.escapeTypeName(toSnakeCase(smithyName)) + "()";

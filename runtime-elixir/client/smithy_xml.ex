@@ -26,7 +26,7 @@ defmodule SmithyXml do
 
   def decode(xml) when is_list(xml) do
     try do
-      {parsed, _rest} = :xmerl_scan.string(xml, quiet: true)
+      {parsed, _rest} = apply(:xmerl_scan, :string, [xml, [quiet: true]])
       {:ok, xml_to_map(parsed)}
     rescue
       e -> {:error, {:xml_parse_error, e}}
@@ -42,15 +42,10 @@ defmodule SmithyXml do
   otherwise the output is wrapped in a `<root_name>` element.
   """
   @spec encode(map(), atom() | String.t() | nil) :: iolist()
-  def encode(map, root_name \\ nil) when is_map(map) do
+  def encode(map, root_name \\ "Request") when is_map(map) do
     elements = Enum.map(map, fn {k, v} -> encode_element(k, v) end)
-
-    if root_name do
-      root_atom = to_atom(root_name)
-      :xmerl.export_simple([{root_atom, [], elements}], :xmerl_xml)
-    else
-      elements
-    end
+    root_atom = to_atom(root_name || "Request")
+    apply(:xmerl, :export_simple, [[{root_atom, [], elements}], :xmerl_xml])
   end
 
   @doc false

@@ -9,11 +9,26 @@ package io.smithy.beam.erlang.symbol;
  *   <li>Type names: {@code CamelCase → snake_case()} (trailing parentheses)</li>
  *   <li>Variable names: {@code camelCase/snake_case → PascalCase} (Erlang vars start with uppercase)</li>
  *   <li>Reserved words are escaped by appending {@code _}</li>
+ *   <li>Type names that clash with Erlang built-in types get a {@code _t} suffix</li>
  * </ul>
  */
 public final class ErlangSymbolProvider {
 
     private ErlangSymbolProvider() {}
+
+    /**
+     * Erlang built-in predefined types that cannot be locally redefined without a compiler warning.
+     * Smithy shapes whose snake_case name matches one of these get a {@code _t} suffix in the
+     * generated {@code -type} declaration to avoid the redefinition warning.
+     */
+    private static final java.util.Set<String> ERLANG_BUILTIN_TYPES = java.util.Set.of(
+            "any", "arity", "atom", "binary", "bitstring", "boolean", "byte", "char",
+            "float", "fun", "function", "identifier", "integer", "iodata", "iolist", "map",
+            "maybe_improper_list", "mfa", "module", "neg_integer", "nil", "no_return", "node",
+            "non_neg_integer", "none", "nonempty_improper_list", "nonempty_list",
+            "nonempty_maybe_improper_list", "nonempty_string", "number", "pid", "port",
+            "pos_integer", "reference", "string", "term", "timeout"
+    );
 
     /**
      * Converts a Smithy name to an Erlang module name (snake_case).
@@ -36,10 +51,45 @@ public final class ErlangSymbolProvider {
     /**
      * Converts a Smithy name to an Erlang type name (snake_case with trailing {@code ()}).
      *
-     * <p>Example: {@code "GetWeatherInput" → "get_weather_input()"}
+     * <p>Names that clash with Erlang built-in predefined types receive a {@code _t} suffix
+     * to avoid a {@code local redefinition of built-in type} compiler warning.
+     *
+     * <p>Smithy shape names are always PascalCase. If {@code smithyName} is already lowercase
+     * and matches a built-in (e.g. the {@code "map"} sentinel used by protocol analyzers for
+     * unit outputs), it is returned as-is as a direct built-in type reference — no {@code _t}
+     * suffix, since the intent is to reference the Erlang built-in, not declare a user type.
+     *
+     * <p>Examples:
+     * <ul>
+     *   <li>{@code "GetWeatherInput" → "get_weather_input()"}</li>
+     *   <li>{@code "Node" → "node_t()"} (user type renamed to avoid built-in clash)</li>
+     *   <li>{@code "map"  → "map()"}  (built-in sentinel, used directly)</li>
+     * </ul>
      */
     public static String toTypeName(String smithyName) {
-        return toSnakeCase(smithyName) + "()";
+        // Lowercase sentinel from protocol analyzers (e.g. "map" for unit outputs) — use built-in directly.
+        if (ERLANG_BUILTIN_TYPES.contains(smithyName)) {
+            return smithyName + "()";
+        }
+        String snake = toSnakeCase(smithyName);
+        return (ERLANG_BUILTIN_TYPES.contains(snake) ? snake + "_t" : snake) + "()";
+    }
+
+    /**
+     * Returns the safe snake_case base name for a type, applying the {@code _t} suffix when
+     * the name would clash with an Erlang built-in type.  Use this when you need the name
+     * without the trailing {@code ()} (e.g. when constructing qualified remote-type references).
+     *
+     * <p>As with {@link #toTypeName}, a lowercase sentinel that already matches a built-in
+     * is returned unchanged (no {@code _t} suffix).
+     */
+    public static String toSafeSnakeCase(String smithyName) {
+        // Lowercase sentinel — return built-in name directly.
+        if (ERLANG_BUILTIN_TYPES.contains(smithyName)) {
+            return smithyName;
+        }
+        String snake = toSnakeCase(smithyName);
+        return ERLANG_BUILTIN_TYPES.contains(snake) ? snake + "_t" : snake;
     }
 
     /**

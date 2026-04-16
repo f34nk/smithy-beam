@@ -29,15 +29,38 @@ defmodule SmithyClient do
     A value representing a single Smithy HTTP operation ready to be executed.
     """
 
+    @type encoding :: :json | :form | :xml | :none
+    @type decoding :: :json | :xml | :query_xml | :raw
+
     @type t :: %__MODULE__{
             name: atom(),
+            action: String.t() | nil,
             http: %{method: String.t(), uri: String.t()},
             input: map(),
             output_shape: atom(),
-            auth: :sigv4 | :none
+            auth: :sigv4 | :none,
+            static_headers: [{String.t(), String.t()}],
+            content_type: String.t(),
+            encoding: encoding(),
+            decoding: decoding(),
+            api_version: String.t() | nil,
+            parse_error_fn: (term(), map() -> {:error, term()}) | nil
           }
 
-    defstruct [:name, :http, :input, :output_shape, auth: :none]
+    defstruct [
+      :name,
+      :action,
+      :http,
+      :input,
+      :output_shape,
+      auth: :none,
+      static_headers: [],
+      content_type: "application/json",
+      encoding: :json,
+      decoding: :json,
+      api_version: nil,
+      parse_error_fn: nil
+    ]
   end
 
   @doc """
@@ -106,12 +129,12 @@ defmodule SmithyClient do
   # ---------------------------------------------------------------------------
 
   defp do_execute(client, %Operation{} = op, _opts) do
-    with {:ok, url}     <- build_url(op, client),
-         {:ok, headers} <- build_headers(op, client),
-         {:ok, body}    <- encode_body(op),
-         {:ok, headers} <- maybe_sign(op, url, headers, body, client),
-         {:ok, response} <- send_request(op.http.method, url, headers, body) do
-      decode_response(response)
+    with {:ok, url}      <- build_url(op, client),
+         {:ok, headers}  <- build_headers(op, client),
+         {:ok, body}     <- encode_body(op),
+         {:ok, headers}  <- maybe_sign(op, url, headers, body, client),
+         {:ok, raw}      <- send_request(op, url, headers, body) do
+      decode_response(op.decoding, raw)
     end
   end
 
@@ -121,54 +144,126 @@ defmodule SmithyClient do
     {:ok, url}
   end
 
-  defp build_headers(%Operation{} = _op, config) do
+  defp build_headers(%Operation{content_type: ct, static_headers: sh} = _op, config) do
     host = URI.parse(Map.fetch!(config, :endpoint)).host
-    headers = [{"host", host}, {"content-type", "application/json"}]
+    headers = [{"host", host}, {"content-type", ct}] ++ sh
     {:ok, headers}
   end
 
-  defp encode_body(%Operation{input: input}) when map_size(input) == 0 do
+  # AWS Query / EC2 Query — form-urlencoded body with Action= and Version=
+  defp encode_body(%Operation{encoding: :form, action: action, input: input, api_version: ver}) do
+    action_str = action || raise "query-protocol Operation is missing :action"
+    {:ok, apply(SmithyQuery, :encode, [action_str, input, ver])}
+  end
+
+  # JSON body — always send {} for empty inputs (AWS JSON 1.x requires it)
+  defp encode_body(%Operation{encoding: :json, input: input}) when map_size(input) == 0 do
+    {:ok, "{}"}
+  end
+
+  defp encode_body(%Operation{encoding: :json, input: input}) do
+    Jason.encode(input)
+  end
+
+  # XML body
+  defp encode_body(%Operation{encoding: :xml, input: input}) when map_size(input) == 0 do
     {:ok, ""}
   end
 
-  defp encode_body(%Operation{input: input}) do
-    Jason.encode(input)
+  defp encode_body(%Operation{encoding: :xml, input: input}) do
+    {:ok, IO.iodata_to_binary(apply(SmithyXml, :encode, [input]))}
   end
+
+  # No body
+  defp encode_body(%Operation{encoding: :none}), do: {:ok, ""}
 
   defp maybe_sign(%Operation{auth: :none}, _url, headers, _body, _config) do
     {:ok, headers}
   end
 
-  defp maybe_sign(%Operation{auth: :sigv4}, url, headers, body, config) do
+  defp maybe_sign(%Operation{auth: :sigv4, http: %{method: method}}, url, headers, body, config) do
     SmithySigV4.sign_request(
-      %{method: "POST", url: url, headers: headers, body: body},
+      %{method: method, url: url, headers: headers, body: body},
       config: config
     )
   end
 
-  defp send_request(method, url, headers, body) do
-    req_opts = [method: String.downcase(method), url: url, headers: headers, body: body]
+  defp send_request(op, url, headers, body) do
+    method = op.http.method |> String.downcase()
+    req_opts = [method: method, url: url, headers: headers, body: body]
 
     case Req.request(req_opts) do
       {:ok, %Req.Response{status: status, body: resp_body}} when status in 200..299 ->
         {:ok, resp_body}
 
       {:ok, %Req.Response{status: status, body: resp_body}} ->
-        {:error, {:http_error, status, resp_body}}
+        handle_error(op, status, resp_body)
 
       {:error, reason} ->
         {:error, reason}
     end
   end
 
-  defp decode_response(body) when is_map(body), do: {:ok, body}
+  # Dispatch HTTP errors through the generated parse_error/2 when available.
+  defp handle_error(%Operation{parse_error_fn: nil}, status, body) do
+    {:error, {:http_error, status, body}}
+  end
 
-  defp decode_response(body) when is_binary(body) do
-    case Jason.decode(body, keys: :atoms) do
+  defp handle_error(%Operation{parse_error_fn: parse_fn, decoding: decoding}, status, body) do
+    # For :raw operations (e.g. S3 GetObject), error responses are still XML.
+    # Fall back to :xml decoding so the error body can be parsed correctly.
+    error_decoding = if decoding == :raw, do: :xml, else: decoding
+
+    parsed =
+      case decode_response(error_decoding, body) do
+        {:ok, map} -> map
+        _ -> body
+      end
+
+    parse_fn.(status, parsed)
+  end
+
+  # REST-XML decode (S3, CloudFront, etc.) — plain XML, no query-envelope unwrapping.
+  # Empty body is valid for operations like PutObject that return HTTP 200 with no body.
+  defp decode_response(:xml, body) when is_binary(body) and byte_size(body) == 0, do: {:ok, %{}}
+
+  defp decode_response(:xml, body) when is_binary(body) do
+    case apply(SmithyXml, :decode, [body]) do
+      {:ok, _map} = ok -> ok
+      {:error, _} = err -> err
+    end
+  end
+
+  defp decode_response(:xml, body) when is_map(body), do: {:ok, body}
+
+  # awsQuery / ec2Query XML decode — unwrap the {OperationResult -> ...} response envelope.
+  defp decode_response(:query_xml, body) when is_binary(body) and byte_size(body) == 0, do: {:ok, %{}}
+
+  defp decode_response(:query_xml, body) when is_binary(body) do
+    case apply(SmithyXml, :decode, [body]) do
+      {:ok, map} -> apply(SmithyQuery, :unwrap_response, [map])
+      {:error, _} = err -> err
+    end
+  end
+
+  defp decode_response(:query_xml, body) when is_map(body), do: {:ok, body}
+
+  # Raw decode — @httpPayload operations (e.g. S3 GetObject) return a binary blob.
+  # Return the body as-is without any parsing.
+  defp decode_response(:raw, body), do: {:ok, body}
+
+  # JSON decode — Req may have already parsed the body into a map with string keys.
+  # When the body is still binary, decode it with string keys to match the auto-decoded case.
+  defp decode_response(:json, body) when is_map(body), do: {:ok, body}
+
+  defp decode_response(:json, body) when is_binary(body) do
+    case Jason.decode(body) do
       {:ok, _} = ok -> ok
       {:error, reason} -> {:error, {:decode_error, reason}}
     end
   end
+
+  defp decode_response(_decoding, body), do: {:ok, body}
 
   defp do_retry(fun, 0), do: fun.()
 

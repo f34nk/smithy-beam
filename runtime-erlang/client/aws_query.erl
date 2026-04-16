@@ -9,7 +9,7 @@
 %% - Flattened nested structures using dot notation
 %% - List indexing with .N suffix (1-based numeric suffixes)
 
--export([encode/2, encode/3, unwrap_response/1]).
+-export([encode/2, encode/3, unwrap_response/1, rename_map_keys/2]).
 
 %% Internal functions (exported for testing)
 -export([
@@ -181,6 +181,35 @@ is_string_list([H | T]) when is_integer(H), H >= 0, H =< 1114111 ->
     is_string_list(T);
 is_string_list(_) ->
     false.
+
+%% @doc Rename keys in a map (or list of maps) according to a rename map.
+%%
+%% Applied shallowly at the top level of each encountered map.  The primary use
+%% case is EC2 Query encoding: EC2 frequently uses @xmlName to change a member's
+%% wire key (e.g. "Tags" → "Tag" inside a TagSpecification item).  The generated
+%% Erlang BodyMap remaps top-level member names but cannot know about nested
+%% structure renames at code-generation time without recursive IR support.  This
+%% helper is called in generated code to fill that gap.
+%%
+%% - undefined passes through unchanged (absent optional member).
+%% - A map has its keys rewritten according to Renames.
+%% - A list has rename_map_keys/2 applied to each element.
+%% - All other values pass through unchanged.
+-spec rename_map_keys(term(), map()) -> term().
+rename_map_keys(undefined, _Renames) ->
+    undefined;
+rename_map_keys(Map, Renames) when is_map(Map) ->
+    maps:fold(fun(K, V, Acc) ->
+        NewK = maps:get(K, Renames, K),
+        maps:put(NewK, V, Acc)
+    end, #{}, Map);
+rename_map_keys(List, Renames) when is_list(List) ->
+    case is_string_list(List) of
+        true  -> List;
+        false -> [rename_map_keys(Item, Renames) || Item <- List]
+    end;
+rename_map_keys(Value, _Renames) ->
+    Value.
 
 %% @doc Encode a list of {Key, Value} tuples as URL-encoded query string
 -spec encode_query_string([{binary(), binary()}]) -> binary().

@@ -178,6 +178,17 @@ public interface LanguageWriter {
      */
     String renderSharedHelpers();
 
+    /**
+     * Returns shared internal helper functions, given the full list of operations so the
+     * writer can omit helpers that are not referenced by any operation (avoiding unused
+     * function warnings in strict compilers like Erlang).
+     *
+     * <p>The default implementation delegates to {@link #renderSharedHelpers()}.
+     */
+    default String renderSharedHelpers(List<OperationSpec> ops) {
+        return renderSharedHelpers();
+    }
+
     // ── Error dispatch ────────────────────────────────────────────────────────
 
     /**
