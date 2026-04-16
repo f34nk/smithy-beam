@@ -39,8 +39,8 @@ class ErlangClientPipelineTest {
                 .generate(service, model, protocol, writer, settings, output, getClass().getClassLoader());
 
         assertThat(manifest.hasFile("src/generated/weather_client.erl")).isTrue();
-        assertThat(manifest.hasFile("aws_retry.erl")).isTrue();
-        assertThat(manifest.hasFile("aws_config.erl")).isTrue();
+        assertThat(manifest.hasFile("smithy_retry.erl")).isTrue();
+        assertThat(manifest.hasFile("smithy_config.erl")).isTrue();
     }
 
     @Test
@@ -52,8 +52,8 @@ class ErlangClientPipelineTest {
                 .doesNotContain("maps:get")
                 .doesNotContain("maps:find")
                 .doesNotContain("httpc:")
-                .doesNotContain("aws_sigv4")
-                .doesNotContain("aws_retry")
+                .doesNotContain("smithy_sigv4")
+                .doesNotContain("smithy_retry")
                 .doesNotContain("binary_to_list")
                 .doesNotContain("-spec ")
                 .doesNotContain("-type ")
@@ -64,8 +64,8 @@ class ErlangClientPipelineTest {
     void copyRuntimeBundlesAwsSigV4Resource() {
         MockManifest manifest = new MockManifest();
         FileOutput out = new FileOutput(manifest, ".erl");
-        out.copyRuntime("erlang", "client/aws_sigv4.erl", ErlangClientPlugin.class.getClassLoader());
-        assertThat(manifest.hasFile("aws_sigv4.erl")).isTrue();
-        assertThat(manifest.expectFileBytes("aws_sigv4.erl").length).isPositive();
+        out.copyRuntime("erlang", "client/smithy_sigv4.erl", ErlangClientPlugin.class.getClassLoader());
+        assertThat(manifest.hasFile("smithy_sigv4.erl")).isTrue();
+        assertThat(manifest.expectFileBytes("smithy_sigv4.erl").length).isPositive();
     }
 }
