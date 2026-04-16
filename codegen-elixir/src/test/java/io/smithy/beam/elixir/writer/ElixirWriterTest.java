@@ -202,6 +202,38 @@ class ElixirWriterTest {
             assertThat(result).contains("@spec get_weather(");
             assertThat(result).contains("::");
         }
+
+        @Test
+        void renderUnionTypeEscapesBuiltinTypeName() {
+            UnionSpec u = new UnionSpec("Map", List.of(
+                    new FieldSpec("ok", new TypeRef.Named("OkOutput"), false, false, false, false, false),
+                    new FieldSpec("err", new TypeRef.Named("ErrOutput"), false, false, false, false, false)
+            ));
+            String result = writer.renderUnionType(u);
+            assertThat(result).contains("@type map_t");
+            assertThat(result).doesNotContain("@type map ");
+        }
+
+        @Test
+        void renderStructTypeEscapesBuiltinTypeNameInFieldRef() {
+            StructSpec struct = new StructSpec("GetWeatherInput", List.of(
+                    new FieldSpec("region", new TypeRef.Named("Node"), false, false, false, false, false)
+            ), false, 0);
+            String result = writer.renderStructType(struct);
+            assertThat(result).contains("region: node_t() | nil");
+            assertThat(result).doesNotContain("region: node() | nil");
+        }
+
+        @Test
+        void renderCallbackDeclarationEscapesBuiltinReturnType() {
+            List<ParamSpec> params = List.of(
+                    new ParamSpec("input", new TypeRef.Primitive(PrimitiveKind.STRING))
+            );
+            TypeRef returnType = new TypeRef.Named("Map");
+            String result = writer.renderCallbackDeclaration("GetMap", params, returnType);
+            assertThat(result).contains(":: map_t()");
+            assertThat(result).doesNotContain(":: map()");
+        }
     }
 
     // ── Function body helpers ─────────────────────────────────────────────────
