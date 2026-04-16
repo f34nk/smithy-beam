@@ -147,7 +147,7 @@ The entry point is a Smithy Build plugin (e.g. `ErlangClientPlugin`). Smithy loa
 For each operation in the service closure, the analyzer calls `analyzeClientOperation` (or `analyzeServerOperation`). It reads the Smithy model — HTTP spec, input/output members, trait bindings (`@httpLabel`, `@httpHeader`, `@httpQuery`, `@httpPayload`, `@required`, `@paginated`, `@aws.auth#sigv4`, etc.) — and produces an `OperationSpec` as an intermediate representation.
 
 A **client** `OperationSpec` captures what the *caller* needs:
-outgoing HTTP method, body serialisation, SigV4 signing, retry config.
+outgoing HTTP method, body serialisation, SigV4 signing, retry config, and — for the response side — which output members carry `@httpPayload` (raw blob body), `@httpResponseCode` (HTTP status integer), or `@httpHeader` (individual response header) bindings.
 
 A **server** `OperationSpec` would capture what the *handler* needs:
 incoming request parsing, response serialisation, routing metadata.

@@ -39,7 +39,7 @@ Traits for serialization and protocol behavior.
 | [`smithy.api#jsonName`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-jsonname-trait) | ❌ | Uses custom JSON key name in serialization |
 | [`smithy.api#xmlAttribute`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlattribute-trait) | ❌ | Serializes member as XML attribute |
 | [`smithy.api#xmlFlattened`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlflattened-trait) | ❌ | Flattens list/map in XML serialization |
-| [`smithy.api#xmlName`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlname-trait) | ❌ | Uses custom XML element name |
+| [`smithy.api#xmlName`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlname-trait) | ⚠️ | Partially implemented for `ec2Query`: top-level input member overrides and one level of nested structure member overrides are read by `Ec2QueryProtocolAnalyzer` and stored in `BodySpec.wireNameOverrides()` / `BodySpec.nestedWireNameOverrides()`; applied via `aws_query:rename_map_keys/2` before query encoding. Not implemented for `restXml` body encoding or response decoding. |
 | [`smithy.api#xmlNamespace`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlnamespace-trait) | ❌ | Defines XML namespace |
 | [`smithy.api#mediaType`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-mediatype-trait) | ❌ | Defines MIME type for blob/string |
 | [`smithy.api#timestampFormat`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-timestampformat-trait) | ❌ | Specifies timestamp wire format |
@@ -62,7 +62,7 @@ AWS-specific protocol traits.
 | [`aws.protocols#awsQueryCompatible`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquerycompatible-trait) | ❌ | Query protocol compatibility mode |
 | [`aws.protocols#httpChecksum`](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ❌ | HTTP checksum configuration |
 | [`aws.protocols#awsQueryError`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsqueryerror-trait) | ➖ | Custom error code for Query protocol |
-| [`aws.protocols#ec2QueryName`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2queryname-trait) | ✅ | Read by `Ec2QueryProtocolAnalyzer` at codegen time; overrides are stored in `BodySpec.wireNameOverrides()` and emitted as the wire key in the generated `make_*_request` body-builder map (the Smithy name is still used to look up the value from the caller's `Input` map) |
+| [`aws.protocols#ec2QueryName`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2queryname-trait) | ✅ | Read by `Ec2QueryProtocolAnalyzer` at codegen time. Top-level input member overrides stored in `BodySpec.wireNameOverrides()` and emitted as the wire key in the generated body-builder map. One level of nested structure member overrides stored in `BodySpec.nestedWireNameOverrides()`; generated code calls `aws_query:rename_map_keys/2` to apply the renames before the query encoder flattens the map (the Smithy name is still used to look up the value from the caller's `Input` map). |
 
 ---
 

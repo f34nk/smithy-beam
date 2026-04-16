@@ -108,12 +108,12 @@ Protocol implementations for AWS services. All built-in generators are discovere
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ✅ | Fully implemented — `Ec2QueryProtocolAnalyzer` reads `@ec2QueryName` traits at codegen time and emits wire-name overrides; response envelopes stripped by `aws_query:unwrap_response/1`; EC2 `<Response><Errors>` error format dispatched; end-to-end examples (`erlang/ec2-demo`, `elixir/ec2-demo`) |
+| [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ✅ | Fully implemented — `Ec2QueryProtocolAnalyzer` reads `@ec2QueryName` traits at codegen time; top-level overrides stored in `BodySpec.wireNameOverrides()`; nested structure member overrides stored in `BodySpec.nestedWireNameOverrides()` and applied via `aws_query:rename_map_keys/2`; response envelopes stripped by `aws_query:unwrap_response/1`; EC2 `<Response><Errors>` error format dispatched; end-to-end examples (`erlang/ec2-demo`, `elixir/ec2-demo`) |
 | [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ✅ | Fully implemented — `AwsJsonProtocolAnalyzer`, `Content-Type: application/x-amz-json-1.0`, literal `X-Amz-Target` header, `jsx:encode(Input)` body, `__type`-based error dispatch; end-to-end examples (`dynamodb-demo`, `sqs-demo`) |
 | [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ✅ | Fully implemented — `AwsJson11ProtocolAnalyzer` with `application/x-amz-json-1.1`; end-to-end examples (`erlang/ssm-demo`, `elixir/ssm-demo`, `firehose-demo`, `kinesis-demo`) |
 | [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ✅ | Fully implemented — `AwsQueryProtocolAnalyzer`, `POST /` with form-encoded body, `aws_query:encode/3` with `Action` + `Version`, response envelopes stripped by `aws_query:unwrap_response/1`; end-to-end examples (`iam-demo`, `sns-demo`, `rds-demo`) |
 | [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ✅ | Fully implemented — operation analysis (`RestJsonProtocolAnalyzer`), pipeline wiring, and end-to-end examples (`erlang/weather-service`, `erlang/storage-service`, `erlang/lambda-demo`, `elixir/weather-service`) |
-| [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ✅ | Fully implemented — `RestXmlProtocolAnalyzer`, XML body encoding, `aws_xml.erl` / `SmithyXml` runtime, `aws_s3.erl` / `SmithyS3` for S3 services (URL building), XML error code string dispatch; end-to-end examples (`erlang/s3-demo`, `elixir/s3-demo`) |
+| [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ✅ | Fully implemented — `RestXmlProtocolAnalyzer`, XML body encoding, `aws_xml.erl` / `SmithyXml` runtime, `aws_s3.erl` / `SmithyS3` for S3 services (URL building), XML error code string dispatch; output shape analyzed for `@httpPayload` (raw blob body returned under member name), `@httpHeader` (response headers merged into decoded body map), and `@httpResponseCode` bindings; end-to-end examples (`erlang/s3-demo`, `elixir/s3-demo`) |
 | Custom protocols via `@protocolDefinition` | ❌ | Detect `@protocolDefinition` traits and resolve generators via Java `ServiceLoader`; fall back to a stub when none is registered |
 | [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ❌ | Emit language-appropriate tests from `@httpRequestTests` / `@httpResponseTests` |
 
@@ -125,7 +125,7 @@ XML serialization traits for REST-XML and other XML-based protocols.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [`@xmlName`](https://smithy.io/2.0/spec/protocol-traits.html#xmlname-trait) | ❌ | XML element name override not implemented |
+| [`@xmlName`](https://smithy.io/2.0/spec/protocol-traits.html#xmlname-trait) | ⚠️ | Partially implemented for `ec2Query`: top-level input member renames and one level of nested structure member renames are read by `Ec2QueryProtocolAnalyzer` and applied at request-encode time via `aws_query:rename_map_keys/2`. Not implemented for `restXml` body encoding or XML response decoding. |
 | [`@xmlFlattened`](https://smithy.io/2.0/spec/protocol-traits.html#xmlflattened-trait) | ❌ | List/map flattening not implemented |
 | [`@xmlNamespace`](https://smithy.io/2.0/spec/protocol-traits.html#xmlnamespace-trait) | ❌ | XML namespace declarations not implemented |
 | [`@xmlAttribute`](https://smithy.io/2.0/spec/protocol-traits.html#xmlattribute-trait) | ❌ | XML attributes not implemented |
