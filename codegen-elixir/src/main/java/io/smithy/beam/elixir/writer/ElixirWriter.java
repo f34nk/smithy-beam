@@ -194,7 +194,7 @@ public final class ElixirWriter implements LanguageWriter {
      */
     @Override
     public String renderUnionType(UnionSpec u) {
-        String typeName = ElixirSymbolProvider.toSnakeCase(u.name());
+        String typeName = ElixirReservedWords.escapeTypeName(ElixirSymbolProvider.toSnakeCase(u.name()));
         String variants = u.variants().stream()
             .map(f -> "{:" + ElixirSymbolProvider.toSnakeCase(f.name()) + ", " + typeRefToElixir(f.type()) + "}")
             .collect(Collectors.joining(" | "));
@@ -1397,7 +1397,7 @@ public final class ElixirWriter implements LanguageWriter {
         if (ref instanceof TypeRef.Primitive p) {
             return primitiveToElixir(p.kind());
         } else if (ref instanceof TypeRef.Named n) {
-            return ElixirSymbolProvider.toSnakeCase(n.name()) + "()";
+            return ElixirSymbolProvider.toInlineTypeName(n.name());
         } else if (ref instanceof TypeRef.ListOf l) {
             return "[" + typeRefToElixir(l.element()) + "]";
         } else if (ref instanceof TypeRef.MapOf) {
