@@ -3,6 +3,7 @@ package io.smithy.beam.core.pipeline;
 import io.smithy.beam.core.ir.ModuleTypeSpec;
 import io.smithy.beam.core.ir.OperationSpec;
 import io.smithy.beam.core.ir.Role;
+import io.smithy.beam.core.model.ModelValidator;
 import io.smithy.beam.core.model.ShapeIndex;
 import io.smithy.beam.core.model.TypeSpecBuilder;
 import io.smithy.beam.core.output.FileOutput;
@@ -50,6 +51,7 @@ public final class ServerPipeline {
 
         List<OperationSpec> ops    = analyzeOperations(service, model, protocol, Role.SERVER);
         ModuleTypeSpec      types  = buildTypeSpec(service, model);
+        ModelValidator.validate(service, types, ops);
         String              base   = moduleBaseName(service, settings);
         String              ext    = writer.fileExtension();
         String              outDir = settings.outputDir().replace('\\', '/');

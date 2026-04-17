@@ -9,6 +9,7 @@ import io.smithy.beam.core.ir.OperationSpec;
 import io.smithy.beam.core.ir.Role;
 import io.smithy.beam.core.ir.StructSpec;
 import io.smithy.beam.core.ir.UnionSpec;
+import io.smithy.beam.core.model.ModelValidator;
 import io.smithy.beam.core.model.ShapeIndex;
 import io.smithy.beam.core.model.TypeSpecBuilder;
 import io.smithy.beam.core.output.CodeBuffer;
@@ -60,6 +61,7 @@ public final class ClientPipeline {
 
         ModuleTypeSpec types = buildTypeSpec(service, model);
         List<OperationSpec> ops = analyzeOperations(service, model, protocol, Role.CLIENT);
+        ModelValidator.validate(service, types, ops);
         String moduleName = moduleBaseName(service, settings);
 
         boolean needsSigV4 = ops.stream().anyMatch(o -> o.auth().requiresSigV4());
