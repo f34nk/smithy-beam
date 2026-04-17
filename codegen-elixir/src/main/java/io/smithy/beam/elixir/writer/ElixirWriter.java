@@ -852,6 +852,9 @@ public final class ElixirWriter implements LanguageWriter {
      */
     @Override
     public String renderEnumCodec(EnumSpec e) {
+        if (e.values().isEmpty()) {
+            return "";
+        }
         String baseName = ElixirSymbolProvider.toFunctionName(e.name());
         StringBuilder sb = new StringBuilder();
 
@@ -965,12 +968,31 @@ public final class ElixirWriter implements LanguageWriter {
     }
 
     /**
-     * Returns an Elixir {@code parse_error/2} function that dispatches on HTTP status codes.
+     * Returns Elixir {@code parse_error/2} function clauses that dispatch on HTTP status codes.
      *
-     * <p>Example output:
+     * <p>When two or more modelled errors share the same HTTP status code, a secondary
+     * {@code case} discriminator is emitted that inspects the body's {@code "__type"} or
+     * {@code "code"} field (restJson1 convention). If neither field matches a known error
+     * name the first listed error for that code is returned and a {@code # TODO:} comment
+     * marks the loss of fidelity in the generated source.
+     *
+     * <p>Example output (unambiguous):
      * <pre>
-     *   defp parse_error(404, body), do: {:error, {:not_found_error, body}}
+     *   defp parse_error(404, body), do: {:error, {:not_found, body}}
      *   defp parse_error(status_code, body), do: {:error, {:http_error, status_code, body}}
+     * </pre>
+     *
+     * <p>Example output (two errors sharing 400):
+     * <pre>
+     *   defp parse_error(400, body) do
+     *     type_key = Map.get(body, "__type", Map.get(body, "code", ""))
+     *     case type_key do
+     *       "BadRequestA" -> {:error, {:bad_request_a, body}}
+     *       "BadRequestB" -> {:error, {:bad_request_b, body}}
+     *       # TODO: ambiguous error code 400 — body discriminator did not match any modelled error.
+     *       _ -> {:error, {:bad_request_a, body}}
+     *     end
+     *   end
      * </pre>
      */
     @Deprecated(forRemoval = true)
@@ -981,14 +1003,35 @@ public final class ElixirWriter implements LanguageWriter {
             sb.append("  defp parse_error(status_code, body),\n");
             sb.append("    do: {:error, {:http_error, status_code, body}}\n");
         } else {
-            LinkedHashMap<Integer, ErrorBinding> byCode = new LinkedHashMap<>();
+            // Group errors by HTTP status code; preserve insertion order.
+            LinkedHashMap<Integer, List<ErrorBinding>> byCode = new LinkedHashMap<>();
             for (ErrorBinding eb : errors) {
-                byCode.putIfAbsent(eb.httpCode(), eb);
+                byCode.computeIfAbsent(eb.httpCode(), k -> new ArrayList<>()).add(eb);
             }
-            for (ErrorBinding eb : byCode.values()) {
-                String atom = ":" + ElixirSymbolProvider.toFunctionName(eb.smithyName());
-                sb.append("  defp parse_error(").append(eb.httpCode()).append(", body),\n");
-                sb.append("    do: {:error, {").append(atom).append(", body}}\n");
+            for (int httpCode : byCode.keySet()) {
+                List<ErrorBinding> group = byCode.get(httpCode);
+                if (group.size() == 1) {
+                    String atom = ":" + ElixirSymbolProvider.toFunctionName(group.get(0).smithyName());
+                    sb.append("  defp parse_error(").append(httpCode).append(", body),\n");
+                    sb.append("    do: {:error, {").append(atom).append(", body}}\n");
+                } else {
+                    // Multiple errors share this HTTP code; secondary-dispatch on the body's
+                    // error-type field (restJson1 convention: "__type" or "code").
+                    sb.append("  defp parse_error(").append(httpCode).append(", body) do\n");
+                    sb.append("    type_key = Map.get(body, \"__type\", Map.get(body, \"code\", \"\"))\n");
+                    sb.append("    case type_key do\n");
+                    for (ErrorBinding eb : group) {
+                        String atom = ":" + ElixirSymbolProvider.toFunctionName(eb.smithyName());
+                        sb.append("      \"").append(eb.smithyName()).append("\" -> {:error, {")
+                          .append(atom).append(", body}}\n");
+                    }
+                    String firstAtom = ":" + ElixirSymbolProvider.toFunctionName(group.get(0).smithyName());
+                    sb.append("      # TODO: ambiguous error code ").append(httpCode)
+                      .append(" — body discriminator did not match any modelled error.\n");
+                    sb.append("      _ -> {:error, {").append(firstAtom).append(", body}}\n");
+                    sb.append("    end\n");
+                    sb.append("  end\n");
+                }
             }
             sb.append("  defp parse_error(status_code, body),\n");
             sb.append("    do: {:error, {:http_error, status_code, body}}\n");
