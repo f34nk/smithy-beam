@@ -18,7 +18,6 @@ import io.smithy.beam.core.ir.RetrySpec;
 import io.smithy.beam.core.ir.StructSpec;
 import io.smithy.beam.core.ir.TypeRef;
 import io.smithy.beam.core.ir.UnionSpec;
-import java.util.stream.Collectors;
 import io.smithy.beam.core.writer.ExportSpec;
 import io.smithy.beam.core.writer.LanguageWriter;
 import io.smithy.beam.core.writer.MapEntrySpec;
@@ -959,6 +958,7 @@ public final class ElixirWriter implements LanguageWriter {
      * the {@code SmithyClient} runtime, so no shared helpers are needed in the
      * generated module itself.
      */
+    @Deprecated(forRemoval = true)
     @Override
     public String renderSharedHelpers() {
         return "";
@@ -973,6 +973,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   defp parse_error(status_code, body), do: {:error, {:http_error, status_code, body}}
      * </pre>
      */
+    @Deprecated(forRemoval = true)
     @Override
     public String renderModuleParseError(List<ErrorBinding> errors) {
         StringBuilder sb = new StringBuilder();
@@ -1004,7 +1005,9 @@ public final class ElixirWriter implements LanguageWriter {
         boolean useStringDispatch = strategy == ErrorCodeStrategy.REST_XML
                                  || strategy == ErrorCodeStrategy.AWS_JSON;
         if (!useStringDispatch) {
-            return renderModuleParseError(errors);
+            @SuppressWarnings("removal")
+            String fallback = renderModuleParseError(errors);
+            return fallback;
         }
         StringBuilder sb = new StringBuilder();
         for (ErrorBinding eb : errors) {
