@@ -57,6 +57,11 @@ public class AwsJsonProtocolAnalyzer implements ProtocolAnalyzer {
     }
 
     @Override
+    public ErrorCodeStrategy errorStrategy(ServiceShape service) {
+        return ErrorCodeStrategy.AWS_JSON;
+    }
+
+    @Override
     public OperationSpec analyzeServerOperation(OperationShape op, Model model, ServiceShape service) {
         HttpSpec http = new HttpSpec("POST", "/", 200);
 
@@ -91,7 +96,8 @@ public class AwsJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 BodyEncoding.JSON,
                 baseContentType(),
                 ErrorCodeStrategy.AWS_JSON,
-                null);
+                null,
+                null, null, List.of());
     }
 
     @Override
@@ -130,6 +136,7 @@ public class AwsJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 BodyEncoding.JSON,
                 baseContentType(),
                 ErrorCodeStrategy.AWS_JSON,
-                null);
+                null,
+                null, null, List.of());
     }
 }
