@@ -30,7 +30,7 @@ defmodule AwsDemo do
     {:ok, client} = AwsFirehoseClient.new(config)
     IO.puts("Client created successfully\n")
 
-    # 1. ListDeliveryStreams (initial)
+    # 1. ListDeliveryStreams (initial) — may be empty, no assertion required
     IO.puts("--- ListDeliveryStreams (initial) ---")
     case AwsFirehoseClient.list_delivery_streams(client, %{}, %{enable_retry: false}) do
       {:ok, output} ->
@@ -38,7 +38,7 @@ defmodule AwsDemo do
         IO.puts("SUCCESS: Found #{length(names)} delivery stream(s)")
         Enum.each(names, fn n -> IO.puts("  - #{n}") end)
       {:error, err} ->
-        IO.puts("ERROR: #{inspect(err)}")
+        raise("list_delivery_streams_failed: #{inspect(err)}")
     end
     IO.puts("")
 
@@ -79,8 +79,7 @@ defmodule AwsDemo do
           IO.puts("    ARN: #{Map.get(output, "DeliveryStreamARN", "unknown")}")
           true
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
-          false
+          raise("create_delivery_stream_failed: #{inspect(err)}")
       end
     IO.puts("")
 
@@ -88,31 +87,39 @@ defmodule AwsDemo do
       IO.puts("Waiting for stream to become active...")
       Process.sleep(2000)
 
-      # 3. ListDeliveryStreams
+      # 3. ListDeliveryStreams — assert stream appears in list
       IO.puts("--- ListDeliveryStreams ---")
       case AwsFirehoseClient.list_delivery_streams(client, %{}, %{enable_retry: false}) do
         {:ok, output} ->
           names = Map.get(output, "DeliveryStreamNames", [])
+          if names == [],
+            do: raise("assertion failed: expected non-empty stream list after create")
           IO.puts("SUCCESS: Found #{length(names)} delivery stream(s)")
+          unless @stream_name in names,
+            do: raise("assertion failed: stream #{inspect(@stream_name)} not found in list")
+          IO.puts("SUCCESS: Stream '#{@stream_name}' in list")
           Enum.each(names, fn n -> IO.puts("  - #{n}") end)
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
+          raise("list_delivery_streams_failed: #{inspect(err)}")
       end
       IO.puts("")
 
-      # 4. DescribeDeliveryStream
+      # 4. DescribeDeliveryStream — assert status is ACTIVE
       IO.puts("--- DescribeDeliveryStream ---")
       describe_input = %{"DeliveryStreamName" => @stream_name}
       case AwsFirehoseClient.describe_delivery_stream(client, describe_input, %{enable_retry: false}) do
         {:ok, output} ->
           desc = Map.get(output, "DeliveryStreamDescription", %{})
-          IO.puts("SUCCESS: Stream details:")
+          status = Map.get(desc, "DeliveryStreamStatus", "unknown")
+          if status != "ACTIVE",
+            do: raise("assertion failed: expected stream status ACTIVE, got #{inspect(status)}")
+          IO.puts("SUCCESS: Stream is ACTIVE")
           IO.puts("    Name:   #{@stream_name}")
           IO.puts("    ARN:    #{Map.get(desc, "DeliveryStreamARN", "unknown")}")
-          IO.puts("    Status: #{Map.get(desc, "DeliveryStreamStatus", "unknown")}")
+          IO.puts("    Status: #{status}")
           IO.puts("    Type:   #{Map.get(desc, "DeliveryStreamType", "unknown")}")
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
+          raise("describe_delivery_stream_failed: #{inspect(err)}")
       end
       IO.puts("")
 
@@ -126,11 +133,11 @@ defmodule AwsDemo do
             IO.puts("    #{Map.get(t, "Key", "?")} = #{Map.get(t, "Value", "?")}")
           end)
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
+          raise("list_tags_for_delivery_stream_failed: #{inspect(err)}")
       end
       IO.puts("")
 
-      # 6. PutRecord
+      # 6. PutRecord — LocalStack may 500, keep as non-crashing
       IO.puts("--- PutRecord ---")
       record1 =
         Jason.encode!(%{
@@ -149,11 +156,11 @@ defmodule AwsDemo do
         {:ok, output} ->
           IO.puts("SUCCESS: Record sent, ID: #{Map.get(output, "RecordId", "unknown")}")
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
+          IO.puts("INFO: PutRecord returned error (expected in LocalStack): #{inspect(err)}")
       end
       IO.puts("")
 
-      # 7. PutRecordBatch
+      # 7. PutRecordBatch — LocalStack may 500, keep as non-crashing
       IO.puts("--- PutRecordBatch ---")
       now = DateTime.utc_now() |> DateTime.to_iso8601()
       records = [
@@ -177,7 +184,7 @@ defmodule AwsDemo do
             end
           end)
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
+          IO.puts("INFO: PutRecordBatch returned error (expected in LocalStack): #{inspect(err)}")
       end
       IO.puts("")
 
@@ -193,7 +200,7 @@ defmodule AwsDemo do
       }
       case AwsFirehoseClient.tag_delivery_stream(client, tag_input, %{enable_retry: false}) do
         {:ok, _} -> IO.puts("SUCCESS: Tag added")
-        {:error, err} -> IO.puts("ERROR: #{inspect(err)}")
+        {:error, err} -> raise("tag_delivery_stream_failed: #{inspect(err)}")
       end
       IO.puts("")
 
@@ -205,7 +212,7 @@ defmodule AwsDemo do
       }
       case AwsFirehoseClient.untag_delivery_stream(client, untag_input, %{enable_retry: false}) do
         {:ok, _} -> IO.puts("SUCCESS: Tag 'CreatedBy' removed")
-        {:error, err} -> IO.puts("ERROR: #{inspect(err)}")
+        {:error, err} -> raise("untag_delivery_stream_failed: #{inspect(err)}")
       end
       IO.puts("")
 
@@ -213,24 +220,22 @@ defmodule AwsDemo do
       IO.puts("--- DeleteDeliveryStream ---")
       case AwsFirehoseClient.delete_delivery_stream(client, %{"DeliveryStreamName" => @stream_name}, %{enable_retry: false}) do
         {:ok, _} -> IO.puts("SUCCESS: Delivery stream deleted")
-        {:error, err} -> IO.puts("ERROR: #{inspect(err)}")
+        {:error, err} -> raise("delete_delivery_stream_failed: #{inspect(err)}")
       end
       IO.puts("")
 
-      # 11. ListDeliveryStreams — verify deletion
+      # 11. ListDeliveryStreams — crash if stream still exists
       IO.puts("--- ListDeliveryStreams (verify deletion) ---")
       Process.sleep(1000)
       case AwsFirehoseClient.list_delivery_streams(client, %{}, %{enable_retry: false}) do
         {:ok, output} ->
           remaining = Map.get(output, "DeliveryStreamNames", [])
-          if @stream_name not in remaining do
-            IO.puts("SUCCESS: Stream deleted successfully")
-          else
-            IO.puts("INFO: Stream still exists (deletion may be in progress)")
-          end
+          if @stream_name in remaining,
+            do: raise("assertion failed: stream #{inspect(@stream_name)} still exists after delete")
+          IO.puts("SUCCESS: Stream deleted successfully")
           IO.puts("Remaining streams: #{length(remaining)}")
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
+          raise("list_delivery_streams_failed: #{inspect(err)}")
       end
     else
       IO.puts("Cannot continue without delivery stream")
