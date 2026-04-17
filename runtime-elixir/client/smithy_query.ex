@@ -50,6 +50,42 @@ defmodule SmithyQuery do
 
   def unwrap_response(map), do: {:ok, map}
 
+  @doc """
+  Remap the top-level keys of `input` using `rename_map` (Smithy member name → EC2 wire name)
+  and apply `nested_rename_map` to the values of members that contain nested structures.
+
+  Used exclusively by EC2 Query operations where `@xmlName` / `@ec2QueryName` traits cause the
+  wire parameter name to differ from the Smithy member name (e.g. `InstanceIds` → `InstanceId`).
+  Returns `input` unchanged when both maps are empty.
+  """
+  @spec apply_renames(map(), map(), map()) :: map()
+  def apply_renames(input, rename_map, nested_rename_map)
+      when is_map(input) and map_size(rename_map) == 0 and map_size(nested_rename_map) == 0,
+      do: input
+
+  def apply_renames(input, rename_map, nested_rename_map) when is_map(input) do
+    Enum.into(input, %{}, fn {key, value} ->
+      key_str   = to_string(key)
+      wire_key  = Map.get(rename_map, key_str, key_str)
+      nested    = Map.get(nested_rename_map, key_str, %{})
+      wire_val  = if map_size(nested) > 0, do: rename_nested(value, nested), else: value
+      {wire_key, wire_val}
+    end)
+  end
+
+  defp rename_nested(items, renames) when is_list(items) do
+    Enum.map(items, &rename_nested(&1, renames))
+  end
+
+  defp rename_nested(item, renames) when is_map(item) do
+    Enum.into(item, %{}, fn {k, v} ->
+      k_str = to_string(k)
+      {Map.get(renames, k_str, k_str), v}
+    end)
+  end
+
+  defp rename_nested(value, _renames), do: value
+
   @doc false
   def flatten_params(params) when is_map(params), do: flatten_params(params, "")
 
