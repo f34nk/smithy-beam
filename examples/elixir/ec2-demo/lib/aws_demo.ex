@@ -29,14 +29,16 @@ defmodule AwsDemo do
       {:ok, output} ->
         IO.puts("SUCCESS: DescribeVpcs returned")
         vpcs = extract_items(output, ["vpcSet", "Vpcs"])
-        IO.puts("  Found #{length(vpcs)} VPC(s):")
+        if vpcs == [],
+          do: raise("assertion failed: expected at least 1 VPC")
+        IO.puts("SUCCESS: Found #{length(vpcs)} VPC(s):")
         Enum.each(vpcs, fn vpc ->
           id   = Map.get(vpc, "vpcId",    Map.get(vpc, "VpcId",    "unknown"))
           cidr = Map.get(vpc, "cidrBlock", Map.get(vpc, "CidrBlock", "unknown"))
           IO.puts("    - #{id} (#{cidr})")
         end)
       {:error, err} ->
-        IO.puts("ERROR: #{inspect(err)}")
+        raise("describe_vpcs_failed: #{inspect(err)}")
     end
     IO.puts("")
 
@@ -46,14 +48,16 @@ defmodule AwsDemo do
       {:ok, output} ->
         IO.puts("SUCCESS: DescribeSecurityGroups returned")
         sgs = extract_items(output, ["securityGroupInfo", "SecurityGroups"])
-        IO.puts("  Found #{length(sgs)} Security Group(s):")
+        if sgs == [],
+          do: raise("assertion failed: expected at least 1 security group")
+        IO.puts("SUCCESS: Found #{length(sgs)} Security Group(s):")
         Enum.each(sgs, fn sg ->
           id   = Map.get(sg, "groupId",   Map.get(sg, "GroupId",   "unknown"))
           name = Map.get(sg, "groupName",  Map.get(sg, "GroupName", "unknown"))
           IO.puts("    - #{id} (#{name})")
         end)
       {:error, err} ->
-        IO.puts("ERROR: #{inspect(err)}")
+        raise("describe_security_groups_failed: #{inspect(err)}")
     end
     IO.puts("")
 
@@ -79,27 +83,33 @@ defmodule AwsDemo do
           instances = extract_run_instances(output)
           case instances do
             [instance | _] ->
-              id = Map.get(instance, "instanceId", Map.get(instance, "InstanceId", "unknown"))
-              IO.puts("  Instance ID: #{id}")
+              id = Map.get(instance, "instanceId", Map.get(instance, "InstanceId", nil))
+              if is_nil(id) or id == "",
+                do: raise("assertion failed: RunInstances returned no InstanceId")
+              IO.puts("SUCCESS: InstanceId = #{id}")
               id
             _ ->
-              IO.puts("  No instances in response")
-              nil
+              raise("assertion failed: RunInstances returned no instances")
           end
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
-          nil
+          raise("run_instances_failed: #{inspect(err)}")
       end
     IO.puts("")
 
     # 4. DescribeInstances
     IO.puts("--- DescribeInstances ---")
-    describe_input = if instance_id, do: %{"InstanceIds" => [instance_id]}, else: %{}
+    describe_input = %{"InstanceIds" => [instance_id]}
     case AwsEc2Client.describe_instances(client, describe_input, %{enable_retry: false}) do
       {:ok, output} ->
         IO.puts("SUCCESS: DescribeInstances returned")
         reservations  = extract_items(output, ["reservationSet", "Reservations"])
         all_instances = Enum.flat_map(reservations, &extract_items(&1, ["instancesSet", "Instances"]))
+        described_ids = Enum.map(all_instances, fn inst ->
+          Map.get(inst, "instanceId", Map.get(inst, "InstanceId", ""))
+        end)
+        unless instance_id in described_ids,
+          do: raise("assertion failed: InstanceId #{inspect(instance_id)} not found in DescribeInstances")
+        IO.puts("SUCCESS: InstanceId #{instance_id} found in DescribeInstances")
         IO.puts("  Found #{length(all_instances)} Instance(s):")
         Enum.each(all_instances, fn inst ->
           id    = Map.get(inst, "instanceId",   Map.get(inst, "InstanceId",   "unknown"))
@@ -108,29 +118,24 @@ defmodule AwsDemo do
           IO.puts("    - #{id} (#{type}, #{state})")
         end)
       {:error, err} ->
-        IO.puts("ERROR: #{inspect(err)}")
+        raise("describe_instances_failed: #{inspect(err)}")
     end
     IO.puts("")
 
     # 5. TerminateInstances
-    case instance_id do
-      nil ->
-        IO.puts("--- TerminateInstances (skipped - no instance) ---")
-      id ->
-        IO.puts("--- TerminateInstances ---")
-        case AwsEc2Client.terminate_instances(client, %{"InstanceIds" => [id]}, %{enable_retry: false}) do
-          {:ok, output} ->
-            IO.puts("SUCCESS: TerminateInstances returned")
-            terminating = extract_items(output, ["instancesSet", "TerminatingInstances"])
-            IO.puts("  Terminating #{length(terminating)} instance(s):")
-            Enum.each(terminating, fn inst ->
-              inst_id = Map.get(inst, "instanceId",   Map.get(inst, "InstanceId",   "unknown"))
-              current = inst |> Map.get("currentState", Map.get(inst, "CurrentState", %{})) |> Map.get("name", "unknown")
-              IO.puts("    - #{inst_id} -> #{current}")
-            end)
-          {:error, err} ->
-            IO.puts("ERROR: #{inspect(err)}")
-        end
+    IO.puts("--- TerminateInstances ---")
+    case AwsEc2Client.terminate_instances(client, %{"InstanceIds" => [instance_id]}, %{enable_retry: false}) do
+      {:ok, output} ->
+        IO.puts("SUCCESS: TerminateInstances returned")
+        terminating = extract_items(output, ["instancesSet", "TerminatingInstances"])
+        IO.puts("  Terminating #{length(terminating)} instance(s):")
+        Enum.each(terminating, fn inst ->
+          inst_id = Map.get(inst, "instanceId",   Map.get(inst, "InstanceId",   "unknown"))
+          current = inst |> Map.get("currentState", Map.get(inst, "CurrentState", %{})) |> Map.get("name", "unknown")
+          IO.puts("    - #{inst_id} -> #{current}")
+        end)
+      {:error, err} ->
+        raise("terminate_instances_failed: #{inspect(err)}")
     end
     IO.puts("")
 
