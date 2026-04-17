@@ -764,6 +764,9 @@ public final class ErlangWriter implements LanguageWriter {
 
     @Override
     public String renderEnumCodec(EnumSpec e) {
+        if (e.values().isEmpty()) {
+            return "";
+        }
         String baseName = ErlangSymbolProvider.toFunctionName(e.name());
         String typeName = ErlangSymbolProvider.toTypeName(e.name());
         StringBuilder sb = new StringBuilder();
@@ -900,14 +903,33 @@ public final class ErlangWriter implements LanguageWriter {
     }
 
     /**
-     * Renders a {@code parse_error/2} function — JSON-protocol fallback that dispatches
-     * on HTTP status codes. Called by the protocol-aware overload when not XML.
+     * Renders a {@code parse_error/2} function — REST_JSON-protocol fallback that dispatches
+     * on HTTP status codes. Called by the protocol-aware overload when not XML/awsJson.
      *
-     * <p>Example output:
+     * <p>When two or more modelled errors share the same HTTP status code the function emits
+     * a secondary {@code case} discriminator inside that clause that inspects the body's
+     * {@code __type} or {@code code} field (restJson1 convention). If neither field is
+     * populated or matches a known error name the first listed error for that code is
+     * returned and a {@code %% TODO: ambiguous error code} comment marks the loss of
+     * fidelity in the generated source.
+     *
+     * <p>Example output (unambiguous):
      * <pre>
      * -spec parse_error(integer(), binary()) -> {error, term()}.
      * parse_error(404, Body) -> {error, {not_found_error, Body}};
-     * parse_error(_, Body) -> {error, {http_error, unknown, Body}}.
+     * parse_error(StatusCode, Body) -> {error, {http_error, StatusCode, Body}}.
+     * </pre>
+     *
+     * <p>Example output (two errors sharing 400):
+     * <pre>
+     * parse_error(400, Body) ->
+     *     case maps:get(<<"__type">>, Body,
+     *              maps:get(<<"code">>, Body, <<"">>)) of
+     *         <<"BadRequestA">> -> {error, {bad_request_a, Body}};
+     *         <<"BadRequestB">> -> {error, {bad_request_b, Body}};
+     *         %% TODO: ambiguous error code 400 — body discriminator did not match any modelled error.
+     *         _ -> {error, {bad_request_a, Body}}
+     *     end;
      * </pre>
      */
     @Deprecated(forRemoval = true)
@@ -919,16 +941,36 @@ public final class ErlangWriter implements LanguageWriter {
             sb.append("parse_error(StatusCode, Body) ->\n");
             sb.append("    {error, {http_error, StatusCode, Body}}.\n");
         } else {
-            // Deduplicate by HTTP status code: many errors may share the same code (e.g. 400).
-            // Keep the first error name encountered for each code.
-            LinkedHashMap<Integer, ErrorBinding> byCode = new LinkedHashMap<>();
+            // Group errors by HTTP status code; preserve insertion order so the generated
+            // clauses appear in the same order as the aggregated error list.
+            LinkedHashMap<Integer, List<ErrorBinding>> byCode = new LinkedHashMap<>();
             for (ErrorBinding eb : errors) {
-                byCode.putIfAbsent(eb.httpCode(), eb);
+                byCode.computeIfAbsent(eb.httpCode(), k -> new ArrayList<>()).add(eb);
             }
-            for (ErrorBinding eb : byCode.values()) {
-                String atom = ErlangSymbolProvider.toFunctionName(eb.smithyName());
-                sb.append("parse_error(").append(eb.httpCode()).append(", Body) ->\n");
-                sb.append("    {error, {").append(atom).append(", Body}};\n");
+            for (int httpCode : byCode.keySet()) {
+                List<ErrorBinding> group = byCode.get(httpCode);
+                if (group.size() == 1) {
+                    // Unambiguous: single error for this status code.
+                    String atom = ErlangSymbolProvider.toFunctionName(group.get(0).smithyName());
+                    sb.append("parse_error(").append(httpCode).append(", Body) ->\n");
+                    sb.append("    {error, {").append(atom).append(", Body}};\n");
+                } else {
+                    // Multiple errors share this HTTP code; secondary-dispatch on the body's
+                    // error-type field (restJson1 convention: "__type" or "code").
+                    sb.append("parse_error(").append(httpCode).append(", Body) ->\n");
+                    sb.append("    case maps:get(<<\"__type\">>, Body,\n");
+                    sb.append("             maps:get(<<\"code\">>, Body, <<\"\">>)) of\n");
+                    for (ErrorBinding eb : group) {
+                        String atom = ErlangSymbolProvider.toFunctionName(eb.smithyName());
+                        sb.append("        <<\"").append(eb.smithyName()).append("\">> ->");
+                        sb.append(" {error, {").append(atom).append(", Body}};\n");
+                    }
+                    String firstAtom = ErlangSymbolProvider.toFunctionName(group.get(0).smithyName());
+                    sb.append("        %% TODO: ambiguous error code ").append(httpCode)
+                      .append(" — body discriminator did not match any modelled error.\n");
+                    sb.append("        _ -> {error, {").append(firstAtom).append(", Body}}\n");
+                    sb.append("    end;\n");
+                }
             }
             sb.append("parse_error(StatusCode, Body) ->\n");
             sb.append("    {error, {http_error, StatusCode, Body}}.\n");

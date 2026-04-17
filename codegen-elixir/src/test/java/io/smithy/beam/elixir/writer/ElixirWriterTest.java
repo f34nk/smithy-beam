@@ -473,6 +473,13 @@ class ElixirWriterTest {
         }
 
         @Test
+        void renderEnumCodecReturnsEmptyStringForEmptyEnum() {
+            EnumSpec empty = new EnumSpec("EmptyStatus", List.of());
+            String result = writer.renderEnumCodec(empty);
+            assertThat(result).isEmpty();
+        }
+
+        @Test
         void renderUnionCodecEmitsEncodeAndDecodeFunctions() {
             UnionSpec u = new UnionSpec("MyUnion", List.of(
                     new FieldSpec("left", new TypeRef.Primitive(PrimitiveKind.STRING), false, false, false, false, false),
@@ -562,6 +569,48 @@ class ElixirWriterTest {
             String result = writer.renderModuleParseError(List.of());
             assertThat(result).contains("defp parse_error(status_code, body)");
             assertThat(result).doesNotContain("defp parse_error(404");
+        }
+
+        @Test
+        void renderModuleParseErrorAmbiguousCodeEmitsCaseDiscriminator() {
+            List<ErrorBinding> errors = List.of(
+                    new ErrorBinding("BadRequestA", 400, ErrorCodeStrategy.REST_JSON),
+                    new ErrorBinding("BadRequestB", 400, ErrorCodeStrategy.REST_JSON)
+            );
+            String result = writer.renderModuleParseError(errors);
+            // A single parse_error(400, ...) function head wrapping a case expression.
+            long headCount = result.lines()
+                    .filter(line -> line.contains("defp parse_error(400,"))
+                    .count();
+            assertThat(headCount).isEqualTo(1);
+            // Both error names must appear as branches inside the case.
+            assertThat(result).contains("\"BadRequestA\"");
+            assertThat(result).contains("\"BadRequestB\"");
+            assertThat(result).contains(":bad_request_a");
+            assertThat(result).contains(":bad_request_b");
+            // The discriminator must use __type / code fields.
+            assertThat(result).contains("__type");
+            assertThat(result).contains("\"code\"");
+            // A TODO comment must mark the ambiguous fallback.
+            assertThat(result).contains("# TODO: ambiguous error code 400");
+            // Fallback clause returns the first error.
+            long fallbackCount = result.lines()
+                    .filter(line -> line.contains("_ -> {:error, {:bad_request_a"))
+                    .count();
+            assertThat(fallbackCount).isEqualTo(1);
+        }
+
+        @Test
+        void renderModuleParseErrorDistinctCodesEmitSeparateClauses() {
+            List<ErrorBinding> errors = List.of(
+                    new ErrorBinding("NotFound", 404, ErrorCodeStrategy.REST_JSON),
+                    new ErrorBinding("Conflict", 409, ErrorCodeStrategy.REST_JSON)
+            );
+            String result = writer.renderModuleParseError(errors);
+            assertThat(result).contains("defp parse_error(404, body)");
+            assertThat(result).contains("defp parse_error(409, body)");
+            assertThat(result).doesNotContain("case type_key");
+            assertThat(result).doesNotContain("# TODO:");
         }
     }
 
