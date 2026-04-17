@@ -8,12 +8,11 @@
 run() ->
     io:format("~n=== Running IAM Client Application ===~n~n"),
 
-    %% Create IAM client instance with AWS credentials
     io:format("Creating IAM client...~n"),
     Config = #{
         endpoint => unicode:characters_to_binary(os:getenv("AWS_ENDPOINT")),
         region => <<"us-east-1">>,
-        service => <<"iam">>,  %% Required for SigV4 signing with custom endpoints
+        service => <<"iam">>,
         credentials => #{
             access_key_id => <<"dummy">>,
             secret_access_key => <<"dummy">>
@@ -24,10 +23,13 @@ run() ->
 
     %% 1. List users to see what was created by Terraform
     io:format("--- ListUsers ---~n"),
-    case aws_iam_client:list_users(Client, #{}, #{enable_retry => false}) of
+    CountBefore = case aws_iam_client:list_users(Client, #{}, #{enable_retry => false}) of
         {ok, ListUsersOutput} ->
             Users = normalize_list(maps:get(<<"Users">>, ListUsersOutput, [])),
-            io:format("SUCCESS: Found ~p user(s)~n", [length(Users)]),
+            case Users of
+                [] -> erlang:error({assertion_failed, empty_user_list});
+                _  -> io:format("SUCCESS: Found ~p user(s)~n", [length(Users)])
+            end,
             lists:foreach(
                 fun(User) ->
                     UserName = maps:get(<<"UserName">>, User, <<"unknown">>),
@@ -35,9 +37,10 @@ run() ->
                     io:format("  - ~s (path: ~s)~n", [UserName, Path])
                 end,
                 Users
-            );
+            ),
+            length(Users);
         {error, ListUsersError} ->
-            io:format("ERROR: ~p~n", [ListUsersError])
+            erlang:error({list_users_failed, ListUsersError})
     end,
     io:format("~n"),
 
@@ -47,13 +50,17 @@ run() ->
     case aws_iam_client:get_user(Client, GetUserInput, #{enable_retry => false}) of
         {ok, GetUserOutput} ->
             User = maps:get(<<"User">>, GetUserOutput, #{}),
+            ReturnedUserName = maps:get(<<"UserName">>, User, <<>>),
+            case ReturnedUserName =:= ?USER_NAME of
+                true  -> io:format("SUCCESS: GetUser UserName matches '~s'~n", [?USER_NAME]);
+                false -> erlang:error({assertion_failed, {expected_username, ?USER_NAME}, {got, ReturnedUserName}})
+            end,
             UserArn = maps:get(<<"Arn">>, User, <<"unknown">>),
             CreateDate = maps:get(<<"CreateDate">>, User, <<"unknown">>),
-            io:format("SUCCESS: User '~s'~n", [?USER_NAME]),
             io:format("  ARN: ~s~n", [UserArn]),
             io:format("  Created: ~s~n", [CreateDate]);
         {error, GetUserError} ->
-            io:format("ERROR: ~p~n", [GetUserError])
+            erlang:error({get_user_failed, GetUserError})
     end,
     io:format("~n"),
 
@@ -62,7 +69,10 @@ run() ->
     case aws_iam_client:list_groups(Client, #{}, #{enable_retry => false}) of
         {ok, ListGroupsOutput} ->
             Groups = normalize_list(maps:get(<<"Groups">>, ListGroupsOutput, [])),
-            io:format("SUCCESS: Found ~p group(s)~n", [length(Groups)]),
+            case Groups of
+                [] -> erlang:error({assertion_failed, empty_group_list});
+                _  -> io:format("SUCCESS: Found ~p group(s)~n", [length(Groups)])
+            end,
             lists:foreach(
                 fun(Group) ->
                     GroupName = maps:get(<<"GroupName">>, Group, <<"unknown">>),
@@ -72,7 +82,7 @@ run() ->
                 Groups
             );
         {error, ListGroupsError} ->
-            io:format("ERROR: ~p~n", [ListGroupsError])
+            erlang:error({list_groups_failed, ListGroupsError})
     end,
     io:format("~n"),
 
@@ -91,7 +101,7 @@ run() ->
                 UserGroups
             );
         {error, ListGroupsForUserError} ->
-            io:format("ERROR: ~p~n", [ListGroupsForUserError])
+            erlang:error({list_groups_for_user_failed, ListGroupsForUserError})
     end,
     io:format("~n"),
 
@@ -107,20 +117,33 @@ run() ->
     case aws_iam_client:create_user(Client, CreateUserInput, #{enable_retry => false}) of
         {ok, CreateUserOutput} ->
             NewUser = maps:get(<<"User">>, CreateUserOutput, #{}),
+            CreatedName = maps:get(<<"UserName">>, NewUser, <<>>),
+            case CreatedName =:= ?NEW_USER_NAME of
+                true  -> io:format("SUCCESS: Created user '~s'~n", [?NEW_USER_NAME]);
+                false -> erlang:error({assertion_failed, {expected_username, ?NEW_USER_NAME}, {got, CreatedName}})
+            end,
             NewUserArn = maps:get(<<"Arn">>, NewUser, <<"unknown">>),
-            io:format("SUCCESS: Created user '~s'~n", [?NEW_USER_NAME]),
             io:format("  ARN: ~s~n", [NewUserArn]);
         {error, CreateUserError} ->
-            io:format("ERROR: ~p~n", [CreateUserError])
+            erlang:error({create_user_failed, CreateUserError})
     end,
     io:format("~n"),
 
-    %% 6. List users again to verify
+    %% 6. List users again to verify user count grew and new user is present
     io:format("--- ListUsers (verify) ---~n"),
     case aws_iam_client:list_users(Client, #{}, #{enable_retry => false}) of
         {ok, ListUsersOutput2} ->
             Users2 = normalize_list(maps:get(<<"Users">>, ListUsersOutput2, [])),
-            io:format("SUCCESS: Found ~p user(s)~n", [length(Users2)]),
+            CountAfter = length(Users2),
+            io:format("SUCCESS: Found ~p user(s)~n", [CountAfter]),
+            case CountAfter > CountBefore of
+                true  -> io:format("SUCCESS: User count grew from ~p to ~p~n", [CountBefore, CountAfter]);
+                false -> erlang:error({assertion_failed, {user_count_unchanged, CountBefore}})
+            end,
+            case lists:any(fun(U) -> maps:get(<<"UserName">>, U, <<>>) =:= ?NEW_USER_NAME end, Users2) of
+                true  -> io:format("SUCCESS: '~s' found in user list~n", [?NEW_USER_NAME]);
+                false -> erlang:error({assertion_failed, {user_not_in_list, ?NEW_USER_NAME}})
+            end,
             lists:foreach(
                 fun(User) ->
                     UserName = maps:get(<<"UserName">>, User, <<"unknown">>),
@@ -129,7 +152,7 @@ run() ->
                 Users2
             );
         {error, ListUsersError2} ->
-            io:format("ERROR: ~p~n", [ListUsersError2])
+            erlang:error({list_users_failed, ListUsersError2})
     end,
     io:format("~n"),
 
@@ -143,7 +166,7 @@ run() ->
         {ok, _} ->
             io:format("SUCCESS: Added '~s' to group '~s'~n", [?NEW_USER_NAME, ?GROUP_NAME]);
         {error, AddUserError} ->
-            io:format("ERROR: ~p~n", [AddUserError])
+            erlang:error({add_user_to_group_failed, AddUserError})
     end,
     io:format("~n"),
 
@@ -153,7 +176,15 @@ run() ->
     case aws_iam_client:list_groups_for_user(Client, ListGroupsForNewUserInput, #{enable_retry => false}) of
         {ok, ListGroupsForNewUserOutput} ->
             NewUserGroups = normalize_list(maps:get(<<"Groups">>, ListGroupsForNewUserOutput, [])),
-            io:format("SUCCESS: User '~s' is in ~p group(s)~n", [?NEW_USER_NAME, length(NewUserGroups)]),
+            case NewUserGroups of
+                [] -> erlang:error({assertion_failed, {new_user_not_in_any_group, ?NEW_USER_NAME}});
+                _  -> io:format("SUCCESS: User '~s' is in ~p group(s)~n", [?NEW_USER_NAME, length(NewUserGroups)])
+            end,
+            GroupNames = [maps:get(<<"GroupName">>, G, <<>>) || G <- NewUserGroups],
+            case lists:member(?GROUP_NAME, GroupNames) of
+                true  -> io:format("SUCCESS: Group '~s' found~n", [?GROUP_NAME]);
+                false -> erlang:error({assertion_failed, {group_not_found, ?GROUP_NAME}, {in, GroupNames}})
+            end,
             lists:foreach(
                 fun(Group) ->
                     GroupName = maps:get(<<"GroupName">>, Group, <<"unknown">>),
@@ -162,7 +193,7 @@ run() ->
                 NewUserGroups
             );
         {error, ListGroupsForNewUserError} ->
-            io:format("ERROR: ~p~n", [ListGroupsForNewUserError])
+            erlang:error({list_groups_for_user_failed, ListGroupsForNewUserError})
     end,
     io:format("~n"),
 
@@ -176,7 +207,7 @@ run() ->
         {ok, _} ->
             io:format("SUCCESS: Removed '~s' from group '~s'~n", [?NEW_USER_NAME, ?GROUP_NAME]);
         {error, RemoveUserError} ->
-            io:format("ERROR: ~p~n", [RemoveUserError])
+            erlang:error({remove_user_from_group_failed, RemoveUserError})
     end,
     io:format("~n"),
 
@@ -187,7 +218,7 @@ run() ->
         {ok, _} ->
             io:format("SUCCESS: Deleted user '~s'~n", [?NEW_USER_NAME]);
         {error, DeleteUserError} ->
-            io:format("ERROR: ~p~n", [DeleteUserError])
+            erlang:error({delete_user_failed, DeleteUserError})
     end,
     io:format("~n"),
 
@@ -196,11 +227,16 @@ run() ->
     GetDeletedUserInput = #{<<"UserName">> => ?NEW_USER_NAME},
     case aws_iam_client:get_user(Client, GetDeletedUserInput, #{enable_retry => false}) of
         {ok, _} ->
-            io:format("UNEXPECTED: User still exists~n");
-        {error, {aws_error, _, <<"NoSuchEntity">>, _}} ->
+            erlang:error({assertion_failed, user_not_deleted, ?NEW_USER_NAME});
+        {error, #{error_type := no_such_entity_exception}} ->
+            io:format("SUCCESS: User '~s' confirmed deleted~n", [?NEW_USER_NAME]);
+        %% IAM wire code is "NoSuchEntity" (no "Exception" suffix) so the generated
+        %% string-dispatch clause for "NoSuchEntityException" doesn't match; the
+        %% catch-all returns #{error_type => unknown, body => #{<<"Code">> => <<"NoSuchEntity">>}}.
+        {error, #{error_type := unknown, body := #{<<"Code">> := <<"NoSuchEntity">>}}} ->
             io:format("SUCCESS: User '~s' confirmed deleted~n", [?NEW_USER_NAME]);
         {error, VerifyError} ->
-            io:format("Result: ~p~n", [VerifyError])
+            erlang:error({get_user_failed, VerifyError})
     end,
     io:format("~n"),
 
