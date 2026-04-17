@@ -43,7 +43,7 @@ class ErlangServerPipelineTest {
                 .moduleName(moduleName)
                 .build();
         MockManifest manifest = new MockManifest();
-        var output = new FileOutput(manifest, ".erl");
+        var output = new FileOutput(manifest);
         var writer = new ErlangWriter();
         new ServerPipeline().generate(service, model, protocol, writer, settings, output, cl);
         return manifest;
@@ -211,7 +211,7 @@ class ErlangServerPipelineTest {
                 .build();
 
         MockManifest manifest = new MockManifest();
-        var output = new FileOutput(manifest, ".erl");
+        var output = new FileOutput(manifest);
         var writer = new ErlangWriter();
 
         // First run — scaffold is written.
