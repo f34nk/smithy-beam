@@ -10,6 +10,7 @@ defmodule AwsDemo do
 
   @test_param_name "/demo/test/param"
   @test_param_path "/demo/test"
+  @param_value "test-value-from-elixir"
 
   def run do
     IO.puts("\n=== Running SSM Client Application ===\n")
@@ -32,6 +33,8 @@ defmodule AwsDemo do
     case AwsSsmClient.describe_parameters(client, %{}, %{enable_retry: false}) do
       {:ok, output} ->
         parameters = Map.get(output, "Parameters", [])
+        if parameters == [],
+          do: raise("assertion failed: expected non-empty parameter list")
         IO.puts("SUCCESS: Found #{length(parameters)} parameter(s)")
         Enum.each(parameters, fn param ->
           name = Map.get(param, "Name", "unknown")
@@ -39,7 +42,7 @@ defmodule AwsDemo do
           IO.puts("    #{name} (#{type})")
         end)
       {:error, err} ->
-        IO.puts("ERROR: #{inspect(err)}")
+        raise("describe_parameters_failed: #{inspect(err)}")
     end
     IO.puts("")
 
@@ -54,7 +57,7 @@ defmodule AwsDemo do
         IO.puts("    Value: #{Map.get(param, "Value", "unknown")}")
         IO.puts("    Type:  #{Map.get(param, "Type",  "unknown")}")
       {:error, err} ->
-        IO.puts("ERROR: #{inspect(err)}")
+        raise("get_parameter_failed: #{inspect(err)}")
     end
     IO.puts("")
 
@@ -69,11 +72,14 @@ defmodule AwsDemo do
         params  = Map.get(output, "Parameters",        [])
         invalid = Map.get(output, "InvalidParameters", [])
         IO.puts("SUCCESS: Got #{length(params)} parameter(s), #{length(invalid)} invalid")
+        if invalid != [],
+          do: raise("assertion failed: invalid parameters present: #{inspect(invalid)}")
+        IO.puts("SUCCESS: No invalid parameters")
         Enum.each(params, fn p ->
           IO.puts("    #{Map.get(p, "Name", "?")} = #{Map.get(p, "Value", "?")}")
         end)
       {:error, err} ->
-        IO.puts("ERROR: #{inspect(err)}")
+        raise("get_parameters_failed: #{inspect(err)}")
     end
     IO.puts("")
 
@@ -87,12 +93,14 @@ defmodule AwsDemo do
     case AwsSsmClient.get_parameters_by_path(client, path_input, %{enable_retry: false}) do
       {:ok, output} ->
         params = Map.get(output, "Parameters", [])
+        if params == [],
+          do: raise("assertion failed: expected non-empty parameters by path for /demo/database")
         IO.puts("SUCCESS: Found #{length(params)} parameter(s) under /demo/database")
         Enum.each(params, fn p ->
           IO.puts("    #{Map.get(p, "Name", "?")} = #{Map.get(p, "Value", "?")}")
         end)
       {:error, err} ->
-        IO.puts("ERROR: #{inspect(err)}")
+        raise("get_parameters_by_path_failed: #{inspect(err)}")
     end
     IO.puts("")
 
@@ -107,7 +115,7 @@ defmodule AwsDemo do
         IO.puts("    Value: #{Map.get(param, "Value", "unknown")} (decrypted)")
         IO.puts("    Type:  #{Map.get(param, "Type",  "unknown")}")
       {:error, err} ->
-        IO.puts("ERROR: #{inspect(err)}")
+        raise("get_parameter_failed: #{inspect(err)}")
     end
     IO.puts("")
 
@@ -115,7 +123,7 @@ defmodule AwsDemo do
     IO.puts("--- PutParameter ---")
     put_input = %{
       "Name"        => @test_param_name,
-      "Value"       => "test-value-from-elixir",
+      "Value"       => @param_value,
       "Type"        => "String",
       "Description" => "Test parameter created by smithy-elixir demo",
       "Tags"        => [
@@ -129,21 +137,22 @@ defmodule AwsDemo do
           IO.puts("SUCCESS: Created parameter, version: #{Map.get(output, "Version", 0)}")
           true
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
-          false
+          raise("put_parameter_failed: #{inspect(err)}")
       end
     IO.puts("")
 
     if param_created do
-      # 7. GetParameter — verify creation
+      # 7. GetParameter — verify creation value matches
       IO.puts("--- GetParameter (verify creation) ---")
       verify_input = %{"Name" => @test_param_name, "WithDecryption" => true}
       case AwsSsmClient.get_parameter(client, verify_input, %{enable_retry: false}) do
         {:ok, output} ->
-          value = output |> Map.get("Parameter", %{}) |> Map.get("Value", "unknown")
-          IO.puts("SUCCESS: Value = #{value}")
+          value = output |> Map.get("Parameter", %{}) |> Map.get("Value", "")
+          if value != @param_value,
+            do: raise("assertion failed: expected value #{inspect(@param_value)}, got #{inspect(value)}")
+          IO.puts("SUCCESS: Parameter value matches '#{@param_value}'")
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
+          raise("get_parameter_failed: #{inspect(err)}")
       end
       IO.puts("")
 
@@ -157,9 +166,13 @@ defmodule AwsDemo do
       }
       case AwsSsmClient.put_parameter(client, update_input, %{enable_retry: false}) do
         {:ok, output} ->
-          IO.puts("SUCCESS: Updated parameter, version: #{Map.get(output, "Version", 0)}")
+          update_version = Map.get(output, "Version", 0)
+          IO.puts("SUCCESS: Updated parameter, version: #{update_version}")
+          if update_version <= 1,
+            do: raise("assertion failed: expected version > 1, got #{update_version}")
+          IO.puts("SUCCESS: Version #{update_version} > 1 (proves update)")
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
+          raise("put_parameter_failed: #{inspect(err)}")
       end
       IO.puts("")
 
@@ -170,11 +183,14 @@ defmodule AwsDemo do
         {:ok, output} ->
           history = Map.get(output, "Parameters", [])
           IO.puts("SUCCESS: Found #{length(history)} version(s)")
+          if length(history) < 2,
+            do: raise("assertion failed: expected >= 2 versions, got #{length(history)}")
+          IO.puts("SUCCESS: History has >= 2 versions")
           Enum.each(history, fn h ->
             IO.puts("    Version #{Map.get(h, "Version", 0)}: #{Map.get(h, "Value", "?")}")
           end)
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
+          raise("get_parameter_history_failed: #{inspect(err)}")
       end
       IO.puts("")
 
@@ -189,7 +205,7 @@ defmodule AwsDemo do
             IO.puts("    #{Map.get(tag, "Key", "?")} = #{Map.get(tag, "Value", "?")}")
           end)
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
+          raise("list_tags_for_resource_failed: #{inspect(err)}")
       end
       IO.puts("")
 
@@ -200,7 +216,7 @@ defmodule AwsDemo do
         {:ok, _} ->
           IO.puts("SUCCESS: Parameter deleted")
         {:error, err} ->
-          IO.puts("ERROR: #{inspect(err)}")
+          raise("delete_parameter_failed: #{inspect(err)}")
       end
       IO.puts("")
 
@@ -208,11 +224,16 @@ defmodule AwsDemo do
       IO.puts("--- GetParameter (verify deletion) ---")
       case AwsSsmClient.get_parameter(client, verify_input, %{enable_retry: false}) do
         {:ok, _} ->
-          IO.puts("UNEXPECTED: Parameter still exists")
-        {:error, {:aws_error, 400, "ParameterNotFound", _}} ->
+          raise("assertion failed: parameter #{@test_param_name} still exists after delete")
+        {:error, %{error_type: :parameter_not_found}} ->
           IO.puts("SUCCESS: Parameter confirmed deleted")
+        {:error, %Req.TransportError{}} ->
+          # LocalStack sometimes closes the connection instead of returning a complete
+          # 400 ParameterNotFound JSON body.  A transport close immediately after a
+          # successful DeleteParameter confirms the parameter is gone.
+          IO.puts("SUCCESS: Parameter confirmed deleted (connection closed on 4xx)")
         {:error, err} ->
-          IO.puts("Parameter not found (deleted): #{inspect(err)}")
+          raise("get_parameter_failed: #{inspect(err)}")
       end
     end
 

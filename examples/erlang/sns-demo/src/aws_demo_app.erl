@@ -7,12 +7,11 @@
 run() ->
     io:format("~n=== Running SNS Client Application ===~n~n"),
 
-    %% Create SNS client instance with AWS credentials
     io:format("Creating SNS client...~n"),
     Config = #{
         endpoint => unicode:characters_to_binary(os:getenv("AWS_ENDPOINT")),
         region => <<"us-east-1">>,
-        service => <<"sns">>,  %% Required for SigV4 signing with custom endpoints
+        service => <<"sns">>,
         credentials => #{
             access_key_id => <<"dummy">>,
             secret_access_key => <<"dummy">>
@@ -26,7 +25,10 @@ run() ->
     case aws_sns_client:list_topics(Client, #{}, #{enable_retry => false}) of
         {ok, ListOutput} ->
             Topics = get_topics_from_response(ListOutput),
-            io:format("SUCCESS: Found ~p topic(s)~n", [length(Topics)]),
+            case Topics of
+                [] -> erlang:error({assertion_failed, empty_topic_list});
+                _  -> io:format("SUCCESS: Found ~p topic(s)~n", [length(Topics)])
+            end,
             lists:foreach(
                 fun(Topic) ->
                     TopicArn = maps:get(<<"TopicArn">>, Topic, <<"unknown">>),
@@ -35,7 +37,7 @@ run() ->
                 Topics
             );
         {error, ListError} ->
-            io:format("ERROR: ~p~n", [ListError])
+            erlang:error({list_topics_failed, ListError})
     end,
     io:format("~n"),
 
@@ -51,188 +53,195 @@ run() ->
     TestTopicArn = case aws_sns_client:create_topic(Client, CreateInput, #{enable_retry => false}) of
         {ok, CreateOutput} ->
             Arn = maps:get(<<"TopicArn">>, CreateOutput, undefined),
-            io:format("SUCCESS: Created topic: ~s~n", [Arn]),
+            case binary:match(Arn, ?TEST_TOPIC_NAME) of
+                nomatch -> erlang:error({assertion_failed, {arn_missing_topic_name, Arn}});
+                _       -> io:format("SUCCESS: ARN = ~s~n", [Arn])
+            end,
             Arn;
         {error, CreateError} ->
-            io:format("ERROR: ~p~n", [CreateError]),
-            undefined
+            erlang:error({create_topic_failed, CreateError})
     end,
     io:format("~n"),
 
-    case TestTopicArn of
-        undefined ->
-            io:format("Cannot continue without topic ARN~n");
-        _ ->
-            %% 3. Get topic attributes
-            io:format("--- GetTopicAttributes ---~n"),
-            AttrInput = #{<<"TopicArn">> => TestTopicArn},
-            case aws_sns_client:get_topic_attributes(Client, AttrInput, #{enable_retry => false}) of
-                {ok, AttrOutput} ->
-                    Attrs = maps:get(<<"Attributes">>, AttrOutput, #{}),
-                    io:format("SUCCESS: Topic attributes:~n"),
-                    print_attributes(Attrs);
-                {error, AttrError} ->
-                    io:format("ERROR: ~p~n", [AttrError])
-            end,
-            io:format("~n"),
+    %% 3. Get topic attributes
+    io:format("--- GetTopicAttributes ---~n"),
+    AttrInput = #{<<"TopicArn">> => TestTopicArn},
+    case aws_sns_client:get_topic_attributes(Client, AttrInput, #{enable_retry => false}) of
+        {ok, AttrOutput} ->
+            Attrs = maps:get(<<"Attributes">>, AttrOutput, #{}),
+            io:format("SUCCESS: Topic attributes:~n"),
+            print_attributes(Attrs);
+        {error, AttrError} ->
+            erlang:error({get_topic_attributes_failed, AttrError})
+    end,
+    io:format("~n"),
 
-            %% 4. List tags for the topic
-            io:format("--- ListTagsForResource ---~n"),
-            TagsInput = #{<<"ResourceArn">> => TestTopicArn},
-            case aws_sns_client:list_tags_for_resource(Client, TagsInput, #{enable_retry => false}) of
-                {ok, TagsOutput} ->
-                    Tags = get_tags_from_response(TagsOutput),
-                    io:format("SUCCESS: Found ~p tag(s):~n", [length(Tags)]),
-                    lists:foreach(
-                        fun(Tag) ->
-                            Key = maps:get(<<"Key">>, Tag, <<"unknown">>),
-                            Value = maps:get(<<"Value">>, Tag, <<"unknown">>),
-                            io:format("    ~s = ~s~n", [Key, Value])
-                        end,
-                        Tags
-                    );
-                {error, TagsError} ->
-                    io:format("ERROR: ~p~n", [TagsError])
-            end,
-            io:format("~n"),
+    %% 4. List tags for the topic
+    io:format("--- ListTagsForResource ---~n"),
+    TagsInput = #{<<"ResourceArn">> => TestTopicArn},
+    case aws_sns_client:list_tags_for_resource(Client, TagsInput, #{enable_retry => false}) of
+        {ok, TagsOutput} ->
+            Tags = get_tags_from_response(TagsOutput),
+            io:format("SUCCESS: Found ~p tag(s):~n", [length(Tags)]),
+            lists:foreach(
+                fun(Tag) ->
+                    Key = maps:get(<<"Key">>, Tag, <<"unknown">>),
+                    Value = maps:get(<<"Value">>, Tag, <<"unknown">>),
+                    io:format("    ~s = ~s~n", [Key, Value])
+                end,
+                Tags
+            );
+        {error, TagsError} ->
+            erlang:error({list_tags_for_resource_failed, TagsError})
+    end,
+    io:format("~n"),
 
-            %% 5. Subscribe to the topic (using email-json protocol as an example)
-            %% In LocalStack, subscriptions are auto-confirmed
-            io:format("--- Subscribe ---~n"),
-            SubscribeInput = #{
-                <<"TopicArn">> => TestTopicArn,
-                <<"Protocol">> => <<"email-json">>,
-                <<"Endpoint">> => <<"test@example.com">>
-            },
-            SubscriptionArn = case aws_sns_client:subscribe(Client, SubscribeInput, #{enable_retry => false}) of
-                {ok, SubscribeOutput} ->
-                    SubArn = maps:get(<<"SubscriptionArn">>, SubscribeOutput, <<"pending">>),
-                    io:format("SUCCESS: Subscription ARN: ~s~n", [SubArn]),
-                    SubArn;
-                {error, SubscribeError} ->
-                    io:format("ERROR: ~p~n", [SubscribeError]),
-                    undefined
+    %% 5. Subscribe to the topic
+    io:format("--- Subscribe ---~n"),
+    SubscribeInput = #{
+        <<"TopicArn">> => TestTopicArn,
+        <<"Protocol">> => <<"email-json">>,
+        <<"Endpoint">> => <<"test@example.com">>
+    },
+    SubscriptionArn = case aws_sns_client:subscribe(Client, SubscribeInput, #{enable_retry => false}) of
+        {ok, SubscribeOutput} ->
+            SubArn = maps:get(<<"SubscriptionArn">>, SubscribeOutput, <<>>),
+            case byte_size(SubArn) > 0 of
+                true  -> io:format("SUCCESS: Subscription ARN: ~s~n", [SubArn]);
+                false -> erlang:error({assertion_failed, subscribe_returned_empty_arn})
             end,
-            io:format("~n"),
+            SubArn;
+        {error, SubscribeError} ->
+            erlang:error({subscribe_failed, SubscribeError})
+    end,
+    io:format("~n"),
 
-            %% 6. List subscriptions by topic
-            io:format("--- ListSubscriptionsByTopic ---~n"),
-            ListSubsInput = #{<<"TopicArn">> => TestTopicArn},
-            case aws_sns_client:list_subscriptions_by_topic(Client, ListSubsInput, #{enable_retry => false}) of
-                {ok, ListSubsOutput} ->
-                    Subscriptions = get_subscriptions_from_response(ListSubsOutput),
-                    io:format("SUCCESS: Found ~p subscription(s):~n", [length(Subscriptions)]),
-                    lists:foreach(
-                        fun(Sub) ->
-                            SubArn2 = maps:get(<<"SubscriptionArn">>, Sub, <<"unknown">>),
-                            Protocol = maps:get(<<"Protocol">>, Sub, <<"unknown">>),
-                            Endpoint = maps:get(<<"Endpoint">>, Sub, <<"unknown">>),
-                            io:format("    Protocol: ~s, Endpoint: ~s~n", [Protocol, Endpoint]),
-                            io:format("    ARN: ~s~n", [SubArn2])
-                        end,
-                        Subscriptions
-                    );
-                {error, ListSubsError} ->
-                    io:format("ERROR: ~p~n", [ListSubsError])
+    %% 6. List subscriptions by topic
+    io:format("--- ListSubscriptionsByTopic ---~n"),
+    ListSubsInput = #{<<"TopicArn">> => TestTopicArn},
+    case aws_sns_client:list_subscriptions_by_topic(Client, ListSubsInput, #{enable_retry => false}) of
+        {ok, ListSubsOutput} ->
+            Subscriptions = get_subscriptions_from_response(ListSubsOutput),
+            case Subscriptions of
+                [] -> erlang:error({assertion_failed, empty_subscription_list});
+                _  -> io:format("SUCCESS: Found ~p subscription(s):~n", [length(Subscriptions)])
             end,
-            io:format("~n"),
+            lists:foreach(
+                fun(Sub) ->
+                    SubArn2 = maps:get(<<"SubscriptionArn">>, Sub, <<"unknown">>),
+                    Protocol = maps:get(<<"Protocol">>, Sub, <<"unknown">>),
+                    Endpoint = maps:get(<<"Endpoint">>, Sub, <<"unknown">>),
+                    io:format("    Protocol: ~s, Endpoint: ~s~n", [Protocol, Endpoint]),
+                    io:format("    ARN: ~s~n", [SubArn2])
+                end,
+                Subscriptions
+            );
+        {error, ListSubsError} ->
+            erlang:error({list_subscriptions_by_topic_failed, ListSubsError})
+    end,
+    io:format("~n"),
 
-            %% 7. Publish a message to the topic
-            io:format("--- Publish ---~n"),
-            MessageBody = jsx:encode(#{
-                <<"message">> => <<"Hello from Erlang!">>,
-                <<"timestamp">> => list_to_binary(calendar:system_time_to_rfc3339(erlang:system_time(second))),
-                <<"source">> => <<"smithy-erlang-sns-demo">>
-            }),
-            PublishInput = #{
-                <<"TopicArn">> => TestTopicArn,
-                <<"Message">> => MessageBody,
-                <<"Subject">> => <<"Test message from Smithy-Erlang">>,
-                <<"MessageAttributes">> => #{
-                    <<"Author">> => #{
-                        <<"DataType">> => <<"String">>,
-                        <<"StringValue">> => <<"Smithy-Erlang Demo">>
-                    }
-                }
-            },
-            case aws_sns_client:publish(Client, PublishInput, #{enable_retry => false}) of
-                {ok, PublishOutput} ->
-                    MessageId = maps:get(<<"MessageId">>, PublishOutput, <<"unknown">>),
-                    io:format("SUCCESS: Published message, ID: ~s~n", [MessageId]);
-                {error, PublishError} ->
-                    io:format("ERROR: ~p~n", [PublishError])
-            end,
-            io:format("~n"),
+    %% 7. Publish a message to the topic
+    io:format("--- Publish ---~n"),
+    MessageBody = jsx:encode(#{
+        <<"message">> => <<"Hello from Erlang!">>,
+        <<"timestamp">> => list_to_binary(calendar:system_time_to_rfc3339(erlang:system_time(second))),
+        <<"source">> => <<"smithy-erlang-sns-demo">>
+    }),
+    PublishInput = #{
+        <<"TopicArn">> => TestTopicArn,
+        <<"Message">> => MessageBody,
+        <<"Subject">> => <<"Test message from Smithy-Erlang">>,
+        <<"MessageAttributes">> => #{
+            <<"Author">> => #{
+                <<"DataType">> => <<"String">>,
+                <<"StringValue">> => <<"Smithy-Erlang Demo">>
+            }
+        }
+    },
+    case aws_sns_client:publish(Client, PublishInput, #{enable_retry => false}) of
+        {ok, PublishOutput} ->
+            MessageId = maps:get(<<"MessageId">>, PublishOutput, <<>>),
+            case byte_size(MessageId) > 0 of
+                true  -> io:format("SUCCESS: Published message, ID: ~s~n", [MessageId]);
+                false -> erlang:error({assertion_failed, publish_returned_empty_id})
+            end;
+        {error, PublishError} ->
+            erlang:error({publish_failed, PublishError})
+    end,
+    io:format("~n"),
 
-            %% 8. Publish another message
-            io:format("--- Publish (second message) ---~n"),
-            Message2 = <<"This is a plain text message from the Erlang SNS demo.">>,
-            PublishInput2 = #{
-                <<"TopicArn">> => TestTopicArn,
-                <<"Message">> => Message2
-            },
-            case aws_sns_client:publish(Client, PublishInput2, #{enable_retry => false}) of
-                {ok, PublishOutput2} ->
-                    MessageId2 = maps:get(<<"MessageId">>, PublishOutput2, <<"unknown">>),
-                    io:format("SUCCESS: Published message, ID: ~s~n", [MessageId2]);
-                {error, PublishError2} ->
-                    io:format("ERROR: ~p~n", [PublishError2])
-            end,
-            io:format("~n"),
+    %% 8. Publish another message
+    io:format("--- Publish (second message) ---~n"),
+    Message2 = <<"This is a plain text message from the Erlang SNS demo.">>,
+    PublishInput2 = #{
+        <<"TopicArn">> => TestTopicArn,
+        <<"Message">> => Message2
+    },
+    case aws_sns_client:publish(Client, PublishInput2, #{enable_retry => false}) of
+        {ok, PublishOutput2} ->
+            MessageId2 = maps:get(<<"MessageId">>, PublishOutput2, <<>>),
+            case byte_size(MessageId2) > 0 of
+                true  -> io:format("SUCCESS: Published message, ID: ~s~n", [MessageId2]);
+                false -> erlang:error({assertion_failed, publish_returned_empty_id})
+            end;
+        {error, PublishError2} ->
+            erlang:error({publish_failed, PublishError2})
+    end,
+    io:format("~n"),
 
-            %% 9. Unsubscribe
-            case SubscriptionArn of
-                undefined ->
-                    io:format("--- Unsubscribe (skipped - no subscription) ---~n~n");
-                <<"pending">> ->
-                    io:format("--- Unsubscribe (skipped - pending confirmation) ---~n~n");
-                <<"PendingConfirmation">> ->
-                    io:format("--- Unsubscribe (skipped - pending confirmation) ---~n~n");
-                ValidArn ->
-                    io:format("--- Unsubscribe ---~n"),
-                    UnsubInput = #{<<"SubscriptionArn">> => ValidArn},
-                    case aws_sns_client:unsubscribe(Client, UnsubInput, #{enable_retry => false}) of
-                        {ok, _} ->
-                            io:format("SUCCESS: Unsubscribed~n");
-                        {error, UnsubError} ->
-                            io:format("ERROR: ~p~n", [UnsubError])
-                    end,
-                    io:format("~n")
-            end,
-
-            %% 10. Delete the test topic
-            io:format("--- DeleteTopic ---~n"),
-            DeleteInput = #{<<"TopicArn">> => TestTopicArn},
-            case aws_sns_client:delete_topic(Client, DeleteInput, #{enable_retry => false}) of
+    %% 9. Unsubscribe
+    case SubscriptionArn of
+        <<>> ->
+            io:format("--- Unsubscribe (skipped - no subscription) ---~n~n");
+        <<"pending">> ->
+            io:format("--- Unsubscribe (skipped - pending confirmation) ---~n~n");
+        <<"PendingConfirmation">> ->
+            io:format("--- Unsubscribe (skipped - pending confirmation) ---~n~n");
+        ValidArn ->
+            io:format("--- Unsubscribe ---~n"),
+            UnsubInput = #{<<"SubscriptionArn">> => ValidArn},
+            case aws_sns_client:unsubscribe(Client, UnsubInput, #{enable_retry => false}) of
                 {ok, _} ->
-                    io:format("SUCCESS: Topic deleted~n");
-                {error, DeleteError} ->
-                    io:format("ERROR: ~p~n", [DeleteError])
+                    io:format("SUCCESS: Unsubscribed~n");
+                {error, UnsubError} ->
+                    erlang:error({unsubscribe_failed, UnsubError})
             end,
-            io:format("~n"),
+            io:format("~n")
+    end,
 
-            %% 11. Verify topic was deleted by listing again
-            io:format("--- ListTopics (verify deletion) ---~n"),
-            case aws_sns_client:list_topics(Client, #{}, #{enable_retry => false}) of
-                {ok, VerifyOutput} ->
-                    VerifyTopics = get_topics_from_response(VerifyOutput),
-                    TestTopicExists = lists:any(
-                        fun(T) ->
-                            Arn2 = maps:get(<<"TopicArn">>, T, <<>>),
-                            binary:match(Arn2, ?TEST_TOPIC_NAME) =/= nomatch
-                        end,
-                        VerifyTopics
-                    ),
-                    case TestTopicExists of
-                        false ->
-                            io:format("SUCCESS: Test topic no longer exists~n");
-                        true ->
-                            io:format("INFO: Test topic still exists (may take time to propagate)~n")
-                    end,
-                    io:format("Remaining topics: ~p~n", [length(VerifyTopics)]);
-                {error, VerifyError} ->
-                    io:format("ERROR: ~p~n", [VerifyError])
-            end
+    %% 10. Delete the test topic
+    io:format("--- DeleteTopic ---~n"),
+    DeleteInput = #{<<"TopicArn">> => TestTopicArn},
+    case aws_sns_client:delete_topic(Client, DeleteInput, #{enable_retry => false}) of
+        {ok, _} ->
+            io:format("SUCCESS: Topic deleted~n");
+        {error, DeleteError} ->
+            erlang:error({delete_topic_failed, DeleteError})
+    end,
+    io:format("~n"),
+
+    %% 11. Verify topic was deleted by listing again
+    io:format("--- ListTopics (verify deletion) ---~n"),
+    case aws_sns_client:list_topics(Client, #{}, #{enable_retry => false}) of
+        {ok, VerifyOutput} ->
+            VerifyTopics = get_topics_from_response(VerifyOutput),
+            TestTopicExists = lists:any(
+                fun(T) ->
+                    Arn2 = maps:get(<<"TopicArn">>, T, <<>>),
+                    binary:match(Arn2, ?TEST_TOPIC_NAME) =/= nomatch
+                end,
+                VerifyTopics
+            ),
+            case TestTopicExists of
+                false ->
+                    io:format("SUCCESS: Test topic no longer exists~n");
+                true ->
+                    erlang:error({assertion_failed, topic_still_exists})
+            end,
+            io:format("Remaining topics: ~p~n", [length(VerifyTopics)]);
+        {error, VerifyError} ->
+            erlang:error({list_topics_failed, VerifyError})
     end,
     io:format("~n"),
 
@@ -240,13 +249,11 @@ run() ->
     ok.
 
 %% Helper to extract topics from ListTopics response
-%% Handles the XML-based response format from AWS Query protocol
 get_topics_from_response(Response) ->
     case maps:get(<<"Topics">>, Response, undefined) of
         undefined ->
             [];
         TopicsWrapper when is_map(TopicsWrapper) ->
-            %% Response may have nested "member" key for lists
             case maps:get(<<"member">>, TopicsWrapper, undefined) of
                 undefined -> [];
                 Member when is_list(Member) -> Member;
@@ -283,11 +290,9 @@ get_subscriptions_from_response(Response) ->
     end.
 
 %% Helper to print topic attributes
-%% Handles AWS Query response format where attributes come as entry list
 print_attributes(Attrs) when is_map(Attrs) ->
     case maps:get(<<"entry">>, Attrs, undefined) of
         undefined ->
-            %% Direct map format
             maps:foreach(
                 fun(Key, Value) ->
                     io:format("    ~s: ~s~n", [Key, format_value(Value)])
@@ -295,7 +300,6 @@ print_attributes(Attrs) when is_map(Attrs) ->
                 Attrs
             );
         Entries when is_list(Entries) ->
-            %% Entry list format from AWS Query
             lists:foreach(
                 fun(Entry) ->
                     Key = maps:get(<<"key">>, Entry, <<"unknown">>),
@@ -305,7 +309,6 @@ print_attributes(Attrs) when is_map(Attrs) ->
                 Entries
             );
         Entry when is_map(Entry) ->
-            %% Single entry
             Key = maps:get(<<"key">>, Entry, <<"unknown">>),
             Value = maps:get(<<"value">>, Entry, <<>>),
             io:format("    ~s: ~s~n", [Key, format_value(Value)])

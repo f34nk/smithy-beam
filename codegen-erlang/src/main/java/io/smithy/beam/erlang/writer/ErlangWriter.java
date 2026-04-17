@@ -938,16 +938,19 @@ public final class ErlangWriter implements LanguageWriter {
      * Protocol-aware overload.
      *
      * <ul>
-     *   <li>{@code REST_XML} and {@code AWS_JSON} — dispatch on error code binary string;
-     *       return {@code #{error_type => atom, message => binary()}} structured maps.</li>
-     *   <li>{@code REST_JSON} / {@code AWS_QUERY} — dispatch on HTTP status code integer;
+     *   <li>{@code REST_XML}, {@code AWS_JSON}, and {@code AWS_QUERY} — dispatch on error
+     *       code binary string; return {@code #{error_type => atom, message => binary()}}
+     *       structured maps.  AWS_QUERY errors are extracted from the {@code <Code>} element
+     *       of the XML error envelope, so string dispatch is correct here too.</li>
+     *   <li>{@code REST_JSON} — dispatch on HTTP status code integer;
      *       return {@code {error, {atom, Body}}} tuples.</li>
      * </ul>
      */
     @Override
     public String renderModuleParseError(List<ErrorBinding> errors, ErrorCodeStrategy strategy) {
         boolean useStringDispatch = strategy == ErrorCodeStrategy.REST_XML
-                                 || strategy == ErrorCodeStrategy.AWS_JSON;
+                                 || strategy == ErrorCodeStrategy.AWS_JSON
+                                 || strategy == ErrorCodeStrategy.AWS_QUERY;
         if (!useStringDispatch) {
             return renderModuleParseError(errors);
         }

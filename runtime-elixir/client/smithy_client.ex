@@ -29,7 +29,7 @@ defmodule SmithyClient do
     A value representing a single Smithy HTTP operation ready to be executed.
     """
 
-    @type encoding :: :json | :form | :xml | :none
+    @type encoding :: :json | :form | :xml | :blob | :none
     @type decoding :: :json | :xml | :query_xml | :raw
 
     @type t :: %__MODULE__{
@@ -44,7 +44,9 @@ defmodule SmithyClient do
             encoding: encoding(),
             decoding: decoding(),
             api_version: String.t() | nil,
-            parse_error_fn: (term(), map() -> {:error, term()}) | nil
+            parse_error_fn: (term(), map() -> {:error, term()}) | nil,
+            rename_map: %{String.t() => String.t()},
+            nested_rename_map: %{String.t() => %{String.t() => String.t()}}
           }
 
     defstruct [
@@ -59,7 +61,9 @@ defmodule SmithyClient do
       encoding: :json,
       decoding: :json,
       api_version: nil,
-      parse_error_fn: nil
+      parse_error_fn: nil,
+      rename_map: %{},
+      nested_rename_map: %{}
     ]
   end
 
@@ -151,9 +155,11 @@ defmodule SmithyClient do
   end
 
   # AWS Query / EC2 Query — form-urlencoded body with Action= and Version=
-  defp encode_body(%Operation{encoding: :form, action: action, input: input, api_version: ver}) do
+  defp encode_body(%Operation{encoding: :form, action: action, input: input, api_version: ver,
+                               rename_map: rename_map, nested_rename_map: nested_rename_map}) do
     action_str = action || raise "query-protocol Operation is missing :action"
-    {:ok, apply(SmithyQuery, :encode, [action_str, input, ver])}
+    wire_input = SmithyQuery.apply_renames(input, rename_map, nested_rename_map)
+    {:ok, apply(SmithyQuery, :encode, [action_str, wire_input, ver])}
   end
 
   # JSON body — always send {} for empty inputs (AWS JSON 1.x requires it)
@@ -172,6 +178,14 @@ defmodule SmithyClient do
 
   defp encode_body(%Operation{encoding: :xml, input: input}) do
     {:ok, IO.iodata_to_binary(apply(SmithyXml, :encode, [input]))}
+  end
+
+  # Blob body — @httpPayload operations (e.g. S3 PutObject) send just the
+  # designated payload member as the raw HTTP body.  The member is named "Body"
+  # in the input map (both string and atom keys are supported).
+  defp encode_body(%Operation{encoding: :blob, input: input}) do
+    body = Map.get(input, "Body") || Map.get(input, :body) || ""
+    {:ok, body}
   end
 
   # No body
@@ -220,8 +234,25 @@ defmodule SmithyClient do
         _ -> body
       end
 
-    parse_fn.(status, parsed)
+    # AWS JSON protocols embed the error type in the "__type" field of the
+    # response body.  The generated parse_error/2 dispatches on that string
+    # (e.g. "ParameterNotFound"), not the HTTP status integer.
+    error_code = extract_error_code(parsed, status)
+    parse_fn.(error_code, parsed)
   end
+
+  # Extract the error code to use as the first argument of parse_error/2.
+  # AWS JSON 1.x: error type is in the "__type" field, optionally namespaced.
+  defp extract_error_code(%{"__type" => type}, _status) when is_binary(type) do
+    case String.split(type, "#", parts: 2) do
+      [_namespace, name] -> name
+      _ -> type
+    end
+  end
+
+  # All other protocols (REST-JSON, AWS-Query, REST-XML without __type):
+  # fall back to the HTTP status code so integer-dispatch parse_error clauses match.
+  defp extract_error_code(_parsed, status), do: status
 
   # REST-XML decode (S3, CloudFront, etc.) — plain XML, no query-envelope unwrapping.
   # Empty body is valid for operations like PutObject that return HTTP 200 with no body.

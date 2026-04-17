@@ -1,6 +1,7 @@
 X:=$(shell find examples/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \;)
 EXAMPLES:=$(foreach x,$(X),$(x)/)
 EXAMPLES_COUNT:=$(words $(EXAMPLES))
+PARALLEL_JOBS:=10
 
 .PHONY: all
 all: clean build test
@@ -115,11 +116,12 @@ clean:
 examples:
 	mkdir -p build
 	rm -rf build/*.log
+	touch build/examples.log
 	#
-	# Run examples in parallel
+	# Run $(EXAMPLES_COUNT) examples in parallel ($(PARALLEL_JOBS) jobs)
 	#
 	find examples/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \; |\
-	xargs -S1024 -P $(EXAMPLES_COUNT) -I {} sh -c ' \
+	xargs -S1024 -P $(PARALLEL_JOBS) -I {} sh -c ' \
 		example="{}"; \
 		name="$$(basename $$example)"; \
 		lang="$$(echo $$example | cut -d/ -f2)"; \
@@ -128,12 +130,17 @@ examples:
 		echo "Running: $$example" ; \
 		make $$example > $$logfile 2>&1; \
 		if grep -q "make.*Error" $$logfile; then \
-			echo "$$logfile ...failed" ; \
+			printf "F";\
+			echo "$$logfile ...failed" >> build/examples.log; \
 			exit 1 ; \
 		else \
-			echo "$$logfile ...ok" ; \
+			printf ".";\
+			echo "$$logfile ...ok" >> build/examples.log; \
 		fi; \
 	'
+	STATUS=$$?; \
+	cat build/examples.log; \
+	exit $$STATUS; \
 
 # Usage: make examples/erlang/weather-service
 .PHONY: $(EXAMPLES)

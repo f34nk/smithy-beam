@@ -78,6 +78,9 @@ docker/start:
 	#
 	@echo "Forward port $$HOST_PORT to Localstack port 4566"
 	docker run --rm -d -p $(HOST_PORT):4566 -e SERVICES=$(SERVICES) --name $(CONTAINER_NAME) localstack/localstack
+	@echo "Waiting for LocalStack to be ready..."
+	@i=0; while ! curl -sf http://localhost:$(HOST_PORT)/_localstack/health > /dev/null 2>&1; do sleep 1; i=$$((i+1)); test $$i -lt 60 || (echo "LocalStack did not start in time" >&2; exit 1); done
+	@echo "LocalStack is ready"
 
 .PHONY: docker/stop
 docker/stop:

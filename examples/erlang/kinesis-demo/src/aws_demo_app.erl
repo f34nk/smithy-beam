@@ -2,16 +2,20 @@
 -export([run/0]).
 
 -define(STREAM_NAME, <<"kinesis-demo-stream">>).
+-define(SENT_RECORDS, [
+    #{<<"message">> => <<"Hello from Erlang!">>, <<"id">> => 1},
+    #{<<"message">> => <<"Kinesis streaming data">>, <<"id">> => 2},
+    #{<<"message">> => <<"Smithy-Erlang demo">>, <<"id">> => 3}
+]).
 
 run() ->
     io:format("~n=== Running Kinesis Client Application ===~n~n"),
 
-    %% Create Kinesis client instance with AWS credentials
     io:format("Creating Kinesis client...~n"),
     Config = #{
         endpoint => unicode:characters_to_binary(os:getenv("AWS_ENDPOINT")),
         region => <<"us-east-1">>,
-        service => <<"kinesis">>,  %% Required for SigV4 signing with custom endpoints
+        service => <<"kinesis">>,
         credentials => #{
             access_key_id => <<"dummy">>,
             secret_access_key => <<"dummy">>
@@ -25,13 +29,20 @@ run() ->
     case aws_kinesis_client:list_streams(Client, #{}, #{enable_retry => false}) of
         {ok, ListOutput} ->
             StreamNames = maps:get(<<"StreamNames">>, ListOutput, []),
-            io:format("SUCCESS: Found ~p stream(s)~n", [length(StreamNames)]),
+            case StreamNames of
+                [] -> erlang:error({assertion_failed, empty_stream_list});
+                _  -> io:format("SUCCESS: Found ~p stream(s)~n", [length(StreamNames)])
+            end,
+            case lists:member(?STREAM_NAME, StreamNames) of
+                true  -> io:format("SUCCESS: Stream '~s' found~n", [?STREAM_NAME]);
+                false -> erlang:error({assertion_failed, {stream_not_found, ?STREAM_NAME}})
+            end,
             lists:foreach(
                 fun(Name) -> io:format("  - ~s~n", [Name]) end,
                 StreamNames
             );
         {error, ListError} ->
-            io:format("ERROR: ~p~n", [ListError])
+            erlang:error({list_streams_failed, ListError})
     end,
     io:format("~n"),
 
@@ -44,10 +55,17 @@ run() ->
             Status = maps:get(<<"StreamStatus">>, StreamDesc, <<"unknown">>),
             RetentionHours = maps:get(<<"RetentionPeriodHours">>, StreamDesc, 0),
             Shards = maps:get(<<"Shards">>, StreamDesc, []),
-            io:format("SUCCESS: Stream '~s'~n", [?STREAM_NAME]),
+            case Status =:= <<"ACTIVE">> of
+                true  -> io:format("SUCCESS: Stream status is ACTIVE~n");
+                false -> erlang:error({assertion_failed, {expected_active_stream, Status}})
+            end,
+            case Shards of
+                [] -> erlang:error({assertion_failed, no_shards_in_stream});
+                _  -> io:format("SUCCESS: Stream has ~p shard(s)~n", [length(Shards)])
+            end,
+            io:format("  Stream: ~s~n", [?STREAM_NAME]),
             io:format("  Status: ~s~n", [Status]),
             io:format("  Retention: ~p hours~n", [RetentionHours]),
-            io:format("  Shards: ~p~n", [length(Shards)]),
             case Shards of
                 [FirstShard | _] ->
                     maps:get(<<"ShardId">>, FirstShard, undefined);
@@ -55,21 +73,14 @@ run() ->
                     undefined
             end;
         {error, DescribeError} ->
-            io:format("ERROR: ~p~n", [DescribeError]),
-            undefined
+            erlang:error({describe_stream_failed, DescribeError})
     end,
     io:format("~n"),
 
     %% 3. Put some records to the stream
     io:format("--- PutRecord (3 records) ---~n"),
-    Records = [
-        #{<<"message">> => <<"Hello from Erlang!">>, <<"id">> => 1},
-        #{<<"message">> => <<"Kinesis streaming data">>, <<"id">> => 2},
-        #{<<"message">> => <<"Smithy-Erlang demo">>, <<"id">> => 3}
-    ],
-    SequenceNumbers = lists:map(
+    _SequenceNumbers = lists:map(
         fun({Idx, Record}) ->
-            %% Data must be base64 encoded for Kinesis
             Data = base64:encode(jsx:encode(Record)),
             PartitionKey = <<"partition-", (integer_to_binary(Idx))/binary>>,
             PutInput = #{
@@ -79,16 +90,18 @@ run() ->
             },
             case aws_kinesis_client:put_record(Client, PutInput, #{enable_retry => false}) of
                 {ok, PutOutput} ->
-                    SeqNum = maps:get(<<"SequenceNumber">>, PutOutput, <<"unknown">>),
+                    SeqNum = maps:get(<<"SequenceNumber">>, PutOutput, <<>>),
                     ShardIdOut = maps:get(<<"ShardId">>, PutOutput, <<"unknown">>),
-                    io:format("  Record ~p: ShardId=~s, Seq=~s~n", [Idx, ShardIdOut, SeqNum]),
+                    case byte_size(SeqNum) > 0 of
+                        true  -> io:format("  Record ~p: ShardId=~s, Seq=~s~n", [Idx, ShardIdOut, SeqNum]);
+                        false -> erlang:error({assertion_failed, {put_record_returned_empty_seq, Idx}})
+                    end,
                     SeqNum;
                 {error, PutError} ->
-                    io:format("  Record ~p ERROR: ~p~n", [Idx, PutError]),
-                    undefined
+                    erlang:error({put_record_failed, {record, Idx}, PutError})
             end
         end,
-        lists:zip(lists:seq(1, length(Records)), Records)
+        lists:zip(lists:seq(1, length(?SENT_RECORDS)), ?SENT_RECORDS)
     ),
     io:format("~n"),
 
@@ -96,8 +109,7 @@ run() ->
     io:format("--- GetShardIterator ---~n"),
     ShardIterator = case ShardId of
         undefined ->
-            io:format("ERROR: No shard ID available~n"),
-            undefined;
+            erlang:error({assertion_failed, no_shard_id_available});
         _ ->
             GetIterInput = #{
                 <<"StreamName">> => ?STREAM_NAME,
@@ -106,52 +118,57 @@ run() ->
             },
             case aws_kinesis_client:get_shard_iterator(Client, GetIterInput, #{enable_retry => false}) of
                 {ok, IterOutput} ->
-                    Iter = maps:get(<<"ShardIterator">>, IterOutput, undefined),
-                    io:format("SUCCESS: Got shard iterator~n"),
+                    Iter = maps:get(<<"ShardIterator">>, IterOutput, <<>>),
+                    case byte_size(Iter) > 0 of
+                        true  -> io:format("SUCCESS: Got shard iterator~n");
+                        false -> erlang:error({assertion_failed, get_shard_iterator_returned_empty})
+                    end,
                     Iter;
                 {error, IterError} ->
-                    io:format("ERROR: ~p~n", [IterError]),
-                    undefined
+                    erlang:error({get_shard_iterator_failed, IterError})
             end
     end,
     io:format("~n"),
 
     %% 5. Get records from the stream
     io:format("--- GetRecords ---~n"),
-    case ShardIterator of
-        undefined ->
-            io:format("ERROR: No shard iterator available~n");
-        _ ->
-            GetRecordsInput = #{
-                <<"ShardIterator">> => ShardIterator,
-                <<"Limit">> => 10
-            },
-            case aws_kinesis_client:get_records(Client, GetRecordsInput, #{enable_retry => false}) of
-                {ok, RecordsOutput} ->
-                    FetchedRecords = maps:get(<<"Records">>, RecordsOutput, []),
-                    MillisBehind = maps:get(<<"MillisBehindLatest">>, RecordsOutput, 0),
-                    io:format("SUCCESS: Retrieved ~p record(s), ~p ms behind latest~n", 
-                              [length(FetchedRecords), MillisBehind]),
-                    lists:foreach(
-                        fun(Rec) ->
-                            Data = maps:get(<<"Data">>, Rec, <<>>),
-                            PartKey = maps:get(<<"PartitionKey">>, Rec, <<"unknown">>),
-                            SeqNum = maps:get(<<"SequenceNumber">>, Rec, <<"unknown">>),
-                            %% Decode the base64 data
-                            DecodedData = try
-                                jsx:decode(base64:decode(Data))
-                            catch
-                                _:_ -> Data
-                            end,
-                            io:format("  Record: PartitionKey=~s~n", [PartKey]),
-                            io:format("    SequenceNumber: ~s~n", [SeqNum]),
-                            io:format("    Data: ~p~n", [DecodedData])
-                        end,
-                        FetchedRecords
-                    );
-                {error, RecordsError} ->
-                    io:format("ERROR: ~p~n", [RecordsError])
-            end
+    GetRecordsInput = #{
+        <<"ShardIterator">> => ShardIterator,
+        <<"Limit">> => 10
+    },
+    case aws_kinesis_client:get_records(Client, GetRecordsInput, #{enable_retry => false}) of
+        {ok, RecordsOutput} ->
+            FetchedRecords = maps:get(<<"Records">>, RecordsOutput, []),
+            MillisBehind = maps:get(<<"MillisBehindLatest">>, RecordsOutput, 0),
+            io:format("SUCCESS: Retrieved ~p record(s), ~p ms behind latest~n",
+                      [length(FetchedRecords), MillisBehind]),
+            case length(FetchedRecords) =:= 3 of
+                true  -> io:format("SUCCESS: All 3 records retrieved~n");
+                false -> erlang:error({assertion_failed, {expected_count, 3}, {got, length(FetchedRecords)}})
+            end,
+            DecodedBodies = [
+                jsx:decode(base64:decode(maps:get(<<"Data">>, R, <<>>)), [return_maps])
+                || R <- FetchedRecords
+            ],
+            case DecodedBodies =:= ?SENT_RECORDS of
+                true  -> io:format("SUCCESS: Record bodies match~n");
+                false -> erlang:error({assertion_failed, {expected_records, ?SENT_RECORDS}, {got, DecodedBodies}})
+            end,
+            lists:foreach(
+                fun(Rec) ->
+                    PartKey = maps:get(<<"PartitionKey">>, Rec, <<"unknown">>),
+                    SeqNum = maps:get(<<"SequenceNumber">>, Rec, <<"unknown">>),
+                    Data = maps:get(<<"Data">>, Rec, <<>>),
+                    DecodedData = try jsx:decode(base64:decode(Data), [return_maps])
+                                  catch _:_ -> Data end,
+                    io:format("  Record: PartitionKey=~s~n", [PartKey]),
+                    io:format("    SequenceNumber: ~s~n", [SeqNum]),
+                    io:format("    Data: ~p~n", [DecodedData])
+                end,
+                FetchedRecords
+            );
+        {error, RecordsError} ->
+            erlang:error({get_records_failed, RecordsError})
     end,
     io:format("~n"),
 
@@ -167,7 +184,7 @@ run() ->
             io:format("  Open shards: ~p~n", [OpenShards]),
             io:format("  Consumers: ~p~n", [ConsumerCount]);
         {error, SummaryError} ->
-            io:format("ERROR: ~p~n", [SummaryError])
+            erlang:error({describe_stream_summary_failed, SummaryError})
     end,
     io:format("~n"),
 

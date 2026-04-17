@@ -8,12 +8,11 @@ run() ->
     io:format("Note: LocalStack free tier has limited RDS support.~n"),
     io:format("Some operations may return 501 errors, but client API calls work correctly.~n~n"),
 
-    %% Create RDS client instance with AWS credentials
     io:format("Creating RDS client...~n"),
     Config = #{
         endpoint => unicode:characters_to_binary(os:getenv("AWS_ENDPOINT")),
         region => <<"us-east-1">>,
-        service => <<"rds">>,  %% Required for SigV4 signing with custom endpoints
+        service => <<"rds">>,
         credentials => #{
             access_key_id => <<"dummy">>,
             secret_access_key => <<"dummy">>
@@ -22,7 +21,7 @@ run() ->
     {ok, Client} = aws_rds_client:new(Config),
     io:format("Client created successfully~n~n"),
 
-    %% 1. Describe account attributes
+    %% 1. Describe account attributes — LocalStack may return 501, keep permissive
     io:format("--- DescribeAccountAttributes ---~n"),
     case aws_rds_client:describe_account_attributes(Client, #{}, #{enable_retry => false}) of
         {ok, AcctOutput} ->
@@ -41,12 +40,14 @@ run() ->
                 true -> io:format("    ... and ~p more~n", [length(Quotas) - 5]);
                 false -> ok
             end;
+        {error, {aws_error, 501, _, _}} ->
+            io:format("INFO: DescribeAccountAttributes not supported (expected in LocalStack free tier)~n");
         {error, AcctError} ->
             io:format("ERROR (expected in LocalStack free tier): ~p~n", [AcctError])
     end,
     io:format("~n"),
 
-    %% 2. Describe DB subnet groups
+    %% 2. Describe DB subnet groups — LocalStack may return 501, keep permissive
     io:format("--- DescribeDBSubnetGroups ---~n"),
     case aws_rds_client:describe_db_subnet_groups(Client, #{}, #{enable_retry => false}) of
         {ok, SubnetOutput} ->
@@ -60,12 +61,14 @@ run() ->
                 end,
                 SubnetGroups
             );
+        {error, {aws_error, 501, _, _}} ->
+            io:format("INFO: DescribeDBSubnetGroups not supported (expected in LocalStack free tier)~n");
         {error, SubnetError} ->
             io:format("ERROR (expected in LocalStack free tier): ~p~n", [SubnetError])
     end,
     io:format("~n"),
 
-    %% 3. Describe DB parameter groups
+    %% 3. Describe DB parameter groups — LocalStack may return 501, keep permissive
     io:format("--- DescribeDBParameterGroups ---~n"),
     case aws_rds_client:describe_db_parameter_groups(Client, #{}, #{enable_retry => false}) of
         {ok, ParamOutput} ->
@@ -79,6 +82,8 @@ run() ->
                 end,
                 ParamGroups
             );
+        {error, {aws_error, 501, _, _}} ->
+            io:format("INFO: DescribeDBParameterGroups not supported (expected in LocalStack free tier)~n");
         {error, ParamError} ->
             io:format("ERROR (expected in LocalStack free tier): ~p~n", [ParamError])
     end,
@@ -98,16 +103,44 @@ run() ->
     ParamGroupCreated = case aws_rds_client:create_db_parameter_group(Client, CreateParamInput, #{enable_retry => false}) of
         {ok, CreateParamOutput} ->
             CreatedGroup = maps:get(<<"DBParameterGroup">>, CreateParamOutput, #{}),
-            CreatedName = maps:get(<<"DBParameterGroupName">>, CreatedGroup, <<"unknown">>),
-            io:format("SUCCESS: Created parameter group: ~s~n", [CreatedName]),
+            CreatedName = maps:get(<<"DBParameterGroupName">>, CreatedGroup, <<>>),
+            case CreatedName =:= ?TEST_PARAM_GROUP_NAME of
+                true  -> io:format("SUCCESS: group name matches '~s'~n", [?TEST_PARAM_GROUP_NAME]);
+                false -> erlang:error({assertion_failed, {expected_name, ?TEST_PARAM_GROUP_NAME}, {got, CreatedName}})
+            end,
             true;
+        {error, {aws_error, 501, _, _}} ->
+            io:format("INFO: CreateDBParameterGroup not supported (expected in LocalStack free tier)~n"),
+            false;
         {error, CreateParamError} ->
             io:format("ERROR (expected in LocalStack free tier): ~p~n", [CreateParamError]),
             false
     end,
     io:format("~n"),
 
-    %% 5. Describe DB instances
+    %% 4b. Describe DB parameter groups after create — assert created group is in list
+    case ParamGroupCreated of
+        true ->
+            io:format("--- DescribeDBParameterGroups (after create) ---~n"),
+            case aws_rds_client:describe_db_parameter_groups(Client, #{}, #{enable_retry => false}) of
+                {ok, PostCreateOutput} ->
+                    PostGroups = get_param_groups_from_response(PostCreateOutput),
+                    PostGroupNames = [maps:get(<<"DBParameterGroupName">>, G, <<>>) || G <- PostGroups],
+                    case lists:member(?TEST_PARAM_GROUP_NAME, PostGroupNames) of
+                        true  -> io:format("SUCCESS: Created group '~s' in list~n", [?TEST_PARAM_GROUP_NAME]);
+                        false -> erlang:error({assertion_failed, {created_group_not_found, ?TEST_PARAM_GROUP_NAME}})
+                    end;
+                {error, {aws_error, 501, _, _}} ->
+                    io:format("INFO: DescribeDBParameterGroups not supported~n");
+                {error, PostErr} ->
+                    io:format("ERROR: ~p~n", [PostErr])
+            end,
+            io:format("~n");
+        false ->
+            ok
+    end,
+
+    %% 5. Describe DB instances — LocalStack may return 501, keep permissive
     io:format("--- DescribeDBInstances ---~n"),
     case aws_rds_client:describe_db_instances(Client, #{}, #{enable_retry => false}) of
         {ok, InstanceOutput} ->
@@ -123,12 +156,14 @@ run() ->
                 end,
                 Instances
             );
+        {error, {aws_error, 501, _, _}} ->
+            io:format("INFO: DescribeDBInstances not supported (expected in LocalStack free tier)~n");
         {error, InstanceError} ->
             io:format("ERROR (expected in LocalStack free tier): ~p~n", [InstanceError])
     end,
     io:format("~n"),
 
-    %% 6. Describe DB engine versions
+    %% 6. Describe DB engine versions — LocalStack may return 501, keep permissive
     io:format("--- DescribeDBEngineVersions ---~n"),
     EngineInput = #{
         <<"Engine">> => <<"mysql">>,
@@ -146,12 +181,14 @@ run() ->
                 end,
                 Versions
             );
+        {error, {aws_error, 501, _, _}} ->
+            io:format("INFO: DescribeDBEngineVersions not supported (expected in LocalStack free tier)~n");
         {error, EngineError} ->
             io:format("ERROR (expected in LocalStack free tier): ~p~n", [EngineError])
     end,
     io:format("~n"),
 
-    %% 7. Describe DB clusters
+    %% 7. Describe DB clusters — LocalStack may return 501, keep permissive
     io:format("--- DescribeDBClusters ---~n"),
     case aws_rds_client:describe_db_clusters(Client, #{}, #{enable_retry => false}) of
         {ok, ClusterOutput} ->
@@ -166,12 +203,14 @@ run() ->
                 end,
                 Clusters
             );
+        {error, {aws_error, 501, _, _}} ->
+            io:format("INFO: DescribeDBClusters not supported (expected in LocalStack free tier)~n");
         {error, ClusterError} ->
             io:format("ERROR (expected in LocalStack free tier): ~p~n", [ClusterError])
     end,
     io:format("~n"),
 
-    %% 8. Describe reserved DB instances offerings (pricing info)
+    %% 8. Describe reserved DB instances offerings — LocalStack may return 501
     io:format("--- DescribeReservedDBInstancesOfferings ---~n"),
     OfferingsInput = #{<<"MaxRecords">> => 5},
     case aws_rds_client:describe_reserved_db_instances_offerings(Client, OfferingsInput, #{enable_retry => false}) of
@@ -186,6 +225,8 @@ run() ->
                 end,
                 lists:sublist(Offerings, 3)
             );
+        {error, {aws_error, 501, _, _}} ->
+            io:format("INFO: DescribeReservedDBInstancesOfferings not supported (expected in LocalStack free tier)~n");
         {error, OfferingsError} ->
             io:format("ERROR (expected in LocalStack free tier): ~p~n", [OfferingsError])
     end,
@@ -199,8 +240,27 @@ run() ->
             case aws_rds_client:delete_db_parameter_group(Client, DeleteParamInput, #{enable_retry => false}) of
                 {ok, _} ->
                     io:format("SUCCESS: Parameter group deleted~n");
+                {error, {aws_error, 501, _, _}} ->
+                    io:format("INFO: DeleteDBParameterGroup not supported (expected in LocalStack free tier)~n");
                 {error, DeleteParamError} ->
-                    io:format("ERROR: ~p~n", [DeleteParamError])
+                    erlang:error({delete_db_parameter_group_failed, DeleteParamError})
+            end,
+            io:format("~n"),
+
+            %% 9b. Describe DB parameter groups after delete — assert group absent
+            io:format("--- DescribeDBParameterGroups (after delete) ---~n"),
+            case aws_rds_client:describe_db_parameter_groups(Client, #{}, #{enable_retry => false}) of
+                {ok, PostDeleteOutput} ->
+                    PostDeleteGroups = get_param_groups_from_response(PostDeleteOutput),
+                    PostDeleteNames = [maps:get(<<"DBParameterGroupName">>, G, <<>>) || G <- PostDeleteGroups],
+                    case lists:member(?TEST_PARAM_GROUP_NAME, PostDeleteNames) of
+                        false -> io:format("SUCCESS: Deleted group '~s' no longer in list~n", [?TEST_PARAM_GROUP_NAME]);
+                        true  -> erlang:error({assertion_failed, {deleted_group_still_present, ?TEST_PARAM_GROUP_NAME}})
+                    end;
+                {error, {aws_error, 501, _, _}} ->
+                    io:format("INFO: DescribeDBParameterGroups not supported~n");
+                {error, PostDeleteErr} ->
+                    io:format("ERROR: ~p~n", [PostDeleteErr])
             end,
             io:format("~n");
         false ->
