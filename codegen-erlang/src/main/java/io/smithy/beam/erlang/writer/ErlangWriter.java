@@ -612,12 +612,31 @@ public final class ErlangWriter implements LanguageWriter {
         for (ErrorBinding eb : errors.errors()) {
             String errorAtom = ErlangSymbolProvider.toFunctionName(eb.smithyName());
             sb.append("parse_error(<<\"").append(eb.smithyName()).append("\">>, Body) ->\n");
-            sb.append("    {error, #{error_type => ").append(errorAtom)
-              .append(", message => maps:get(<<\"Message\">>, Body, <<\"\">>)}};\n");
+            sb.append("    {error, #{error_type => ").append(errorAtom);
+            appendMessageExtraction(sb, eb.messageMemberName());
+            sb.append("}};\n");
         }
         sb.append("parse_error(_, Body) ->\n");
         sb.append("    {error, #{error_type => unknown, body => Body}}.\n");
         return sb.toString();
+    }
+
+    /**
+     * Appends either a message-extraction expression or a raw body fallback, depending on
+     * whether the binding declares a message member name.
+     *
+     * <ul>
+     *   <li>Non-null {@code messageMemberName}: appends
+     *       {@code , message => maps:get(<<"Name">>, Body, <<"">>)}</li>
+     *   <li>{@code null}: appends {@code , body => Body}</li>
+     * </ul>
+     */
+    private static void appendMessageExtraction(StringBuilder sb, String messageMemberName) {
+        if (messageMemberName != null) {
+            sb.append(", message => maps:get(<<\"").append(messageMemberName).append("\">>, Body, <<\"\">>)");
+        } else {
+            sb.append(", body => Body");
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -1007,8 +1026,9 @@ public final class ErlangWriter implements LanguageWriter {
         for (ErrorBinding eb : errors) {
             String atom = ErlangSymbolProvider.toFunctionName(eb.smithyName());
             sb.append("parse_error(<<\"").append(eb.smithyName()).append("\">>, Body) ->\n");
-            sb.append("    {error, #{error_type => ").append(atom)
-              .append(", message => maps:get(<<\"Message\">>, Body, <<\"\">>)}};\n");
+            sb.append("    {error, #{error_type => ").append(atom);
+            appendMessageExtraction(sb, eb.messageMemberName());
+            sb.append("}};\n");
         }
         sb.append("parse_error(_, Body) ->\n");
         sb.append("    {error, #{error_type => unknown, body => Body}}.\n");
