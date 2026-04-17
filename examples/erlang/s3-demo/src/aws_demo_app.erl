@@ -1,10 +1,13 @@
 -module(aws_demo_app).
 -export([run/0]).
 
+-define(BUCKET_NAME, <<"us-east-1-nonprod-configs">>).
+-define(OBJECT_KEY, <<"configs/test.txt">>).
+-define(EXPECTED_BODY, <<"Hello World">>).
+
 run() ->
     io:format("~n=== Running S3 Client Application ===~n~n"),
 
-    %% Create S3 client instance with AWS credentials
     io:format("Creating S3 client...~n"),
     Config = #{
         endpoint => unicode:characters_to_binary(os:getenv("AWS_ENDPOINT")),
@@ -17,50 +20,47 @@ run() ->
     {ok, Client} = aws_s3_client:new(Config),
     io:format("Client created successfully~n~n"),
 
-    %% List buckets (disable retry to see the actual error)
+    %% List buckets
     ListInput = #{},
-    try aws_s3_client:list_buckets(Client, ListInput, #{enable_retry => false}) of
+    case aws_s3_client:list_buckets(Client, ListInput, #{enable_retry => false}) of
         {ok, ListOutput} ->
             io:format("~nSUCCESS: ListBuckets returned successfully!~n"),
-            io:format("Response: ~p~n~n", [ListOutput]),
-            %% Extract buckets from S3 XML response structure
-            %% Structure: ListAllMyBucketsResult -> Buckets -> Bucket (may be map or list)
-            %% Response Syntax: https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html#API_ListBuckets_ResponseSyntax
             #{<<"ListAllMyBucketsResult">> := #{<<"Buckets">> := BucketsData}} = ListOutput,
-            %% Normalize to list (single bucket comes as map, multiple as list)
             BucketList =
                 case BucketsData of
                     M when is_map(M) -> [M];
                     L when is_list(L) -> L;
                     _ -> []
                 end,
-            io:format("Found ~p bucket(s):~n", [length(BucketList)]),
+            case BucketList of
+                [] -> erlang:error({assertion_failed, empty_bucket_list});
+                _  -> io:format("SUCCESS: Found ~p bucket(s)~n", [length(BucketList)])
+            end,
+            BucketNames = [maps:get(<<"Name">>, maps:get(<<"Bucket">>, B, #{}), <<>>) || B <- BucketList],
+            case lists:member(?BUCKET_NAME, BucketNames) of
+                true  -> io:format("SUCCESS: Bucket '~s' found~n", [?BUCKET_NAME]);
+                false -> erlang:error({assertion_failed, {bucket_not_found, ?BUCKET_NAME}, {in, BucketNames}})
+            end,
             lists:foreach(
                 fun(Bucket0) ->
                     Bucket = maps:get(<<"Bucket">>, Bucket0, #{}),
-                    Name = maps:get(
-                        <<"Name">>, Bucket, <<"unknown">>
-                    ),
+                    Name = maps:get(<<"Name">>, Bucket, <<"unknown">>),
                     io:format("  - ~s~n", [Name])
                 end,
                 BucketList
             ),
             io:format("~n");
         {error, {aws_error, StatusCode, Code, Message}} ->
-            io:format("AWS Error: ~p ~s - ~s~n", [StatusCode, Code, Message]);
+            erlang:error({list_buckets_failed, {StatusCode, Code, Message}});
         {error, ListError} ->
-            io:format("Error from S3: ~p~n", [ListError])
-    catch
-        error:Reason:Stacktrace ->
-            io:format("Unexpected error: ~p~n", [Reason]),
-            io:format("Stacktrace: ~p~n~n", [Stacktrace])
+            erlang:error({list_buckets_failed, ListError})
     end,
 
     %% Put an object to S3 bucket
     PutInput = #{
-        <<"Bucket">> => <<"us-east-1-nonprod-configs">>,
-        <<"Key">> => <<"configs/test.txt">>,
-        <<"Body">> => <<"Hello World">>,
+        <<"Bucket">> => ?BUCKET_NAME,
+        <<"Key">> => ?OBJECT_KEY,
+        <<"Body">> => ?EXPECTED_BODY,
         <<"ContentType">> => <<"text/plain">>
     },
     case aws_s3_client:put_object(Client, PutInput) of
@@ -68,25 +68,20 @@ run() ->
             io:format("~nSUCCESS: PutObject returned successfully!~n"),
             io:format("Response: ~p~n~n", [PutOutput]);
         {error, PutError} ->
-            io:format("Failed to upload object: ~p~n~n", [PutError])
+            erlang:error({put_object_failed, PutError})
     end,
 
     %% List objects in the bucket
     ListObjectsInput = #{
-        <<"Bucket">> => <<"us-east-1-nonprod-configs">>,
+        <<"Bucket">> => ?BUCKET_NAME,
         <<"Prefix">> => <<"configs/">>,
         <<"MaxKeys">> => 100,
         <<"Delimiter">> => <<"">>
     },
-    try aws_s3_client:list_objects(Client, ListObjectsInput) of
+    case aws_s3_client:list_objects(Client, ListObjectsInput) of
         {ok, ListObjectsOutput} ->
             io:format("~nSUCCESS: ListObjects returned successfully!~n"),
-            io:format("Response: ~p~n~n", [ListObjectsOutput]),
-            %% Extract list of objects from ListObjectsOutput (REST-XML decoded map)
-            %% Response shape: #{<<"ListBucketResult">> => #{<<"Contents">> => [ ... ]}}
-            %% Response Syntax: https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjects.html#API_ListObjects_ResponseSyntax
             ListBucketResult = maps:get(<<"ListBucketResult">>, ListObjectsOutput, #{}),
-            %% "Contents" can be a list, a single map, or missing
             ObjectsData =
                 case maps:get(<<"Contents">>, ListBucketResult, []) of
                     M3 when is_map(M3) -> [M3];
@@ -99,7 +94,15 @@ run() ->
                     L2 when is_list(L2) -> L2;
                     _ -> []
                 end,
-            io:format("Found ~p object(s):~n", [length(ObjectList)]),
+            case ObjectList of
+                [] -> erlang:error({assertion_failed, empty_object_list});
+                _  -> io:format("SUCCESS: Found ~p object(s)~n", [length(ObjectList)])
+            end,
+            ObjectKeys = [maps:get(<<"Key">>, Obj, maps:get(<<"key">>, Obj, <<>>)) || Obj <- ObjectList],
+            case lists:member(?OBJECT_KEY, ObjectKeys) of
+                true  -> io:format("SUCCESS: Object '~s' found~n", [?OBJECT_KEY]);
+                false -> erlang:error({assertion_failed, {object_not_found, ?OBJECT_KEY}, {in, ObjectKeys}})
+            end,
             lists:foreach(
                 fun(Object) ->
                     Key = maps:get(<<"Key">>, Object, maps:get(<<"key">>, Object, <<"unknown">>)),
@@ -109,26 +112,27 @@ run() ->
             ),
             io:format("~n");
         {error, {aws_error, StatusCode2, Code2, Message2}} ->
-            io:format("AWS Error: ~p ~s - ~s~n", [StatusCode2, Code2, Message2]);
+            erlang:error({list_objects_failed, {StatusCode2, Code2, Message2}});
         {error, ListObjectsError} ->
-            io:format("Error from S3: ~p~n", [ListObjectsError])
-    catch
-        error:Reason2:Stacktrace2 ->
-            io:format("Unexpected error: ~p~n", [Reason2]),
-            io:format("Stacktrace: ~p~n~n", [Stacktrace2])
+            erlang:error({list_objects_failed, ListObjectsError})
     end,
 
     %% Get the object from S3 bucket
     GetInput = #{
-        <<"Bucket">> => <<"us-east-1-nonprod-configs">>,
-        <<"Key">> => <<"configs/test.txt">>
+        <<"Bucket">> => ?BUCKET_NAME,
+        <<"Key">> => ?OBJECT_KEY
     },
     case aws_s3_client:get_object(Client, GetInput) of
         {ok, GetOutput} ->
             io:format("~nSUCCESS: GetObject returned successfully!~n"),
+            Body = maps:get(<<"Body">>, GetOutput, <<>>),
+            case Body =:= ?EXPECTED_BODY of
+                true  -> io:format("SUCCESS: GetObject body matches~n");
+                false -> erlang:error({assertion_failed, {expected_body, ?EXPECTED_BODY}, {got, Body}})
+            end,
             io:format("Response: ~p~n~n", [GetOutput]);
         {error, GetError} ->
-            io:format("Failed to get object: ~p~n~n", [GetError])
+            erlang:error({get_object_failed, GetError})
     end,
 
     io:format("=== S3 Client Application Complete ===~n"),
