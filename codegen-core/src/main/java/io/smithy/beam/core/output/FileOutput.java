@@ -19,7 +19,7 @@ import java.util.Objects;
  * <p>Two modes:
  * <ul>
  *   <li><strong>Manifest mode</strong> (for tests) — delegates to a Smithy {@link FileManifest}.
- *       Create with {@link #FileOutput(FileManifest, String)}.</li>
+ *       Create with {@link #FileOutput(FileManifest)}.</li>
  *   <li><strong>Filesystem mode</strong> (for production plugins) — writes directly to disk relative
  *       to the current working directory.  Create with {@link #forPlugin(String)}.</li>
  * </ul>
@@ -44,10 +44,8 @@ public final class FileOutput {
 
     /**
      * Manifest-based mode.
-     *
-     * @param fileExtension unused; kept for API compatibility
      */
-    public FileOutput(FileManifest manifest, @SuppressWarnings("unused") String fileExtension) {
+    public FileOutput(FileManifest manifest) {
         this.manifest   = Objects.requireNonNull(manifest, "manifest");
         this.projectRoot = null;
         this.outputDir   = null;
