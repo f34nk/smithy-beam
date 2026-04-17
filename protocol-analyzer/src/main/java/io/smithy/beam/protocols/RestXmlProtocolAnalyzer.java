@@ -55,6 +55,26 @@ public final class RestXmlProtocolAnalyzer implements ProtocolAnalyzer {
     }
 
     @Override
+    public ErrorCodeStrategy errorStrategy(ServiceShape service) {
+        return ErrorCodeStrategy.REST_XML;
+    }
+
+    @Override
+    public String responsePayloadMember(StructureShape output) {
+        return RestJsonProtocolAnalyzer.buildResponsePayloadMember(output);
+    }
+
+    @Override
+    public String responseCodeMember(StructureShape output) {
+        return RestJsonProtocolAnalyzer.buildResponseCodeMember(output);
+    }
+
+    @Override
+    public List<HeaderBinding> responseHeaders(StructureShape output) {
+        return RestJsonProtocolAnalyzer.buildResponseHeaders(output);
+    }
+
+    @Override
     public boolean requiresXmlRuntime() {
         return true;
     }

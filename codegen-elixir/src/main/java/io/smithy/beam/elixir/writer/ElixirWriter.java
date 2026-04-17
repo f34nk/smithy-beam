@@ -559,12 +559,31 @@ public final class ElixirWriter implements LanguageWriter {
         for (ErrorBinding eb : errors.errors()) {
             String errorAtom = ":" + ElixirSymbolProvider.toFunctionName(eb.smithyName());
             sb.append("  defp parse_error(\"").append(eb.smithyName()).append("\", body) do\n");
-            sb.append("    {:error, %{error_type: ").append(errorAtom)
-              .append(", message: Map.get(body, \"Message\", \"\")}}\n");
+            sb.append("    {:error, %{error_type: ").append(errorAtom);
+            appendMessageExtraction(sb, eb.messageMemberName());
+            sb.append("}}\n");
             sb.append("  end\n");
         }
         sb.append("  defp parse_error(_, body), do: {:error, %{error_type: :unknown, body: body}}\n");
         return sb.toString();
+    }
+
+    /**
+     * Appends either a message-extraction expression or a raw body fallback, depending on
+     * whether the binding declares a message member name.
+     *
+     * <ul>
+     *   <li>Non-null {@code messageMemberName}: appends
+     *       {@code , message: Map.get(body, "Name", "")}</li>
+     *   <li>{@code null}: appends {@code , body: body}</li>
+     * </ul>
+     */
+    private static void appendMessageExtraction(StringBuilder sb, String messageMemberName) {
+        if (messageMemberName != null) {
+            sb.append(", message: Map.get(body, \"").append(messageMemberName).append("\", \"\")");
+        } else {
+            sb.append(", body: body");
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -1056,8 +1075,9 @@ public final class ElixirWriter implements LanguageWriter {
         for (ErrorBinding eb : errors) {
             String atom = ":" + ElixirSymbolProvider.toFunctionName(eb.smithyName());
             sb.append("  defp parse_error(\"").append(eb.smithyName()).append("\", body),\n");
-            sb.append("    do: {:error, %{error_type: ").append(atom)
-              .append(", message: Map.get(body, \"Message\", \"\")}}\n");
+            sb.append("    do: {:error, %{error_type: ").append(atom);
+            appendMessageExtraction(sb, eb.messageMemberName());
+            sb.append("}}\n");   // closes %{...} map and {:error,...} tuple
         }
         sb.append("  defp parse_error(_, body),\n");
         sb.append("    do: {:error, %{error_type: :unknown, body: body}}\n");

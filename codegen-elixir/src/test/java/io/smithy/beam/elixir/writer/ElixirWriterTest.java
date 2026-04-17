@@ -361,7 +361,8 @@ class ElixirWriterTest {
                 new ErrorSpec(List.of(), ErrorCodeStrategy.REST_JSON),
                 AuthSpec.none(), RetrySpec.disabled(), null,
                 "GetWeatherOutput", "GetWeatherInput",
-                BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null
+                BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null,
+                null, null, List.of()
             );
         }
 
@@ -387,7 +388,8 @@ class ElixirWriterTest {
                 new ErrorSpec(List.of(), ErrorCodeStrategy.REST_XML),
                 new AuthSpec(true, "s3"), RetrySpec.disabled(), null,
                 "ListBucketsOutput", "ListBucketsInput",
-                BodyEncoding.XML, "application/xml", ErrorCodeStrategy.REST_XML, null
+                BodyEncoding.XML, "application/xml", ErrorCodeStrategy.REST_XML, null,
+                null, null, List.of()
             );
             String result = writer.renderHttpClientBlock(op, "url", "headers", "body", "method");
             assertThat(result).contains("auth: :sigv4");
@@ -417,7 +419,8 @@ class ElixirWriterTest {
                 new ErrorSpec(List.of(), ErrorCodeStrategy.REST_JSON),
                 AuthSpec.none(), RetrySpec.disabled(), pagination,
                 "ListItemsOutput", "ListItemsInput",
-                BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null
+                BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null,
+                null, null, List.of()
             );
             String result = writer.renderClientOperation(op);
             assertThat(result).contains("list_items_stream");
@@ -447,7 +450,8 @@ class ElixirWriterTest {
                 new ErrorSpec(List.of(), ErrorCodeStrategy.REST_JSON),
                 AuthSpec.none(), RetrySpec.disabled(), null,
                 "ListItemsOutput", "ListItemsInput",
-                BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null
+                BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null,
+                null, null, List.of()
             );
             PaginationSpec pagination = new PaginationSpec("NextToken", "NextPageToken", "Items", null);
             String result = writer.renderPaginationHelper(op, pagination);
@@ -612,6 +616,63 @@ class ElixirWriterTest {
             assertThat(result).doesNotContain("case type_key");
             assertThat(result).doesNotContain("# TODO:");
         }
+
+        @Test
+        void renderErrorSerializerWithMessageMemberExtractsFromBody() {
+            // AWS-flavoured: messageMemberName = "Message"
+            ErrorSpec errors = new ErrorSpec(
+                    List.of(new ErrorBinding("NoSuchKey", 404, ErrorCodeStrategy.REST_XML, "Message")),
+                    ErrorCodeStrategy.REST_XML
+            );
+            String result = writer.renderErrorSerializer(errors);
+            // The named clause must use message extraction, not raw body.
+            assertThat(result).contains("Map.get(body, \"Message\", \"\")");
+            // The named clause must NOT use body: body (only the unknown fallback may).
+            long namedClauseBodyCount = result.lines()
+                    .filter(l -> l.contains("no_such_key") && l.contains("body: body"))
+                    .count();
+            assertThat(namedClauseBodyCount).isZero();
+        }
+
+        @Test
+        void renderErrorSerializerWithNullMessageMemberPlacesBodyDirectly() {
+            // Non-AWS: messageMemberName = null
+            ErrorSpec errors = new ErrorSpec(
+                    List.of(new ErrorBinding("SomeError", 422, ErrorCodeStrategy.REST_XML, null)),
+                    ErrorCodeStrategy.REST_XML
+            );
+            String result = writer.renderErrorSerializer(errors);
+            // Named clause must use body: body, not message extraction.
+            assertThat(result).contains("body: body");
+            assertThat(result).doesNotContain("Map.get(body, \"Message\"");
+        }
+
+        @Test
+        void renderModuleParseErrorStringDispatchWithMessageMemberExtractsFromBody() {
+            // AWS-flavoured string dispatch: messageMemberName = "Message"
+            List<ErrorBinding> errors = List.of(
+                    new ErrorBinding("NoSuchBucket", 404, ErrorCodeStrategy.REST_XML, "Message")
+            );
+            String result = writer.renderModuleParseError(errors, ErrorCodeStrategy.REST_XML);
+            // Named clause must use message extraction.
+            assertThat(result).contains("Map.get(body, \"Message\", \"\")");
+            // The named clause must NOT use body: body (only the unknown fallback may).
+            long namedClauseBodyCount = result.lines()
+                    .filter(l -> l.contains("no_such_bucket") && l.contains("body: body"))
+                    .count();
+            assertThat(namedClauseBodyCount).isZero();
+        }
+
+        @Test
+        void renderModuleParseErrorStringDispatchWithNullMessageMemberPlacesBodyDirectly() {
+            // Non-AWS string dispatch: messageMemberName = null
+            List<ErrorBinding> errors = List.of(
+                    new ErrorBinding("SomeError", 422, ErrorCodeStrategy.REST_XML, null)
+            );
+            String result = writer.renderModuleParseError(errors, ErrorCodeStrategy.REST_XML);
+            assertThat(result).contains("body: body");
+            assertThat(result).doesNotContain("Map.get(body, \"Message\"");
+        }
     }
 
     // ── Server patterns ───────────────────────────────────────────────────────
@@ -629,7 +690,8 @@ class ElixirWriterTest {
                 new ErrorSpec(List.of(), ErrorCodeStrategy.REST_JSON),
                 AuthSpec.none(), RetrySpec.disabled(), null,
                 "GetWeatherOutput", "GetWeatherInput",
-                BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null
+                BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null,
+                null, null, List.of()
             );
         }
 
@@ -680,7 +742,8 @@ class ElixirWriterTest {
                     new ErrorSpec(List.of(), ErrorCodeStrategy.REST_JSON),
                     AuthSpec.none(), RetrySpec.disabled(), null,
                     "CreateReportOutput", "CreateReportInput",
-                    BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null);
+                    BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null,
+                    null, null, List.of());
             String result = writer.renderServerDeserialize(op);
             assertThat(result).contains("Plug.Conn.read_body(conn)");
             assertThat(result).contains("Jason.decode(body_raw)");

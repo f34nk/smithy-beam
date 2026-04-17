@@ -98,7 +98,8 @@ public final class Ec2QueryProtocolAnalyzer extends AwsQueryProtocolAnalyzer {
                 base.responseEncoding(),
                 base.protocolContentType(),
                 base.protocolErrorStrategy(),
-                base.apiVersion());
+                base.apiVersion(),
+                null, null, List.of());
     }
 
     /**

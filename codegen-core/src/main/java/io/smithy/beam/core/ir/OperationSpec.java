@@ -44,21 +44,4 @@ public record OperationSpec(
         List<HeaderBinding> responseHeaders           // @httpHeader output member bindings; empty if none
         ) {
 
-    /**
-     * Convenience constructor for protocols that have no per-member response bindings
-     * (awsQuery, ec2Query, awsJson, restXml without explicit output header/payload traits).
-     * Delegates to the canonical constructor with null / empty-list defaults.
-     */
-    public OperationSpec(
-            String operationName, String serviceName, Role role, HttpSpec http,
-            List<LabelBinding> labels, List<QueryBinding> queries, List<HeaderBinding> headers,
-            BodySpec body, ErrorSpec errors, AuthSpec auth, RetrySpec retry,
-            PaginationSpec pagination, String outputTypeName, String inputTypeName,
-            BodyEncoding responseEncoding, String protocolContentType,
-            ErrorCodeStrategy protocolErrorStrategy, String apiVersion) {
-        this(operationName, serviceName, role, http, labels, queries, headers, body,
-             errors, auth, retry, pagination, outputTypeName, inputTypeName,
-             responseEncoding, protocolContentType, protocolErrorStrategy, apiVersion,
-             null, null, List.of());
-    }
 }

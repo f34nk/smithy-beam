@@ -53,6 +53,11 @@ public class AwsQueryProtocolAnalyzer implements ProtocolAnalyzer {
     }
 
     @Override
+    public ErrorCodeStrategy errorStrategy(ServiceShape service) {
+        return ErrorCodeStrategy.AWS_QUERY;
+    }
+
+    @Override
     public boolean requiresXmlRuntime() {
         return true;
     }
@@ -95,6 +100,7 @@ public class AwsQueryProtocolAnalyzer implements ProtocolAnalyzer {
                 BodyEncoding.XML,                          // AwsQuery responses are XML
                 "application/x-www-form-urlencoded",
                 ErrorCodeStrategy.AWS_QUERY,
-                service.getVersion());
+                service.getVersion(),
+                null, null, List.of());
     }
 }
