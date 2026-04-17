@@ -49,7 +49,8 @@ class ModelValidatorTest {
                 AuthSpec.none(), RetrySpec.disabled(),
                 null, null, null,
                 BodyEncoding.NONE, "application/json",
-                ErrorCodeStrategy.REST_JSON, null);
+                ErrorCodeStrategy.REST_JSON, null,
+                null, null, List.of());
     }
 
     private static OperationSpec opWithErrors(String opName, List<ErrorBinding> errors) {
@@ -62,7 +63,8 @@ class ModelValidatorTest {
                 AuthSpec.none(), RetrySpec.disabled(),
                 null, null, null,
                 BodyEncoding.JSON, "application/json",
-                ErrorCodeStrategy.REST_JSON, null);
+                ErrorCodeStrategy.REST_JSON, null,
+                null, null, List.of());
     }
 
     // -------------------------------------------------------------------------
@@ -144,7 +146,8 @@ class ModelValidatorTest {
                 AuthSpec.none(), RetrySpec.disabled(),
                 null, "map", "map",
                 BodyEncoding.NONE, "application/json",
-                ErrorCodeStrategy.REST_JSON, null);
+                ErrorCodeStrategy.REST_JSON, null,
+                null, null, List.of());
         assertThatCode(() -> ModelValidator.validate(SERVICE, types, List.of(op)))
                 .doesNotThrowAnyException();
     }
@@ -164,7 +167,8 @@ class ModelValidatorTest {
                 AuthSpec.none(), RetrySpec.disabled(),
                 null, "OpOutput", "OpInput",
                 BodyEncoding.NONE, "application/json",
-                ErrorCodeStrategy.REST_JSON, null);
+                ErrorCodeStrategy.REST_JSON, null,
+                null, null, List.of());
         assertThatCode(() -> ModelValidator.validate(SERVICE, types, List.of(op)))
                 .doesNotThrowAnyException();
     }
@@ -181,7 +185,8 @@ class ModelValidatorTest {
                 AuthSpec.none(), RetrySpec.disabled(),
                 null, "MissingOutput", null,
                 BodyEncoding.NONE, "application/json",
-                ErrorCodeStrategy.REST_JSON, null);
+                ErrorCodeStrategy.REST_JSON, null,
+                null, null, List.of());
         assertThatThrownBy(() -> ModelValidator.validate(SERVICE, types, List.of(op)))
                 .isInstanceOf(CodegenException.class)
                 .hasMessageContaining("unknown output type 'MissingOutput'");
@@ -199,7 +204,8 @@ class ModelValidatorTest {
                 AuthSpec.none(), RetrySpec.disabled(),
                 null, null, "GhostInput",
                 BodyEncoding.NONE, "application/json",
-                ErrorCodeStrategy.REST_JSON, null);
+                ErrorCodeStrategy.REST_JSON, null,
+                null, null, List.of());
         assertThatThrownBy(() -> ModelValidator.validate(SERVICE, types, List.of(op)))
                 .isInstanceOf(CodegenException.class)
                 .hasMessageContaining("unknown input type 'GhostInput'");
@@ -269,7 +275,8 @@ class ModelValidatorTest {
                 AuthSpec.none(), RetrySpec.disabled(),
                 null, "GetWeatherOutput", "GetWeatherInput",
                 BodyEncoding.NONE, "application/json",
-                ErrorCodeStrategy.REST_JSON, null);
+                ErrorCodeStrategy.REST_JSON, null,
+                null, null, List.of());
 
         ServiceShape svc = ServiceShape.builder()
                 .id(ShapeId.from("example.weather#WeatherService"))

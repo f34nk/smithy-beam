@@ -464,7 +464,8 @@ class ErlangWriterTest {
                     new ErrorSpec(List.of(), ErrorCodeStrategy.REST_JSON),
                     AuthSpec.none(), RetrySpec.disabled(), null,
                     "GetWeatherOutput", "GetWeatherInput",
-                    BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null
+                    BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null,
+                    null, null, List.of()
             );
             String result = writer.renderResponseHandler(op, "Response");
             assertThat(result).contains("<<\"temperature\">>");
@@ -567,6 +568,62 @@ class ErlangWriterTest {
             String result = writer.renderModuleParseError(errors, ErrorCodeStrategy.REST_JSON);
             assertThat(result).contains("parse_error(404, Body) ->");
         }
+
+        @Test
+        void renderErrorSerializerWithMessageMemberExtractsFromBody() {
+            // AWS-flavoured: messageMemberName = "Message"
+            ErrorSpec errors = new ErrorSpec(
+                    List.of(new ErrorBinding("NoSuchKey", 404, ErrorCodeStrategy.REST_XML, "Message")),
+                    ErrorCodeStrategy.REST_XML
+            );
+            String result = writer.renderErrorSerializer(errors);
+            // Named clause must use message extraction.
+            assertThat(result).contains("maps:get(<<\"Message\">>, Body, <<\"\">>)");
+            // Named clause must NOT use body => Body (only the unknown fallback may).
+            long namedClauseBodyCount = result.lines()
+                    .filter(l -> l.contains("no_such_key") && l.contains("body => Body"))
+                    .count();
+            assertThat(namedClauseBodyCount).isZero();
+        }
+
+        @Test
+        void renderErrorSerializerWithNullMessageMemberPlacesBodyDirectly() {
+            // Non-AWS: messageMemberName = null
+            ErrorSpec errors = new ErrorSpec(
+                    List.of(new ErrorBinding("SomeError", 422, ErrorCodeStrategy.REST_XML, null)),
+                    ErrorCodeStrategy.REST_XML
+            );
+            String result = writer.renderErrorSerializer(errors);
+            assertThat(result).contains("body => Body");
+            assertThat(result).doesNotContain("maps:get(<<\"Message\">>)");
+        }
+
+        @Test
+        void renderModuleParseErrorStringDispatchWithMessageMemberExtractsFromBody() {
+            // AWS-flavoured string dispatch: messageMemberName = "Message"
+            List<ErrorBinding> errors = List.of(
+                    new ErrorBinding("NoSuchBucket", 404, ErrorCodeStrategy.REST_XML, "Message")
+            );
+            String result = writer.renderModuleParseError(errors, ErrorCodeStrategy.REST_XML);
+            // Named clause must use message extraction.
+            assertThat(result).contains("maps:get(<<\"Message\">>, Body, <<\"\">>)");
+            // Named clause must NOT use body => Body (only the unknown fallback may).
+            long namedClauseBodyCount = result.lines()
+                    .filter(l -> l.contains("no_such_bucket") && l.contains("body => Body"))
+                    .count();
+            assertThat(namedClauseBodyCount).isZero();
+        }
+
+        @Test
+        void renderModuleParseErrorStringDispatchWithNullMessageMemberPlacesBodyDirectly() {
+            // Non-AWS string dispatch: messageMemberName = null
+            List<ErrorBinding> errors = List.of(
+                    new ErrorBinding("SomeError", 422, ErrorCodeStrategy.REST_XML, null)
+            );
+            String result = writer.renderModuleParseError(errors, ErrorCodeStrategy.REST_XML);
+            assertThat(result).contains("body => Body");
+            assertThat(result).doesNotContain("maps:get(<<\"Message\">>)");
+        }
     }
 
     // ── Pagination ────────────────────────────────────────────────────────────
@@ -584,7 +641,8 @@ class ErlangWriterTest {
                     new ErrorSpec(List.of(), ErrorCodeStrategy.REST_JSON),
                     AuthSpec.none(), RetrySpec.disabled(), null,
                     "ListItemsOutput", "ListItemsInput",
-                    BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null
+                    BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null,
+                    null, null, List.of()
             );
             String result = writer.renderPaginationHelper(op, pagination);
             assertThat(result).contains("list_items_stream(Input, Config) ->");
@@ -788,7 +846,8 @@ class ErlangWriterTest {
                     new ErrorSpec(List.of(), ErrorCodeStrategy.REST_JSON),
                     AuthSpec.none(), RetrySpec.disabled(), null,
                     "ListWeatherOutput", "ListWeatherInput",
-                    BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null
+                    BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null,
+                    null, null, List.of()
             );
             String result = writer.renderServerRouteClause(op);
             assertThat(result).contains("route(<<\"GET\">>, <<\"/weather\">>)");
@@ -820,7 +879,8 @@ class ErlangWriterTest {
                     new ErrorSpec(List.of(), ErrorCodeStrategy.REST_JSON),
                     AuthSpec.none(), RetrySpec.disabled(), null,
                     "PingOutput", "PingInput",
-                    BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null
+                    BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null,
+                    null, null, List.of()
             );
             String result = writer.renderServerDeserialize(op);
             assertThat(result).contains("deserialize_ping(Path, _Headers, Body) ->");
@@ -933,7 +993,8 @@ class ErlangWriterTest {
                 new ErrorSpec(List.of(), ErrorCodeStrategy.REST_JSON),
                 AuthSpec.none(), RetrySpec.disabled(), null,
                 "GetWeatherOutput", "GetWeatherInput",
-                BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null
+                BodyEncoding.JSON, "application/json", ErrorCodeStrategy.REST_JSON, null,
+                null, null, List.of()
         );
     }
 }
