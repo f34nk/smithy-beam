@@ -57,6 +57,26 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
     }
 
     @Override
+    public ErrorCodeStrategy errorStrategy(ServiceShape service) {
+        return ErrorCodeStrategy.REST_JSON;
+    }
+
+    @Override
+    public String responsePayloadMember(StructureShape output) {
+        return buildResponsePayloadMember(output);
+    }
+
+    @Override
+    public String responseCodeMember(StructureShape output) {
+        return buildResponseCodeMember(output);
+    }
+
+    @Override
+    public List<HeaderBinding> responseHeaders(StructureShape output) {
+        return buildResponseHeaders(output);
+    }
+
+    @Override
     public OperationSpec analyzeClientOperation(OperationShape op, Model model, ServiceShape service) {
         HttpSpec http = buildHttpSpec(op);
         StructureShape input = inputShape(op, model);
@@ -127,7 +147,8 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 BodyEncoding.JSON,
                 "application/json",
                 ErrorCodeStrategy.REST_JSON,
-                null);
+                null,
+                null, null, List.of());
     }
 
     // ── HttpSpec ─────────────────────────────────────────────────────────────
@@ -264,16 +285,32 @@ public final class RestJsonProtocolAnalyzer implements ProtocolAnalyzer {
 
     // ── Errors ───────────────────────────────────────────────────────────────
 
-    static ErrorSpec buildErrors(OperationShape op, Model model, ErrorCodeStrategy strategy) {
+    /**
+     * Builds the {@link ErrorSpec} for an operation, recording the given {@code messageMemberName}
+     * on each {@link ErrorBinding} so writers know which body field carries the error message.
+     *
+     * @param messageMemberName body field name for the human-readable error message
+     *                          (e.g. {@code "Message"} for AWS protocols; {@code null} for non-AWS)
+     */
+    static ErrorSpec buildErrors(OperationShape op, Model model, ErrorCodeStrategy strategy,
+                                 String messageMemberName) {
         List<ErrorBinding> result = new ArrayList<>();
         for (ShapeId errorId : op.getErrors()) {
             Shape errorShape = model.expectShape(errorId);
             int code = errorShape.getTrait(HttpErrorTrait.class)
                     .map(HttpErrorTrait::getCode)
                     .orElse(400);
-            result.add(new ErrorBinding(errorId.getName(), code, strategy));
+            result.add(new ErrorBinding(errorId.getName(), code, strategy, messageMemberName));
         }
         return new ErrorSpec(result, strategy);
+    }
+
+    /**
+     * Convenience overload for AWS-flavoured protocols where the message field is
+     * always {@code "Message"}.
+     */
+    static ErrorSpec buildErrors(OperationShape op, Model model, ErrorCodeStrategy strategy) {
+        return buildErrors(op, model, strategy, "Message");
     }
 
     // ── Auth ─────────────────────────────────────────────────────────────────
