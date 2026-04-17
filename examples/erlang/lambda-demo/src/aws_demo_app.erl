@@ -45,19 +45,26 @@ run() ->
                               [maps:get(<<"ConcurrentExecutions">>, AcctLimit, 0)])
             end;
         {error, AcctErr} ->
-            io:format("  ERROR: ~p~n", [AcctErr])
+            erlang:error({get_account_settings_failed, AcctErr})
     end,
     io:format("~n"),
 
     %% ---------------------------------------------------------------
     %% 2. Survey — list all functions in the account
-    %%    (resource-bound operation, now available via TopDownIndex fix)
     %% ---------------------------------------------------------------
     io:format("--- 2. ListFunctions ---~n"),
     case aws_lambda_client:list_functions(Client, #{}, ?OPTIONS) of
         {ok, ListFnsOut} ->
             Fns = maps:get(<<"Functions">>, ListFnsOut, []),
-            io:format("  Found ~p function(s):~n", [length(Fns)]),
+            case Fns of
+                [] -> erlang:error({assertion_failed, empty_function_list});
+                _  -> io:format("  SUCCESS: Found ~p function(s)~n", [length(Fns)])
+            end,
+            FnNames = [maps:get(<<"FunctionName">>, F, <<>>) || F <- Fns],
+            case lists:member(?LAMBDA_FUNCTION_NAME, FnNames) of
+                true  -> io:format("  SUCCESS: Function '~s' found~n", [?LAMBDA_FUNCTION_NAME]);
+                false -> erlang:error({assertion_failed, {function_not_found, ?LAMBDA_FUNCTION_NAME}})
+            end,
             lists:foreach(
                 fun(Fn) ->
                     FnName    = maps:get(<<"FunctionName">>, Fn, <<"?">>),
@@ -69,35 +76,37 @@ run() ->
                 Fns
             );
         {error, ListFnsErr} ->
-            io:format("  ERROR: ~p~n", [ListFnsErr])
+            erlang:error({list_functions_failed, ListFnsErr})
     end,
     io:format("~n"),
 
     %% ---------------------------------------------------------------
     %% 3. Inspect the demo function
-    %%    (resource-bound operation, now available via TopDownIndex fix)
     %% ---------------------------------------------------------------
     io:format("--- 3. GetFunction ---~n"),
     case aws_lambda_client:get_function(
              Client, #{<<"FunctionName">> => ?LAMBDA_FUNCTION_NAME}, ?OPTIONS) of
         {ok, GetFnOut} ->
             GetFnCfg = maps:get(<<"Configuration">>, GetFnOut, #{}),
+            State = maps:get(<<"State">>, GetFnCfg, <<>>),
+            case State of
+                <<"Active">> -> io:format("  SUCCESS: Function is Active~n");
+                Other        -> erlang:error({assertion_failed, {expected_active, Other}})
+            end,
             io:format("  Runtime  : ~s~n",
                       [maps:get(<<"Runtime">>, GetFnCfg, <<"?">>)]),
             io:format("  Handler  : ~s~n",
                       [maps:get(<<"Handler">>, GetFnCfg, <<"?">>)]),
             io:format("  Memory   : ~p MB~n",
                       [maps:get(<<"MemorySize">>, GetFnCfg, 0)]),
-            io:format("  State    : ~s~n",
-                      [maps:get(<<"State">>, GetFnCfg, <<"?">>)]);
+            io:format("  State    : ~s~n", [State]);
         {error, GetFnErr} ->
-            io:format("  ERROR: ~p~n", [GetFnErr])
+            erlang:error({get_function_failed, GetFnErr})
     end,
     io:format("~n"),
 
     %% ---------------------------------------------------------------
     %% 4. Invoke the function
-    %%    (resource-bound operation, now available via TopDownIndex fix)
     %% ---------------------------------------------------------------
     io:format("--- 4. Invoke ---~n"),
     InvokeIn = #{
@@ -107,19 +116,24 @@ run() ->
     case aws_lambda_client:invoke(Client, InvokeIn, ?OPTIONS) of
         {ok, InvokeOut} ->
             InvStatus = maps:get(<<"StatusCode">>, InvokeOut, 0),
+            case InvStatus of
+                200 -> io:format("  SUCCESS: Invocation returned 200~n");
+                _   -> erlang:error({assertion_failed, {expected_200, InvStatus}})
+            end,
             io:format("  Status code : ~p~n", [InvStatus]),
             case maps:get(<<"Payload">>, InvokeOut, undefined) of
-                undefined -> ok;
-                InvPayload -> io:format("  Payload     : ~s~n", [InvPayload])
+                undefined ->
+                    erlang:error({assertion_failed, invoke_returned_empty_payload});
+                InvPayload ->
+                    io:format("  Payload     : ~s~n", [InvPayload])
             end;
         {error, InvokeErr} ->
-            io:format("  ERROR: ~p~n", [InvokeErr])
+            erlang:error({invoke_failed, InvokeErr})
     end,
     io:format("~n"),
 
     %% ---------------------------------------------------------------
     %% 5. Update the function description
-    %%    (resource-bound operation, now available via TopDownIndex fix)
     %% ---------------------------------------------------------------
     io:format("--- 5. UpdateFunctionConfiguration ---~n"),
     UpdateCfgIn = #{
@@ -128,16 +142,15 @@ run() ->
     },
     case aws_lambda_client:update_function_configuration(Client, UpdateCfgIn, ?OPTIONS) of
         {ok, UpdateCfgOut} ->
-            io:format("  Description : ~s~n",
+            io:format("  SUCCESS: Description : ~s~n",
                       [maps:get(<<"Description">>, UpdateCfgOut, <<>>)]);
         {error, UpdateCfgErr} ->
-            io:format("  ERROR: ~p~n", [UpdateCfgErr])
+            erlang:error({update_function_configuration_failed, UpdateCfgErr})
     end,
     io:format("~n"),
 
     %% ---------------------------------------------------------------
     %% 6. Publish a numbered version
-    %%    (resource-bound operation, now available via TopDownIndex fix)
     %% ---------------------------------------------------------------
     io:format("--- 6. PublishVersion ---~n"),
     PubVerIn = #{
@@ -147,18 +160,19 @@ run() ->
     PublishedVersion =
         case aws_lambda_client:publish_version(Client, PubVerIn, ?OPTIONS) of
             {ok, PubVerOut} ->
-                Ver = maps:get(<<"Version">>, PubVerOut, <<"$LATEST">>),
-                io:format("  Published version : ~s~n", [Ver]),
+                Ver = maps:get(<<"Version">>, PubVerOut, <<>>),
+                case byte_size(Ver) > 0 of
+                    true  -> io:format("  SUCCESS: Published version : ~s~n", [Ver]);
+                    false -> erlang:error({assertion_failed, publish_version_returned_empty})
+                end,
                 Ver;
             {error, PubVerErr} ->
-                io:format("  ERROR: ~p~n", [PubVerErr]),
-                <<"$LATEST">>
+                erlang:error({publish_version_failed, PubVerErr})
         end,
     io:format("~n"),
 
     %% ---------------------------------------------------------------
     %% 7. List all published versions
-    %%    (resource-bound operation, now available via TopDownIndex fix)
     %% ---------------------------------------------------------------
     io:format("--- 7. ListVersionsByFunction ---~n"),
     ListVerIn = #{<<"FunctionName">> => ?LAMBDA_FUNCTION_NAME},
@@ -166,6 +180,10 @@ run() ->
         {ok, ListVerOut} ->
             Versions = maps:get(<<"Versions">>, ListVerOut, []),
             io:format("  Found ~p version(s):~n", [length(Versions)]),
+            case length(Versions) >= 2 of
+                true  -> io:format("  SUCCESS: >= 2 versions (original + published)~n");
+                false -> erlang:error({assertion_failed, {expected_at_least_2_versions, length(Versions)}})
+            end,
             lists:foreach(
                 fun(V) ->
                     VNum  = maps:get(<<"Version">>, V, <<"?">>),
@@ -175,13 +193,12 @@ run() ->
                 Versions
             );
         {error, ListVerErr} ->
-            io:format("  ERROR: ~p~n", [ListVerErr])
+            erlang:error({list_versions_by_function_failed, ListVerErr})
     end,
     io:format("~n"),
 
     %% ---------------------------------------------------------------
     %% 8. Create an alias pointing at the published version
-    %%    (resource-bound operation, now available via TopDownIndex fix)
     %% ---------------------------------------------------------------
     io:format("--- 8. CreateAlias ---~n"),
     CreateAliasIn = #{
@@ -192,24 +209,31 @@ run() ->
     },
     case aws_lambda_client:create_alias(Client, CreateAliasIn, ?OPTIONS) of
         {ok, CreateAliasOut} ->
-            io:format("  Alias '~s' -> version ~s~n",
+            io:format("  SUCCESS: Alias '~s' -> version ~s~n",
                       [maps:get(<<"Name">>, CreateAliasOut, <<>>),
                        maps:get(<<"FunctionVersion">>, CreateAliasOut, <<>>)]);
         {error, CreateAliasErr} ->
-            io:format("  ERROR: ~p~n", [CreateAliasErr])
+            erlang:error({create_alias_failed, CreateAliasErr})
     end,
     io:format("~n"),
 
     %% ---------------------------------------------------------------
     %% 9. List aliases
-    %%    (resource-bound operation, now available via TopDownIndex fix)
     %% ---------------------------------------------------------------
     io:format("--- 9. ListAliases ---~n"),
     ListAliasIn = #{<<"FunctionName">> => ?LAMBDA_FUNCTION_NAME},
     case aws_lambda_client:list_aliases(Client, ListAliasIn, ?OPTIONS) of
         {ok, ListAliasOut} ->
             Aliases = maps:get(<<"Aliases">>, ListAliasOut, []),
-            io:format("  Found ~p alias(es):~n", [length(Aliases)]),
+            case Aliases of
+                [] -> erlang:error({assertion_failed, empty_alias_list});
+                _  -> io:format("  SUCCESS: Found ~p alias(es)~n", [length(Aliases)])
+            end,
+            AliasNames = [maps:get(<<"Name">>, A, <<>>) || A <- Aliases],
+            case lists:member(?ALIAS_NAME, AliasNames) of
+                true  -> io:format("  SUCCESS: Alias '~s' found~n", [?ALIAS_NAME]);
+                false -> erlang:error({assertion_failed, {alias_not_found, ?ALIAS_NAME}})
+            end,
             lists:foreach(
                 fun(A) ->
                     AName = maps:get(<<"Name">>, A, <<"?">>),
@@ -219,13 +243,12 @@ run() ->
                 Aliases
             );
         {error, ListAliasErr} ->
-            io:format("  ERROR: ~p~n", [ListAliasErr])
+            erlang:error({list_aliases_failed, ListAliasErr})
     end,
     io:format("~n"),
 
     %% ---------------------------------------------------------------
     %% 10. Invoke via alias
-    %%     (resource-bound operation, now available via TopDownIndex fix)
     %% ---------------------------------------------------------------
     io:format("--- 10. Invoke (via alias '~s') ---~n", [?ALIAS_NAME]),
     InvokeAliasIn = #{
@@ -236,18 +259,22 @@ run() ->
     case aws_lambda_client:invoke(Client, InvokeAliasIn, ?OPTIONS) of
         {ok, InvokeAliasOut} ->
             AliasInvStatus = maps:get(<<"StatusCode">>, InvokeAliasOut, 0),
+            case AliasInvStatus of
+                200 -> io:format("  SUCCESS: Alias invocation returned 200~n");
+                _   -> erlang:error({assertion_failed, {expected_200, AliasInvStatus}})
+            end,
             io:format("  Status code : ~p~n", [AliasInvStatus]),
             case maps:get(<<"Payload">>, InvokeAliasOut, undefined) of
                 undefined -> ok;
                 AliasPayload -> io:format("  Payload     : ~s~n", [AliasPayload])
             end;
         {error, InvokeAliasErr} ->
-            io:format("  ERROR: ~p~n", [InvokeAliasErr])
+            erlang:error({invoke_failed, InvokeAliasErr})
     end,
     io:format("~n"),
 
     %% ---------------------------------------------------------------
-    %% 11. Tag management (simplified)
+    %% 11. Tag management
     %% ---------------------------------------------------------------
     io:format("--- 11. TagResource / ListTags / UntagResource ---~n"),
     TagIn = #{
@@ -256,15 +283,19 @@ run() ->
     },
     case aws_lambda_client:tag_resource(Client, TagIn, ?OPTIONS) of
         {ok, _} -> io:format("  Tag added~n");
-        {error, TagErr} -> io:format("  Tag ERROR: ~p~n", [TagErr])
+        {error, TagErr} -> erlang:error({tag_resource_failed, TagErr})
     end,
     case aws_lambda_client:list_tags(
              Client, #{<<"Resource">> => FunctionArn}, ?OPTIONS) of
         {ok, ListTagsOut} ->
             AllTags = maps:get(<<"Tags">>, ListTagsOut, #{}),
-            io:format("  Current tags (~p): ~p~n", [maps:size(AllTags), AllTags]);
+            io:format("  Current tags (~p): ~p~n", [maps:size(AllTags), AllTags]),
+            case maps:is_key(<<"AddedBy">>, AllTags) of
+                true  -> io:format("  SUCCESS: Tag 'AddedBy' present before untag~n");
+                false -> erlang:error({assertion_failed, {tag_not_present, <<"AddedBy">>}})
+            end;
         {error, ListTagsErr} ->
-            io:format("  ListTags ERROR: ~p~n", [ListTagsErr])
+            erlang:error({list_tags_failed, ListTagsErr})
     end,
     UntagIn = #{
         <<"Resource">> => FunctionArn,
@@ -272,7 +303,18 @@ run() ->
     },
     case aws_lambda_client:untag_resource(Client, UntagIn, ?OPTIONS) of
         {ok, _} -> io:format("  Tag removed~n");
-        {error, UntagErr} -> io:format("  Untag ERROR: ~p~n", [UntagErr])
+        {error, UntagErr} -> erlang:error({untag_resource_failed, UntagErr})
+    end,
+    case aws_lambda_client:list_tags(
+             Client, #{<<"Resource">> => FunctionArn}, ?OPTIONS) of
+        {ok, PostUntagOut} ->
+            PostTags = maps:get(<<"Tags">>, PostUntagOut, #{}),
+            case maps:is_key(<<"AddedBy">>, PostTags) of
+                false -> io:format("  SUCCESS: Tag 'AddedBy' absent after untag~n");
+                true  -> erlang:error({assertion_failed, {tag_still_present_after_untag, <<"AddedBy">>}})
+            end;
+        {error, PostTagsErr} ->
+            erlang:error({list_tags_failed, PostTagsErr})
     end,
     io:format("~n"),
 
@@ -286,14 +328,14 @@ run() ->
     },
     case aws_lambda_client:delete_alias(Client, DeleteAliasIn, ?OPTIONS) of
         {ok, _} -> io:format("  Alias '~s' deleted~n", [?ALIAS_NAME]);
-        {error, DelAliasErr} -> io:format("  DeleteAlias ERROR: ~p~n", [DelAliasErr])
+        {error, DelAliasErr} -> erlang:error({delete_alias_failed, DelAliasErr})
     end,
     DeleteFnIn = #{<<"FunctionName">> => ?LAMBDA_FUNCTION_NAME},
     case aws_lambda_client:delete_function(Client, DeleteFnIn, ?OPTIONS) of
         {ok, _} ->
             io:format("  Function '~s' deleted~n", [?LAMBDA_FUNCTION_NAME]);
         {error, DelFnErr} ->
-            io:format("  DeleteFunction ERROR: ~p~n", [DelFnErr])
+            erlang:error({delete_function_failed, DelFnErr})
     end,
     io:format("~n"),
 
