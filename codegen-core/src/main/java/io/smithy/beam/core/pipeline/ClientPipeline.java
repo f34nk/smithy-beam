@@ -69,10 +69,9 @@ public final class ClientPipeline {
         boolean needsQuery = protocol.requiresQueryRuntime();
         boolean needsS3    = protocol.requiresS3Runtime(service);
 
-        // Dominant error strategy — derived from the first operation's protocol strategy.
-        ErrorCodeStrategy errorStrategy = ops.isEmpty()
-                ? ErrorCodeStrategy.REST_JSON
-                : ops.get(0).protocolErrorStrategy();
+        // Dominant error strategy — derived directly from the protocol analyzer, not from the
+        // first operation's fields. This keeps the strategy available even when ops is empty.
+        ErrorCodeStrategy errorStrategy = protocol.errorStrategy(service);
 
         // Collect operation input type names to restrict validate_ generation to callsite types.
         Set<String> inputTypeNames = ops.stream()
