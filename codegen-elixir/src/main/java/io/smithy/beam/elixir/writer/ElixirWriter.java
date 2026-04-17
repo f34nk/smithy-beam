@@ -18,6 +18,7 @@ import io.smithy.beam.core.ir.RetrySpec;
 import io.smithy.beam.core.ir.StructSpec;
 import io.smithy.beam.core.ir.TypeRef;
 import io.smithy.beam.core.ir.UnionSpec;
+import java.util.stream.Collectors;
 import io.smithy.beam.core.writer.ExportSpec;
 import io.smithy.beam.core.writer.LanguageWriter;
 import io.smithy.beam.core.writer.MapEntrySpec;
@@ -749,6 +750,35 @@ public final class ElixirWriter implements LanguageWriter {
         if (op.apiVersion() != null) {
             sb.append("      api_version: \"").append(op.apiVersion()).append("\",\n");
         }
+
+        // EC2 Query protocol: emit wire-name rename maps derived from @xmlName / @ec2QueryName traits.
+        // Non-EC2 operations have empty maps and use the defaults on the Operation struct.
+        java.util.Map<String, String> wireOverrides =
+                (op.body() != null && op.body().wireNameOverrides() != null)
+                ? op.body().wireNameOverrides() : java.util.Map.of();
+        java.util.Map<String, java.util.Map<String, String>> nestedOverrides =
+                (op.body() != null && op.body().nestedWireNameOverrides() != null)
+                ? op.body().nestedWireNameOverrides() : java.util.Map.of();
+        if (!wireOverrides.isEmpty()) {
+            String entries = wireOverrides.entrySet().stream()
+                    .sorted(java.util.Map.Entry.comparingByKey())
+                    .map(e -> "\"" + e.getKey() + "\" => \"" + e.getValue() + "\"")
+                    .collect(Collectors.joining(", "));
+            sb.append("      rename_map: %{").append(entries).append("},\n");
+        }
+        if (!nestedOverrides.isEmpty()) {
+            String entries = nestedOverrides.entrySet().stream()
+                    .sorted(java.util.Map.Entry.comparingByKey())
+                    .map(outer -> "\"" + outer.getKey() + "\" => %{" +
+                            outer.getValue().entrySet().stream()
+                                    .sorted(java.util.Map.Entry.comparingByKey())
+                                    .map(e -> "\"" + e.getKey() + "\" => \"" + e.getValue() + "\"")
+                                    .collect(Collectors.joining(", ")) +
+                            "}")
+                    .collect(Collectors.joining(", "));
+            sb.append("      nested_rename_map: %{").append(entries).append("},\n");
+        }
+
         sb.append("      parse_error_fn: &parse_error/2\n");
         sb.append("    }\n");
         sb.append("  end\n");
@@ -763,6 +793,9 @@ public final class ElixirWriter implements LanguageWriter {
     /** Maps an operation's body encoding to the Elixir atom used by SmithyClient. */
     private static String bodyEncodingAtom(OperationSpec op) {
         if (op.body() == null) return "none";
+        // @httpPayload: the designated member IS the raw request body.
+        // Send it as a blob rather than wrapping it in XML/JSON.
+        if (op.body().payloadMember() != null) return "blob";
         switch (op.body().encoding()) {
             case JSON:           return "json";
             case FORM_URLENCODED: return "form";
