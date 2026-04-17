@@ -6,12 +6,11 @@
 run() ->
     io:format("~n=== Running Firehose Client Application ===~n~n"),
 
-    %% Create Firehose client instance with AWS credentials
     io:format("Creating Firehose client...~n"),
     Config = #{
         endpoint => unicode:characters_to_binary(os:getenv("AWS_ENDPOINT")),
         region => <<"us-east-1">>,
-        service => <<"firehose">>,  %% Required for SigV4 signing with custom endpoints
+        service => <<"firehose">>,
         credentials => #{
             access_key_id => <<"dummy">>,
             secret_access_key => <<"dummy">>
@@ -20,7 +19,7 @@ run() ->
     {ok, Client} = aws_firehose_client:new(Config),
     io:format("Client created successfully~n~n"),
 
-    %% 1. List delivery streams (should be empty initially)
+    %% 1. List delivery streams (should be empty initially — no assertion required)
     io:format("--- ListDeliveryStreams (initial) ---~n"),
     case aws_firehose_client:list_delivery_streams(Client, #{}, #{enable_retry => false}) of
         {ok, ListOutput} ->
@@ -31,12 +30,11 @@ run() ->
                 StreamNames
             );
         {error, ListError} ->
-            io:format("ERROR: ~p~n", [ListError])
+            erlang:error({list_delivery_streams_failed, ListError})
     end,
     io:format("~n"),
 
     %% 2. Create a delivery stream with HTTP endpoint destination
-    %% Using HTTP endpoint as it's simpler for LocalStack demo
     io:format("--- CreateDeliveryStream ---~n"),
     CreateInput = #{
         <<"DeliveryStreamName">> => ?STREAM_NAME,
@@ -73,8 +71,7 @@ run() ->
             io:format("    ARN: ~s~n", [Arn]),
             true;
         {error, CreateError} ->
-            io:format("ERROR: ~p~n", [CreateError]),
-            false
+            erlang:error({create_delivery_stream_failed, CreateError})
     end,
     io:format("~n"),
 
@@ -86,22 +83,29 @@ run() ->
             io:format("Waiting for stream to become active...~n"),
             timer:sleep(2000),
 
-            %% 3. List delivery streams again
+            %% 3. List delivery streams again — assert stream appears in list
             io:format("--- ListDeliveryStreams ---~n"),
             case aws_firehose_client:list_delivery_streams(Client, #{}, #{enable_retry => false}) of
                 {ok, ListOutput2} ->
                     StreamNames2 = maps:get(<<"DeliveryStreamNames">>, ListOutput2, []),
-                    io:format("SUCCESS: Found ~p delivery stream(s)~n", [length(StreamNames2)]),
+                    case StreamNames2 of
+                        [] -> erlang:error({assertion_failed, empty_stream_list_after_create});
+                        _  -> io:format("SUCCESS: Found ~p delivery stream(s)~n", [length(StreamNames2)])
+                    end,
+                    case lists:member(?STREAM_NAME, StreamNames2) of
+                        true  -> io:format("SUCCESS: Stream '~s' in list~n", [?STREAM_NAME]);
+                        false -> erlang:error({assertion_failed, {stream_not_found, ?STREAM_NAME}})
+                    end,
                     lists:foreach(
                         fun(Name) -> io:format("  - ~s~n", [Name]) end,
                         StreamNames2
                     );
                 {error, ListError2} ->
-                    io:format("ERROR: ~p~n", [ListError2])
+                    erlang:error({list_delivery_streams_failed, ListError2})
             end,
             io:format("~n"),
 
-            %% 4. Describe the delivery stream
+            %% 4. Describe the delivery stream — assert status is ACTIVE
             io:format("--- DescribeDeliveryStream ---~n"),
             DescribeInput = #{<<"DeliveryStreamName">> => ?STREAM_NAME},
             case aws_firehose_client:describe_delivery_stream(Client, DescribeInput, #{enable_retry => false}) of
@@ -110,13 +114,16 @@ run() ->
                     StreamArn = maps:get(<<"DeliveryStreamARN">>, StreamDesc, <<"unknown">>),
                     Status = maps:get(<<"DeliveryStreamStatus">>, StreamDesc, <<"unknown">>),
                     StreamType = maps:get(<<"DeliveryStreamType">>, StreamDesc, <<"unknown">>),
-                    io:format("SUCCESS: Stream details:~n"),
+                    case Status of
+                        <<"ACTIVE">> -> io:format("SUCCESS: Stream is ACTIVE~n");
+                        Other        -> erlang:error({assertion_failed, {expected_active, Other}})
+                    end,
                     io:format("    Name: ~s~n", [?STREAM_NAME]),
                     io:format("    ARN: ~s~n", [StreamArn]),
                     io:format("    Status: ~s~n", [Status]),
                     io:format("    Type: ~s~n", [StreamType]);
                 {error, DescribeError} ->
-                    io:format("ERROR: ~p~n", [DescribeError])
+                    erlang:error({describe_delivery_stream_failed, DescribeError})
             end,
             io:format("~n"),
 
@@ -136,11 +143,12 @@ run() ->
                         Tags
                     );
                 {error, TagsError} ->
-                    io:format("ERROR: ~p~n", [TagsError])
+                    erlang:error({list_tags_for_delivery_stream_failed, TagsError})
             end,
             io:format("~n"),
 
             %% 6. Put a single record to the stream
+            %% LocalStack may return 500 for PutRecord/PutRecordBatch — keep as non-crashing
             io:format("--- PutRecord ---~n"),
             Record1 = jsx:encode(#{
                 <<"event">> => <<"user_login">>,
@@ -159,7 +167,7 @@ run() ->
                     RecordId = maps:get(<<"RecordId">>, PutOutput, <<"unknown">>),
                     io:format("SUCCESS: Record sent, ID: ~s~n", [RecordId]);
                 {error, PutError} ->
-                    io:format("ERROR: ~p~n", [PutError])
+                    io:format("INFO: PutRecord returned error (expected in LocalStack): ~p~n", [PutError])
             end,
             io:format("~n"),
 
@@ -207,7 +215,7 @@ run() ->
                         RequestResponses
                     );
                 {error, BatchError} ->
-                    io:format("ERROR: ~p~n", [BatchError])
+                    io:format("INFO: PutRecordBatch returned error (expected in LocalStack): ~p~n", [BatchError])
             end,
             io:format("~n"),
 
@@ -225,7 +233,7 @@ run() ->
                 {ok, _} ->
                     io:format("SUCCESS: Tag added~n");
                 {error, TagError} ->
-                    io:format("ERROR: ~p~n", [TagError])
+                    erlang:error({tag_delivery_stream_failed, TagError})
             end,
             io:format("~n"),
 
@@ -239,7 +247,7 @@ run() ->
                 {ok, _} ->
                     io:format("SUCCESS: Tag 'CreatedBy' removed~n");
                 {error, UntagError} ->
-                    io:format("ERROR: ~p~n", [UntagError])
+                    erlang:error({untag_delivery_stream_failed, UntagError})
             end,
             io:format("~n"),
 
@@ -250,11 +258,11 @@ run() ->
                 {ok, _} ->
                     io:format("SUCCESS: Delivery stream deleted~n");
                 {error, DeleteError} ->
-                    io:format("ERROR: ~p~n", [DeleteError])
+                    erlang:error({delete_delivery_stream_failed, DeleteError})
             end,
             io:format("~n"),
 
-            %% 11. Verify deletion
+            %% 11. Verify deletion — crash if stream still exists
             io:format("--- ListDeliveryStreams (verify deletion) ---~n"),
             timer:sleep(1000),
             case aws_firehose_client:list_delivery_streams(Client, #{}, #{enable_retry => false}) of
@@ -264,11 +272,11 @@ run() ->
                         false ->
                             io:format("SUCCESS: Stream deleted successfully~n");
                         true ->
-                            io:format("INFO: Stream still exists (deletion may be in progress)~n")
+                            erlang:error({assertion_failed, stream_still_exists})
                     end,
                     io:format("Remaining streams: ~p~n", [length(FinalStreams)]);
                 {error, FinalError} ->
-                    io:format("ERROR: ~p~n", [FinalError])
+                    erlang:error({list_delivery_streams_failed, FinalError})
             end
     end,
 
