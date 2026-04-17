@@ -175,7 +175,11 @@ public interface LanguageWriter {
      * (e.g. {@code url_encode/1} and {@code ensure_binary/1} in Erlang).
      *
      * <p>Returns {@code ""} for languages that do not need them.
+     *
+     * @deprecated Use {@link #renderSharedHelpers(List)} instead so the writer can
+     *     omit helpers unused by any operation.  Slated for removal in Phase 7.
      */
+    @Deprecated(forRemoval = true)
     String renderSharedHelpers();
 
     /**
@@ -196,7 +200,11 @@ public interface LanguageWriter {
      *
      * <p>Receives a deduplicated, ordered list of error bindings aggregated
      * across all operations in the module.
+     *
+     * @deprecated Use {@link #renderModuleParseError(List, ErrorCodeStrategy)} so the
+     *     writer can choose the protocol-appropriate dispatch shape.  Slated for removal in Phase 7.
      */
+    @Deprecated(forRemoval = true)
     String renderModuleParseError(List<ErrorBinding> errors);
 
     /**

@@ -838,6 +838,7 @@ public final class ErlangWriter implements LanguageWriter {
         return sb.toString();
     }
 
+    @Deprecated(forRemoval = true)
     @Override
     public String renderSharedHelpers() {
         return renderSharedHelpersImpl(true, true);
@@ -909,6 +910,7 @@ public final class ErlangWriter implements LanguageWriter {
      * parse_error(_, Body) -> {error, {http_error, unknown, Body}}.
      * </pre>
      */
+    @Deprecated(forRemoval = true)
     @Override
     public String renderModuleParseError(List<ErrorBinding> errors) {
         StringBuilder sb = new StringBuilder();
@@ -952,7 +954,9 @@ public final class ErlangWriter implements LanguageWriter {
                                  || strategy == ErrorCodeStrategy.AWS_JSON
                                  || strategy == ErrorCodeStrategy.AWS_QUERY;
         if (!useStringDispatch) {
-            return renderModuleParseError(errors);
+            @SuppressWarnings("removal")
+            String fallback = renderModuleParseError(errors);
+            return fallback;
         }
         // String-code dispatch: used for REST_XML and AWS_JSON.
         // Returns structured #{error_type => atom, message => binary()} maps.

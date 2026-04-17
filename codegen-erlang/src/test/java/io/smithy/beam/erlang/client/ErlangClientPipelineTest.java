@@ -33,7 +33,7 @@ class ErlangClientPipelineTest {
         CodegenSettings settings =
                 CodegenSettings.builder().serviceShapeId(service.getId()).moduleName("weather_client").build();
         MockManifest manifest = new MockManifest();
-        var output = new FileOutput(manifest, ".erl");
+        var output = new FileOutput(manifest);
         var writer = new ErlangWriter();
         new ClientPipeline()
                 .generate(service, model, protocol, writer, settings, output, getClass().getClassLoader());
@@ -63,7 +63,7 @@ class ErlangClientPipelineTest {
     @Test
     void copyRuntimeBundlesAwsSigV4Resource() {
         MockManifest manifest = new MockManifest();
-        FileOutput out = new FileOutput(manifest, ".erl");
+        FileOutput out = new FileOutput(manifest);
         out.copyRuntime("erlang", "client/smithy_sigv4.erl", ErlangClientPlugin.class.getClassLoader());
         assertThat(manifest.hasFile("smithy_sigv4.erl")).isTrue();
         assertThat(manifest.expectFileBytes("smithy_sigv4.erl").length).isPositive();
