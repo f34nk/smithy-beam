@@ -4,12 +4,11 @@
 run() ->
     io:format("~n=== Running EC2 Client Application ===~n~n"),
 
-    %% Create EC2 client instance with AWS credentials
     io:format("Creating EC2 client...~n"),
     Config = #{
         endpoint => unicode:characters_to_binary(os:getenv("AWS_ENDPOINT")),
         region => <<"us-east-1">>,
-        service => <<"ec2">>,  %% Required for SigV4 signing with custom endpoints
+        service => <<"ec2">>,
         credentials => #{
             access_key_id => <<"dummy">>,
             secret_access_key => <<"dummy">>
@@ -18,14 +17,26 @@ run() ->
     {ok, Client} = aws_ec2_client:new(Config),
     io:format("Client created successfully~n~n"),
 
-    %% 1. Describe VPCs to see the demo VPC created by Terraform
+    %% 1. Describe VPCs
     io:format("--- DescribeVpcs ---~n"),
     case aws_ec2_client:describe_vpcs(Client, #{}, #{enable_retry => false}) of
         {ok, VpcsOutput} ->
             io:format("SUCCESS: DescribeVpcs returned~n"),
-            print_vpcs(VpcsOutput);
+            Vpcs = extract_items(VpcsOutput, [<<"vpcSet">>, <<"Vpcs">>]),
+            case Vpcs of
+                [] -> erlang:error({assertion_failed, empty_vpc_list});
+                _  -> io:format("SUCCESS: Found ~p VPC(s)~n", [length(Vpcs)])
+            end,
+            lists:foreach(
+                fun(Vpc) ->
+                    VpcId = maps:get(<<"vpcId">>, Vpc, maps:get(<<"VpcId">>, Vpc, <<"unknown">>)),
+                    CidrBlock = maps:get(<<"cidrBlock">>, Vpc, maps:get(<<"CidrBlock">>, Vpc, <<"unknown">>)),
+                    io:format("    - ~s (~s)~n", [VpcId, CidrBlock])
+                end,
+                Vpcs
+            );
         {error, VpcsError} ->
-            io:format("ERROR: ~p~n", [VpcsError])
+            erlang:error({describe_vpcs_failed, VpcsError})
     end,
     io:format("~n"),
 
@@ -34,17 +45,28 @@ run() ->
     case aws_ec2_client:describe_security_groups(Client, #{}, #{enable_retry => false}) of
         {ok, SgsOutput} ->
             io:format("SUCCESS: DescribeSecurityGroups returned~n"),
-            print_security_groups(SgsOutput);
+            Sgs = extract_items(SgsOutput, [<<"securityGroupInfo">>, <<"SecurityGroups">>]),
+            case Sgs of
+                [] -> erlang:error({assertion_failed, empty_security_group_list});
+                _  -> io:format("SUCCESS: Found ~p Security Group(s)~n", [length(Sgs)])
+            end,
+            lists:foreach(
+                fun(Sg) ->
+                    GroupId = maps:get(<<"groupId">>, Sg, maps:get(<<"GroupId">>, Sg, <<"unknown">>)),
+                    GroupName = maps:get(<<"groupName">>, Sg, maps:get(<<"GroupName">>, Sg, <<"unknown">>)),
+                    io:format("    - ~s (~s)~n", [GroupId, GroupName])
+                end,
+                Sgs
+            );
         {error, SgsError} ->
-            io:format("ERROR: ~p~n", [SgsError])
+            erlang:error({describe_security_groups_failed, SgsError})
     end,
     io:format("~n"),
 
     %% 3. Run an EC2 instance
-    %% Note: LocalStack doesn't actually run real instances, but it simulates the API
     io:format("--- RunInstances ---~n"),
     RunInput = #{
-        <<"ImageId">> => <<"ami-12345678">>,  %% Fake AMI ID for LocalStack
+        <<"ImageId">> => <<"ami-12345678">>,
         <<"InstanceType">> => <<"t2.micro">>,
         <<"MinCount">> => 1,
         <<"MaxCount">> => 1,
@@ -63,49 +85,53 @@ run() ->
             Instances = get_instances_from_response(RunOutput),
             case Instances of
                 [Instance | _] ->
-                    Id = maps:get(<<"instanceId">>, Instance, maps:get(<<"InstanceId">>, Instance, <<"unknown">>)),
-                    io:format("  Instance ID: ~s~n", [Id]),
-                    Id;
+                    Id = maps:get(<<"instanceId">>, Instance, maps:get(<<"InstanceId">>, Instance, undefined)),
+                    case Id of
+                        undefined ->
+                            erlang:error({assertion_failed, run_instances_returned_no_instance_id});
+                        _ when is_binary(Id) ->
+                            io:format("SUCCESS: InstanceId = ~s~n", [Id]),
+                            Id
+                    end;
                 _ ->
-                    io:format("  No instances in response~n"),
-                    undefined
+                    erlang:error({assertion_failed, run_instances_returned_no_instance_id})
             end;
         {error, RunError} ->
-            io:format("ERROR: ~p~n", [RunError]),
-            undefined
+            erlang:error({run_instances_failed, RunError})
     end,
     io:format("~n"),
 
     %% 4. Describe Instances to see the running instance
     io:format("--- DescribeInstances ---~n"),
-    DescribeInput = case InstanceId of
-        undefined -> #{};
-        _ -> #{<<"InstanceIds">> => [InstanceId]}
-    end,
+    DescribeInput = #{<<"InstanceIds">> => [InstanceId]},
     case aws_ec2_client:describe_instances(Client, DescribeInput, #{enable_retry => false}) of
         {ok, DescribeOutput} ->
             io:format("SUCCESS: DescribeInstances returned~n"),
+            Reservations = extract_items(DescribeOutput, [<<"reservationSet">>, <<"Reservations">>]),
+            AllInstances = lists:flatmap(
+                fun(Res) -> extract_items(Res, [<<"instancesSet">>, <<"Instances">>]) end,
+                Reservations
+            ),
+            DescribedIds = [maps:get(<<"instanceId">>, I, maps:get(<<"InstanceId">>, I, <<>>)) || I <- AllInstances],
+            case lists:member(InstanceId, DescribedIds) of
+                true  -> io:format("SUCCESS: InstanceId ~s found in DescribeInstances~n", [InstanceId]);
+                false -> erlang:error({assertion_failed, {instance_not_found, InstanceId}, {in, DescribedIds}})
+            end,
             print_instances(DescribeOutput);
         {error, DescribeError} ->
-            io:format("ERROR: ~p~n", [DescribeError])
+            erlang:error({describe_instances_failed, DescribeError})
     end,
     io:format("~n"),
 
     %% 5. Terminate the instance (cleanup)
-    %% Note: EC2 Query protocol expects InstanceId.N format for lists
-    case InstanceId of
-        undefined ->
-            io:format("--- TerminateInstances (skipped - no instance) ---~n");
-        TerminateId ->
-            io:format("--- TerminateInstances ---~n"),
-            TerminateInput = #{<<"InstanceIds">> => [TerminateId]},
-            case aws_ec2_client:terminate_instances(Client, TerminateInput, #{enable_retry => false}) of
-                {ok, TerminateOutput} ->
-                    io:format("SUCCESS: TerminateInstances returned~n"),
-                    print_terminating_instances(TerminateOutput);
-                {error, TerminateError} ->
-                    io:format("ERROR: ~p~n", [TerminateError])
-            end
+    io:format("--- TerminateInstances ---~n"),
+    TerminateInput = #{<<"InstanceIds">> => [InstanceId]},
+    case aws_ec2_client:terminate_instances(Client, TerminateInput, #{enable_retry => false}) of
+        {ok, TerminateOutput} ->
+            io:format("SUCCESS: TerminateInstances returned~n"),
+            print_terminating_instances(TerminateOutput);
+        {error, TerminateError} ->
+            erlang:error({terminate_instances_failed, TerminateError})
     end,
     io:format("~n"),
 
@@ -114,7 +140,6 @@ run() ->
 
 %% Helper to extract instances from RunInstances response
 get_instances_from_response(Response) ->
-    %% EC2 XML response structure varies, try common paths
     case maps:get(<<"Instances">>, Response, undefined) of
         undefined ->
             case maps:get(<<"instancesSet">>, Response, undefined) of
@@ -137,32 +162,6 @@ get_instances_from_response(Response) ->
         Instances when is_list(Instances) -> Instances;
         _ -> []
     end.
-
-%% Print VPCs from DescribeVpcs response
-print_vpcs(Response) ->
-    Vpcs = extract_items(Response, [<<"vpcSet">>, <<"Vpcs">>]),
-    io:format("  Found ~p VPC(s):~n", [length(Vpcs)]),
-    lists:foreach(
-        fun(Vpc) ->
-            VpcId = maps:get(<<"vpcId">>, Vpc, maps:get(<<"VpcId">>, Vpc, <<"unknown">>)),
-            CidrBlock = maps:get(<<"cidrBlock">>, Vpc, maps:get(<<"CidrBlock">>, Vpc, <<"unknown">>)),
-            io:format("    - ~s (~s)~n", [VpcId, CidrBlock])
-        end,
-        Vpcs
-    ).
-
-%% Print Security Groups from DescribeSecurityGroups response
-print_security_groups(Response) ->
-    Sgs = extract_items(Response, [<<"securityGroupInfo">>, <<"SecurityGroups">>]),
-    io:format("  Found ~p Security Group(s):~n", [length(Sgs)]),
-    lists:foreach(
-        fun(Sg) ->
-            GroupId = maps:get(<<"groupId">>, Sg, maps:get(<<"GroupId">>, Sg, <<"unknown">>)),
-            GroupName = maps:get(<<"groupName">>, Sg, maps:get(<<"GroupName">>, Sg, <<"unknown">>)),
-            io:format("    - ~s (~s)~n", [GroupId, GroupName])
-        end,
-        Sgs
-    ).
 
 %% Print Instances from DescribeInstances response
 print_instances(Response) ->

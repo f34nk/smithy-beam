@@ -8,12 +8,11 @@
 run() ->
     io:format("~n=== Running DynamoDB Client Application ===~n~n"),
 
-    %% Create DynamoDB client instance with AWS credentials
     io:format("Creating DynamoDB client...~n"),
     Config = #{
         endpoint => unicode:characters_to_binary(os:getenv("AWS_ENDPOINT")),
         region => <<"us-east-1">>,
-        service => <<"dynamodb">>,  %% Required for SigV4 signing with custom endpoints
+        service => <<"dynamodb">>,
         credentials => #{
             access_key_id => <<"dummy">>,
             secret_access_key => <<"dummy">>
@@ -27,19 +26,24 @@ run() ->
     case aws_dynamodb_client:list_tables(Client, #{}, #{enable_retry => false}) of
         {ok, ListOutput} ->
             TableNames = maps:get(<<"TableNames">>, ListOutput, []),
-            io:format("SUCCESS: Found ~p table(s)~n", [length(TableNames)]),
+            case TableNames of
+                [] -> erlang:error({assertion_failed, empty_table_list});
+                _  -> io:format("SUCCESS: Found ~p table(s)~n", [length(TableNames)])
+            end,
+            case lists:member(?TABLE_NAME, TableNames) of
+                true  -> io:format("SUCCESS: Table '~s' found~n", [?TABLE_NAME]);
+                false -> erlang:error({assertion_failed, {table_not_found, ?TABLE_NAME}, {in, TableNames}})
+            end,
             lists:foreach(
                 fun(Name) -> io:format("  - ~s~n", [Name]) end,
                 TableNames
             );
         {error, ListError} ->
-            io:format("ERROR: ~p~n", [ListError])
+            erlang:error({list_tables_failed, ListError})
     end,
     io:format("~n"),
 
     %% 2. Put an item into the table
-    %% Note: DynamoDB attribute values must be in wire format (maps with type keys)
-    %% because the generated code doesn't auto-encode tagged tuples yet
     io:format("--- PutItem ---~n"),
     ItemKey = <<"test-item-001">>,
     PutInput = #{
@@ -56,11 +60,11 @@ run() ->
         {ok, _PutOutput} ->
             io:format("SUCCESS: Item '~s' inserted~n", [ItemKey]);
         {error, PutError} ->
-            io:format("ERROR: ~p~n", [PutError])
+            erlang:error({put_item_failed, PutError})
     end,
     io:format("~n"),
 
-    %% 3. Get the item back by key
+    %% 3. Get the item back by key and assert attribute values
     io:format("--- GetItem ---~n"),
     GetInput = #{
         <<"TableName">> => ?TABLE_NAME,
@@ -72,13 +76,21 @@ run() ->
         {ok, GetOutput} ->
             case maps:get(<<"Item">>, GetOutput, undefined) of
                 undefined ->
-                    io:format("Item not found~n");
+                    erlang:error({assertion_failed, item_not_found, ItemKey});
                 Item ->
                     io:format("SUCCESS: Retrieved item~n"),
+                    Name = maps:get(<<"S">>, maps:get(<<"Name">>, Item, #{}), <<>>),
+                    Age  = maps:get(<<"N">>, maps:get(<<"Age">>,  Item, #{}), <<>>),
+                    case {Name, Age} of
+                        {<<"John Doe">>, <<"30">>} ->
+                            io:format("SUCCESS: Item attributes match (Name=~s, Age=~s)~n", [Name, Age]);
+                        Got ->
+                            erlang:error({assertion_failed, {expected, {<<"John Doe">>, <<"30">>}}, {got, Got}})
+                    end,
                     print_item(Item)
             end;
         {error, GetError} ->
-            io:format("ERROR: ~p~n", [GetError])
+            erlang:error({get_item_failed, GetError})
     end,
     io:format("~n"),
 
@@ -98,7 +110,7 @@ run() ->
         {ok, _PutOutput2} ->
             io:format("SUCCESS: Item '~s' inserted~n", [ItemKey2]);
         {error, PutError2} ->
-            io:format("ERROR: ~p~n", [PutError2])
+            erlang:error({put_item_failed, PutError2})
     end,
     io:format("~n"),
 
@@ -112,6 +124,10 @@ run() ->
             Count = maps:get(<<"Count">>, ScanOutput, 0),
             Items = maps:get(<<"Items">>, ScanOutput, []),
             io:format("SUCCESS: Scanned ~p item(s)~n", [Count]),
+            case Count =:= 2 of
+                true  -> io:format("SUCCESS: Scan count == 2 as expected~n");
+                false -> erlang:error({assertion_failed, {expected_scan_count, 2}, {got, Count}})
+            end,
             lists:foreach(
                 fun(ScanItem) ->
                     io:format("~n  Item:~n"),
@@ -120,7 +136,7 @@ run() ->
                 Items
             );
         {error, ScanError} ->
-            io:format("ERROR: ~p~n", [ScanError])
+            erlang:error({scan_failed, ScanError})
     end,
     io:format("~n"),
 
@@ -136,7 +152,7 @@ run() ->
         {ok, _DeleteOutput} ->
             io:format("SUCCESS: Item '~s' deleted~n", [ItemKey]);
         {error, DeleteError} ->
-            io:format("ERROR: ~p~n", [DeleteError])
+            erlang:error({delete_item_failed, DeleteError})
     end,
     io:format("~n"),
 
@@ -148,10 +164,10 @@ run() ->
                 undefined ->
                     io:format("SUCCESS: Item '~s' confirmed deleted~n", [ItemKey]);
                 _ ->
-                    io:format("UNEXPECTED: Item still exists~n")
+                    erlang:error({assertion_failed, item_not_deleted, ItemKey})
             end;
         {error, GetError2} ->
-            io:format("ERROR: ~p~n", [GetError2])
+            erlang:error({get_item_failed, GetError2})
     end,
     io:format("~n"),
 
@@ -167,7 +183,7 @@ run() ->
         {ok, _} ->
             io:format("SUCCESS: Item '~s' deleted~n", [ItemKey2]);
         {error, DeleteError2} ->
-            io:format("ERROR: ~p~n", [DeleteError2])
+            erlang:error({delete_item_failed, DeleteError2})
     end,
 
     io:format("~n=== DynamoDB Client Application Complete ===~n"),
