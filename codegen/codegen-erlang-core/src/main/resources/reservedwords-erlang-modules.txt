@@ -1,0 +1,31 @@
+# Erlang reserved words — module / type level
+# Source: https://www.erlang.org/doc/reference_manual/introduction.html#reserved-words
+# Escape strategy: append a trailing underscore (e.g. receive -> receive_)
+after
+and
+andalso
+band
+begin
+bnot
+bor
+bsl
+bsr
+bxor
+case
+catch
+cond
+div
+end
+fun
+if
+let
+maybe
+not
+of
+or
+orelse
+receive
+rem
+try
+when
+xor

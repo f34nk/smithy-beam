@@ -1,0 +1,34 @@
+# Erlang reserved words — record field / function argument level
+# Source: https://www.erlang.org/doc/reference_manual/introduction.html#reserved-words
+# Escape strategy: append a trailing underscore (e.g. receive -> receive_)
+after
+and
+andalso
+band
+begin
+bnot
+bor
+bsl
+bsr
+bxor
+case
+catch
+cond
+div
+end
+fun
+if
+let
+maybe
+not
+of
+or
+orelse
+receive
+rem
+try
+when
+xor
+# Bare underscore is the anonymous variable in Erlang pattern matches;
+# it must not be used as a field name.
+_
