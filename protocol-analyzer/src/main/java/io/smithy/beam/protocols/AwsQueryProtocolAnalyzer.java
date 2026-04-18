@@ -78,9 +78,9 @@ public class AwsQueryProtocolAnalyzer implements ProtocolAnalyzer {
         }
         BodySpec body = new BodySpec(BodyEncoding.FORM_URLENCODED, bodyMembers, null);
 
-        ErrorSpec errors = RestJsonProtocolAnalyzer.buildErrors(op, model, ErrorCodeStrategy.AWS_QUERY);
-        AuthSpec auth = RestJsonProtocolAnalyzer.buildAuth(service);
-        PaginationSpec pagination = RestJsonProtocolAnalyzer.buildPagination(op);
+        ErrorSpec errors = HttpBindingExtractor.buildErrors(op, model, ErrorCodeStrategy.AWS_QUERY);
+        AuthSpec auth = HttpBindingExtractor.buildAuth(service);
+        PaginationSpec pagination = HttpBindingExtractor.buildPagination(op);
 
         return new OperationSpec(
                 op.getId().getName(),
@@ -95,8 +95,8 @@ public class AwsQueryProtocolAnalyzer implements ProtocolAnalyzer {
                 auth,
                 RetrySpec.defaultRetry(),
                 pagination,
-                RestJsonProtocolAnalyzer.outputTypeName(op, model),
-                RestJsonProtocolAnalyzer.inputTypeName(op, model),
+                HttpBindingExtractor.outputTypeName(op, model),
+                HttpBindingExtractor.inputTypeName(op, model),
                 BodyEncoding.XML,                          // AwsQuery responses are XML
                 "application/x-www-form-urlencoded",
                 ErrorCodeStrategy.AWS_QUERY,
