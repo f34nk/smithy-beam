@@ -16,6 +16,7 @@ import io.smithy.beam.core.ir.StructSpec;
 import io.smithy.beam.core.ir.TypeRef;
 import io.smithy.beam.core.ir.UnionSpec;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public interface LanguageWriter {
@@ -220,6 +221,34 @@ public interface LanguageWriter {
         return renderModuleParseError(errors);
     }
 
+    // ── Whole-file client emission ────────────────────────────────────────────
+
+    /**
+     * Returns the complete source text of a client module.
+     *
+     * <p>Assembles all sections — module header, exports, type definitions, codec
+     * functions, client constructor, shared helpers, per-operation functions,
+     * validation helpers, error dispatch, and module footer — into one string.
+     *
+     * <p>The default returns {@code ""} to preserve backward compatibility during
+     * the pipeline unification transition. Writers that have not yet overridden
+     * this method cause {@link io.smithy.beam.core.pipeline.ClientPipeline} to
+     * fall back to its own assembly logic. Language-specific writers should override
+     * this method to centralise all text-assembly in the writer.
+     *
+     * @param moduleName    the base name before writer-specific transformation
+     *                      (e.g. {@code "WeatherService"})
+     * @param ops           analysed client operations
+     * @param types         reachable type shapes
+     * @param errorStrategy protocol error-dispatch strategy
+     */
+    default String renderClientModule(String moduleName,
+                                      List<OperationSpec> ops,
+                                      ModuleTypeSpec types,
+                                      ErrorCodeStrategy errorStrategy) {
+        return "";
+    }
+
     // ── Runtime module discovery ──────────────────────────────────────────────
 
     /**
@@ -366,18 +395,38 @@ public interface LanguageWriter {
     }
 
     /**
-     * Returns the complete source of the once-written impl scaffold file, or an
-     * empty string to let {@link io.smithy.beam.core.pipeline.ServerPipeline} use
-     * its generic fallback implementation.
+     * Returns the complete source of the once-written impl scaffold file.
      *
-     * <p>Override this method when the language's module-naming conventions differ
-     * from the pipeline's default snake_case derivation (e.g. Elixir uses
-     * {@code WeatherService.Impl} rather than {@code WeatherServiceImpl}).
+     * <p>The default implementation produces a language-agnostic scaffold that
+     * declares the behaviour and provides one stub function per operation via
+     * {@link #renderServerImplStub}. Override when the language's module-naming
+     * conventions differ from the default snake_case derivation (e.g. Elixir uses
+     * {@code WeatherService.Impl} rather than {@code weather_service_impl}).
      *
      * @param baseName the module base name (e.g. {@code "weather_service"})
      * @param ops      the list of analysed server operations
      */
     default String renderServerImplContent(String baseName, List<OperationSpec> ops) {
-        return "";
+        StringBuilder buf = new StringBuilder();
+        buf.append(moduleHeader(baseName + "_impl"));
+        buf.append(renderModuleComment(
+                "This file will NOT be overwritten. Add your business logic here."));
+        buf.append(behaviourDeclaration(baseName + "_server"));
+        buf.append("\n");
+
+        List<ExportSpec> exports = new ArrayList<>();
+        for (OperationSpec op : ops) {
+            exports.add(new ExportSpec(functionName(op.operationName()), 2));
+        }
+        buf.append(exportSection(exports));
+        buf.append("\n");
+
+        String handlerModuleName = baseName + "_server";
+        for (OperationSpec op : ops) {
+            buf.append(renderServerImplStub(op, handlerModuleName));
+            buf.append("\n");
+        }
+        buf.append(moduleFooter());
+        return buf.toString();
     }
 }
