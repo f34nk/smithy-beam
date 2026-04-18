@@ -1577,11 +1577,6 @@ public final class ElixirWriter implements LanguageWriter {
         return ":\"" + lower + "\"";
     }
 
-    /** @deprecated Use {@link #toElixirAtom(String)} which handles quoting. */
-    private static String toElixirAtomValue(String value) {
-        return value.toLowerCase().replace('-', '_');
-    }
-
     /**
      * Converts a {@link TypeRef} to the corresponding Elixir type annotation string.
      *
