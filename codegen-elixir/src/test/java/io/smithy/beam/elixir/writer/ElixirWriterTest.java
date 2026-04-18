@@ -109,14 +109,14 @@ class ElixirWriterTest {
         }
 
         @Test
-        void exportSectionIsEmpty() {
+        void renderExportSectionIsEmpty() {
             // Elixir has no explicit export — all def functions are public
-            assertThat(writer.exportSection(List.of(new ExportSpec("get_weather", 1)))).isEmpty();
+            assertThat(writer.renderExportSection(List.of(new ExportSpec("get_weather", 1)))).isEmpty();
         }
 
         @Test
-        void behaviourDeclarationEmitsAttribute() {
-            String result = writer.behaviourDeclaration("WeatherServiceHandler");
+        void renderBehaviourDeclarationEmitsAttribute() {
+            String result = writer.renderBehaviourDeclaration("WeatherServiceHandler");
             assertThat(result).contains("@behaviour");
             assertThat(result).contains("WeatherServiceHandler");
         }
@@ -127,9 +127,9 @@ class ElixirWriterTest {
         }
 
         @Test
-        void exportTypesIsEmpty() {
+        void renderExportTypesIsEmpty() {
             // Elixir exports types automatically
-            assertThat(writer.exportTypes(List.of("get_weather_input()"))).isEmpty();
+            assertThat(writer.renderExportTypes(List.of("get_weather_input()"))).isEmpty();
         }
     }
 
