@@ -4,8 +4,6 @@
 
 It is designed to generate idiomatic client and server code from Smithy models.
 
-The generator is implemented in **Java** following the official [Codegen guidelines](https://smithy.io/2.0/guides/index.html).
-
 Language plugins live under `codegen-*`. Shared protocol analyzers live in `protocol-analyzer/`. Re-usable runtime modules and examples live under `runtime-*` and `examples/`.
 
 Please refer to [TRAITS](https://github.com/f34nk/smithy-beam/blob/v1/TRAITS.md) and [AWS_SDK_SUPPORT](https://github.com/f34nk/smithy-beam/blob/v1/AWS_SDK_SUPPORT.md) for a full list of supported features.
@@ -136,7 +134,7 @@ smithy build
 
 ## Code Generation
 
-The entry point is a Smithy Build plugin (e.g. `ErlangClientPlugin`). Smithy loads and validates the model, then calls `execute(PluginContext)`.
+The entry point is a Smithy Build plugin (e.g. `ErlangClientPlugin`). Each plugin extends `ClientPluginRunner` or `ServerPluginRunner` (both of which extend `PluginRunner`) — thin base classes in `codegen-core` that wire protocol detection, pipeline construction, and output writing. Smithy loads and validates the model, then calls `execute(PluginContext)`.
 
 ### 1. Detect the protocol
 
@@ -154,11 +152,15 @@ incoming request parsing, response serialisation, routing metadata.
 
 Type shapes (structs, enums, unions, errors) are converted to `StructSpec` / `EnumSpec` / `UnionSpec` by `TypeSpecBuilder`.
 
-### 3. Run the pipeline
+### 3. Validate the IR
+
+`ModelValidator` performs fail-fast checks on the collected `OperationSpec` and type records before any code is emitted — catching missing required fields, malformed HTTP bindings, and inconsistent protocol metadata early.
+
+### 4. Run the pipeline
 
 `ClientPipeline` (or `ServerPipeline`) iterates the collected spec. For every item it calls the appropriate `LanguageWriter` method — e.g. `renderStructType`, `renderFunctionSpec`, `renderHttpClientBlock` — which emits target-language source text into a `CodeBuffer`. The pipeline contains no language-specific string literals; all target-language text is owned by the writer.
 
-### 4. Map Smithy types to target-language types
+### 5. Map Smithy types to target-language types
 
 Inside the writer, `ErlangSymbolProvider` / `ElixirSymbolProvider` converts Smithy names to idiomatic identifiers:
 
@@ -174,10 +176,10 @@ Inside the writer, `ErlangSymbolProvider` / `ElixirSymbolProvider` converts Smit
 | reserved word    | quoted atom (`'end'`)                                     | —                       |
 
 
-### 5. Write output files
+### 6. Write output files
 
 `FileOutput` writes each `CodeBuffer` to the configured `outputDir`. In plugin mode (`FileOutput.forPlugin`) files are written directly to the filesystem; in test mode a Smithy `FileManifest` is used instead.
 
-### 6. Copy runtime modules
+### 7. Copy runtime modules
 
-After source files are written, the pipeline calls `writer.clientRuntimeModules()` (or `serverRuntimeModules()`). `FileOutput.copyRuntime` extracts the listed resource paths from the JAR (bundled under `META-INF/smithy-beam/runtime/<lang>/`) and copies them into the output directory alongside the generated files. Which modules are copied depends on the protocol and auth requirements (e.g. `aws_sigv4.erl` only when SigV4 is required; `aws_xml.erl` only for XML protocols).
+After source files are written, the pipeline calls `writer.clientRuntimeModules()` (or `serverRuntimeModules()`). `FileOutput.copyRuntime` extracts the listed resource paths from the JAR (bundled under `META-INF/smithy-beam/runtime/<lang>/`) and copies them into the output directory alongside the generated files. Which modules are copied depends on the protocol and auth requirements (e.g. `smithy_sigv4.erl` only when SigV4 is required; `smithy_xml.erl` only for XML protocols).
