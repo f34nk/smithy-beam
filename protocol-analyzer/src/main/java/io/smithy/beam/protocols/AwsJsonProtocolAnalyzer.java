@@ -76,7 +76,7 @@ public class AwsJsonProtocolAnalyzer implements ProtocolAnalyzer {
         String targetValue = service.getId().getName() + "." + op.getId().getName();
         List<HeaderBinding> headers = List.of(new HeaderBinding("__target__", "X-Amz-Target", true, targetValue));
 
-        ErrorSpec errors = RestJsonProtocolAnalyzer.buildErrors(op, model, ErrorCodeStrategy.AWS_JSON);
+        ErrorSpec errors = HttpBindingExtractor.buildErrors(op, model, ErrorCodeStrategy.AWS_JSON);
 
         return new OperationSpec(
                 op.getId().getName(),
@@ -91,8 +91,8 @@ public class AwsJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 AuthSpec.none(),
                 RetrySpec.disabled(),
                 null,
-                RestJsonProtocolAnalyzer.outputTypeName(op, model),
-                RestJsonProtocolAnalyzer.inputTypeName(op, model),
+                HttpBindingExtractor.outputTypeName(op, model),
+                HttpBindingExtractor.inputTypeName(op, model),
                 BodyEncoding.JSON,
                 baseContentType(),
                 ErrorCodeStrategy.AWS_JSON,
@@ -114,9 +114,9 @@ public class AwsJsonProtocolAnalyzer implements ProtocolAnalyzer {
         String targetValue = service.getId().getName() + "." + op.getId().getName();
         List<HeaderBinding> headers = List.of(new HeaderBinding("__target__", "X-Amz-Target", true, targetValue));
 
-        ErrorSpec errors = RestJsonProtocolAnalyzer.buildErrors(op, model, ErrorCodeStrategy.AWS_JSON);
-        AuthSpec auth = RestJsonProtocolAnalyzer.buildAuth(service);
-        PaginationSpec pagination = RestJsonProtocolAnalyzer.buildPagination(op);
+        ErrorSpec errors = HttpBindingExtractor.buildErrors(op, model, ErrorCodeStrategy.AWS_JSON);
+        AuthSpec auth = HttpBindingExtractor.buildAuth(service);
+        PaginationSpec pagination = HttpBindingExtractor.buildPagination(op);
 
         return new OperationSpec(
                 op.getId().getName(),
@@ -131,8 +131,8 @@ public class AwsJsonProtocolAnalyzer implements ProtocolAnalyzer {
                 auth,
                 RetrySpec.defaultRetry(),
                 pagination,
-                RestJsonProtocolAnalyzer.outputTypeName(op, model),
-                RestJsonProtocolAnalyzer.inputTypeName(op, model),
+                HttpBindingExtractor.outputTypeName(op, model),
+                HttpBindingExtractor.inputTypeName(op, model),
                 BodyEncoding.JSON,
                 baseContentType(),
                 ErrorCodeStrategy.AWS_JSON,
