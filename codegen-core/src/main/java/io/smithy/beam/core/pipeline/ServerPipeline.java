@@ -9,7 +9,6 @@ import io.smithy.beam.core.model.TypeSpecBuilder;
 import io.smithy.beam.core.output.FileOutput;
 import io.smithy.beam.core.protocol.ProtocolAnalyzer;
 import io.smithy.beam.core.settings.CodegenSettings;
-import io.smithy.beam.core.writer.ExportSpec;
 import io.smithy.beam.core.writer.LanguageWriter;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.TopDownIndex;
@@ -61,9 +60,6 @@ public final class ServerPipeline {
             output.write(outDir + "/" + base + "_server" + ext, server);
         }
         String implContent = writer.renderServerImplContent(base, ops);
-        if (implContent.isEmpty()) {
-            implContent = buildImplScaffold(base, ops, writer);
-        }
         output.writeIfAbsent(
                 settings.scaffoldDir().replace('\\', '/'),
                 base + "_impl" + ext,
@@ -100,41 +96,4 @@ public final class ServerPipeline {
         return settings.moduleName().orElse(service.getId().getName());
     }
 
-    // -------------------------------------------------------------------------
-    // File builders
-    // -------------------------------------------------------------------------
-
-    /**
-     * Builds the {@code <svc>_impl.erl} stub scaffold (written once, never overwritten).
-     *
-     * <p>Declares the behaviour and provides one stub function per operation that
-     * returns {@code {error, not_implemented}}.
-     */
-    private String buildImplScaffold(
-            String baseName, List<OperationSpec> ops,
-            LanguageWriter writer) {
-
-        StringBuilder buf = new StringBuilder();
-        buf.append(writer.moduleHeader(baseName + "_impl"));
-        buf.append(writer.renderModuleComment(
-                "This file will NOT be overwritten. Add your business logic here."));
-        buf.append(writer.behaviourDeclaration(baseName + "_server"));
-        buf.append("\n");
-
-        // Export one function per operation (arity 2: input map + context map).
-        List<ExportSpec> exports = new ArrayList<>();
-        for (OperationSpec op : ops) {
-            exports.add(new ExportSpec(writer.functionName(op.operationName()), 2));
-        }
-        buf.append(writer.exportSection(exports));
-        buf.append("\n");
-
-        String handlerModuleName = baseName + "_server";
-        for (OperationSpec op : ops) {
-            buf.append(writer.renderServerImplStub(op, handlerModuleName));
-            buf.append("\n");
-        }
-        buf.append(writer.moduleFooter());
-        return buf.toString();
-    }
 }
