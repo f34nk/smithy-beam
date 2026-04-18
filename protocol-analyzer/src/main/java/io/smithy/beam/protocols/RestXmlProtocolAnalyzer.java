@@ -1,23 +1,14 @@
 package io.smithy.beam.protocols;
 
-import io.smithy.beam.core.ir.AuthSpec;
 import io.smithy.beam.core.ir.BodyEncoding;
 import io.smithy.beam.core.ir.BodySpec;
 import io.smithy.beam.core.ir.ErrorCodeStrategy;
-import io.smithy.beam.core.ir.ErrorSpec;
 import io.smithy.beam.core.ir.HeaderBinding;
-import io.smithy.beam.core.ir.HttpSpec;
 import io.smithy.beam.core.ir.LabelBinding;
-import io.smithy.beam.core.ir.OperationSpec;
-import io.smithy.beam.core.ir.PaginationSpec;
 import io.smithy.beam.core.ir.QueryBinding;
-import io.smithy.beam.core.ir.RetrySpec;
-import io.smithy.beam.core.ir.Role;
-import io.smithy.beam.core.protocol.ProtocolAnalyzer;
 import software.amazon.smithy.aws.traits.ServiceTrait;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.MemberShape;
-import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
@@ -40,7 +31,7 @@ import java.util.Set;
  * with {@code "s3"}), {@link #requiresS3Runtime} returns {@code true} so that the pipeline also
  * copies {@code smithy_s3.erl} into the build output.
  */
-public final class RestXmlProtocolAnalyzer implements ProtocolAnalyzer {
+public final class RestXmlProtocolAnalyzer extends AbstractHttpProtocolAnalyzer {
 
     private static final ShapeId PROTOCOL = ShapeId.from("aws.protocols#restXml");
 
@@ -60,18 +51,8 @@ public final class RestXmlProtocolAnalyzer implements ProtocolAnalyzer {
     }
 
     @Override
-    public String responsePayloadMember(StructureShape output) {
-        return RestJsonProtocolAnalyzer.buildResponsePayloadMember(output);
-    }
-
-    @Override
-    public String responseCodeMember(StructureShape output) {
-        return RestJsonProtocolAnalyzer.buildResponseCodeMember(output);
-    }
-
-    @Override
-    public List<HeaderBinding> responseHeaders(StructureShape output) {
-        return RestJsonProtocolAnalyzer.buildResponseHeaders(output);
+    protected BodyEncoding responseBodyEncoding() {
+        return BodyEncoding.XML;
     }
 
     @Override
@@ -86,56 +67,15 @@ public final class RestXmlProtocolAnalyzer implements ProtocolAnalyzer {
                 .orElse(false);
     }
 
+    // ── Body (XML-specific) ───────────────────────────────────────────────────
+
     @Override
-    public OperationSpec analyzeClientOperation(OperationShape op, Model model, ServiceShape service) {
-        HttpSpec http = RestJsonProtocolAnalyzer.buildHttpSpec(op);
-        StructureShape input = RestJsonProtocolAnalyzer.inputShape(op, model);
-        StructureShape output = RestJsonProtocolAnalyzer.outputShape(op, model);
-
-        List<LabelBinding> labels = RestJsonProtocolAnalyzer.buildLabels(input, model);
-        List<QueryBinding> queries = RestJsonProtocolAnalyzer.buildQueries(input);
-        List<HeaderBinding> headers = RestJsonProtocolAnalyzer.buildHeaders(input);
-        BodySpec body = buildXmlBody(input, labels, queries, headers);
-
-        ErrorSpec errors = RestJsonProtocolAnalyzer.buildErrors(op, model, ErrorCodeStrategy.REST_XML);
-        AuthSpec auth = RestJsonProtocolAnalyzer.buildAuth(service);
-        PaginationSpec pagination = RestJsonProtocolAnalyzer.buildPagination(op);
-
-        String responsePayloadMember = RestJsonProtocolAnalyzer.buildResponsePayloadMember(output);
-        String responseCodeMember    = RestJsonProtocolAnalyzer.buildResponseCodeMember(output);
-        List<HeaderBinding> responseHeaders = RestJsonProtocolAnalyzer.buildResponseHeaders(output);
-
-        return new OperationSpec(
-                op.getId().getName(),
-                service.getId().getName(),
-                Role.CLIENT,
-                http,
-                labels,
-                queries,
-                headers,
-                body,
-                errors,
-                auth,
-                RetrySpec.defaultRetry(),
-                pagination,
-                RestJsonProtocolAnalyzer.outputTypeName(op, model),
-                RestJsonProtocolAnalyzer.inputTypeName(op, model),
-                BodyEncoding.XML,
-                "application/xml",
-                ErrorCodeStrategy.REST_XML,
-                null,
-                responsePayloadMember,
-                responseCodeMember,
-                responseHeaders);
-    }
-
-    // ── Body ─────────────────────────────────────────────────────────────────
-
-    private static BodySpec buildXmlBody(
+    protected BodySpec buildRequestBody(
             StructureShape input,
             List<LabelBinding> labels,
             List<QueryBinding> queries,
-            List<HeaderBinding> headers) {
+            List<HeaderBinding> headers,
+            Model model) {
         Set<String> bound = new LinkedHashSet<>();
         labels.forEach(l -> bound.add(l.smithyMemberName()));
         queries.forEach(q -> bound.add(q.smithyMemberName()));
