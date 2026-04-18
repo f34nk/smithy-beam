@@ -1,25 +1,46 @@
 package io.smithy.beam.core.writer;
 
-import io.smithy.beam.core.ir.AuthSpec;
 import io.smithy.beam.core.ir.EnumSpec;
 import io.smithy.beam.core.ir.ErrorBinding;
 import io.smithy.beam.core.ir.ErrorCodeStrategy;
-import io.smithy.beam.core.ir.ErrorSpec;
-import io.smithy.beam.core.ir.HeaderBinding;
-import io.smithy.beam.core.ir.LabelBinding;
 import io.smithy.beam.core.ir.ModuleTypeSpec;
 import io.smithy.beam.core.ir.OperationSpec;
-import io.smithy.beam.core.ir.PaginationSpec;
-import io.smithy.beam.core.ir.QueryBinding;
-import io.smithy.beam.core.ir.RetrySpec;
 import io.smithy.beam.core.ir.StructSpec;
-import io.smithy.beam.core.ir.TypeRef;
 import io.smithy.beam.core.ir.UnionSpec;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * The complete public surface of a language-specific code emitter.
+ *
+ * <p>Implementations return pure source text for one target language.
+ * Each method is a pure function of its arguments — no mutable state,
+ * no side effects.
+ *
+ * <p><b>This is the entire public surface; do not add methods without a
+ * corresponding pipeline call site.</b>
+ *
+ * <h2>Method groups</h2>
+ * <ul>
+ *   <li><b>Identity &amp; naming</b> (7): noun-form primitives — {@code languageId}, {@code fileExtension},
+ *       {@code moduleName}, {@code functionName}, {@code typeName}, {@code varName}, {@code mapKey}.</li>
+ *   <li><b>File structure</b> (7): {@code moduleHeader}, {@code moduleFooter}, {@code renderModuleComment},
+ *       {@code renderExportSection}, {@code renderBehaviourDeclaration}, {@code renderToolingAttributes},
+ *       {@code renderExportTypes}.</li>
+ *   <li><b>Type &amp; codec</b> (6): {@code renderStructType}, {@code renderEnumType}, {@code renderUnionType},
+ *       {@code renderEnumCodec}, {@code renderUnionCodec}, {@code renderValidateHelper}.</li>
+ *   <li><b>Operations &amp; module-level helpers</b> (4): {@code renderClientConstructor}, {@code renderClientOperation},
+ *       {@code renderSharedHelpers}, {@code renderClientModule}.</li>
+ *   <li><b>Error dispatch</b> (1): {@code renderModuleParseError}.</li>
+ *   <li><b>Runtime discovery</b> (1): {@code clientRuntimeModules}.</li>
+ *   <li><b>Server</b> (4): {@code renderServerModule}, {@code renderServerImplContent},
+ *       {@code renderServerImplStub}, {@code serverRuntimeModules}.</li>
+ * </ul>
+ */
 public interface LanguageWriter {
+
+    // ── Identity & naming ─────────────────────────────────────────────────────
 
     String languageId();
 
@@ -35,6 +56,8 @@ public interface LanguageWriter {
 
     String mapKey(String smithyMemberName);
 
+    // ── File structure ────────────────────────────────────────────────────────
+
     String moduleHeader(String name);
 
     String moduleFooter();
@@ -49,70 +72,9 @@ public interface LanguageWriter {
         return "";
     }
 
-    String exportSection(List<ExportSpec> exports);
+    String renderExportSection(List<ExportSpec> exports);
 
-    String behaviourDeclaration(String behaviourName);
-
-    String renderStructType(StructSpec struct);
-
-    String renderEnumType(EnumSpec e);
-
-    String renderUnionType(UnionSpec u);
-
-    String renderCallbackDeclaration(String name, List<ParamSpec> params, TypeRef returnType);
-
-    String renderFunctionSpec(String name, List<ParamSpec> params, TypeRef returnType);
-
-    String renderFunctionHead(String name, List<String> paramPatterns);
-
-    String renderFunctionEnd();
-
-    String renderMapGet(String mapVar, String smithyMemberName, String defaultVal);
-
-    String renderMapBuild(List<MapEntrySpec> entries);
-
-    String renderJsonEncode(String mapVar);
-
-    String renderJsonDecode(String bodyVar);
-
-    String renderXmlEncode(String mapVar, String rootElement);
-
-    String renderXmlDecode(String bodyVar);
-
-    String renderFormEncode(String actionName, String mapVar);
-
-    String renderUriSubstitution(String template, List<LabelBinding> labels, String inputVar);
-
-    String renderQueryStringBuilder(List<QueryBinding> queries, String inputVar);
-
-    String renderHeaderBuilder(String contentType, List<HeaderBinding> headers, String inputVar);
-
-    String renderHttpClientBlock(
-            OperationSpec spec,
-            String urlVar,
-            String headersVar,
-            String bodyVar,
-            String methodVar);
-
-    String renderAuthWrapper(AuthSpec auth, String innerBlock);
-
-    String renderRetryWrapper(RetrySpec retry, String requestFunVar);
-
-    String renderResponseHandler(OperationSpec spec, String responseVar);
-
-    String renderErrorSerializer(ErrorSpec errors);
-
-    String renderPaginationHelper(OperationSpec spec, PaginationSpec pagination);
-
-    String jsonEncodeCall(String expr);
-
-    String jsonDecodeCall(String expr);
-
-    String sigv4SignCall();
-
-    String retryCall(String funExpr, String optsExpr);
-
-    // ── Module-level attributes ───────────────────────────────────────────────
+    String renderBehaviourDeclaration(String behaviourName);
 
     /**
      * Returns language-specific tooling suppression attributes placed once
@@ -129,29 +91,15 @@ public interface LanguageWriter {
      * <p>Erlang: {@code -export_type([t1/0, t2/0]).\n}
      * <p>Elixir: {@code ""} (types are exported automatically)
      */
-    String exportTypes(List<String> typeNames);
+    String renderExportTypes(List<String> typeNames);
 
-    /**
-     * Returns the client constructor function that wraps a config map.
-     *
-     * <p>Erlang:
-     * <pre>
-     * -spec new(map()) -> {ok, map()}.
-     * new(Config) -> {ok, Config}.
-     * </pre>
-     */
-    String renderClientConstructor();
+    // ── Type & codec ──────────────────────────────────────────────────────────
 
-    // ── Operation rendering ───────────────────────────────────────────────────
+    String renderStructType(StructSpec struct);
 
-    /**
-     * Returns the complete source block for one client operation: all specs,
-     * public arities, internal request builder, URL construction, body
-     * serialisation, header assembly, auth, HTTP dispatch, and response parsing.
-     */
-    String renderClientOperation(OperationSpec op);
+    String renderEnumType(EnumSpec e);
 
-    // ── Codec helpers ─────────────────────────────────────────────────────────
+    String renderUnionType(UnionSpec u);
 
     /**
      * Returns {@code encode_<enum>/1} and {@code decode_<enum>/1} functions
@@ -171,54 +119,36 @@ public interface LanguageWriter {
      */
     String renderValidateHelper(StructSpec s);
 
-    /**
-     * Returns shared internal helper functions used by the generated module
-     * (e.g. {@code url_encode/1} and {@code ensure_binary/1} in Erlang).
-     *
-     * <p>Returns {@code ""} for languages that do not need them.
-     *
-     * @deprecated Use {@link #renderSharedHelpers(List)} instead so the writer can
-     *     omit helpers unused by any operation.  Slated for removal in Phase 7.
-     */
-    @Deprecated(forRemoval = true)
-    String renderSharedHelpers();
+    // ── Operations & module-level helpers ─────────────────────────────────────
 
     /**
-     * Returns shared internal helper functions, given the full list of operations so the
-     * writer can omit helpers that are not referenced by any operation (avoiding unused
-     * function warnings in strict compilers like Erlang).
+     * Returns the client constructor function that wraps a config map.
      *
-     * <p>The default implementation delegates to {@link #renderSharedHelpers()}.
+     * <p>Erlang:
+     * <pre>
+     * -spec new(map()) -> {ok, map()}.
+     * new(Config) -> {ok, Config}.
+     * </pre>
+     */
+    String renderClientConstructor();
+
+    /**
+     * Returns the complete source block for one client operation: all specs,
+     * public arities, internal request builder, URL construction, body
+     * serialisation, header assembly, auth, HTTP dispatch, and response parsing.
+     */
+    String renderClientOperation(OperationSpec op);
+
+    /**
+     * Returns shared internal helper functions used by the generated module,
+     * given the full list of operations so the writer can omit helpers that are
+     * not referenced by any operation (avoiding unused function warnings in strict
+     * compilers like Erlang).
+     *
+     * <p>Returns {@code ""} for languages that do not need shared helpers.
      */
     default String renderSharedHelpers(List<OperationSpec> ops) {
-        return renderSharedHelpers();
-    }
-
-    // ── Error dispatch ────────────────────────────────────────────────────────
-
-    /**
-     * Returns the error dispatch function that maps errors to modelled error terms.
-     *
-     * <p>Receives a deduplicated, ordered list of error bindings aggregated
-     * across all operations in the module.
-     *
-     * @deprecated Use {@link #renderModuleParseError(List, ErrorCodeStrategy)} so the
-     *     writer can choose the protocol-appropriate dispatch shape.  Slated for removal in Phase 7.
-     */
-    @Deprecated(forRemoval = true)
-    String renderModuleParseError(List<ErrorBinding> errors);
-
-    /**
-     * Protocol-aware overload.
-     *
-     * <ul>
-     *   <li>{@code REST_XML} — dispatches on XML {@code <Code>} binary string; returns structured maps.</li>
-     *   <li>{@code AWS_JSON} — dispatches on JSON {@code __type} binary string; returns structured maps.</li>
-     *   <li>{@code REST_JSON} / {@code AWS_QUERY} — dispatches on HTTP status code integer; returns tuples.</li>
-     * </ul>
-     */
-    default String renderModuleParseError(List<ErrorBinding> errors, ErrorCodeStrategy strategy) {
-        return renderModuleParseError(errors);
+        return "";
     }
 
     // ── Whole-file client emission ────────────────────────────────────────────
@@ -249,6 +179,21 @@ public interface LanguageWriter {
         return "";
     }
 
+    // ── Error dispatch ────────────────────────────────────────────────────────
+
+    /**
+     * Returns the error dispatch function that maps errors to modelled error terms.
+     *
+     * <ul>
+     *   <li>{@code REST_XML} — dispatches on XML {@code <Code>} binary string; returns structured maps.</li>
+     *   <li>{@code AWS_JSON} — dispatches on JSON {@code __type} binary string; returns structured maps.</li>
+     *   <li>{@code REST_JSON} / {@code AWS_QUERY} — dispatches on HTTP status code integer; returns tuples.</li>
+     * </ul>
+     */
+    default String renderModuleParseError(List<ErrorBinding> errors, ErrorCodeStrategy strategy) {
+        return "";
+    }
+
     // ── Runtime module discovery ──────────────────────────────────────────────
 
     /**
@@ -267,89 +212,6 @@ public interface LanguageWriter {
             boolean needsS3);
 
     // ── Server-side rendering ─────────────────────────────────────────────────
-
-    /**
-     * Returns a {@code -callback} declaration for one server operation.
-     *
-     * <p>Erlang example:
-     * <pre>
-     * -callback get_weather(Input :: get_weather_input(), Context :: map()) ->
-     *     {ok, get_weather_output()} | {error, term()}.
-     * </pre>
-     */
-    default String renderServerCallbackDeclaration(OperationSpec op) {
-        return "";
-    }
-
-    /**
-     * Returns one routing clause for the given operation (semicolon-terminated,
-     * not period-terminated — the pipeline appends the fall-through clause last).
-     *
-     * <p>Erlang/restJson1 example:
-     * <pre>
-     * route(<<"GET">>, <<"/weather/", _/binary>>) -> {ok, get_weather};
-     * </pre>
-     * <p>Erlang/awsJson example:
-     * <pre>
-     * route(<<"WeatherService.GetWeather">>, _) -> {ok, get_weather};
-     * </pre>
-     */
-    default String renderServerRouteClause(OperationSpec op) {
-        return "";
-    }
-
-    /**
-     * Returns the catch-all routing clause that terminates the {@code route/2} function.
-     *
-     * <p>Erlang example: {@code route(_, _) -> {error, not_found}.\n}
-     */
-    default String renderServerRouteFallback() {
-        return "";
-    }
-
-    /**
-     * Returns the {@code handle/3} function that extracts the request, routes it,
-     * and dispatches to a per-operation helper.  Generated once per service.
-     *
-     * @param ops           all server-side operation specs for the service
-     * @param svcModuleName base module name of the service (e.g. {@code "weather_service"})
-     */
-    default String renderServerHandleFunction(List<OperationSpec> ops, String svcModuleName) {
-        return "";
-    }
-
-    /**
-     * Returns the {@code dispatch_<op>/5} private function for one server operation.
-     *
-     * <p>Erlang example:
-     * <pre>
-     * dispatch_get_weather(Impl, Path, Headers, Body, Context) ->
-     *     Input = deserialize_get_weather(Path, Headers, Body),
-     *     case Impl:get_weather(Input, Context) of
-     *         {ok, Output} -> smithy_server:response(200, serialize_get_weather(Output));
-     *         {error, Err} -> smithy_server:error_response(Err)
-     *     end.
-     * </pre>
-     */
-    default String renderServerDispatchClause(OperationSpec op) {
-        return "";
-    }
-
-    /**
-     * Returns the {@code deserialize_<op>/3} private function that builds the
-     * operation input map from the raw path, headers, and body binaries.
-     */
-    default String renderServerDeserialize(OperationSpec op) {
-        return "";
-    }
-
-    /**
-     * Returns the {@code serialize_<op>/1} private function that encodes the
-     * operation output map to a response body binary.
-     */
-    default String renderServerSerialize(OperationSpec op) {
-        return "";
-    }
 
     /**
      * Returns a stub function body for the impl scaffold (written once, never overwritten).
@@ -411,14 +273,14 @@ public interface LanguageWriter {
         buf.append(moduleHeader(baseName + "_impl"));
         buf.append(renderModuleComment(
                 "This file will NOT be overwritten. Add your business logic here."));
-        buf.append(behaviourDeclaration(baseName + "_server"));
+        buf.append(renderBehaviourDeclaration(baseName + "_server"));
         buf.append("\n");
 
         List<ExportSpec> exports = new ArrayList<>();
         for (OperationSpec op : ops) {
             exports.add(new ExportSpec(functionName(op.operationName()), 2));
         }
-        buf.append(exportSection(exports));
+        buf.append(renderExportSection(exports));
         buf.append("\n");
 
         String handlerModuleName = baseName + "_server";
