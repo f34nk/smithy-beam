@@ -1,0 +1,19 @@
+[versions]
+smithy          = "1.54.0"
+junit-jupiter   = "5.11.0"
+assertj         = "3.26.3"
+
+[libraries]
+smithy-model            = { module = "software.amazon.smithy:smithy-model",            version.ref = "smithy" }
+smithy-build            = { module = "software.amazon.smithy:smithy-build",            version.ref = "smithy" }
+smithy-codegen-core     = { module = "software.amazon.smithy:smithy-codegen-core",     version.ref = "smithy" }
+smithy-aws-traits       = { module = "software.amazon.smithy:smithy-aws-traits",       version.ref = "smithy" }
+smithy-aws-endpoints    = { module = "software.amazon.smithy:smithy-aws-endpoints",    version.ref = "smithy" }
+smithy-waiters          = { module = "software.amazon.smithy:smithy-waiters",          version.ref = "smithy" }
+smithy-protocol-tests   = { module = "software.amazon.smithy:smithy-protocol-test-traits", version.ref = "smithy" }
+junit-jupiter-api       = { module = "org.junit.jupiter:junit-jupiter-api",            version.ref = "junit-jupiter" }
+junit-jupiter-engine    = { module = "org.junit.jupiter:junit-jupiter-engine",         version.ref = "junit-jupiter" }
+assertj-core            = { module = "org.assertj:assertj-core",                       version.ref = "assertj" }
+
+[plugins]
+shadow = { id = "com.github.johnrengelman.shadow", version = "8.1.1" }
