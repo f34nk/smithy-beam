@@ -1,4 +1,5 @@
 # Built-in ErlangIntegration implementations
+io.smithy.beam.erlang.codegen.ErlangRuntimeIntegration
 io.smithy.beam.erlang.codegen.protocol.ErlangRestJson1Integration
 io.smithy.beam.erlang.codegen.protocol.ErlangAwsJson10Integration
 io.smithy.beam.erlang.codegen.protocol.ErlangAwsJson11Integration
