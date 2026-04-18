@@ -27,6 +27,8 @@ import io.smithy.beam.elixir.symbol.ElixirSymbolProvider;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -1107,6 +1109,137 @@ public final class ElixirWriter implements LanguageWriter {
         if (needsQuery) modules.add("client/smithy_query.ex");
         if (needsS3)    modules.add("client/smithy_s3.ex");
         return modules;
+    }
+
+    // -------------------------------------------------------------------------
+    // Whole-file client module emission
+    // -------------------------------------------------------------------------
+
+    /**
+     * Returns the complete source text of an Elixir client module.
+     *
+     * <p>Sections in order:
+     * <ol>
+     *   <li>{@code defmodule ...} header with {@code @moduledoc}</li>
+     *   <li>Type definitions ({@code @type})</li>
+     *   <li>Enum / union codec functions</li>
+     *   <li>Client constructor ({@code new/1})</li>
+     *   <li>Per-operation functions</li>
+     *   <li>Validation helpers ({@code validate_<struct>/1})</li>
+     *   <li>Error-dispatch function ({@code parse_error/2})</li>
+     *   <li>{@code end}</li>
+     * </ol>
+     */
+    @Override
+    public String renderClientModule(String moduleName,
+                                     List<OperationSpec> ops,
+                                     ModuleTypeSpec types,
+                                     ErrorCodeStrategy errorStrategy) {
+        Set<String> inputTypeNames = ops.stream()
+                .filter(o -> o.inputTypeName() != null)
+                .map(OperationSpec::inputTypeName)
+                .collect(Collectors.toSet());
+
+        StringBuilder buf = new StringBuilder();
+
+        // ── Module header ──────────────────────────────────────────────────
+        buf.append(moduleHeader(moduleName));
+        buf.append(renderModuleComment("Generated Smithy client for " + moduleName));
+        // exportSection returns "" in Elixir (all defs are public); exportTypes likewise.
+        buf.append(exportSection(clientExports(ops, types, inputTypeNames)));
+        buf.append(exportTypes(clientExportTypeNames(types)));
+        buf.append(renderToolingAttributes());
+
+        // ── Type definitions ───────────────────────────────────────────────
+        for (StructSpec s : types.structures()) buf.append(renderStructType(s));
+        for (EnumSpec   e : types.enums())      buf.append(renderEnumType(e));
+        for (UnionSpec  u : types.unions())     buf.append(renderUnionType(u));
+        for (StructSpec e : types.errors())     buf.append(renderStructType(e));
+
+        // ── Codecs ────────────────────────────────────────────────────────
+        for (EnumSpec  e : types.enums())   buf.append(renderEnumCodec(e));
+        for (UnionSpec u : types.unions())  buf.append(renderUnionCodec(u));
+
+        // ── Constructor ───────────────────────────────────────────────────
+        buf.append(renderClientConstructor());
+
+        // ── Operations ────────────────────────────────────────────────────
+        for (OperationSpec op : ops) {
+            buf.append(renderClientOperation(op));
+        }
+
+        // ── Validation helpers (only for operation input types) ────────────
+        for (StructSpec s : types.structures()) {
+            if (inputTypeNames.contains(s.name())) {
+                buf.append(renderValidateHelper(s));
+            }
+        }
+        buf.append(renderModuleParseError(aggregateClientErrors(ops), errorStrategy));
+
+        // ── Footer ────────────────────────────────────────────────────────
+        buf.append(moduleFooter());
+
+        return buf.toString();
+    }
+
+    // ── Private helpers for renderClientModule ────────────────────────────
+
+    private List<ExportSpec> clientExports(
+            List<OperationSpec> ops,
+            ModuleTypeSpec types,
+            Set<String> inputTypeNames) {
+        List<ExportSpec> exports = new ArrayList<>();
+        exports.add(new ExportSpec("new", 1));
+        for (OperationSpec op : ops) {
+            String name = functionName(op.operationName());
+            exports.add(new ExportSpec(name, 2));
+            exports.add(new ExportSpec(name, 3));
+        }
+        for (EnumSpec e : types.enums()) {
+            String base = functionName(e.name());
+            exports.add(new ExportSpec("encode_" + base, 1));
+            exports.add(new ExportSpec("decode_" + base, 1));
+        }
+        for (UnionSpec u : types.unions()) {
+            String base = functionName(u.name());
+            exports.add(new ExportSpec("encode_" + base, 1));
+            exports.add(new ExportSpec("decode_" + base, 1));
+        }
+        for (StructSpec s : types.structures()) {
+            if (inputTypeNames.contains(s.name())
+                    && s.fields().stream().anyMatch(FieldSpec::required)) {
+                exports.add(new ExportSpec("validate_" + functionName(s.name()), 1));
+            }
+        }
+        exports.add(new ExportSpec("parse_error", 2));
+        return exports;
+    }
+
+    private List<String> clientExportTypeNames(ModuleTypeSpec types) {
+        List<String> names = new ArrayList<>();
+        for (StructSpec s : types.structures()) names.add(clientTypeExportName(s.name()));
+        for (EnumSpec   e : types.enums())      names.add(clientTypeExportName(e.name()));
+        for (UnionSpec  u : types.unions())     names.add(clientTypeExportName(u.name()));
+        for (StructSpec e : types.errors())     names.add(clientTypeExportName(e.name()));
+        return names;
+    }
+
+    private String clientTypeExportName(String smithyName) {
+        String t = typeName(smithyName);
+        if (t.endsWith("()")) t = t.substring(0, t.length() - 2);
+        return t + "/0";
+    }
+
+    private static List<ErrorBinding> aggregateClientErrors(List<OperationSpec> ops) {
+        Map<String, ErrorBinding> byName = new LinkedHashMap<>();
+        for (OperationSpec op : ops) {
+            if (op.errors() != null) {
+                for (ErrorBinding eb : op.errors().errors()) {
+                    byName.putIfAbsent(eb.smithyName(), eb);
+                }
+            }
+        }
+        return new ArrayList<>(byName.values());
     }
 
     // -------------------------------------------------------------------------
