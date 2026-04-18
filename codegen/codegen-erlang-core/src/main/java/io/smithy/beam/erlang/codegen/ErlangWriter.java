@@ -201,7 +201,7 @@ public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImportC
      */
     public ErlangWriter writeModuleHeader(String moduleName) {
         write("-module($1L).", moduleName);
-        write("-export([$2L]).", moduleName, buildExportList());
+        write("-export([$1L]).", buildExportList());
         return this;
     }
 
