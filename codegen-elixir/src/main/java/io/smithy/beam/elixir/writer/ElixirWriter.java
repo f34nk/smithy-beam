@@ -121,7 +121,7 @@ public final class ElixirWriter implements LanguageWriter {
      * Returns an empty string.
      */
     @Override
-    public String exportSection(List<ExportSpec> exports) {
+    public String renderExportSection(List<ExportSpec> exports) {
         return "";
     }
 
@@ -131,7 +131,7 @@ public final class ElixirWriter implements LanguageWriter {
      * <p>Example: {@code "  @behaviour WeatherService.Handler\n"}
      */
     @Override
-    public String behaviourDeclaration(String behaviourName) {
+    public String renderBehaviourDeclaration(String behaviourName) {
         return "  @behaviour " + ElixirSymbolProvider.toModuleName(behaviourName) + "\n";
     }
 
@@ -211,8 +211,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   @callback get_weather(input :: map(), ctx :: map()) :: {:ok, map()} | {:error, term()}
      * </pre>
      */
-    @Override
-    public String renderCallbackDeclaration(String name, List<ParamSpec> params, TypeRef returnType) {
+    String renderCallbackDeclaration(String name, List<ParamSpec> params, TypeRef returnType) {
         String funcName = ElixirSymbolProvider.toFunctionName(name);
         String paramStr = params.stream()
             .map(p -> ElixirSymbolProvider.toVarName(p.name()) + " :: " + typeRefToElixir(p.type()))
@@ -228,8 +227,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   @spec get_weather(map(), map()) :: {:ok, map()} | {:error, term()}
      * </pre>
      */
-    @Override
-    public String renderFunctionSpec(String name, List<ParamSpec> params, TypeRef returnType) {
+    String renderFunctionSpec(String name, List<ParamSpec> params, TypeRef returnType) {
         String funcName = ElixirSymbolProvider.toFunctionName(name);
         String paramStr = params.stream()
             .map(p -> typeRefToElixir(p.type()))
@@ -242,8 +240,7 @@ public final class ElixirWriter implements LanguageWriter {
      *
      * <p>Example: {@code "  def get_weather(input, ctx) do"}
      */
-    @Override
-    public String renderFunctionHead(String name, List<String> paramPatterns) {
+    String renderFunctionHead(String name, List<String> paramPatterns) {
         String funcName = ElixirSymbolProvider.toFunctionName(name);
         String params = String.join(", ", paramPatterns);
         return "  def " + funcName + "(" + params + ") do";
@@ -252,8 +249,7 @@ public final class ElixirWriter implements LanguageWriter {
     /**
      * Returns {@code "  end"} — the Elixir function terminator.
      */
-    @Override
-    public String renderFunctionEnd() {
+    String renderFunctionEnd() {
         return "  end";
     }
 
@@ -266,8 +262,7 @@ public final class ElixirWriter implements LanguageWriter {
      *
      * <p>Example: {@code Map.get(input, :city, nil)}
      */
-    @Override
-    public String renderMapGet(String mapVar, String smithyMemberName, String defaultVal) {
+    String renderMapGet(String mapVar, String smithyMemberName, String defaultVal) {
         String atomKey = ElixirSymbolProvider.toAtomTag(smithyMemberName);
         return "Map.get(" + mapVar + ", " + atomKey + ", " + defaultVal + ")";
     }
@@ -277,8 +272,7 @@ public final class ElixirWriter implements LanguageWriter {
      *
      * <p>Example: {@code %{city: city, unit: unit}}
      */
-    @Override
-    public String renderMapBuild(List<MapEntrySpec> entries) {
+    String renderMapBuild(List<MapEntrySpec> entries) {
         if (entries.isEmpty()) {
             return "%{}";
         }
@@ -293,32 +287,27 @@ public final class ElixirWriter implements LanguageWriter {
     // -------------------------------------------------------------------------
 
     /** Example: {@code Jason.encode!(map_var)} */
-    @Override
-    public String renderJsonEncode(String mapVar) {
+    String renderJsonEncode(String mapVar) {
         return "Jason.encode!(" + mapVar + ")";
     }
 
     /** Example: {@code Jason.decode!(body_var)} */
-    @Override
-    public String renderJsonDecode(String bodyVar) {
+    String renderJsonDecode(String bodyVar) {
         return "Jason.decode!(" + bodyVar + ")";
     }
 
     /** Example: {@code SmithyXml.encode(map_var, "RootElement")} */
-    @Override
-    public String renderXmlEncode(String mapVar, String rootElement) {
+    String renderXmlEncode(String mapVar, String rootElement) {
         return "SmithyXml.encode(" + mapVar + ", \"" + rootElement + "\")";
     }
 
     /** Example: {@code SmithyXml.decode(body_var)} */
-    @Override
-    public String renderXmlDecode(String bodyVar) {
+    String renderXmlDecode(String bodyVar) {
         return "SmithyXml.decode(" + bodyVar + ")";
     }
 
     /** Example: {@code SmithyQuery.encode("ListUsers", map_var)} */
-    @Override
-    public String renderFormEncode(String actionName, String mapVar) {
+    String renderFormEncode(String actionName, String mapVar) {
         return "SmithyQuery.encode(\"" + actionName + "\", " + mapVar + ")";
     }
 
@@ -337,8 +326,7 @@ public final class ElixirWriter implements LanguageWriter {
      * "/weather/#{URI.encode_www_form(Map.get(input, :city, ""))}"
      * </pre>
      */
-    @Override
-    public String renderUriSubstitution(String template, List<LabelBinding> labels, String inputVar) {
+    String renderUriSubstitution(String template, List<LabelBinding> labels, String inputVar) {
         if (labels.isEmpty()) {
             return "\"" + template + "\"";
         }
@@ -374,8 +362,7 @@ public final class ElixirWriter implements LanguageWriter {
      *       |> URI.encode_query()
      * </pre>
      */
-    @Override
-    public String renderQueryStringBuilder(List<QueryBinding> queries, String inputVar) {
+    String renderQueryStringBuilder(List<QueryBinding> queries, String inputVar) {
         if (queries.isEmpty()) {
             return "    query_string = \"\"\n";
         }
@@ -405,8 +392,7 @@ public final class ElixirWriter implements LanguageWriter {
      *     headers = if Map.has_key?(input, :custom), do: [{"X-Custom", ...} | headers], else: headers
      * </pre>
      */
-    @Override
-    public String renderHeaderBuilder(String contentType, List<HeaderBinding> headers, String inputVar) {
+    String renderHeaderBuilder(String contentType, List<HeaderBinding> headers, String inputVar) {
         StringBuilder sb = new StringBuilder();
         sb.append("    headers = [{\"Content-Type\", \"").append(contentType).append("\"}]\n");
         for (HeaderBinding h : headers) {
@@ -451,8 +437,7 @@ public final class ElixirWriter implements LanguageWriter {
      *     }
      * </pre>
      */
-    @Override
-    public String renderHttpClientBlock(
+    String renderHttpClientBlock(
             OperationSpec spec,
             String urlVar,
             String headersVar,
@@ -484,8 +469,7 @@ public final class ElixirWriter implements LanguageWriter {
      * Auth is delegated to the {@code SmithyClient} runtime in Elixir; returns the
      * inner block unchanged regardless of the {@code auth} spec.
      */
-    @Override
-    public String renderAuthWrapper(AuthSpec auth, String innerBlock) {
+    String renderAuthWrapper(AuthSpec auth, String innerBlock) {
         return innerBlock;
     }
 
@@ -495,8 +479,7 @@ public final class ElixirWriter implements LanguageWriter {
      * <p>Example (enabled): {@code SmithyClient.Retry.with_retry(op_fun, %{max_retries: 3})}
      * <p>Example (disabled): the bare function variable is returned unchanged.
      */
-    @Override
-    public String renderRetryWrapper(RetrySpec retry, String requestFunVar) {
+    String renderRetryWrapper(RetrySpec retry, String requestFunVar) {
         if (!retry.enabled()) {
             return requestFunVar + ".()";
         }
@@ -520,8 +503,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   end
      * </pre>
      */
-    @Override
-    public String renderResponseHandler(OperationSpec spec, String responseVar) {
+    String renderResponseHandler(OperationSpec spec, String responseVar) {
         String opName = ElixirSymbolProvider.toFunctionName(spec.operationName());
         StringBuilder sb = new StringBuilder();
         sb.append("  defp deserialize_").append(opName).append("(").append(responseVar).append(") do\n");
@@ -555,8 +537,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   defp parse_error(_, body), do: {:error, %{error_type: :unknown, body: body}}
      * </pre>
      */
-    @Override
-    public String renderErrorSerializer(ErrorSpec errors) {
+    String renderErrorSerializer(ErrorSpec errors) {
         StringBuilder sb = new StringBuilder();
         for (ErrorBinding eb : errors.errors()) {
             String errorAtom = ":" + ElixirSymbolProvider.toFunctionName(eb.smithyName());
@@ -603,8 +584,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   end
      * </pre>
      */
-    @Override
-    public String renderPaginationHelper(OperationSpec spec, PaginationSpec pagination) {
+    String renderPaginationHelper(OperationSpec spec, PaginationSpec pagination) {
         String opName     = ElixirSymbolProvider.toFunctionName(spec.operationName());
         String streamName = opName + "_stream";
         return "\n  @spec " + streamName + "(map(), map(), map()) :: Enumerable.t()\n"
@@ -618,26 +598,22 @@ public final class ElixirWriter implements LanguageWriter {
     // -------------------------------------------------------------------------
 
     /** Returns {@code "Jason.encode!(expr)"}. */
-    @Override
-    public String jsonEncodeCall(String expr) {
+    String jsonEncodeCall(String expr) {
         return "Jason.encode!(" + expr + ")";
     }
 
     /** Returns {@code "Jason.decode!(expr)"}. */
-    @Override
-    public String jsonDecodeCall(String expr) {
+    String jsonDecodeCall(String expr) {
         return "Jason.decode!(" + expr + ")";
     }
 
     /** Returns the SigV4 signing function reference {@code SmithyClient.Sigv4.sign_request}. */
-    @Override
-    public String sigv4SignCall() {
+    String sigv4SignCall() {
         return "SmithyClient.Sigv4.sign_request";
     }
 
     /** Returns {@code "SmithyClient.Retry.with_retry(fun, opts)"}. */
-    @Override
-    public String retryCall(String funExpr, String optsExpr) {
+    String retryCall(String funExpr, String optsExpr) {
         return "SmithyClient.Retry.with_retry(" + funExpr + ", " + optsExpr + ")";
     }
 
@@ -659,7 +635,7 @@ public final class ElixirWriter implements LanguageWriter {
      * Returns an empty string.
      */
     @Override
-    public String exportTypes(List<String> typeNames) {
+    public String renderExportTypes(List<String> typeNames) {
         return "";
     }
 
@@ -982,9 +958,7 @@ public final class ElixirWriter implements LanguageWriter {
      * the {@code SmithyClient} runtime, so no shared helpers are needed in the
      * generated module itself.
      */
-    @Deprecated(forRemoval = true)
-    @Override
-    public String renderSharedHelpers() {
+    String renderSharedHelpers() {
         return "";
     }
 
@@ -1016,9 +990,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   end
      * </pre>
      */
-    @Deprecated(forRemoval = true)
-    @Override
-    public String renderModuleParseError(List<ErrorBinding> errors) {
+    String renderModuleParseError(List<ErrorBinding> errors) {
         StringBuilder sb = new StringBuilder();
         if (errors.isEmpty()) {
             sb.append("  defp parse_error(status_code, body),\n");
@@ -1069,9 +1041,7 @@ public final class ElixirWriter implements LanguageWriter {
         boolean useStringDispatch = strategy == ErrorCodeStrategy.REST_XML
                                  || strategy == ErrorCodeStrategy.AWS_JSON;
         if (!useStringDispatch) {
-            @SuppressWarnings("removal")
-            String fallback = renderModuleParseError(errors);
-            return fallback;
+            return renderModuleParseError(errors);
         }
         StringBuilder sb = new StringBuilder();
         for (ErrorBinding eb : errors) {
@@ -1146,8 +1116,8 @@ public final class ElixirWriter implements LanguageWriter {
         buf.append(moduleHeader(moduleName));
         buf.append(renderModuleComment("Generated Smithy client for " + moduleName));
         // exportSection returns "" in Elixir (all defs are public); exportTypes likewise.
-        buf.append(exportSection(clientExports(ops, types, inputTypeNames)));
-        buf.append(exportTypes(clientExportTypeNames(types)));
+        buf.append(renderExportSection(clientExports(ops, types, inputTypeNames)));
+        buf.append(renderExportTypes(clientExportTypeNames(types)));
         buf.append(renderToolingAttributes());
 
         // ── Type definitions ───────────────────────────────────────────────
@@ -1254,8 +1224,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   @callback get_weather(input :: map(), ctx :: map()) :: {:ok, map()} | {:error, term()}
      * </pre>
      */
-    @Override
-    public String renderServerCallbackDeclaration(OperationSpec op) {
+    String renderServerCallbackDeclaration(OperationSpec op) {
         String opName = ElixirSymbolProvider.toFunctionName(op.operationName());
         return "  @callback " + opName + "(input :: map(), ctx :: map()) :: {:ok, map()} | {:error, term()}\n";
     }
@@ -1282,8 +1251,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   end
      * </pre>
      */
-    @Override
-    public String renderServerRouteClause(OperationSpec op) {
+    String renderServerRouteClause(OperationSpec op) {
         String opName   = ElixirSymbolProvider.toFunctionName(op.operationName());
         String method   = op.http() != null ? op.http().method().toLowerCase() : "post";
         String uri      = op.http() != null ? toPlugUri(op.http().uriTemplate(), op.labels()) : "/";
@@ -1324,8 +1292,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   end
      * </pre>
      */
-    @Override
-    public String renderServerRouteFallback() {
+    String renderServerRouteFallback() {
         return "  match _ do\n"
              + "    SmithyServer.not_found(conn)\n"
              + "  end\n";
@@ -1335,8 +1302,7 @@ public final class ElixirWriter implements LanguageWriter {
      * Elixir uses Plug.Router's built-in dispatch mechanism; no separate handle
      * function is needed.  Returns an empty string.
      */
-    @Override
-    public String renderServerHandleFunction(List<OperationSpec> ops, String svcModuleName) {
+    String renderServerHandleFunction(List<OperationSpec> ops, String svcModuleName) {
         return "";
     }
 
@@ -1358,8 +1324,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   end
      * </pre>
      */
-    @Override
-    public String renderServerDispatchClause(OperationSpec op) {
+    String renderServerDispatchClause(OperationSpec op) {
         String opName      = ElixirSymbolProvider.toFunctionName(op.operationName());
         int successCode    = op.http() != null ? op.http().successCode() : 200;
         return "  defp dispatch_" + opName + "(conn) do\n"
@@ -1384,8 +1349,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   end
      * </pre>
      */
-    @Override
-    public String renderServerDeserialize(OperationSpec op) {
+    String renderServerDeserialize(OperationSpec op) {
         String opName       = ElixirSymbolProvider.toFunctionName(op.operationName());
         List<LabelBinding>  labels      = op.labels() != null ? op.labels() : List.of();
         List<String>        bodyMembers = op.body() != null && !op.body().bodyMemberNames().isEmpty()
@@ -1427,8 +1391,7 @@ public final class ElixirWriter implements LanguageWriter {
      *   defp serialize_get_weather(output), do: Jason.encode!(output)
      * </pre>
      */
-    @Override
-    public String renderServerSerialize(OperationSpec op) {
+    String renderServerSerialize(OperationSpec op) {
         String opName = ElixirSymbolProvider.toFunctionName(op.operationName());
         return "  defp serialize_" + opName + "(output), do: Jason.encode!(output)\n";
     }
