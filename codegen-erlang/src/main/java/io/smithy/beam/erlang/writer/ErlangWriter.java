@@ -126,7 +126,7 @@ public final class ErlangWriter implements LanguageWriter {
      * </pre>
      */
     @Override
-    public String exportSection(List<ExportSpec> exports) {
+    public String renderExportSection(List<ExportSpec> exports) {
         if (exports.isEmpty()) {
             return "-export([]).\n";
         }
@@ -150,7 +150,7 @@ public final class ErlangWriter implements LanguageWriter {
      * </pre>
      */
     @Override
-    public String behaviourDeclaration(String behaviourName) {
+    public String renderBehaviourDeclaration(String behaviourName) {
         return "-behaviour(" + ErlangSymbolProvider.toModuleName(behaviourName) + ").\n";
     }
 
@@ -238,8 +238,7 @@ public final class ErlangWriter implements LanguageWriter {
      *     {ok, get_weather_output()} | {error, term()}.
      * </pre>
      */
-    @Override
-    public String renderCallbackDeclaration(String name, List<ParamSpec> params, TypeRef returnType) {
+    String renderCallbackDeclaration(String name, List<ParamSpec> params, TypeRef returnType) {
         String funcName = ErlangSymbolProvider.toFunctionName(name);
         String paramStr = params.stream()
             .map(p -> ErlangSymbolProvider.toVarName(p.name()) + " :: " + typeRefToErlang(p.type()))
@@ -256,8 +255,7 @@ public final class ErlangWriter implements LanguageWriter {
      * -spec get_weather(get_weather_input(), map()) -> {ok, get_weather_output()} | {error, term()}.
      * </pre>
      */
-    @Override
-    public String renderFunctionSpec(String name, List<ParamSpec> params, TypeRef returnType) {
+    String renderFunctionSpec(String name, List<ParamSpec> params, TypeRef returnType) {
         String funcName = ErlangSymbolProvider.toFunctionName(name);
         String paramStr = params.stream()
             .map(p -> typeRefToErlang(p.type()))
@@ -270,16 +268,14 @@ public final class ErlangWriter implements LanguageWriter {
      *
      * <p>Example output: {@code get_weather(Input, Config) ->}
      */
-    @Override
-    public String renderFunctionHead(String name, List<String> paramPatterns) {
+    String renderFunctionHead(String name, List<String> paramPatterns) {
         String funcName = ErlangSymbolProvider.toFunctionName(name);
         String params = String.join(", ", paramPatterns);
         return funcName + "(" + params + ") ->";
     }
 
     /** Returns {@code "."} — the Erlang function terminator. */
-    @Override
-    public String renderFunctionEnd() {
+    String renderFunctionEnd() {
         return ".";
     }
 
@@ -292,8 +288,7 @@ public final class ErlangWriter implements LanguageWriter {
      *
      * <p>Example: {@code maps:get(<<"CityId">>, Input, undefined)}
      */
-    @Override
-    public String renderMapGet(String mapVar, String smithyMemberName, String defaultVal) {
+    String renderMapGet(String mapVar, String smithyMemberName, String defaultVal) {
         return "maps:get(<<\"" + smithyMemberName + "\">>, " + mapVar + ", " + defaultVal + ")";
     }
 
@@ -302,8 +297,7 @@ public final class ErlangWriter implements LanguageWriter {
      *
      * <p>Example: {@code #{<<"city">> => City, <<"unit">> => Unit}}
      */
-    @Override
-    public String renderMapBuild(List<MapEntrySpec> entries) {
+    String renderMapBuild(List<MapEntrySpec> entries) {
         if (entries.isEmpty()) {
             return "#{}";
         }
@@ -318,32 +312,27 @@ public final class ErlangWriter implements LanguageWriter {
     // -------------------------------------------------------------------------
 
     /** Example: {@code jsx:encode(BodyMap)} */
-    @Override
-    public String renderJsonEncode(String mapVar) {
+    String renderJsonEncode(String mapVar) {
         return "jsx:encode(" + mapVar + ")";
     }
 
     /** Example: {@code jsx:decode(Body, [return_maps])} */
-    @Override
-    public String renderJsonDecode(String bodyVar) {
+    String renderJsonDecode(String bodyVar) {
         return "jsx:decode(" + bodyVar + ", [return_maps])";
     }
 
     /** Example: {@code smithy_xml:encode(Map, <<"RootElement">>)} */
-    @Override
-    public String renderXmlEncode(String mapVar, String rootElement) {
+    String renderXmlEncode(String mapVar, String rootElement) {
         return "smithy_xml:encode(" + mapVar + ", <<\"" + rootElement + "\">>)";
     }
 
     /** Example: {@code smithy_xml:decode(Body)} */
-    @Override
-    public String renderXmlDecode(String bodyVar) {
+    String renderXmlDecode(String bodyVar) {
         return "smithy_xml:decode(" + bodyVar + ")";
     }
 
     /** Example: {@code smithy_query:encode(<<"ListUsers">>, Map)} */
-    @Override
-    public String renderFormEncode(String actionName, String mapVar) {
+    String renderFormEncode(String actionName, String mapVar) {
         return "smithy_query:encode(<<\"" + actionName + "\">>, " + mapVar + ")";
     }
 
@@ -361,8 +350,7 @@ public final class ErlangWriter implements LanguageWriter {
      * <<"/weather/", (url_encode(maps:get(<<"city">>, Input)))/binary>>
      * </pre>
      */
-    @Override
-    public String renderUriSubstitution(String template, List<LabelBinding> labels, String inputVar) {
+    String renderUriSubstitution(String template, List<LabelBinding> labels, String inputVar) {
         if (labels.isEmpty()) {
             return "<<\"" + template + "\">>";
         }
@@ -390,8 +378,7 @@ public final class ErlangWriter implements LanguageWriter {
      * QueryString = uri_string:compose_query([{K, V} || {K, V} <- QueryParams, V =/= undefined]),
      * </pre>
      */
-    @Override
-    public String renderQueryStringBuilder(List<QueryBinding> queries, String inputVar) {
+    String renderQueryStringBuilder(List<QueryBinding> queries, String inputVar) {
         if (queries.isEmpty()) {
             return "QueryString = \"\",\n";
         }
@@ -419,8 +406,7 @@ public final class ErlangWriter implements LanguageWriter {
      *            | [{<<"X-Custom">>, maps:get(<<"custom">>, Input)} || ...]],
      * </pre>
      */
-    @Override
-    public String renderHeaderBuilder(String contentType, List<HeaderBinding> headers, String inputVar) {
+    String renderHeaderBuilder(String contentType, List<HeaderBinding> headers, String inputVar) {
         StringBuilder sb = new StringBuilder();
         sb.append("Headers = [{<<\"Content-Type\">>, <<\"").append(contentType).append("\">>}");
         for (HeaderBinding h : headers) {
@@ -455,8 +441,7 @@ public final class ErlangWriter implements LanguageWriter {
      * end
      * </pre>
      */
-    @Override
-    public String renderHttpClientBlock(
+    String renderHttpClientBlock(
             OperationSpec spec,
             String urlVar,
             String headersVar,
@@ -534,8 +519,7 @@ public final class ErlangWriter implements LanguageWriter {
      * </pre>
      * If no auth is required, returns {@code innerBlock} unchanged.
      */
-    @Override
-    public String renderAuthWrapper(AuthSpec auth, String innerBlock) {
+    String renderAuthWrapper(AuthSpec auth, String innerBlock) {
         if (!auth.requiresSigV4()) {
             return innerBlock;
         }
@@ -552,8 +536,7 @@ public final class ErlangWriter implements LanguageWriter {
      * </pre>
      * If retry is disabled, returns the bare function variable.
      */
-    @Override
-    public String renderRetryWrapper(RetrySpec retry, String requestFunVar) {
+    String renderRetryWrapper(RetrySpec retry, String requestFunVar) {
         if (!retry.enabled()) {
             return requestFunVar + "()";
         }
@@ -570,8 +553,7 @@ public final class ErlangWriter implements LanguageWriter {
      * <p>Generates a {@code deserialize_op_name/1} function that extracts
      * fields from the decoded response body map.
      */
-    @Override
-    public String renderResponseHandler(OperationSpec spec, String responseVar) {
+    String renderResponseHandler(OperationSpec spec, String responseVar) {
         String opName = ErlangSymbolProvider.toFunctionName(spec.operationName());
         StringBuilder sb = new StringBuilder();
         sb.append("deserialize_").append(opName).append("(").append(responseVar).append(") ->\n");
@@ -605,8 +587,7 @@ public final class ErlangWriter implements LanguageWriter {
      *     {error, #{error_type => unknown, body => Body}}.
      * </pre>
      */
-    @Override
-    public String renderErrorSerializer(ErrorSpec errors) {
+    String renderErrorSerializer(ErrorSpec errors) {
         StringBuilder sb = new StringBuilder();
         sb.append("-spec parse_error(binary(), map()) -> {error, term()}.\n");
         for (ErrorBinding eb : errors.errors()) {
@@ -646,8 +627,7 @@ public final class ErlangWriter implements LanguageWriter {
     /**
      * Renders a streaming helper function that loops through paginated results.
      */
-    @Override
-    public String renderPaginationHelper(OperationSpec spec, PaginationSpec pagination) {
+    String renderPaginationHelper(OperationSpec spec, PaginationSpec pagination) {
         String opName = ErlangSymbolProvider.toFunctionName(spec.operationName());
         String streamName = opName + "_stream";
         String inputToken = pagination.inputTokenMember();
@@ -683,26 +663,22 @@ public final class ErlangWriter implements LanguageWriter {
     // -------------------------------------------------------------------------
 
     /** Returns {@code jsx:encode(<expr>)}. */
-    @Override
-    public String jsonEncodeCall(String expr) {
+    String jsonEncodeCall(String expr) {
         return "jsx:encode(" + expr + ")";
     }
 
     /** Returns {@code jsx:decode(<expr>, [return_maps])}. */
-    @Override
-    public String jsonDecodeCall(String expr) {
+    String jsonDecodeCall(String expr) {
         return "jsx:decode(" + expr + ", [return_maps])";
     }
 
     /** Returns the SigV4 signing function reference {@code smithy_sigv4:sign_request}. */
-    @Override
-    public String sigv4SignCall() {
+    String sigv4SignCall() {
         return "smithy_sigv4:sign_request";
     }
 
     /** Returns {@code smithy_retry:with_retry(<fun>, <opts>)}. */
-    @Override
-    public String retryCall(String funExpr, String optsExpr) {
+    String retryCall(String funExpr, String optsExpr) {
         return "smithy_retry:with_retry(" + funExpr + ", " + optsExpr + ")";
     }
 
@@ -716,7 +692,7 @@ public final class ErlangWriter implements LanguageWriter {
     }
 
     @Override
-    public String exportTypes(List<String> typeNames) {
+    public String renderExportTypes(List<String> typeNames) {
         if (typeNames.isEmpty()) return "";
         StringJoiner sj = new StringJoiner(",\n    ", "-export_type([\n    ", "\n]).\n");
         for (String name : typeNames) {
@@ -860,9 +836,7 @@ public final class ErlangWriter implements LanguageWriter {
         return sb.toString();
     }
 
-    @Deprecated(forRemoval = true)
-    @Override
-    public String renderSharedHelpers() {
+    String renderSharedHelpers() {
         return renderSharedHelpersImpl(true, true);
     }
 
@@ -951,9 +925,7 @@ public final class ErlangWriter implements LanguageWriter {
      *     end;
      * </pre>
      */
-    @Deprecated(forRemoval = true)
-    @Override
-    public String renderModuleParseError(List<ErrorBinding> errors) {
+    String renderModuleParseError(List<ErrorBinding> errors) {
         StringBuilder sb = new StringBuilder();
         sb.append("-spec parse_error(integer(), binary()) -> {error, term()}.\n");
         if (errors.isEmpty()) {
@@ -1015,9 +987,7 @@ public final class ErlangWriter implements LanguageWriter {
                                  || strategy == ErrorCodeStrategy.AWS_JSON
                                  || strategy == ErrorCodeStrategy.AWS_QUERY;
         if (!useStringDispatch) {
-            @SuppressWarnings("removal")
-            String fallback = renderModuleParseError(errors);
-            return fallback;
+            return renderModuleParseError(errors);
         }
         // String-code dispatch: used for REST_XML and AWS_JSON.
         // Returns structured #{error_type => atom, message => binary()} maps.
@@ -1092,8 +1062,8 @@ public final class ErlangWriter implements LanguageWriter {
         // ── Module header ──────────────────────────────────────────────────
         buf.append(moduleHeader(moduleName));
         buf.append(renderModuleComment("Generated Smithy client for " + moduleName));
-        buf.append(exportSection(clientExports(ops, types, inputTypeNames)));
-        buf.append(exportTypes(clientExportTypeNames(types)));
+        buf.append(renderExportSection(clientExports(ops, types, inputTypeNames)));
+        buf.append(renderExportTypes(clientExportTypeNames(types)));
         buf.append(renderToolingAttributes());
 
         // ── Type definitions ───────────────────────────────────────────────
@@ -1202,8 +1172,7 @@ public final class ErlangWriter implements LanguageWriter {
      *     {ok, get_weather_output()} | {error, term()}.
      * </pre>
      */
-    @Override
-    public String renderServerCallbackDeclaration(OperationSpec op) {
+    String renderServerCallbackDeclaration(OperationSpec op) {
         String opName     = ErlangSymbolProvider.toFunctionName(op.operationName());
         String inputType  = op.inputTypeName()  != null
                 ? ErlangSymbolProvider.toSafeSnakeCase(op.inputTypeName())  + "()" : "map()";
@@ -1219,8 +1188,7 @@ public final class ErlangWriter implements LanguageWriter {
      * <p>For restJson1: routes on HTTP method + URI path prefix.
      * <p>For awsJson:   routes on the {@code X-Amz-Target} literal header value.
      */
-    @Override
-    public String renderServerRouteClause(OperationSpec op) {
+    String renderServerRouteClause(OperationSpec op) {
         String opAtom = ErlangSymbolProvider.toFunctionName(op.operationName());
         if (isAwsJsonOp(op)) {
             String target = op.headers().stream()
@@ -1240,8 +1208,7 @@ public final class ErlangWriter implements LanguageWriter {
     }
 
     /** Returns the catch-all route clause that terminates the {@code route/2} function. */
-    @Override
-    public String renderServerRouteFallback() {
+    String renderServerRouteFallback() {
         return "route(_, _) -> {error, not_found}.\n";
     }
 
@@ -1251,8 +1218,7 @@ public final class ErlangWriter implements LanguageWriter {
      * <p>For restJson1: extracts method + path from the request and calls the router.
      * <p>For awsJson:   extracts the {@code X-Amz-Target} header and calls the router.
      */
-    @Override
-    public String renderServerHandleFunction(List<OperationSpec> ops, String svcModuleName) {
+    String renderServerHandleFunction(List<OperationSpec> ops, String svcModuleName) {
         boolean isAwsJson = !ops.isEmpty() && isAwsJsonOp(ops.get(0));
         String routerMod  = ErlangSymbolProvider.toModuleName(svcModuleName + "_router");
         StringBuilder sb  = new StringBuilder();
@@ -1290,8 +1256,7 @@ public final class ErlangWriter implements LanguageWriter {
      *
      * <p>Deserializes the input, calls the implementation, and serializes the response.
      */
-    @Override
-    public String renderServerDispatchClause(OperationSpec op) {
+    String renderServerDispatchClause(OperationSpec op) {
         String opAtom    = ErlangSymbolProvider.toFunctionName(op.operationName());
         int successCode  = op.http().successCode();
         StringBuilder sb = new StringBuilder();
@@ -1311,8 +1276,7 @@ public final class ErlangWriter implements LanguageWriter {
      * <p>Extracts path labels, header values, and body members and combines them
      * into the operation input map. For awsJson the entire body is decoded directly.
      */
-    @Override
-    public String renderServerDeserialize(OperationSpec op) {
+    String renderServerDeserialize(OperationSpec op) {
         String opAtom      = ErlangSymbolProvider.toFunctionName(op.operationName());
         List<LabelBinding> labels      = op.labels()  != null ? op.labels()  : List.of();
         List<String>       bodyMembers = op.body()    != null && !op.body().bodyMemberNames().isEmpty()
@@ -1380,8 +1344,7 @@ public final class ErlangWriter implements LanguageWriter {
      *
      * <p>Encodes the output map to a JSON binary for the response body.
      */
-    @Override
-    public String renderServerSerialize(OperationSpec op) {
+    String renderServerSerialize(OperationSpec op) {
         String opAtom = ErlangSymbolProvider.toFunctionName(op.operationName());
         return "serialize_" + opAtom + "(Output) ->\n"
              + "    jsx:encode(Output).\n";
@@ -1503,7 +1466,7 @@ public final class ErlangWriter implements LanguageWriter {
         sb.append("\n");
 
         // 4. -export([init/2, handle/3, route/2]).
-        sb.append(exportSection(List.of(
+        sb.append(renderExportSection(List.of(
                 new ExportSpec("init",   2),
                 new ExportSpec("handle", 3),
                 new ExportSpec("route",  2)
