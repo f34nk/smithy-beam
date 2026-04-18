@@ -110,21 +110,21 @@ class ErlangWriterTest {
         }
 
         @Test
-        void exportSectionEmptyProducesEmptyExport() {
-            assertThat(writer.exportSection(List.of())).isEqualTo("-export([]).\n");
+        void renderExportSectionEmptyProducesEmptyExport() {
+            assertThat(writer.renderExportSection(List.of())).isEqualTo("-export([]).\n");
         }
 
         @Test
-        void exportSectionSingleEntry() {
-            String result = writer.exportSection(List.of(new ExportSpec("get_weather", 2)));
+        void renderExportSectionSingleEntry() {
+            String result = writer.renderExportSection(List.of(new ExportSpec("get_weather", 2)));
             assertThat(result).contains("-export([");
             assertThat(result).contains("get_weather/2");
             assertThat(result).contains("]).");
         }
 
         @Test
-        void exportSectionMultipleEntriesHaveCommas() {
-            String result = writer.exportSection(List.of(
+        void renderExportSectionMultipleEntriesHaveCommas() {
+            String result = writer.renderExportSection(List.of(
                     new ExportSpec("get_weather", 2),
                     new ExportSpec("new", 1)
             ));
@@ -135,8 +135,8 @@ class ErlangWriterTest {
         }
 
         @Test
-        void behaviourDeclarationEmitsBehaviourAttribute() {
-            assertThat(writer.behaviourDeclaration("WeatherServiceHandler"))
+        void renderBehaviourDeclarationEmitsBehaviourAttribute() {
+            assertThat(writer.renderBehaviourDeclaration("WeatherServiceHandler"))
                     .isEqualTo("-behaviour(weather_service_handler).\n");
         }
 
@@ -146,13 +146,13 @@ class ErlangWriterTest {
         }
 
         @Test
-        void exportTypesEmptyReturnsEmpty() {
-            assertThat(writer.exportTypes(List.of())).isEmpty();
+        void renderExportTypesEmptyReturnsEmpty() {
+            assertThat(writer.renderExportTypes(List.of())).isEmpty();
         }
 
         @Test
-        void exportTypesWithNamesEmitsExportType() {
-            String result = writer.exportTypes(List.of("get_weather_input()", "temperature_unit()"));
+        void renderExportTypesWithNamesEmitsExportType() {
+            String result = writer.renderExportTypes(List.of("get_weather_input()", "temperature_unit()"));
             assertThat(result).contains("-export_type([");
             assertThat(result).contains("get_weather_input()");
             assertThat(result).contains("temperature_unit()");
