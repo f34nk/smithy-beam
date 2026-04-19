@@ -207,7 +207,7 @@ public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImportC
             }
             String defFile = symbol.getDefinitionFile();
             if (defFile != null && defFile.endsWith(".hrl")) {
-                getImportContainer().addImport("", symbol.getName(), symbol);
+                getImportContainer().importSymbol(symbol, symbol.getName());
                 return "#" + symbol.getName() + "{}";
             }
         }
@@ -228,7 +228,7 @@ public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImportC
         }
         String defFile = symbol.getDefinitionFile();
         if (defFile != null && defFile.endsWith(".hrl")) {
-            getImportContainer().addImport("", symbol.getName(), symbol);
+            getImportContainer().importSymbol(symbol, symbol.getName());
             return "#" + symbol.getName() + "{}";
         }
         return symbol.getName();

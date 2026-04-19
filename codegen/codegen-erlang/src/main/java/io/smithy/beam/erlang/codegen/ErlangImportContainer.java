@@ -16,7 +16,7 @@ public final class ErlangImportContainer implements ImportContainer {
     private final Set<String> qualifiedModules = new LinkedHashSet<>();
 
     @Override
-    public void addImport(String packageName, String name, Symbol symbol) {
+    public void importSymbol(Symbol symbol, String alias) {
         String defFile = symbol.getDefinitionFile();
         if (defFile != null && defFile.endsWith(".hrl")) {
             includeLibs.add(defFile);
