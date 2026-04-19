@@ -1,6 +1,11 @@
 package io.smithy.beam.erlang.codegen;
 
+import io.smithy.beam.erlang.codegen.sections.OperationSendSection;
+import java.util.Collections;
+import java.util.List;
 import software.amazon.smithy.model.shapes.ShapeId;
+import software.amazon.smithy.utils.CodeInterceptor;
+import software.amazon.smithy.utils.CodeSection;
 
 /**
  * Base class for all Erlang auth-scheme integrations.
@@ -8,6 +13,9 @@ import software.amazon.smithy.model.shapes.ShapeId;
  * <p>Identical structure to {@link DefaultErlangProtocolIntegration} but gated
  * on an auth-trait {@link ShapeId}.
  *
+ * <p>Subclasses override {@link #authDependencies()} to declare their runtime
+ * dependencies, and may further override {@link #interceptors(ErlangContext)} to
+ * inject auth-specific code into {@link OperationSendSection}.
  */
 public abstract class DefaultErlangAuthIntegration implements ErlangIntegration {
 
@@ -15,10 +23,40 @@ public abstract class DefaultErlangAuthIntegration implements ErlangIntegration 
     public abstract ShapeId authTraitId();
 
     /**
+     * Returns the runtime {@link ErlangDependency} values this auth scheme requires.
+     * Defaults to none; override in concrete classes to declare dependencies.
+     */
+    protected List<ErlangDependency> authDependencies() {
+        return Collections.emptyList();
+    }
+
+    /**
      * Returns {@code true} if the service being generated has the auth trait
      * this integration targets.
      */
     protected boolean isApplicable(ErlangContext ctx) {
         return ctx.service().hasTrait(authTraitId());
+    }
+
+    /**
+     * Registers an {@link OperationSendSection} interceptor that injects the auth
+     * runtime dependencies declared by {@link #authDependencies()}.
+     *
+     * <p>Concrete classes may override this method to also emit stub Erlang code
+     * (e.g. {@code smithy_sigv4:sign(...)}).
+     */
+    @Override
+    public List<? extends CodeInterceptor<? extends CodeSection, ErlangWriter>> interceptors(
+            ErlangContext ctx) {
+        if (!isApplicable(ctx)) {
+            return Collections.emptyList();
+        }
+        List<ErlangDependency> deps = authDependencies();
+        if (deps.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return List.of(
+                CodeInterceptor.appender(OperationSendSection.class, (writer, section) ->
+                        deps.forEach(writer::addDependency)));
     }
 }

@@ -1,6 +1,8 @@
 package io.smithy.beam.erlang.codegen.protocol;
 
 import io.smithy.beam.erlang.codegen.DefaultErlangProtocolIntegration;
+import io.smithy.beam.erlang.codegen.ErlangDependency;
+import java.util.List;
 import software.amazon.smithy.model.shapes.ShapeId;
 
 /**
@@ -13,5 +15,10 @@ public final class ErlangAwsQueryIntegration extends DefaultErlangProtocolIntegr
     @Override
     public ShapeId protocolId() {
         return ShapeId.from("aws.protocols#awsQuery");
+    }
+
+    @Override
+    protected List<ErlangDependency> protocolDependencies() {
+        return List.of(ErlangDependency.SMITHY_QUERY, ErlangDependency.SMITHY_HTTP_CLIENT);
     }
 }

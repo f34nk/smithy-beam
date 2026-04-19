@@ -1,6 +1,8 @@
 package io.smithy.beam.erlang.codegen.protocol;
 
 import io.smithy.beam.erlang.codegen.DefaultErlangProtocolIntegration;
+import io.smithy.beam.erlang.codegen.ErlangDependency;
+import java.util.List;
 import software.amazon.smithy.model.shapes.ShapeId;
 
 /**
@@ -13,5 +15,10 @@ public final class ErlangRestJson1Integration extends DefaultErlangProtocolInteg
     @Override
     public ShapeId protocolId() {
         return ShapeId.from("aws.protocols#restJson1");
+    }
+
+    @Override
+    protected List<ErlangDependency> protocolDependencies() {
+        return List.of(ErlangDependency.SMITHY_JSON, ErlangDependency.SMITHY_HTTP_CLIENT);
     }
 }
