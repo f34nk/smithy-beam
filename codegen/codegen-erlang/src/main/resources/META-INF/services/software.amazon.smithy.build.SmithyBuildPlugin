@@ -1,0 +1,2 @@
+io.smithy.beam.erlang.client.ErlangClientCodegenPlugin
+io.smithy.beam.erlang.server.ErlangServerCodegenPlugin
