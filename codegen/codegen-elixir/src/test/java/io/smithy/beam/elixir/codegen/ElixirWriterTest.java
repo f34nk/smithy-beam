@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.codegen.core.Symbol;
+import software.amazon.smithy.codegen.core.SymbolProvider;
 
 class ElixirWriterTest {
 
@@ -195,7 +196,7 @@ class ElixirWriterTest {
                         software.amazon.smithy.model.shapes.ShapeId.from("com.example#EmptyStruct"),
                         software.amazon.smithy.model.shapes.StructureShape.class);
         software.amazon.smithy.codegen.core.SymbolProvider provider =
-                s -> Symbol.builder().name("String.t()").build();
+                s -> Symbol.builder().name(s.getId().getName()).build();
 
         writer.writeStructModule(shape, provider);
 
@@ -267,7 +268,8 @@ class ElixirWriterTest {
                         software.amazon.smithy.model.shapes.ShapeId.from("com.example#Color"),
                         software.amazon.smithy.model.shapes.EnumShape.class);
 
-        writer.writeEnumModule(shape);
+        SymbolProvider symbols = s -> Symbol.builder().name(s.getId().getName()).build();
+        writer.writeEnumModule(shape, symbols);
 
         String output = writer.toString();
         assertThat(output).contains("defmodule Color do");
@@ -297,7 +299,8 @@ class ElixirWriterTest {
                         software.amazon.smithy.model.shapes.ShapeId.from("com.example#Status"),
                         software.amazon.smithy.model.shapes.IntEnumShape.class);
 
-        writer.writeIntEnumModule(shape);
+        SymbolProvider symbols = s -> Symbol.builder().name(s.getId().getName()).build();
+        writer.writeIntEnumModule(shape, symbols);
 
         String output = writer.toString();
         assertThat(output).contains("defmodule Status do");

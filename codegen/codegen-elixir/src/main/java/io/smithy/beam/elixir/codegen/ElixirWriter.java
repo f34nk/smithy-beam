@@ -61,7 +61,7 @@ public final class ElixirWriter extends SymbolWriter<ElixirWriter, ElixirImportC
      * {@code defstruct} and {@code @type t :: %__MODULE__{…}}.
      */
     public ElixirWriter writeStructModule(StructureShape shape, SymbolProvider symbols) {
-        String moduleName = shape.getId().getName();
+        String moduleName = symbols.toSymbol(shape).getName();
         boolean isError = shape.hasTrait(ErrorTrait.class);
 
         writeDefModule(moduleName, () -> {
@@ -118,7 +118,7 @@ public final class ElixirWriter extends SymbolWriter<ElixirWriter, ElixirImportC
      * {@code @type t :: {:variant1, TypeA.t()} | {:variant2, TypeB.t()}} spec.
      */
     public ElixirWriter writeUnionModule(UnionShape shape, SymbolProvider symbols) {
-        String moduleName = shape.getId().getName();
+        String moduleName = symbols.toSymbol(shape).getName();
         writeDefModule(moduleName, () -> {
             List<MemberShape> members = new ArrayList<>(shape.getAllMembers().values());
             if (members.isEmpty()) {
@@ -140,8 +140,8 @@ public final class ElixirWriter extends SymbolWriter<ElixirWriter, ElixirImportC
      * Emits a {@code defmodule} for an enum shape with {@code @type t}, {@code from_string/1},
      * and {@code to_string/1} helpers.
      */
-    public ElixirWriter writeEnumModule(EnumShape shape) {
-        String moduleName = shape.getId().getName();
+    public ElixirWriter writeEnumModule(EnumShape shape, SymbolProvider symbols) {
+        String moduleName = symbols.toSymbol(shape).getName();
         writeDefModule(moduleName, () -> {
             if (shape.getEnumValues().isEmpty()) {
                 write("@type t() :: atom()");
@@ -174,8 +174,8 @@ public final class ElixirWriter extends SymbolWriter<ElixirWriter, ElixirImportC
      * Emits a {@code defmodule} for an int-enum shape with {@code @type t},
      * {@code from_integer/1}, and {@code to_integer/1} helpers.
      */
-    public ElixirWriter writeIntEnumModule(IntEnumShape shape) {
-        String moduleName = shape.getId().getName();
+    public ElixirWriter writeIntEnumModule(IntEnumShape shape, SymbolProvider symbols) {
+        String moduleName = symbols.toSymbol(shape).getName();
         writeDefModule(moduleName, () -> {
             if (shape.getEnumValues().isEmpty()) {
                 write("@type t() :: integer()");
