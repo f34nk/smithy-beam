@@ -150,7 +150,14 @@ class ErlangSymbolProviderTest {
     void structureShapeSymbolDefinitionFileIsHrl() {
         Symbol sym = clientProvider().toSymbol(
                 model.expectShape(ShapeId.from("com.example#GetItemInput")));
-        assertThat(sym.getDefinitionFile()).endsWith("simple_service_types.hrl");
+        assertThat(sym.getDefinitionFile()).endsWith("simple_service_client_types.hrl");
+    }
+
+    @Test
+    void structureShapeSymbolDefinitionFileIsServerHrl() {
+        Symbol sym = serverProvider().toSymbol(
+                model.expectShape(ShapeId.from("com.example#GetItemInput")));
+        assertThat(sym.getDefinitionFile()).endsWith("simple_service_server_types.hrl");
     }
 
     @Test

@@ -46,9 +46,16 @@ import software.amazon.smithy.utils.CaseUtils;
  * <p>File layout produced for the symbols:
  * <ul>
  *   <li>service / operation / resource — {@code <outputDir>/<module>_{client|server}.ex}</li>
- *   <li>structure / error / union / enum / int-enum — {@code <outputDir>/<module>_types.ex}</li>
+ *   <li>structure / union / enum / int-enum — {@code <outputDir>/<module>_{client|server}_types.ex}</li>
+ *   <li>error structure — {@code <outputDir>/<module>_{client|server}_errors.ex}</li>
  *   <li>scalars / collections — no {@code definitionFile} (in-place type expressions)</li>
  * </ul>
+ *
+ * <p>Both filenames and module names for shape symbols are mode-suffixed /
+ * mode-prefixed ({@code <Namespace>.{Client|Server}.Types.*} and
+ * {@code .Errors.*}) so that the client and server plugins can be configured
+ * against the same Smithy model and emit into the same Mix project without
+ * colliding on shared shape modules.
  *
  * <p>Every returned symbol carries the originating {@link Shape} under the
  * {@link #PROP_SHAPE} property. Error structures additionally carry
@@ -84,8 +91,8 @@ public final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<
         String modulePart = toDirName(namespace);
         String modeSuffixFile = (mode == Mode.SERVER) ? "server" : "client";
         this.serviceFile = settings.getOutputDir() + "/" + modulePart + "_" + modeSuffixFile + ".ex";
-        this.typesFile = settings.getOutputDir() + "/" + modulePart + "_types.ex";
-        this.errorsFile = settings.getOutputDir() + "/" + modulePart + "_errors.ex";
+        this.typesFile = settings.getOutputDir() + "/" + modulePart + "_" + modeSuffixFile + "_types.ex";
+        this.errorsFile = settings.getOutputDir() + "/" + modulePart + "_" + modeSuffixFile + "_errors.ex";
     }
 
     @Override
@@ -137,10 +144,12 @@ public final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<
     @Override
     public Symbol structureShape(StructureShape shape) {
         boolean isError = shape.hasTrait(ErrorTrait.class);
-        String namespace = settings.getNamespace();
+        // Mode-prefixed (e.g. "Weather.Client" / "Weather.Server") so client and
+        // server plugins can coexist in a single Mix project without colliding
+        // on shared shape modules.
         String moduleName = isError
-                ? namespace + ".Errors." + shape.getId().getName()
-                : namespace + ".Types." + shape.getId().getName();
+                ? serviceModuleName + ".Errors." + shape.getId().getName()
+                : serviceModuleName + ".Types." + shape.getId().getName();
         String defFile = isError ? errorsFile : typesFile;
 
         Symbol.Builder builder = Symbol.builder()
@@ -169,7 +178,7 @@ public final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<
     }
 
     private Symbol aggregateTypeSymbol(Shape shape, String localName) {
-        String moduleName = settings.getNamespace() + ".Types." + localName;
+        String moduleName = serviceModuleName + ".Types." + localName;
         return Symbol.builder()
                 .name(moduleName)
                 .definitionFile(typesFile)

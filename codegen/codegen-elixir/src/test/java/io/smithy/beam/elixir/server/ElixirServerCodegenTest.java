@@ -121,19 +121,19 @@ class ElixirServerCodegenTest {
 
     @Test
     void typesFileIsGenerated() {
-        assertThat(manifest.getFileString("src/generated/weather_types.ex")).isPresent();
+        assertThat(manifest.getFileString("src/generated/weather_server_types.ex")).isPresent();
     }
 
     @Test
     void typesFileContainsDefmoduleForForecastInput() {
-        String content = manifest.expectFileString("src/generated/weather_types.ex");
-        assertThat(content).contains("defmodule GetForecastInput");
+        String content = manifest.expectFileString("src/generated/weather_server_types.ex");
+        assertThat(content).contains("defmodule Weather.Server.Types.GetForecastInput");
     }
 
     @Test
     void typesFileContainsDefmoduleForForecastOutput() {
-        String content = manifest.expectFileString("src/generated/weather_types.ex");
-        assertThat(content).contains("defmodule GetForecastOutput");
+        String content = manifest.expectFileString("src/generated/weather_server_types.ex");
+        assertThat(content).contains("defmodule Weather.Server.Types.GetForecastOutput");
     }
 
     // -------------------------------------------------------------------------
@@ -142,13 +142,13 @@ class ElixirServerCodegenTest {
 
     @Test
     void errorsFileIsGenerated() {
-        assertThat(manifest.getFileString("src/generated/weather_errors.ex")).isPresent();
+        assertThat(manifest.getFileString("src/generated/weather_server_errors.ex")).isPresent();
     }
 
     @Test
     void errorsFileContainsDefmoduleForNoSuchResourceError() {
-        String content = manifest.expectFileString("src/generated/weather_errors.ex");
-        assertThat(content).contains("defmodule NoSuchResourceError");
+        String content = manifest.expectFileString("src/generated/weather_server_errors.ex");
+        assertThat(content).contains("defmodule Weather.Server.Errors.NoSuchResourceError");
     }
 
     // -------------------------------------------------------------------------

@@ -130,25 +130,25 @@ class ElixirClientCodegenTest {
 
     @Test
     void typesFileIsGenerated() {
-        assertThat(manifest.getFileString("src/generated/weather_types.ex")).isPresent();
+        assertThat(manifest.getFileString("src/generated/weather_client_types.ex")).isPresent();
     }
 
     @Test
     void typesFileContainsDefmoduleForForecastInput() {
-        String content = manifest.expectFileString("src/generated/weather_types.ex");
-        assertThat(content).contains("defmodule GetForecastInput");
+        String content = manifest.expectFileString("src/generated/weather_client_types.ex");
+        assertThat(content).contains("defmodule Weather.Client.Types.GetForecastInput");
     }
 
     @Test
     void typesFileContainsDefmoduleForForecastOutput() {
-        String content = manifest.expectFileString("src/generated/weather_types.ex");
-        assertThat(content).contains("defmodule GetForecastOutput");
+        String content = manifest.expectFileString("src/generated/weather_client_types.ex");
+        assertThat(content).contains("defmodule Weather.Client.Types.GetForecastOutput");
     }
 
     @Test
     void typesFileContainsDefmoduleForCurrentTimeOutput() {
-        String content = manifest.expectFileString("src/generated/weather_types.ex");
-        assertThat(content).contains("defmodule GetCurrentTimeOutput");
+        String content = manifest.expectFileString("src/generated/weather_client_types.ex");
+        assertThat(content).contains("defmodule Weather.Client.Types.GetCurrentTimeOutput");
     }
 
     // -------------------------------------------------------------------------
@@ -157,18 +157,18 @@ class ElixirClientCodegenTest {
 
     @Test
     void errorsFileIsGenerated() {
-        assertThat(manifest.getFileString("src/generated/weather_errors.ex")).isPresent();
+        assertThat(manifest.getFileString("src/generated/weather_client_errors.ex")).isPresent();
     }
 
     @Test
     void errorsFileContainsDefmoduleForNoSuchResourceError() {
-        String content = manifest.expectFileString("src/generated/weather_errors.ex");
-        assertThat(content).contains("defmodule NoSuchResourceError");
+        String content = manifest.expectFileString("src/generated/weather_client_errors.ex");
+        assertThat(content).contains("defmodule Weather.Client.Errors.NoSuchResourceError");
     }
 
     @Test
     void errorsFileContainsDefexceptionForErrorShape() {
-        String content = manifest.expectFileString("src/generated/weather_errors.ex");
+        String content = manifest.expectFileString("src/generated/weather_client_errors.ex");
         assertThat(content).contains("defexception");
     }
 }

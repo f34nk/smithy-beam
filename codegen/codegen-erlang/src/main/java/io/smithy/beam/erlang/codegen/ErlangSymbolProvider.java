@@ -47,9 +47,17 @@ import software.amazon.smithy.utils.CaseUtils;
  * <p>File layout produced for the symbols:
  * <ul>
  *   <li>service / operation / resource — {@code <outputDir>/<module>_{client|server}.erl}</li>
- *   <li>structure / error / union / enum / int-enum — {@code <outputDir>/<module>_types.hrl}</li>
+ *   <li>structure / error / union / enum / int-enum — {@code <outputDir>/<module>_{client|server}_types.hrl}</li>
  *   <li>scalars / collections — no {@code definitionFile} (in-place type expressions)</li>
  * </ul>
+ *
+ * <p>The types include file is mode-suffixed
+ * ({@code <module>_client_types.hrl} / {@code <module>_server_types.hrl})
+ * so that the client and server plugins can be configured against the same
+ * Smithy model and emit into the same project without colliding on shared
+ * record / type definitions. {@link ErlangWriter} derives the
+ * {@code -module(…)} attribute from the filename, so the include header is
+ * written as {@code -module(<module>_<mode>_types).} automatically.
  *
  * <p>Every returned symbol carries the originating {@link Shape} under the
  * {@link #PROP_SHAPE} property so that writers can recover it without having
@@ -80,7 +88,8 @@ public final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<
         String modeSuffix = (mode == Mode.SERVER) ? "server" : "client";
         this.serviceModuleName = settings.getModule() + "_" + modeSuffix;
         this.serviceFile = settings.getOutputDir() + "/" + serviceModuleName + ".erl";
-        this.typesFile = settings.getOutputDir() + "/" + settings.getModule() + "_types.hrl";
+        this.typesFile = settings.getOutputDir() + "/" + settings.getModule()
+                + "_" + modeSuffix + "_types.hrl";
     }
 
     @Override
@@ -127,7 +136,8 @@ public final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<
     }
 
     // -------------------------------------------------------------------------
-    // Aggregate shapes — emitted into the shared <module>_types.hrl include file.
+    // Aggregate shapes — emitted into the mode-suffixed
+    // <module>_{client|server}_types.hrl include file.
     // -------------------------------------------------------------------------
 
     @Override

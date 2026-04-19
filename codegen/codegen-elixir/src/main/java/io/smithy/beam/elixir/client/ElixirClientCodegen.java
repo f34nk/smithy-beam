@@ -132,7 +132,7 @@ public final class ElixirClientCodegen
         EnumShape enumShape = d.expectEnumShape();
         d.context().writerDelegator().useShapeWriter(enumShape, writer -> {
             writer.pushState(new EnumValuesSection(enumShape));
-            writer.writeEnumModule(enumShape);
+            writer.writeEnumModule(enumShape, d.symbolProvider());
             writer.popState();
         });
     }
@@ -141,7 +141,7 @@ public final class ElixirClientCodegen
     public void generateIntEnumShape(GenerateIntEnumDirective<ElixirContext, ElixirSettings> d) {
         IntEnumShape intEnumShape = d.expectIntEnumShape();
         d.context().writerDelegator().useShapeWriter(intEnumShape, writer ->
-                writer.writeIntEnumModule(intEnumShape));
+                writer.writeIntEnumModule(intEnumShape, d.symbolProvider()));
     }
 
     @Override
