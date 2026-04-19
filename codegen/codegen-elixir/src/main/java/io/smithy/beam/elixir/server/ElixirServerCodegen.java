@@ -84,29 +84,30 @@ public final class ElixirServerCodegen
                 writer.injectSection(new ModuleAttributesSection(d.service()));
                 // Empty injection point — router integrations can emit a dispatch table here.
                 writer.injectSection(new ServerRouteSection(d.service()));
+
+                for (var op : d.operations()) {
+                    String handlerName = "handle_" + toFunctionName(op.getId().getName());
+                    writer.injectSection(new OperationDocSection(op));
+                    writer.pushState(new ServerHandlerCallbackSection(op));
+                    writer.write("def $L(request, state) do", handlerName);
+                    writer.indent();
+                    writer.write("{:error, :not_implemented}");
+                    writer.dedent();
+                    writer.write("end");
+                    writer.popState();
+                    writer.write("");
+                }
             });
         });
     }
 
     /**
-     * Emits a {@code def handle_<op>(request, state) do … end} callback stub
-     * per operation, wrapped by {@link ServerHandlerCallbackSection} so
-     * integrations can replace the stub body.
+     * No-op: handler stubs are emitted inside {@link #generateService} so they
+     * appear within the {@code defmodule} block.
      */
     @Override
     public void generateOperation(GenerateOperationDirective<ElixirContext, ElixirSettings> d) {
-        String handlerName = "handle_" + toFunctionName(d.shape().getId().getName());
-        d.context().writerDelegator().useShapeWriter(d.service(), writer -> {
-            writer.injectSection(new OperationDocSection(d.shape()));
-            writer.pushState(new ServerHandlerCallbackSection(d.shape()));
-            writer.write("def $L(request, state) do", handlerName);
-            writer.indent();
-            writer.write("{:error, :not_implemented}");
-            writer.dedent();
-            writer.write("end");
-            writer.popState();
-            writer.write("");
-        });
+        // Intentionally empty — see generateService.
     }
 
     @Override
@@ -141,7 +142,7 @@ public final class ElixirServerCodegen
         EnumShape enumShape = d.expectEnumShape();
         d.context().writerDelegator().useShapeWriter(enumShape, writer -> {
             writer.pushState(new EnumValuesSection(enumShape));
-            writer.writeEnumModule(enumShape);
+            writer.writeEnumModule(enumShape, d.symbolProvider());
             writer.popState();
         });
     }
@@ -150,7 +151,7 @@ public final class ElixirServerCodegen
     public void generateIntEnumShape(GenerateIntEnumDirective<ElixirContext, ElixirSettings> d) {
         IntEnumShape intEnumShape = d.expectIntEnumShape();
         d.context().writerDelegator().useShapeWriter(intEnumShape, writer ->
-                writer.writeIntEnumModule(intEnumShape));
+                writer.writeIntEnumModule(intEnumShape, d.symbolProvider()));
     }
 
     @Override
