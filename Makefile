@@ -17,6 +17,15 @@ build:
 	tree */build/libs
 	tree ~/.m2/repository/io/smithy/beam
 
+.PHONY: build/snapshots
+build/snapshots:
+	#
+	# Build golden snapshots
+	#
+	rm -rf codegen/codegen-test/src/test/resources/snapshots
+	./gradlew :codegen:codegen-test:test -PupdateSnapshots=true
+	tree codegen/codegen-test/src/test/resources/snapshots
+
 .PHONY: test
 test: test/java test/runtime-erlang test/runtime-elixir
 
