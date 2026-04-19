@@ -11,7 +11,7 @@
 %%   encode/1  → binary()
 %%   decode/1  → map() with binary keys
 
--export([encode/1, decode/1]).
+-export([encode/1, decode/1, decode_aws_error/1, parse_error_type/1]).
 
 %% Internal helpers (exported for testing)
 -export([
@@ -52,6 +52,46 @@ decode(Json) when is_binary(Json) ->
     normalise_for_decode(jsx:decode(Json, [return_maps]));
 decode(Json) ->
     decode(iolist_to_binary(Json)).
+
+%%====================================================================
+%% AWS-JSON error helpers
+%%====================================================================
+
+%% @doc Decode an AWS JSON error response body and extract the error type code.
+%%
+%% AWS JSON 1.0 and 1.1 services embed the error code in a `__type` field,
+%% optionally prefixed with a namespace (`"com.example#ValidationException"`).
+%% This function decodes the body (if binary) and strips the namespace prefix
+%% so callers receive a bare error code.
+%%
+%% @param Json JSON binary or already-decoded map.
+%% @returns `{ErrorCode, DecodedMap}`.
+-spec decode_aws_error(binary() | map()) -> {binary(), map()}.
+decode_aws_error(Json) when is_binary(Json) ->
+    Map = decode(Json),
+    {parse_error_type(Map), Map};
+decode_aws_error(Map) when is_map(Map) ->
+    {parse_error_type(Map), Map}.
+
+%% @doc Extract the error type code from a decoded AWS JSON error map.
+%%
+%% Strips any namespace prefix from `__type`
+%% (e.g. `<<"com.example#ValidationException">>` → `<<"ValidationException">>`).
+%% Falls back to `<<"UnknownError">>` when `__type` is absent.
+%%
+%% @param Map Decoded error response map (binary keys).
+%% @returns Bare error code binary.
+-spec parse_error_type(map()) -> binary().
+parse_error_type(Map) when is_map(Map) ->
+    case maps:get(<<"__type">>, Map, undefined) of
+        undefined ->
+            <<"UnknownError">>;
+        Type when is_binary(Type) ->
+            case binary:split(Type, <<"#">>) of
+                [_, Code] -> Code;
+                [Code]    -> Code
+            end
+    end.
 
 %%====================================================================
 %% Internal helpers

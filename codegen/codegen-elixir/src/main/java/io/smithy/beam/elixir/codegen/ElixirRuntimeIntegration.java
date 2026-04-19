@@ -27,6 +27,8 @@ public final class ElixirRuntimeIntegration implements ElixirIntegration {
         RuntimeResourceCopier.copy(
                 getClass().getClassLoader(),
                 paths,
-                ctx.fileManifest());
+                ctx.fileManifest(),
+                "META-INF/smithy-beam/runtime/elixir/",
+                "runtime/");
     }
 }

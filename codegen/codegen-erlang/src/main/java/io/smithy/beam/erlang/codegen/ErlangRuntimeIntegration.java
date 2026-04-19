@@ -27,6 +27,8 @@ public final class ErlangRuntimeIntegration implements ErlangIntegration {
         RuntimeResourceCopier.copy(
                 getClass().getClassLoader(),
                 paths,
-                ctx.fileManifest());
+                ctx.fileManifest(),
+                "META-INF/smithy-beam/runtime/erlang/",
+                "runtime/");
     }
 }

@@ -11,7 +11,8 @@
     get_credentials_filepath/0,
     from_environment/0,
     from_credentials_file/0,
-    from_credentials_file/1
+    from_credentials_file/1,
+    from_ec2_metadata/0
 ]).
 
 %% @doc Get AWS credentials from the default credential chain
@@ -81,9 +82,8 @@ get_credentials(Options) when is_map(Options) ->
     %% Build provider chain with profile-aware credentials file provider
     Providers = [
         fun from_environment/0,
-        fun() -> from_credentials_file(Profile) end
-        %% TODO: Add fun from_ec2_metadata/0 (IAM role)
-        %% TODO: Add fun from_ecs_metadata/0 (ECS container credentials)
+        fun() -> from_credentials_file(Profile) end,
+        fun from_ec2_metadata/0
     ],
 
     try_providers(Providers).
@@ -255,6 +255,24 @@ from_credentials_file(Profile) when is_binary(Profile) ->
             end
     end.
 
+%% @doc Load AWS credentials from the EC2 Instance Metadata Service (IMDSv2).
+%%
+%% Uses the token-based IMDSv2 protocol.  On non-EC2 hosts the IMDS endpoint
+%% is unreachable; a short connect timeout (300 ms) ensures the provider
+%% fails fast without blocking the credential chain.
+%%
+%% Credential chain: PUT /latest/api/token → GET role name → GET credentials.
+%%
+%% @returns `{ok, Credentials}` or `{error, Reason}`.
+-spec from_ec2_metadata() -> {ok, map()} | {error, atom() | tuple()}.
+from_ec2_metadata() ->
+    BaseUrl = "http://169.254.169.254",
+    HttpOpts = [{timeout, 1000}, {connect_timeout, 300}],
+    case get_imds_token(BaseUrl, HttpOpts) of
+        {ok, Token}  -> fetch_role_credentials(BaseUrl, Token, HttpOpts);
+        {error, _}   -> fetch_role_credentials(BaseUrl, undefined, HttpOpts)
+    end.
+
 %%====================================================================
 %% Internal Functions
 %%====================================================================
@@ -357,14 +375,93 @@ validate_credentials(_) ->
 -spec try_providers([fun(() -> {ok, map()} | {error, atom()})]) ->
     {ok, map()} | {error, no_credentials}.
 try_providers([]) ->
-    %% No providers succeeded
     {error, no_credentials};
 try_providers([Provider | Rest]) ->
     case Provider() of
-        {ok, Credentials} ->
-            %% Provider succeeded - return credentials
-            {ok, Credentials};
-        {error, _Reason} ->
-            %% Provider failed - try next provider
-            try_providers(Rest)
+        {ok, Credentials} -> {ok, Credentials};
+        {error, _Reason}  -> try_providers(Rest)
+    end.
+
+%% @private
+%% Acquire an IMDSv2 session token via PUT /latest/api/token.
+-spec get_imds_token(string(), list()) -> {ok, string()} | {error, term()}.
+get_imds_token(BaseUrl, HttpOpts) ->
+    TokenUrl = BaseUrl ++ "/latest/api/token",
+    Request  = {TokenUrl, [{"X-aws-ec2-metadata-token-ttl-seconds", "21600"}],
+                "text/plain", ""},
+    case httpc:request(put, Request, HttpOpts, [{body_format, binary}]) of
+        {ok, {{_, 200, _}, _RespHdrs, Body}} ->
+            {ok, binary_to_list(Body)};
+        {ok, {{_, Status, _}, _, _}} ->
+            {error, {imds_token_error, Status}};
+        {error, Reason} ->
+            {error, {imds_connect_failed, Reason}}
+    end.
+
+%% @private
+%% Fetch the IAM role name then retrieve its credentials from IMDS.
+-spec fetch_role_credentials(string(), string() | undefined, list()) ->
+    {ok, map()} | {error, atom() | tuple()}.
+fetch_role_credentials(BaseUrl, Token, HttpOpts) ->
+    RoleUrl  = BaseUrl ++ "/latest/meta-data/iam/security-credentials/",
+    TokenHdr = token_header(Token),
+    case httpc:request(get, {RoleUrl, TokenHdr}, HttpOpts, [{body_format, binary}]) of
+        {ok, {{_, 200, _}, _, RoleBody}} ->
+            RoleName = string:trim(binary_to_list(RoleBody)),
+            fetch_credentials_for_role(BaseUrl, RoleName, Token, HttpOpts);
+        {ok, {{_, 404, _}, _, _}} ->
+            {error, ec2_no_iam_role};
+        {ok, {{_, Status, _}, _, _}} ->
+            {error, {ec2_metadata_error, Status}};
+        {error, Reason} ->
+            {error, {ec2_metadata_connect_failed, Reason}}
+    end.
+
+%% @private
+-spec fetch_credentials_for_role(string(), string(), string() | undefined, list()) ->
+    {ok, map()} | {error, atom() | tuple()}.
+fetch_credentials_for_role(BaseUrl, RoleName, Token, HttpOpts) ->
+    CredsUrl = BaseUrl ++ "/latest/meta-data/iam/security-credentials/" ++ RoleName,
+    TokenHdr = token_header(Token),
+    case httpc:request(get, {CredsUrl, TokenHdr}, HttpOpts, [{body_format, binary}]) of
+        {ok, {{_, 200, _}, _, CredsBody}} ->
+            parse_imds_credentials(CredsBody);
+        {ok, {{_, Status, _}, _, _}} ->
+            {error, {ec2_credentials_error, Status}};
+        {error, Reason} ->
+            {error, {ec2_credentials_connect_failed, Reason}}
+    end.
+
+%% @private
+%% Build the X-aws-ec2-metadata-token header list; omit for IMDSv1 fallback.
+-spec token_header(string() | undefined) -> [{string(), string()}].
+token_header(undefined) -> [];
+token_header(Token)     -> [{"X-aws-ec2-metadata-token", Token}].
+
+%% @private
+%% Parse the JSON body returned by the IMDS credentials endpoint.
+-spec parse_imds_credentials(binary()) -> {ok, map()} | {error, atom()}.
+parse_imds_credentials(Body) ->
+    try
+        %% Minimal JSON parser — the IMDS response is a flat object with
+        %% well-known keys; we decode it with a simple pattern.
+        Map = jsx:decode(Body, [return_maps]),
+        case {maps:get(<<"AccessKeyId">>, Map, undefined),
+              maps:get(<<"SecretAccessKey">>, Map, undefined)} of
+            {undefined, _} -> {error, ec2_missing_access_key};
+            {_, undefined} -> {error, ec2_missing_secret_key};
+            {AK, SK} ->
+                Creds = #{
+                    access_key_id     => AK,
+                    secret_access_key => SK
+                },
+                WithToken =
+                    case maps:get(<<"Token">>, Map, undefined) of
+                        undefined -> Creds;
+                        Token     -> Creds#{session_token => Token}
+                    end,
+                {ok, WithToken}
+        end
+    catch _:_ ->
+        {error, ec2_credentials_parse_error}
     end.
