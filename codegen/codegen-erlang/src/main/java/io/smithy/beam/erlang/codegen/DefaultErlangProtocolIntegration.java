@@ -14,7 +14,7 @@ import software.amazon.smithy.utils.CodeSection;
  *
  * <p>Subclasses declare a {@link #protocolId()} and {@link #protocolDependencies()}.
  * The base class guards all customisations with {@link #isApplicable(ErlangContext)}
- * and wires up MVP stub interceptors for {@link OperationSendSection} and
+ * and wires up stub interceptors for {@link OperationSendSection} and
  * {@link OperationReceiveSection}.
  */
 public abstract class DefaultErlangProtocolIntegration implements ErlangIntegration {

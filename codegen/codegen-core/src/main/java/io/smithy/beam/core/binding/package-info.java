@@ -7,7 +7,5 @@
  * <p>This package contains no language-specific logic and no public SPI;
  * it is consumed exclusively by the {@code codegen-erlang} and
  * {@code codegen-elixir} modules.
- *
- * <p>Populated by Step 4 of the v2.2 (Phase 2) implementation plan.
  */
 package io.smithy.beam.core.binding;

@@ -47,9 +47,8 @@ public final class BeamModelTransforms {
     /**
      * Ensures that every error shape carries the standard Smithy error members.
      *
-     * <p>Full implementation is a Phase 2 deliverable. Models produced by
-     * {@code Model.assembler()} already have prelude-injected defaults, so
-     * this is a pass-through in practice.
+     * <p>Models produced by {@code Model.assembler()} already have
+     * prelude-injected defaults, so this is currently a pass-through.
      */
     public static Model addDefaultErrorMembers(Model model) {
         return model;
