@@ -19,8 +19,15 @@ public enum ErlangDependency implements SymbolDependencyContainer {
     SMITHY_SIGV4("client/smithy_sigv4.erl"),
     SMITHY_QUERY("client/smithy_query.erl"),
     SMITHY_S3("client/smithy_s3.erl"),
+    SMITHY_ENDPOINTS("client/smithy_endpoints.erl"),
+    SMITHY_CREDENTIALS("client/smithy_credentials.erl"),
+    SMITHY_RETRY("client/smithy_retry.erl"),
+    SMITHY_CONFIG("client/smithy_config.erl"),
     SMITHY_ROUTER("server/smithy_router.erl"),
-    SMITHY_HANDLER("server/smithy_handler.erl");
+    SMITHY_HANDLER("server/smithy_handler.erl"),
+    SMITHY_SERVER("server/smithy_server.erl"),
+    SMITHY_VALIDATOR("server/smithy_validator.erl"),
+    SMITHY_ERROR_MAP("server/smithy_error_map.erl");
 
     private final String resourcePath;
     private final SymbolDependency dependency;

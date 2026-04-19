@@ -79,7 +79,7 @@ class ErlangDependencyTest {
     }
 
     @Test
-    void enumHasEightConstants() {
-        assertThat(ErlangDependency.values()).hasSize(8);
+    void enumHasFifteenConstants() {
+        assertThat(ErlangDependency.values()).hasSize(15);
     }
 }
