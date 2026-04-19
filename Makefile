@@ -18,8 +18,7 @@ build:
 	tree ~/.m2/repository/io/smithy/beam
 
 .PHONY: test
-test: test/java
-# test: test/java test/runtime-erlang test/runtime-elixir
+test: test/java test/runtime-erlang test/runtime-elixir
 
 .PHONY: test/java
 test/java:
@@ -97,7 +96,7 @@ test/runtime-elixir:
 	echo "Running: runtime-elixir tests" && \
 	elixir -S mix deps.get > "$$logfile" 2>&1 && \
 	elixir -S mix test >> "$$logfile" 2>&1 ;\
-	if grep -q "stacktrace" "$$logfile"; then \
+	if grep -E "stacktrace|CompileError" "$$logfile"; then \
 		echo "$$(basename $$logfile) ...failed" ; \
 		exit 1 ; \
 	else \
