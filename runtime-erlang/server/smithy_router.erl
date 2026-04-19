@@ -58,14 +58,23 @@
 
 %% @doc Dispatch an incoming request to the matching handler.
 %%
+%% Routes are looked up from the application environment key
+%% `{smithy_beam, routes}`.  Register routes before calling this function
+%% (typically in your application's `start/2` callback):
+%%
+%%   application:set_env(smithy_beam, routes, MyServer:routes())
+%%
 %% @param Method   Uppercase HTTP method binary (e.g. `<<"POST">>`).
 %% @param Path     URL path binary (e.g. `<<"/items/42">>`).
 %% @param Headers  Request headers map or list.
 %% @param Body     Raw request body binary.
-%% @returns Handler return value or `not_found`.
+%% @returns Handler return value, `not_found`, or `{error, routes_not_configured}`.
 -spec dispatch(method(), binary(), headers(), body()) -> term().
-dispatch(_Method, _Path, _Headers, _Body) ->
-    {error, not_implemented}.
+dispatch(Method, Path, Headers, Body) ->
+    case application:get_env(smithy_beam, routes) of
+        {ok, Routes} -> dispatch(Routes, Method, Path, Headers, Body);
+        undefined    -> {error, routes_not_configured}
+    end.
 
 %% @doc Dispatch using an explicit route table.
 %%
