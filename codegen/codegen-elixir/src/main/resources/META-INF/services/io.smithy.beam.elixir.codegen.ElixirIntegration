@@ -1,0 +1,11 @@
+io.smithy.beam.elixir.codegen.ElixirRuntimeIntegration
+io.smithy.beam.elixir.codegen.protocol.ElixirRestJson1Integration
+io.smithy.beam.elixir.codegen.protocol.ElixirAwsJson10Integration
+io.smithy.beam.elixir.codegen.protocol.ElixirAwsJson11Integration
+io.smithy.beam.elixir.codegen.protocol.ElixirRestXmlIntegration
+io.smithy.beam.elixir.codegen.protocol.ElixirAwsQueryIntegration
+io.smithy.beam.elixir.codegen.protocol.ElixirEc2QueryIntegration
+io.smithy.beam.elixir.codegen.auth.ElixirSigV4Integration
+io.smithy.beam.elixir.codegen.auth.ElixirSigV4AIntegration
+io.smithy.beam.elixir.codegen.auth.ElixirBearerIntegration
+io.smithy.beam.elixir.server.ElixirServerBehaviourIntegration
