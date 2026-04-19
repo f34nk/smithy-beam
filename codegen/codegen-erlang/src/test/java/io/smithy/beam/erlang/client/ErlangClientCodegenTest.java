@@ -135,24 +135,30 @@ class ErlangClientCodegenTest {
 
     @Test
     void typesFileIsGenerated() {
-        assertThat(manifest.getFileString("src/generated/weather_types.hrl")).isPresent();
+        assertThat(manifest.getFileString("src/generated/weather_client_types.hrl")).isPresent();
+    }
+
+    @Test
+    void typesFileHasModeSuffixedModuleAttribute() {
+        String content = manifest.expectFileString("src/generated/weather_client_types.hrl");
+        assertThat(content).startsWith("-module(weather_client_types).");
     }
 
     @Test
     void typesFileContainsRecordForForecastInput() {
-        String content = manifest.expectFileString("src/generated/weather_types.hrl");
+        String content = manifest.expectFileString("src/generated/weather_client_types.hrl");
         assertThat(content).contains("-record(get_forecast_input,");
     }
 
     @Test
     void typesFileContainsRecordForForecastOutput() {
-        String content = manifest.expectFileString("src/generated/weather_types.hrl");
+        String content = manifest.expectFileString("src/generated/weather_client_types.hrl");
         assertThat(content).contains("-record(get_forecast_output,");
     }
 
     @Test
     void typesFileContainsErrorRecord() {
-        String content = manifest.expectFileString("src/generated/weather_types.hrl");
+        String content = manifest.expectFileString("src/generated/weather_client_types.hrl");
         assertThat(content).contains("-record(no_such_resource_error,");
     }
 }
