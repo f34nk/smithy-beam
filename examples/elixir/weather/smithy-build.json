@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "sources": ["model"],
+  "maven": {
+    "repositories": [
+      { "url": "file://~/.m2/repository" }
+    ],
+    "dependencies": [
+      "io.smithy.beam:codegen-elixir:0.1.0-SNAPSHOT"
+    ]
+  },
+  "plugins": {
+    "elixir-client-codegen": {
+      "service":   "example.weather#Weather",
+      "namespace": "Weather",
+      "edition":   "2025",
+      "outputDir": "lib/generated/client"
+    },
+    "elixir-server-codegen": {
+      "service":   "example.weather#Weather",
+      "namespace": "Weather",
+      "edition":   "2025",
+      "outputDir": "lib/generated/server"
+    }
+  }
+}
