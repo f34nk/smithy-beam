@@ -5,6 +5,10 @@ subprojects {
     apply(plugin = "java-library")
     apply(plugin = "maven-publish")
 
+    repositories {
+        mavenCentral()
+    }
+
     configure<JavaPluginExtension> {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
