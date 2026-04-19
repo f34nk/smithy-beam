@@ -35,6 +35,7 @@ public final class ElixirWriter extends SymbolWriter<ElixirWriter, ElixirImportC
         putFormatter('F', (s, i) -> escapeFunctionName(String.valueOf(s)));
         putFormatter('A', (s, i) -> formatAtom(String.valueOf(s)));
         putFormatter('D', (s, i) -> formatDocLine(String.valueOf(s)));
+        setIndentText("  ");
         trimTrailingSpaces();
         trimBlankLines(2);
     }
