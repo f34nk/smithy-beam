@@ -17,8 +17,12 @@ public final class ErlangImportContainer implements ImportContainer {
 
     @Override
     public void addImport(String packageName, String name, Symbol symbol) {
-        // inspect symbol.getDefinitionFile(); if it ends in ".hrl" add the path
-        // to includeLibs; otherwise record qualifiedModules.
+        String defFile = symbol.getDefinitionFile();
+        if (defFile != null && defFile.endsWith(".hrl")) {
+            includeLibs.add(defFile);
+        } else if (defFile != null && !defFile.isEmpty()) {
+            qualifiedModules.add(defFile);
+        }
     }
 
     /**
@@ -26,6 +30,12 @@ public final class ErlangImportContainer implements ImportContainer {
      * followed by a blank line.
      */
     public void writeImports(ErlangWriter writer) {
+        for (String lib : includeLibs) {
+            writer.write("-include_lib(\"$L\").", lib);
+        }
+        if (!includeLibs.isEmpty()) {
+            writer.write("");
+        }
     }
 
     public Set<String> getIncludeLibs() {
