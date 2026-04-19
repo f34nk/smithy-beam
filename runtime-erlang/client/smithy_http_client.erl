@@ -18,7 +18,9 @@
     put/3,
     put/4,
     delete/2,
-    delete/3
+    delete/3,
+    patch/3,
+    patch/4
 ]).
 
 %% Internal (exported for testing)
@@ -60,6 +62,12 @@ delete(Url, Headers) -> request(delete, Url, Headers, <<>>).
 -spec delete(binary() | string(), headers(), opts()) -> response().
 delete(Url, Headers, Opts) -> request(delete, Url, Headers, <<>>, Opts).
 
+-spec patch(binary() | string(), headers(), body()) -> response().
+patch(Url, Headers, Body) -> request(patch, Url, Headers, Body).
+
+-spec patch(binary() | string(), headers(), body(), opts()) -> response().
+patch(Url, Headers, Body, Opts) -> request(patch, Url, Headers, Body, Opts).
+
 %%====================================================================
 %% Core request/4,5
 %%====================================================================
@@ -77,32 +85,48 @@ request(Method, Url, Headers, Body) ->
 
 -spec request(method(), binary() | string(), headers(), body(), opts()) -> response().
 request(Method, Url, Headers, Body, Opts) ->
-    case backend() of
-        httpc   -> request_httpc(Method, Url, Headers, Body, Opts);
-        hackney -> request_hackney(Method, Url, Headers, Body, Opts);
-        Mod when is_atom(Mod) -> Mod:request(Method, Url, Headers, Body, Opts)
+    EnableRetry = maps:get(enable_retry, Opts, false),
+    RetryOpts   = maps:get(retry_opts,   Opts, #{}),
+    DoRequest = fun() ->
+        case backend() of
+            httpc   -> request_httpc(Method, Url, Headers, Body, Opts);
+            hackney -> request_hackney(Method, Url, Headers, Body, Opts);
+            Mod when is_atom(Mod) -> Mod:request(Method, Url, Headers, Body, Opts)
+        end
+    end,
+    case EnableRetry of
+        true  -> smithy_retry:with_retry(DoRequest, RetryOpts);
+        false -> DoRequest()
     end.
 
 %%====================================================================
 %% Backend: httpc  (OTP built-in, no external dependency)
 %%====================================================================
 
-request_httpc(Method, Url, Headers, Body, _Opts) ->
-    UrlStr     = to_string(Url),
-    HeaderList = normalise_headers_string(Headers),
+request_httpc(Method, Url, Headers, Body, Opts) ->
+    UrlStr      = to_string(Url),
+    HeaderList  = normalise_headers_string(Headers),
     ContentType = content_type(Headers),
+    Timeout     = maps:get(timeout,         Opts, 30000),
+    ConnTimeout = maps:get(connect_timeout, Opts, 5000),
 
     HttpRequest =
         case Method of
-            M when M =:= get; M =:= delete; M =:= head ->
+            M when M =:= get; M =:= delete; M =:= head; M =:= options ->
                 {UrlStr, HeaderList};
             _ ->
                 {UrlStr, HeaderList, ContentType, iolist_to_binary(Body)}
         end,
 
-    MethodStr = method_to_string(Method),
+    MethodAtom = method_to_atom(Method),
 
-    case httpc:request(MethodStr, HttpRequest, [{ssl, [{verify, verify_peer}]}], [{body_format, binary}]) of
+    HttpOpts = [
+        {ssl,             [{verify, verify_peer}]},
+        {timeout,         Timeout},
+        {connect_timeout, ConnTimeout}
+    ],
+
+    case httpc:request(MethodAtom, HttpRequest, HttpOpts, [{body_format, binary}]) of
         {ok, {{_Proto, Status, _Reason}, RespHeaders, RespBody}} ->
             NormHeaders = [{list_to_binary(K), list_to_binary(V)} || {K, V} <- RespHeaders],
             {ok, Status, NormHeaders, RespBody};
@@ -137,14 +161,14 @@ request_hackney(Method, Url, Headers, Body, Opts) ->
 backend() ->
     application:get_env(smithy_beam, smithy_http_backend, httpc).
 
-method_to_string(get)     -> get;
-method_to_string(post)    -> post;
-method_to_string(put)     -> put;
-method_to_string(delete)  -> delete;
-method_to_string(patch)   -> patch;
-method_to_string(head)    -> head;
-method_to_string(options) -> options;
-method_to_string(M) when is_atom(M) -> M.
+method_to_atom(get)     -> get;
+method_to_atom(post)    -> post;
+method_to_atom(put)     -> put;
+method_to_atom(delete)  -> delete;
+method_to_atom(patch)   -> patch;
+method_to_atom(head)    -> head;
+method_to_atom(options) -> options;
+method_to_atom(M) when is_atom(M) -> M.
 
 normalise_headers_string(Headers) ->
     [{to_string(K), to_string(V)} || {K, V} <- Headers].
