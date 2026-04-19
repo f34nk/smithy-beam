@@ -143,28 +143,42 @@ class ElixirSymbolProviderTest {
     void structureShapeSymbolContainsTypesInName() {
         Symbol sym = clientProvider().toSymbol(
                 model.expectShape(ShapeId.from("com.example#GetItemInput")));
-        assertThat(sym.getName()).isEqualTo("SimpleService.Types.GetItemInput");
+        assertThat(sym.getName()).isEqualTo("SimpleService.Client.Types.GetItemInput");
+    }
+
+    @Test
+    void structureShapeSymbolNameIsServerModePrefixed() {
+        Symbol sym = serverProvider().toSymbol(
+                model.expectShape(ShapeId.from("com.example#GetItemInput")));
+        assertThat(sym.getName()).isEqualTo("SimpleService.Server.Types.GetItemInput");
     }
 
     @Test
     void structureShapeSymbolDefinitionFileIsTypesEx() {
         Symbol sym = clientProvider().toSymbol(
                 model.expectShape(ShapeId.from("com.example#GetItemInput")));
-        assertThat(sym.getDefinitionFile()).endsWith("simple_service_types.ex");
+        assertThat(sym.getDefinitionFile()).endsWith("simple_service_client_types.ex");
     }
 
     @Test
     void errorStructureSymbolContainsErrorsInName() {
         Symbol sym = clientProvider().toSymbol(
                 model.expectShape(ShapeId.from("com.example#ServiceError")));
-        assertThat(sym.getName()).isEqualTo("SimpleService.Errors.ServiceError");
+        assertThat(sym.getName()).isEqualTo("SimpleService.Client.Errors.ServiceError");
+    }
+
+    @Test
+    void errorStructureSymbolNameIsServerModePrefixed() {
+        Symbol sym = serverProvider().toSymbol(
+                model.expectShape(ShapeId.from("com.example#ServiceError")));
+        assertThat(sym.getName()).isEqualTo("SimpleService.Server.Errors.ServiceError");
     }
 
     @Test
     void errorStructureSymbolDefinitionFileIsErrorsEx() {
         Symbol sym = clientProvider().toSymbol(
                 model.expectShape(ShapeId.from("com.example#ServiceError")));
-        assertThat(sym.getDefinitionFile()).endsWith("simple_service_errors.ex");
+        assertThat(sym.getDefinitionFile()).endsWith("simple_service_client_errors.ex");
     }
 
     @Test
@@ -180,7 +194,7 @@ class ElixirSymbolProviderTest {
     void unionShapeSymbolContainsTypesInName() {
         Symbol sym = clientProvider().toSymbol(
                 model.expectShape(ShapeId.from("com.example#MyUnion")));
-        assertThat(sym.getName()).isEqualTo("SimpleService.Types.MyUnion");
+        assertThat(sym.getName()).isEqualTo("SimpleService.Client.Types.MyUnion");
         assertThat(sym.getDefinitionFile()).endsWith(".ex");
     }
 
@@ -188,7 +202,7 @@ class ElixirSymbolProviderTest {
     void enumShapeSymbolContainsTypesInName() {
         Symbol sym = clientProvider().toSymbol(
                 model.expectShape(ShapeId.from("com.example#Color")));
-        assertThat(sym.getName()).isEqualTo("SimpleService.Types.Color");
+        assertThat(sym.getName()).isEqualTo("SimpleService.Client.Types.Color");
         assertThat(sym.getDefinitionFile()).endsWith(".ex");
     }
 
@@ -196,7 +210,7 @@ class ElixirSymbolProviderTest {
     void intEnumShapeSymbolContainsTypesInName() {
         Symbol sym = clientProvider().toSymbol(
                 model.expectShape(ShapeId.from("com.example#Status")));
-        assertThat(sym.getName()).isEqualTo("SimpleService.Types.Status");
+        assertThat(sym.getName()).isEqualTo("SimpleService.Client.Types.Status");
         assertThat(sym.getDefinitionFile()).endsWith(".ex");
     }
 
