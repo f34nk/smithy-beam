@@ -20,7 +20,8 @@ defmodule SmithyCredentials do
     profile = Map.get(opts, :profile, "default")
     try_providers([
       &from_environment/0,
-      fn -> from_credentials_file(profile) end
+      fn -> from_credentials_file(profile) end,
+      &from_ec2_metadata/0
     ])
   end
 
@@ -48,6 +49,27 @@ defmodule SmithyCredentials do
   @spec from_credentials_file() :: {:ok, map()} | {:error, atom() | tuple()}
   def from_credentials_file, do: from_credentials_file("default")
 
+  @doc """
+  Load credentials from the EC2 Instance Metadata Service (IMDSv2).
+
+  Uses the token-based IMDSv2 protocol.  On non-EC2 hosts the IMDS endpoint
+  is unreachable; a short connect timeout (300 ms) ensures the provider
+  fails fast without blocking the credential chain.
+  """
+  @spec from_ec2_metadata() :: {:ok, map()} | {:error, atom() | tuple()}
+  def from_ec2_metadata do
+    base_url = "http://169.254.169.254"
+    http_opts = [receive_timeout: 1000, connect_options: [timeout: 300]]
+
+    token =
+      case get_imds_token(base_url, http_opts) do
+        {:ok, t}    -> t
+        {:error, _} -> nil
+      end
+
+    fetch_role_credentials(base_url, token, http_opts)
+  end
+
   @doc "Load credentials from `~/.aws/credentials` for the given profile."
   @spec from_credentials_file(String.t()) :: {:ok, map()} | {:error, atom() | tuple()}
   def from_credentials_file(profile) do
@@ -69,6 +91,95 @@ defmodule SmithyCredentials do
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
+
+  defp get_imds_token(base_url, http_opts) do
+    token_url = base_url <> "/latest/api/token"
+    headers   = [{"x-aws-ec2-metadata-token-ttl-seconds", "21600"}]
+
+    case :httpc.request(:put, {to_charlist(token_url), to_charlist_headers(headers),
+                                ~c"text/plain", ""}, http_opts_to_httpc(http_opts), [{:body_format, :binary}]) do
+      {:ok, {{_, 200, _}, _resp_hdrs, body}} ->
+        {:ok, String.trim(to_string(body))}
+
+      {:ok, {{_, status, _}, _, _}} ->
+        {:error, {:imds_token_error, status}}
+
+      {:error, reason} ->
+        {:error, {:imds_connect_failed, reason}}
+    end
+  end
+
+  defp fetch_role_credentials(base_url, token, http_opts) do
+    role_url   = base_url <> "/latest/meta-data/iam/security-credentials/"
+    token_hdrs = token_headers(token)
+
+    case :httpc.request(:get, {to_charlist(role_url), to_charlist_headers(token_hdrs)},
+                        http_opts_to_httpc(http_opts), [{:body_format, :binary}]) do
+      {:ok, {{_, 200, _}, _, body}} ->
+        role_name = String.trim(to_string(body))
+        fetch_credentials_for_role(base_url, role_name, token, http_opts)
+
+      {:ok, {{_, 404, _}, _, _}} ->
+        {:error, :ec2_no_iam_role}
+
+      {:ok, {{_, status, _}, _, _}} ->
+        {:error, {:ec2_metadata_error, status}}
+
+      {:error, reason} ->
+        {:error, {:ec2_metadata_connect_failed, reason}}
+    end
+  end
+
+  defp fetch_credentials_for_role(base_url, role_name, token, http_opts) do
+    creds_url  = base_url <> "/latest/meta-data/iam/security-credentials/" <> role_name
+    token_hdrs = token_headers(token)
+
+    case :httpc.request(:get, {to_charlist(creds_url), to_charlist_headers(token_hdrs)},
+                        http_opts_to_httpc(http_opts), [{:body_format, :binary}]) do
+      {:ok, {{_, 200, _}, _, body}} ->
+        parse_imds_credentials(body)
+
+      {:ok, {{_, status, _}, _, _}} ->
+        {:error, {:ec2_credentials_error, status}}
+
+      {:error, reason} ->
+        {:error, {:ec2_credentials_connect_failed, reason}}
+    end
+  end
+
+  defp parse_imds_credentials(body) do
+    case Jason.decode(body) do
+      {:ok, map} ->
+        case {Map.get(map, "AccessKeyId"), Map.get(map, "SecretAccessKey")} do
+          {nil, _} -> {:error, :ec2_missing_access_key}
+          {_, nil} -> {:error, :ec2_missing_secret_key}
+          {ak, sk} ->
+            creds = %{access_key_id: ak, secret_access_key: sk}
+            creds = if token = Map.get(map, "Token"), do: Map.put(creds, :session_token, token), else: creds
+            {:ok, creds}
+        end
+
+      {:error, _} ->
+        {:error, :ec2_credentials_parse_error}
+    end
+  end
+
+  defp token_headers(nil),   do: []
+  defp token_headers(token), do: [{"x-aws-ec2-metadata-token", token}]
+
+  defp to_charlist_headers(headers) do
+    Enum.map(headers, fn {k, v} -> {to_charlist(k), to_charlist(v)} end)
+  end
+
+  defp http_opts_to_httpc(opts) do
+    timeout     = Keyword.get(opts, :receive_timeout, 1000)
+    conn_timeout =
+      opts
+      |> Keyword.get(:connect_options, [])
+      |> Keyword.get(:timeout, 300)
+
+    [{:timeout, timeout}, {:connect_timeout, conn_timeout}]
+  end
 
   defp try_providers([]), do: {:error, :no_credentials}
 
