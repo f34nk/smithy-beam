@@ -79,7 +79,7 @@ class ElixirDependencyTest {
     }
 
     @Test
-    void enumHasEightConstants() {
-        assertThat(ElixirDependency.values()).hasSize(8);
+    void enumHasFourteenConstants() {
+        assertThat(ElixirDependency.values()).hasSize(14);
     }
 }
