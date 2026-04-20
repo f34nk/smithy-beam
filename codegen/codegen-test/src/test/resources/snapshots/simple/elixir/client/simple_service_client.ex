@@ -5,4 +5,5 @@ defmodule SimpleService.Client do
     {:error, :not_implemented}
   end
 
+
 end

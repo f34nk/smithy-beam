@@ -1,9 +1,15 @@
 -module(simple_client).
--export([get_item/2, errors/0, is_error/1, error_to_atom/1]).
+-export([get_item/2, get_item/3, errors/0, is_error/1, error_to_atom/1]).
 
 -spec get_item(Client :: map(), Input :: get_item_input()) ->
     {ok, get_item_output()} | {error, term()}.
-get_item(Config, Input) ->
+get_item(Client, Input) ->
+    get_item(Client, Input, #{}).
+
+%% Calls the GetItem operation with options
+-spec get_item(Client :: map(), Input :: get_item_input(), Options :: map()) ->
+    {ok, get_item_output()} | {error, term()}.
+get_item(Client, Input, Options) when is_record(Input, get_item_input), is_map(Options) ->
     {error, not_implemented}.
 
 
