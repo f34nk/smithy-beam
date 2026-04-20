@@ -14,7 +14,6 @@ import io.smithy.beam.elixir.codegen.sections.EnumValuesSection;
 import io.smithy.beam.elixir.codegen.sections.EventStreamSection;
 import io.smithy.beam.elixir.codegen.sections.ModuleAttributesSection;
 import io.smithy.beam.elixir.codegen.sections.OperationDocSection;
-import io.smithy.beam.elixir.codegen.sections.OperationErrorSection;
 import io.smithy.beam.elixir.codegen.sections.OperationReceiveSection;
 import io.smithy.beam.elixir.codegen.sections.OperationRequestSection;
 import io.smithy.beam.elixir.codegen.sections.OperationResponseSection;
@@ -86,16 +85,14 @@ public final class ElixirClientCodegen
                 for (OperationShape op : d.operations()) {
                     String fnName = toFunctionName(op);
 
-                    // @spec line (empty by default; ElixirSpecIntegration populates).
-                    writer.injectSection(new OperationSpecSection(op));
+                    // ── public function (doc + spec + def) ─────────────────
                     // @doc comment (empty by default; doc integrations populate).
                     writer.injectSection(new OperationDocSection(op));
+                    // @spec line (empty by default; ElixirSpecIntegration populates).
+                    writer.injectSection(new OperationSpecSection(op));
                     // validate_<op>_input/1 helper (empty by default).
                     writer.injectSection(new OperationValidationSection(op));
-                    // make_<op>_request/2 helper (empty by default).
-                    writer.injectSection(new OperationRequestSection(op));
 
-                    // Function clause: def op_name(config, input) do
                     writer.write("def $L(config, input) do", fnName);
                     writer.indent();
 
@@ -111,9 +108,11 @@ public final class ElixirClientCodegen
 
                     writer.dedent();
                     writer.write("end");
+                    writer.write("");
 
-                    // parse_error/2 helper (empty by default).
-                    writer.injectSection(new OperationErrorSection(op));
+                    // ── private helper (below the public def) ──────────────
+                    // <op>_op/1 helper (empty by default; protocol integrations populate).
+                    writer.injectSection(new OperationRequestSection(op));
 
                     // Pagination stream helper — only emitted for paginated operations.
                     if (PaginationHelper.isPaginated(d.model(), d.service(), op)) {

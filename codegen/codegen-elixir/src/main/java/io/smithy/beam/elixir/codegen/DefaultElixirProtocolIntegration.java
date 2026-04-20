@@ -3,9 +3,9 @@ package io.smithy.beam.elixir.codegen;
 import io.smithy.beam.core.ProtocolResolver;
 import io.smithy.beam.elixir.codegen.codec.ElixirCodec;
 import io.smithy.beam.elixir.codegen.codec.ElixirTransport;
-import io.smithy.beam.elixir.codegen.sections.OperationErrorSection;
 import io.smithy.beam.elixir.codegen.sections.OperationRequestSection;
 import io.smithy.beam.elixir.codegen.sections.OperationResponseSection;
+import io.smithy.beam.elixir.codegen.sections.OperationSendSection;
 import java.util.Collections;
 import java.util.List;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -49,8 +49,15 @@ public abstract class DefaultElixirProtocolIntegration implements ElixirIntegrat
 
     /**
      * Registers section interceptors that delegate to {@link #codec()} and
-     * {@link #transport()} to populate the operation request / response /
-     * error sections of the generated client module.
+     * {@link #transport()} to populate the public operation send body and
+     * the private {@code <op>_op/1} helper that builds the
+     * {@code %SmithyClient.Operation{}} struct.
+     *
+     * <p>The {@link OperationSendSection} interceptor <strong>replaces</strong>
+     * the default {@code {:error, :not_implemented}} stub written by
+     * {@link io.smithy.beam.elixir.client.ElixirClientCodegen} with the
+     * dispatch to {@code <op>_op/1}. All other interceptors append into
+     * empty sections.
      */
     @Override
     public List<? extends CodeInterceptor<? extends CodeSection, ElixirWriter>> interceptors(
@@ -61,16 +68,39 @@ public abstract class DefaultElixirProtocolIntegration implements ElixirIntegrat
         ElixirCodec codec = codec();
         ElixirTransport transport = transport();
         return List.of(
+                replacer(OperationSendSection.class, (writer, section) ->
+                        emitSendBody(writer, section.operation())),
                 CodeInterceptor.appender(OperationRequestSection.class, (writer, section) ->
                         emitOperationHelper(writer, ctx, section.operation(), codec, transport)),
                 CodeInterceptor.appender(OperationResponseSection.class, (writer, section) -> {
                     // Response handling is fully encoded inside <op>_op,
                     // emitted by the OperationRequestSection interceptor above.
-                }),
-                CodeInterceptor.appender(OperationErrorSection.class, (writer, section) -> {
-                    // parse_error_fn pointer is part of the Operation struct,
-                    // emitted by the OperationRequestSection interceptor above.
                 }));
+    }
+
+    /**
+     * Creates an interceptor that drops the previously written default text
+     * and emits fresh content in its place.
+     */
+    private static <S extends CodeSection> CodeInterceptor<S, ElixirWriter> replacer(
+            Class<S> type,
+            java.util.function.BiConsumer<ElixirWriter, S> body) {
+        return new CodeInterceptor<S, ElixirWriter>() {
+            @Override
+            public Class<S> sectionType() {
+                return type;
+            }
+
+            @Override
+            public void write(ElixirWriter writer, String previousText, S section) {
+                body.accept(writer, section);
+            }
+        };
+    }
+
+    private static void emitSendBody(ElixirWriter w, OperationShape op) {
+        String opName = CaseUtils.toSnakeCase(op.getId().getName());
+        w.write("SmithyClient.execute(config, $L_op(input))", opName);
     }
 
     private static void emitOperationHelper(ElixirWriter w, ElixirContext ctx,
@@ -84,7 +114,8 @@ public abstract class DefaultElixirProtocolIntegration implements ElixirIntegrat
                 .getId().getName();
         String action = op.getId().getName();
 
-        w.write("");
+        w.write("@doc false");
+        w.write("@spec $L_op($L.t()) :: SmithyClient.Operation.t()", opName, inputStruct);
         w.openBlock("defp $L_op(%$L{} = input) do", opName, inputStruct);
         w.openBlock("%SmithyClient.Operation{");
         w.write("name: :$L,", opName);
