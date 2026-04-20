@@ -46,6 +46,10 @@ public interface ErlangCodec {
      * Emits the Erlang expression that deserialises an error response body
      * into the appropriate error record.
      *
+     * <p>The emitted output forms the body of {@code parse_<op>_error/2} and
+     * <strong>must</strong> be terminated with a trailing {@code "."} on its
+     * final line so that the surrounding function is syntactically complete.
+     *
      * @param w   the writer to append to
      * @param ctx the current codegen context
      * @param op  the operation whose errors are being deserialised
