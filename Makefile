@@ -17,8 +17,8 @@ build:
 	tree */build/libs
 	tree ~/.m2/repository/io/smithy/beam
 
-.PHONY: build/snapshots
-build/snapshots:
+.PHONY: snapshots
+snapshots:
 	#
 	# Build snapshots
 	#

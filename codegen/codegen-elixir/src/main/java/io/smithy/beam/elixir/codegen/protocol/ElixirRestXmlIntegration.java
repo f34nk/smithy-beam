@@ -1,14 +1,16 @@
 package io.smithy.beam.elixir.codegen.protocol;
 
 import io.smithy.beam.elixir.codegen.DefaultElixirProtocolIntegration;
-import io.smithy.beam.elixir.codegen.ElixirDependency;
-import java.util.List;
+import io.smithy.beam.elixir.codegen.codec.ElixirCodec;
+import io.smithy.beam.elixir.codegen.codec.ElixirTransport;
+import io.smithy.beam.elixir.codegen.codec.XmlCodec;
+import io.smithy.beam.elixir.codegen.http.RestTransport;
 import software.amazon.smithy.model.shapes.ShapeId;
 
 /**
  * Elixir codegen integration for the {@code aws.protocols#restXml} protocol.
  *
- * <p>Adds {@code SMITHY_XML} and {@code SMITHY_HTTP_CLIENT} runtime dependencies.
+ * <p>Pairs the {@link XmlCodec} with the {@link RestTransport}.
  */
 public final class ElixirRestXmlIntegration extends DefaultElixirProtocolIntegration {
 
@@ -18,7 +20,12 @@ public final class ElixirRestXmlIntegration extends DefaultElixirProtocolIntegra
     }
 
     @Override
-    protected List<ElixirDependency> protocolDependencies() {
-        return List.of(ElixirDependency.SMITHY_XML, ElixirDependency.SMITHY_HTTP_CLIENT);
+    protected ElixirCodec codec() {
+        return new XmlCodec();
+    }
+
+    @Override
+    protected ElixirTransport transport() {
+        return new RestTransport();
     }
 }
