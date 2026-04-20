@@ -86,6 +86,6 @@ public final class XmlCodec implements ErlangCodec {
         w.indent();
         w.write("_:_ -> {error, {http_error, StatusCode, Body}}");
         w.dedent();
-        w.closeBlock("end");
+        w.closeBlock("end.");
     }
 }
