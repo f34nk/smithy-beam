@@ -20,6 +20,8 @@ public abstract class BeamSettings {
     private String scaffoldDir;
     private LocalDate relativeDate;
     private String relativeVersion;
+    private boolean removeUnreferencedShapes = false;
+    private boolean applyAuthSchemes = false;
 
     public ShapeId getService() {
         return service;
@@ -75,6 +77,31 @@ public abstract class BeamSettings {
 
     public void setRelativeVersion(String relativeVersion) {
         this.relativeVersion = relativeVersion;
+    }
+
+    /**
+     * When {@code true}, shapes not reachable from the service closure are
+     * removed before code generation. Defaults to {@code false}.
+     */
+    public boolean isRemoveUnreferencedShapes() {
+        return removeUnreferencedShapes;
+    }
+
+    public void setRemoveUnreferencedShapes(boolean removeUnreferencedShapes) {
+        this.removeUnreferencedShapes = removeUnreferencedShapes;
+    }
+
+    /**
+     * When {@code true}, every operation without an explicit {@code @auth}
+     * trait will have the service-level effective auth schemes applied to it
+     * explicitly. Defaults to {@code false}.
+     */
+    public boolean isApplyAuthSchemes() {
+        return applyAuthSchemes;
+    }
+
+    public void setApplyAuthSchemes(boolean applyAuthSchemes) {
+        this.applyAuthSchemes = applyAuthSchemes;
     }
 
     /** Returns whether this plugin generates client or server code. */
