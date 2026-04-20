@@ -55,9 +55,54 @@ defmodule SmithyRetry do
                                                           "InternalFailure"], do: true
   def retryable?(_), do: false
 
+  @doc """
+  Polls `poll` repeatedly with exponential backoff until it reports terminal
+  success or failure, or the maximum number of attempts is reached.
+
+  This is the polling primitive used by generated Smithy waiters
+  (`@waitable` trait). The poller is the generated acceptor evaluator which
+  calls the underlying operation and matches the result against the waiter's
+  acceptors.
+
+  `poll` must return one of:
+
+    * `{:success, value}` — terminal success; `wait/3` returns `{:ok, value}`.
+    * `{:failure, reason}` — terminal failure; `wait/3` returns `{:error, reason}`.
+    * `{:retry, value}` — sleep with exponential backoff and call `poll` again.
+
+  `min_delay` and `max_delay` are seconds (matching the `@waitable` trait).
+  After 100 retry attempts (hard cap, no setting today) `wait/3` gives up
+  with `{:error, :max_attempts_exceeded}`.
+  """
+  @spec wait((() -> {:success | :failure | :retry, term()}), non_neg_integer(), non_neg_integer()) ::
+          {:ok, term()} | {:error, term()}
+  def wait(poll, min_delay, max_delay) when is_function(poll, 0) do
+    wait_loop(poll, 0, 100, min_delay * 1000, max_delay * 1000)
+  end
+
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
+
+  defp wait_loop(_poll, attempt, max_attempts, _min_ms, _max_ms) when attempt >= max_attempts do
+    {:error, :max_attempts_exceeded}
+  end
+
+  defp wait_loop(poll, attempt, max_attempts, min_ms, max_ms) do
+    case poll.() do
+      {:success, value} ->
+        {:ok, value}
+
+      {:failure, reason} ->
+        {:error, reason}
+
+      {:retry, _value} ->
+        base_ms = round(min_ms * :math.pow(2, attempt))
+        delay_ms = min(base_ms, max_ms)
+        Process.sleep(delay_ms)
+        wait_loop(poll, attempt + 1, max_attempts, min_ms, max_ms)
+    end
+  end
 
   defp retry_loop(fun, attempt, max_retries, initial_backoff, max_backoff, multiplier, use_jitter, logger) do
     case fun.() do
