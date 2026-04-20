@@ -176,4 +176,46 @@ class ErlangServerCodegenTest {
         assertThat(content).doesNotContain("get_forecast(Config, Input)");
         assertThat(content).doesNotContain("get_current_time(Config, Input)");
     }
+
+    // -------------------------------------------------------------------------
+    // *_impl stub file ("WILL NOT BE OVERWRITTEN")
+    // -------------------------------------------------------------------------
+
+    @Test
+    void implStubFileIsGenerated() {
+        assertThat(manifest.getFileString("src/generated/weather_server_impl.erl")).isPresent();
+    }
+
+    @Test
+    void implStubFileHasModuleAttribute() {
+        String content = manifest.expectFileString("src/generated/weather_server_impl.erl");
+        assertThat(content).startsWith("-module(weather_server_impl).");
+    }
+
+    @Test
+    void implStubFileHasOverwriteWarning() {
+        String content = manifest.expectFileString("src/generated/weather_server_impl.erl");
+        assertThat(content).contains("This file will NOT be overwritten");
+    }
+
+    @Test
+    void implStubFileDeclaresBehaviour() {
+        String content = manifest.expectFileString("src/generated/weather_server_impl.erl");
+        assertThat(content).contains("-behaviour(weather_server).");
+    }
+
+    @Test
+    void implStubFileExportsCallbacksWithArityTwo() {
+        String content = manifest.expectFileString("src/generated/weather_server_impl.erl");
+        assertThat(content).contains("get_current_time/2");
+        assertThat(content).contains("get_forecast/2");
+    }
+
+    @Test
+    void implStubFileContainsNotImplementedClause() {
+        String content = manifest.expectFileString("src/generated/weather_server_impl.erl");
+        assertThat(content).contains("get_current_time(_Input, _Context) ->");
+        assertThat(content).contains("get_forecast(_Input, _Context) ->");
+        assertThat(content).contains("{error, not_implemented}.");
+    }
 }
