@@ -27,8 +27,8 @@ import software.amazon.smithy.waiters.Waiter;
  * {@code {success, _}}, {@code {failure, _}}, or {@code {retry, _}} based on
  * the matcher kind ({@code success}, {@code errorType}, {@code output},
  * {@code inputOutput}). Path-based matchers ({@code output} and
- * {@code inputOutput}) require a JMESPath evaluator that is out of scope for
- * Phase 2; for those we emit a TODO comment and treat the acceptor as
+ * {@code inputOutput}) require a JMESPath evaluator that is not yet
+ * available; for those we emit a TODO comment and treat the acceptor as
  * "no match" so the waiter falls through to the next acceptor (or retries).
  */
 public final class ErlangWaitersIntegration implements ErlangIntegration {
@@ -170,8 +170,8 @@ public final class ErlangWaitersIntegration implements ErlangIntegration {
             return "{error, #" + recordName + "{}}";
         }
         // Path-based matchers (output/inputOutput) require a JMESPath evaluator
-        // that lives outside Phase 2 scope. Skip the matching clause; the chain
-        // will fall through to {retry, Result}.
+        // that is not yet available. Skip the matching clause; the chain will
+        // fall through to {retry, Result}.
         return null;
     }
 
