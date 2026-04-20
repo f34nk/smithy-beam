@@ -41,12 +41,19 @@ public interface ElixirTransport {
     void writeRequest(ElixirWriter w, ElixirContext ctx, OperationShape op);
 
     /**
-     * Emits the Elixir code that dispatches on the HTTP response status code
-     * and passes the body to the appropriate codec decode call.
+     * Emits the Elixir code that signs the request, dispatches the HTTP call,
+     * and branches on the response status code.
      *
-     * @param w   the writer to append to
-     * @param ctx the current codegen context
-     * @param op  the operation whose response is being dispatched
+     * <p>{@code decodeSuccessBody} is invoked at the point where the success
+     * branch should decode the response body into the operation's output
+     * struct. This lets the integration weave the codec-specific decode output
+     * into the transport-specific dispatch envelope without either side needing
+     * to know about the other's syntax.
+     *
+     * @param w                 the writer to append to
+     * @param ctx               the current codegen context
+     * @param op                the operation whose response is being dispatched
+     * @param decodeSuccessBody hook invoked at the success-branch decode point
      */
-    void writeResponse(ElixirWriter w, ElixirContext ctx, OperationShape op);
+    void writeResponse(ElixirWriter w, ElixirContext ctx, OperationShape op, Runnable decodeSuccessBody);
 }
