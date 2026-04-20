@@ -7,13 +7,24 @@ import io.smithy.beam.elixir.codegen.ElixirReservedWords;
 import io.smithy.beam.elixir.codegen.ElixirSettings;
 import io.smithy.beam.elixir.codegen.ElixirSymbolProvider;
 import io.smithy.beam.elixir.codegen.ElixirWriter;
+import io.smithy.beam.core.binding.EventStreamHelper;
+import io.smithy.beam.core.binding.PaginationHelper;
+import io.smithy.beam.core.binding.WaiterHelper;
 import io.smithy.beam.elixir.codegen.sections.EnumValuesSection;
+import io.smithy.beam.elixir.codegen.sections.EventStreamSection;
 import io.smithy.beam.elixir.codegen.sections.ModuleAttributesSection;
 import io.smithy.beam.elixir.codegen.sections.OperationDocSection;
+import io.smithy.beam.elixir.codegen.sections.OperationErrorSection;
 import io.smithy.beam.elixir.codegen.sections.OperationReceiveSection;
+import io.smithy.beam.elixir.codegen.sections.OperationRequestSection;
+import io.smithy.beam.elixir.codegen.sections.OperationResponseSection;
 import io.smithy.beam.elixir.codegen.sections.OperationSendSection;
+import io.smithy.beam.elixir.codegen.sections.OperationSpecSection;
+import io.smithy.beam.elixir.codegen.sections.OperationValidationSection;
+import io.smithy.beam.elixir.codegen.sections.PaginationHelperSection;
 import io.smithy.beam.elixir.codegen.sections.StructTypeSection;
 import io.smithy.beam.elixir.codegen.sections.UnionVariantsSection;
+import io.smithy.beam.elixir.codegen.sections.WaiterSection;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.codegen.core.directed.CreateContextDirective;
@@ -71,14 +82,19 @@ public final class ElixirClientCodegen
         String namespace = d.settings().getNamespace();
         d.context().writerDelegator().useShapeWriter(d.service(), writer -> {
             writer.writeDefModule(namespace + ".Client", () -> {
-                // Empty injection point — integrations may add @behaviour, @moduledoc, etc.
                 writer.injectSection(new ModuleAttributesSection(d.service()));
 
                 for (OperationShape op : d.operations()) {
                     String fnName = toFunctionName(op);
 
-                    // Empty injection point for doc-comment interceptors.
+                    // @spec line (empty by default; ElixirSpecIntegration populates).
+                    writer.injectSection(new OperationSpecSection(op));
+                    // @doc comment (empty by default; doc integrations populate).
                     writer.injectSection(new OperationDocSection(op));
+                    // validate_<op>_input/1 helper (empty by default).
+                    writer.injectSection(new OperationValidationSection(op));
+                    // make_<op>_request/2 helper (empty by default).
+                    writer.injectSection(new OperationRequestSection(op));
 
                     // Function clause: def op_name(config, input) do
                     writer.write("def $L(config, input) do", fnName);
@@ -89,11 +105,31 @@ public final class ElixirClientCodegen
                     writer.write("{:error, :not_implemented}");
                     writer.popState();
 
-                    // OperationReceiveSection: empty by default; protocol integrations may append.
+                    // Status branch + decode helper (empty by default).
+                    writer.injectSection(new OperationResponseSection(op));
+                    // Top-level fn body continuation (empty by default).
                     writer.injectSection(new OperationReceiveSection(op));
 
                     writer.dedent();
                     writer.write("end");
+
+                    // parse_error/2 helper (empty by default).
+                    writer.injectSection(new OperationErrorSection(op));
+
+                    // Pagination stream helper — only emitted for paginated operations.
+                    if (PaginationHelper.isPaginated(d.model(), d.service(), op)) {
+                        writer.injectSection(new PaginationHelperSection(op));
+                    }
+
+                    // Waiter helpers — one section per named waiter.
+                    WaiterHelper.waiters(d.model(), op).forEach((name, waiter) ->
+                            writer.injectSection(new WaiterSection(op, waiter)));
+
+                    // Event-stream helpers (empty by default; ElixirEventStreamIntegration populates).
+                    if (EventStreamHelper.hasEventStream(d.model(), op)) {
+                        writer.injectSection(new EventStreamSection(op));
+                    }
+
                     writer.write("");
                 }
             });
