@@ -100,13 +100,13 @@ class ElixirServerCodegenTest {
     @Test
     void serverModuleContainsHandleGetCurrentTimeFunctionClause() {
         String content = manifest.expectFileString("src/generated/weather_server.ex");
-        assertThat(content).contains("def handle_get_current_time(request, state) do");
+        assertThat(content).contains("def handle_get_current_time(_input, _context) do");
     }
 
     @Test
     void serverModuleContainsHandleGetForecastFunctionClause() {
         String content = manifest.expectFileString("src/generated/weather_server.ex");
-        assertThat(content).contains("def handle_get_forecast(request, state) do");
+        assertThat(content).contains("def handle_get_forecast(_input, _context) do");
     }
 
     @Test
