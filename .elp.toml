@@ -1,0 +1,14 @@
+[build_info]
+apps = [
+    "examples/erlang/*",
+    "runtime-erlang/*",
+    "codegen/codegen-test/src/test/resources/snapshots/*",
+    "codegen/codegen-test/src/test/resources/golden/*/*/*",
+    { name = "example", dir = "examples/erlang/*", src_dirs = ["src", "src/generated/*"], extra_src_dirs = ["test"] },
+    { name = "runtime", dir = "runtime-erlang/*", src_dirs = ["."], 
+    extra_src_dirs = ["test"] },
+    { name = "snapshot", dir = "codegen/codegen-test/src/test/resources/snapshots/*/*", src_dirs = ["."], 
+    extra_src_dirs = ["test"] },
+    { name = "snapshot", dir = "codegen/codegen-test/src/test/resources/golden/*/*/*", src_dirs = ["."], 
+    extra_src_dirs = ["test"] },
+]
