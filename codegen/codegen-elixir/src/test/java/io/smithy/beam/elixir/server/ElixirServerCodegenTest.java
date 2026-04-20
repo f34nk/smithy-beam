@@ -161,4 +161,39 @@ class ElixirServerCodegenTest {
         assertThat(content).doesNotContain("def get_forecast(config, input)");
         assertThat(content).doesNotContain("def get_current_time(config, input)");
     }
+
+    // -------------------------------------------------------------------------
+    // *_impl stub file ("WILL NOT BE OVERWRITTEN")
+    // -------------------------------------------------------------------------
+
+    @Test
+    void implStubFileIsGenerated() {
+        assertThat(manifest.getFileString("src/generated/weather_server_impl.ex")).isPresent();
+    }
+
+    @Test
+    void implStubFileDeclaresImplModule() {
+        String content = manifest.expectFileString("src/generated/weather_server_impl.ex");
+        assertThat(content).contains("defmodule Weather.Server.Impl do");
+    }
+
+    @Test
+    void implStubFileHasOverwriteWarning() {
+        String content = manifest.expectFileString("src/generated/weather_server_impl.ex");
+        assertThat(content).contains("This file will NOT be overwritten");
+    }
+
+    @Test
+    void implStubFileDeclaresBehaviour() {
+        String content = manifest.expectFileString("src/generated/weather_server_impl.ex");
+        assertThat(content).contains("@behaviour Weather.Server");
+    }
+
+    @Test
+    void implStubFileContainsNotImplementedClause() {
+        String content = manifest.expectFileString("src/generated/weather_server_impl.ex");
+        assertThat(content).contains("def get_current_time(_input, _ctx)");
+        assertThat(content).contains("def get_forecast(_input, _ctx)");
+        assertThat(content).contains("{:error, :not_implemented}");
+    }
 }
