@@ -107,7 +107,7 @@ public final class ElixirServerCodegen
 
                     // Handler callback stub; protocol integrations replace the body.
                     writer.pushState(new ServerHandlerCallbackSection(op));
-                    writer.write("def $L(request, state) do", handlerName);
+                    writer.write("def $L(_input, _context) do", handlerName);
                     writer.indent();
                     writer.write("{:error, :not_implemented}");
                     writer.dedent();
@@ -121,6 +121,22 @@ public final class ElixirServerCodegen
 
                     writer.write("");
                 }
+
+                // SmithyHandler dispatcher: routes handle_request/3 to per-operation stubs.
+                writer.write("@impl SmithyHandler");
+                writer.write("def handle_request(operation, input, context) do");
+                writer.indent();
+                writer.write("case operation do");
+                writer.indent();
+                for (var op : d.operations()) {
+                    String fnName = toFunctionName(op.getId().getName());
+                    writer.write(":$L -> handle_$L(input, context)", fnName, fnName);
+                }
+                writer.write("_ -> {:error, :not_found}");
+                writer.dedent();
+                writer.write("end");
+                writer.dedent();
+                writer.write("end");
             });
         });
 
