@@ -6,7 +6,8 @@
 -export([
     with_retry/1,
     with_retry/2,
-    is_retryable_error/1
+    is_retryable_error/1,
+    wait/3
 ]).
 
 %%%===================================================================
@@ -69,9 +70,51 @@ is_retryable_error({error, {failed_connect, _}}) ->
 is_retryable_error(_) ->
     false.
 
+%% @doc Polls `Poll' repeatedly with exponential backoff until it reports
+%% terminal success or failure, or the maximum number of attempts is reached.
+%%
+%% This is the polling primitive used by generated Smithy waiters
+%% (`@waitable' trait). The poller is the generated acceptor evaluator
+%% which calls the underlying operation and matches the result against the
+%% waiter's acceptors.
+%%
+%% `Poll' must return one of:
+%%   `{success, Value}' — terminal success; `wait/3' returns `{ok, Value}'.
+%%   `{failure, Reason}' — terminal failure; `wait/3' returns `{error, Reason}'.
+%%   `{retry,   Value}' — sleep with exponential backoff and call `Poll' again.
+%%
+%% `MinDelay' and `MaxDelay' are seconds (matching the `@waitable' trait).
+%% After 100 retry attempts (hard cap, no setting today) `wait/3' gives up
+%% with `{error, max_attempts_exceeded}'.
+-spec wait(
+    Poll :: fun(() -> {success | failure | retry, term()}),
+    MinDelay :: non_neg_integer(),
+    MaxDelay :: non_neg_integer()
+) ->
+    {ok, term()} | {error, term()}.
+wait(Poll, MinDelay, MaxDelay) when is_function(Poll, 0) ->
+    wait_loop(Poll, 0, 100, MinDelay * 1000, MaxDelay * 1000).
+
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
+
+%% @private
+%% Waiter polling loop with exponential backoff.
+wait_loop(_Poll, Attempt, MaxAttempts, _MinMs, _MaxMs) when Attempt >= MaxAttempts ->
+    {error, max_attempts_exceeded};
+wait_loop(Poll, Attempt, MaxAttempts, MinMs, MaxMs) ->
+    case Poll() of
+        {success, Value} ->
+            {ok, Value};
+        {failure, Reason} ->
+            {error, Reason};
+        {retry, _Value} ->
+            BaseMs = MinMs * round(math:pow(2, Attempt)),
+            DelayMs = min(BaseMs, MaxMs),
+            timer:sleep(DelayMs),
+            wait_loop(Poll, Attempt + 1, MaxAttempts, MinMs, MaxMs)
+    end.
 
 %% @private
 %% Main retry loop with exponential backoff

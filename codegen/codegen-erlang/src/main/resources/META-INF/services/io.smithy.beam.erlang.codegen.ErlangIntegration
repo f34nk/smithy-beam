@@ -9,4 +9,6 @@ io.smithy.beam.erlang.codegen.auth.ErlangSigV4Integration
 io.smithy.beam.erlang.codegen.auth.ErlangSigV4AIntegration
 io.smithy.beam.erlang.codegen.auth.ErlangBearerIntegration
 io.smithy.beam.erlang.codegen.ErlangPaginationIntegration
+io.smithy.beam.erlang.codegen.ErlangWaitersIntegration
+io.smithy.beam.erlang.codegen.ErlangEventStreamIntegration
 io.smithy.beam.erlang.server.ErlangServerBehaviourIntegration

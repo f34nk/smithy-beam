@@ -41,6 +41,7 @@ public final class CodegenTestSupport {
      */
     public static Fixture fixture(String smithyModel, String serviceId, String moduleName) {
         Model model = Model.assembler()
+                .discoverModels(CodegenTestSupport.class.getClassLoader())
                 .addUnparsedModel("test.smithy", smithyModel)
                 .assemble()
                 .unwrap();

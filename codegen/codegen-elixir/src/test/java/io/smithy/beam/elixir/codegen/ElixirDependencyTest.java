@@ -61,6 +61,8 @@ class ElixirDependencyTest {
                 .isEqualTo(RUNTIME_PATH_PREFIX + "client/smithy_credentials.ex");
         assertThat(ElixirDependency.SMITHY_RETRY.getResourcePath())
                 .isEqualTo(RUNTIME_PATH_PREFIX + "client/smithy_retry.ex");
+        assertThat(ElixirDependency.SMITHY_EVENT_STREAM.getResourcePath())
+                .isEqualTo(RUNTIME_PATH_PREFIX + "client/smithy_event_stream.ex");
     }
 
     @Test
@@ -106,7 +108,7 @@ class ElixirDependencyTest {
     }
 
     @Test
-    void enumHasFourteenConstants() {
-        assertThat(ElixirDependency.values()).hasSize(14);
+    void enumHasFifteenConstants() {
+        assertThat(ElixirDependency.values()).hasSize(15);
     }
 }
