@@ -10,4 +10,5 @@ io.smithy.beam.elixir.codegen.auth.ElixirSigV4AIntegration
 io.smithy.beam.elixir.codegen.auth.ElixirBearerIntegration
 io.smithy.beam.elixir.codegen.ElixirPaginationIntegration
 io.smithy.beam.elixir.codegen.ElixirWaitersIntegration
+io.smithy.beam.elixir.codegen.ElixirEventStreamIntegration
 io.smithy.beam.elixir.server.ElixirServerBehaviourIntegration
