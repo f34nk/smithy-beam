@@ -18,6 +18,7 @@ public abstract class BeamSettings {
     private String edition;
     private String outputDir = "src/generated";
     private String scaffoldDir;
+    private String projectRoot;
     private LocalDate relativeDate;
     private String relativeVersion;
     private boolean removeUnreferencedShapes = false;
@@ -61,6 +62,23 @@ public abstract class BeamSettings {
 
     public void setScaffoldDir(String scaffoldDir) {
         this.scaffoldDir = scaffoldDir;
+    }
+
+    /**
+     * Optional absolute path to the consuming project's root directory.
+     *
+     * <p>Used by "skip if exists" emit paths (e.g. the generated
+     * {@code *_server_impl} stub file) to detect a hand-edited file already
+     * sitting in the consumer's working tree, so the generator never
+     * overwrites local edits. When unset, the JVM's working directory is
+     * used as the fallback root.
+     */
+    public String getProjectRoot() {
+        return projectRoot;
+    }
+
+    public void setProjectRoot(String projectRoot) {
+        this.projectRoot = projectRoot;
     }
 
     public LocalDate getRelativeDate() {
