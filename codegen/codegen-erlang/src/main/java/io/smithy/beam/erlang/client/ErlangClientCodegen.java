@@ -22,6 +22,7 @@ import io.smithy.beam.erlang.codegen.sections.OperationSendSection;
 import io.smithy.beam.erlang.codegen.sections.OperationSpecSection;
 import io.smithy.beam.erlang.codegen.sections.OperationValidationSection;
 import io.smithy.beam.erlang.codegen.sections.PaginationHelperSection;
+import io.smithy.beam.erlang.codegen.sections.ServiceErrorHelpersSection;
 import io.smithy.beam.erlang.codegen.sections.StructTypeSection;
 import io.smithy.beam.erlang.codegen.sections.UnionVariantsSection;
 import io.smithy.beam.erlang.codegen.sections.WaiterSection;
@@ -126,6 +127,11 @@ public final class ErlangClientCodegen
                 writer.write("");
                 writer.addExport(fnName, 2);
             }
+
+            // Service-level error helper functions (errors/0, is_error/1,
+            // error_to_atom/1). Empty by default; ErlangErrorIntegration
+            // populates these.
+            writer.injectSection(new ServiceErrorHelpersSection(d.service()));
         });
     }
 
