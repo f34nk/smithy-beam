@@ -162,9 +162,9 @@ public final class JsonCodec implements ErlangCodec {
             w.indent();
             w.write("_:_ -> {error, {http_error, StatusCode, Body}}");
             w.dedent();
-            w.closeBlock("end");
+            w.closeBlock("end.");
         } else {
-            w.write("{error, {http_error, StatusCode, Body}}");
+            w.write("{error, {http_error, StatusCode, Body}}.");
         }
     }
 
