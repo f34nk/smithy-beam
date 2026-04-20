@@ -7,6 +7,7 @@ import io.smithy.beam.core.Mode;
 import io.smithy.beam.elixir.client.ElixirClientSettings;
 import io.smithy.beam.elixir.codegen.sections.OperationSpecSection;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -182,6 +183,44 @@ class ElixirSpecIntegrationTest {
         assertThat(out)
                 .contains("@spec ping(map(), term()) ::")
                 .contains("{:ok, term()} | {:error, InternalServerError.t()}");
+    }
+
+    @Test
+    void specTypeReferencesAgreeWithWriteStructModuleTypeAliases() {
+        // Pair-test: every type alias the @spec references must also be
+        // emitted by ElixirWriter.writeStructModule into the corresponding
+        // generated `*_types.ex` (or per-shape module). This locks the bridge
+        // between @spec emission and per-shape `@type t()` emission so a
+        // future change to either side that breaks symmetry fails here.
+        // Mirrors `ErlangSpecIntegrationTest
+        // .specTypeReferencesAgreeWithWriteRecordTypeAliases`.
+        OperationShape op = model.expectShape(
+                ShapeId.from("test.spec#GetItem"), OperationShape.class);
+        String spec = drive(clientCtx, op).toString();
+
+        Map<String, String> typeRefToShapeName = Map.of(
+                "GetItemInput", "GetItemInput",
+                "GetItemOutput", "GetItemOutput",
+                "NotFound", "NotFound",
+                "Throttled", "Throttled",
+                "InternalServerError", "InternalServerError");
+
+        typeRefToShapeName.forEach((typeRef, shapeName) -> {
+            assertThat(spec).contains(typeRef + ".t()");
+
+            ElixirWriter typesWriter = CodegenTestSupport.writer("svc_types.ex");
+            software.amazon.smithy.model.shapes.StructureShape struct = model.expectShape(
+                    ShapeId.from("test.spec#" + shapeName),
+                    software.amazon.smithy.model.shapes.StructureShape.class);
+            typesWriter.writeStructModule(struct, clientCtx.symbolProvider());
+
+            String types = typesWriter.toString();
+            assertThat(types)
+                    .as("types module for %s must contain matching defmodule + @type t()",
+                            typeRef)
+                    .contains("defmodule ")
+                    .contains("@type t() :: %__MODULE__{");
+        });
     }
 
     @Test
