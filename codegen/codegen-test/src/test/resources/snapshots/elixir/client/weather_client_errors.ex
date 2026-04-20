@@ -4,4 +4,6 @@ defmodule Weather.Client.Errors.NoSuchResourceError do
   @type t() :: %__MODULE__{
     resource_type: String.t()
   }
+
+  def message(%__MODULE__{}), do: "NoSuchResourceError"
 end
