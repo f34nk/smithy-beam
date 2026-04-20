@@ -22,6 +22,7 @@ public enum ElixirDependency implements SymbolDependencyContainer {
     SMITHY_CLIENT("client/smithy_client.ex"),
     SMITHY_CREDENTIALS("client/smithy_credentials.ex"),
     SMITHY_RETRY("client/smithy_retry.ex"),
+    SMITHY_EVENT_STREAM("client/smithy_event_stream.ex"),
     SMITHY_ROUTER("server/smithy_router.ex"),
     SMITHY_HANDLER("server/smithy_handler.ex"),
     SMITHY_SERVER("server/smithy_server.ex"),
