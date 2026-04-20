@@ -60,6 +60,21 @@ class RuntimeResourceCopierTest {
     }
 
     @Test
+    void fileIsWrittenDirectlyIntoOutputDir() {
+        MockManifest manifest = new MockManifest();
+
+        RuntimeResourceCopier.copy(
+                getClass().getClassLoader(),
+                List.of("test-runtime/client/shared_module.beam"),
+                manifest,
+                "test-runtime/client/",
+                "src/generated/");
+
+        assertThat(manifest.getFileString("src/generated/shared_module.beam")).isPresent();
+        assertThat(manifest.getFileString("runtime/client/shared_module.beam")).isEmpty();
+    }
+
+    @Test
     void resourceWithoutStripPrefixUsesFullPathAsOutput() {
         MockManifest manifest = new MockManifest();
 
