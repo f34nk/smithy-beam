@@ -14,7 +14,6 @@ import io.smithy.beam.erlang.codegen.sections.EnumValuesSection;
 import io.smithy.beam.erlang.codegen.sections.EventStreamSection;
 import io.smithy.beam.erlang.codegen.sections.ModuleAttributesSection;
 import io.smithy.beam.erlang.codegen.sections.OperationDocSection;
-import io.smithy.beam.erlang.codegen.sections.OperationErrorSection;
 import io.smithy.beam.erlang.codegen.sections.OperationReceiveSection;
 import io.smithy.beam.erlang.codegen.sections.OperationRequestSection;
 import io.smithy.beam.erlang.codegen.sections.OperationResponseSection;
@@ -85,30 +84,44 @@ public final class ErlangClientCodegen
 
             for (OperationShape op : d.operations()) {
                 String fnName = toFunctionName(op);
+                String inputType = operationInputType(d.context(), op);
+                String outputType = operationOutputType(d.context(), op);
+                String inputRecord = inputType;
 
-                // -spec line (empty by default; ErlangSpecIntegration populates).
-                writer.injectSection(new OperationSpecSection(op));
+                // ── arity-2 public overload (simple delegate) ───────────────
                 // Doc comment (empty by default; doc integrations populate).
                 writer.injectSection(new OperationDocSection(op));
+                // -spec line (empty by default; ErlangSpecIntegration populates).
+                writer.injectSection(new OperationSpecSection(op));
+                writer.write("$L(Client, Input) ->", fnName);
+                writer.write("    $L(Client, Input, #{}).", fnName);
+                writer.write("");
+
+                // ── arity-3 public overload (options + retry) ───────────────
+                writer.write("%% Calls the $L operation with options", op.getId().getName());
+                writer.write("-spec $L(Client :: map(), Input :: $L(), Options :: map()) ->",
+                        fnName, inputType);
+                writer.write("    {ok, $L()} | {error, term()}.", outputType);
+                writer.write("$L(Client, Input, Options) when is_record(Input, $L), is_map(Options) ->",
+                        fnName, inputRecord);
+
                 // validate_<op>_input/1 helper (empty by default).
                 writer.injectSection(new OperationValidationSection(op));
-                // make_<op>_request/2 helper (empty by default).
-                writer.injectSection(new OperationRequestSection(op));
-
-                // Function clause: op_name(Config, Input) ->
-                writer.write("$L(Config, Input) ->", fnName);
 
                 // OperationSendSection: default stub body; protocol integrations replace this.
                 writer.pushState(new OperationSendSection(op));
                 writer.write("    {error, not_implemented}.");
                 writer.popState();
 
+                writer.write("");
+
+                // ── internal helper (below the public functions) ────────────
+                // make_<op>_request/2 helper (empty by default; protocol integrations populate).
+                writer.injectSection(new OperationRequestSection(op));
                 // Status branch + decode helper (empty by default).
                 writer.injectSection(new OperationResponseSection(op));
                 // Top-level fn body continuation (empty by default).
                 writer.injectSection(new OperationReceiveSection(op));
-                // parse_error/2 helper (empty by default).
-                writer.injectSection(new OperationErrorSection(op));
 
                 // Pagination stream helper — only emitted for paginated operations.
                 if (PaginationHelper.isPaginated(d.model(), d.service(), op)) {
@@ -126,13 +139,25 @@ public final class ErlangClientCodegen
 
                 writer.write("");
                 writer.addExport(fnName, 2);
+                writer.addExport(fnName, 3);
             }
 
             // Service-level error helper functions (errors/0, is_error/1,
             // error_to_atom/1). Empty by default; ErlangErrorIntegration
-            // populates these.
+            // populates these. Protocol integrations append parse_error/2
+            // to the same section.
             writer.injectSection(new ServiceErrorHelpersSection(d.service()));
         });
+    }
+
+    private static String operationInputType(ErlangContext ctx, OperationShape op) {
+        return CaseUtils.toSnakeCase(
+                ctx.model().expectShape(op.getInputShape()).getId().getName());
+    }
+
+    private static String operationOutputType(ErlangContext ctx, OperationShape op) {
+        return CaseUtils.toSnakeCase(
+                ctx.model().expectShape(op.getOutputShape()).getId().getName());
     }
 
     @Override

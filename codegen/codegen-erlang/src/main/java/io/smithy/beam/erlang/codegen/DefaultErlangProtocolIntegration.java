@@ -3,9 +3,10 @@ package io.smithy.beam.erlang.codegen;
 import io.smithy.beam.core.ProtocolResolver;
 import io.smithy.beam.erlang.codegen.codec.ErlangCodec;
 import io.smithy.beam.erlang.codegen.codec.ErlangTransport;
-import io.smithy.beam.erlang.codegen.sections.OperationErrorSection;
 import io.smithy.beam.erlang.codegen.sections.OperationRequestSection;
 import io.smithy.beam.erlang.codegen.sections.OperationResponseSection;
+import io.smithy.beam.erlang.codegen.sections.OperationSendSection;
+import io.smithy.beam.erlang.codegen.sections.ServiceErrorHelpersSection;
 import java.util.Collections;
 import java.util.List;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -49,8 +50,15 @@ public abstract class DefaultErlangProtocolIntegration implements ErlangIntegrat
 
     /**
      * Registers section interceptors that delegate to {@link #codec()} and
-     * {@link #transport()} to populate the operation request / response /
-     * error sections of the generated client module.
+     * {@link #transport()} to populate the public operation send body, the
+     * internal {@code make_<op>_request/2} helper, and the module-level
+     * {@code parse_error/2} error parser.
+     *
+     * <p>The {@link OperationSendSection} interceptor <strong>replaces</strong>
+     * the default {@code {error, not_implemented}.} stub written by
+     * {@link io.smithy.beam.erlang.client.ErlangClientCodegen} with the
+     * retry-wrapped dispatch to {@code make_<op>_request/2}. All other
+     * interceptors append into empty sections.
      */
     @Override
     public List<? extends CodeInterceptor<? extends CodeSection, ErlangWriter>> interceptors(
@@ -61,24 +69,60 @@ public abstract class DefaultErlangProtocolIntegration implements ErlangIntegrat
         ErlangCodec codec = codec();
         ErlangTransport transport = transport();
         return List.of(
+                replacer(OperationSendSection.class, (writer, section) ->
+                        emitSendBody(writer, section.operation())),
                 CodeInterceptor.appender(OperationRequestSection.class, (writer, section) ->
                         emitRequestHelper(writer, ctx, section.operation(), codec, transport)),
                 CodeInterceptor.appender(OperationResponseSection.class, (writer, section) -> {
                     // Response handling is fully encoded inside make_<op>_request,
                     // emitted by the OperationRequestSection interceptor above.
                 }),
-                CodeInterceptor.appender(OperationErrorSection.class, (writer, section) ->
-                        emitErrorParser(writer, ctx, section.operation(), codec)));
+                CodeInterceptor.appender(ServiceErrorHelpersSection.class, (writer, section) ->
+                        emitParseError(writer, ctx, codec)));
+    }
+
+    /**
+     * Creates an interceptor that drops the previously written default text
+     * and emits fresh content in its place.
+     */
+    private static <S extends CodeSection> CodeInterceptor<S, ErlangWriter> replacer(
+            Class<S> type,
+            java.util.function.BiConsumer<ErlangWriter, S> body) {
+        return new CodeInterceptor<S, ErlangWriter>() {
+            @Override
+            public Class<S> sectionType() {
+                return type;
+            }
+
+            @Override
+            public void write(ErlangWriter writer, String previousText, S section) {
+                body.accept(writer, section);
+            }
+        };
+    }
+
+    private static void emitSendBody(ErlangWriter w, OperationShape op) {
+        String opName = CaseUtils.toSnakeCase(op.getId().getName());
+        w.addDependency(ErlangDependency.SMITHY_RETRY);
+        w.write("    RequestFun = fun() -> make_$L_request(Client, Input) end,", opName);
+        w.write("    case maps:get(enable_retry, Options, true) of");
+        w.write("        true -> smithy_retry:with_retry(RequestFun, Options);");
+        w.write("        false -> RequestFun()");
+        w.write("    end.");
     }
 
     private static void emitRequestHelper(ErlangWriter w, ErlangContext ctx,
                                           OperationShape op,
                                           ErlangCodec codec, ErlangTransport transport) {
         StructureShape inputShape = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
+        StructureShape outputShape = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
         String opName = CaseUtils.toSnakeCase(op.getId().getName());
-        String inputRecord = CaseUtils.toSnakeCase(inputShape.getId().getName());
+        String inputType = CaseUtils.toSnakeCase(inputShape.getId().getName());
+        String outputType = CaseUtils.toSnakeCase(outputShape.getId().getName());
+        String inputRecord = inputType;
 
-        w.write("");
+        w.write("-spec make_$L_request(Client :: map(), Input :: $L()) ->", opName, inputType);
+        w.write("    {ok, $L()} | {error, term()}.", outputType);
         w.openBlock("make_$L_request(Client, Input) when is_record(Input, $L) ->", opName, inputRecord);
         transport.writeRequest(w, ctx, op);
         codec.writeRequestEncode(w, ctx, op);
@@ -87,13 +131,13 @@ public abstract class DefaultErlangProtocolIntegration implements ErlangIntegrat
         w.write("");
     }
 
-    private static void emitErrorParser(ErlangWriter w, ErlangContext ctx,
-                                        OperationShape op, ErlangCodec codec) {
-        String opName = CaseUtils.toSnakeCase(op.getId().getName());
+    private static void emitParseError(ErlangWriter w, ErlangContext ctx, ErlangCodec codec) {
         w.write("");
-        w.openBlock("parse_$L_error(StatusCode, Body) ->", opName);
-        codec.writeErrorDecode(w, ctx, op);
+        w.write("-spec parse_error(StatusCode :: non_neg_integer(), Body :: binary()) ->");
+        w.write("    {error, term()}.");
+        w.openBlock("parse_error(StatusCode, Body) ->");
+        codec.writeErrorDecode(w, ctx, null);
         w.dedent();
-        w.write("");
+        w.addExport("parse_error", 2);
     }
 }
