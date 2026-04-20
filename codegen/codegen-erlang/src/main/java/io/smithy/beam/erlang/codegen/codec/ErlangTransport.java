@@ -41,12 +41,20 @@ public interface ErlangTransport {
     void writeRequest(ErlangWriter w, ErlangContext ctx, OperationShape op);
 
     /**
-     * Emits the Erlang code that dispatches on the HTTP response status code
-     * and passes the body to the appropriate codec decode call.
+     * Emits the Erlang code that signs the request, dispatches the HTTP call,
+     * and branches on the response status code.
      *
-     * @param w   the writer to append to
-     * @param ctx the current codegen context
-     * @param op  the operation whose response is being dispatched
+     * <p>{@code decodeSuccessBody} is invoked at the point where {@code ResponseBody}
+     * is bound and a successful (2xx) response should be decoded into the
+     * operation's output record. This lets the integration weave the
+     * codec-specific decode output (e.g. {@code jsx:decode/2}) into the
+     * transport-specific dispatch envelope without either side needing to know
+     * about the other's syntax.
+     *
+     * @param w                 the writer to append to
+     * @param ctx               the current codegen context
+     * @param op                the operation whose response is being dispatched
+     * @param decodeSuccessBody hook invoked at the success-branch decode point
      */
-    void writeResponse(ErlangWriter w, ErlangContext ctx, OperationShape op);
+    void writeResponse(ErlangWriter w, ErlangContext ctx, OperationShape op, Runnable decodeSuccessBody);
 }
