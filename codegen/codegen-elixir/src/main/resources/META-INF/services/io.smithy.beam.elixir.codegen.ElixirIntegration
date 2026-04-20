@@ -8,4 +8,5 @@ io.smithy.beam.elixir.codegen.protocol.ElixirEc2QueryIntegration
 io.smithy.beam.elixir.codegen.auth.ElixirSigV4Integration
 io.smithy.beam.elixir.codegen.auth.ElixirSigV4AIntegration
 io.smithy.beam.elixir.codegen.auth.ElixirBearerIntegration
+io.smithy.beam.elixir.codegen.ElixirPaginationIntegration
 io.smithy.beam.elixir.server.ElixirServerBehaviourIntegration

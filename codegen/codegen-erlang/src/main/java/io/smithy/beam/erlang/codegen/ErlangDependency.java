@@ -23,6 +23,7 @@ public enum ErlangDependency implements SymbolDependencyContainer {
     SMITHY_CREDENTIALS("client/smithy_credentials.erl"),
     SMITHY_RETRY("client/smithy_retry.erl"),
     SMITHY_CONFIG("client/smithy_config.erl"),
+    SMITHY_PAGINATION("client/smithy_pagination.erl"),
     SMITHY_ROUTER("server/smithy_router.erl"),
     SMITHY_HANDLER("server/smithy_handler.erl"),
     SMITHY_SERVER("server/smithy_server.erl"),
