@@ -10,8 +10,14 @@ import io.smithy.beam.elixir.codegen.ElixirWriter;
 import io.smithy.beam.elixir.codegen.sections.EnumValuesSection;
 import io.smithy.beam.elixir.codegen.sections.ModuleAttributesSection;
 import io.smithy.beam.elixir.codegen.sections.OperationDocSection;
+import io.smithy.beam.elixir.codegen.sections.OperationSpecSection;
+import io.smithy.beam.elixir.codegen.sections.OperationValidationSection;
+import io.smithy.beam.elixir.codegen.sections.ServerDeserializeSection;
+import io.smithy.beam.elixir.codegen.sections.ServerDispatchSection;
 import io.smithy.beam.elixir.codegen.sections.ServerHandlerCallbackSection;
+import io.smithy.beam.elixir.codegen.sections.ServerImplCallbackSection;
 import io.smithy.beam.elixir.codegen.sections.ServerRouteSection;
+import io.smithy.beam.elixir.codegen.sections.ServerSerializeSection;
 import io.smithy.beam.elixir.codegen.sections.StructTypeSection;
 import io.smithy.beam.elixir.codegen.sections.UnionVariantsSection;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -87,7 +93,19 @@ public final class ElixirServerCodegen
 
                 for (var op : d.operations()) {
                     String handlerName = "handle_" + toFunctionName(op.getId().getName());
+
+                    // Doc comment (empty by default).
                     writer.injectSection(new OperationDocSection(op));
+                    // @spec line (empty by default; ElixirSpecIntegration populates).
+                    writer.injectSection(new OperationSpecSection(op));
+                    // route(method, path) clause (empty by default).
+                    writer.injectSection(new ServerDispatchSection(op));
+                    // deserialize_<op>/3 helper (empty by default).
+                    writer.injectSection(new ServerDeserializeSection(op));
+                    // validate_<op>_input/1 helper (empty by default).
+                    writer.injectSection(new OperationValidationSection(op));
+
+                    // Handler callback stub; protocol integrations replace the body.
                     writer.pushState(new ServerHandlerCallbackSection(op));
                     writer.write("def $L(request, state) do", handlerName);
                     writer.indent();
@@ -95,6 +113,12 @@ public final class ElixirServerCodegen
                     writer.dedent();
                     writer.write("end");
                     writer.popState();
+
+                    // serialize_<op>/1 helper (empty by default).
+                    writer.injectSection(new ServerSerializeSection(op));
+                    // @callback / -callback line (empty by default).
+                    writer.injectSection(new ServerImplCallbackSection(op));
+
                     writer.write("");
                 }
             });

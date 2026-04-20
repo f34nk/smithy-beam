@@ -7,13 +7,24 @@ import io.smithy.beam.erlang.codegen.ErlangReservedWords;
 import io.smithy.beam.erlang.codegen.ErlangSettings;
 import io.smithy.beam.erlang.codegen.ErlangSymbolProvider;
 import io.smithy.beam.erlang.codegen.ErlangWriter;
+import io.smithy.beam.core.binding.EventStreamHelper;
+import io.smithy.beam.core.binding.PaginationHelper;
+import io.smithy.beam.core.binding.WaiterHelper;
 import io.smithy.beam.erlang.codegen.sections.EnumValuesSection;
+import io.smithy.beam.erlang.codegen.sections.EventStreamSection;
 import io.smithy.beam.erlang.codegen.sections.ModuleAttributesSection;
 import io.smithy.beam.erlang.codegen.sections.OperationDocSection;
+import io.smithy.beam.erlang.codegen.sections.OperationErrorSection;
 import io.smithy.beam.erlang.codegen.sections.OperationReceiveSection;
+import io.smithy.beam.erlang.codegen.sections.OperationRequestSection;
+import io.smithy.beam.erlang.codegen.sections.OperationResponseSection;
 import io.smithy.beam.erlang.codegen.sections.OperationSendSection;
+import io.smithy.beam.erlang.codegen.sections.OperationSpecSection;
+import io.smithy.beam.erlang.codegen.sections.OperationValidationSection;
+import io.smithy.beam.erlang.codegen.sections.PaginationHelperSection;
 import io.smithy.beam.erlang.codegen.sections.StructTypeSection;
 import io.smithy.beam.erlang.codegen.sections.UnionVariantsSection;
+import io.smithy.beam.erlang.codegen.sections.WaiterSection;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.codegen.core.directed.CreateContextDirective;
@@ -69,14 +80,19 @@ public final class ErlangClientCodegen
     @Override
     public void generateService(GenerateServiceDirective<ErlangContext, ErlangSettings> d) {
         d.context().writerDelegator().useShapeWriter(d.service(), writer -> {
-            // Empty injection point — integrations may add -behaviour(…) etc.
             writer.injectSection(new ModuleAttributesSection(d.service()));
 
             for (OperationShape op : d.operations()) {
                 String fnName = toFunctionName(op);
 
-                // Empty injection point for doc-comment interceptors.
+                // -spec line (empty by default; ErlangSpecIntegration populates).
+                writer.injectSection(new OperationSpecSection(op));
+                // Doc comment (empty by default; doc integrations populate).
                 writer.injectSection(new OperationDocSection(op));
+                // validate_<op>_input/1 helper (empty by default).
+                writer.injectSection(new OperationValidationSection(op));
+                // make_<op>_request/2 helper (empty by default).
+                writer.injectSection(new OperationRequestSection(op));
 
                 // Function clause: op_name(Config, Input) ->
                 writer.write("$L(Config, Input) ->", fnName);
@@ -86,8 +102,26 @@ public final class ErlangClientCodegen
                 writer.write("    {error, not_implemented}.");
                 writer.popState();
 
-                // OperationReceiveSection: empty by default; protocol integrations may append.
+                // Status branch + decode helper (empty by default).
+                writer.injectSection(new OperationResponseSection(op));
+                // Top-level fn body continuation (empty by default).
                 writer.injectSection(new OperationReceiveSection(op));
+                // parse_error/2 helper (empty by default).
+                writer.injectSection(new OperationErrorSection(op));
+
+                // Pagination stream helper — only emitted for paginated operations.
+                if (PaginationHelper.isPaginated(d.model(), d.service(), op)) {
+                    writer.injectSection(new PaginationHelperSection(op));
+                }
+
+                // Waiter helpers — one section per named waiter.
+                WaiterHelper.waiters(d.model(), op).forEach((name, waiter) ->
+                        writer.injectSection(new WaiterSection(op, waiter)));
+
+                // Event-stream helpers (empty by default; ErlangEventStreamIntegration populates).
+                if (EventStreamHelper.hasEventStream(d.model(), op)) {
+                    writer.injectSection(new EventStreamSection(op));
+                }
 
                 writer.write("");
                 writer.addExport(fnName, 2);
