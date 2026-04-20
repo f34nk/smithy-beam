@@ -208,6 +208,41 @@ class ErlangWriterTest {
     }
 
     @Test
+    void writeRecordEmitsRecordAndTypeForPopulatedStructure() {
+        // Lock in the contract that every record emitted into a `*_types.hrl`
+        // file also gets a matching `-type alias()` line so generated `-spec`
+        // annotations elsewhere can reference the alias by name.
+        software.amazon.smithy.model.Model model = software.amazon.smithy.model.Model.assembler()
+                .addUnparsedModel("test.smithy", String.join("\n",
+                        "$version: \"2\"",
+                        "namespace com.example",
+                        "structure GetItemInput {",
+                        "    id: String",
+                        "    limit: Integer",
+                        "}"))
+                .assemble()
+                .unwrap();
+        software.amazon.smithy.model.shapes.StructureShape shape =
+                model.expectShape(
+                        software.amazon.smithy.model.shapes.ShapeId.from("com.example#GetItemInput"),
+                        software.amazon.smithy.model.shapes.StructureShape.class);
+        software.amazon.smithy.codegen.core.SymbolProvider provider = s -> {
+            String memberName = s.asMemberShape().get().getMemberName();
+            String type = "id".equals(memberName) ? "binary()" : "integer()";
+            return ErlangSymbol.builtin(type);
+        };
+
+        writer.writeRecord(shape, provider);
+
+        String output = writer.toString();
+        assertThat(output).contains("-record(get_item_input, {");
+        assertThat(output).contains("id :: binary()");
+        assertThat(output).contains("limit :: integer()");
+        assertThat(output).contains("}).");
+        assertThat(output).contains("-type get_item_input() :: #get_item_input{}.");
+    }
+
+    @Test
     void writeEnumTypeEmitsAtomVariants() {
         software.amazon.smithy.model.Model model = software.amazon.smithy.model.Model.assembler()
                 .addUnparsedModel("test.smithy", String.join("\n",

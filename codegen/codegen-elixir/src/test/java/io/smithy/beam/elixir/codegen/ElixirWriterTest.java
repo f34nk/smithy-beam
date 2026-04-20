@@ -225,6 +225,39 @@ class ElixirWriterTest {
     }
 
     @Test
+    void writeStructModuleEmitsTypeSpecWithMembers() {
+        software.amazon.smithy.model.Model model = software.amazon.smithy.model.Model.assembler()
+                .addUnparsedModel("test.smithy", String.join("\n",
+                        "$version: \"2\"",
+                        "namespace com.example",
+                        "structure GetWeatherInput {",
+                        "    @required",
+                        "    city: String",
+                        "    units: String",
+                        "}"))
+                .assemble()
+                .unwrap();
+        software.amazon.smithy.model.shapes.StructureShape shape =
+                model.expectShape(
+                        software.amazon.smithy.model.shapes.ShapeId.from("com.example#GetWeatherInput"),
+                        software.amazon.smithy.model.shapes.StructureShape.class);
+
+        SymbolProvider provider = s -> {
+            if (s instanceof software.amazon.smithy.model.shapes.MemberShape) {
+                return ElixirSymbol.builtin("String.t()");
+            }
+            return Symbol.builder().name(s.getId().getName()).build();
+        };
+        writer.writeStructModule(shape, provider);
+
+        String output = writer.toString();
+        assertThat(output).contains("defmodule GetWeatherInput do");
+        assertThat(output).contains("@type t() :: %__MODULE__{");
+        assertThat(output).contains("city: String.t()");
+        assertThat(output).contains("units: String.t()");
+    }
+
+    @Test
     void writeStructModuleUsesDefexceptionForErrorShape() {
         software.amazon.smithy.model.Model model = software.amazon.smithy.model.Model.assembler()
                 .addUnparsedModel("test.smithy", String.join("\n",
@@ -245,6 +278,43 @@ class ElixirWriterTest {
 
         assertThat(writer.toString()).contains("defexception");
         assertThat(writer.toString()).doesNotContain("defstruct");
+    }
+
+    // -------------------------------------------------------------------------
+    // writeUnionModule
+    // -------------------------------------------------------------------------
+
+    @Test
+    void writeUnionModuleEmitsTypeSpecWithVariants() {
+        software.amazon.smithy.model.Model model = software.amazon.smithy.model.Model.assembler()
+                .addUnparsedModel("test.smithy", String.join("\n",
+                        "$version: \"2\"",
+                        "namespace com.example",
+                        "union Result {",
+                        "    success: String",
+                        "    failure: String",
+                        "}"))
+                .assemble()
+                .unwrap();
+        software.amazon.smithy.model.shapes.UnionShape shape =
+                model.expectShape(
+                        software.amazon.smithy.model.shapes.ShapeId.from("com.example#Result"),
+                        software.amazon.smithy.model.shapes.UnionShape.class);
+
+        SymbolProvider symbols = s -> {
+            if (s instanceof software.amazon.smithy.model.shapes.MemberShape) {
+                return ElixirSymbol.builtin("String.t()");
+            }
+            return Symbol.builder().name(s.getId().getName()).build();
+        };
+        writer.writeUnionModule(shape, symbols);
+
+        String output = writer.toString();
+        assertThat(output).contains("defmodule Result do");
+        assertThat(output).contains("@type t() ::");
+        assertThat(output).contains("{:success, String.t()}");
+        assertThat(output).contains("{:failure, String.t()}");
+        assertThat(output).contains(" | ");
     }
 
     // -------------------------------------------------------------------------

@@ -2,11 +2,10 @@
 
 %% Bidirectional event stream helper for Smithy `@streaming' unions.
 %%
-%% This is a Phase 2 stub that exposes the public surface required by the
-%% generated `<op>_stream/3' wrappers; the actual transport (HTTP/2 framing,
-%% AWS event-stream binary encoding, websocket fallback) lands in Phase 3
-%% together with the in-process language runners under
-%% `codegen-test/runner/'.
+%% This is a stub that exposes the public surface required by the
+%% generated `<op>_stream/3' wrappers. The actual transport (HTTP/2
+%% framing, AWS event-stream binary encoding, websocket fallback) is
+%% not yet implemented.
 %%
 %% Generated client code calls into this module as follows:
 %%
@@ -43,27 +42,27 @@
 %%
 %% The runtime is not yet implemented; the function exists so the
 %% generated code links and so smoke tests can confirm the shape of the
-%% wrapper. Returns `{error, not_implemented}' until Phase 3.
+%% wrapper. Returns `{error, not_implemented}' until the runtime lands.
 -spec start_stream(Client :: map(), Input :: term(), Opts :: stream_opts()) ->
     {ok, stream_ref()} | {error, term()}.
 start_stream(_Client, _Input, _Opts) ->
     {error, not_implemented}.
 
 %% @doc Sends an event on the input side of an open bidirectional stream.
-%% Returns `{error, not_implemented}' until Phase 3.
+%% Returns `{error, not_implemented}' until the runtime lands.
 -spec send_event(stream_ref(), term()) -> ok | {error, term()}.
 send_event(_StreamRef, _Event) ->
     {error, not_implemented}.
 
 %% @doc Receives the next event from the output side of an open stream.
 %% Returns `{ok, end_of_stream}' when the remote half has closed.
-%% Returns `{error, not_implemented}' until Phase 3.
+%% Returns `{error, not_implemented}' until the runtime lands.
 -spec recv_event(stream_ref()) -> {ok, term()} | {ok, end_of_stream} | {error, term()}.
 recv_event(_StreamRef) ->
     {error, not_implemented}.
 
 %% @doc Closes both halves of an open stream.
-%% Returns `{error, not_implemented}' until Phase 3.
+%% Returns `{error, not_implemented}' until the runtime lands.
 -spec close_stream(stream_ref()) -> ok | {error, term()}.
 close_stream(_StreamRef) ->
     {error, not_implemented}.

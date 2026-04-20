@@ -25,14 +25,13 @@ import software.amazon.smithy.utils.CodeSection;
  *
  * <p>The wrappers delegate to {@code SmithyEventStream.start_stream/3}
  * (see {@code runtime-elixir/client/smithy_event_stream.ex}). The runtime is
- * a Phase-2 stub returning {@code {:error, :not_implemented}}; the helpers
- * exist so that smoke tests against an event-stream model produce
- * compilable code, in line with the Phase-2 deliverable for §8.2.
+ * a stub returning {@code {:error, :not_implemented}}; the helpers exist so
+ * that smoke tests against an event-stream model produce compilable code.
  *
  * <p>The encode/decode dispatchers emit one clause per named event in the
  * streaming union (or a single clause for single-event streams). The actual
- * payload codec is intentionally left as a TODO — concrete framing lands in
- * Phase 3 alongside the in-process language runners.
+ * payload codec is intentionally left as a TODO — concrete framing is not
+ * yet implemented.
  */
 public final class ElixirEventStreamIntegration implements ElixirIntegration {
 
@@ -111,7 +110,7 @@ public final class ElixirEventStreamIntegration implements ElixirIntegration {
     private static void emitEncodeDispatcher(ElixirWriter w, String opFn, EventStreamInfo info) {
         Map<String, StructureShape> events = info.getEvents();
         w.write("# Wire-encodes one event of the $L input stream.", opFn);
-        w.write("# TODO: payload framing lands in Phase 3 alongside SmithyEventStream.start_stream/3.");
+        w.write("# TODO: payload framing not yet implemented — see SmithyEventStream.start_stream/3.");
         if (events.isEmpty()) {
             w.write("defp encode_$L_event(_event), do: {:error, :not_implemented}", opFn);
             w.write("");
@@ -132,7 +131,7 @@ public final class ElixirEventStreamIntegration implements ElixirIntegration {
     private static void emitDecodeDispatcher(ElixirWriter w, String opFn, EventStreamInfo info) {
         Map<String, StructureShape> events = info.getEvents();
         w.write("# Wire-decodes one event of the $L output stream.", opFn);
-        w.write("# TODO: payload framing lands in Phase 3 alongside SmithyEventStream.recv_event/1.");
+        w.write("# TODO: payload framing not yet implemented — see SmithyEventStream.recv_event/1.");
         if (events.isEmpty()) {
             w.write("defp decode_$L_event(_tag, _frame), do: {:error, :not_implemented}", opFn);
             w.write("");

@@ -27,9 +27,9 @@ import software.amazon.smithy.waiters.Waiter;
  * {@code case} per acceptor, mirroring the Erlang integration.
  *
  * <p>Path-based matchers ({@code output} and {@code inputOutput}) require a
- * JMESPath evaluator that is out of scope for Phase 2; for those we emit a
- * TODO comment and treat the acceptor as "no match" so the waiter falls
- * through to the next acceptor (or retries).
+ * JMESPath evaluator that is not yet available; for those we emit a TODO
+ * comment and treat the acceptor as "no match" so the waiter falls through
+ * to the next acceptor (or retries).
  */
 public final class ElixirWaitersIntegration implements ElixirIntegration {
 
@@ -175,8 +175,8 @@ public final class ElixirWaitersIntegration implements ElixirIntegration {
             return "{:error, %" + errorType.getValue() + "{}}";
         }
         // Path-based matchers (output/inputOutput) require a JMESPath evaluator
-        // that lives outside Phase 2 scope. Skip the matching clause; the chain
-        // will fall through to {:retry, result}.
+        // that is not yet available. Skip the matching clause; the chain will
+        // fall through to {:retry, result}.
         return null;
     }
 

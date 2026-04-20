@@ -25,14 +25,13 @@ import software.amazon.smithy.utils.CodeSection;
  *
  * <p>The wrappers delegate to {@code smithy_event_stream:start_stream/3}
  * (see {@code runtime-erlang/client/smithy_event_stream.erl}). The runtime is
- * a Phase-2 stub returning {@code {error, not_implemented}}; the helpers
- * exist so that smoke tests against an event-stream model produce
- * compilable code, in line with the Phase-2 deliverable for §8.2.
+ * a stub returning {@code {error, not_implemented}}; the helpers exist so
+ * that smoke tests against an event-stream model produce compilable code.
  *
  * <p>The encode/decode dispatchers emit one clause per named event in the
  * streaming union (or a single clause for single-event streams). The actual
- * payload codec is intentionally left as a TODO — concrete framing lands in
- * Phase 3 alongside the in-process language runners.
+ * payload codec is intentionally left as a TODO — concrete framing is not
+ * yet implemented.
  */
 public final class ErlangEventStreamIntegration implements ErlangIntegration {
 
@@ -113,7 +112,7 @@ public final class ErlangEventStreamIntegration implements ErlangIntegration {
         Map<String, StructureShape> events = info.getEvents();
         w.write("%% @private");
         w.write("%% Wire-encodes one event of the $L input stream.", opFn);
-        w.write("%% TODO: payload framing lands in Phase 3 alongside smithy_event_stream:start_stream/3.");
+        w.write("%% TODO: payload framing not yet implemented — see smithy_event_stream:start_stream/3.");
         if (events.isEmpty()) {
             w.write("encode_$L_event(_Event) ->", opFn);
             w.indent();
@@ -140,7 +139,7 @@ public final class ErlangEventStreamIntegration implements ErlangIntegration {
         Map<String, StructureShape> events = info.getEvents();
         w.write("%% @private");
         w.write("%% Wire-decodes one event of the $L output stream.", opFn);
-        w.write("%% TODO: payload framing lands in Phase 3 alongside smithy_event_stream:recv_event/1.");
+        w.write("%% TODO: payload framing not yet implemented — see smithy_event_stream:recv_event/1.");
         if (events.isEmpty()) {
             w.write("decode_$L_event(_Tag, _Frame) ->", opFn);
             w.indent();
