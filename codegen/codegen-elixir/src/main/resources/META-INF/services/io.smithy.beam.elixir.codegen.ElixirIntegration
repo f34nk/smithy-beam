@@ -12,4 +12,5 @@ io.smithy.beam.elixir.codegen.ElixirSpecIntegration
 io.smithy.beam.elixir.codegen.ElixirPaginationIntegration
 io.smithy.beam.elixir.codegen.ElixirWaitersIntegration
 io.smithy.beam.elixir.codegen.ElixirEventStreamIntegration
+io.smithy.beam.elixir.codegen.ElixirDefexceptionIntegration
 io.smithy.beam.elixir.server.ElixirServerBehaviourIntegration
