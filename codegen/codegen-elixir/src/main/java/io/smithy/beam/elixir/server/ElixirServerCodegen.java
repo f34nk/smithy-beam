@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir.server;
 
+import io.smithy.beam.core.ImplFileGuard;
 import io.smithy.beam.core.Mode;
 import io.smithy.beam.elixir.codegen.ElixirContext;
 import io.smithy.beam.elixir.codegen.ElixirIntegration;
@@ -122,6 +123,62 @@ public final class ElixirServerCodegen
                 }
             });
         });
+
+        emitImplStubIfAbsent(d);
+    }
+
+    /**
+     * Emits a {@code <module>_server_impl.ex} stub file containing one
+     * {@code {:error, :not_implemented}} clause per operation, behind a
+     * "skip if exists" guard so any user edits to the file survive
+     * subsequent codegen runs.
+     */
+    private static void emitImplStubIfAbsent(GenerateServiceDirective<ElixirContext, ElixirSettings> d) {
+        ElixirSettings settings = d.settings();
+        String namespace = settings.getNamespace();
+        String fileBase = lastNamespaceSegmentSnake(namespace);
+        String implPath = settings.getOutputDir() + "/" + fileBase + "_server_impl.ex";
+        String implModule = namespace + ".Server.Impl";
+        String serverModule = namespace + ".Server";
+
+        ImplFileGuard.useFileWriterIfAbsent(
+                settings,
+                d.context().fileManifest(),
+                d.context().writerDelegator(),
+                implPath,
+                writer -> writeImplBody(writer, implModule, serverModule, d.operations()));
+    }
+
+    private static void writeImplBody(
+            ElixirWriter writer,
+            String implModule,
+            String serverModule,
+            java.util.Set<software.amazon.smithy.model.shapes.OperationShape> operations) {
+        writer.writeDefModule(implModule, () -> {
+            writer.write("@moduledoc false");
+            writer.write("@behaviour $L", serverModule);
+            writer.write("");
+            writer.write("# This file will NOT be overwritten. Add your business logic here.");
+            writer.write("");
+
+            for (var op : operations) {
+                String fnName = toFunctionName(op.getId().getName());
+                writer.write("@impl true");
+                writer.write("def $L(_input, _ctx), do: {:error, :not_implemented}", fnName);
+                writer.write("");
+            }
+        });
+    }
+
+    /**
+     * Mirrors the snake_case derivation in {@link io.smithy.beam.elixir.codegen.ElixirSymbolProvider}
+     * so the impl-file path lines up with the rest of the generated tree.
+     */
+    private static String lastNamespaceSegmentSnake(String namespace) {
+        String last = namespace.contains(".")
+                ? namespace.substring(namespace.lastIndexOf('.') + 1)
+                : namespace;
+        return CaseUtils.toSnakeCase(last).toLowerCase(java.util.Locale.ROOT);
     }
 
     /**
