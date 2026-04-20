@@ -1,9 +1,23 @@
 -module(awsjson11_client).
--export([describe_item/2, errors/0, is_error/1, error_to_atom/1]).
+-export([describe_item/2, describe_item/3, parse_error/2, errors/0, is_error/1, error_to_atom/1]).
 
 -spec describe_item(Client :: map(), Input :: describe_item_input()) ->
     {ok, describe_item_output()} | {error, term()}.
+describe_item(Client, Input) ->
+    describe_item(Client, Input, #{}).
 
+%% Calls the DescribeItem operation with options
+-spec describe_item(Client :: map(), Input :: describe_item_input(), Options :: map()) ->
+    {ok, describe_item_output()} | {error, term()}.
+describe_item(Client, Input, Options) when is_record(Input, describe_item_input), is_map(Options) ->
+    RequestFun = fun() -> make_describe_item_request(Client, Input) end,
+    case maps:get(enable_retry, Options, true) of
+        true -> smithy_retry:with_retry(RequestFun, Options);
+        false -> RequestFun()
+    end.
+
+-spec make_describe_item_request(Client :: map(), Input :: describe_item_input()) ->
+    {ok, describe_item_output()} | {error, term()}.
 make_describe_item_request(Client, Input) when is_record(Input, describe_item_input) ->
     Method = <<"POST">>,
     QueryString = <<>>,
@@ -44,10 +58,10 @@ make_describe_item_request(Client, Input) when is_record(Input, describe_item_in
             {error, {signing_error, SignError}}
     end.
 
-describe_item(Config, Input) ->
-    {error, not_implemented}.
 
-parse_describe_item_error(StatusCode, Body) ->
+-spec parse_error(StatusCode :: non_neg_integer(), Body :: binary()) ->
+    {error, term()}.
+parse_error(StatusCode, Body) ->
     try jsx:decode(Body, [return_maps]) of
         #{<<"__type">> := ErrorType} -> {error, {ErrorType, Body}};
         #{<<"code">> := Code} -> {error, {Code, Body}};
@@ -55,7 +69,6 @@ parse_describe_item_error(StatusCode, Body) ->
         catch
             _:_ -> {error, {http_error, StatusCode, Body}}
     end.
-
 
 errors() ->
     [].
