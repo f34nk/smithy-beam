@@ -15,8 +15,8 @@ import software.amazon.smithy.model.traits.Trait;
 import software.amazon.smithy.model.transform.ModelTransformer;
 
 /**
- * Thin static wrappers around {@link ModelTransformer} used during the
- * {@code preprocessModel} phase of every smithy-beam plugin.
+ * Thin static wrappers around {@link ModelTransformer} used from
+ * {@code preprocessModel} in every smithy-beam plugin.
  */
 public final class BeamModelTransforms {
 
@@ -64,9 +64,8 @@ public final class BeamModelTransforms {
      * Removes all shapes that are not reachable from the given service closure,
      * retaining Smithy prelude shapes.
      *
-     * <p>This is equivalent to {@link #removeOutOfClosure} and is provided as
-     * an alias for the Phase 2 helper surface. Enable this transform via the
-     * {@code removeUnreferencedShapes} setting in {@code smithy-build.json}.
+     * <p>This is equivalent to {@link #removeOutOfClosure}. Enable this transform
+     * via the {@code removeUnreferencedShapes} setting in {@code smithy-build.json}.
      */
     public static Model removeUnreferencedShapes(Model model, ServiceShape service) {
         return removeOutOfClosure(model, service);
