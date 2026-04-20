@@ -1,14 +1,27 @@
 -module(weather_client).
--export([get_current_time/2, get_forecast/2, errors/0, is_error/1, error_to_atom/1]).
+-export([get_current_time/2, get_current_time/3, get_forecast/2, get_forecast/3, errors/0, is_error/1, error_to_atom/1]).
 
 -spec get_current_time(Client :: map(), Input :: get_current_time_input()) ->
     {ok, get_current_time_output()} | {error, term()}.
-get_current_time(Config, Input) ->
+get_current_time(Client, Input) ->
+    get_current_time(Client, Input, #{}).
+
+%% Calls the GetCurrentTime operation with options
+-spec get_current_time(Client :: map(), Input :: get_current_time_input(), Options :: map()) ->
+    {ok, get_current_time_output()} | {error, term()}.
+get_current_time(Client, Input, Options) when is_record(Input, get_current_time_input), is_map(Options) ->
     {error, not_implemented}.
+
 
 -spec get_forecast(Client :: map(), Input :: get_forecast_input()) ->
     {ok, get_forecast_output()} | {error, no_such_resource_error()}.
-get_forecast(Config, Input) ->
+get_forecast(Client, Input) ->
+    get_forecast(Client, Input, #{}).
+
+%% Calls the GetForecast operation with options
+-spec get_forecast(Client :: map(), Input :: get_forecast_input(), Options :: map()) ->
+    {ok, get_forecast_output()} | {error, term()}.
+get_forecast(Client, Input, Options) when is_record(Input, get_forecast_input), is_map(Options) ->
     {error, not_implemented}.
 
 
