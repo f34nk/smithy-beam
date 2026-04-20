@@ -1,7 +1,12 @@
 defmodule AwsJson11Service.Client do
   @spec describe_item(map(), DescribeItemInput.t()) ::
     {:ok, DescribeItemOutput.t()} | {:error, term()}
+  def describe_item(config, input) do
+    SmithyClient.execute(config, describe_item_op(input))
+  end
 
+  @doc false
+  @spec describe_item_op(DescribeItemInput.t()) :: SmithyClient.Operation.t()
   defp describe_item_op(%DescribeItemInput{} = input) do
     %SmithyClient.Operation{
       name: :describe_item,
@@ -20,8 +25,5 @@ defmodule AwsJson11Service.Client do
     }
   end
 
-  def describe_item(config, input) do
-    {:error, :not_implemented}
-  end
 
 end
