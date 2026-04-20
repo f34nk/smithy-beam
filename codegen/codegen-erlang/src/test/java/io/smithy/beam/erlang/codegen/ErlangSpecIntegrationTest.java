@@ -7,6 +7,7 @@ import io.smithy.beam.erlang.client.ErlangClientSettings;
 import io.smithy.beam.erlang.codegen.sections.OperationSpecSection;
 import io.smithy.beam.core.Mode;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -168,6 +169,43 @@ class ErlangSpecIntegrationTest {
         assertThat(out)
                 .contains("-spec ping(Client :: map(), Input :: term()) ->")
                 .contains("{ok, term()} | {error, internal_server_error()}.");
+    }
+
+    @Test
+    void specTypeReferencesAgreeWithWriteRecordTypeAliases() {
+        // Pair-test: every type alias the spec references must also be
+        // emitted by ErlangWriter.writeRecord into the corresponding
+        // `*_types.hrl`. This locks the bridge between spec emission and
+        // record/type-alias emission so a future change to either side that
+        // breaks symmetry fails here.
+        OperationShape op = model.expectShape(
+                ShapeId.from("test.spec#GetItem"), OperationShape.class);
+        String spec = drive(op).toString();
+
+        // All shape names referenced by the spec must come paired with a
+        // matching `-type X() :: #X{}.` line that writeRecord would emit.
+        Map<String, String> aliasToShapeName = Map.of(
+                "get_item_input", "GetItemInput",
+                "get_item_output", "GetItemOutput",
+                "not_found", "NotFound",
+                "throttled", "Throttled",
+                "internal_server_error", "InternalServerError");
+
+        aliasToShapeName.forEach((alias, shapeName) -> {
+            assertThat(spec).contains(alias + "()");
+
+            ErlangWriter typesWriter = CodegenTestSupport.writer("svc_client_types.hrl");
+            software.amazon.smithy.model.shapes.StructureShape struct = model.expectShape(
+                    ShapeId.from("test.spec#" + shapeName),
+                    software.amazon.smithy.model.shapes.StructureShape.class);
+            typesWriter.writeRecord(struct, ctx.symbolProvider());
+
+            String types = typesWriter.toString();
+            assertThat(types)
+                    .as("types.hrl for %s must contain matching record + type alias", alias)
+                    .contains("-record(" + alias + ",")
+                    .contains("-type " + alias + "() :: #" + alias + "{}.");
+        });
     }
 
     private static ErlangWriter drive(OperationShape op) {
