@@ -88,6 +88,6 @@ public final class Ec2QueryCodec implements ErlangCodec {
         w.indent();
         w.write("_:_ -> {error, {http_error, StatusCode, Body}}");
         w.dedent();
-        w.closeBlock("end");
+        w.closeBlock("end.");
     }
 }
