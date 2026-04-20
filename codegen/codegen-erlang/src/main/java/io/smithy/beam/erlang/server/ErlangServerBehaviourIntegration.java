@@ -2,6 +2,7 @@ package io.smithy.beam.erlang.server;
 
 import io.smithy.beam.core.Mode;
 import io.smithy.beam.erlang.codegen.ErlangContext;
+import io.smithy.beam.erlang.codegen.ErlangDependency;
 import io.smithy.beam.erlang.codegen.ErlangIntegration;
 import io.smithy.beam.erlang.codegen.ErlangWriter;
 import io.smithy.beam.erlang.codegen.sections.ModuleAttributesSection;
@@ -31,7 +32,9 @@ public final class ErlangServerBehaviourIntegration implements ErlangIntegration
             return Collections.emptyList();
         }
         return List.of(
-                CodeInterceptor.appender(ModuleAttributesSection.class, (writer, section) ->
-                        writer.write("-behaviour(smithy_handler).")));
+                CodeInterceptor.appender(ModuleAttributesSection.class, (writer, section) -> {
+                    writer.addDependency(ErlangDependency.SMITHY_HANDLER);
+                    writer.write("-behaviour(smithy_handler).");
+                }));
     }
 }

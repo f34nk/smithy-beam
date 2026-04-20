@@ -108,6 +108,13 @@ class ErlangRuntimeIntegrationTest {
     }
 
     @Test
+    void serverHandlerRuntimeFileLandsInOutputDir() {
+        // Every generated server module declares `-behaviour(smithy_handler).`,
+        // so the corresponding runtime module must be copied alongside it.
+        assertThat(serverManifest.getFileString("src/generated/smithy_handler.erl")).isPresent();
+    }
+
+    @Test
     void clientRuntimeFilesRespectCustomOutputDir() {
         Model model = Model.assembler()
                 .discoverModels(ErlangRuntimeIntegrationTest.class.getClassLoader())
