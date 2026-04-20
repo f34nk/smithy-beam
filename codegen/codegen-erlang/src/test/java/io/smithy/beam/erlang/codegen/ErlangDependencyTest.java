@@ -65,6 +65,8 @@ class ErlangDependencyTest {
                 .isEqualTo(RUNTIME_PATH_PREFIX + "client/smithy_config.erl");
         assertThat(ErlangDependency.SMITHY_PAGINATION.getResourcePath())
                 .isEqualTo(RUNTIME_PATH_PREFIX + "client/smithy_pagination.erl");
+        assertThat(ErlangDependency.SMITHY_EVENT_STREAM.getResourcePath())
+                .isEqualTo(RUNTIME_PATH_PREFIX + "client/smithy_event_stream.erl");
     }
 
     @Test
@@ -110,7 +112,7 @@ class ErlangDependencyTest {
     }
 
     @Test
-    void enumHasSixteenConstants() {
-        assertThat(ErlangDependency.values()).hasSize(16);
+    void enumHasSeventeenConstants() {
+        assertThat(ErlangDependency.values()).hasSize(17);
     }
 }
