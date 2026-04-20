@@ -22,7 +22,6 @@ import io.smithy.beam.elixir.codegen.sections.OperationSendSection;
 import io.smithy.beam.elixir.codegen.sections.OperationSpecSection;
 import io.smithy.beam.elixir.codegen.sections.OperationValidationSection;
 import io.smithy.beam.elixir.codegen.sections.PaginationHelperSection;
-import io.smithy.beam.elixir.codegen.sections.StructTypeSection;
 import io.smithy.beam.elixir.codegen.sections.UnionVariantsSection;
 import io.smithy.beam.elixir.codegen.sections.WaiterSection;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -138,20 +137,14 @@ public final class ElixirClientCodegen
 
     @Override
     public void generateStructure(GenerateStructureDirective<ElixirContext, ElixirSettings> d) {
-        d.context().writerDelegator().useShapeWriter(d.shape(), writer -> {
-            writer.pushState(new StructTypeSection(d.shape()));
-            writer.writeStructModule(d.shape(), d.symbolProvider());
-            writer.popState();
-        });
+        d.context().writerDelegator().useShapeWriter(d.shape(), writer ->
+                writer.writeStructModule(d.shape(), d.symbolProvider()));
     }
 
     @Override
     public void generateError(GenerateErrorDirective<ElixirContext, ElixirSettings> d) {
-        d.context().writerDelegator().useShapeWriter(d.shape(), writer -> {
-            writer.pushState(new StructTypeSection(d.shape()));
-            writer.writeStructModule(d.shape(), d.symbolProvider());
-            writer.popState();
-        });
+        d.context().writerDelegator().useShapeWriter(d.shape(), writer ->
+                writer.writeStructModule(d.shape(), d.symbolProvider()));
     }
 
     @Override
