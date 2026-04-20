@@ -10,8 +10,14 @@ import io.smithy.beam.erlang.codegen.ErlangWriter;
 import io.smithy.beam.erlang.codegen.sections.EnumValuesSection;
 import io.smithy.beam.erlang.codegen.sections.ModuleAttributesSection;
 import io.smithy.beam.erlang.codegen.sections.OperationDocSection;
+import io.smithy.beam.erlang.codegen.sections.OperationSpecSection;
+import io.smithy.beam.erlang.codegen.sections.OperationValidationSection;
+import io.smithy.beam.erlang.codegen.sections.ServerDeserializeSection;
+import io.smithy.beam.erlang.codegen.sections.ServerDispatchSection;
 import io.smithy.beam.erlang.codegen.sections.ServerHandlerCallbackSection;
+import io.smithy.beam.erlang.codegen.sections.ServerImplCallbackSection;
 import io.smithy.beam.erlang.codegen.sections.ServerRouteSection;
+import io.smithy.beam.erlang.codegen.sections.ServerSerializeSection;
 import io.smithy.beam.erlang.codegen.sections.StructTypeSection;
 import io.smithy.beam.erlang.codegen.sections.UnionVariantsSection;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -86,19 +92,35 @@ public final class ErlangServerCodegen
     }
 
     /**
-     * Emits a {@code handle_<op>(Req, State) -> {error, not_implemented}.} stub
-     * per operation, wrapped by {@link ServerHandlerCallbackSection} so
-     * integrations can replace the stub body.
+     * Emits per-operation server sections in the prescribed order:
+     * doc, spec, dispatch, deserialize, validation, handler callback, serialize, impl callback.
      */
     @Override
     public void generateOperation(GenerateOperationDirective<ErlangContext, ErlangSettings> d) {
         String handlerName = "handle_" + toFunctionName(d.shape().getId().getName());
         d.context().writerDelegator().useShapeWriter(d.service(), writer -> {
+            // Doc comment (empty by default).
             writer.injectSection(new OperationDocSection(d.shape()));
+            // -spec line (empty by default; ErlangSpecIntegration populates).
+            writer.injectSection(new OperationSpecSection(d.shape()));
+            // route(Method, Path) clause (empty by default).
+            writer.injectSection(new ServerDispatchSection(d.shape()));
+            // deserialize_<op>/3 helper (empty by default).
+            writer.injectSection(new ServerDeserializeSection(d.shape()));
+            // validate_<op>_input/1 helper (empty by default).
+            writer.injectSection(new OperationValidationSection(d.shape()));
+
+            // Handler callback stub; protocol integrations replace the body.
             writer.pushState(new ServerHandlerCallbackSection(d.shape()));
             writer.write("$L(Req, State) ->", handlerName);
             writer.write("    {error, not_implemented}.");
             writer.popState();
+
+            // serialize_<op>/1 helper (empty by default).
+            writer.injectSection(new ServerSerializeSection(d.shape()));
+            // -callback / @callback line (empty by default).
+            writer.injectSection(new ServerImplCallbackSection(d.shape()));
+
             writer.write("");
             writer.addExport(handlerName, 2);
         });
