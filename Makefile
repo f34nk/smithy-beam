@@ -20,7 +20,7 @@ build:
 .PHONY: build/snapshots
 build/snapshots:
 	#
-	# Build golden snapshots
+	# Build snapshots
 	#
 	rm -rf codegen/codegen-test/src/test/resources/snapshots
 	./gradlew :codegen:codegen-test:test -PupdateSnapshots=true

@@ -29,6 +29,12 @@ public abstract class BeamPreludeIntegration<
         model = BeamModelTransforms.removeOutOfClosure(model, svc);
         model = BeamModelTransforms.copyServiceErrorsToOperations(model, svc);
         model = BeamModelTransforms.flattenMixins(model);
+        if (settings.isRemoveUnreferencedShapes()) {
+            model = BeamModelTransforms.removeUnreferencedShapes(model, svc);
+        }
+        if (settings.isApplyAuthSchemes()) {
+            model = BeamModelTransforms.applyAuthSchemes(model, svc);
+        }
         return model;
     }
 }
