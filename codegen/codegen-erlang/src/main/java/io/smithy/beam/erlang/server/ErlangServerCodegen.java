@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang.server;
 
+import io.smithy.beam.core.ImplFileGuard;
 import io.smithy.beam.core.Mode;
 import io.smithy.beam.erlang.codegen.ErlangContext;
 import io.smithy.beam.erlang.codegen.ErlangIntegration;
@@ -89,6 +90,53 @@ public final class ErlangServerCodegen
             // Empty injection point — router integrations can emit a dispatch table here.
             writer.injectSection(new ServerRouteSection(d.service()));
         });
+
+        emitImplStubIfAbsent(d);
+    }
+
+    /**
+     * Emits a {@code <module>_server_impl.erl} stub file containing one
+     * {@code {error, not_implemented}} clause per operation, behind a
+     * "skip if exists" guard so any user edits to the file survive
+     * subsequent codegen runs.
+     */
+    private static void emitImplStubIfAbsent(GenerateServiceDirective<ErlangContext, ErlangSettings> d) {
+        ErlangSettings settings = d.settings();
+        String serverModule = settings.getModule() + "_server";
+        String implModule = serverModule + "_impl";
+        String implPath = settings.getOutputDir() + "/" + implModule + ".erl";
+
+        ImplFileGuard.useFileWriterIfAbsent(
+                settings,
+                d.context().fileManifest(),
+                d.context().writerDelegator(),
+                implPath,
+                writer -> writeImplBody(writer, serverModule, d.operations()));
+    }
+
+    private static void writeImplBody(
+            ErlangWriter writer,
+            String serverModule,
+            java.util.Set<software.amazon.smithy.model.shapes.OperationShape> operations) {
+        writer.write("$D", "This file will NOT be overwritten. Add your business logic here.");
+        writer.write("-behaviour($L).", serverModule);
+        writer.write("");
+
+        for (var op : operations) {
+            String fnName = toFunctionName(op.getId().getName());
+            writer.addExport(fnName, 2);
+        }
+
+        for (var op : operations) {
+            String fnName = toFunctionName(op.getId().getName());
+            writer.write("-spec $L($L:$L_input(), map()) ->", fnName, serverModule, fnName);
+            writer.write("    {ok, $L:$L_output()} | {error, term()}.", serverModule, fnName);
+            writer.write("$L(_Input, _Context) ->", fnName);
+            writer.write("    {error, not_implemented}.");
+            writer.write("");
+        }
+
+        writer.flushExports();
     }
 
     /**
