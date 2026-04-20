@@ -1,14 +1,16 @@
 package io.smithy.beam.elixir.codegen.protocol;
 
 import io.smithy.beam.elixir.codegen.DefaultElixirProtocolIntegration;
-import io.smithy.beam.elixir.codegen.ElixirDependency;
-import java.util.List;
+import io.smithy.beam.elixir.codegen.codec.ElixirCodec;
+import io.smithy.beam.elixir.codegen.codec.ElixirTransport;
+import io.smithy.beam.elixir.codegen.codec.JsonCodec;
+import io.smithy.beam.elixir.codegen.http.RpcTransport;
 import software.amazon.smithy.model.shapes.ShapeId;
 
 /**
  * Elixir codegen integration for the {@code aws.protocols#awsJson1_0} protocol.
  *
- * <p>Adds {@code SMITHY_JSON} and {@code SMITHY_HTTP_CLIENT} runtime dependencies.
+ * <p>Pairs the AWS-flavoured {@link JsonCodec} with the {@link RpcTransport}.
  */
 public final class ElixirAwsJson10Integration extends DefaultElixirProtocolIntegration {
 
@@ -18,7 +20,12 @@ public final class ElixirAwsJson10Integration extends DefaultElixirProtocolInteg
     }
 
     @Override
-    protected List<ElixirDependency> protocolDependencies() {
-        return List.of(ElixirDependency.SMITHY_JSON, ElixirDependency.SMITHY_HTTP_CLIENT);
+    protected ElixirCodec codec() {
+        return new JsonCodec(JsonCodec.AWS_FLAVOR);
+    }
+
+    @Override
+    protected ElixirTransport transport() {
+        return new RpcTransport();
     }
 }
