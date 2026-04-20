@@ -1,14 +1,16 @@
 package io.smithy.beam.erlang.codegen.protocol;
 
 import io.smithy.beam.erlang.codegen.DefaultErlangProtocolIntegration;
-import io.smithy.beam.erlang.codegen.ErlangDependency;
-import java.util.List;
+import io.smithy.beam.erlang.codegen.codec.ErlangCodec;
+import io.smithy.beam.erlang.codegen.codec.ErlangTransport;
+import io.smithy.beam.erlang.codegen.codec.XmlCodec;
+import io.smithy.beam.erlang.codegen.http.RestTransport;
 import software.amazon.smithy.model.shapes.ShapeId;
 
 /**
  * Erlang codegen integration for the {@code aws.protocols#restXml} protocol.
  *
- * <p>Adds {@code SMITHY_XML} and {@code SMITHY_HTTP_CLIENT} runtime dependencies.
+ * <p>Pairs the {@link XmlCodec} with the {@link RestTransport}.
  */
 public final class ErlangRestXmlIntegration extends DefaultErlangProtocolIntegration {
 
@@ -18,7 +20,12 @@ public final class ErlangRestXmlIntegration extends DefaultErlangProtocolIntegra
     }
 
     @Override
-    protected List<ErlangDependency> protocolDependencies() {
-        return List.of(ErlangDependency.SMITHY_XML, ErlangDependency.SMITHY_HTTP_CLIENT);
+    protected ErlangCodec codec() {
+        return new XmlCodec();
+    }
+
+    @Override
+    protected ErlangTransport transport() {
+        return new RestTransport();
     }
 }
