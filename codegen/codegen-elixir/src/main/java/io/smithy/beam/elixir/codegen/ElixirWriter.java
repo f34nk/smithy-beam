@@ -13,6 +13,7 @@ import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.ErrorTrait;
 import software.amazon.smithy.utils.CaseUtils;
+import io.smithy.beam.elixir.codegen.sections.StructTypeSection;
 
 /**
  * Smithy {@link SymbolWriter} for Elixir source files.
@@ -60,12 +61,18 @@ public final class ElixirWriter extends SymbolWriter<ElixirWriter, ElixirImportC
     /**
      * Emits a complete {@code defmodule} for a Smithy structure shape, including
      * {@code defstruct} and {@code @type t :: %__MODULE__{…}}.
+     *
+     * <p>The body of the {@code defmodule} block is wrapped in a
+     * {@link StructTypeSection} so feature integrations can append additional
+     * declarations inside the module (e.g. {@code def message/1} clauses
+     * emitted by {@link ElixirDefexceptionIntegration} for error shapes).
      */
     public ElixirWriter writeStructModule(StructureShape shape, SymbolProvider symbols) {
         String moduleName = symbols.toSymbol(shape).getName();
         boolean isError = shape.hasTrait(ErrorTrait.class);
 
         writeDefModule(moduleName, () -> {
+            pushState(new StructTypeSection(shape));
             List<MemberShape> members = new ArrayList<>(shape.getAllMembers().values());
 
             if (isError) {
@@ -110,6 +117,7 @@ public final class ElixirWriter extends SymbolWriter<ElixirWriter, ElixirImportC
                 dedent();
                 write("}");
             }
+            popState();
         });
         return this;
     }
