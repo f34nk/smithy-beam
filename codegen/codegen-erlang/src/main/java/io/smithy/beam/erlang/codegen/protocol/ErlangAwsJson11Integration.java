@@ -1,14 +1,16 @@
 package io.smithy.beam.erlang.codegen.protocol;
 
 import io.smithy.beam.erlang.codegen.DefaultErlangProtocolIntegration;
-import io.smithy.beam.erlang.codegen.ErlangDependency;
-import java.util.List;
+import io.smithy.beam.erlang.codegen.codec.ErlangCodec;
+import io.smithy.beam.erlang.codegen.codec.ErlangTransport;
+import io.smithy.beam.erlang.codegen.codec.JsonCodec;
+import io.smithy.beam.erlang.codegen.http.RpcTransport;
 import software.amazon.smithy.model.shapes.ShapeId;
 
 /**
  * Erlang codegen integration for the {@code aws.protocols#awsJson1_1} protocol.
  *
- * <p>Adds {@code SMITHY_JSON} and {@code SMITHY_HTTP_CLIENT} runtime dependencies.
+ * <p>Pairs the AWS-flavoured {@link JsonCodec} with the {@link RpcTransport}.
  */
 public final class ErlangAwsJson11Integration extends DefaultErlangProtocolIntegration {
 
@@ -18,7 +20,12 @@ public final class ErlangAwsJson11Integration extends DefaultErlangProtocolInteg
     }
 
     @Override
-    protected List<ErlangDependency> protocolDependencies() {
-        return List.of(ErlangDependency.SMITHY_JSON, ErlangDependency.SMITHY_HTTP_CLIENT);
+    protected ErlangCodec codec() {
+        return new JsonCodec(JsonCodec.AWS_FLAVOR);
+    }
+
+    @Override
+    protected ErlangTransport transport() {
+        return new RpcTransport();
     }
 }
