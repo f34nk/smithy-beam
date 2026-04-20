@@ -114,13 +114,13 @@ class ErlangClientCodegenTest {
     @Test
     void clientModuleContainsGetCurrentTimeFunctionClause() {
         String content = manifest.expectFileString("src/generated/weather_client.erl");
-        assertThat(content).contains("get_current_time(Config, Input) ->");
+        assertThat(content).contains("get_current_time(Client, Input) ->");
     }
 
     @Test
     void clientModuleContainsGetForecastFunctionClause() {
         String content = manifest.expectFileString("src/generated/weather_client.erl");
-        assertThat(content).contains("get_forecast(Config, Input) ->");
+        assertThat(content).contains("get_forecast(Client, Input) ->");
     }
 
     @Test
