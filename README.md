@@ -1,5 +1,7 @@
 
 ## *WORK IN PROGRESS*
+Please note, that the **v1** branch, contains a *first-draft* proof of concept.
+Another version that follows the "official" *DirectedCodegen* is being developed on a different branch.
 
 # smithy-beam
 
