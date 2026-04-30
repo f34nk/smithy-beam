@@ -1,0 +1,11 @@
+.gradle/
+.vscode/
+build/
+_build/
+.hex
+deps/
+*.log
+
+# temporary
+baseline/
+Makefile
