@@ -1,0 +1,14 @@
+[versions]
+smithy = "1.54.0"
+junit-jupiter = "5.11.0"
+assertj = "3.26.3"
+
+[libraries]
+smithy-model = { module = "software.amazon.smithy:smithy-model", version.ref = "smithy" }
+smithy-codegen-core = { module = "software.amazon.smithy:smithy-codegen-core", version.ref = "smithy" }
+smithy-build = { module = "software.amazon.smithy:smithy-build", version.ref = "smithy" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+
+[plugins]
+smithy-jar = { id = "software.amazon.smithy.gradle.smithy-jar", version = "1.2.0" }
