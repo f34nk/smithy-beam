@@ -1,0 +1,88 @@
+@startuml smithy_beam_execution
+
+title smithy-beam Execution Diagram
+
+skinparam defaultFontName Helvetica
+skinparam titleFontName Helvetica
+skinparam noteFontName Helvetica
+skinparam arrowFontName Helvetica
+skinparam sequenceParticipantFontName Helvetica
+skinparam sequenceLifeLineBorderColor #666666
+skinparam sequenceArrowColor #333333
+skinparam sequenceBoxBorderColor #666666
+
+actor Developer
+participant Smithy_Build
+participant Plugin
+participant PluginContext
+participant BeamSettings
+participant Model
+participant BeamModelTransforms
+participant CodegenDirector
+participant DirectedCodegen
+participant SymbolProvider
+participant WriterDelegator
+participant SymbolWriter
+participant FileManifest
+
+Developer -> Smithy_Build : run smithy-build
+Smithy_Build -> Smithy_Build : load Smithy model files
+Smithy_Build -> Smithy_Build : load plugin through SPI
+Smithy_Build -> Plugin : execute(context)
+
+Plugin -> PluginContext : getSettings()
+Plugin -> BeamSettings : parse plugin configuration
+BeamSettings -> PluginContext : getModel()
+PluginContext -> Model : expose loaded model
+BeamSettings -> BeamSettings : resolve service and module names
+
+Plugin -> BeamModelTransforms : apply shared model transforms
+BeamModelTransforms -> Model : flatten and normalize generation model
+Model --> BeamModelTransforms : transformed model
+
+Plugin -> CodegenDirector : configure settings, service, and generator
+CodegenDirector -> DirectedCodegen : createSymbolProvider(directive)
+DirectedCodegen -> SymbolProvider : construct language mapper
+SymbolProvider --> CodegenDirector : shape to symbol mapper
+
+CodegenDirector -> DirectedCodegen : createContext(directive)
+DirectedCodegen -> WriterDelegator : create writer delegator
+DirectedCodegen --> CodegenDirector : generation context
+
+CodegenDirector -> DirectedCodegen : customizeBeforeShapeGeneration(directive)
+DirectedCodegen -> Model : walk selected service closure
+loop scalar, list, and map aliases
+  DirectedCodegen -> SymbolProvider : toSymbol(shape)
+  SymbolProvider --> DirectedCodegen : target type alias
+  DirectedCodegen -> WriterDelegator : useShapeWriter(shape)
+  WriterDelegator -> SymbolWriter : render alias declarations
+end
+
+loop reachable structures, enums, unions, and errors
+  CodegenDirector -> DirectedCodegen : generate shape hook
+  DirectedCodegen -> SymbolProvider : toSymbol(shape and members)
+  SymbolProvider --> DirectedCodegen : target records, structs, atoms, and aliases
+  DirectedCodegen -> WriterDelegator : useShapeWriter(shape)
+  WriterDelegator -> SymbolWriter : render target source
+end
+
+alt Erlang output
+  SymbolWriter -> FileManifest : write generated .hrl or .erl file
+else Elixir output
+  SymbolWriter -> FileManifest : write generated .ex file
+end
+
+opt client or server plugin
+  Plugin -> Plugin : generate dispatch, routing, and serialization files
+  Plugin -> FileManifest : write generated runtime source
+end
+
+FileManifest --> Smithy_Build : generated artifacts
+Smithy_Build --> Developer : codegen complete
+
+note over SymbolProvider, SymbolWriter
+  Shape mapping is codegen-time only.
+  Generated BEAM source does not load Smithy models at runtime.
+end note
+
+@enduml
