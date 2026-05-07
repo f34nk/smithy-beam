@@ -11,6 +11,12 @@ All notable changes to this project will be documented here.
 - `ErlangWriter`: extends `SymbolWriter` and adds the factory method required by `WriterDelegator`
 - `ErlangIntegration`: every code generator must define its own integration interface. It is the extension point for optional behavior such as custom file generation, model preprocessing, and symbol provider decoration.
 - `ErlangContext`: a Java record implementing `CodegenContext`. It is created by `ErlangDirectedCodegen.createContext()` and passed to every generate* method via the directive objects.
+- `ErlangDirectedCodegen`: the central interface of the generator. All required methods are present. Methods that do not apply to the types-only baseline are stubs. Methods for scalar/enum/union/structure generation are declared but not yet implemented.
+- `ErlangTypeGeneration` is the reusable type-generation entry class for 
+Erlang. It owns the `CodegenDirector` wiring for Erlang type output and 
+lives in `codegen-core` so standalone types, client, and server plugins 
+can all call the same implementation. 
+- `ErlangTypesPlugin` is the Smithy-Build adapter discovered through Java SPI.
 
 ## 2026-05-04
 
