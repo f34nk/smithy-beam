@@ -17,7 +17,7 @@ smithy-beam exposes six Smithy-Build plugins:
 | `elixir-client-codegen` | Elixir | Client dispatch and serialization |
 | `elixir-server-codegen` | Elixir | GenServer callbacks and routing |
 
-The [Smithy DirectedCodegen](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html) guidelines prescribe a separate Smithy-Build plugin for each use case, client, server, and types, backed by a shared Java implementation. smithy-beam packages type generation both ways: public type-only plugins for standalone use, and shared `codegen-core` Java classes called directly by client and server plugins before those plugins emit their own files. Smithy-Build does not infer or add a matching types plugin from projection inheritance, plugin ordering, `runBefore`, or `runAfter`, so direct delegation is the stable way to avoid duplicate user configuration.
+The [Smithy DirectedCodegen](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html) guidelines prescribe a separate Smithy-Build plugin for each use case, client, server, and types, backed by a shared Java implementation. smithy-beam packages type generation both ways: public type-only plugins for standalone use, and a reusable type-generation entry class per language module that client and server plugins call directly before emitting their own files. Shared settings and cross-cutting utilities live in `codegen-core`. Smithy-Build does not infer or add a matching types plugin from projection inheritance, plugin ordering, `runBefore`, or `runAfter`, so direct delegation is the stable way to avoid duplicate user configuration.
 
 Client and server concerns are fundamentally different (see section 3), and Erlang and Elixir generate different idioms even though they share the BEAM VM (see section 4). Combining any two of these dimensions into one plugin would require the plugin to branch on configuration flags rather than being a self-contained, single-purpose code generator. Focused plugins keep each plugin's scope narrow and its output predictable.
 
@@ -31,13 +31,14 @@ The `codegen-core` Gradle submodule contains shared Java code used by all six pl
 
 Shared components that live in `codegen-core`:
 
-- **`BeamSettings`** — parses and validates the [`smithy-build.json`](https://smithy.io/2.0/guides/smithy-build-json.html) plugin configuration block that is common to all plugins (namespace, package version, edition, etc.).
+- **`BeamSettings`** — parses and validates the [smithy-build.json](https://smithy.io/2.0/guides/smithy-build-json.html) plugin configuration block that is common to all plugins (namespace, package version, edition, etc.).
 - **`BeamModelTransforms`** — applies pre-generation model transforms that are identical across all plugins (e.g. flattening mixins, applying protocol traits).
-- **`BeamPreludeIntegration`** — the base [`SmithyIntegration`](https://smithy.io/2.0/guides/building-codegen/making-codegen-pluggable.html#creating-a-smithyintegrations) that registers shared interceptors; each language plugin extends this rather than re-implementing it.
-- **`ErlangTypeGeneration` / `ElixirTypeGeneration`** — the shared type-generation classes created in the v3a foundation. The standalone types plugins call these classes directly, and the later client/server plugins call the same classes before emitting their own files. Type generation is implemented once and reused; it is never duplicated per plugin.
-- **`Mode`** — a sealed type (`CLIENT` / `SERVER`) used throughout the client/server generation pipeline to branch between client and server concerns without duplicating the surrounding logic. The types plugins do not use `Mode`; they call the shared type-generation classes directly.
+- **`BeamPreludeIntegration`** — the base [SmithyIntegration](https://smithy.io/2.0/guides/building-codegen/making-codegen-pluggable.html#creating-a-smithyintegrations) that registers shared interceptors; each language plugin extends this rather than re-implementing it.
+- **`Mode`** — a sealed type (`CLIENT` / `SERVER`) used throughout the client/server generation pipeline to branch between client and server concerns without duplicating the surrounding logic. The types plugins do not use `Mode`; they call the language-specific type-generation entry class directly.
 
-Without `codegen-core`, each plugin would duplicate these components, causing drift and requiring six-way fixes for every bug. The shared module is a compile-time dependency only; it adds no BEAM runtime dependency.
+Type-generation entry classes **`ErlangTypeGeneration`** and **`ElixirTypeGeneration`** live in **`codegen-erlang`** and **`codegen-elixir`**. Each one configures [CodegenDirector](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html#running-directedcodegen-using-a-codegendirector) for the [DirectedCodegen](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html#directedcodegen) implementation of that language. The standalone types plugins call these classes, and later client/server plugins in the same language module call the same class before emitting client or server output. Type generation is implemented once per language and reused; it is not duplicated per plugin.
+
+Without `codegen-core`, each plugin would duplicate shared settings, transforms, and integration scaffolding, causing drift and requiring wide fixes for every bug. The shared module is a compile-time dependency only; it adds no BEAM runtime dependency.
 
 ---
 
@@ -47,7 +48,7 @@ The [Smithy guide](https://smithy.io/2.0/guides/building-codegen/overview-and-co
 
 ### Server plugins
 
-- Generate [`behaviour` callback definitions](https://www.erlang.org/doc/system/design_principles.html#behaviours) (Erlang) or [`@behaviour` module declarations](https://hexdocs.pm/elixir/Behaviour.html) (Elixir) that model the service contract.
+- Generate [behaviour callback definitions](https://www.erlang.org/doc/system/design_principles.html#behaviours) (Erlang) or [@behaviour module declarations](https://hexdocs.pm/elixir/Behaviour.html) (Elixir) that model the service contract.
 - Generate OTP callback router modules that dispatch incoming requests to the correct handler by operation name.
 - Generate implementation stubs (empty callback implementations) that developers fill in.
 - May assume they control the wire format and can enforce constraints strictly.
@@ -71,12 +72,12 @@ Erlang and Elixir compile to BEAM bytecode and share the same runtime. They diff
 |---|---|---|
 | Package manager | [rebar3](https://rebar3.org) | [Mix](https://hexdocs.pm/mix/Mix.html) |
 | Module naming | `lowercase_module` atoms | `CamelCase` aliases |
-| String type | [`binary()`](https://www.erlang.org/doc/system/data_types.html#bit-strings-and-binaries) | [`String.t()`](https://hexdocs.pm/elixir/String.html) |
-| Concurrency abstraction | [`gen_server` behaviour](https://www.erlang.org/doc/design_principles/gen_server_concepts.html) | [`GenServer` behaviour](https://hexdocs.pm/elixir/GenServer.html) |
+| String type | [binary()](https://www.erlang.org/doc/system/data_types.html#bit-strings-and-binaries) | [String.t()](https://hexdocs.pm/elixir/String.html) |
+| Concurrency abstraction | [gen_server behaviour](https://www.erlang.org/doc/design_principles/gen_server_concepts.html) | [GenServer behaviour](https://hexdocs.pm/elixir/GenServer.html) |
 | Error conventions | `{ok, Value} \| {error, Reason}` tagged tuples | same, plus `!`-suffix bang variants |
-| Header/type sharing | [`.hrl` include files](https://www.erlang.org/doc/system/modules.html) | type specs in `.ex` modules |
+| Header/type sharing | [.hrl include files](https://www.erlang.org/doc/system/modules.html) | type specs in `.ex` modules |
 
-A single plugin targeting "BEAM" and branching internally on a `language` flag would produce a plugin that is harder to reason about and harder to extend. Separate plugins with a shared core give each language its own [`SymbolProvider`](https://smithy.io/2.0/guides/building-codegen/mapping-shapes-to-languages.html), [`SymbolWriter`](https://smithy.io/2.0/guides/building-codegen/decoupling-codegen-with-symbols.html), and file-layout logic while sharing the parts that are truly identical.
+A single plugin targeting "BEAM" and branching internally on a `language` flag would produce a plugin that is harder to reason about and harder to extend. Separate plugins with a shared core give each language its own [SymbolProvider](https://smithy.io/2.0/guides/building-codegen/mapping-shapes-to-languages.html), [SymbolWriter](https://smithy.io/2.0/guides/building-codegen/decoupling-codegen-with-symbols.html), and file-layout logic while sharing the parts that are truly identical.
 
 ---
 
@@ -109,7 +110,8 @@ Type-only generation lists a public types plugin:
 ```
 
 Client or server generation lists only the client or server plugin. The plugin
-still emits the type files it needs by calling the shared type-generation class:
+still emits the type files it needs by calling the matching type-generation
+entry class for that language (for example `ErlangTypeGeneration` or `ElixirTypeGeneration`):
 
 ```json
 {
@@ -123,10 +125,10 @@ still emits the type files it needs by calling the shared type-generation class:
 ```
 
 If a projection lists both a standalone types plugin and a client or server
-plugin, both paths must use the same shared generator and produce byte-identical
-type files. If the selected file-manifest layout cannot support duplicate
-writes to the same artifact location, users should keep the standalone types
-plugin and the client or server plugin in separate projections.
+plugin, both paths must use the same language-specific type-generation entry
+class and produce byte-identical type files. If the selected file-manifest layout
+cannot support duplicate writes to the same artifact location, users should keep
+the standalone types plugin and the client or server plugin in separate projections.
 
 ### Java packages
 
@@ -149,11 +151,11 @@ Code generation passes through three phases, following the Smithy guide:
 
 1. **Codegen-time** (Java on the JVM)
    - Smithy-Build loads the plugin from the classpath via [SPI](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ServiceLoader.html).
-   - [`CodegenDirector`](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html#running-directedcodegen-using-a-codegendirector) orchestrates shape traversal.
-   - [`DirectedCodegen`](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html#directedcodegen) methods are called per shape type.
-   - [`SymbolProvider`](https://smithy.io/2.0/guides/building-codegen/mapping-shapes-to-languages.html) maps each Smithy shape to a target-language symbol.
-   - [`SymbolWriter`](https://smithy.io/2.0/guides/building-codegen/decoupling-codegen-with-symbols.html) renders source files from the symbol graph.
-   - [`SmithyIntegration`](https://smithy.io/2.0/guides/building-codegen/making-codegen-pluggable.html#creating-a-smithyintegrations) hooks allow protocol-specific interceptors to modify the output.
+   - [CodegenDirector](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html#running-directedcodegen-using-a-codegendirector) orchestrates shape traversal.
+   - [DirectedCodegen](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html#directedcodegen) methods are called per shape type.
+   - [SymbolProvider](https://smithy.io/2.0/guides/building-codegen/mapping-shapes-to-languages.html) maps each Smithy shape to a target-language symbol.
+   - [SymbolWriter](https://smithy.io/2.0/guides/building-codegen/decoupling-codegen-with-symbols.html) renders source files from the symbol graph.
+   - [SmithyIntegration](https://smithy.io/2.0/guides/building-codegen/making-codegen-pluggable.html#creating-a-smithyintegrations) hooks allow protocol-specific interceptors to modify the output.
    - Output: generated `.erl`/`.hrl` or `.ex` source files, plus `rebar.config` or `mix.exs`.
 
 2. **Compile-time** ([rebar3](https://rebar3.org) or [Mix](https://hexdocs.pm/mix/Mix.html) on the developer's machine)
