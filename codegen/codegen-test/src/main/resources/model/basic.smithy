@@ -2,13 +2,6 @@ $version: "2"
 
 namespace smithy.beam.demo.basic
 
-// Minimal service so Erlang type codegen can run CodegenDirector with a service scope.
-
-service BasicService {
-    version: "2026"
-    operations: []
-}
-
 // Simple shapes — one named type per Smithy prelude scalar.
 
 string BasicString
@@ -78,4 +71,41 @@ structure BasicItem {
     name: BasicString
 
     count: BasicInteger
+}
+
+// Minimal service so Erlang type codegen can run CodegenDirector with a service scope.
+
+service BasicService {
+    version: "2026"
+    operations: [GetTypeClosure]
+}
+
+// Single operation whose output references every named shape above so Walker and
+// DirectedCodegen include them in the service closure (example / codegen demo).
+
+@readonly
+operation GetTypeClosure {
+    output: TypeClosureOutput
+}
+
+structure TypeClosureOutput {
+    basicString: BasicString
+    basicInteger: BasicInteger
+    basicLong: BasicLong
+    basicFloat: BasicFloat
+    basicBoolean: BasicBoolean
+    basicBlob: BasicBlob
+    basicByte: BasicByte
+    basicShort: BasicShort
+    basicDouble: BasicDouble
+    basicBigDecimal: BasicBigDecimal
+    basicBigInteger: BasicBigInteger
+    basicTimestamp: BasicTimestamp
+    basicDocument: BasicDocument
+    basicStatus: BasicStatus
+    basicPriority: BasicPriority
+    basicList: BasicList
+    basicMap: BasicMap
+    basicUnion: BasicUnion
+    basicItem: BasicItem
 }
