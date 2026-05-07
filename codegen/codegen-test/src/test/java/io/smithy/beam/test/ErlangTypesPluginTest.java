@@ -66,6 +66,15 @@ class ErlangTypesPluginTest {
                 .contains("-type basic_list() :: [basic_string()].")
                 .contains("-type basic_map() :: #{basic_string() => basic_string()}.")
                 .contains("-type basic_status() :: active | inactive | pending | {unknown, binary()}.")
-                .contains("-type basic_priority() :: low | medium | high | {unknown, integer()}.");
+                .contains("-type basic_priority() :: low | medium | high | {unknown, integer()}.")
+                .contains("-type basic_union() ::")
+                .contains("{text, basic_string()}")
+                .contains("{number, basic_integer()}")
+                .contains("{flag, basic_boolean()}")
+                .contains("{unknown, binary()}")
+                .contains("-record(basic_item, {")
+                .contains("name :: basic_string(),")
+                .contains("count :: basic_integer() | undefined")
+                .contains("-type basic_item() :: #basic_item{}.");
     }
 }

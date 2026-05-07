@@ -11,8 +11,16 @@ import software.amazon.smithy.model.shapes.BigDecimalShape;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.*;
+
+import software.amazon.smithy.model.knowledge.NullableIndex;
+import software.amazon.smithy.model.shapes.MemberShape;
+import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.shapes.UnionShape;
+
 import java.util.Set;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 /**
  * DirectedCodegen implementation for the Erlang types generator.
@@ -125,6 +133,7 @@ final class ErlangDirectedCodegen
             SymbolProvider symbolProvider) {
         shapes.stream()
                 .filter(closure::contains)
+                .filter(s -> !(s instanceof EnumShape) && !(s instanceof IntEnumShape))
                 .sorted(java.util.Comparator.comparing(s -> s.getId().getName()))
                 .forEach(s -> {
                     Symbol sym = symbolProvider.toSymbol(s);
@@ -274,7 +283,38 @@ final class ErlangDirectedCodegen
     @Override
     public void generateUnion(
             GenerateUnionDirective<ErlangContext, BeamSettings> directive) {
-        // TODO: implement in a later commit.
+        UnionShape shape = directive.shape();
+        ErlangContext ctx = directive.context();
+        SymbolProvider sp = directive.symbolProvider();
+        Symbol symbol = sp.toSymbol(shape);
+        String definitionFile = symbol.getDefinitionFile();
+
+        ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
+            // Build tagged-tuple variant list.
+            // Each member becomes: {tag, member_type()}
+            // Final variant: {unknown, binary()}
+            List<String> variants = shape.members().stream()
+                    .map(m -> {
+                        Symbol memberSymbol = sp.toSymbol(m);
+                        String tag = memberSymbol.getProperty("unionTag", String.class).orElseThrow();
+                        String type = renderErlangType(memberSymbol);
+                        return "{" + tag + ", " + type + "}";
+                    })
+                    .collect(Collectors.toList());
+            variants.add("{unknown, binary()}");
+
+            if (variants.size() <= 2) {
+                // Single-line form
+                writer.write("-type $L :: $L.", symbol.getName(), String.join(" | ", variants));
+            } else {
+                // Multi-line form matching Erlang convention
+                writer.write("-type $L ::", symbol.getName());
+                for (int i = 0; i < variants.size(); i++) {
+                    String sep = (i < variants.size() - 1) ? "  |" : ".";
+                    writer.write("    $L$L", variants.get(i), sep);
+                }
+            }
+        });
     }
 
     /**
@@ -290,7 +330,32 @@ final class ErlangDirectedCodegen
     @Override
     public void generateStructure(
             GenerateStructureDirective<ErlangContext, BeamSettings> directive) {
-        // TODO: implement in a later commit.
+        StructureShape shape = directive.shape();
+        ErlangContext ctx = directive.context();
+        SymbolProvider sp = directive.symbolProvider();
+        NullableIndex nullableIndex = NullableIndex.of(directive.model());
+        Symbol symbol = sp.toSymbol(shape);
+        // Strip trailing "()" to get the record name: "basic_item" from "basic_item()"
+        String recordName = symbol.getName().replace("()", "");
+        String definitionFile = symbol.getDefinitionFile();
+
+        ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
+            writer.openBlock("-record($L, {", recordName);
+            List<MemberShape> members = new ArrayList<>(shape.members());
+            for (int i = 0; i < members.size(); i++) {
+                MemberShape member = members.get(i);
+                Symbol memberSymbol = sp.toSymbol(member);
+                String fieldName = memberSymbol.getProperty("fieldName", String.class).orElseThrow();
+                String memberType = renderErlangType(memberSymbol);
+                boolean nullable = nullableIndex.isMemberNullable(member);
+                String typeSpec = nullable ? memberType + " | undefined" : memberType;
+                // Align field names with padding for readability (match baseline style)
+                String comma = (i < members.size() - 1) ? "," : "";
+                writer.write("$L :: $L$L", fieldName, typeSpec, comma);
+            }
+            writer.closeBlock("}).");
+            writer.write("-type $L :: #$L{}.", symbol.getName(), recordName);
+        });
     }
 
     /**
