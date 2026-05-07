@@ -19,6 +19,7 @@ can all call the same implementation.
 - `ErlangTypesPlugin` is the Smithy-Build adapter discovered through Java SPI.
 - Implemented `customizeBeforeShapeGeneration` in `ErlangDirectedCodegen`. This method runs before any `generate*` call and writes the `.hrl` file header plus `-type` aliases for named simple, list, and map shapes in the selected service closure.
 - Implement the two enum generators. Both produce a single `-type` line using atom values. An `{unknown, binary()}` (for enum) or `{unknown, integer()}` (for intEnum) catch-all is appended last to keep unknown values representable in the generated type surface.
+- Implemented `generateUnion` and `generateStructure`
 
 ## 2026-05-04
 
