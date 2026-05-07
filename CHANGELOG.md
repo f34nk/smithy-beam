@@ -3,6 +3,15 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-05-07
+
+### Added
+- `SymbolProvider`: the core of the code generator. It maps every Smithy shape to a `Symbol` carrying the Erlang type name, definition file, and any properties needed during generation.
+- `ErlangImports`: does nothing - Erlang `.hrl` files have no import mechanism.
+- `ErlangWriter`: extends `SymbolWriter` and adds the factory method required by `WriterDelegator`
+- `ErlangIntegration`: every code generator must define its own integration interface. It is the extension point for optional behavior such as custom file generation, model preprocessing, and symbol provider decoration.
+- `ErlangContext`: a Java record implementing `CodegenContext`. It is created by `ErlangDirectedCodegen.createContext()` and passed to every generate* method via the directive objects.
+
 ## 2026-05-04
 
 ### Added
