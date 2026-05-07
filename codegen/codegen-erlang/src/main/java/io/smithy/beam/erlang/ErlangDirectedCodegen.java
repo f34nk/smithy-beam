@@ -12,6 +12,8 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.*;
 import java.util.Set;
+import java.util.List;
+
 /**
  * DirectedCodegen implementation for the Erlang types generator.
  *
@@ -222,7 +224,19 @@ final class ErlangDirectedCodegen
     @Override
     public void generateEnumShape(
             GenerateEnumDirective<ErlangContext, BeamSettings> directive) {
-        // TODO: implement in a later commit.
+        EnumShape shape = directive.expectEnumShape();
+        ErlangContext ctx = directive.context();
+        SymbolProvider sp = directive.symbolProvider();
+        Symbol symbol = sp.toSymbol(shape);
+        String definitionFile = symbol.getDefinitionFile();
+
+        List<String> atoms = symbol.getProperty("enumAtoms", List.class).orElseThrow();
+
+        ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
+            // Build "active | inactive | pending | {unknown, binary()}"
+            String variants = String.join(" | ", atoms) + " | {unknown, binary()}";
+            writer.write("-type $L :: $L.", symbol.getName(), variants);
+        });
     }
 
     /**
@@ -234,7 +248,18 @@ final class ErlangDirectedCodegen
     @Override
     public void generateIntEnumShape(
             GenerateIntEnumDirective<ErlangContext, BeamSettings> directive) {
-        // TODO: implement in a later commit.
+        IntEnumShape shape = directive.expectIntEnumShape();
+        ErlangContext ctx = directive.context();
+        SymbolProvider sp = directive.symbolProvider();
+        Symbol symbol = sp.toSymbol(shape);
+        String definitionFile = symbol.getDefinitionFile();
+
+        List<String> atoms = symbol.getProperty("enumAtoms", List.class).orElseThrow();
+
+        ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
+            String variants = String.join(" | ", atoms) + " | {unknown, integer()}";
+            writer.write("-type $L :: $L.", symbol.getName(), variants);
+        });
     }
 
     /**
