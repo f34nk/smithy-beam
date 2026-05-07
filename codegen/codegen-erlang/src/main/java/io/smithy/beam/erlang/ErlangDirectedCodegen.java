@@ -6,6 +6,12 @@ import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.codegen.core.directed.*;
 
+import software.amazon.smithy.codegen.core.Symbol;
+import software.amazon.smithy.model.shapes.BigDecimalShape;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.neighbor.Walker;
+import software.amazon.smithy.model.shapes.*;
+import java.util.Set;
 /**
  * DirectedCodegen implementation for the Erlang types generator.
  *
@@ -64,7 +70,110 @@ final class ErlangDirectedCodegen
     @Override
     public void customizeBeforeShapeGeneration(
             CustomizeDirective<ErlangContext, BeamSettings> directive) {
-        // TODO: implement in a later commit.
+        ErlangContext ctx = directive.context();
+        Model model = directive.model();
+        String ns = directive.service().getId().getNamespace();
+        String module = ctx.settings().resolveModule(ns);
+        // TODO: make this configurable (outputDir relative to project root)
+        String definitionFile = module + "_types.hrl";
+        Set<Shape> closure = new Walker(model).walkShapes(directive.service());
+
+        ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
+            writer.write("%% Record and type definitions for the $L model.", module);
+            writer.write("%% ");
+
+            // Write named scalar type aliases in declaration order:
+            // blob, boolean, string, byte, short, integer, long, float, double,
+            // bigInteger, bigDecimal, timestamp, document.
+            writeScalarAliases(writer, model, closure, directive.symbolProvider());
+
+            // DirectedCodegen has no generateList or generateMap callback, so the
+            // BEAM type-file aliases for list and map shapes must be written here.
+            writeListAliases(writer, model, closure, directive.symbolProvider());
+            writeMapAliases(writer, model, closure, directive.symbolProvider());
+        });
+    }
+
+    private void writeScalarAliases(
+            ErlangWriter writer,
+            Model model,
+            Set<Shape> closure,
+            SymbolProvider symbolProvider) {
+
+        // Iterate shape types in a defined order matching the baseline output.
+        writeShapeTypeAliases(writer, model.getBlobShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(writer, model.getBooleanShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(writer, model.getStringShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(writer, model.getByteShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(writer, model.getShortShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(writer, model.getIntegerShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(writer, model.getLongShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(writer, model.getFloatShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(writer, model.getDoubleShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(writer, model.getBigIntegerShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(writer, model.getBigDecimalShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(writer, model.getTimestampShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(writer, model.getDocumentShapes(), closure, symbolProvider);
+    }
+
+    private <S extends Shape> void writeShapeTypeAliases(
+            ErlangWriter writer,
+            java.util.Set<S> shapes,
+            Set<Shape> closure,
+            SymbolProvider symbolProvider) {
+        shapes.stream()
+                .filter(closure::contains)
+                .sorted(java.util.Comparator.comparing(s -> s.getId().getName()))
+                .forEach(s -> {
+                    Symbol sym = symbolProvider.toSymbol(s);
+                    String baseType = sym.getProperty("baseType", String.class).orElse("term()");
+                    // bigDecimal gets an explanatory comment
+                    if (s instanceof BigDecimalShape) {
+                        writer.write("-type $L :: $L.       %% decimal:decimal()", sym.getName(), baseType);
+                    } else {
+                        writer.write("-type $L :: $L.", sym.getName(), baseType);
+                    }
+                });
+    }
+
+    private void writeListAliases(
+            ErlangWriter writer,
+            Model model,
+            Set<Shape> closure,
+            SymbolProvider symbolProvider) {
+        model.getListShapes().stream()
+                .filter(closure::contains)
+                .sorted(java.util.Comparator.comparing(s -> s.getId().getName()))
+                .forEach(s -> {
+                    Symbol sym = symbolProvider.toSymbol(s);
+                    Symbol memberSym = symbolProvider.toSymbol(s.getMember());
+                    writer.write("-type $L :: [$L].", sym.getName(), renderErlangType(memberSym));
+                });
+    }
+
+    private void writeMapAliases(
+            ErlangWriter writer,
+            Model model,
+            Set<Shape> closure,
+            SymbolProvider symbolProvider) {
+        model.getMapShapes().stream()
+                .filter(closure::contains)
+                .sorted(java.util.Comparator.comparing(s -> s.getId().getName()))
+                .forEach(s -> {
+                    Symbol sym = symbolProvider.toSymbol(s);
+                    Symbol keySym = symbolProvider.toSymbol(s.getKey());
+                    Symbol valueSym = symbolProvider.toSymbol(s.getValue());
+                    writer.write("-type $L :: #{$L => $L}.",
+                            sym.getName(), renderErlangType(keySym), renderErlangType(valueSym));
+                });
+    }
+
+    private String renderErlangType(Symbol symbol) {
+        boolean builtIn = symbol.getProperty("builtIn", Boolean.class).orElse(false);
+        if (builtIn) {
+            return symbol.getName();
+        }
+        return symbol.getName();
     }
 
     @Override
