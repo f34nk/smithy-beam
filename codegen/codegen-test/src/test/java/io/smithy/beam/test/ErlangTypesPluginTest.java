@@ -7,10 +7,12 @@ import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.node.ObjectNode;
+import software.amazon.smithy.codegen.core.CodegenException;
 
 import java.net.URL;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ErlangTypesPluginTest {
 
@@ -116,5 +118,29 @@ class ErlangTypesPluginTest {
                 .contains("receive_ ::")
                 .contains("after_ ::")
                 .contains("my_type_2");
+    }
+
+    @Test
+    void reachableErrorShapeFailsInErlangPlugin() {
+            URL resource = ErlangTypesPluginTest.class.getResource("/model/error_shapes.smithy");
+            assertThat(resource).isNotNull();
+            Model model = Model.assembler()
+                            .addImport(resource)
+                            .discoverModels()
+                            .assemble()
+                            .unwrap();
+            ObjectNode settings = ObjectNode.builder()
+                            .withMember("service", "smithy.beam.demo.errors#ErrorDemoService")
+                            .withMember("edition", "2026")
+                            .build();
+            PluginContext context = PluginContext.builder()
+                            .model(model)
+                            .fileManifest(new MockManifest())
+                            .settings(settings)
+                            .build();
+            assertThatThrownBy(() -> new ErlangTypesPlugin().execute(context))
+                            .isInstanceOf(CodegenException.class)
+                            .hasMessageContaining("smithy.beam.demo.errors#NotImplementedYet")
+                            .hasMessageContaining("only emits type definitions");
     }
 }
