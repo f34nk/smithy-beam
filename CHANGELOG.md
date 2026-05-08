@@ -3,6 +3,13 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-05-08
+- Test that Erlang reserved words get escapes in the output to prevent collision.
+- Test that type @error is raised
+- Test model contains required shapes
+
+### Added
+
 ## 2026-05-07
 
 ### Added
