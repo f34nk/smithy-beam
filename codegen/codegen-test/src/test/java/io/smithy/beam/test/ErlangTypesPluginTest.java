@@ -77,4 +77,44 @@ class ErlangTypesPluginTest {
                 .contains("count :: basic_integer() | undefined")
                 .contains("-type basic_item() :: #basic_item{}.");
     }
+
+    private static Model loadReservedWordsModel() {
+        URL resource = ErlangTypesPluginTest.class.getResource("/model/reserved_words.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    private static PluginContext buildReservedWordsContext(MockManifest manifest) {
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.reserved#ReservedService")
+                .withMember("edition", "2026")
+                .build();
+        return PluginContext.builder()
+                .model(loadReservedWordsModel())
+                .fileManifest(manifest)
+                .settings(settings)
+                .build();
+    }
+
+    @Test
+    void reservedWordsEscapeAndDeconflictInErlangOutput() {
+        MockManifest manifest = new MockManifest();
+        new ErlangTypesPlugin().execute(buildReservedWordsContext(manifest));
+        String content = manifest.expectFileString("reserved_types.hrl");
+        assertThat(content)
+                .contains("after_")
+                .contains("begin_")
+                .contains("case_")
+                .contains("end_")
+                .contains("receive_")
+                .contains("{case_, rw_string()}")
+                .contains("{end_, rw_string()}")
+                .contains("receive_ ::")
+                .contains("after_ ::")
+                .contains("my_type_2");
+    }
 }
