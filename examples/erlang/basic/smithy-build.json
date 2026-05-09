@@ -17,7 +17,11 @@
     ]
   },
   "plugins": {
-    "erlang-types-codegen": {
+    "erlang-client-codegen": {
+      "service": "smithy.beam.demo.basic#BasicService",
+      "edition": "2026"
+    },
+    "erlang-server-codegen": {
       "service": "smithy.beam.demo.basic#BasicService",
       "edition": "2026"
     }

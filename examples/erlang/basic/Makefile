@@ -14,7 +14,7 @@ build:
 	#
 	# Copy the generated files to the src/generated directory
 	#
-	cp -r build/smithy/source/erlang-types-codegen/* src/generated/
+	cp -r build/smithy/source/erlang-*-codegen/* src/generated/
 	tree src/generated
 
 .PHONY: deps
