@@ -1,0 +1,122 @@
+package io.smithy.beam.erlang;
+
+import io.smithy.beam.core.BeamSettings;
+import software.amazon.smithy.codegen.core.SymbolProvider;
+import software.amazon.smithy.codegen.core.WriterDelegator;
+import software.amazon.smithy.codegen.core.directed.CreateContextDirective;
+import software.amazon.smithy.codegen.core.directed.CreateSymbolProviderDirective;
+import software.amazon.smithy.codegen.core.directed.CustomizeDirective;
+import software.amazon.smithy.codegen.core.directed.DirectedCodegen;
+import software.amazon.smithy.codegen.core.directed.GenerateEnumDirective;
+import software.amazon.smithy.codegen.core.directed.GenerateErrorDirective;
+import software.amazon.smithy.codegen.core.directed.GenerateIntEnumDirective;
+import software.amazon.smithy.codegen.core.directed.GenerateResourceDirective;
+import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
+import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
+import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
+import software.amazon.smithy.model.shapes.ServiceShape;
+
+/**
+ * Server-specific DirectedCodegen pass. Types are emitted by {@link ErlangTypeGeneration}
+ * before this runs; this class must not write type files again.
+ */
+final class ErlangServerDirectedCodegen
+        implements DirectedCodegen<ErlangContext, BeamSettings, ErlangIntegration> {
+
+    @Override
+    public SymbolProvider createSymbolProvider(
+            CreateSymbolProviderDirective<BeamSettings> directive) {
+        String ns = directive.service().getId().getNamespace();
+        String module = directive.settings().resolveModule(ns);
+        String definitionFile = module + "_server.erl";
+        return SymbolProvider.cache(
+                new ErlangSymbolProvider(directive.model(), directive.service(), definitionFile));
+    }
+
+    @Override
+    public ErlangContext createContext(
+            CreateContextDirective<BeamSettings, ErlangIntegration> directive) {
+        return new ErlangContext(
+                directive.model(),
+                directive.settings(),
+                directive.symbolProvider(),
+                directive.fileManifest(),
+                new WriterDelegator<>(
+                        directive.fileManifest(),
+                        directive.symbolProvider(),
+                        ErlangWriter.factory()),
+                directive.integrations(),
+                directive.service());
+    }
+
+    @Override
+    public void customizeBeforeShapeGeneration(
+            CustomizeDirective<ErlangContext, BeamSettings> directive) {
+        // Intentionally empty: ErlangTypeGeneration already wrote shared headers and aliases.
+    }
+
+    @Override
+    public void customizeBeforeIntegrations(
+            CustomizeDirective<ErlangContext, BeamSettings> directive) {
+        // Reserved for server integrations.
+    }
+
+    @Override
+    public void customizeAfterIntegrations(
+            CustomizeDirective<ErlangContext, BeamSettings> directive) {
+        // Reserved for server integrations.
+    }
+
+    @Override
+    public void generateService(
+            GenerateServiceDirective<ErlangContext, BeamSettings> directive) {
+        ErlangContext ctx = directive.context();
+        ServiceShape service = directive.shape();
+        String ns = service.getId().getNamespace();
+        String module = ctx.settings().resolveModule(ns);
+        String serverFile = module + "_server.erl";
+
+        ctx.writerDelegator().useFileWriter(serverFile, writer -> {
+            writer.write("%% Generated Erlang server stub for $L (layout phase).", service.getId());
+            writer.write("%% TODO: behaviour, router, dispatch, and stubs.");
+            writer.write("-module($L).", module + "_server");
+            writer.write("-export([]).");
+        });
+    }
+
+    @Override
+    public void generateResource(
+            GenerateResourceDirective<ErlangContext, BeamSettings> directive) {
+        // Reserved for resource helpers.
+    }
+
+    @Override
+    public void generateEnumShape(
+            GenerateEnumDirective<ErlangContext, BeamSettings> directive) {
+        // Handled by ErlangTypeGeneration.
+    }
+
+    @Override
+    public void generateIntEnumShape(
+            GenerateIntEnumDirective<ErlangContext, BeamSettings> directive) {
+        // Handled by ErlangTypeGeneration.
+    }
+
+    @Override
+    public void generateUnion(
+            GenerateUnionDirective<ErlangContext, BeamSettings> directive) {
+        // Handled by ErlangTypeGeneration.
+    }
+
+    @Override
+    public void generateStructure(
+            GenerateStructureDirective<ErlangContext, BeamSettings> directive) {
+        // Handled by ErlangTypeGeneration.
+    }
+
+    @Override
+    public void generateError(
+            GenerateErrorDirective<ErlangContext, BeamSettings> directive) {
+        // Handled by ErlangTypeGeneration.
+    }
+}
