@@ -136,6 +136,7 @@ final class ElixirDirectedCodegen
             ElixirWriter writer, Set<S> shapes, Set<Shape> closure, SymbolProvider sp) {
         shapes.stream()
                 .filter(closure::contains)
+                .filter(s -> !s.isEnumShape() && !s.isIntEnumShape())
                 .sorted(Comparator.comparing(s -> s.getId().getName()))
                 .forEach(s -> {
                     Symbol sym = sp.toSymbol(s);
