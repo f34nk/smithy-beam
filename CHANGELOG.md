@@ -3,12 +3,20 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-05-09
+
+### Added
+- Added `ErlangClientDirectedCodegen` and `ErlangServerDirectedCodegen`
+- Added `ErlangClientGeneration` and `ErlangServerGeneration`
+- Registered Erlang client and server plugins on Java SPI
+- The basic example now generates empty Erlang client and server modules alongside the type header
+
 ## 2026-05-08
+
+### Added
 - Test that Erlang reserved words get escapes in the output to prevent collision.
 - Test that type @error is raised
 - Test model contains required shapes
-
-### Added
 
 ## 2026-05-07
 
