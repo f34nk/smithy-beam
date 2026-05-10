@@ -108,4 +108,89 @@ class ElixirTypesPluginTest {
                 .hasMessageContaining("smithy.beam.demo.errors#NotImplementedYet")
                 .hasMessageContaining("only emits type definitions");
     }
+
+    @Test
+    void defaultsToOnlyServiceWhenServiceSettingOmitted() {
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder().withMember("edition", "2026").build();
+        PluginContext context = PluginContext.builder()
+                .model(loadModel())
+                .fileManifest(manifest)
+                .settings(settings)
+                .build();
+        new ElixirTypesPlugin().execute(context);
+        assertThat(manifest.expectFileString("lib/generated/basic_types.ex")).contains("basic_string");
+    }
+
+    @Test
+    void multipleServicesWithoutExplicitServiceSettingFails() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/multi_service.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        ObjectNode settings = ObjectNode.builder().withMember("edition", "2026").build();
+        PluginContext context = PluginContext.builder()
+                .model(model)
+                .fileManifest(new MockManifest())
+                .settings(settings)
+                .build();
+        assertThatThrownBy(() -> new ElixirTypesPlugin().execute(context))
+                .isInstanceOf(CodegenException.class)
+                .hasMessageContaining("service");
+    }
+
+    @Test
+    void missingEditionFails() {
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.basic#BasicService")
+                .build();
+        PluginContext context = PluginContext.builder()
+                .model(loadModel())
+                .fileManifest(manifest)
+                .settings(settings)
+                .build();
+        assertThatThrownBy(() -> new ElixirTypesPlugin().execute(context))
+                .isInstanceOf(CodegenException.class)
+                .hasMessageContaining("edition");
+    }
+
+    @Test
+    void protocolRelativeDateRelativeVersionDoNotChangeElixirTypeOnlyOutput() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/multi_service.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest baseline = new MockManifest();
+        ObjectNode baselineSettings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.multi#ServiceA")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypesPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(baseline)
+                .settings(baselineSettings)
+                .build());
+        MockManifest extended = new MockManifest();
+        ObjectNode extendedSettings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.multi#ServiceA")
+                .withMember("edition", "2026")
+                .withMember("protocol", "smithy.api#String")
+                .withMember("relativeDate", "2026-01-01")
+                .withMember("relativeVersion", "1")
+                .build();
+        new ElixirTypesPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(extended)
+                .settings(extendedSettings)
+                .build());
+        assertThat(extended.expectFileString("lib/generated/multi_types.ex"))
+                .isEqualTo(baseline.expectFileString("lib/generated/multi_types.ex"));
+    }
 }
