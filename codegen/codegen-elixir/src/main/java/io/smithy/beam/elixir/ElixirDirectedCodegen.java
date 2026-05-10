@@ -8,10 +8,16 @@ import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.codegen.core.directed.*;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.neighbor.Walker;
+import software.amazon.smithy.model.shapes.EnumShape;
+import software.amazon.smithy.model.shapes.IntEnumShape;
 import software.amazon.smithy.model.shapes.Shape;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * DirectedCodegen implementation for the Elixir types generator.
@@ -237,7 +243,54 @@ final class ElixirDirectedCodegen
     @Override
     public void generateEnumShape(
             GenerateEnumDirective<ElixirContext, BeamSettings> directive) {
-        // TODO: implement in a later commit.
+        EnumShape shape = directive.expectEnumShape();
+        ElixirContext ctx = directive.context();
+        SymbolProvider sp = directive.symbolProvider();
+        Symbol symbol = sp.toSymbol(shape);
+        List<String> atoms = expectStringListProperty(symbol, "enumAtoms");
+        String fromFunction = symbol.expectProperty("fromValueFunction", String.class);
+        String toFunction = symbol.expectProperty("toValueFunction", String.class);
+        String valuesFunction = symbol.expectProperty("valuesFunction", String.class);
+        List<Map.Entry<String, String>> members = new ArrayList<>(shape.getEnumValues().entrySet());
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.write("");
+            writer.openBlock("defmodule $L do", symbol.getName());
+            writer.write("@moduledoc \"String enum. Unknown values are represented as {:unknown, String.t()}.\"");
+            writer.write("");
+
+            String atomVariants = atoms.stream()
+                    .map(atom -> ":" + atom)
+                    .collect(Collectors.joining(" | "));
+            writer.write("@type t :: $L | {:unknown, String.t()}", atomVariants);
+            writer.write("");
+
+            writer.write("@spec $L(String.t()) :: t()", fromFunction);
+            for (int i = 0; i < members.size(); i++) {
+                Map.Entry<String, String> entry = members.get(i);
+                String atom = ":" + atoms.get(i);
+                writer.write("def $L($S), do: $L", fromFunction, entry.getValue(), atom);
+            }
+            writer.write("def $L(v), do: {:unknown, v}", fromFunction);
+            writer.write("");
+
+            writer.write("@spec $L(t()) :: String.t()", toFunction);
+            for (int i = 0; i < members.size(); i++) {
+                Map.Entry<String, String> entry = members.get(i);
+                String atom = ":" + atoms.get(i);
+                writer.write("def $L($L), do: $S", toFunction, atom, entry.getValue());
+            }
+            writer.write("def $L({:unknown, v}), do: v", toFunction);
+            writer.write("");
+
+            String valuesList = atoms.stream()
+                    .map(atom -> ":" + atom)
+                    .collect(Collectors.joining(", "));
+            writer.write("@spec values() :: [t()]");
+            writer.write("def $L, do: [$L]", valuesFunction, valuesList);
+
+            writer.closeBlock("end");
+        });
     }
 
     /**
@@ -249,7 +302,59 @@ final class ElixirDirectedCodegen
     @Override
     public void generateIntEnumShape(
             GenerateIntEnumDirective<ElixirContext, BeamSettings> directive) {
-        // TODO: implement in a later commit.
+        IntEnumShape shape = directive.expectIntEnumShape();
+        ElixirContext ctx = directive.context();
+        SymbolProvider sp = directive.symbolProvider();
+        Symbol symbol = sp.toSymbol(shape);
+        List<String> atoms = expectStringListProperty(symbol, "enumAtoms");
+        String fromFunction = symbol.expectProperty("fromValueFunction", String.class);
+        String toFunction = symbol.expectProperty("toValueFunction", String.class);
+        String valuesFunction = symbol.expectProperty("valuesFunction", String.class);
+        List<Map.Entry<String, Integer>> members = new ArrayList<>(shape.getEnumValues().entrySet());
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.write("");
+            writer.openBlock("defmodule $L do", symbol.getName());
+            writer.write("@moduledoc \"Integer enum. Unknown values are represented as {:unknown, integer()}.\"");
+            writer.write("");
+
+            String atomVariants = atoms.stream()
+                    .map(atom -> ":" + atom)
+                    .collect(Collectors.joining(" | "));
+            writer.write("@type t :: $L | {:unknown, integer()}", atomVariants);
+            writer.write("");
+
+            writer.write("@spec $L(integer()) :: t()", fromFunction);
+            for (int i = 0; i < members.size(); i++) {
+                Map.Entry<String, Integer> entry = members.get(i);
+                String atom = ":" + atoms.get(i);
+                writer.write("def $L($L), do: $L", fromFunction, entry.getValue(), atom);
+            }
+            writer.write("def $L(v), do: {:unknown, v}", fromFunction);
+            writer.write("");
+
+            writer.write("@spec $L(t()) :: integer()", toFunction);
+            for (int i = 0; i < members.size(); i++) {
+                Map.Entry<String, Integer> entry = members.get(i);
+                String atom = ":" + atoms.get(i);
+                writer.write("def $L($L), do: $L", toFunction, atom, entry.getValue());
+            }
+            writer.write("def $L({:unknown, v}), do: v", toFunction);
+            writer.write("");
+
+            String valuesList = atoms.stream()
+                    .map(atom -> ":" + atom)
+                    .collect(Collectors.joining(", "));
+            writer.write("@spec values() :: [t()]");
+            writer.write("def $L, do: [$L]", valuesFunction, valuesList);
+
+            writer.closeBlock("end");
+        });
+    }
+
+    private List<String> expectStringListProperty(Symbol symbol, String propertyName) {
+        List<?> values = symbol.expectProperty(propertyName, List.class);
+        return values.stream().map(String.class::cast).toList();
     }
 
     /**
