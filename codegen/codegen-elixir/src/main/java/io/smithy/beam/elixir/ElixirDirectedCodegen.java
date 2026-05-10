@@ -7,10 +7,14 @@ import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.codegen.core.directed.*;
 import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.knowledge.NullableIndex;
 import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.EnumShape;
 import software.amazon.smithy.model.shapes.IntEnumShape;
+import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.Shape;
+import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.shapes.UnionShape;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -193,7 +197,11 @@ final class ElixirDirectedCodegen
     @Override
     public void customizeAfterIntegrations(
             CustomizeDirective<ElixirContext, BeamSettings> directive) {
-        // TODO: implement in a later commit.
+        ElixirContext ctx = directive.context();
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.dedent();
+            writer.write("end");
+        });
     }
 
     // ── Service / Resource / Operation stubs ─────────────────────────────────
@@ -371,7 +379,34 @@ final class ElixirDirectedCodegen
     @Override
     public void generateUnion(
             GenerateUnionDirective<ElixirContext, BeamSettings> directive) {
-        // TODO: implement in a later commit.
+        UnionShape shape = directive.shape();
+        ElixirContext ctx = directive.context();
+        SymbolProvider sp = directive.symbolProvider();
+        Symbol symbol = sp.toSymbol(shape);
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            List<String> variants = shape.members().stream()
+                    .map(m -> {
+                        Symbol memberSym = sp.toSymbol(m);
+                        String tag = ":" + memberSym.getProperty("unionTag", String.class).orElseThrow();
+                        String memberType = renderElixirType(ctx, memberSym);
+                        return "{" + tag + ", " + memberType + "}";
+                    })
+                    .collect(Collectors.toList());
+            variants.add("{:unknown, String.t()}");
+
+            if (variants.size() <= 2) {
+                writer.write("@type $L :: $L", symbol.getName(), String.join(" | ", variants));
+            } else {
+                writer.write("@type $L ::", symbol.getName());
+                writer.indent();
+                for (int i = 0; i < variants.size(); i++) {
+                    String pipe = (i == 0) ? "  " : "| ";
+                    writer.write("$L$L", pipe, variants.get(i));
+                }
+                writer.dedent();
+            }
+        });
     }
 
     /**
@@ -391,7 +426,40 @@ final class ElixirDirectedCodegen
     @Override
     public void generateStructure(
             GenerateStructureDirective<ElixirContext, BeamSettings> directive) {
-        // TODO: implement in a later commit.
+        StructureShape shape = directive.shape();
+        ElixirContext ctx = directive.context();
+        SymbolProvider sp = directive.symbolProvider();
+        NullableIndex nullableIndex = NullableIndex.of(directive.model());
+        Symbol symbol = sp.toSymbol(shape);
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.write("");
+            writer.openBlock("defmodule $L do", symbol.getName());
+            writer.write("@moduledoc \"structure $L\"", shape.getId().getName());
+            writer.write("");
+
+            writer.openBlock("@type t :: %__MODULE__{");
+            List<MemberShape> members = new ArrayList<>(shape.members());
+            for (int i = 0; i < members.size(); i++) {
+                MemberShape member = members.get(i);
+                Symbol memberSym = sp.toSymbol(member);
+                String fieldName = memberSym.getProperty("fieldName", String.class).orElseThrow();
+                String fullType = renderElixirType(ctx, memberSym);
+                boolean nullable = nullableIndex.isMemberNullable(member);
+                String typeExpr = nullable ? fullType + " | nil" : fullType;
+                String comma = (i < members.size() - 1) ? "," : "";
+                writer.write("$L: $L$L", fieldName, typeExpr, comma);
+            }
+            writer.closeBlock("}");
+            writer.write("");
+
+            String fields = members.stream()
+                    .map(m -> ":" + sp.toSymbol(m).getProperty("fieldName", String.class).orElseThrow())
+                    .collect(Collectors.joining(", "));
+            writer.write("defstruct [$L]", fields);
+
+            writer.closeBlock("end");
+        });
     }
 
     /**
