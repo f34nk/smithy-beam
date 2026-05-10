@@ -3,6 +3,7 @@ package io.smithy.beam.elixir;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.codegen.core.SymbolProvider;
+import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.codegen.core.directed.*;
 
 /**
@@ -38,7 +39,7 @@ final class ElixirDirectedCodegen
         String module = directive.settings().resolveModule(ns);
         String moduleName = ElixirSymbolProvider.toModuleName(module);
         String definitionFile = "lib/generated/" + module + "_types.ex";
-        return SymbolProvider.caching(
+        return SymbolProvider.cache(
                 new ElixirSymbolProvider(
                         directive.model(), directive.service(), definitionFile, moduleName));
     }
@@ -55,7 +56,10 @@ final class ElixirDirectedCodegen
                 directive.settings(),
                 directive.symbolProvider(),
                 directive.fileManifest(),
-                directive.createDelegator(ElixirWriter.factory(moduleName)),
+                new WriterDelegator<>(
+                        directive.fileManifest(),
+                        directive.symbolProvider(),
+                        ElixirWriter.factory(moduleName)),
                 directive.integrations(),
                 directive.service(),
                 moduleName,
