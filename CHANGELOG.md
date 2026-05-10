@@ -3,6 +3,20 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-05-10
+
+### Added
+- Elixir codegen scaffolding: writer, imports, integration extension point, context record, and directed codegen entry with clear diagnostics for unsupported service, resource, and error generation.
+- Registered `ElixirTypeGeneration` and `ElixirTypesPlugin`.
+- Type-only Elixir output.
+- Reserved-word deconfliction across generated atoms, modules, and fields.
+- Integration tests covering the types plugin.
+- New `examples/elixir/basic` mirroring the Erlang basic example
+
+### Fixed
+- Skip enum and intEnum shapes in the scalar alias emitter so generated modules compile without colliding with their dedicated nested modules.
+- Relax member-name indexing to `Collection` so Smithy member collections compile against the symbol provider.
+
 ## 2026-05-09
 
 ### Added
