@@ -372,6 +372,7 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     private static ReservedWords elixirReservedWords() {
         return new ReservedWordsBuilder()
                 .put("after", "after_")
+                .put("begin", "begin_")
                 .put("case", "case_")
                 .put("catch", "catch_")
                 .put("do", "do_")
