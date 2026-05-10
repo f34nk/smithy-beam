@@ -362,7 +362,7 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     }
 
     private static Map<ShapeId, String> indexMemberNames(
-            List<MemberShape> members, Function<MemberShape, String> escapedName) {
+            Collection<MemberShape> members, Function<MemberShape, String> escapedName) {
         Map<ShapeId, String> result = new HashMap<>();
         BeamNameUtils.deconflict(members, escapedName)
                 .forEach((member, name) -> result.put(member.getId(), name));
