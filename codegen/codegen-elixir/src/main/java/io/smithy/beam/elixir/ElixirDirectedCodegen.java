@@ -2,9 +2,16 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.CodegenException;
+import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.codegen.core.directed.*;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.neighbor.Walker;
+import software.amazon.smithy.model.shapes.Shape;
+
+import java.util.Comparator;
+import java.util.Set;
 
 /**
  * DirectedCodegen implementation for the Elixir types generator.
@@ -15,7 +22,7 @@ import software.amazon.smithy.codegen.core.directed.*;
  * open block via the shared WriterDelegator writer instance.
  *
  * CodegenDirector call order:
- * 1. customizeBeforeShapeGeneration -- open defmodule, write scalar aliases
+ * 1. customizeBeforeShapeGeneration -- open defmodule, write scalar/list/map aliases
  * 2. generate* methods (enums first, then unions, then structures)
  * 3. customizeBeforeIntegrations
  * 4. integration.customize() calls
@@ -69,14 +76,102 @@ final class ElixirDirectedCodegen
     // ── Customization hooks ──────────────────────────────────────────────────
 
     /**
-     * Opens the top-level defmodule block and writes all scalar type aliases.
-     * Must run before any generate* method because the module opener must be
-     * the first line of the file.
+     * Opens the top-level defmodule block and writes scalar, list, and map type aliases
+     * for shapes in the service closure. Must run before any generate* method because
+     * the module opener must be the first line of the file. The defmodule stays open;
+     * customizeAfterIntegrations writes the closing end.
      */
     @Override
     public void customizeBeforeShapeGeneration(
             CustomizeDirective<ElixirContext, BeamSettings> directive) {
-        // TODO: implement in a later commit.
+        ElixirContext ctx = directive.context();
+        Model model = directive.model();
+        SymbolProvider sp = directive.symbolProvider();
+        Set<Shape> closure = new Walker(model).walkShapes(directive.service());
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.write("defmodule $L do", ctx.moduleName());
+            writer.indent();
+
+            writer.openBlock("@moduledoc \"\"\"");
+            writer.write("Type definitions for the $L model.", ctx.moduleName());
+            writer.write("");
+            writer.write("Named after the model namespace per the baseline spec.");
+            writer.closeBlock("\"\"\"");
+
+            writeScalarAliases(writer, model, closure, sp);
+            writeListAliases(writer, model, closure, sp, ctx);
+            writeMapAliases(writer, model, closure, sp, ctx);
+        });
+    }
+
+    private void writeScalarAliases(
+            ElixirWriter writer, Model model, Set<Shape> closure, SymbolProvider sp) {
+        writeElixirTypeAliases(writer, model.getBlobShapes(), closure, sp);
+        writeElixirTypeAliases(writer, model.getBooleanShapes(), closure, sp);
+        writeElixirTypeAliases(writer, model.getStringShapes(), closure, sp);
+        writeElixirTypeAliases(writer, model.getByteShapes(), closure, sp);
+        writeElixirTypeAliases(writer, model.getShortShapes(), closure, sp);
+        writeElixirTypeAliases(writer, model.getIntegerShapes(), closure, sp);
+        writeElixirTypeAliases(writer, model.getLongShapes(), closure, sp);
+        writeElixirTypeAliases(writer, model.getFloatShapes(), closure, sp);
+        writeElixirTypeAliases(writer, model.getDoubleShapes(), closure, sp);
+        writeElixirTypeAliases(writer, model.getBigIntegerShapes(), closure, sp);
+        writeElixirTypeAliases(writer, model.getBigDecimalShapes(), closure, sp);
+        writeElixirTypeAliases(writer, model.getTimestampShapes(), closure, sp);
+        writeElixirTypeAliases(writer, model.getDocumentShapes(), closure, sp);
+    }
+
+    private <S extends Shape> void writeElixirTypeAliases(
+            ElixirWriter writer, Set<S> shapes, Set<Shape> closure, SymbolProvider sp) {
+        shapes.stream()
+                .filter(closure::contains)
+                .sorted(Comparator.comparing(s -> s.getId().getName()))
+                .forEach(s -> {
+                    Symbol sym = sp.toSymbol(s);
+                    String baseType = sym.getProperty("baseType", String.class).orElse("any()");
+                    writer.write("@type $L :: $L", sym.getName(), baseType);
+                });
+    }
+
+    private void writeListAliases(
+            ElixirWriter writer, Model model, Set<Shape> closure, SymbolProvider sp, ElixirContext ctx) {
+        model.getListShapes().stream()
+                .filter(closure::contains)
+                .sorted(Comparator.comparing(s -> s.getId().getName()))
+                .forEach(s -> {
+                    Symbol sym = sp.toSymbol(s);
+                    Symbol memberSym = sp.toSymbol(s.getMember());
+                    String memberType = renderElixirType(ctx, memberSym);
+                    writer.write("@type $L :: [$L]", sym.getName(), memberType);
+                });
+    }
+
+    private void writeMapAliases(
+            ElixirWriter writer, Model model, Set<Shape> closure, SymbolProvider sp, ElixirContext ctx) {
+        model.getMapShapes().stream()
+                .filter(closure::contains)
+                .sorted(Comparator.comparing(s -> s.getId().getName()))
+                .forEach(s -> {
+                    Symbol sym = sp.toSymbol(s);
+                    Symbol keySym = sp.toSymbol(s.getKey());
+                    Symbol valueSym = sp.toSymbol(s.getValue());
+                    String keyType = renderElixirType(ctx, keySym);
+                    String valueType = renderElixirType(ctx, valueSym);
+                    writer.write("@type $L :: %{$L => $L}", sym.getName(), keyType, valueType);
+                });
+    }
+
+    private String renderElixirType(ElixirContext ctx, Symbol symbol) {
+        boolean builtIn = symbol.getProperty("builtIn", Boolean.class).orElse(false);
+        if (builtIn) {
+            return symbol.getName();
+        }
+        String typeKind = symbol.getProperty("typeKind", String.class).orElse("alias");
+        if ("module".equals(typeKind)) {
+            return ctx.moduleName() + "." + symbol.getName() + ".t()";
+        }
+        return ctx.moduleName() + "." + symbol.getName() + "()";
     }
 
     @Override
