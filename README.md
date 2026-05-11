@@ -1,5 +1,6 @@
 ## *WORK IN PROGRESS*
 
+![smithy-beam](https://github.com/f34nk/smithy-beam/blob/v3/smithy-beam.png)
 
 # smithy-beam
 
