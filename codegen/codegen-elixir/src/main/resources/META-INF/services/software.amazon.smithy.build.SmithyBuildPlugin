@@ -1,1 +1,3 @@
 io.smithy.beam.elixir.ElixirTypesPlugin
+io.smithy.beam.elixir.ElixirClientPlugin
+io.smithy.beam.elixir.ElixirServerPlugin
