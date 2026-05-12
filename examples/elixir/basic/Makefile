@@ -16,7 +16,7 @@ build:
 	#
 	# Copy the generated files to the lib/generated directory
 	#
-	cp -r build/smithy/source/elixir-*-codegen/lib/generated/* lib/generated/
+	cp -r build/smithy/source/elixir-*-codegen/* lib/generated/
 	tree lib/generated
 
 .PHONY: deps
