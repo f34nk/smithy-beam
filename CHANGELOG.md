@@ -12,9 +12,16 @@ All notable changes to this project will be documented here.
 - Centralized protocol resolution for plugin settings against service protocol traits, with validation when a protocol is explicitly configured.
 - A small service index for TopDown operation discovery, used in generated client and server layout comments for both BEAM targets.
 - Unit coverage for the shared transform and settings integration.
+- Core layouts for Erlang and Elixir that centralize generated file names, module prefix, and symbol routing; Elixir types, client, and server directed codegen use the Elixir layout end to end, including service, operation, and resource symbols in the symbol provider.
+- A shared core enum for symbol-only versus broader codegen mode, and Erlang symbol dependency metadata so closure shapes that rely on standard libraries carry the right symbol references.
+
+### Changed
+- Erlang types, client, and server directed codegen use the Erlang layout; the symbol provider returns service-aware symbols for operations and resources, service-relative names for structure and union members, and stronger reserved-word handling split by identifier category.
+- Elixir plugin tests and the basic example build copy from the paths implied by the new layout.
 
 ### Fixed
 - Tests and the multi-service Smithy fixture updated so explicit protocol settings stay valid under the new resolver rules, and relativeVersion values use SemVer form where required.
+- Erlang symbol provider and layout tests updated for Smithy validation on affected fixtures.
 
 ### Docs
 - Added traits documentation, refreshed BeamSettings property notes in Javadoc, and linked the shape mapping guide where helpful.
