@@ -16,8 +16,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ElixirServerPluginTest {
 
-    private static final String TYPES_FILE = "lib/generated/basic_types.ex";
-    private static final String SERVER_FILE = "lib/generated/basic_server.ex";
+    private static final String TYPES_FILE = "basic_types.ex";
+    private static final String SERVER_FILE = "basic_server.ex";
 
     private static Model loadModel() {
         URL resource = ElixirServerPluginTest.class.getResource("/model/basic.smithy");
@@ -134,9 +134,9 @@ class ElixirServerPluginTest {
                 .fileManifest(extended)
                 .settings(extendedSettings)
                 .build());
-        assertThat(extended.expectFileString("lib/generated/multi_types.ex"))
-                .isEqualTo(baseline.expectFileString("lib/generated/multi_types.ex"));
-        assertThat(extended.expectFileString("lib/generated/multi_server.ex"))
-                .isEqualTo(baseline.expectFileString("lib/generated/multi_server.ex"));
+        assertThat(extended.expectFileString("multi_types.ex"))
+                .isEqualTo(baseline.expectFileString("multi_types.ex"));
+        assertThat(extended.expectFileString("multi_server.ex"))
+                .isEqualTo(baseline.expectFileString("multi_server.ex"));
     }
 }
