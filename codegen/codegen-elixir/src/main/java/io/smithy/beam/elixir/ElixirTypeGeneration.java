@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.smithy.beam.core.BeamCodegenTransforms;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.codegen.core.directed.CodegenDirector;
@@ -21,8 +22,7 @@ public final class ElixirTypeGeneration {
         BeamSettings settings = runner.settings(BeamSettings.class, context.getSettings());
         runner.service(settings.resolveService(context.getModel()));
 
-        runner.performDefaultCodegenTransforms();
-        runner.createDedicatedInputsAndOutputs();
+        BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
 
         runner.run();
     }
