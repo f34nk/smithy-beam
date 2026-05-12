@@ -1,5 +1,7 @@
 package io.smithy.beam.elixir;
 
+import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -53,21 +55,28 @@ final class ElixirDirectedCodegen
     public SymbolProvider createSymbolProvider(
             CreateSymbolProviderDirective<BeamSettings> directive) {
         String ns = directive.service().getId().getNamespace();
-        String module = directive.settings().resolveModule(ns);
-        String moduleName = ElixirSymbolProvider.toModuleName(module);
-        String definitionFile = "lib/generated/" + module + "_types.ex";
+        BeamSettings settings = directive.settings();
+        BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
+        String definitionFile = layout.typesModuleFile();
+        String moduleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
         return SymbolProvider.cache(
                 new ElixirSymbolProvider(
-                        directive.model(), directive.service(), definitionFile, moduleName));
+                        settings,
+                        directive.model(),
+                        directive.service(),
+                        definitionFile,
+                        moduleName,
+                        BeamCodegenKind.TYPES));
     }
 
     @Override
     public ElixirContext createContext(
             CreateContextDirective<BeamSettings, ElixirIntegration> directive) {
         String ns = directive.service().getId().getNamespace();
-        String module = directive.settings().resolveModule(ns);
-        String moduleName = ElixirSymbolProvider.toModuleName(module);
-        String definitionFile = "lib/generated/" + module + "_types.ex";
+        BeamSettings settings = directive.settings();
+        BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
+        String definitionFile = layout.typesModuleFile();
+        String moduleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
         return new ElixirContext(
                 directive.model(),
                 directive.settings(),
