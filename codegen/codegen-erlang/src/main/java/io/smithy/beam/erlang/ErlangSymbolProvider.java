@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.ReservedWords;
@@ -179,7 +180,18 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
     @Override
     public Symbol serviceShape(ServiceShape shape) {
-        return builtin("service");
+        BeamErlangLayout layout = new BeamErlangLayout(settings, shape.getId().getNamespace());
+        String module =
+                switch (kind) {
+                    case TYPES -> layout.modulePrefix();
+                    case CLIENT -> layout.clientModuleName();
+                    case SERVER -> layout.serverModuleName();
+                };
+        return Symbol.builder()
+                .name(module)
+                .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
+                .putProperty("builtIn", false)
+                .build();
     }
 
     @Override

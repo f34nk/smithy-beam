@@ -429,11 +429,31 @@ class ErlangSymbolProviderTest {
     class NonTypeShapes {
 
         @Test
-        void serviceShapeIsBuiltin() {
+        void serviceShapeUsesModulePrefixForTypesKind() {
             Symbol sym = provider.toSymbol(service);
-            assertThat(sym.getName()).isEqualTo("service");
-            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(true);
+            assertThat(sym.getName()).isEqualTo("example");
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
             assertThat(sym.getDefinitionFile()).isEmpty();
+        }
+
+        @Test
+        void serviceShapeUsesClientModuleNameWhenClientKind() {
+            ErlangSymbolProvider clientProvider = new ErlangSymbolProvider(
+                    testSettings(), model, service, "example_client.erl", BeamCodegenKind.CLIENT);
+            Symbol sym = clientProvider.toSymbol(service);
+            assertThat(sym.getName()).isEqualTo("example_client");
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
+            assertThat(sym.getDefinitionFile()).isEqualTo("example_client.erl");
+        }
+
+        @Test
+        void serviceShapeUsesServerModuleNameWhenServerKind() {
+            ErlangSymbolProvider serverProvider = new ErlangSymbolProvider(
+                    testSettings(), model, service, "example_server.erl", BeamCodegenKind.SERVER);
+            Symbol sym = serverProvider.toSymbol(service);
+            assertThat(sym.getName()).isEqualTo("example_server");
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
+            assertThat(sym.getDefinitionFile()).isEqualTo("example_server.erl");
         }
 
         @Test
