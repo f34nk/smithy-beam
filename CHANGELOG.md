@@ -8,6 +8,16 @@ All notable changes to this project will be documented here.
 ### Added
 - Elixir client and server Smithy-Build plugins with directed codegen, types-first director wiring, SPI registration, and plugin tests.
 - The Elixir basic example enables client and server generation in its build config.
+- Shared directed-codegen transform wiring in codegen-core, applied consistently on Erlang and Elixir type, client, and server CodegenDirector runs.
+- Centralized protocol resolution for plugin settings against service protocol traits, with validation when a protocol is explicitly configured.
+- A small service index for TopDown operation discovery, used in generated client and server layout comments for both BEAM targets.
+- Unit coverage for the shared transform and settings integration.
+
+### Fixed
+- Tests and the multi-service Smithy fixture updated so explicit protocol settings stay valid under the new resolver rules, and relativeVersion values use SemVer form where required.
+
+### Docs
+- Added traits documentation, refreshed BeamSettings property notes in Javadoc, and linked the shape mapping guide where helpful.
 
 ## 2026-05-10
 
