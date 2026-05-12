@@ -254,13 +254,13 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     String toFieldName(MemberShape member) {
         return fieldNames.getOrDefault(
             member.getId(),
-            fieldNameEscaper.escape(toSnakeCase(member.getMemberName())));
+            fieldNameEscaper.escape(toSnakeCase(memberBaseName(member))));
     }
 
     String toUnionTagName(MemberShape member) {
         return unionTagNames.getOrDefault(
             member.getId(),
-            atomEscaper.escape(toSnakeCase(member.getMemberName())));
+            atomEscaper.escape(toSnakeCase(memberBaseName(member))));
     }
 
     String toFunctionName(String functionName) {
@@ -273,6 +273,11 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
     List<String> toEnumAtomNames(IntEnumShape shape) {
         return new ArrayList<>(enumAtomNames.get(shape.getId()).values());
+    }
+
+    private String memberBaseName(MemberShape member) {
+        ShapeId id = member.getId();
+        return id.getMember().orElseGet(() -> id.getName(service));
     }
 
     private Map<ShapeId, String> buildTypeNames() {
@@ -290,7 +295,7 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
         model.getStructureShapes().stream()
             .filter(closure::contains)
             .forEach(shape -> result.putAll(indexMemberNames(new ArrayList<>(shape.members()), member ->
-                fieldNameEscaper.escape(toSnakeCase(member.getMemberName())))));
+                fieldNameEscaper.escape(toSnakeCase(memberBaseName(member))))));
         return result;
     }
 
@@ -300,7 +305,7 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
         model.getUnionShapes().stream()
             .filter(closure::contains)
             .forEach(shape -> result.putAll(indexMemberNames(new ArrayList<>(shape.members()), member ->
-                atomEscaper.escape(toSnakeCase(member.getMemberName())))));
+                atomEscaper.escape(toSnakeCase(memberBaseName(member))))));
         return result;
     }
 
