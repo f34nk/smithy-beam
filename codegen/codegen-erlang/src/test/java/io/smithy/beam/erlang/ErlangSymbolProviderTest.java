@@ -636,16 +636,18 @@ class ErlangSymbolProviderTest {
 
         @Test
         void operationsModuleAndLowercaseModuleDeconflictAfterEscape() {
+            // Smithy forbids #Module and #module in one namespace (case-insensitive shape ID clash).
+            // "Module" and "module_" both normalize to the escaped export name "module_".
             String idl = """
                     $version: "2"
                     namespace com.shadow2
 
                     service Svc {
-                        operations: [Module, module]
+                        operations: [Module, module_]
                     }
 
                     operation Module {}
-                    operation module {}
+                    operation module_ {}
                     """;
             Model m = Model.assembler()
                     .addUnparsedModel("shadow2.smithy", idl)
@@ -653,10 +655,10 @@ class ErlangSymbolProviderTest {
                     .unwrap();
             ServiceShape svc = m.expectShape(ShapeId.from("com.shadow2#Svc"), ServiceShape.class);
             OperationShape opModule = m.expectShape(ShapeId.from("com.shadow2#Module"), OperationShape.class);
-            OperationShape opModuleLower = m.expectShape(ShapeId.from("com.shadow2#module"), OperationShape.class);
+            OperationShape opModuleUnderscore = m.expectShape(ShapeId.from("com.shadow2#module_"), OperationShape.class);
             ErlangSymbolProvider p = new ErlangSymbolProvider(testSettings(), m, svc, "s_types.hrl", BeamCodegenKind.TYPES);
             String first = p.toSymbol(opModule).getName();
-            String second = p.toSymbol(opModuleLower).getName();
+            String second = p.toSymbol(opModuleUnderscore).getName();
             assertThat(first).isEqualTo("module_");
             assertThat(second).isNotEqualTo(first);
             assertThat(second).isEqualTo("module__2");
