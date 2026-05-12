@@ -1,5 +1,7 @@
 package io.smithy.beam.elixir;
 
+import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamServiceIndex;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -28,21 +30,28 @@ final class ElixirServerDirectedCodegen
     public SymbolProvider createSymbolProvider(
             CreateSymbolProviderDirective<BeamSettings> directive) {
         String ns = directive.service().getId().getNamespace();
-        String module = directive.settings().resolveModule(ns);
-        String definitionFile = "lib/generated/" + module + "_server.ex";
-        String serverModuleName = ElixirSymbolProvider.toModuleName(module + "_server");
+        BeamSettings settings = directive.settings();
+        BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
+        String definitionFile = layout.serverModuleFile();
+        String serverModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_server");
         return SymbolProvider.cache(
                 new ElixirSymbolProvider(
-                        directive.model(), directive.service(), definitionFile, serverModuleName));
+                        settings,
+                        directive.model(),
+                        directive.service(),
+                        definitionFile,
+                        serverModuleName,
+                        BeamCodegenKind.SERVER));
     }
 
     @Override
     public ElixirContext createContext(
             CreateContextDirective<BeamSettings, ElixirIntegration> directive) {
         String ns = directive.service().getId().getNamespace();
-        String module = directive.settings().resolveModule(ns);
-        String definitionFile = "lib/generated/" + module + "_server.ex";
-        String serverModuleName = ElixirSymbolProvider.toModuleName(module + "_server");
+        BeamSettings settings = directive.settings();
+        BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
+        String definitionFile = layout.serverModuleFile();
+        String serverModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_server");
         return new ElixirContext(
                 directive.model(),
                 directive.settings(),
@@ -82,8 +91,8 @@ final class ElixirServerDirectedCodegen
         ElixirContext ctx = directive.context();
         ServiceShape service = directive.shape();
         String ns = service.getId().getNamespace();
-        String module = ctx.settings().resolveModule(ns);
-        String serverFile = "lib/generated/" + module + "_server.ex";
+        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
+        String serverFile = layout.serverModuleFile();
 
         ctx.writerDelegator().useFileWriter(serverFile, writer -> {
             writer.write("# Generated Elixir server stub for $L (layout phase).", service.getId());
