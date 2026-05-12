@@ -1,6 +1,10 @@
 package io.smithy.beam.elixir;
 
+import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.core.BeamSymbolRuntimeDeps;
 import software.amazon.smithy.codegen.core.ReservedWords;
 import software.amazon.smithy.codegen.core.ReservedWordsBuilder;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -14,9 +18,11 @@ import java.util.function.Function;
 
 final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol> {
 
+    private final BeamSettings settings;
     private final Model model;
     private final ServiceShape service;
     private final String definitionFile;
+    private final BeamCodegenKind kind;
     private final String moduleNamespace;
     private final ReservedWords typeNameEscaper;
     private final ReservedWords moduleNameEscaper;
@@ -29,17 +35,24 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     private final Map<ShapeId, String> unionTagNames;
     private final Map<ShapeId, Map<String, String>> enumAtomNames;
 
-    ElixirSymbolProvider(Model model, ServiceShape service,
-            String definitionFile, String moduleNamespace) {
+    ElixirSymbolProvider(
+            BeamSettings settings,
+            Model model,
+            ServiceShape service,
+            String definitionFile,
+            String moduleNamespace,
+            BeamCodegenKind kind) {
+        this.settings = settings;
         this.model = model;
         this.service = service;
         this.definitionFile = definitionFile;
         this.moduleNamespace = moduleNamespace;
+        this.kind = kind;
         this.typeNameEscaper = elixirReservedWords();
         this.moduleNameEscaper = elixirReservedWords();
         this.fieldNameEscaper = elixirReservedWords();
         this.atomEscaper = elixirReservedWords();
-        this.functionNameEscaper = elixirReservedWords();
+        this.functionNameEscaper = elixirFunctionReservedWords();
         this.typeNames = buildTypeNames();
         this.moduleNames = buildModuleNames();
         this.fieldNames = buildStructureFieldNames();
@@ -177,17 +190,46 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
     @Override
     public Symbol serviceShape(ServiceShape shape) {
-        return builtin("service");
+        BeamElixirLayout layout = new BeamElixirLayout(settings, shape.getId().getNamespace());
+        String name =
+                switch (kind) {
+                    case TYPES -> ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+                    case CLIENT -> ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_client");
+                    case SERVER -> ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_server");
+                };
+        return Symbol.builder()
+                .name(name)
+                .namespace(moduleNamespace, ".")
+                .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
+                .putProperty("builtIn", false)
+                .putProperty("beamKind", kind.name())
+                .build();
     }
 
     @Override
     public Symbol operationShape(OperationShape shape) {
-        return builtin("operation");
+        String raw = toSnakeCase(shape.getId().getName(service));
+        String name = functionNameEscaper.escape(raw);
+        return Symbol.builder()
+                .name(name)
+                .namespace(moduleNamespace, ".")
+                .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
+                .putProperty("builtIn", false)
+                .putProperty("beamKind", kind.name())
+                .build();
     }
 
     @Override
     public Symbol resourceShape(ResourceShape shape) {
-        return builtin("resource");
+        String raw = toSnakeCase(shape.getId().getName(service));
+        String name = functionNameEscaper.escape(raw);
+        return Symbol.builder()
+                .name(name)
+                .namespace(moduleNamespace, ".")
+                .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
+                .putProperty("builtIn", false)
+                .putProperty("beamKind", kind.name())
+                .build();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -202,40 +244,51 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
     private Symbol namedScalar(Shape shape, String baseType) {
         String name = toTypeName(shape);
-        return Symbol.builder()
-                .name(name)
-                .namespace(moduleNamespace, ".")
-                .definitionFile(definitionFile)
-                .putProperty("builtIn", false)
-                .putProperty("typeKind", "alias")
-                .putProperty("baseType", baseType)
-                .build();
+        Symbol.Builder builder =
+                Symbol.builder()
+                        .name(name)
+                        .namespace(moduleNamespace, ".")
+                        .definitionFile(definitionFile)
+                        .putProperty("builtIn", false)
+                        .putProperty("typeKind", "alias")
+                        .putProperty("baseType", baseType);
+        BeamSymbolRuntimeDeps.apply(shape, builder);
+        return builder.build();
     }
 
     private Symbol namedAlias(Shape shape) {
         String name = toTypeName(shape);
-        return Symbol.builder()
-                .name(name)
-                .namespace(moduleNamespace, ".")
-                .definitionFile(definitionFile)
-                .putProperty("builtIn", false)
-                .putProperty("typeKind", "alias")
-                .build();
+        Symbol.Builder builder =
+                Symbol.builder()
+                        .name(name)
+                        .namespace(moduleNamespace, ".")
+                        .definitionFile(definitionFile)
+                        .putProperty("builtIn", false)
+                        .putProperty("typeKind", "alias");
+        BeamSymbolRuntimeDeps.apply(shape, builder);
+        return builder.build();
     }
 
     private Symbol namedModule(Shape shape) {
         String name = toModuleName(shape);
-        return Symbol.builder()
-                .name(name)
-                .namespace(moduleNamespace, ".")
-                .definitionFile(definitionFile)
-                .putProperty("builtIn", false)
-                .putProperty("typeKind", "module")
-                .build();
+        Symbol.Builder builder =
+                Symbol.builder()
+                        .name(name)
+                        .namespace(moduleNamespace, ".")
+                        .definitionFile(definitionFile)
+                        .putProperty("builtIn", false)
+                        .putProperty("typeKind", "module");
+        BeamSymbolRuntimeDeps.apply(shape, builder);
+        return builder.build();
     }
 
     private boolean isPrelude(Shape shape) {
         return shape.getId().getNamespace().equals("smithy.api");
+    }
+
+    private String memberBaseName(MemberShape member) {
+        ShapeId id = member.getId();
+        return id.getMember().orElseGet(() -> id.getName(service));
     }
 
     String toTypeName(Shape shape) {
@@ -253,13 +306,13 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     String toFieldName(MemberShape member) {
         return fieldNames.getOrDefault(
                 member.getId(),
-                fieldNameEscaper.escape(toSnakeCase(member.getMemberName())));
+                fieldNameEscaper.escape(toSnakeCase(memberBaseName(member))));
     }
 
     String toUnionTagName(MemberShape member) {
         return unionTagNames.getOrDefault(
                 member.getId(),
-                atomEscaper.escape(toSnakeCase(member.getMemberName())));
+                atomEscaper.escape(toSnakeCase(memberBaseName(member))));
     }
 
     String toFunctionName(String functionName) {
@@ -322,8 +375,9 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
         Set<Shape> closure = new Walker(model).walkShapes(service);
         model.getStructureShapes().stream()
                 .filter(closure::contains)
-                .forEach(shape -> result.putAll(indexMemberNames(shape.members(),
-                        member -> fieldNameEscaper.escape(toSnakeCase(member.getMemberName())))));
+                .forEach(shape -> result.putAll(indexMemberNames(new ArrayList<>(shape.members()),
+                        member -> fieldNameEscaper.escape(
+                                toSnakeCase(memberBaseName(member))))));
         return result;
     }
 
@@ -332,8 +386,9 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
         Set<Shape> closure = new Walker(model).walkShapes(service);
         model.getUnionShapes().stream()
                 .filter(closure::contains)
-                .forEach(shape -> result.putAll(indexMemberNames(shape.members(),
-                        member -> atomEscaper.escape(toSnakeCase(member.getMemberName())))));
+                .forEach(shape -> result.putAll(indexMemberNames(new ArrayList<>(shape.members()),
+                        member -> atomEscaper.escape(
+                                toSnakeCase(memberBaseName(member))))));
         return result;
     }
 
@@ -362,7 +417,7 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     }
 
     private static Map<ShapeId, String> indexMemberNames(
-            Collection<MemberShape> members, Function<MemberShape, String> escapedName) {
+            List<MemberShape> members, Function<MemberShape, String> escapedName) {
         Map<ShapeId, String> result = new HashMap<>();
         BeamNameUtils.deconflict(members, escapedName)
                 .forEach((member, name) -> result.put(member.getId(), name));
@@ -385,6 +440,31 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
                 .put("rescue", "rescue_")
                 .put("try", "try_")
                 .put("when", "when_")
+                .build();
+    }
+
+    private static ReservedWords elixirFunctionReservedWords() {
+        return new ReservedWordsBuilder()
+                .put("after", "after_")
+                .put("begin", "begin_")
+                .put("case", "case_")
+                .put("catch", "catch_")
+                .put("do", "do_")
+                .put("else", "else_")
+                .put("end", "end_")
+                .put("fn", "fn_")
+                .put("for", "for_")
+                .put("if", "if_")
+                .put("receive", "receive_")
+                .put("rescue", "rescue_")
+                .put("try", "try_")
+                .put("when", "when_")
+                .put("def", "def_")
+                .put("defmodule", "defmodule_")
+                .put("import", "import_")
+                .put("alias", "alias_")
+                .put("require", "require_")
+                .put("use", "use_")
                 .build();
     }
 }
