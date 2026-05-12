@@ -251,4 +251,38 @@ class ErlangTypesPluginTest {
                 .hasMessageContaining("protocol")
                 .hasMessageContaining("smithy.api#String");
     }
+
+    private static Model loadRelativeDeprecationModel() {
+        URL resource = ErlangTypesPluginTest.class.getResource("/model/relative_deprecation.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    @Test
+    void relativeDateRemovesDeprecatedStringShapeFromGeneratedTypes() {
+        Model model = loadRelativeDeprecationModel();
+
+        MockManifest baseline = new MockManifest();
+        ObjectNode baselineSettings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
+        assertThat(baseline.expectFileString("relative_deprecation_types.hrl"))
+                .contains("-type legacy_string() :: binary().");
+
+        MockManifest filtered = new MockManifest();
+        ObjectNode filteredSettings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
+                .withMember("edition", "2026")
+                .withMember("relativeDate", "2026-01-01")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, filtered, filteredSettings));
+        assertThat(filtered.expectFileString("relative_deprecation_types.hrl"))
+                .doesNotContain("-type legacy_string() :: binary().");
+    }
 }
