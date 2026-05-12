@@ -218,7 +218,7 @@ class ErlangTypesPluginTest {
                             .withMember("edition", "2026")
                             .withMember("protocol", "smithy.api#String")
                             .withMember("relativeDate", "2026-01-01")
-                            .withMember("relativeVersion", "1")
+                            .withMember("relativeVersion", "1.0.0")
                             .build();
             new ErlangTypesPlugin().execute(PluginContext.builder()
                             .model(model)
