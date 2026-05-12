@@ -17,7 +17,11 @@
     ]
   },
   "plugins": {
-    "elixir-types-codegen": {
+    "elixir-client-codegen": {
+      "service": "smithy.beam.demo.basic#BasicService",
+      "edition": "2026"
+    },
+    "elixir-server-codegen": {
       "service": "smithy.beam.demo.basic#BasicService",
       "edition": "2026"
     }
