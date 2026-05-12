@@ -1,5 +1,7 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -47,11 +49,16 @@ final class ErlangDirectedCodegen
     public SymbolProvider createSymbolProvider(
             CreateSymbolProviderDirective<BeamSettings> directive) {
         String ns = directive.service().getId().getNamespace();
-        String module = directive.settings().resolveModule(ns);
-        // TODO: make this configurable (outputDir relative to project root)
-        String definitionFile = module + "_types.hrl";
+        BeamSettings settings = directive.settings();
+        BeamErlangLayout layout = new BeamErlangLayout(settings, ns);
+        String definitionFile = layout.typesHeaderFile();
         return SymbolProvider.cache(
-                new ErlangSymbolProvider(directive.model(), directive.service(), definitionFile));
+                new ErlangSymbolProvider(
+                        settings,
+                        directive.model(),
+                        directive.service(),
+                        definitionFile,
+                        BeamCodegenKind.TYPES));
     }
 
     @Override
@@ -83,9 +90,9 @@ final class ErlangDirectedCodegen
         ErlangContext ctx = directive.context();
         Model model = directive.model();
         String ns = directive.service().getId().getNamespace();
-        String module = ctx.settings().resolveModule(ns);
-        // TODO: make this configurable (outputDir relative to project root)
-        String definitionFile = module + "_types.hrl";
+        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns);
+        String definitionFile = layout.typesHeaderFile();
+        String module = layout.modulePrefix();
         Set<Shape> closure = new Walker(model).walkShapes(directive.service());
 
         ctx.writerDelegator().useFileWriter(definitionFile, writer -> {

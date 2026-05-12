@@ -1,5 +1,7 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamSettings;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ErlangSymbolProviderTest {
 
     static final String DEF_FILE = "test_types.hrl";
+
+    private static BeamSettings testSettings() {
+        BeamSettings s = new BeamSettings();
+        s.edition("2026");
+        return s;
+    }
 
     static Model model;
     static ServiceShape service;
@@ -108,7 +116,7 @@ class ErlangSymbolProviderTest {
                 .assemble()
                 .unwrap();
         service = model.expectShape(ShapeId.from("com.example#TestService"), ServiceShape.class);
-        provider = new ErlangSymbolProvider(model, service, DEF_FILE);
+        provider = new ErlangSymbolProvider(testSettings(), model, service, DEF_FILE, BeamCodegenKind.TYPES);
     }
 
     // ── toSnakeCase ───────────────────────────────────────────────────────────
@@ -556,7 +564,7 @@ class ErlangSymbolProviderTest {
             ServiceShape clashService = clashModel.expectShape(
                     ShapeId.from("com.clash#ClashService"), ServiceShape.class);
             ErlangSymbolProvider clashProvider = new ErlangSymbolProvider(
-                    clashModel, clashService, "clash_types.hrl");
+                    testSettings(), clashModel, clashService, "clash_types.hrl", BeamCodegenKind.TYPES);
 
             Symbol a = clashProvider.toSymbol(clashModel.expectShape(ShapeId.from("com.clash#MyType")));
             Symbol b = clashProvider.toSymbol(clashModel.expectShape(ShapeId.from("com.clash#My_Type")));

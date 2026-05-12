@@ -1,5 +1,7 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
@@ -27,10 +29,16 @@ final class ErlangClientDirectedCodegen
     public SymbolProvider createSymbolProvider(
             CreateSymbolProviderDirective<BeamSettings> directive) {
         String ns = directive.service().getId().getNamespace();
-        String module = directive.settings().resolveModule(ns);
-        String definitionFile = module + "_client.erl";
+        BeamSettings settings = directive.settings();
+        BeamErlangLayout layout = new BeamErlangLayout(settings, ns);
+        String definitionFile = layout.clientModuleFile();
         return SymbolProvider.cache(
-                new ErlangSymbolProvider(directive.model(), directive.service(), definitionFile));
+                new ErlangSymbolProvider(
+                        settings,
+                        directive.model(),
+                        directive.service(),
+                        definitionFile,
+                        BeamCodegenKind.CLIENT));
     }
 
     @Override

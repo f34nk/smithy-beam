@@ -1,6 +1,8 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.ReservedWords;
 import software.amazon.smithy.codegen.core.ReservedWordsBuilder;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -12,11 +14,14 @@ import software.amazon.smithy.model.shapes.*;
 import java.util.*;
 import java.util.function.Function;
 
+@SuppressWarnings("unused")
 final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol> {
 
+    private final BeamSettings settings;
     private final Model model;
     private final ServiceShape service;
     private final String definitionFile;
+    private final BeamCodegenKind kind;
     private final ReservedWords typeNameEscaper;
     private final ReservedWords fieldNameEscaper;
     private final ReservedWords atomEscaper;
@@ -26,10 +31,17 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     private final Map<ShapeId, String> unionTagNames;
     private final Map<ShapeId, Map<String, String>> enumAtomNames;
 
-    ErlangSymbolProvider(Model model, ServiceShape service, String definitionFile) {
+    ErlangSymbolProvider(
+            BeamSettings settings,
+            Model model,
+            ServiceShape service,
+            String definitionFile,
+            BeamCodegenKind kind) {
+        this.settings = settings;
         this.model = model;
         this.service = service;
         this.definitionFile = definitionFile;
+        this.kind = kind;
         this.typeNameEscaper = erlangReservedWords();
         this.fieldNameEscaper = erlangReservedWords();
         this.atomEscaper = erlangReservedWords();
