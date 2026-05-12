@@ -71,7 +71,7 @@ class ElixirTypesPluginTest {
     void reservedWordsEscapeAndDeconflictInElixirOutput() {
         MockManifest manifest = new MockManifest();
         new ElixirTypesPlugin().execute(buildReservedWordsContext(manifest));
-        String content = manifest.expectFileString("lib/generated/reserved_types.ex");
+        String content = manifest.expectFileString("reserved_types.ex");
         assertThat(content)
                 .contains("after_")
                 .contains("begin_")
@@ -119,7 +119,7 @@ class ElixirTypesPluginTest {
                 .settings(settings)
                 .build();
         new ElixirTypesPlugin().execute(context);
-        assertThat(manifest.expectFileString("lib/generated/basic_types.ex")).contains("basic_string");
+        assertThat(manifest.expectFileString("basic_types.ex")).contains("basic_string");
     }
 
     @Test
@@ -190,7 +190,7 @@ class ElixirTypesPluginTest {
                 .fileManifest(extended)
                 .settings(extendedSettings)
                 .build());
-        assertThat(extended.expectFileString("lib/generated/multi_types.ex"))
-                .isEqualTo(baseline.expectFileString("lib/generated/multi_types.ex"));
+        assertThat(extended.expectFileString("multi_types.ex"))
+                .isEqualTo(baseline.expectFileString("multi_types.ex"));
     }
 }
