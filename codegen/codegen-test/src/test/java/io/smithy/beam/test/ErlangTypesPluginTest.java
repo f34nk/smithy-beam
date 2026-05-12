@@ -193,39 +193,62 @@ class ErlangTypesPluginTest {
                             .hasMessageContaining("edition");
     }
 
+    private static Model loadMultiServiceModel() {
+        URL resource = ErlangTypesPluginTest.class.getResource("/model/multi_service.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    private static PluginContext pluginContext(Model model, MockManifest manifest, ObjectNode settings) {
+        return PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build();
+    }
+
     @Test
-    void protocolRelativeDateRelativeVersionDoNotChangeErlangTypeOnlyOutput() {
-            URL resource = ErlangTypesPluginTest.class.getResource("/model/multi_service.smithy");
-            assertThat(resource).isNotNull();
-            Model model = Model.assembler()
-                            .addImport(resource)
-                            .discoverModels()
-                            .assemble()
-                            .unwrap();
-            MockManifest baseline = new MockManifest();
-            ObjectNode baselineSettings = ObjectNode.builder()
-                            .withMember("service", "smithy.beam.demo.multi#ServiceA")
-                            .withMember("edition", "2026")
-                            .build();
-            new ErlangTypesPlugin().execute(PluginContext.builder()
-                            .model(model)
-                            .fileManifest(baseline)
-                            .settings(baselineSettings)
-                            .build());
-            MockManifest extended = new MockManifest();
-            ObjectNode extendedSettings = ObjectNode.builder()
-                            .withMember("service", "smithy.beam.demo.multi#ServiceA")
-                            .withMember("edition", "2026")
-                            .withMember("protocol", "smithy.api#String")
-                            .withMember("relativeDate", "2026-01-01")
-                            .withMember("relativeVersion", "1.0.0")
-                            .build();
-            new ErlangTypesPlugin().execute(PluginContext.builder()
-                            .model(model)
-                            .fileManifest(extended)
-                            .settings(extendedSettings)
-                            .build());
-            assertThat(extended.expectFileString("multi_types.hrl"))
-                            .isEqualTo(baseline.expectFileString("multi_types.hrl"));
+    void relativeDateAndRelativeVersionWithoutProtocolDoNotChangeMultiServiceTypesOutput() {
+        Model model = loadMultiServiceModel();
+        MockManifest baseline = new MockManifest();
+        ObjectNode baselineSettings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.multi#ServiceA")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
+
+        MockManifest extended = new MockManifest();
+        ObjectNode extendedSettings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.multi#ServiceA")
+                .withMember("edition", "2026")
+                .withMember("relativeDate", "2026-01-01")
+                .withMember("relativeVersion", "1.0.0")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, extended, extendedSettings));
+
+        assertThat(extended.expectFileString("multi_types.hrl"))
+                .isEqualTo(baseline.expectFileString("multi_types.hrl"));
+    }
+
+    @Test
+    void explicitInvalidProtocolFailsWithCodegenException() {
+        Model model = loadMultiServiceModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.multi#ServiceA")
+                .withMember("edition", "2026")
+                .withMember("protocol", "smithy.api#String")
+                .withMember("relativeDate", "2026-01-01")
+                .withMember("relativeVersion", "1.0.0")
+                .build();
+
+        assertThatThrownBy(() -> new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings)))
+                .isInstanceOf(CodegenException.class)
+                .hasMessageContaining("protocol")
+                .hasMessageContaining("smithy.api#String");
     }
 }
