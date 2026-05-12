@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.smithy.beam.core.BeamServiceIndex;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
@@ -86,6 +87,9 @@ final class ElixirServerDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(serverFile, writer -> {
             writer.write("# Generated Elixir server stub for $L (layout phase).", service.getId());
+            writer.write(
+                    "# TopDown operation count: $L",
+                    BeamServiceIndex.of(ctx.model()).containedOperations(service).size());
             writer.write("# TODO: behaviour, router, dispatch, and stubs.");
             writer.openBlock("defmodule $L do", ctx.moduleName());
             writer.write("@moduledoc false");
