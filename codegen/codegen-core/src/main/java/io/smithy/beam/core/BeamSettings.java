@@ -15,9 +15,14 @@ import java.util.List;
  *   "service"  -- shape ID of the service to generate (required unless model has exactly one service).
  *   "edition"  -- required explicit opt-in to generator behavior, e.g. "2026".
  *   "module"   -- output module/file name prefix; defaults to the last segment of the service namespace.
- *   "protocol" -- accepted for future protocol-aware type generation; no-op in the initial type-only generator.
- *   "relativeDate" -- accepted for future deprecation-based filtering; no-op in the initial type-only generator.
- *   "relativeVersion" -- accepted for future deprecation-based filtering; no-op in the initial type-only generator.
+ *   "protocol" -- optional protocol trait shape id. When set, generators that validate this
+ *                 setting require it to match a protocol definition trait on the service
+ *                 (see {@link BeamProtocolResolver}). When unset, those generators skip
+ *                 protocol resolution.
+ *   "relativeDate" -- optional YYYY-MM-DD value forwarded to
+ *                     {@link software.amazon.smithy.codegen.core.directed.CodegenDirector#removeShapesDeprecatedBeforeDate}.
+ *   "relativeVersion" -- optional SemVer value forwarded to
+ *                     {@link software.amazon.smithy.codegen.core.directed.CodegenDirector#removeShapesDeprecatedBeforeVersion}.
  */
 public final class BeamSettings {
 
