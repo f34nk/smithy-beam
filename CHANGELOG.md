@@ -3,6 +3,12 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-05-12
+
+### Added
+- Elixir client and server Smithy-Build plugins with directed codegen, types-first director wiring, SPI registration, and plugin tests.
+- The Elixir basic example enables client and server generation in its build config.
+
 ## 2026-05-10
 
 ### Added
