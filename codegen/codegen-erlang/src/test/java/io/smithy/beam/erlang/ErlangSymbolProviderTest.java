@@ -464,24 +464,17 @@ class ErlangSymbolProviderTest {
                     namespace com.res
 
                     service WidgetService {
-                        operations: [Ping, GetWidget]
                         resources: [Widget]
                     }
 
-                    operation Ping {
-                        input: EmptyIn
-                        output: EmptyOut
-                    }
-
-                    structure EmptyIn {}
-                    structure EmptyOut {}
-
+                    @readonly
                     operation GetWidget {
                         input: WidgetIn
                         output: WidgetOut
                     }
 
                     structure WidgetIn {
+                        @required
                         id: String
                     }
 
