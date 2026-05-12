@@ -4,6 +4,7 @@ import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.core.BeamSymbolRuntimeDeps;
 import software.amazon.smithy.codegen.core.ReservedWords;
 import software.amazon.smithy.codegen.core.ReservedWordsBuilder;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -240,21 +241,25 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
      */
     private Symbol namedScalar(Shape shape, String baseType) {
         String name = toTypeName(shape);
-        return Symbol.builder()
-            .name(name + "()")
-            .definitionFile(definitionFile)
-            .putProperty("builtIn", false)
-            .putProperty("baseType", baseType)
-            .build();
+        Symbol.Builder builder =
+                Symbol.builder()
+                        .name(name + "()")
+                        .definitionFile(definitionFile)
+                        .putProperty("builtIn", false)
+                        .putProperty("baseType", baseType);
+        BeamSymbolRuntimeDeps.apply(shape, builder);
+        return builder.build();
     }
 
     private Symbol namedType(Shape shape) {
         String name = toTypeName(shape);
-        return Symbol.builder()
-            .name(name + "()")
-            .definitionFile(definitionFile)
-            .putProperty("builtIn", false)
-            .build();
+        Symbol.Builder builder =
+                Symbol.builder()
+                        .name(name + "()")
+                        .definitionFile(definitionFile)
+                        .putProperty("builtIn", false);
+        BeamSymbolRuntimeDeps.apply(shape, builder);
+        return builder.build();
     }
 
     private boolean isPrelude(Shape shape) {
