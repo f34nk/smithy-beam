@@ -103,7 +103,7 @@ class ErlangClientPluginTest {
     }
 
     @Test
-    void protocolRelativeDateRelativeVersionDoNotChangeTypesOrClientStubOutput() {
+    void relativeDateAndRelativeVersionWithoutProtocolDoNotChangeTypesOrClientStubOutput() {
         URL resource = ErlangClientPluginTest.class.getResource("/model/multi_service.smithy");
         assertThat(resource).isNotNull();
         Model model = Model.assembler()
@@ -125,7 +125,6 @@ class ErlangClientPluginTest {
         ObjectNode extendedSettings = ObjectNode.builder()
                 .withMember("service", "smithy.beam.demo.multi#ServiceA")
                 .withMember("edition", "2026")
-                .withMember("protocol", "smithy.api#String")
                 .withMember("relativeDate", "2026-01-01")
                 .withMember("relativeVersion", "1.0.0")
                 .build();
@@ -138,5 +137,32 @@ class ErlangClientPluginTest {
                 .isEqualTo(baseline.expectFileString("multi_types.hrl"));
         assertThat(extended.expectFileString("multi_client.erl"))
                 .isEqualTo(baseline.expectFileString("multi_client.erl"));
+    }
+
+    @Test
+    void explicitInvalidProtocolFailsWithCodegenException() {
+        URL resource = ErlangClientPluginTest.class.getResource("/model/multi_service.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.multi#ServiceA")
+                .withMember("edition", "2026")
+                .withMember("protocol", "smithy.api#String")
+                .withMember("relativeDate", "2026-01-01")
+                .withMember("relativeVersion", "1.0.0")
+                .build();
+        assertThatThrownBy(() -> new ErlangClientPlugin().execute(PluginContext.builder()
+                        .model(model)
+                        .fileManifest(manifest)
+                        .settings(settings)
+                        .build()))
+                .isInstanceOf(CodegenException.class)
+                .hasMessageContaining("protocol")
+                .hasMessageContaining("smithy.api#String");
     }
 }
