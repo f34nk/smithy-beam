@@ -181,7 +181,7 @@ class ElixirTypesPluginTest {
         ObjectNode extendedSettings = ObjectNode.builder()
                 .withMember("service", "smithy.beam.demo.multi#ServiceA")
                 .withMember("edition", "2026")
-                .withMember("protocol", "smithy.api#String")
+                .withMember("protocol", "smithy.beam.demo.multi#TestProtocol")
                 .withMember("relativeDate", "2026-01-01")
                 .withMember("relativeVersion", "1.0.0")
                 .build();
