@@ -184,12 +184,28 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
     @Override
     public Symbol operationShape(OperationShape shape) {
-        return builtin("operation");
+        return serviceScopedFunctionSymbol(shape);
     }
 
     @Override
     public Symbol resourceShape(ResourceShape shape) {
-        return builtin("resource");
+        return serviceScopedFunctionSymbol(shape);
+    }
+
+    /**
+     * Symbol for an operation or resource: service-relative snake_case name suitable
+     * for Erlang function atoms, with definition file only on client and server passes.
+     */
+    private Symbol serviceScopedFunctionSymbol(Shape shape) {
+        String raw = toSnakeCase(shape.getId().getName(service));
+        String name = functionNameEscaper.escape(raw);
+        return Symbol.builder()
+                .name(name)
+                .namespace(service.getId().getNamespace(), ".")
+                .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
+                .putProperty("builtIn", false)
+                .putProperty("beamKind", kind.name())
+                .build();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

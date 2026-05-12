@@ -437,11 +437,81 @@ class ErlangSymbolProviderTest {
         }
 
         @Test
-        void operationShapeIsBuiltin() {
+        void operationShapeUsesServiceScopedSnakeName() {
             Symbol sym = provider.toSymbol(
                     model.expectShape(ShapeId.from("com.example#TestOperation"), OperationShape.class));
-            assertThat(sym.getName()).isEqualTo("operation");
-            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(true);
+            assertThat(sym.getName()).isEqualTo("test_operation");
+            assertThat(sym.getNamespace()).contains(service.getId().getNamespace());
+            assertThat(sym.getDefinitionFile()).isEmpty();
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
+            assertThat(sym.getProperty("beamKind", String.class)).contains("TYPES");
+        }
+
+        @Test
+        void operationShapeUsesDefinitionFileWhenClientKind() {
+            ErlangSymbolProvider clientProvider = new ErlangSymbolProvider(
+                    testSettings(), model, service, "test_service_client.erl", BeamCodegenKind.CLIENT);
+            Symbol sym = clientProvider.toSymbol(
+                    model.expectShape(ShapeId.from("com.example#TestOperation"), OperationShape.class));
+            assertThat(sym.getDefinitionFile()).isEqualTo("test_service_client.erl");
+            assertThat(sym.getProperty("beamKind", String.class)).contains("CLIENT");
+        }
+
+        @Test
+        void resourceShapeUsesServiceScopedSnakeName() {
+            String idl = """
+                    $version: "2"
+                    namespace com.res
+
+                    service WidgetService {
+                        operations: [Ping, GetWidget]
+                        resources: [Widget]
+                    }
+
+                    operation Ping {
+                        input: EmptyIn
+                        output: EmptyOut
+                    }
+
+                    structure EmptyIn {}
+                    structure EmptyOut {}
+
+                    operation GetWidget {
+                        input: WidgetIn
+                        output: WidgetOut
+                    }
+
+                    structure WidgetIn {
+                        id: String
+                    }
+
+                    structure WidgetOut {}
+
+                    resource Widget {
+                        identifiers: {
+                            id: String
+                        }
+                        read: GetWidget
+                    }
+                    """;
+
+            Model resModel = Model.assembler()
+                    .addUnparsedModel("widget.smithy", idl)
+                    .assemble()
+                    .unwrap();
+            ServiceShape resService = resModel.expectShape(
+                    ShapeId.from("com.res#WidgetService"), ServiceShape.class);
+            ResourceShape resource = resModel.expectShape(
+                    ShapeId.from("com.res#Widget"), ResourceShape.class);
+            ErlangSymbolProvider resProvider = new ErlangSymbolProvider(
+                    testSettings(), resModel, resService, "widget_types.hrl", BeamCodegenKind.TYPES);
+
+            Symbol sym = resProvider.toSymbol(resource);
+            assertThat(sym.getName()).isEqualTo("widget");
+            assertThat(sym.getNamespace()).contains(resService.getId().getNamespace());
+            assertThat(sym.getDefinitionFile()).isEmpty();
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
+            assertThat(sym.getProperty("beamKind", String.class)).contains("TYPES");
         }
     }
 
