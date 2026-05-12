@@ -1,9 +1,12 @@
 package io.smithy.beam.elixir;
 
+import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamSettings;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.codegen.core.Symbol;
+import software.amazon.smithy.codegen.core.SymbolDependency;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.*;
 
@@ -14,7 +17,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ElixirSymbolProviderTest {
 
     static final String DEF_FILE = "test_types.ex";
-    static final String MODULE_NAMESPACE = "Test.Example";
+    static final String MODULE_NAMESPACE = "Example";
+
+    private static BeamSettings testSettings() {
+        BeamSettings s = new BeamSettings();
+        s.edition("2026");
+        return s;
+    }
 
     static Model model;
     static ServiceShape service;
@@ -48,6 +57,7 @@ class ElixirSymbolProviderTest {
                     doubleField: TestDouble
                     timestampField: TestTimestamp
                     documentField: TestDocument
+                    myDocField: MyDoc
                     bigIntField: TestBigInteger
                     bigDecField: TestBigDecimal
                     enumField: TestStatus
@@ -71,6 +81,7 @@ class ElixirSymbolProviderTest {
                 double TestDouble
                 timestamp TestTimestamp
                 document TestDocument
+                document MyDoc
                 bigInteger TestBigInteger
                 bigDecimal TestBigDecimal
 
@@ -109,7 +120,14 @@ class ElixirSymbolProviderTest {
                 .assemble()
                 .unwrap();
         service = model.expectShape(ShapeId.from("com.example#TestService"), ServiceShape.class);
-        provider = new ElixirSymbolProvider(model, service, DEF_FILE, MODULE_NAMESPACE);
+        provider =
+                new ElixirSymbolProvider(
+                        testSettings(),
+                        model,
+                        service,
+                        DEF_FILE,
+                        MODULE_NAMESPACE,
+                        BeamCodegenKind.TYPES);
     }
 
     // ── toSnakeCase ───────────────────────────────────────────────────────────
@@ -422,19 +440,23 @@ class ElixirSymbolProviderTest {
     class NonTypeShapes {
 
         @Test
-        void serviceShapeIsBuiltin() {
+        void serviceShapeUsesTypesModuleNameAndClearsDefinitionFileForTypesPass() {
             Symbol sym = provider.toSymbol(service);
-            assertThat(sym.getName()).isEqualTo("service");
-            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(true);
+            assertThat(sym.getName()).isEqualTo("Example");
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
             assertThat(sym.getDefinitionFile()).isEmpty();
         }
 
         @Test
-        void operationShapeIsBuiltin() {
-            Symbol sym = provider.toSymbol(
-                    model.expectShape(ShapeId.from("com.example#TestOperation"), OperationShape.class));
-            assertThat(sym.getName()).isEqualTo("operation");
-            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(true);
+        void operationShapeUsesSnakeCaseNameAndClearsDefinitionFileForTypesPass() {
+            Symbol sym =
+                    provider.toSymbol(
+                            model.expectShape(
+                                    ShapeId.from("com.example#TestOperation"),
+                                    OperationShape.class));
+            assertThat(sym.getName()).isEqualTo("test_operation");
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
+            assertThat(sym.getDefinitionFile()).isEmpty();
         }
     }
 
@@ -466,8 +488,9 @@ class ElixirSymbolProviderTest {
 
         @Test
         void allElixirKeywordsAreEscaped() {
-            for (String keyword : List.of("after", "case", "catch", "do", "else", "end",
-                    "fn", "for", "if", "receive", "rescue", "try", "when")) {
+            for (String keyword : List.of("after", "begin", "case", "catch", "do", "else", "end",
+                    "fn", "for", "if", "receive", "rescue", "try", "when",
+                    "def", "defmodule", "import", "alias", "require", "use")) {
                 assertThat(provider.toFunctionName(keyword))
                         .as("keyword '%s' must be escaped", keyword)
                         .isEqualTo(keyword + "_");
@@ -556,8 +579,14 @@ class ElixirSymbolProviderTest {
                     .unwrap();
             ServiceShape clashService = clashModel.expectShape(
                     ShapeId.from("com.clash#ClashService"), ServiceShape.class);
-            ElixirSymbolProvider clashProvider = new ElixirSymbolProvider(
-                    clashModel, clashService, "clash_types.ex", "Test.Clash");
+            ElixirSymbolProvider clashProvider =
+                    new ElixirSymbolProvider(
+                            testSettings(),
+                            clashModel,
+                            clashService,
+                            "clash_types.ex",
+                            "Clash",
+                            BeamCodegenKind.TYPES);
 
             Symbol a = clashProvider.toSymbol(clashModel.expectShape(ShapeId.from("com.clash#MyType")));
             Symbol b = clashProvider.toSymbol(clashModel.expectShape(ShapeId.from("com.clash#My_Type")));
@@ -565,6 +594,38 @@ class ElixirSymbolProviderTest {
             assertThat(a.getName()).isNotEqualTo(b.getName());
             assertThat(List.of(a.getName(), b.getName()))
                     .containsExactlyInAnyOrder("my_type", "my_type_2");
+        }
+    }
+
+    @Nested
+    class ClosureBuiltinRegression {
+
+        @Test
+        void smithyApiStringRemainsStringBuiltinWithEmptyDefinitionFile() {
+            StringShape preludeString =
+                    model.expectShape(ShapeId.from("smithy.api#String"), StringShape.class);
+            Symbol sym = provider.toSymbol(preludeString);
+            assertThat(sym.getName()).isEqualTo("String.t()");
+            assertThat(sym.getDefinitionFile()).isEmpty();
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(true);
+        }
+
+        @Test
+        void customDocumentShapeUsesAnySurfaceAndDeclaresRuntimeDependencies() {
+            DocumentShape myDoc =
+                    model.expectShape(ShapeId.from("com.example#MyDoc"), DocumentShape.class);
+            Symbol sym = provider.toSymbol(myDoc);
+            assertThat(sym.getName()).isEqualTo("my_doc");
+            assertThat(sym.getProperty("baseType", String.class)).contains("any()");
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
+            assertThat(sym.getDefinitionFile()).isEqualTo(DEF_FILE);
+            assertThat(sym.getDependencies())
+                    .anySatisfy(
+                            (SymbolDependency dep) -> {
+                                assertThat(dep.getDependencyType()).isEqualTo("hex");
+                                assertThat(dep.getPackageName()).isEqualTo("jsx");
+                                assertThat(dep.getVersion()).isEqualTo("3.1");
+                            });
         }
     }
 }
