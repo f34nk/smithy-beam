@@ -51,8 +51,8 @@ with the following BEAM-specific exceptions called out explicitly.
   reachable error shapes MUST fail code generation with a clear diagnostic that
   names the shape and explains the scope limit.
 - Plugin settings follow the [HOWTO](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html) shape for type generation. 
-  `edition` is required. `service` may be omitted only when the model contains 
-  exactly one service. `protocol`, `relativeDate`, and `relativeVersion` are parsed 
+  [`edition`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#edition) is required. [`service`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#service) may be omitted only when the model contains 
+  exactly one service. [`protocol`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#protocol-client-and-type-codegen-only), [`relativeDate`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#relativedate-client-and-type-codegen-only), and [`relativeVersion`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#relativeversion-client-and-type-codegen-only) are parsed 
   and retained but are no-ops in the initial type-only implementation; they become
   behavioral when protocol-aware serialization or deprecation filtering is added (TODO).
 - [Erlang](https://www.erlang.org/doc/reference_manual/introduction.html#reserved-words) and [Elixir](https://hexdocs.pm/elixir/syntax-reference.html#reserved-words) reserved words MUST be escaped automatically in the initial generator. 
