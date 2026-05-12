@@ -563,6 +563,104 @@ class ErlangSymbolProviderTest {
                         .isEqualTo(keyword + "_");
             }
         }
+
+        @Test
+        void toFunctionNameEscapesModuleExportRecordShadows() {
+            assertThat(provider.toFunctionName("module")).isEqualTo("module_");
+            assertThat(provider.toFunctionName("export")).isEqualTo("export_");
+            assertThat(provider.toFunctionName("record")).isEqualTo("record_");
+            assertThat(provider.toFunctionName("Module")).isEqualTo("module_");
+        }
+
+        @Test
+        void operationNamedModuleUsesEscapedFunctionSymbol() {
+            String idl = """
+                    $version: "2"
+                    namespace com.shadow
+
+                    service ShadowSvc {
+                        operations: [Module]
+                    }
+
+                    operation Module {}
+                    """;
+            Model m = Model.assembler()
+                    .addUnparsedModel("shadow.smithy", idl)
+                    .assemble()
+                    .unwrap();
+            ServiceShape svc = m.expectShape(ShapeId.from("com.shadow#ShadowSvc"), ServiceShape.class);
+            OperationShape op = m.expectShape(ShapeId.from("com.shadow#Module"), OperationShape.class);
+            ErlangSymbolProvider p = new ErlangSymbolProvider(testSettings(), m, svc, "shadow_types.hrl", BeamCodegenKind.CLIENT);
+            assertThat(p.toSymbol(op).getName()).isEqualTo("module_");
+        }
+
+        @Test
+        void resourceNamedRecordUsesEscapedFunctionSymbol() {
+            String idl = """
+                    $version: "2"
+                    namespace com.shadowres
+
+                    service ResSvc {
+                        resources: [Record]
+                    }
+
+                    @readonly
+                    operation Get {
+                        input: In
+                        output: Out
+                    }
+
+                    structure In {
+                        @required
+                        id: String
+                    }
+
+                    structure Out {}
+
+                    resource Record {
+                        identifiers: {
+                            id: String
+                        }
+                        read: Get
+                    }
+                    """;
+            Model m = Model.assembler()
+                    .addUnparsedModel("shadowres.smithy", idl)
+                    .assemble()
+                    .unwrap();
+            ServiceShape svc = m.expectShape(ShapeId.from("com.shadowres#ResSvc"), ServiceShape.class);
+            ResourceShape res = m.expectShape(ShapeId.from("com.shadowres#Record"), ResourceShape.class);
+            ErlangSymbolProvider p = new ErlangSymbolProvider(testSettings(), m, svc, "shadowres_types.hrl", BeamCodegenKind.TYPES);
+            assertThat(p.toSymbol(res).getName()).isEqualTo("record_");
+        }
+
+        @Test
+        void operationsModuleAndLowercaseModuleDeconflictAfterEscape() {
+            String idl = """
+                    $version: "2"
+                    namespace com.shadow2
+
+                    service Svc {
+                        operations: [Module, module]
+                    }
+
+                    operation Module {}
+                    operation module {}
+                    """;
+            Model m = Model.assembler()
+                    .addUnparsedModel("shadow2.smithy", idl)
+                    .assemble()
+                    .unwrap();
+            ServiceShape svc = m.expectShape(ShapeId.from("com.shadow2#Svc"), ServiceShape.class);
+            OperationShape opModule = m.expectShape(ShapeId.from("com.shadow2#Module"), OperationShape.class);
+            OperationShape opModuleLower = m.expectShape(ShapeId.from("com.shadow2#module"), OperationShape.class);
+            ErlangSymbolProvider p = new ErlangSymbolProvider(testSettings(), m, svc, "s_types.hrl", BeamCodegenKind.TYPES);
+            String first = p.toSymbol(opModule).getName();
+            String second = p.toSymbol(opModuleLower).getName();
+            assertThat(first).isEqualTo("module_");
+            assertThat(second).isNotEqualTo(first);
+            assertThat(second).isEqualTo("module__2");
+        }
     }
 
     // ── Name helpers ──────────────────────────────────────────────────────────

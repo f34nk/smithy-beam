@@ -31,6 +31,7 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     private final Map<ShapeId, String> fieldNames;
     private final Map<ShapeId, String> unionTagNames;
     private final Map<ShapeId, Map<String, String>> enumAtomNames;
+    private final Map<ShapeId, String> serviceFunctionNames;
 
     ErlangSymbolProvider(
             BeamSettings settings,
@@ -43,14 +44,16 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
         this.service = service;
         this.definitionFile = definitionFile;
         this.kind = kind;
-        this.typeNameEscaper = erlangReservedWords();
-        this.fieldNameEscaper = erlangReservedWords();
-        this.atomEscaper = erlangReservedWords();
-        this.functionNameEscaper = erlangReservedWords();
+        this.typeNameEscaper = erlangKeywordReservedWords();
+        this.fieldNameEscaper = erlangKeywordReservedWords();
+        this.atomEscaper = erlangKeywordReservedWords();
+        this.functionNameEscaper =
+                ReservedWords.compose(erlangKeywordReservedWords(), erlangFunctionExportShadows());
         this.typeNames = buildTypeNames();
         this.fieldNames = buildStructureFieldNames();
         this.unionTagNames = buildUnionTagNames();
         this.enumAtomNames = buildEnumAtomNames();
+        this.serviceFunctionNames = buildServiceFunctionNames();
     }
 
     @Override
@@ -209,8 +212,9 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
      * for Erlang function atoms, with definition file only on client and server passes.
      */
     private Symbol serviceScopedFunctionSymbol(Shape shape) {
-        String raw = toSnakeCase(shape.getId().getName(service));
-        String name = functionNameEscaper.escape(raw);
+        String name = serviceFunctionNames.getOrDefault(
+                shape.getId(),
+                functionNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
         return Symbol.builder()
                 .name(name)
                 .namespace(service.getId().getNamespace(), ".")
@@ -337,6 +341,15 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
         return result;
     }
 
+    private Map<ShapeId, String> buildServiceFunctionNames() {
+        List<Shape> shapes = new Walker(model).walkShapes(service).stream()
+            .filter(shape -> shape.isOperationShape() || shape.isResourceShape())
+            .sorted(Comparator.comparing(shape -> shape.getId().toString()))
+            .toList();
+        return indexShapeNames(shapes, shape ->
+            functionNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
+    }
+
     private static Map<ShapeId, String> indexShapeNames(
             List<Shape> shapes, Function<Shape, String> escapedName) {
         Map<ShapeId, String> result = new HashMap<>();
@@ -360,7 +373,10 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
             .toLowerCase();
     }
 
-    private static ReservedWords erlangReservedWords() {
+    /**
+     * Erlang reserved words for type, field, and function identifiers (language keywords).
+     */
+    private static ReservedWords erlangKeywordReservedWords() {
         return new ReservedWordsBuilder()
             .put("after", "after_")
             .put("begin", "begin_")
@@ -373,6 +389,18 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
             .put("receive", "receive_")
             .put("try", "try_")
             .put("when", "when_")
+            .build();
+    }
+
+    /**
+     * Names that collide with common attributes or BIF-style identifiers when used as
+     * exported function names; composed after keywords on the function escaper only.
+     */
+    private static ReservedWords erlangFunctionExportShadows() {
+        return new ReservedWordsBuilder()
+            .put("module", "module_")
+            .put("export", "export_")
+            .put("record", "record_")
             .build();
     }
 }
