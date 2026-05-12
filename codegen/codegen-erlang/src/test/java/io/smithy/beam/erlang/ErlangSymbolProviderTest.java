@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.codegen.core.Symbol;
+import software.amazon.smithy.codegen.core.SymbolDependency;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.*;
 
@@ -55,6 +56,7 @@ class ErlangSymbolProviderTest {
                     doubleField: TestDouble
                     timestampField: TestTimestamp
                     documentField: TestDocument
+                    myDocField: MyDoc
                     bigIntField: TestBigInteger
                     bigDecField: TestBigDecimal
                     enumField: TestStatus
@@ -78,6 +80,7 @@ class ErlangSymbolProviderTest {
                 double TestDouble
                 timestamp TestTimestamp
                 document TestDocument
+                document MyDoc
                 bigInteger TestBigInteger
                 bigDecimal TestBigDecimal
 
@@ -323,6 +326,38 @@ class ErlangSymbolProviderTest {
             Symbol sym = provider.toSymbol(model.expectShape(ShapeId.from("com.example#TestItem")));
             assertThat(sym.getName()).isEqualTo("test_item()");
             assertThat(sym.getDefinitionFile()).isEqualTo(DEF_FILE);
+        }
+    }
+
+    @Nested
+    class ClosureBuiltinRegression {
+
+        @Test
+        void smithyApiStringRemainsBinaryBuiltinWithEmptyDefinitionFile() {
+            StringShape preludeString =
+                    model.expectShape(ShapeId.from("smithy.api#String"), StringShape.class);
+            Symbol sym = provider.toSymbol(preludeString);
+            assertThat(sym.getName()).isEqualTo("binary()");
+            assertThat(sym.getDefinitionFile()).isEmpty();
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(true);
+        }
+
+        @Test
+        void customDocumentShapeUsesTermSurfaceAndDeclaresRuntimeDependencies() {
+            DocumentShape myDoc =
+                    model.expectShape(ShapeId.from("com.example#MyDoc"), DocumentShape.class);
+            Symbol sym = provider.toSymbol(myDoc);
+            assertThat(sym.getName()).isEqualTo("my_doc()");
+            assertThat(sym.getProperty("baseType", String.class)).contains("term()");
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
+            assertThat(sym.getDefinitionFile()).isEqualTo(DEF_FILE);
+            assertThat(sym.getDependencies())
+                    .anySatisfy(
+                            (SymbolDependency dep) -> {
+                                assertThat(dep.getDependencyType()).isEqualTo("hex");
+                                assertThat(dep.getPackageName()).isEqualTo("jsx");
+                                assertThat(dep.getVersion()).isEqualTo("3.1");
+                            });
         }
     }
 
