@@ -136,22 +136,22 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
     @Override
     public Symbol listShape(ListShape shape) {
-        return namedType(shape);
+        return namedAlias(shape);
     }
 
     @Override
     public Symbol mapShape(MapShape shape) {
-        return namedType(shape);
+        return namedAlias(shape);
     }
 
     @Override
     public Symbol unionShape(UnionShape shape) {
-        return namedType(shape);
+        return namedAlias(shape);
     }
 
     @Override
     public Symbol structureShape(StructureShape shape) {
-        return namedType(shape);
+        return namedModule(shape);
     }
 
     @Override
@@ -168,14 +168,14 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
     @Override
     public Symbol enumShape(EnumShape shape) {
-        return namedType(shape).toBuilder()
+        return namedModule(shape).toBuilder()
             .putProperty("enumAtoms", new ArrayList<>(enumAtomNames.get(shape.getId()).values()))
             .build();
     }
 
     @Override
     public Symbol intEnumShape(IntEnumShape shape) {
-        return namedType(shape).toBuilder()
+        return namedModule(shape).toBuilder()
             .putProperty("enumAtoms", new ArrayList<>(enumAtomNames.get(shape.getId()).values()))
             .build();
     }
@@ -246,18 +246,32 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
                         .name(name + "()")
                         .definitionFile(definitionFile)
                         .putProperty("builtIn", false)
+                        .putProperty("typeKind", "alias")
                         .putProperty("baseType", baseType);
         BeamSymbolRuntimeDeps.apply(shape, builder);
         return builder.build();
     }
 
-    private Symbol namedType(Shape shape) {
+    private Symbol namedAlias(Shape shape) {
         String name = toTypeName(shape);
         Symbol.Builder builder =
                 Symbol.builder()
                         .name(name + "()")
                         .definitionFile(definitionFile)
-                        .putProperty("builtIn", false);
+                        .putProperty("builtIn", false)
+                        .putProperty("typeKind", "alias");
+        BeamSymbolRuntimeDeps.apply(shape, builder);
+        return builder.build();
+    }
+
+    private Symbol namedModule(Shape shape) {
+        String name = toTypeName(shape);
+        Symbol.Builder builder =
+                Symbol.builder()
+                        .name(name + "()")
+                        .definitionFile(definitionFile)
+                        .putProperty("builtIn", false)
+                        .putProperty("typeKind", "module");
         BeamSymbolRuntimeDeps.apply(shape, builder);
         return builder.build();
     }
