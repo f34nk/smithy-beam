@@ -82,8 +82,8 @@ final class ErlangServerDirectedCodegen
         ErlangContext ctx = directive.context();
         ServiceShape service = directive.shape();
         String ns = service.getId().getNamespace();
-        String module = ctx.settings().resolveModule(ns);
-        String serverFile = module + "_server.erl";
+        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns);
+        String serverFile = layout.serverModuleFile();
 
         ctx.writerDelegator().useFileWriter(serverFile, writer -> {
             writer.write("%% Generated Erlang server stub for $L (layout phase).", service.getId());
@@ -91,7 +91,7 @@ final class ErlangServerDirectedCodegen
                     "%% TopDown operation count: $L",
                     BeamServiceIndex.of(ctx.model()).containedOperations(service).size());
             writer.write("%% TODO: behaviour, router, dispatch, and stubs.");
-            writer.write("-module($L).", module + "_server");
+            writer.write("-module($L).", layout.serverModuleName());
             writer.write("-export([]).");
         });
     }
