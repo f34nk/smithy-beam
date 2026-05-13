@@ -45,6 +45,11 @@ final class ErlangClientDirectedCodegen
     @Override
     public ErlangContext createContext(
             CreateContextDirective<BeamSettings, ErlangIntegration> directive) {
+        String ns = directive.service().getId().getNamespace();
+        BeamSettings settings = directive.settings();
+        BeamErlangLayout layout = new BeamErlangLayout(settings, ns);
+        String definitionFile = layout.clientModuleFile();
+        String moduleName = layout.clientModuleName();
         return new ErlangContext(
                 directive.model(),
                 directive.settings(),
@@ -55,7 +60,9 @@ final class ErlangClientDirectedCodegen
                         directive.symbolProvider(),
                         ErlangWriter.factory()),
                 directive.integrations(),
-                directive.service());
+                directive.service(),
+                moduleName,
+                definitionFile);
     }
 
     @Override
@@ -81,17 +88,14 @@ final class ErlangClientDirectedCodegen
             GenerateServiceDirective<ErlangContext, BeamSettings> directive) {
         ErlangContext ctx = directive.context();
         ServiceShape service = directive.shape();
-        String ns = service.getId().getNamespace();
-        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns);
-        String clientFile = layout.clientModuleFile();
 
-        ctx.writerDelegator().useFileWriter(clientFile, writer -> {
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.write("%% Generated Erlang client stub for $L.", service.getId());
             writer.write(
                     "%% TopDown operation count: $L",
                     BeamServiceIndex.of(ctx.model()).containedOperations(service).size());
             writer.write("%% TODO: operation functions, encoding, and configuration.");
-            writer.write("-module($L).", layout.clientModuleName());
+            writer.write("-module($L).", ctx.moduleName());
             writer.write("-export([]).");
         });
     }

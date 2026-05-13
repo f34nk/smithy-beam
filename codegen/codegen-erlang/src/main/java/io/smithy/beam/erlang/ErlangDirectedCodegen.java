@@ -64,6 +64,11 @@ final class ErlangDirectedCodegen
     @Override
     public ErlangContext createContext(
             CreateContextDirective<BeamSettings, ErlangIntegration> directive) {
+        String ns = directive.service().getId().getNamespace();
+        BeamSettings settings = directive.settings();
+        BeamErlangLayout layout = new BeamErlangLayout(settings, ns);
+        String definitionFile = layout.typesHeaderFile();
+        String moduleName = layout.modulePrefix();
         return new ErlangContext(
                 directive.model(),
                 directive.settings(),
@@ -74,7 +79,9 @@ final class ErlangDirectedCodegen
                         directive.symbolProvider(),
                         ErlangWriter.factory()),
                 directive.integrations(),
-                directive.service());
+                directive.service(),
+                moduleName,
+                definitionFile);
     }
 
     // ── Customization hooks ──────────────────────────────────────────────────
@@ -89,14 +96,10 @@ final class ErlangDirectedCodegen
             CustomizeDirective<ErlangContext, BeamSettings> directive) {
         ErlangContext ctx = directive.context();
         Model model = directive.model();
-        String ns = directive.service().getId().getNamespace();
-        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns);
-        String definitionFile = layout.typesHeaderFile();
-        String module = layout.modulePrefix();
         Set<Shape> closure = new Walker(model).walkShapes(directive.service());
 
-        ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
-            writer.write("%% Record and type definitions for the $L model.", module);
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.write("%% Record and type definitions for the $L model.", ctx.moduleName());
             writer.write("%% ");
 
             // Write named scalar type aliases in declaration order:

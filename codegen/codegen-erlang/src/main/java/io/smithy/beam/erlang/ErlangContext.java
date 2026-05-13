@@ -13,9 +13,12 @@ import java.util.List;
 /**
  * Provides all context needed during Erlang code generation.
  *
- * Created once by ErlangDirectedCodegen.createContext() and passed to every
- * generate* method via the directive. Add new getters here when additional
- * shared state is required by the generator.
+ * Created once by each DirectedCodegen {@code createContext()} and passed to every
+ * generate* method via the directive. The {@code moduleName} is the primary module
+ * or namespace label for the current pass (resolved module prefix for types headers,
+ * or the {@code -module} name for client and server modules). The {@code definitionFile}
+ * is the relative path of that pass primary output file, matching the symbol provider
+ * definition file so writers relativize consistently.
  */
 public record ErlangContext(
         Model model,
@@ -24,6 +27,8 @@ public record ErlangContext(
         FileManifest fileManifest,
         WriterDelegator<ErlangWriter> writerDelegator,
         List<ErlangIntegration> integrations,
-        ServiceShape service
-) implements CodegenContext<BeamSettings, ErlangWriter, ErlangIntegration> {
+        ServiceShape service,
+        String moduleName,
+        String definitionFile)
+        implements CodegenContext<BeamSettings, ErlangWriter, ErlangIntegration> {
 }
