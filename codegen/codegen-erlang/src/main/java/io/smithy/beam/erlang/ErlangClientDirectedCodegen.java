@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamServiceIndex;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
@@ -86,6 +87,9 @@ final class ErlangClientDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(clientFile, writer -> {
             writer.write("%% Generated Erlang client stub for $L.", service.getId());
+            writer.write(
+                    "%% TopDown operation count: $L",
+                    BeamServiceIndex.of(ctx.model()).containedOperations(service).size());
             writer.write("%% TODO: operation functions, encoding, and configuration.");
             writer.write("-module($L).", module + "_client");
             writer.write("-export([]).");
