@@ -69,9 +69,10 @@ class ErlangServerPluginTest {
     private static void assertServerStubHeaderOrder(String serverSource) {
         assertThat(serverSource).contains("-module(basic_server).");
         assertThat(serverSource).contains("-include(\"basic_types.hrl\").");
+        assertThat(serverSource).contains("-export([handle_get_type_closure/3]).");
         int moduleIndex = serverSource.indexOf("-module(basic_server).");
         int includeIndex = serverSource.indexOf("-include(\"basic_types.hrl\").");
-        int exportIndex = serverSource.indexOf("-export([]).");
+        int exportIndex = serverSource.indexOf("-export([handle_get_type_closure/3]).");
         assertThat(moduleIndex).isLessThan(includeIndex);
         assertThat(includeIndex).isLessThan(exportIndex);
         assertThat(serverSource.stripLeading()).doesNotStartWith("-include");
