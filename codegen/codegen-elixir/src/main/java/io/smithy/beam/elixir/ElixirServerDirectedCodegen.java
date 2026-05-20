@@ -94,15 +94,33 @@ final class ElixirServerDirectedCodegen
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
         String serverFile = layout.serverModuleFile();
 
+        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+
         ctx.writerDelegator().useFileWriter(serverFile, writer -> {
-            writer.write("# Generated Elixir server stub for $L (layout phase).", service.getId());
+            writer.pushModuleHeaderSection();
+            writer.write("defmodule $L do", ctx.moduleName());
+            writer.indent();
+            writer.popState();
+
+            writer.pushGeneratedDocumentationSection();
+            writer.write(
+                    "@moduledoc \"Generated Elixir server for $L (layout phase).\"",
+                    service.getId());
             writer.write(
                     "# TopDown operation count: $L",
                     BeamServiceIndex.of(ctx.model()).containedOperations(service).size());
+            writer.popState();
+
+            writer.pushDependenciesSection();
+            writer.write("alias $L", typesModuleName);
+            writer.popState();
+
+            writer.pushOperationBodySection();
             writer.write("# TODO: behaviour, router, dispatch, and stubs.");
-            writer.openBlock("defmodule $L do", ctx.moduleName());
-            writer.write("@moduledoc false");
-            writer.closeBlock("end");
+            writer.popState();
+
+            writer.dedent();
+            writer.write("end");
         });
     }
 

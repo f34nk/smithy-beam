@@ -94,15 +94,33 @@ final class ElixirClientDirectedCodegen
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
         String clientFile = layout.clientModuleFile();
 
+        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+
         ctx.writerDelegator().useFileWriter(clientFile, writer -> {
-            writer.write("# Generated Elixir client stub for $L.", service.getId());
+            writer.pushModuleHeaderSection();
+            writer.write("defmodule $L do", ctx.moduleName());
+            writer.indent();
+            writer.popState();
+
+            writer.pushGeneratedDocumentationSection();
+            writer.write(
+                    "@moduledoc \"Generated Elixir client for $L (layout phase).\"",
+                    service.getId());
             writer.write(
                     "# TopDown operation count: $L",
                     BeamServiceIndex.of(ctx.model()).containedOperations(service).size());
-            writer.write("# TODO: operations, encoding, and configuration.");
-            writer.openBlock("defmodule $L do", ctx.moduleName());
-            writer.write("@moduledoc false");
-            writer.closeBlock("end");
+            writer.popState();
+
+            writer.pushDependenciesSection();
+            writer.write("alias $L", typesModuleName);
+            writer.popState();
+
+            writer.pushOperationBodySection();
+            writer.write("# TODO: operation functions, encoding, and configuration.");
+            writer.popState();
+
+            writer.dedent();
+            writer.write("end");
         });
     }
 
