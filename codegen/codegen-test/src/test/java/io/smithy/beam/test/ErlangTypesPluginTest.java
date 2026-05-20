@@ -272,6 +272,37 @@ class ErlangTypesPluginTest {
                 .unwrap();
     }
 
+    private static Model loadNullableMembersModel() {
+        URL resource = ErlangTypesPluginTest.class.getResource("/model/nullable_members.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    @Test
+    void mixedRequiredAndOptionalMembersFollowNullableIndex() {
+        Model model = loadNullableMembersModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.nullable_members#NullableMembersService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("nullable_members_types.hrl");
+
+        assertThat(content)
+                .contains("-type nm_list() :: [nm_string()].")
+                .contains("label :: nm_string(),")
+                .contains("count :: nm_integer() | undefined")
+                .contains("tags :: nm_list() | undefined");
+        assertThat(content.substring(content.indexOf("-record(mixed_nullable")))
+                .doesNotContain("label :: nm_string() | undefined");
+    }
+
     @Test
     void structureRecordFieldsFollowSmithyMemberDeclarationOrder() {
         Model model = loadMemberOrderModel();
