@@ -292,6 +292,58 @@ class ErlangTypesPluginTest {
                 .unwrap();
     }
 
+    private static Model loadRecursiveTreeModel() {
+        URL resource = ErlangTypesPluginTest.class.getResource("/model/recursive_tree.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        int count = 0;
+        int index = 0;
+        while ((index = haystack.indexOf(needle, index)) != -1) {
+            count++;
+            index += needle.length();
+        }
+        return count;
+    }
+
+    @Test
+    void recursiveAggregatesReferenceNamedTypeAliases() {
+        Model model = loadRecursiveTreeModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.recursive_tree#RecursiveTreeService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("recursive_tree_types.hrl");
+
+        assertThat(content)
+                .contains("-type rt_string() :: binary().")
+                .contains("-type rt_node_list() :: [rt_node()].")
+                .contains("-type rt_node_map() :: #{rt_string() => rt_node()}.")
+                .contains("-record(rt_node, {")
+                .contains("label :: rt_string(),")
+                .contains("children :: rt_node_list()")
+                .contains("by_key :: rt_node_map()")
+                .contains("-type rt_node() :: #rt_node{}.");
+
+        assertThat(countOccurrences(content, "-type rt_string() ::")).isEqualTo(1);
+        assertThat(countOccurrences(content, "-type rt_node_list() ::")).isEqualTo(1);
+        assertThat(countOccurrences(content, "-type rt_node_map() ::")).isEqualTo(1);
+        assertThat(countOccurrences(content, "-type rt_node() ::")).isEqualTo(1);
+        assertThat(countOccurrences(content, "-record(rt_node, {")).isEqualTo(1);
+
+        assertThat(content).doesNotContain("[#rt_node");
+        assertThat(content).doesNotContain("[#{");
+    }
+
     @Test
     void sparseListAndMapShapesWidenElementAndValueTypes() {
         Model model = loadSparseCollectionsModel();
