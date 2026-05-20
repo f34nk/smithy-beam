@@ -13,12 +13,14 @@ import software.amazon.smithy.codegen.core.directed.DirectedCodegen;
 import software.amazon.smithy.codegen.core.directed.GenerateEnumDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateErrorDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateIntEnumDirective;
+import software.amazon.smithy.codegen.core.directed.GenerateOperationDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateResourceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.StructureShape;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -130,7 +132,38 @@ final class ErlangServerDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
-            writer.write("%% TODO: behaviour, router, dispatch, and stubs.");
+            writer.write(
+                    "%% Dispatch and routing modules should map wire metadata to $L below.",
+                    ctx.moduleName());
+            writer.write("%% No Smithy shapes are referenced at runtime in this baseline.");
+            writer.write("");
+            writer.popState();
+        });
+    }
+
+    @Override
+    public void generateOperation(
+            GenerateOperationDirective<ErlangContext, BeamSettings> directive) {
+        ErlangContext ctx = directive.context();
+        OperationShape op = directive.shape();
+        SymbolProvider sp = directive.symbolProvider();
+        Symbol opSym = sp.toSymbol(op);
+
+        StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
+        StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
+        Symbol inSym = sp.toSymbol(input);
+        Symbol outSym = sp.toSymbol(output);
+        String handler = "handle_" + opSym.getName();
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.pushOperationBodySection();
+            writer.write(
+                    "-spec $L(term(), $L, term()) -> {'ok', $L} | {'error', term()}.",
+                    handler,
+                    inSym.getName(),
+                    outSym.getName());
+            writer.write("$L(_Ctx, _Input, _Meta) -> {error, not_implemented}.", handler);
+            writer.write("");
             writer.popState();
         });
     }
