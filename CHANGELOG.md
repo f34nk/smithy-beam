@@ -3,6 +3,35 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-05-20
+
+### Added
+- Writer section support for Erlang and Elixir code generation so integrations can intercept stable output regions.
+- Integration settings are now forwarded through codegen directors for Erlang and Elixir, with tests proving opt-in integrations can modify generated output.
+- Erlang type generation now covers modeled error records, operation input and output aliases, smithy.api Unit, streaming blobs, recursive aggregates, nullable aggregate members, sparse collections, and generated type documentation hooks.
+- Elixir type generation now follows the same strict shape coverage expectations as Erlang.
+
+### Changed
+- Erlang and Elixir client and server stubs now render through shared module header, dependency, and operation body sections.
+- Erlang structure member output follows modeled declaration order and keeps unknown union variants ordered predictably.
+- Constraint traits are represented without narrowing the generated Dialyzer type surface.
+
+### Fixed
+- Erlang client and server stubs now emit include lines in the correct module header location.
+- Generated documentation interceptors now run for Erlang type headers.
+
+### Docs
+- Documented integration ordering and opt-in behavior for Erlang and Elixir integrations.
+
+## 2026-05-13
+
+### Added
+- Erlang client and server generation now use layout-driven paths and include operation count comments in their stubs.
+- Erlang context and type rendering now carry the module and definition metadata needed by later generation passes.
+
+### Changed
+- Elixir client and server generation avoid repeated protocol resolution after the types pass has already validated configured protocols.
+
 ## 2026-05-12
 
 ### Added
