@@ -3,7 +3,6 @@ package io.smithy.beam.erlang;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSettings;
-import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.codegen.core.directed.*;
@@ -15,6 +14,8 @@ import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.*;
 
 import software.amazon.smithy.model.knowledge.NullableIndex;
+import software.amazon.smithy.model.traits.HttpErrorTrait;
+import software.amazon.smithy.model.traits.RetryableTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.StructureShape;
@@ -37,9 +38,7 @@ import java.util.stream.StreamSupport;
  *   6. flushWriters
  *
  * generateService and generateResource are stubs reserved for client/server
- * generation in a future iteration. generateError fails fast because error
- * structures require error/exception semantics that are outside the initial
- * type-only scope.
+ * generation in a future iteration.
  */
 final class ErlangDirectedCodegen
         implements DirectedCodegen<ErlangContext, BeamSettings, ErlangIntegration> {
@@ -392,15 +391,45 @@ final class ErlangDirectedCodegen
     }
 
     /**
-     * Error structures require error/exception semantics and retryable or
-     * throttling metadata. The initial generator interprets types only, so it
-     * rejects reachable error shapes instead of silently omitting them.
+     * Emits {@code -record} and {@code -type} for error structures plus comments
+     * for {@code retryable} and {@code httpError} trait metadata.
      */
     @Override
     public void generateError(
             GenerateErrorDirective<ErlangContext, BeamSettings> directive) {
-        throw new CodegenException("Erlang error type generation is not implemented for "
-                + directive.shape().getId()
-                + ". The initial smithy-beam generator only emits type definitions.");
+        StructureShape shape = directive.shape();
+        ErlangContext ctx = directive.context();
+        SymbolProvider sp = directive.symbolProvider();
+        NullableIndex nullableIndex = NullableIndex.of(directive.model());
+        Symbol symbol = sp.toSymbol(shape);
+        String recordName = symbol.getName().replace("()", "");
+        String definitionFile = symbol.getDefinitionFile();
+
+        boolean retryable = shape.hasTrait(RetryableTrait.ID);
+        Integer httpCode =
+                shape.getTrait(HttpErrorTrait.class).map(HttpErrorTrait::getCode).orElse(null);
+
+        ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
+            writer.write(
+                    "%% Error shape $L: retryable=$L httpCode=$L",
+                    shape.getId(),
+                    retryable,
+                    httpCode == null ? "undefined" : httpCode.toString());
+            writer.openBlock("-record($L, {", recordName);
+            List<MemberShape> members =
+                    StreamSupport.stream(shape.members().spliterator(), false).toList();
+            for (int i = 0; i < members.size(); i++) {
+                MemberShape member = members.get(i);
+                Symbol memberSymbol = sp.toSymbol(member);
+                String fieldName = memberSymbol.getProperty("fieldName", String.class).orElseThrow();
+                String memberType = renderErlangType(memberSymbol);
+                boolean nullable = nullableIndex.isMemberNullable(member);
+                String typeSpec = nullable ? memberType + " | undefined" : memberType;
+                String comma = (i < members.size() - 1) ? "," : "";
+                writer.write("$L :: $L$L", fieldName, typeSpec, comma);
+            }
+            writer.closeBlock("}).");
+            writer.write("-type $L :: #$L{}.", symbol.getName(), recordName);
+        });
     }
 }

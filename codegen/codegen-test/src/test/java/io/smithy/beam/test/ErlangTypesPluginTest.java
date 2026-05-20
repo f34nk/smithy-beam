@@ -120,28 +120,35 @@ class ErlangTypesPluginTest {
                 .contains("my_type_2");
     }
 
+    private static Model loadErrorShapeModel() {
+        URL resource = ErlangTypesPluginTest.class.getResource("/model/error_shape.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
     @Test
-    void reachableErrorShapeFailsInErlangPlugin() {
-            URL resource = ErlangTypesPluginTest.class.getResource("/model/error_shapes.smithy");
-            assertThat(resource).isNotNull();
-            Model model = Model.assembler()
-                            .addImport(resource)
-                            .discoverModels()
-                            .assemble()
-                            .unwrap();
-            ObjectNode settings = ObjectNode.builder()
-                            .withMember("service", "smithy.beam.demo.errors#ErrorDemoService")
-                            .withMember("edition", "2026")
-                            .build();
-            PluginContext context = PluginContext.builder()
-                            .model(model)
-                            .fileManifest(new MockManifest())
-                            .settings(settings)
-                            .build();
-            assertThatThrownBy(() -> new ErlangTypesPlugin().execute(context))
-                            .isInstanceOf(CodegenException.class)
-                            .hasMessageContaining("smithy.beam.demo.errors#NotImplementedYet")
-                            .hasMessageContaining("only emits type definitions");
+    void errorShapeEmitsRecordWithModeledMetadata() {
+        Model model = loadErrorShapeModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.error_shape#ErrorShapeService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("error_shape_types.hrl");
+
+        assertThat(content)
+                .contains(
+                        "%% Error shape smithy.beam.demo.error_shape#ServiceUnavailable:"
+                                + " retryable=true httpCode=503")
+                .contains("-record(service_unavailable, {")
+                .contains("message :: binary() | undefined")
+                .contains("-type service_unavailable() :: #service_unavailable{}.");
     }
 
     @Test
