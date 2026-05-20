@@ -16,7 +16,7 @@ public final class ErlangWriterSections {
     /** -module, -export, -behaviour, and related header lines. */
     public static final class ModuleHeader implements CodeSection {}
 
-    /** -include / -include_lib and similar dependency preamble lines. */
+    /** -include / -include_lib lines emitted after -module. */
     public static final class Dependencies implements CodeSection {}
 
     /** Protocol framing hooks (serialization, metadata). */

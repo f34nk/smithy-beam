@@ -6,7 +6,8 @@ import software.amazon.smithy.utils.CodeSection;
 /**
  * Code writer for Erlang generated sources.
  *
- * When {@link ErlangImports} carries include lines, toString prepends them ahead of the body.
+ * Include lines are written in the {@link ErlangWriterSections.Dependencies} section
+ * after {@link ErlangWriterSections.ModuleHeader}, not prepended to the file.
  * Use ErlangWriter.factory() when constructing a WriterDelegator.
  */
 public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImports> {
@@ -15,16 +16,6 @@ public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImports
         super(new ErlangImports());
         trimBlankLines();
         trimTrailingSpaces();
-    }
-
-    @Override
-    public String toString() {
-        String preamble = getImportContainer().toString();
-        String body = super.toString();
-        if (preamble.isEmpty()) {
-            return body;
-        }
-        return preamble + body;
     }
 
     public static Factory<ErlangWriter> factory() {

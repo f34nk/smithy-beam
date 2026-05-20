@@ -49,7 +49,7 @@ class ErlangServerPluginTest {
         new ErlangServerPlugin().execute(buildContext(model, manifest));
 
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("-type basic_string()");
-        assertThat(manifest.expectFileString(SERVER_FILE)).contains("-module(basic_server).");
+        assertServerStubHeaderOrder(manifest.expectFileString(SERVER_FILE));
     }
 
     @Test
@@ -63,7 +63,18 @@ class ErlangServerPluginTest {
                 .build();
         new ErlangServerPlugin().execute(context);
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("-type basic_string()");
-        assertThat(manifest.expectFileString(SERVER_FILE)).contains("-module(basic_server).");
+        assertServerStubHeaderOrder(manifest.expectFileString(SERVER_FILE));
+    }
+
+    private static void assertServerStubHeaderOrder(String serverSource) {
+        assertThat(serverSource).contains("-module(basic_server).");
+        assertThat(serverSource).contains("-include(\"basic_types.hrl\").");
+        int moduleIndex = serverSource.indexOf("-module(basic_server).");
+        int includeIndex = serverSource.indexOf("-include(\"basic_types.hrl\").");
+        int exportIndex = serverSource.indexOf("-export([]).");
+        assertThat(moduleIndex).isLessThan(includeIndex);
+        assertThat(includeIndex).isLessThan(exportIndex);
+        assertThat(serverSource.stripLeading()).doesNotStartWith("-include");
     }
 
     @Test

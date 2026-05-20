@@ -49,7 +49,7 @@ class ErlangClientPluginTest {
         new ErlangClientPlugin().execute(buildContext(model, manifest));
 
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("-type basic_string()");
-        assertThat(manifest.expectFileString(CLIENT_FILE)).contains("-module(basic_client).");
+        assertClientStubHeaderOrder(manifest.expectFileString(CLIENT_FILE));
     }
 
     @Test
@@ -63,7 +63,18 @@ class ErlangClientPluginTest {
                 .build();
         new ErlangClientPlugin().execute(context);
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("-type basic_string()");
-        assertThat(manifest.expectFileString(CLIENT_FILE)).contains("-module(basic_client).");
+        assertClientStubHeaderOrder(manifest.expectFileString(CLIENT_FILE));
+    }
+
+    private static void assertClientStubHeaderOrder(String clientSource) {
+        assertThat(clientSource).contains("-module(basic_client).");
+        assertThat(clientSource).contains("-include(\"basic_types.hrl\").");
+        int moduleIndex = clientSource.indexOf("-module(basic_client).");
+        int includeIndex = clientSource.indexOf("-include(\"basic_types.hrl\").");
+        int exportIndex = clientSource.indexOf("-export([]).");
+        assertThat(moduleIndex).isLessThan(includeIndex);
+        assertThat(includeIndex).isLessThan(exportIndex);
+        assertThat(clientSource.stripLeading()).doesNotStartWith("-include");
     }
 
     @Test

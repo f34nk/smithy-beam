@@ -100,13 +100,15 @@ final class ErlangClientDirectedCodegen
                     BeamServiceIndex.of(ctx.model()).containedOperations(service).size());
             writer.popState();
 
+            writer.pushModuleHeaderSection();
+            writer.write("-module($L).", ctx.moduleName());
+            writer.popState();
+
             writer.pushDependenciesSection();
-            ((ErlangImports) writer.getImportContainer())
-                    .addIncludeRelative(layout.typesHeaderFile());
+            writer.write(ErlangImports.relativeIncludeLine(layout.typesHeaderFile()));
             writer.popState();
 
             writer.pushModuleHeaderSection();
-            writer.write("-module($L).", ctx.moduleName());
             writer.write("-export([]).");
             writer.popState();
 

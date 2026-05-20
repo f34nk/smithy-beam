@@ -8,20 +8,28 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Renders Erlang header fragments before the main writer body.
- * Types-only .hrl output keeps this empty. Generated .erl modules add
- * -include or -include_lib lines here.
+ * Tracks Erlang header fragments for generated modules.
+ * Types-only .hrl output keeps this empty. Client and server modules write
+ * -include lines in the Dependencies writer section after -module.
  */
 final class ErlangImports implements ImportContainer {
 
     private final Set<String> includeLines = new LinkedHashSet<>();
 
+    static String relativeIncludeLine(String relativePath) {
+        return "-include(\"" + relativePath + "\").";
+    }
+
+    static String includeLibLine(String application, String includePath) {
+        return "-include_lib(\"" + application + "\", \"" + includePath + "\").";
+    }
+
     void addIncludeRelative(String relativePath) {
-        includeLines.add("-include(\"" + relativePath + "\").");
+        includeLines.add(relativeIncludeLine(relativePath));
     }
 
     void addIncludeLib(String application, String includePath) {
-        includeLines.add("-include_lib(\"" + application + "\", \"" + includePath + "\").");
+        includeLines.add(includeLibLine(application, includePath));
     }
 
     @Override
