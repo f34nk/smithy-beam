@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import software.amazon.smithy.codegen.core.SymbolWriter;
+import software.amazon.smithy.utils.CodeSection;
 
 /**
  * Code writer for Erlang .hrl files.
@@ -24,5 +25,29 @@ public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImports
 
     public static Factory<ErlangWriter> factory() {
         return (filename, namespace) -> new ErlangWriter(filename);
+    }
+
+    public void pushGeneratedDocumentationSection() {
+        pushState((CodeSection) new ErlangWriterSections.GeneratedDocumentation());
+    }
+
+    public void pushModuleHeaderSection() {
+        pushState((CodeSection) new ErlangWriterSections.ModuleHeader());
+    }
+
+    public void pushDependenciesSection() {
+        pushState((CodeSection) new ErlangWriterSections.Dependencies());
+    }
+
+    public void pushProtocolHookSection() {
+        pushState((CodeSection) new ErlangWriterSections.ProtocolHook());
+    }
+
+    public void pushTransportHookSection() {
+        pushState((CodeSection) new ErlangWriterSections.TransportHook());
+    }
+
+    public void pushOperationBodySection() {
+        pushState((CodeSection) new ErlangWriterSections.OperationBody());
     }
 }
