@@ -89,14 +89,30 @@ final class ErlangServerDirectedCodegen
         ErlangContext ctx = directive.context();
         ServiceShape service = directive.shape();
 
+        String ns = service.getId().getNamespace();
+        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns);
+
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
-            writer.write("%% Generated Erlang server stub for $L (layout phase).", service.getId());
+            writer.pushGeneratedDocumentationSection();
+            writer.write("%% Generated Erlang server stub for $L.", service.getId());
             writer.write(
                     "%% TopDown operation count: $L",
                     BeamServiceIndex.of(ctx.model()).containedOperations(service).size());
-            writer.write("%% TODO: behaviour, router, dispatch, and stubs.");
+            writer.popState();
+
+            writer.pushDependenciesSection();
+            ((ErlangImports) writer.getImportContainer())
+                    .addIncludeRelative(layout.typesHeaderFile());
+            writer.popState();
+
+            writer.pushModuleHeaderSection();
             writer.write("-module($L).", ctx.moduleName());
             writer.write("-export([]).");
+            writer.popState();
+
+            writer.pushOperationBodySection();
+            writer.write("%% TODO: behaviour, router, dispatch, and stubs.");
+            writer.popState();
         });
     }
 
