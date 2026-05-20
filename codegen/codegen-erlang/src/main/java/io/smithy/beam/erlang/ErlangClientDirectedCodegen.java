@@ -2,8 +2,8 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.core.BeamServiceIndex;
 import io.smithy.beam.core.BeamSettings;
+import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.codegen.core.directed.CreateContextDirective;
@@ -17,7 +17,11 @@ import software.amazon.smithy.codegen.core.directed.GenerateResourceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
+import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Client-specific DirectedCodegen. Types are emitted by {@link ErlangTypeGeneration}
@@ -68,7 +72,43 @@ final class ErlangClientDirectedCodegen
     @Override
     public void customizeBeforeShapeGeneration(
             CustomizeDirective<ErlangContext, BeamSettings> directive) {
-        // Intentionally empty: ErlangTypeGeneration already wrote shared headers and aliases.
+        ErlangContext ctx = directive.context();
+        ServiceShape service = ctx.service();
+        String ns = service.getId().getNamespace();
+        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns);
+
+        List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
+        List<String> exports = new ArrayList<>();
+        for (OperationShape op : operations) {
+            Symbol sym = directive.symbolProvider().toSymbol(op);
+            exports.add(sym.getName() + "/2");
+        }
+        String exportList = String.join(", ", exports);
+
+        ctx.writerDelegator().useFileWriter(layout.clientModuleFile(), writer -> {
+            writer.pushGeneratedDocumentationSection();
+            writer.write("%% Generated Erlang client for $L.", service.getId());
+            writer.write("%% Operation stubs use arity 2: (Config, Input).");
+            writer.popState();
+
+            writer.pushModuleHeaderSection();
+            writer.write("-module($L).", layout.clientModuleName());
+            writer.popState();
+
+            writer.pushDependenciesSection();
+            ((ErlangImports) writer.getImportContainer()).addIncludeRelative(layout.typesHeaderFile());
+            writer.write(ErlangImports.relativeIncludeLine(layout.typesHeaderFile()));
+            writer.popState();
+
+            writer.pushModuleHeaderSection();
+            if (exportList.isEmpty()) {
+                writer.write("-export([]).");
+            } else {
+                writer.write("-export([$L]).", exportList);
+            }
+            writer.write("");
+            writer.popState();
+        });
     }
 
     @Override
@@ -86,36 +126,7 @@ final class ErlangClientDirectedCodegen
     @Override
     public void generateService(
             GenerateServiceDirective<ErlangContext, BeamSettings> directive) {
-        ErlangContext ctx = directive.context();
-        ServiceShape service = directive.shape();
-
-        String ns = service.getId().getNamespace();
-        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns);
-
-        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
-            writer.pushGeneratedDocumentationSection();
-            writer.write("%% Generated Erlang client stub for $L.", service.getId());
-            writer.write(
-                    "%% TopDown operation count: $L",
-                    BeamServiceIndex.of(ctx.model()).containedOperations(service).size());
-            writer.popState();
-
-            writer.pushModuleHeaderSection();
-            writer.write("-module($L).", ctx.moduleName());
-            writer.popState();
-
-            writer.pushDependenciesSection();
-            writer.write(ErlangImports.relativeIncludeLine(layout.typesHeaderFile()));
-            writer.popState();
-
-            writer.pushModuleHeaderSection();
-            writer.write("-export([]).");
-            writer.popState();
-
-            writer.pushOperationBodySection();
-            writer.write("%% TODO: operation functions, encoding, and configuration.");
-            writer.popState();
-        });
+        // Module header and exports are written in customizeBeforeShapeGeneration.
     }
 
     @Override
