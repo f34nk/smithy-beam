@@ -15,6 +15,7 @@ import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.*;
 
 import software.amazon.smithy.model.knowledge.NullableIndex;
+import software.amazon.smithy.model.traits.SparseTrait;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.UnionShape;
@@ -170,7 +171,11 @@ final class ErlangDirectedCodegen
                 .forEach(s -> {
                     Symbol sym = symbolProvider.toSymbol(s);
                     Symbol memberSym = symbolProvider.toSymbol(s.getMember());
-                    writer.write("-type $L :: [$L].", sym.getName(), renderErlangType(memberSym));
+                    String elementType = renderErlangType(memberSym);
+                    if (s.hasTrait(SparseTrait.ID)) {
+                        elementType = elementType + " | undefined";
+                    }
+                    writer.write("-type $L :: [$L].", sym.getName(), elementType);
                 });
     }
 
@@ -186,8 +191,12 @@ final class ErlangDirectedCodegen
                     Symbol sym = symbolProvider.toSymbol(s);
                     Symbol keySym = symbolProvider.toSymbol(s.getKey());
                     Symbol valueSym = symbolProvider.toSymbol(s.getValue());
+                    String valueType = renderErlangType(valueSym);
+                    if (s.hasTrait(SparseTrait.ID)) {
+                        valueType = valueType + " | undefined";
+                    }
                     writer.write("-type $L :: #{$L => $L}.",
-                            sym.getName(), renderErlangType(keySym), renderErlangType(valueSym));
+                            sym.getName(), renderErlangType(keySym), valueType);
                 });
     }
 

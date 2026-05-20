@@ -282,6 +282,33 @@ class ErlangTypesPluginTest {
                 .unwrap();
     }
 
+    private static Model loadSparseCollectionsModel() {
+        URL resource = ErlangTypesPluginTest.class.getResource("/model/sparse_collections.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    @Test
+    void sparseListAndMapShapesWidenElementAndValueTypes() {
+        Model model = loadSparseCollectionsModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.sparse_collections#SparseCollectionsService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("sparse_collections_types.hrl");
+
+        assertThat(content)
+                .contains("-type sc_sparse_list() :: [sc_string() | undefined].")
+                .contains("-type sc_sparse_map() :: #{sc_string() => sc_integer() | undefined}.");
+    }
+
     @Test
     void mixedRequiredAndOptionalMembersFollowNullableIndex() {
         Model model = loadNullableMembersModel();
