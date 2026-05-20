@@ -371,21 +371,25 @@ final class ErlangDirectedCodegen
         String definitionFile = symbol.getDefinitionFile();
 
         ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
-            writer.openBlock("-record($L, {", recordName);
             List<MemberShape> members =
                     StreamSupport.stream(shape.members().spliterator(), false).toList();
-            for (int i = 0; i < members.size(); i++) {
-                MemberShape member = members.get(i);
-                Symbol memberSymbol = sp.toSymbol(member);
-                String fieldName = memberSymbol.getProperty("fieldName", String.class).orElseThrow();
-                String memberType = renderErlangType(memberSymbol);
-                boolean nullable = nullableIndex.isMemberNullable(member);
-                String typeSpec = nullable ? memberType + " | undefined" : memberType;
-                // Align field names with padding for readability (match baseline style)
-                String comma = (i < members.size() - 1) ? "," : "";
-                writer.write("$L :: $L$L", fieldName, typeSpec, comma);
+            if (members.isEmpty()) {
+                writer.write("-record($L, {}).", recordName);
+            } else {
+                writer.openBlock("-record($L, {", recordName);
+                for (int i = 0; i < members.size(); i++) {
+                    MemberShape member = members.get(i);
+                    Symbol memberSymbol = sp.toSymbol(member);
+                    String fieldName = memberSymbol.getProperty("fieldName", String.class).orElseThrow();
+                    String memberType = renderErlangType(memberSymbol);
+                    boolean nullable = nullableIndex.isMemberNullable(member);
+                    String typeSpec = nullable ? memberType + " | undefined" : memberType;
+                    // Align field names with padding for readability (match baseline style)
+                    String comma = (i < members.size() - 1) ? "," : "";
+                    writer.write("$L :: $L$L", fieldName, typeSpec, comma);
+                }
+                writer.closeBlock("}).");
             }
-            writer.closeBlock("}).");
             writer.write("-type $L :: #$L{}.", symbol.getName(), recordName);
         });
     }

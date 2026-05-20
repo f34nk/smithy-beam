@@ -309,6 +309,16 @@ class ErlangTypesPluginTest {
                 .unwrap();
     }
 
+    private static Model loadDedicatedOperationIoModel() {
+        URL resource = ErlangTypesPluginTest.class.getResource("/model/dedicated_operation_io.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
     private static int countOccurrences(String haystack, String needle) {
         int count = 0;
         int index = 0;
@@ -387,6 +397,29 @@ class ErlangTypesPluginTest {
                 .contains("tags :: nm_list() | undefined");
         assertThat(content.substring(content.indexOf("-record(mixed_nullable")))
                 .doesNotContain("label :: nm_string() | undefined");
+    }
+
+    @Test
+    void dedicatedOperationIoEmitsCompactEmptyRecordsForUnitLikeStructures() {
+        Model model = loadDedicatedOperationIoModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.dedicated_io#DedicatedIoService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("dedicated_io_types.hrl");
+
+        assertThat(content)
+                .contains("-record(health_check_input, {}).")
+                .contains("-type health_check_input() :: #health_check_input{}.")
+                .contains("-record(health_check_output, {}).")
+                .contains("-type health_check_output() :: #health_check_output{}.");
+        assertThat(countOccurrences(content, "-record(health_check_input, {}).")).isEqualTo(1);
+        assertThat(countOccurrences(content, "-record(health_check_output, {}).")).isEqualTo(1);
+        assertThat(content).doesNotContain("-record(health_check_input, {\n");
+        assertThat(content).doesNotContain("-record(health_check_output, {\n");
     }
 
     @Test
