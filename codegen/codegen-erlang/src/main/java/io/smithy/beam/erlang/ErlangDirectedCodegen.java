@@ -150,9 +150,14 @@ final class ErlangDirectedCodegen
                 .forEach(s -> {
                     Symbol sym = symbolProvider.toSymbol(s);
                     String baseType = sym.getProperty("baseType", String.class).orElse("term()");
-                    // bigDecimal gets an explanatory comment
                     if (s instanceof BigDecimalShape) {
                         writer.write("-type $L :: $L.       %% decimal:decimal()", sym.getName(), baseType);
+                    } else if (s instanceof BlobShape
+                            && sym.getProperty("streamingBlob", Boolean.class).orElse(false)) {
+                        writer.write(
+                                "-type $L :: $L.       %% streaming payload; framing deferred to protocol layer",
+                                sym.getName(),
+                                baseType);
                     } else {
                         writer.write("-type $L :: $L.", sym.getName(), baseType);
                     }

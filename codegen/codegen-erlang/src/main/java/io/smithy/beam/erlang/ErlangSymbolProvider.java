@@ -12,6 +12,7 @@ import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.*;
+import software.amazon.smithy.model.traits.StreamingTrait;
 
 import java.util.*;
 import java.util.function.Function;
@@ -66,7 +67,16 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
     @Override
     public Symbol blobShape(BlobShape shape) {
-        return isPrelude(shape) ? builtin("binary()") : namedScalar(shape, "binary()");
+        if (isPrelude(shape)) {
+            return builtin("binary()");
+        }
+        Symbol base = namedScalar(shape, "binary()");
+        if (shape.hasTrait(StreamingTrait.ID)) {
+            return base.toBuilder()
+                    .putProperty("streamingBlob", true)
+                    .build();
+        }
+        return base;
     }
 
     @Override

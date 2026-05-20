@@ -319,6 +319,16 @@ class ErlangTypesPluginTest {
                 .unwrap();
     }
 
+    private static Model loadStreamingBlobModel() {
+        URL resource = ErlangTypesPluginTest.class.getResource("/model/streaming_blob.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
     private static int countOccurrences(String haystack, String needle) {
         int count = 0;
         int index = 0;
@@ -397,6 +407,26 @@ class ErlangTypesPluginTest {
                 .contains("tags :: nm_list() | undefined");
         assertThat(content.substring(content.indexOf("-record(mixed_nullable")))
                 .doesNotContain("label :: nm_string() | undefined");
+    }
+
+    @Test
+    void streamingBlobAliasCarriesStreamingPayloadComment() {
+        Model model = loadStreamingBlobModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.streaming_blob#StreamingBlobService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("streaming_blob_types.hrl");
+
+        assertThat(content)
+                .contains(
+                        "-type sb_streaming_payload() :: binary()."
+                                + "       %% streaming payload; framing deferred to protocol layer")
+                .contains("-type sb_blob() :: binary().");
+        assertThat(content).doesNotContain("sb_blob() :: binary().       %% streaming");
     }
 
     @Test
