@@ -128,7 +128,19 @@ final class ErlangClientDirectedCodegen
     @Override
     public void generateService(
             GenerateServiceDirective<ErlangContext, BeamSettings> directive) {
-        // Module header and exports are written in customizeBeforeShapeGeneration.
+        ErlangContext ctx = directive.context();
+        ServiceShape service = directive.shape();
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.pushOperationBodySection();
+            writer.write("%% Service closure: $L", service.getId());
+            writer.write(
+                    "%% Client configuration is intentionally opaque at this layer; "
+                            + "endpoint, transport, and protocol live in future runtime modules.");
+            writer.write("-type client_config() :: #{binary() => term()}.");
+            writer.write("");
+            writer.popState();
+        });
     }
 
     @Override
@@ -147,7 +159,7 @@ final class ErlangClientDirectedCodegen
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
             writer.write(
-                    "-spec $L(term(), $L) -> {'ok', $L} | {'error', term()}.",
+                    "-spec $L(client_config(), $L) -> {'ok', $L} | {'error', term()}.",
                     opSym.getName(),
                     inSym.getName(),
                     outSym.getName());
