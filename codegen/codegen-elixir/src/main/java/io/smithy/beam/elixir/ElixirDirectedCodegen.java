@@ -112,11 +112,13 @@ final class ElixirDirectedCodegen
             writer.write("defmodule $L do", ctx.moduleName());
             writer.indent();
 
+            writer.pushGeneratedDocumentationSection();
             writer.openBlock("@moduledoc \"\"\"");
             writer.write("Type definitions for the $L model.", ctx.moduleName());
             writer.write("");
             writer.write("Named after the model namespace per the baseline spec.");
             writer.closeBlock("\"\"\"");
+            writer.popState();
 
             writeScalarAliases(writer, model, closure, sp);
             writeListAliases(writer, model, closure, sp, ctx);
