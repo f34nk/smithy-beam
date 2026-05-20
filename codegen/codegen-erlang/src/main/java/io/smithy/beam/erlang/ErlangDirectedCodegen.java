@@ -21,6 +21,7 @@ import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.UnionShape;
 
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -99,6 +100,7 @@ final class ErlangDirectedCodegen
         ErlangContext ctx = directive.context();
         Model model = directive.model();
         Set<Shape> closure = new Walker(model).walkShapes(directive.service());
+        Set<ShapeId> preambleAliasesEmitted = new LinkedHashSet<>();
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushGeneratedDocumentationSection();
@@ -109,47 +111,119 @@ final class ErlangDirectedCodegen
             // Write named scalar type aliases in declaration order:
             // blob, boolean, string, byte, short, integer, long, float, double,
             // bigInteger, bigDecimal, timestamp, document.
-            writeScalarAliases(writer, model, closure, directive.symbolProvider());
+            writeScalarAliases(
+                    writer, model, closure, directive.symbolProvider(), preambleAliasesEmitted);
 
             // DirectedCodegen has no generateList or generateMap callback, so the
             // BEAM type-file aliases for list and map shapes must be written here.
-            writeListAliases(writer, model, closure, directive.symbolProvider());
-            writeMapAliases(writer, model, closure, directive.symbolProvider());
+            writeListAliases(
+                    writer, model, closure, directive.symbolProvider(), preambleAliasesEmitted);
+            writeMapAliases(
+                    writer, model, closure, directive.symbolProvider(), preambleAliasesEmitted);
+
+            assertPreambleAliasCoverage(closure, preambleAliasesEmitted);
         });
+    }
+
+    /**
+     * Returns true when a closure shape receives its {@code -type} alias from the preamble pass
+     * rather than a {@code generate*} callback (enums, unions, and structures are excluded).
+     */
+    static boolean receivesPreambleTypeAlias(Shape shape) {
+        if (shape instanceof EnumShape || shape instanceof IntEnumShape) {
+            return false;
+        }
+        return shape instanceof BlobShape
+                || shape instanceof BooleanShape
+                || shape instanceof StringShape
+                || shape instanceof ByteShape
+                || shape instanceof ShortShape
+                || shape instanceof IntegerShape
+                || shape instanceof LongShape
+                || shape instanceof FloatShape
+                || shape instanceof DoubleShape
+                || shape instanceof BigIntegerShape
+                || shape instanceof BigDecimalShape
+                || shape instanceof TimestampShape
+                || shape instanceof DocumentShape
+                || shape instanceof ListShape
+                || shape instanceof MapShape;
+    }
+
+    /**
+     * Shape ids that must receive exactly one preamble {@code -type} alias for the given closure.
+     */
+    static Set<ShapeId> expectedPreambleAliasShapeIds(Set<Shape> closure) {
+        return closure.stream()
+                .filter(ErlangDirectedCodegen::receivesPreambleTypeAlias)
+                .map(Shape::getId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private static void recordPreambleAlias(Shape shape, Set<ShapeId> emitted) {
+        if (!emitted.add(shape.getId())) {
+            assert false : "duplicate preamble alias for " + shape.getId();
+        }
+    }
+
+    private static void assertPreambleAliasCoverage(Set<Shape> closure, Set<ShapeId> emitted) {
+        Set<ShapeId> expected = expectedPreambleAliasShapeIds(closure);
+        for (ShapeId id : expected) {
+            assert emitted.contains(id) : "missing preamble alias for " + id;
+        }
+        for (ShapeId id : emitted) {
+            assert expected.contains(id) : "unexpected preamble alias for " + id;
+        }
     }
 
     private void writeScalarAliases(
             ErlangWriter writer,
             Model model,
             Set<Shape> closure,
-            SymbolProvider symbolProvider) {
+            SymbolProvider symbolProvider,
+            Set<ShapeId> preambleAliasesEmitted) {
 
         // Iterate shape types in a defined order matching the baseline output.
-        writeShapeTypeAliases(writer, model.getBlobShapes(), closure, symbolProvider);
-        writeShapeTypeAliases(writer, model.getBooleanShapes(), closure, symbolProvider);
-        writeShapeTypeAliases(writer, model.getStringShapes(), closure, symbolProvider);
-        writeShapeTypeAliases(writer, model.getByteShapes(), closure, symbolProvider);
-        writeShapeTypeAliases(writer, model.getShortShapes(), closure, symbolProvider);
-        writeShapeTypeAliases(writer, model.getIntegerShapes(), closure, symbolProvider);
-        writeShapeTypeAliases(writer, model.getLongShapes(), closure, symbolProvider);
-        writeShapeTypeAliases(writer, model.getFloatShapes(), closure, symbolProvider);
-        writeShapeTypeAliases(writer, model.getDoubleShapes(), closure, symbolProvider);
-        writeShapeTypeAliases(writer, model.getBigIntegerShapes(), closure, symbolProvider);
-        writeShapeTypeAliases(writer, model.getBigDecimalShapes(), closure, symbolProvider);
-        writeShapeTypeAliases(writer, model.getTimestampShapes(), closure, symbolProvider);
-        writeShapeTypeAliases(writer, model.getDocumentShapes(), closure, symbolProvider);
+        writeShapeTypeAliases(
+                writer, model.getBlobShapes(), closure, symbolProvider, preambleAliasesEmitted);
+        writeShapeTypeAliases(
+                writer, model.getBooleanShapes(), closure, symbolProvider, preambleAliasesEmitted);
+        writeShapeTypeAliases(
+                writer, model.getStringShapes(), closure, symbolProvider, preambleAliasesEmitted);
+        writeShapeTypeAliases(
+                writer, model.getByteShapes(), closure, symbolProvider, preambleAliasesEmitted);
+        writeShapeTypeAliases(
+                writer, model.getShortShapes(), closure, symbolProvider, preambleAliasesEmitted);
+        writeShapeTypeAliases(
+                writer, model.getIntegerShapes(), closure, symbolProvider, preambleAliasesEmitted);
+        writeShapeTypeAliases(
+                writer, model.getLongShapes(), closure, symbolProvider, preambleAliasesEmitted);
+        writeShapeTypeAliases(
+                writer, model.getFloatShapes(), closure, symbolProvider, preambleAliasesEmitted);
+        writeShapeTypeAliases(
+                writer, model.getDoubleShapes(), closure, symbolProvider, preambleAliasesEmitted);
+        writeShapeTypeAliases(
+                writer, model.getBigIntegerShapes(), closure, symbolProvider, preambleAliasesEmitted);
+        writeShapeTypeAliases(
+                writer, model.getBigDecimalShapes(), closure, symbolProvider, preambleAliasesEmitted);
+        writeShapeTypeAliases(
+                writer, model.getTimestampShapes(), closure, symbolProvider, preambleAliasesEmitted);
+        writeShapeTypeAliases(
+                writer, model.getDocumentShapes(), closure, symbolProvider, preambleAliasesEmitted);
     }
 
     private <S extends Shape> void writeShapeTypeAliases(
             ErlangWriter writer,
             java.util.Set<S> shapes,
             Set<Shape> closure,
-            SymbolProvider symbolProvider) {
+            SymbolProvider symbolProvider,
+            Set<ShapeId> preambleAliasesEmitted) {
         shapes.stream()
                 .filter(closure::contains)
-                .filter(s -> !(s instanceof EnumShape) && !(s instanceof IntEnumShape))
+                .filter(ErlangDirectedCodegen::receivesPreambleTypeAlias)
                 .sorted(java.util.Comparator.comparing(s -> s.getId().getName()))
                 .forEach(s -> {
+                    recordPreambleAlias(s, preambleAliasesEmitted);
                     Symbol sym = symbolProvider.toSymbol(s);
                     String baseType = sym.getProperty("baseType", String.class).orElse("term()");
                     if (s instanceof BigDecimalShape) {
@@ -170,11 +244,13 @@ final class ErlangDirectedCodegen
             ErlangWriter writer,
             Model model,
             Set<Shape> closure,
-            SymbolProvider symbolProvider) {
+            SymbolProvider symbolProvider,
+            Set<ShapeId> preambleAliasesEmitted) {
         model.getListShapes().stream()
                 .filter(closure::contains)
                 .sorted(java.util.Comparator.comparing(s -> s.getId().getName()))
                 .forEach(s -> {
+                    recordPreambleAlias(s, preambleAliasesEmitted);
                     Symbol sym = symbolProvider.toSymbol(s);
                     Symbol memberSym = symbolProvider.toSymbol(s.getMember());
                     String elementType = renderErlangType(memberSym);
@@ -189,11 +265,13 @@ final class ErlangDirectedCodegen
             ErlangWriter writer,
             Model model,
             Set<Shape> closure,
-            SymbolProvider symbolProvider) {
+            SymbolProvider symbolProvider,
+            Set<ShapeId> preambleAliasesEmitted) {
         model.getMapShapes().stream()
                 .filter(closure::contains)
                 .sorted(java.util.Comparator.comparing(s -> s.getId().getName()))
                 .forEach(s -> {
+                    recordPreambleAlias(s, preambleAliasesEmitted);
                     Symbol sym = symbolProvider.toSymbol(s);
                     Symbol keySym = symbolProvider.toSymbol(s.getKey());
                     Symbol valueSym = symbolProvider.toSymbol(s.getValue());

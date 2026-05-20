@@ -1,15 +1,22 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSettings;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.build.PluginContext;
+import software.amazon.smithy.codegen.core.Symbol;
+import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.node.ObjectNode;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.ShapeId;
+
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -164,5 +171,186 @@ class ErlangDirectedCodegenTest {
         assertThat(bPos).isGreaterThan(aPos);
         assertThat(cPos).isGreaterThan(bPos);
         assertThat(unknownPos).isGreaterThan(cPos);
+    }
+
+    @Test
+    void preambleAliasExpectationsMatchWalkerClosureScalarsAndAggregates() {
+        Model preambleModel = Model.assembler()
+                .addUnparsedModel(
+                        "preamble_audit.smithy",
+                        """
+                        $version: "2"
+                        namespace com.preambleaudit
+
+                        use smithy.api#default
+                        use smithy.api#streaming
+
+                        service PreambleAuditService {
+                            operations: [GetPreambleBundle]
+                        }
+
+                        @readonly
+                        operation GetPreambleBundle {
+                            output: PreambleBundle
+                        }
+
+                        structure PreambleBundle {
+                            @default("")
+                            payload: PaStreamingBlob
+                            body: PaBlob
+                            at: PaTimestamp
+                            doc: PaDocument
+                            tags: PaStringList
+                            attrs: PaStringMap
+                            status: PaStatus
+                        }
+
+                        @streaming
+                        blob PaStreamingBlob
+                        blob PaBlob
+                        timestamp PaTimestamp
+                        document PaDocument
+                        string PaString
+
+                        list PaStringList {
+                            member: PaString
+                        }
+
+                        map PaStringMap {
+                            key: PaString
+                            value: PaString
+                        }
+
+                        enum PaStatus {
+                            ON
+                            OFF
+                        }
+                        """)
+                .assemble()
+                .unwrap();
+
+        ServiceShape service = preambleModel.expectShape(
+                ShapeId.from("com.preambleaudit#PreambleAuditService"), ServiceShape.class);
+        Set<Shape> closure = new Walker(preambleModel).walkShapes(service);
+        Set<ShapeId> expected = ErlangDirectedCodegen.expectedPreambleAliasShapeIds(closure);
+
+        assertThat(expected)
+                .contains(
+                        ShapeId.from("com.preambleaudit#PaStreamingBlob"),
+                        ShapeId.from("com.preambleaudit#PaBlob"),
+                        ShapeId.from("com.preambleaudit#PaTimestamp"),
+                        ShapeId.from("com.preambleaudit#PaDocument"),
+                        ShapeId.from("com.preambleaudit#PaString"),
+                        ShapeId.from("com.preambleaudit#PaStringList"),
+                        ShapeId.from("com.preambleaudit#PaStringMap"))
+                .doesNotContain(
+                        ShapeId.from("com.preambleaudit#PaStatus"),
+                        ShapeId.from("com.preambleaudit#PreambleBundle"),
+                        ShapeId.from("com.preambleaudit#GetPreambleBundle"),
+                        ShapeId.from("com.preambleaudit#PreambleAuditService"));
+    }
+
+    @Test
+    void eachClosureScalarAndAggregateGetsExactlyOnePreambleAliasLine() {
+        Model preambleModel = Model.assembler()
+                .addUnparsedModel(
+                        "preamble_audit_emit.smithy",
+                        """
+                        $version: "2"
+                        namespace com.preambleemit
+
+                        use smithy.api#default
+                        use smithy.api#streaming
+
+                        service PreambleEmitService {
+                            operations: [GetEmitBundle]
+                        }
+
+                        @readonly
+                        operation GetEmitBundle {
+                            output: EmitBundle
+                        }
+
+                        structure EmitBundle {
+                            @default("")
+                            payload: PeStreamingBlob
+                            body: PeBlob
+                            at: PeTimestamp
+                            doc: PeDocument
+                            tags: PeStringList
+                            attrs: PeStringMap
+                        }
+
+                        @streaming
+                        blob PeStreamingBlob
+                        blob PeBlob
+                        timestamp PeTimestamp
+                        document PeDocument
+                        string PeString
+
+                        list PeStringList {
+                            member: PeString
+                        }
+
+                        map PeStringMap {
+                            key: PeString
+                            value: PeString
+                        }
+                        """)
+                .assemble()
+                .unwrap();
+
+        ServiceShape service = preambleModel.expectShape(
+                ShapeId.from("com.preambleemit#PreambleEmitService"), ServiceShape.class);
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        String typesHeader =
+                new BeamErlangLayout(settings, service.getId().getNamespace()).typesHeaderFile();
+        SymbolProvider symbolProvider = new ErlangSymbolProvider(
+                settings, preambleModel, service, typesHeader, BeamCodegenKind.TYPES);
+
+        MockManifest manifest = new MockManifest();
+        ObjectNode pluginSettings = ObjectNode.builder()
+                .withMember("service", "com.preambleemit#PreambleEmitService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypeGeneration()
+                .generate(PluginContext.builder()
+                        .model(preambleModel)
+                        .fileManifest(manifest)
+                        .settings(pluginSettings)
+                        .build());
+
+        String content = manifest.expectFileString(typesHeader);
+        Set<Shape> closure = new Walker(preambleModel).walkShapes(service);
+        Set<ShapeId> expected = ErlangDirectedCodegen.expectedPreambleAliasShapeIds(closure);
+
+        for (ShapeId shapeId : expected) {
+            Shape shape = preambleModel.expectShape(shapeId, Shape.class);
+            Symbol symbol = symbolProvider.toSymbol(shape);
+            String marker = "-type " + symbol.getName() + " ::";
+            assertThat(countOccurrences(content, marker))
+                    .as("preamble alias for %s", shapeId)
+                    .isEqualTo(1);
+        }
+
+        assertThat(content)
+                .contains(
+                        "-type pe_streaming_blob() :: binary()."
+                                + "       %% streaming payload; framing deferred to protocol layer")
+                .contains("-type pe_timestamp() :: erlang:timestamp().")
+                .contains("-type pe_document() :: term().")
+                .contains("-type pe_string_list() :: [pe_string()].")
+                .contains("-type pe_string_map() :: #{pe_string() => pe_string()}.");
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        int count = 0;
+        int index = 0;
+        while ((index = haystack.indexOf(needle, index)) != -1) {
+            count++;
+            index += needle.length();
+        }
+        return count;
     }
 }
