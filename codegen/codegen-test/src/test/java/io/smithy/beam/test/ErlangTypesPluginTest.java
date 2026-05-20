@@ -262,6 +262,37 @@ class ErlangTypesPluginTest {
                 .unwrap();
     }
 
+    private static Model loadMemberOrderModel() {
+        URL resource = ErlangTypesPluginTest.class.getResource("/model/member_order.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    @Test
+    void structureRecordFieldsFollowSmithyMemberDeclarationOrder() {
+        Model model = loadMemberOrderModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.member_order#MemberOrderService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("member_order_types.hrl");
+        int zebra = content.indexOf("zebra ::");
+        int alpha = content.indexOf("alpha ::");
+        int mike = content.indexOf("mike ::");
+        assertThat(zebra).isGreaterThan(-1);
+        assertThat(alpha).isGreaterThan(-1);
+        assertThat(mike).isGreaterThan(-1);
+        assertThat(zebra).isLessThan(alpha);
+        assertThat(alpha).isLessThan(mike);
+    }
+
     @Test
     void relativeDateRemovesDeprecatedStringShapeFromGeneratedTypes() {
         Model model = loadRelativeDeprecationModel();

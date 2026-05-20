@@ -22,7 +22,7 @@ import software.amazon.smithy.model.shapes.UnionShape;
 import java.util.Set;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.ArrayList;
+import java.util.stream.StreamSupport;
 
 /**
  * DirectedCodegen implementation for the Erlang types generator.
@@ -364,7 +364,8 @@ final class ErlangDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
             writer.openBlock("-record($L, {", recordName);
-            List<MemberShape> members = new ArrayList<>(shape.members());
+            List<MemberShape> members =
+                    StreamSupport.stream(shape.members().spliterator(), false).toList();
             for (int i = 0; i < members.size(); i++) {
                 MemberShape member = members.get(i);
                 Symbol memberSymbol = sp.toSymbol(member);
