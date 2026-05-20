@@ -97,19 +97,18 @@ final class ElixirClientDirectedCodegen
         String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
 
         ctx.writerDelegator().useFileWriter(clientFile, writer -> {
-            writer.pushModuleHeaderSection();
-            writer.write("defmodule $L do", ctx.moduleName());
-            writer.indent();
-            writer.popState();
-
             writer.pushGeneratedDocumentationSection();
-            writer.write(
-                    "@moduledoc \"Generated Elixir client for $L (layout phase).\"",
-                    service.getId());
+            writer.write("# Generated Elixir client stub for $L.", service.getId());
             writer.write(
                     "# TopDown operation count: $L",
                     BeamServiceIndex.of(ctx.model()).containedOperations(service).size());
             writer.popState();
+
+            writer.pushModuleHeaderSection();
+            writer.write("defmodule $L do", ctx.moduleName());
+            writer.popState();
+
+            writer.indent();
 
             writer.pushDependenciesSection();
             writer.write("alias $L", typesModuleName);
@@ -120,7 +119,10 @@ final class ElixirClientDirectedCodegen
             writer.popState();
 
             writer.dedent();
+
+            writer.pushModuleHeaderSection();
             writer.write("end");
+            writer.popState();
         });
     }
 
