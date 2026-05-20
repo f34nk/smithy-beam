@@ -23,6 +23,8 @@ public final class ErlangClientGeneration {
         runner.directedCodegen(new ErlangClientDirectedCodegen());
         runner.integrationClass(ErlangIntegration.class);
         runner.fileManifest(context.getFileManifest());
+        runner.integrationSettings(context.getSettings());
+        context.getPluginClassLoader().ifPresent(runner::integrationClassLoader);
         runner.model(context.getModel());
 
         BeamSettings settings = runner.settings(BeamSettings.class, context.getSettings());
