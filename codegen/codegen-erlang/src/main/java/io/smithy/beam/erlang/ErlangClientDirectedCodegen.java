@@ -13,12 +13,14 @@ import software.amazon.smithy.codegen.core.directed.DirectedCodegen;
 import software.amazon.smithy.codegen.core.directed.GenerateEnumDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateErrorDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateIntEnumDirective;
+import software.amazon.smithy.codegen.core.directed.GenerateOperationDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateResourceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.StructureShape;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -127,6 +129,32 @@ final class ErlangClientDirectedCodegen
     public void generateService(
             GenerateServiceDirective<ErlangContext, BeamSettings> directive) {
         // Module header and exports are written in customizeBeforeShapeGeneration.
+    }
+
+    @Override
+    public void generateOperation(
+            GenerateOperationDirective<ErlangContext, BeamSettings> directive) {
+        ErlangContext ctx = directive.context();
+        OperationShape op = directive.shape();
+        SymbolProvider sp = directive.symbolProvider();
+        Symbol opSym = sp.toSymbol(op);
+
+        StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
+        StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
+        Symbol inSym = sp.toSymbol(input);
+        Symbol outSym = sp.toSymbol(output);
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.pushOperationBodySection();
+            writer.write(
+                    "-spec $L(term(), $L) -> {'ok', $L} | {'error', term()}.",
+                    opSym.getName(),
+                    inSym.getName(),
+                    outSym.getName());
+            writer.write("$L(_Cfg, _Input) -> {error, not_implemented}.", opSym.getName());
+            writer.write("");
+            writer.popState();
+        });
     }
 
     @Override
