@@ -29,6 +29,8 @@ import java.util.stream.StreamSupport;
 /**
  * DirectedCodegen implementation for the Erlang types generator.
  *
+ * <p>Constraint traits do not narrow Dialyzer types; see {@link io.smithy.beam.core.BeamConstraintPolicy}.
+ *
  * CodegenDirector calls methods in this order:
  *   1. customizeBeforeShapeGeneration  -- file header + scalar/list/map type aliases
  *   2. generate* methods in topological order (enums, unions, structures)
