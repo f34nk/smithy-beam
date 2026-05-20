@@ -4,9 +4,9 @@ import software.amazon.smithy.codegen.core.SymbolWriter;
 import software.amazon.smithy.utils.CodeSection;
 
 /**
- * Code writer for Erlang .hrl files.
+ * Code writer for Erlang generated sources.
  *
- * There is no import header to prepend; toString() returns the raw content.
+ * When {@link ErlangImports} carries include lines, toString prepends them ahead of the body.
  * Use ErlangWriter.factory() when constructing a WriterDelegator.
  */
 public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImports> {
@@ -19,8 +19,12 @@ public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImports
 
     @Override
     public String toString() {
-        // No import section to prepend for .hrl files.
-        return super.toString();
+        String preamble = getImportContainer().toString();
+        String body = super.toString();
+        if (preamble.isEmpty()) {
+            return body;
+        }
+        return preamble + body;
     }
 
     public static Factory<ErlangWriter> factory() {
