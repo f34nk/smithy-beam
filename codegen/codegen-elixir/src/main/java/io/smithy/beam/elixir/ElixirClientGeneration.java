@@ -23,6 +23,8 @@ public final class ElixirClientGeneration {
         runner.directedCodegen(new ElixirClientDirectedCodegen());
         runner.integrationClass(ElixirIntegration.class);
         runner.fileManifest(context.getFileManifest());
+        runner.integrationSettings(context.getSettings());
+        context.getPluginClassLoader().ifPresent(runner::integrationClassLoader);
         runner.model(context.getModel());
 
         BeamSettings settings = runner.settings(BeamSettings.class, context.getSettings());
