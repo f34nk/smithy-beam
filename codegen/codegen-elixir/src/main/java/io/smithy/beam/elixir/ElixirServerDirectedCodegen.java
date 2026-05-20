@@ -2,8 +2,8 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.core.BeamServiceIndex;
 import io.smithy.beam.core.BeamSettings;
+import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.codegen.core.directed.CreateContextDirective;
@@ -13,11 +13,14 @@ import software.amazon.smithy.codegen.core.directed.DirectedCodegen;
 import software.amazon.smithy.codegen.core.directed.GenerateEnumDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateErrorDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateIntEnumDirective;
+import software.amazon.smithy.codegen.core.directed.GenerateOperationDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateResourceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
+import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.StructureShape;
 
 /**
  * Server-specific DirectedCodegen pass. Types are emitted by {@link ElixirTypeGeneration}
@@ -70,7 +73,31 @@ final class ElixirServerDirectedCodegen
     @Override
     public void customizeBeforeShapeGeneration(
             CustomizeDirective<ElixirContext, BeamSettings> directive) {
-        // Intentionally empty: ElixirTypeGeneration already wrote the types module.
+        ElixirContext ctx = directive.context();
+        ServiceShape service = ctx.service();
+        String ns = service.getId().getNamespace();
+        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
+        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+
+        ctx.writerDelegator().useFileWriter(layout.serverModuleFile(), writer -> {
+            writer.pushModuleHeaderSection();
+            writer.write("defmodule $L do", ctx.moduleName());
+            writer.popState();
+
+            writer.indent();
+
+            writer.pushGeneratedDocumentationSection();
+            writer.openBlock("@moduledoc \"\"\"");
+            writer.write("Generated Elixir server stub for $L.", service.getId());
+            writer.write("");
+            writer.write("Handlers are model-agnostic at runtime; names follow Smithy operations.");
+            writer.closeBlock("\"\"\"");
+            writer.popState();
+
+            writer.pushDependenciesSection();
+            writer.write("alias $L", typesModuleName);
+            writer.popState();
+        });
     }
 
     @Override
@@ -82,46 +109,61 @@ final class ElixirServerDirectedCodegen
     @Override
     public void customizeAfterIntegrations(
             CustomizeDirective<ElixirContext, BeamSettings> directive) {
-        // Reserved for server integrations.
+        ElixirContext ctx = directive.context();
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.dedent();
+            writer.pushModuleHeaderSection();
+            writer.write("end");
+            writer.popState();
+        });
     }
 
     @Override
     public void generateService(
             GenerateServiceDirective<ElixirContext, BeamSettings> directive) {
         ElixirContext ctx = directive.context();
-        ServiceShape service = directive.shape();
-        String ns = service.getId().getNamespace();
-        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
-        String serverFile = layout.serverModuleFile();
 
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.pushOperationBodySection();
+            writer.write(
+                    "# Dispatch and routing modules should map wire metadata to $L below.",
+                    ctx.moduleName());
+            writer.write("# No Smithy shapes are referenced at runtime in this baseline.");
+            writer.write("");
+            writer.popState();
+        });
+    }
+
+    @Override
+    public void generateOperation(
+            GenerateOperationDirective<ElixirContext, BeamSettings> directive) {
+        ElixirContext ctx = directive.context();
+        OperationShape op = directive.shape();
+        SymbolProvider sp = directive.symbolProvider();
+        Symbol opSym = sp.toSymbol(op);
+        String handler = "handle_" + opSym.getName();
+
+        String ns = ctx.service().getId().getNamespace();
+        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
         String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
 
-        ctx.writerDelegator().useFileWriter(serverFile, writer -> {
-            writer.pushGeneratedDocumentationSection();
-            writer.write("# Generated Elixir server stub for $L.", service.getId());
-            writer.write(
-                    "# TopDown operation count: $L",
-                    BeamServiceIndex.of(ctx.model()).containedOperations(service).size());
-            writer.popState();
+        StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
+        StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
+        Symbol inSym = sp.toSymbol(input);
+        Symbol outSym = sp.toSymbol(output);
+        String inType = ElixirTopDown.structureSpecType(typesModuleName, inSym);
+        String outType = ElixirTopDown.structureSpecType(typesModuleName, outSym);
 
-            writer.pushModuleHeaderSection();
-            writer.write("defmodule $L do", ctx.moduleName());
-            writer.popState();
-
-            writer.indent();
-
-            writer.pushDependenciesSection();
-            writer.write("alias $L", typesModuleName);
-            writer.popState();
-
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
-            writer.write("# TODO: behaviour, router, dispatch, and stubs.");
-            writer.popState();
-
-            writer.dedent();
-
-            writer.pushModuleHeaderSection();
-            writer.write("end");
+            writer.write(
+                    "@spec $L(term(), $L, term()) :: {:ok, $L} | {:error, term()}",
+                    handler,
+                    inType,
+                    outType);
+            writer.write(
+                    "def $L(_ctx, _input, _meta), do: {:error, :not_implemented}", handler);
+            writer.write("");
             writer.popState();
         });
     }

@@ -2,8 +2,8 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.core.BeamServiceIndex;
 import io.smithy.beam.core.BeamSettings;
+import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.codegen.core.directed.CreateContextDirective;
@@ -13,11 +13,15 @@ import software.amazon.smithy.codegen.core.directed.DirectedCodegen;
 import software.amazon.smithy.codegen.core.directed.GenerateEnumDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateErrorDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateIntEnumDirective;
+import software.amazon.smithy.codegen.core.directed.GenerateOperationDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateResourceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
+import software.amazon.smithy.model.shapes.OperationShape;
+import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.StructureShape;
 
 /**
  * Client-specific DirectedCodegen. Types are emitted by {@link ElixirTypeGeneration}
@@ -70,7 +74,31 @@ final class ElixirClientDirectedCodegen
     @Override
     public void customizeBeforeShapeGeneration(
             CustomizeDirective<ElixirContext, BeamSettings> directive) {
-        // Intentionally empty: ElixirTypeGeneration already wrote the types module.
+        ElixirContext ctx = directive.context();
+        ServiceShape service = ctx.service();
+        String ns = service.getId().getNamespace();
+        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
+        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+
+        ctx.writerDelegator().useFileWriter(layout.clientModuleFile(), writer -> {
+            writer.pushModuleHeaderSection();
+            writer.write("defmodule $L do", ctx.moduleName());
+            writer.popState();
+
+            writer.indent();
+
+            writer.pushGeneratedDocumentationSection();
+            writer.openBlock("@moduledoc \"\"\"");
+            writer.write("Generated Elixir client for $L.", service.getId());
+            writer.write("");
+            writer.write("Operation stubs accept config and input. Transport and protocol are not generated here.");
+            writer.closeBlock("\"\"\"");
+            writer.popState();
+
+            writer.pushDependenciesSection();
+            writer.write("alias $L", typesModuleName);
+            writer.popState();
+        });
     }
 
     @Override
@@ -82,44 +110,9 @@ final class ElixirClientDirectedCodegen
     @Override
     public void customizeAfterIntegrations(
             CustomizeDirective<ElixirContext, BeamSettings> directive) {
-        // Reserved for client integrations.
-    }
-
-    @Override
-    public void generateService(
-            GenerateServiceDirective<ElixirContext, BeamSettings> directive) {
         ElixirContext ctx = directive.context();
-        ServiceShape service = directive.shape();
-        String ns = service.getId().getNamespace();
-        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
-        String clientFile = layout.clientModuleFile();
-
-        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
-
-        ctx.writerDelegator().useFileWriter(clientFile, writer -> {
-            writer.pushGeneratedDocumentationSection();
-            writer.write("# Generated Elixir client stub for $L.", service.getId());
-            writer.write(
-                    "# TopDown operation count: $L",
-                    BeamServiceIndex.of(ctx.model()).containedOperations(service).size());
-            writer.popState();
-
-            writer.pushModuleHeaderSection();
-            writer.write("defmodule $L do", ctx.moduleName());
-            writer.popState();
-
-            writer.indent();
-
-            writer.pushDependenciesSection();
-            writer.write("alias $L", typesModuleName);
-            writer.popState();
-
-            writer.pushOperationBodySection();
-            writer.write("# TODO: operation functions, encoding, and configuration.");
-            writer.popState();
-
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.dedent();
-
             writer.pushModuleHeaderSection();
             writer.write("end");
             writer.popState();
@@ -127,9 +120,64 @@ final class ElixirClientDirectedCodegen
     }
 
     @Override
+    public void generateService(
+            GenerateServiceDirective<ElixirContext, BeamSettings> directive) {
+        ElixirContext ctx = directive.context();
+        ServiceShape service = directive.shape();
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.pushOperationBodySection();
+            writer.write("# Service closure: $L", service.getId());
+            writer.write(
+                    "# Client configuration is intentionally opaque at this layer; "
+                            + "endpoint, transport, and protocol live in future runtime modules.");
+            writer.write("@type client_config :: map()");
+            writer.write("");
+            writer.popState();
+        });
+    }
+
+    @Override
+    public void generateOperation(
+            GenerateOperationDirective<ElixirContext, BeamSettings> directive) {
+        ElixirContext ctx = directive.context();
+        OperationShape op = directive.shape();
+        SymbolProvider sp = directive.symbolProvider();
+        Symbol opSym = sp.toSymbol(op);
+
+        String ns = ctx.service().getId().getNamespace();
+        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
+        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+
+        StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
+        StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
+        Symbol inSym = sp.toSymbol(input);
+        Symbol outSym = sp.toSymbol(output);
+        String inType = ElixirTopDown.structureSpecType(typesModuleName, inSym);
+        String outType = ElixirTopDown.structureSpecType(typesModuleName, outSym);
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.pushOperationBodySection();
+            writer.write(
+                    "@spec $L(client_config(), $L) :: {:ok, $L} | {:error, term()}",
+                    opSym.getName(),
+                    inType,
+                    outType);
+            writer.write("def $L(_cfg, _input), do: {:error, :not_implemented}", opSym.getName());
+            writer.write("");
+            writer.popState();
+        });
+    }
+
+    @Override
     public void generateResource(
             GenerateResourceDirective<ElixirContext, BeamSettings> directive) {
-        // Reserved for resource helpers.
+        ElixirContext ctx = directive.context();
+        ResourceShape resource = directive.shape();
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.write("# Contained resource: $L", resource.getId());
+        });
     }
 
     @Override

@@ -49,7 +49,7 @@ class ElixirClientPluginTest {
         new ElixirClientPlugin().execute(buildContext(model, manifest));
 
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("basic_string");
-        assertThat(manifest.expectFileString(CLIENT_FILE)).contains("defmodule BasicClient do");
+        assertClientStubHeaderOrder(manifest.expectFileString(CLIENT_FILE));
     }
 
     @Test
@@ -63,7 +63,24 @@ class ElixirClientPluginTest {
                 .build();
         new ElixirClientPlugin().execute(context);
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("basic_string");
-        assertThat(manifest.expectFileString(CLIENT_FILE)).contains("defmodule BasicClient do");
+        assertClientStubHeaderOrder(manifest.expectFileString(CLIENT_FILE));
+    }
+
+    private static void assertClientStubHeaderOrder(String clientSource) {
+        assertThat(clientSource).contains("defmodule BasicClient do");
+        assertThat(clientSource).contains("@moduledoc \"\"\"");
+        assertThat(clientSource).contains("alias Basic");
+        assertThat(clientSource).contains("@spec get_type_closure(client_config(), Basic.GetTypeClosureInput.t())");
+        assertThat(clientSource).contains("def get_type_closure(_cfg, _input), do: {:error, :not_implemented}");
+        assertThat(clientSource).contains("@type client_config :: map()");
+        int moduleIndex = clientSource.indexOf("defmodule BasicClient do");
+        int moduledocIndex = clientSource.indexOf("@moduledoc \"\"\"");
+        int aliasIndex = clientSource.indexOf("alias Basic");
+        int specIndex = clientSource.indexOf("@spec get_type_closure");
+        assertThat(moduleIndex).isLessThan(moduledocIndex);
+        assertThat(moduledocIndex).isLessThan(aliasIndex);
+        assertThat(aliasIndex).isLessThan(specIndex);
+        assertThat(clientSource.stripLeading()).startsWith("defmodule");
     }
 
     @Test

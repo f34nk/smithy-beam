@@ -49,7 +49,7 @@ class ElixirServerPluginTest {
         new ElixirServerPlugin().execute(buildContext(model, manifest));
 
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("basic_string");
-        assertThat(manifest.expectFileString(SERVER_FILE)).contains("defmodule BasicServer do");
+        assertServerStubHeaderOrder(manifest.expectFileString(SERVER_FILE));
     }
 
     @Test
@@ -63,7 +63,25 @@ class ElixirServerPluginTest {
                 .build();
         new ElixirServerPlugin().execute(context);
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("basic_string");
-        assertThat(manifest.expectFileString(SERVER_FILE)).contains("defmodule BasicServer do");
+        assertServerStubHeaderOrder(manifest.expectFileString(SERVER_FILE));
+    }
+
+    private static void assertServerStubHeaderOrder(String serverSource) {
+        assertThat(serverSource).contains("defmodule BasicServer do");
+        assertThat(serverSource).contains("@moduledoc \"\"\"");
+        assertThat(serverSource).contains("alias Basic");
+        assertThat(serverSource)
+                .contains("@spec handle_get_type_closure(term(), Basic.GetTypeClosureInput.t(), term())");
+        assertThat(serverSource)
+                .contains("def handle_get_type_closure(_ctx, _input, _meta), do: {:error, :not_implemented}");
+        int moduleIndex = serverSource.indexOf("defmodule BasicServer do");
+        int moduledocIndex = serverSource.indexOf("@moduledoc \"\"\"");
+        int aliasIndex = serverSource.indexOf("alias Basic");
+        int specIndex = serverSource.indexOf("@spec handle_get_type_closure");
+        assertThat(moduleIndex).isLessThan(moduledocIndex);
+        assertThat(moduledocIndex).isLessThan(aliasIndex);
+        assertThat(aliasIndex).isLessThan(specIndex);
+        assertThat(serverSource.stripLeading()).startsWith("defmodule");
     }
 
     @Test
