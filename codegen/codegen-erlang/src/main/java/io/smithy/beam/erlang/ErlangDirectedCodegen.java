@@ -99,8 +99,10 @@ final class ErlangDirectedCodegen
         Set<Shape> closure = new Walker(model).walkShapes(directive.service());
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.pushGeneratedDocumentationSection();
             writer.write("%% Record and type definitions for the $L model.", ctx.moduleName());
             writer.write("%% ");
+            writer.popState();
 
             // Write named scalar type aliases in declaration order:
             // blob, boolean, string, byte, short, integer, long, float, double,

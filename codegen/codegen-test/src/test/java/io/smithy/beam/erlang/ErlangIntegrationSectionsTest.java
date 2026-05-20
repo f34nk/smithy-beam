@@ -1,12 +1,8 @@
-package io.smithy.beam.test;
+package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenTransforms;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.erlang.ErlangContext;
-import io.smithy.beam.erlang.ErlangDirectedCodegen;
-import io.smithy.beam.erlang.ErlangIntegration;
-import io.smithy.beam.erlang.ErlangWriter;
 import io.smithy.beam.test.support.RecordingErlangIntegration;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
