@@ -4,9 +4,9 @@ import io.smithy.beam.elixir.ElixirTypesPlugin;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.build.PluginContext;
+import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.node.ObjectNode;
-import software.amazon.smithy.codegen.core.CodegenException;
 
 import java.net.URL;
 
@@ -85,28 +85,250 @@ class ElixirTypesPluginTest {
                 .contains("my_type_2");
     }
 
-    @Test
-    void reachableErrorShapeFailsInElixirPlugin() {
-        URL resource = ElixirTypesPluginTest.class.getResource("/model/error_shapes.smithy");
+    private static Model loadErrorShapeModel() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/error_shape.smithy");
         assertThat(resource).isNotNull();
-        Model model = Model.assembler()
+        return Model.assembler()
                 .addImport(resource)
                 .discoverModels()
                 .assemble()
                 .unwrap();
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.errors#ErrorDemoService")
-                .withMember("edition", "2026")
-                .build();
-        PluginContext context = PluginContext.builder()
+    }
+
+    private static PluginContext pluginContext(Model model, MockManifest manifest, ObjectNode settings) {
+        return PluginContext.builder()
                 .model(model)
-                .fileManifest(new MockManifest())
+                .fileManifest(manifest)
                 .settings(settings)
                 .build();
-        assertThatThrownBy(() -> new ElixirTypesPlugin().execute(context))
-                .isInstanceOf(CodegenException.class)
-                .hasMessageContaining("smithy.beam.demo.errors#NotImplementedYet")
-                .hasMessageContaining("only emits type definitions");
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        int count = 0;
+        int index = 0;
+        while ((index = haystack.indexOf(needle, index)) != -1) {
+            count++;
+            index += needle.length();
+        }
+        return count;
+    }
+
+    @Test
+    void errorShapeEmitsModuleWithModeledMetadata() {
+        Model model = loadErrorShapeModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.error_shape#ErrorShapeService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("error_shape_types.ex");
+
+        assertThat(content)
+                .contains("defmodule ServiceUnavailable do")
+                .contains("Error structure ServiceUnavailable.")
+                .contains("retryable=true httpCode=503")
+                .contains("message:")
+                .contains("defstruct [:message]");
+    }
+
+    private static Model loadSparseCollectionsModel() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/sparse_collections.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    @Test
+    void sparseListAndMapShapesWidenElementAndValueTypes() {
+        Model model = loadSparseCollectionsModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.sparse_collections#SparseCollectionsService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("sparse_collections_types.ex");
+
+        assertThat(content)
+                .contains("@type sc_sparse_list :: [")
+                .contains(".sc_string() | nil]")
+                .contains("@type sc_sparse_map :: %{")
+                .contains(".sc_string() => ")
+                .contains(".sc_integer() | nil}");
+    }
+
+    private static Model loadRecursiveTreeModel() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/recursive_tree.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    @Test
+    void recursiveAggregatesReferenceNamedTypeAliases() {
+        Model model = loadRecursiveTreeModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.recursive_tree#RecursiveTreeService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("recursive_tree_types.ex");
+
+        assertThat(content)
+                .contains("@type rt_string :: String.t()")
+                .contains("@type rt_node_list :: [")
+                .contains(".RtNode.t()]")
+                .contains("@type rt_node_map :: %{")
+                .contains(".RtNode.t()}")
+                .contains("defmodule RtNode do")
+                .contains("children:")
+                .contains(".rt_node_list()")
+                .contains("by_key:")
+                .contains(".rt_node_map()");
+
+        assertThat(countOccurrences(content, "@type rt_string ::")).isEqualTo(1);
+        assertThat(countOccurrences(content, "@type rt_node_list ::")).isEqualTo(1);
+        assertThat(countOccurrences(content, "@type rt_node_map ::")).isEqualTo(1);
+        assertThat(countOccurrences(content, "defmodule RtNode do")).isEqualTo(1);
+
+        assertThat(content).doesNotContain("[%RtNode");
+        assertThat(content).doesNotContain("%{RtNode");
+    }
+
+    private static Model loadStreamingBlobModel() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/streaming_blob.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    @Test
+    void streamingBlobAliasCarriesStreamingPayloadComment() {
+        Model model = loadStreamingBlobModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.streaming_blob#StreamingBlobService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("streaming_blob_types.ex");
+
+        assertThat(content)
+                .contains("# Streaming payload; framing deferred to protocol layer.")
+                .contains("@type sb_streaming_payload :: binary()")
+                .contains("@type sb_blob :: binary()");
+        assertThat(content).doesNotContain("@type sb_blob :: binary()\n# Streaming");
+    }
+
+    private static Model loadNullableMembersModel() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/nullable_members.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    @Test
+    void mixedRequiredAndOptionalMembersFollowNullableIndex() {
+        Model model = loadNullableMembersModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.nullable_members#NullableMembersService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("nullable_members_types.ex");
+
+        assertThat(content)
+                .contains("@type nm_list :: [")
+                .contains("count: ")
+                .contains("| nil")
+                .contains("tags: ")
+                .contains("| nil");
+
+        int labelIdx = content.indexOf("label:");
+        assertThat(labelIdx).isGreaterThan(-1);
+        String labelLine = content.substring(labelIdx, content.indexOf('\n', labelIdx));
+        assertThat(labelLine).doesNotContain("| nil");
+    }
+
+    private static Model loadMemberOrderModel() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/member_order.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    @Test
+    void structureFieldsFollowSmithyMemberDeclarationOrder() {
+        Model model = loadMemberOrderModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.member_order#MemberOrderService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("member_order_types.ex");
+        int zebra = content.indexOf("zebra:");
+        int alpha = content.indexOf("alpha:");
+        int mike = content.indexOf("mike:");
+        assertThat(zebra).isGreaterThan(-1);
+        assertThat(alpha).isGreaterThan(-1);
+        assertThat(mike).isGreaterThan(-1);
+        assertThat(zebra).isLessThan(alpha);
+        assertThat(alpha).isLessThan(mike);
+    }
+
+    private static Model loadDedicatedOperationIoModel() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/dedicated_operation_io.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    @Test
+    void dedicatedOperationIoEmitsEmptyStructsForUnitLikeStructures() {
+        Model model = loadDedicatedOperationIoModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.dedicated_io#DedicatedIoService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("dedicated_io_types.ex");
+
+        assertThat(content)
+                .contains("defmodule HealthCheckInput do")
+                .contains("defstruct []")
+                .contains("defmodule HealthCheckOutput do");
+        assertThat(countOccurrences(content, "defmodule HealthCheckInput do")).isEqualTo(1);
+        assertThat(countOccurrences(content, "defmodule HealthCheckOutput do")).isEqualTo(1);
     }
 
     @Test

@@ -3,7 +3,6 @@ package io.smithy.beam.elixir;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamSettings;
-import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
@@ -11,19 +10,19 @@ import software.amazon.smithy.codegen.core.directed.*;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.NullableIndex;
 import software.amazon.smithy.model.neighbor.Walker;
-import software.amazon.smithy.model.shapes.EnumShape;
-import software.amazon.smithy.model.shapes.IntEnumShape;
-import software.amazon.smithy.model.shapes.MemberShape;
-import software.amazon.smithy.model.shapes.Shape;
-import software.amazon.smithy.model.shapes.StructureShape;
-import software.amazon.smithy.model.shapes.UnionShape;
+import software.amazon.smithy.model.shapes.*;
+import software.amazon.smithy.model.traits.HttpErrorTrait;
+import software.amazon.smithy.model.traits.RetryableTrait;
+import software.amazon.smithy.model.traits.SparseTrait;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * DirectedCodegen implementation for the Elixir types generator.
@@ -42,9 +41,9 @@ import java.util.stream.Collectors;
  * 6. flushWriters
  *
  * generateService and generateResource are stubs reserved for client/server
- * generation in a future iteration. generateError fails fast because error
- * structures require exception semantics that are outside the initial
- * type-only scope.
+ * generation in a future iteration.
+ *
+ * <p>Constraint traits do not narrow generated types; see {@link io.smithy.beam.core.BeamConstraintPolicy}.
  */
 final class ElixirDirectedCodegen
         implements DirectedCodegen<ElixirContext, BeamSettings, ElixirIntegration> {
@@ -107,6 +106,7 @@ final class ElixirDirectedCodegen
         Model model = directive.model();
         SymbolProvider sp = directive.symbolProvider();
         Set<Shape> closure = new Walker(model).walkShapes(directive.service());
+        Set<ShapeId> preambleAliasesEmitted = new LinkedHashSet<>();
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.write("defmodule $L do", ctx.moduleName());
@@ -120,66 +120,164 @@ final class ElixirDirectedCodegen
             writer.closeBlock("\"\"\"");
             writer.popState();
 
-            writeScalarAliases(writer, model, closure, sp);
-            writeListAliases(writer, model, closure, sp, ctx);
-            writeMapAliases(writer, model, closure, sp, ctx);
+            writeScalarAliases(writer, model, closure, sp, preambleAliasesEmitted);
+            writeListAliases(writer, model, closure, sp, ctx, preambleAliasesEmitted);
+            writeMapAliases(writer, model, closure, sp, ctx, preambleAliasesEmitted);
+
+            assertPreambleAliasCoverage(closure, preambleAliasesEmitted);
         });
     }
 
+    /**
+     * Returns true when a closure shape receives its {@code @type} alias from the preamble pass
+     * rather than a {@code generate*} callback (enums, unions, and structures are excluded).
+     */
+    static boolean receivesPreambleTypeAlias(Shape shape) {
+        if (shape instanceof EnumShape || shape instanceof IntEnumShape) {
+            return false;
+        }
+        return shape instanceof BlobShape
+                || shape instanceof BooleanShape
+                || shape instanceof StringShape
+                || shape instanceof ByteShape
+                || shape instanceof ShortShape
+                || shape instanceof IntegerShape
+                || shape instanceof LongShape
+                || shape instanceof FloatShape
+                || shape instanceof DoubleShape
+                || shape instanceof BigIntegerShape
+                || shape instanceof BigDecimalShape
+                || shape instanceof TimestampShape
+                || shape instanceof DocumentShape
+                || shape instanceof ListShape
+                || shape instanceof MapShape;
+    }
+
+    /**
+     * Shape ids that must receive exactly one preamble {@code @type} alias for the given closure.
+     */
+    static Set<ShapeId> expectedPreambleAliasShapeIds(Set<Shape> closure) {
+        return closure.stream()
+                .filter(ElixirDirectedCodegen::receivesPreambleTypeAlias)
+                .map(Shape::getId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private static void recordPreambleAlias(Shape shape, Set<ShapeId> emitted) {
+        if (!emitted.add(shape.getId())) {
+            assert false : "duplicate preamble alias for " + shape.getId();
+        }
+    }
+
+    private static void assertPreambleAliasCoverage(Set<Shape> closure, Set<ShapeId> emitted) {
+        Set<ShapeId> expected = expectedPreambleAliasShapeIds(closure);
+        for (ShapeId id : expected) {
+            assert emitted.contains(id) : "missing preamble alias for " + id;
+        }
+        for (ShapeId id : emitted) {
+            assert expected.contains(id) : "unexpected preamble alias for " + id;
+        }
+    }
+
     private void writeScalarAliases(
-            ElixirWriter writer, Model model, Set<Shape> closure, SymbolProvider sp) {
-        writeElixirTypeAliases(writer, model.getBlobShapes(), closure, sp);
-        writeElixirTypeAliases(writer, model.getBooleanShapes(), closure, sp);
-        writeElixirTypeAliases(writer, model.getStringShapes(), closure, sp);
-        writeElixirTypeAliases(writer, model.getByteShapes(), closure, sp);
-        writeElixirTypeAliases(writer, model.getShortShapes(), closure, sp);
-        writeElixirTypeAliases(writer, model.getIntegerShapes(), closure, sp);
-        writeElixirTypeAliases(writer, model.getLongShapes(), closure, sp);
-        writeElixirTypeAliases(writer, model.getFloatShapes(), closure, sp);
-        writeElixirTypeAliases(writer, model.getDoubleShapes(), closure, sp);
-        writeElixirTypeAliases(writer, model.getBigIntegerShapes(), closure, sp);
-        writeElixirTypeAliases(writer, model.getBigDecimalShapes(), closure, sp);
-        writeElixirTypeAliases(writer, model.getTimestampShapes(), closure, sp);
-        writeElixirTypeAliases(writer, model.getDocumentShapes(), closure, sp);
+            ElixirWriter writer,
+            Model model,
+            Set<Shape> closure,
+            SymbolProvider sp,
+            Set<ShapeId> preambleAliasesEmitted) {
+        writeElixirTypeAliases(
+                writer, model.getBlobShapes(), closure, sp, preambleAliasesEmitted);
+        writeElixirTypeAliases(
+                writer, model.getBooleanShapes(), closure, sp, preambleAliasesEmitted);
+        writeElixirTypeAliases(
+                writer, model.getStringShapes(), closure, sp, preambleAliasesEmitted);
+        writeElixirTypeAliases(
+                writer, model.getByteShapes(), closure, sp, preambleAliasesEmitted);
+        writeElixirTypeAliases(
+                writer, model.getShortShapes(), closure, sp, preambleAliasesEmitted);
+        writeElixirTypeAliases(
+                writer, model.getIntegerShapes(), closure, sp, preambleAliasesEmitted);
+        writeElixirTypeAliases(
+                writer, model.getLongShapes(), closure, sp, preambleAliasesEmitted);
+        writeElixirTypeAliases(
+                writer, model.getFloatShapes(), closure, sp, preambleAliasesEmitted);
+        writeElixirTypeAliases(
+                writer, model.getDoubleShapes(), closure, sp, preambleAliasesEmitted);
+        writeElixirTypeAliases(
+                writer, model.getBigIntegerShapes(), closure, sp, preambleAliasesEmitted);
+        writeElixirTypeAliases(
+                writer, model.getBigDecimalShapes(), closure, sp, preambleAliasesEmitted);
+        writeElixirTypeAliases(
+                writer, model.getTimestampShapes(), closure, sp, preambleAliasesEmitted);
+        writeElixirTypeAliases(
+                writer, model.getDocumentShapes(), closure, sp, preambleAliasesEmitted);
     }
 
     private <S extends Shape> void writeElixirTypeAliases(
-            ElixirWriter writer, Set<S> shapes, Set<Shape> closure, SymbolProvider sp) {
+            ElixirWriter writer,
+            Set<S> shapes,
+            Set<Shape> closure,
+            SymbolProvider sp,
+            Set<ShapeId> preambleAliasesEmitted) {
         shapes.stream()
                 .filter(closure::contains)
-                .filter(s -> !s.isEnumShape() && !s.isIntEnumShape())
+                .filter(ElixirDirectedCodegen::receivesPreambleTypeAlias)
                 .sorted(Comparator.comparing(s -> s.getId().getName()))
                 .forEach(s -> {
+                    recordPreambleAlias(s, preambleAliasesEmitted);
                     Symbol sym = sp.toSymbol(s);
                     String baseType = sym.getProperty("baseType", String.class).orElse("any()");
+                    if (s instanceof BlobShape
+                            && sym.getProperty("streamingBlob", Boolean.class).orElse(false)) {
+                        writer.write(
+                                "# Streaming payload; framing deferred to protocol layer.");
+                    }
                     writer.write("@type $L :: $L", sym.getName(), baseType);
                 });
     }
 
     private void writeListAliases(
-            ElixirWriter writer, Model model, Set<Shape> closure, SymbolProvider sp, ElixirContext ctx) {
+            ElixirWriter writer,
+            Model model,
+            Set<Shape> closure,
+            SymbolProvider sp,
+            ElixirContext ctx,
+            Set<ShapeId> preambleAliasesEmitted) {
         model.getListShapes().stream()
                 .filter(closure::contains)
                 .sorted(Comparator.comparing(s -> s.getId().getName()))
                 .forEach(s -> {
+                    recordPreambleAlias(s, preambleAliasesEmitted);
                     Symbol sym = sp.toSymbol(s);
                     Symbol memberSym = sp.toSymbol(s.getMember());
                     String memberType = renderElixirType(ctx, memberSym);
+                    if (s.hasTrait(SparseTrait.ID)) {
+                        memberType = memberType + " | nil";
+                    }
                     writer.write("@type $L :: [$L]", sym.getName(), memberType);
                 });
     }
 
     private void writeMapAliases(
-            ElixirWriter writer, Model model, Set<Shape> closure, SymbolProvider sp, ElixirContext ctx) {
+            ElixirWriter writer,
+            Model model,
+            Set<Shape> closure,
+            SymbolProvider sp,
+            ElixirContext ctx,
+            Set<ShapeId> preambleAliasesEmitted) {
         model.getMapShapes().stream()
                 .filter(closure::contains)
                 .sorted(Comparator.comparing(s -> s.getId().getName()))
                 .forEach(s -> {
+                    recordPreambleAlias(s, preambleAliasesEmitted);
                     Symbol sym = sp.toSymbol(s);
                     Symbol keySym = sp.toSymbol(s.getKey());
                     Symbol valueSym = sp.toSymbol(s.getValue());
                     String keyType = renderElixirType(ctx, keySym);
                     String valueType = renderElixirType(ctx, valueSym);
+                    if (s.hasTrait(SparseTrait.ID)) {
+                        valueType = valueType + " | nil";
+                    }
                     writer.write("@type $L :: %{$L => $L}", sym.getName(), keyType, valueType);
                 });
     }
@@ -450,40 +548,78 @@ final class ElixirDirectedCodegen
             writer.write("@moduledoc \"structure $L\"", shape.getId().getName());
             writer.write("");
 
-            writer.openBlock("@type t :: %__MODULE__{");
-            List<MemberShape> members = new ArrayList<>(shape.members());
-            for (int i = 0; i < members.size(); i++) {
-                MemberShape member = members.get(i);
-                Symbol memberSym = sp.toSymbol(member);
-                String fieldName = memberSym.getProperty("fieldName", String.class).orElseThrow();
-                String fullType = renderElixirType(ctx, memberSym);
-                boolean nullable = nullableIndex.isMemberNullable(member);
-                String typeExpr = nullable ? fullType + " | nil" : fullType;
-                String comma = (i < members.size() - 1) ? "," : "";
-                writer.write("$L: $L$L", fieldName, typeExpr, comma);
-            }
-            writer.closeBlock("}");
-            writer.write("");
-
-            String fields = members.stream()
-                    .map(m -> ":" + sp.toSymbol(m).getProperty("fieldName", String.class).orElseThrow())
-                    .collect(Collectors.joining(", "));
-            writer.write("defstruct [$L]", fields);
+            writeStructureTypeAndDefstruct(
+                    writer,
+                    ctx,
+                    sp,
+                    nullableIndex,
+                    StreamSupport.stream(shape.members().spliterator(), false).toList());
 
             writer.closeBlock("end");
         });
     }
 
     /**
-     * Error structures require exception semantics and retryable or throttling
-     * metadata. The initial generator interprets types only, so it rejects
-     * reachable error shapes instead of silently omitting them.
+     * Emits a nested defmodule for error structures with retryable and httpError metadata
+     * in {@code @moduledoc}, matching structure field typing via {@link NullableIndex}.
      */
     @Override
     public void generateError(
             GenerateErrorDirective<ElixirContext, BeamSettings> directive) {
-        throw new CodegenException("Elixir error type generation is not implemented for "
-                + directive.shape().getId()
-                + ". The initial smithy-beam generator only emits type definitions.");
+        StructureShape shape = directive.shape();
+        ElixirContext ctx = directive.context();
+        SymbolProvider sp = directive.symbolProvider();
+        NullableIndex nullableIndex = NullableIndex.of(directive.model());
+        Symbol symbol = sp.toSymbol(shape);
+
+        boolean retryable = shape.hasTrait(RetryableTrait.ID);
+        Integer httpCode =
+                shape.getTrait(HttpErrorTrait.class).map(HttpErrorTrait::getCode).orElse(null);
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.write("");
+            writer.openBlock("defmodule $L do", symbol.getName());
+            writer.openBlock("@moduledoc \"\"\"");
+            writer.write("Error structure $L.", shape.getId().getName());
+            writer.write("retryable=$L httpCode=$L", retryable, httpCode == null ? "nil" : httpCode);
+            writer.closeBlock("\"\"\"");
+            writer.write("");
+
+            writeStructureTypeAndDefstruct(
+                    writer,
+                    ctx,
+                    sp,
+                    nullableIndex,
+                    StreamSupport.stream(shape.members().spliterator(), false).toList());
+
+            writer.closeBlock("end");
+        });
+    }
+
+    private void writeStructureTypeAndDefstruct(
+            ElixirWriter writer,
+            ElixirContext ctx,
+            SymbolProvider sp,
+            NullableIndex nullableIndex,
+            List<MemberShape> members) {
+
+        writer.openBlock("@type t :: %__MODULE__{");
+        for (int i = 0; i < members.size(); i++) {
+            MemberShape member = members.get(i);
+            Symbol memberSym = sp.toSymbol(member);
+            String fieldName = memberSym.getProperty("fieldName", String.class).orElseThrow();
+            String fullType = renderElixirType(ctx, memberSym);
+            boolean nullable = nullableIndex.isMemberNullable(member);
+            String typeExpr = nullable ? fullType + " | nil" : fullType;
+            String comma = (i < members.size() - 1) ? "," : "";
+            writer.write("$L: $L$L", fieldName, typeExpr, comma);
+        }
+        writer.closeBlock("}");
+        writer.write("");
+
+        String fields = members.stream()
+                .map(m -> ":" + sp.toSymbol(m).getProperty("fieldName", String.class).orElseThrow())
+                .collect(Collectors.joining(", "));
+        writer.write("defstruct [$L]", fields);
     }
 }
