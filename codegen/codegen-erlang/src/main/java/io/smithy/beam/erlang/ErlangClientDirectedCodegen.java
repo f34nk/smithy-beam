@@ -19,6 +19,7 @@ import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
 import software.amazon.smithy.model.shapes.OperationShape;
+import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.StructureShape;
 
@@ -172,7 +173,12 @@ final class ErlangClientDirectedCodegen
     @Override
     public void generateResource(
             GenerateResourceDirective<ErlangContext, BeamSettings> directive) {
-        // Reserved for resource helpers.
+        ErlangContext ctx = directive.context();
+        ResourceShape resource = directive.shape();
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.write("%% Contained resource: $L", resource.getId());
+        });
     }
 
     @Override
