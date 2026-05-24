@@ -2,6 +2,10 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolCodegenFactory;
+import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -71,7 +75,17 @@ final class ElixirDirectedCodegen
     @Override
     public ElixirContext createContext(
             CreateContextDirective<BeamSettings, ElixirIntegration> directive) {
-        String ns = directive.service().getId().getNamespace();
+        ServiceShape service = directive.service();
+        BeamHttpBindings httpBindings = BeamHttpBindings.from(directive.model());
+        BeamProtocolCodegen protocolCodegen = null;
+        if (directive.settings().protocol() != null) {
+            ShapeId protocolId =
+                    BeamProtocolResolver.resolve(
+                            directive.model(), service, directive.settings());
+            protocolCodegen =
+                    BeamProtocolCodegenFactory.create(directive.model(), protocolId);
+        }
+        String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
         BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
         String definitionFile = layout.typesModuleFile();
@@ -86,7 +100,9 @@ final class ElixirDirectedCodegen
                         directive.symbolProvider(),
                         ElixirWriter.factory(moduleName)),
                 directive.integrations(),
-                directive.service(),
+                service,
+                httpBindings,
+                protocolCodegen,
                 moduleName,
                 definitionFile);
     }
