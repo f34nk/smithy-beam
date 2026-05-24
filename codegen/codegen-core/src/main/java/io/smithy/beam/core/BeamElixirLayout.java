@@ -28,4 +28,8 @@ public final class BeamElixirLayout {
     public String serverModuleFile() {
         return modulePrefix() + "_server.ex";
     }
+
+    public String restJson1ModuleFile() {
+        return modulePrefix() + "_rest_json_1.ex";
+    }
 }
