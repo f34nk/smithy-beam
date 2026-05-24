@@ -152,6 +152,37 @@ class ErlangClientPluginTest {
     }
 
     @Test
+    void restJson1ProtocolEmitsStubModuleAndBindingComments() {
+        URL resource = ErlangClientPluginTest.class.getResource("/model/protocol_rest_json_fixture.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.protocoljson#DemoRestJson")
+                .withMember("edition", "2026")
+                .withMember("protocol", "aws.protocols#restJson1")
+                .build();
+        new ErlangClientPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+
+        assertThat(manifest.expectFileString("protocoljson_rest_json_1.erl"))
+                .contains("-module(protocoljson_rest_json_1).")
+                .contains("REST JSON codecs for smithy.beam.demo.protocoljson#DemoRestJson");
+        assertThat(manifest.expectFileString("protocoljson_client.erl"))
+                .contains("%% HTTP request bindings for smithy.beam.demo.protocoljson#DescribeItem:")
+                .contains("%%   id @ LABEL")
+                .contains("%%   requestTag @ HEADER")
+                .contains("%%   verbose @ QUERY");
+    }
+
+    @Test
     void explicitInvalidProtocolFailsWithCodegenException() {
         URL resource = ErlangClientPluginTest.class.getResource("/model/multi_service.smithy");
         assertThat(resource).isNotNull();
