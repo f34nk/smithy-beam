@@ -2,6 +2,11 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolCodegenFactory;
+import io.smithy.beam.core.BeamProtocolResolver;
+import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -18,10 +23,14 @@ import software.amazon.smithy.codegen.core.directed.GenerateResourceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
+import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+
+import java.util.Map;
 
 /**
  * Client-specific DirectedCodegen. Types are emitted by {@link ElixirTypeGeneration}
@@ -51,7 +60,17 @@ final class ElixirClientDirectedCodegen
     @Override
     public ElixirContext createContext(
             CreateContextDirective<BeamSettings, ElixirIntegration> directive) {
-        String ns = directive.service().getId().getNamespace();
+        ServiceShape service = directive.service();
+        BeamHttpBindings httpBindings = BeamHttpBindings.from(directive.model());
+        BeamProtocolCodegen protocolCodegen = null;
+        if (directive.settings().protocol() != null) {
+            ShapeId protocolId =
+                    BeamProtocolResolver.resolve(
+                            directive.model(), service, directive.settings());
+            protocolCodegen =
+                    BeamProtocolCodegenFactory.create(directive.model(), protocolId);
+        }
+        String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
         BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
         String definitionFile = layout.clientModuleFile();
@@ -66,7 +85,9 @@ final class ElixirClientDirectedCodegen
                         directive.symbolProvider(),
                         ElixirWriter.factory(clientModuleName)),
                 directive.integrations(),
-                directive.service(),
+                service,
+                httpBindings,
+                protocolCodegen,
                 clientModuleName,
                 definitionFile);
     }
@@ -125,6 +146,12 @@ final class ElixirClientDirectedCodegen
         ElixirContext ctx = directive.context();
         ServiceShape service = directive.shape();
 
+        if (ctx.protocolCodegen() != null
+                && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ElixirRestJson1Emitter.emitStubModule(ctx, directive.shape());
+        }
+
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
             writer.write("# Service closure: $L", service.getId());
@@ -167,6 +194,24 @@ final class ElixirClientDirectedCodegen
             writer.write("");
             writer.popState();
         });
+
+        if (ctx.protocolCodegen() != null) {
+            ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+                ctx.protocolCodegen().emitOperationBindings(ctx, ctx.service(), op);
+                writer.pushOperationBodySection();
+                writer.write("# HTTP request bindings for $L:", op.getId());
+                for (Map.Entry<String, HttpBinding> entry :
+                        ctx.httpBindings().requestBindings(op).entrySet()) {
+                    HttpBinding binding = entry.getValue();
+                    writer.write("#   $L @ $L", entry.getKey(), binding.getLocation());
+                }
+                writer.write("");
+                writer.popState();
+                for (ElixirIntegration integration : ctx.integrations()) {
+                    integration.customizeProtocolSerialize(ctx, op, writer);
+                }
+            });
+        }
     }
 
     @Override
