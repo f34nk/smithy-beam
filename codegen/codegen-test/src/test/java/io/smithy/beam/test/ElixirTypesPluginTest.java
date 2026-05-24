@@ -25,18 +25,6 @@ class ElixirTypesPluginTest {
                 .unwrap();
     }
 
-    private static PluginContext buildContext(Model model) {
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.basic#BasicService")
-                .withMember("edition", "2026")
-                .build();
-        return PluginContext.builder()
-                .model(model)
-                .fileManifest(new MockManifest())
-                .settings(settings)
-                .build();
-    }
-
     private static Model loadReservedWordsModel() {
         URL resource = ElixirTypesPluginTest.class.getResource("/model/reserved_words.smithy");
         assertThat(resource).isNotNull();
@@ -60,11 +48,58 @@ class ElixirTypesPluginTest {
     }
 
     @Test
-    void pluginRunsWithoutException() {
+    void generatesExpectedTypesInBasicTypesModule() {
         Model model = loadModel();
-        PluginContext context = buildContext(model);
-        new ElixirTypesPlugin().execute(context);
-        // TODO: assert file contents match baseline in later commits.
+        MockManifest manifest = new MockManifest();
+        new ElixirTypesPlugin().execute(buildContext(model, manifest));
+
+        String content = manifest.expectFileString("basic_types.ex");
+
+        assertThat(content)
+                .contains("defmodule Basic do")
+                .contains("Type definitions for the Basic model.")
+                .contains("@type basic_string :: String.t()")
+                .contains("@type basic_integer :: integer()")
+                .contains("@type basic_long :: integer()")
+                .contains("@type basic_float :: float()")
+                .contains("@type basic_boolean :: boolean()")
+                .contains("@type basic_blob :: binary()")
+                .contains("@type basic_byte :: integer()")
+                .contains("@type basic_short :: integer()")
+                .contains("@type basic_double :: float()")
+                .contains("@type basic_big_integer :: integer()")
+                .contains("@type basic_big_decimal :: Decimal.t()")
+                .contains("@type basic_timestamp :: DateTime.t()")
+                .contains("@type basic_document :: any()")
+                .contains("@type basic_list :: [")
+                .contains(".basic_string()]")
+                .contains("@type basic_map :: %{")
+                .contains(".basic_string() => ")
+                .contains(".basic_string()}")
+                .contains("defmodule BasicStatus do")
+                .contains(":active | :inactive | :pending | {:unknown, String.t()}")
+                .contains("defmodule BasicPriority do")
+                .contains(":low | :medium | :high | {:unknown, integer()}")
+                .contains("@type basic_union ::")
+                .contains("{:text, Basic.basic_string()}")
+                .contains("{:number, Basic.basic_integer()}")
+                .contains("{:flag, Basic.basic_boolean()}")
+                .contains("{:unknown, String.t()}")
+                .contains("defmodule BasicItem do")
+                .contains("name: Basic.basic_string(),")
+                .contains("count: Basic.basic_integer() | nil");
+    }
+
+    private static PluginContext buildContext(Model model, MockManifest manifest) {
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.basic#BasicService")
+                .withMember("edition", "2026")
+                .build();
+        return PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build();
     }
 
     @Test
@@ -381,7 +416,7 @@ class ElixirTypesPluginTest {
     }
 
     @Test
-    void protocolRelativeDateRelativeVersionDoNotChangeElixirTypeOnlyOutput() {
+    void relativeDateAndRelativeVersionWithoutProtocolDoNotChangeElixirTypeOnlyOutput() {
         URL resource = ElixirTypesPluginTest.class.getResource("/model/multi_service.smithy");
         assertThat(resource).isNotNull();
         Model model = Model.assembler()
@@ -403,7 +438,6 @@ class ElixirTypesPluginTest {
         ObjectNode extendedSettings = ObjectNode.builder()
                 .withMember("service", "smithy.beam.demo.multi#ServiceA")
                 .withMember("edition", "2026")
-                .withMember("protocol", "smithy.beam.demo.multi#TestProtocol")
                 .withMember("relativeDate", "2026-01-01")
                 .withMember("relativeVersion", "1.0.0")
                 .build();
@@ -414,5 +448,66 @@ class ElixirTypesPluginTest {
                 .build());
         assertThat(extended.expectFileString("multi_types.ex"))
                 .isEqualTo(baseline.expectFileString("multi_types.ex"));
+    }
+
+    @Test
+    void explicitInvalidProtocolFailsWithCodegenException() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/multi_service.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.multi#ServiceA")
+                .withMember("edition", "2026")
+                .withMember("protocol", "smithy.api#String")
+                .withMember("relativeDate", "2026-01-01")
+                .withMember("relativeVersion", "1.0.0")
+                .build();
+        assertThatThrownBy(() -> new ElixirTypesPlugin().execute(PluginContext.builder()
+                        .model(model)
+                        .fileManifest(manifest)
+                        .settings(settings)
+                        .build()))
+                .isInstanceOf(CodegenException.class)
+                .hasMessageContaining("protocol")
+                .hasMessageContaining("smithy.api#String");
+    }
+
+    private static Model loadRelativeDeprecationModel() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/relative_deprecation.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    @Test
+    void relativeDateRemovesDeprecatedStringShapeFromGeneratedTypes() {
+        Model model = loadRelativeDeprecationModel();
+
+        MockManifest baseline = new MockManifest();
+        ObjectNode baselineSettings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
+        assertThat(baseline.expectFileString("relative_deprecation_types.ex"))
+                .contains("@type legacy_string :: String.t()");
+
+        MockManifest filtered = new MockManifest();
+        ObjectNode filteredSettings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
+                .withMember("edition", "2026")
+                .withMember("relativeDate", "2026-01-01")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, filtered, filteredSettings));
+        assertThat(filtered.expectFileString("relative_deprecation_types.ex"))
+                .doesNotContain("@type legacy_string :: String.t()");
     }
 }
