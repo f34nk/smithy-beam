@@ -5,6 +5,7 @@ import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
+import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -150,6 +151,12 @@ final class ErlangClientDirectedCodegen
             GenerateServiceDirective<ErlangContext, BeamSettings> directive) {
         ErlangContext ctx = directive.context();
         ServiceShape service = directive.shape();
+
+        if (ctx.protocolCodegen() != null
+                && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ErlangRestJson1Emitter.emitStubModule(ctx, directive.shape());
+        }
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
