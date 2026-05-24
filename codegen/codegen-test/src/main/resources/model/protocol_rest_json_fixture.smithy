@@ -55,6 +55,7 @@ enum ItemStatus {
     ARCHIVED
 }
 
+@error("client")
 @httpError(404)
 structure NotFoundError {
     @required
