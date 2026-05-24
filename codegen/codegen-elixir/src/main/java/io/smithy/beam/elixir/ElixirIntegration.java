@@ -2,6 +2,7 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.SmithyIntegration;
+import software.amazon.smithy.model.shapes.OperationShape;
 
 /**
  * Extension point for the Elixir code generator.
@@ -16,4 +17,25 @@ import software.amazon.smithy.codegen.core.SmithyIntegration;
  * {@link #configure}.</p>
  */
 public interface ElixirIntegration
-        extends SmithyIntegration<BeamSettings, ElixirWriter, ElixirContext> {}
+        extends SmithyIntegration<BeamSettings, ElixirWriter, ElixirContext> {
+
+    /**
+     * Runs after the selected {@link io.smithy.beam.core.BeamProtocolCodegen} built-ins.
+     */
+    default void customizeProtocolSerialize(
+            ElixirContext context,
+            OperationShape operation,
+            ElixirWriter writer) {
+        // opt-in: integrations adjust generated serializers
+    }
+
+    /**
+     * Runs after the selected {@link io.smithy.beam.core.BeamProtocolCodegen} built-ins.
+     */
+    default void customizeProtocolDeserialize(
+            ElixirContext context,
+            OperationShape operation,
+            ElixirWriter writer) {
+        // opt-in: integrations adjust generated deserializers
+    }
+}
