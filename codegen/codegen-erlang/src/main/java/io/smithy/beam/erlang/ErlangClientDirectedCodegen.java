@@ -2,6 +2,10 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolCodegenFactory;
+import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -21,6 +25,7 @@ import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 
 import java.util.ArrayList;
@@ -52,7 +57,17 @@ final class ErlangClientDirectedCodegen
     @Override
     public ErlangContext createContext(
             CreateContextDirective<BeamSettings, ErlangIntegration> directive) {
-        String ns = directive.service().getId().getNamespace();
+        ServiceShape service = directive.service();
+        BeamHttpBindings httpBindings = BeamHttpBindings.from(directive.model());
+        BeamProtocolCodegen protocolCodegen = null;
+        if (directive.settings().protocol() != null) {
+            ShapeId protocolId =
+                    BeamProtocolResolver.resolve(
+                            directive.model(), service, directive.settings());
+            protocolCodegen =
+                    BeamProtocolCodegenFactory.create(directive.model(), protocolId);
+        }
+        String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
         BeamErlangLayout layout = new BeamErlangLayout(settings, ns);
         String definitionFile = layout.clientModuleFile();
@@ -67,7 +82,9 @@ final class ErlangClientDirectedCodegen
                         directive.symbolProvider(),
                         ErlangWriter.factory()),
                 directive.integrations(),
-                directive.service(),
+                service,
+                httpBindings,
+                protocolCodegen,
                 moduleName,
                 definitionFile);
     }
