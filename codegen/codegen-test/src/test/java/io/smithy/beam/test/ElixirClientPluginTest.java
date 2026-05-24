@@ -120,7 +120,7 @@ class ElixirClientPluginTest {
     }
 
     @Test
-    void protocolRelativeDateRelativeVersionDoNotChangeTypesOrClientStubOutput() {
+    void relativeDateAndRelativeVersionWithoutProtocolDoNotChangeTypesOrClientStubOutput() {
         URL resource = ElixirClientPluginTest.class.getResource("/model/multi_service.smithy");
         assertThat(resource).isNotNull();
         Model model = Model.assembler()
@@ -142,7 +142,6 @@ class ElixirClientPluginTest {
         ObjectNode extendedSettings = ObjectNode.builder()
                 .withMember("service", "smithy.beam.demo.multi#ServiceA")
                 .withMember("edition", "2026")
-                .withMember("protocol", "smithy.beam.demo.multi#TestProtocol")
                 .withMember("relativeDate", "2026-01-01")
                 .withMember("relativeVersion", "1.0.0")
                 .build();
@@ -155,5 +154,63 @@ class ElixirClientPluginTest {
                 .isEqualTo(baseline.expectFileString("multi_types.ex"));
         assertThat(extended.expectFileString("multi_client.ex"))
                 .isEqualTo(baseline.expectFileString("multi_client.ex"));
+    }
+
+    @Test
+    void explicitInvalidProtocolFailsWithCodegenException() {
+        URL resource = ElixirClientPluginTest.class.getResource("/model/multi_service.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.multi#ServiceA")
+                .withMember("edition", "2026")
+                .withMember("protocol", "smithy.api#String")
+                .withMember("relativeDate", "2026-01-01")
+                .withMember("relativeVersion", "1.0.0")
+                .build();
+        assertThatThrownBy(() -> new ElixirClientPlugin().execute(PluginContext.builder()
+                        .model(model)
+                        .fileManifest(manifest)
+                        .settings(settings)
+                        .build()))
+                .isInstanceOf(CodegenException.class)
+                .hasMessageContaining("protocol")
+                .hasMessageContaining("smithy.api#String");
+    }
+
+    @Test
+    void restJson1ProtocolEmitsStubModuleAndBindingComments() {
+        URL resource = ElixirClientPluginTest.class.getResource("/model/protocol_rest_json_fixture.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.protocoljson#DemoRestJson")
+                .withMember("edition", "2026")
+                .withMember("protocol", "aws.protocols#restJson1")
+                .build();
+        new ElixirClientPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+
+        assertThat(manifest.expectFileString("protocoljson_rest_json_1.ex"))
+                .contains("defmodule ProtocoljsonRestJson1 do")
+                .contains("REST JSON codecs for smithy.beam.demo.protocoljson#DemoRestJson");
+        assertThat(manifest.expectFileString("protocoljson_client.ex"))
+                .contains("# HTTP request bindings for smithy.beam.demo.protocoljson#DescribeItem:")
+                .contains("#   id @ LABEL")
+                .contains("#   requestTag @ HEADER")
+                .contains("#   verbose @ QUERY");
     }
 }
