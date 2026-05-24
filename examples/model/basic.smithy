@@ -2,6 +2,8 @@ $version: "2"
 
 namespace smithy.beam.demo.basic
 
+use aws.protocols#restJson1
+
 // Simple shapes — one named type per Smithy prelude scalar.
 
 string BasicString
@@ -75,6 +77,7 @@ structure BasicItem {
 
 // Minimal service so Erlang type codegen can run CodegenDirector with a service scope.
 
+@restJson1
 service BasicService {
     version: "2026"
     operations: [GetTypeClosure]
@@ -84,11 +87,28 @@ service BasicService {
 // DirectedCodegen include them in the service closure (example / codegen demo).
 
 @readonly
+@http(method: "GET", uri: "/types/{name}", code: 200)
 operation GetTypeClosure {
+    input: GetTypeClosureInput
     output: TypeClosureOutput
 }
 
+structure GetTypeClosureInput {
+    @required
+    @httpLabel
+    name: BasicString
+
+    @httpQuery("verbose")
+    verbose: BasicBoolean
+
+    @httpHeader("X-Request-Tag")
+    requestTag: BasicString
+}
+
 structure TypeClosureOutput {
+    @httpHeader("ETag")
+    etag: BasicString
+
     basicString: BasicString
     basicInteger: BasicInteger
     basicLong: BasicLong
