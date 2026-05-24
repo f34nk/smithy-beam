@@ -1,0 +1,22 @@
+package io.smithy.beam.core;
+
+import software.amazon.smithy.codegen.core.CodegenException;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.shapes.ShapeId;
+
+import java.util.Objects;
+
+public final class BeamProtocolCodegenFactory {
+
+    private BeamProtocolCodegenFactory() {}
+
+    public static BeamProtocolCodegen create(Model model, ShapeId resolvedProtocolTraitId) {
+        Objects.requireNonNull(resolvedProtocolTraitId, "resolvedProtocolTraitId");
+        BeamHttpBindings bindings = BeamHttpBindings.from(model);
+        if (BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(resolvedProtocolTraitId)) {
+            return new BeamRestJson1ProtocolCodegen(bindings);
+        }
+        throw new CodegenException(
+                "No BeamProtocolCodegen registered for protocol trait " + resolvedProtocolTraitId);
+    }
+}
