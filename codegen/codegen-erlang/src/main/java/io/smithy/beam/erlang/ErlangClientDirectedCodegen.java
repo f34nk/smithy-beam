@@ -22,6 +22,7 @@ import software.amazon.smithy.codegen.core.directed.GenerateResourceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
+import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -30,6 +31,7 @@ import software.amazon.smithy.model.shapes.StructureShape;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Client-specific DirectedCodegen. Types are emitted by {@link ErlangTypeGeneration}
@@ -174,7 +176,9 @@ final class ErlangClientDirectedCodegen
         Symbol inSym = sp.toSymbol(input);
         Symbol outSym = sp.toSymbol(output);
 
-        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+        String clientFile = ctx.definitionFile();
+
+        ctx.writerDelegator().useFileWriter(clientFile, writer -> {
             writer.pushOperationBodySection();
             writer.write(
                     "-spec $L(client_config(), $L) -> {'ok', $L} | {'error', term()}.",
@@ -185,6 +189,24 @@ final class ErlangClientDirectedCodegen
             writer.write("");
             writer.popState();
         });
+
+        if (ctx.protocolCodegen() != null) {
+            ctx.writerDelegator().useFileWriter(clientFile, writer -> {
+                ctx.protocolCodegen().emitOperationBindings(ctx, ctx.service(), op);
+                writer.pushOperationBodySection();
+                writer.write("%% HTTP request bindings for $L:", op.getId());
+                for (Map.Entry<String, HttpBinding> entry :
+                        ctx.httpBindings().requestBindings(op).entrySet()) {
+                    HttpBinding binding = entry.getValue();
+                    writer.write("%%   $L @ $L", entry.getKey(), binding.getLocation());
+                }
+                writer.write("");
+                writer.popState();
+                for (ErlangIntegration integration : ctx.integrations()) {
+                    integration.customizeProtocolSerialize(ctx, op, writer);
+                }
+            });
+        }
     }
 
     @Override
