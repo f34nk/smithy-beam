@@ -4,6 +4,7 @@ junit-jupiter = "5.11.0"
 assertj = "3.26.3"
 
 [libraries]
+smithy-aws-traits = { module = "software.amazon.smithy:smithy-aws-traits", version.ref = "smithy" }
 smithy-model = { module = "software.amazon.smithy:smithy-model", version.ref = "smithy" }
 smithy-codegen-core = { module = "software.amazon.smithy:smithy-codegen-core", version.ref = "smithy" }
 smithy-build = { module = "software.amazon.smithy:smithy-build", version.ref = "smithy" }
