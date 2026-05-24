@@ -1,5 +1,7 @@
 package io.smithy.beam.elixir;
 
+import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.build.FileManifest;
 import software.amazon.smithy.codegen.core.CodegenContext;
@@ -25,6 +27,8 @@ public record ElixirContext(
         WriterDelegator<ElixirWriter> writerDelegator,
         List<ElixirIntegration> integrations,
         ServiceShape service,
+        BeamHttpBindings httpBindings,
+        BeamProtocolCodegen protocolCodegen,
         String moduleName,
         String definitionFile) implements CodegenContext<BeamSettings, ElixirWriter, ElixirIntegration> {
 }
