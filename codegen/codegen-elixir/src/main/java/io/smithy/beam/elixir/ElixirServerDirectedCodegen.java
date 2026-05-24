@@ -2,6 +2,10 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolCodegenFactory;
+import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -20,6 +24,7 @@ import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 
 /**
@@ -50,7 +55,17 @@ final class ElixirServerDirectedCodegen
     @Override
     public ElixirContext createContext(
             CreateContextDirective<BeamSettings, ElixirIntegration> directive) {
-        String ns = directive.service().getId().getNamespace();
+        ServiceShape service = directive.service();
+        BeamHttpBindings httpBindings = BeamHttpBindings.from(directive.model());
+        BeamProtocolCodegen protocolCodegen = null;
+        if (directive.settings().protocol() != null) {
+            ShapeId protocolId =
+                    BeamProtocolResolver.resolve(
+                            directive.model(), service, directive.settings());
+            protocolCodegen =
+                    BeamProtocolCodegenFactory.create(directive.model(), protocolId);
+        }
+        String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
         BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
         String definitionFile = layout.serverModuleFile();
@@ -65,7 +80,9 @@ final class ElixirServerDirectedCodegen
                         directive.symbolProvider(),
                         ElixirWriter.factory(serverModuleName)),
                 directive.integrations(),
-                directive.service(),
+                service,
+                httpBindings,
+                protocolCodegen,
                 serverModuleName,
                 definitionFile);
     }
