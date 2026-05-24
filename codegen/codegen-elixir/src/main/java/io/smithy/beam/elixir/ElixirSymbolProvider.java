@@ -35,6 +35,7 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     private final Map<ShapeId, String> fieldNames;
     private final Map<ShapeId, String> unionTagNames;
     private final Map<ShapeId, Map<String, String>> enumAtomNames;
+    private final Map<ShapeId, String> serviceFunctionNames;
 
     ElixirSymbolProvider(
             BeamSettings settings,
@@ -59,6 +60,7 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
         this.fieldNames = buildStructureFieldNames();
         this.unionTagNames = buildUnionTagNames();
         this.enumAtomNames = buildEnumAtomNames();
+        this.serviceFunctionNames = buildServiceFunctionNames();
     }
 
     @Override
@@ -218,21 +220,18 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
     @Override
     public Symbol operationShape(OperationShape shape) {
-        String raw = toSnakeCase(shape.getId().getName(service));
-        String name = functionNameEscaper.escape(raw);
-        return Symbol.builder()
-                .name(name)
-                .namespace(moduleNamespace, ".")
-                .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
-                .putProperty("builtIn", false)
-                .putProperty("beamKind", kind.name())
-                .build();
+        return serviceScopedFunctionSymbol(shape);
     }
 
     @Override
     public Symbol resourceShape(ResourceShape shape) {
-        String raw = toSnakeCase(shape.getId().getName(service));
-        String name = functionNameEscaper.escape(raw);
+        return serviceScopedFunctionSymbol(shape);
+    }
+
+    private Symbol serviceScopedFunctionSymbol(Shape shape) {
+        String name = serviceFunctionNames.getOrDefault(
+                shape.getId(),
+                functionNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
         return Symbol.builder()
                 .name(name)
                 .namespace(moduleNamespace, ".")
@@ -416,6 +415,15 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
                         BeamNameUtils.deconflict(shape.getEnumValues().keySet().stream().toList(),
                                 name -> atomEscaper.escape(toSnakeCase(name)))));
         return result;
+    }
+
+    private Map<ShapeId, String> buildServiceFunctionNames() {
+        List<Shape> shapes = new Walker(model).walkShapes(service).stream()
+                .filter(shape -> shape.isOperationShape() || shape.isResourceShape())
+                .sorted(Comparator.comparing(shape -> shape.getId().toString()))
+                .toList();
+        return indexShapeNames(shapes, shape ->
+                functionNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
     }
 
     private static Map<ShapeId, String> indexShapeNames(
