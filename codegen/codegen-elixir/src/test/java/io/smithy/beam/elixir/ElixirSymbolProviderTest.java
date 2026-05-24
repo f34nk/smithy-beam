@@ -448,6 +448,38 @@ class ElixirSymbolProviderTest {
         }
 
         @Test
+        void serviceShapeUsesClientModuleNameWhenClientKind() {
+            ElixirSymbolProvider clientProvider =
+                    new ElixirSymbolProvider(
+                            testSettings(),
+                            model,
+                            service,
+                            "example_client.ex",
+                            "Example",
+                            BeamCodegenKind.CLIENT);
+            Symbol sym = clientProvider.toSymbol(service);
+            assertThat(sym.getName()).isEqualTo("ExampleClient");
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
+            assertThat(sym.getDefinitionFile()).isEqualTo("example_client.ex");
+        }
+
+        @Test
+        void serviceShapeUsesServerModuleNameWhenServerKind() {
+            ElixirSymbolProvider serverProvider =
+                    new ElixirSymbolProvider(
+                            testSettings(),
+                            model,
+                            service,
+                            "example_server.ex",
+                            "Example",
+                            BeamCodegenKind.SERVER);
+            Symbol sym = serverProvider.toSymbol(service);
+            assertThat(sym.getName()).isEqualTo("ExampleServer");
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
+            assertThat(sym.getDefinitionFile()).isEqualTo("example_server.ex");
+        }
+
+        @Test
         void operationShapeUsesSnakeCaseNameAndClearsDefinitionFileForTypesPass() {
             Symbol sym =
                     provider.toSymbol(
@@ -457,6 +489,80 @@ class ElixirSymbolProviderTest {
             assertThat(sym.getName()).isEqualTo("test_operation");
             assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
             assertThat(sym.getDefinitionFile()).isEmpty();
+        }
+
+        @Test
+        void operationShapeUsesDefinitionFileWhenClientKind() {
+            ElixirSymbolProvider clientProvider =
+                    new ElixirSymbolProvider(
+                            testSettings(),
+                            model,
+                            service,
+                            "test_service_client.ex",
+                            "Example",
+                            BeamCodegenKind.CLIENT);
+            Symbol sym =
+                    clientProvider.toSymbol(
+                            model.expectShape(
+                                    ShapeId.from("com.example#TestOperation"),
+                                    OperationShape.class));
+            assertThat(sym.getDefinitionFile()).isEqualTo("test_service_client.ex");
+            assertThat(sym.getProperty("beamKind", String.class)).contains("CLIENT");
+        }
+
+        @Test
+        void resourceShapeUsesServiceScopedSnakeName() {
+            String idl = """
+                    $version: "2"
+                    namespace com.res
+
+                    service WidgetService {
+                        resources: [Widget]
+                    }
+
+                    @readonly
+                    operation GetWidget {
+                        input: WidgetIn
+                        output: WidgetOut
+                    }
+
+                    structure WidgetIn {
+                        @required
+                        id: String
+                    }
+
+                    structure WidgetOut {}
+
+                    resource Widget {
+                        identifiers: {
+                            id: String
+                        }
+                        read: GetWidget
+                    }
+                    """;
+
+            Model resModel = Model.assembler()
+                    .addUnparsedModel("widget.smithy", idl)
+                    .assemble()
+                    .unwrap();
+            ServiceShape resService = resModel.expectShape(
+                    ShapeId.from("com.res#WidgetService"), ServiceShape.class);
+            ResourceShape resource = resModel.expectShape(
+                    ShapeId.from("com.res#Widget"), ResourceShape.class);
+            ElixirSymbolProvider resProvider =
+                    new ElixirSymbolProvider(
+                            testSettings(),
+                            resModel,
+                            resService,
+                            "widget_types.ex",
+                            "Widget",
+                            BeamCodegenKind.TYPES);
+
+            Symbol sym = resProvider.toSymbol(resource);
+            assertThat(sym.getName()).isEqualTo("widget");
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
+            assertThat(sym.getDefinitionFile()).isEmpty();
+            assertThat(sym.getProperty("beamKind", String.class)).contains("TYPES");
         }
     }
 
@@ -495,6 +601,60 @@ class ElixirSymbolProviderTest {
                         .as("keyword '%s' must be escaped", keyword)
                         .isEqualTo(keyword + "_");
             }
+        }
+
+        @Test
+        void operationNamedDefUsesEscapedFunctionSymbol() {
+            String idl = """
+                    $version: "2"
+                    namespace com.shadow
+
+                    service ShadowSvc {
+                        operations: [Def]
+                    }
+
+                    operation Def {}
+                    """;
+            Model m = Model.assembler()
+                    .addUnparsedModel("shadow.smithy", idl)
+                    .assemble()
+                    .unwrap();
+            ServiceShape svc = m.expectShape(ShapeId.from("com.shadow#ShadowSvc"), ServiceShape.class);
+            OperationShape op = m.expectShape(ShapeId.from("com.shadow#Def"), OperationShape.class);
+            ElixirSymbolProvider p =
+                    new ElixirSymbolProvider(
+                            testSettings(), m, svc, "shadow_types.ex", "Shadow", BeamCodegenKind.CLIENT);
+            assertThat(p.toSymbol(op).getName()).isEqualTo("def_");
+        }
+
+        @Test
+        void operationsDefAndLowercaseDefDeconflictAfterEscape() {
+            String idl = """
+                    $version: "2"
+                    namespace com.shadow2
+
+                    service Svc {
+                        operations: [Def, def_]
+                    }
+
+                    operation Def {}
+                    operation def_ {}
+                    """;
+            Model m = Model.assembler()
+                    .addUnparsedModel("shadow2.smithy", idl)
+                    .assemble()
+                    .unwrap();
+            ServiceShape svc = m.expectShape(ShapeId.from("com.shadow2#Svc"), ServiceShape.class);
+            OperationShape opDef = m.expectShape(ShapeId.from("com.shadow2#Def"), OperationShape.class);
+            OperationShape opDefUnderscore = m.expectShape(ShapeId.from("com.shadow2#def_"), OperationShape.class);
+            ElixirSymbolProvider p =
+                    new ElixirSymbolProvider(
+                            testSettings(), m, svc, "s_types.ex", "Shadow2", BeamCodegenKind.TYPES);
+            String first = p.toSymbol(opDef).getName();
+            String second = p.toSymbol(opDefUnderscore).getName();
+            assertThat(first).isEqualTo("def_");
+            assertThat(second).isNotEqualTo(first);
+            assertThat(second).isEqualTo("def__2");
         }
     }
 
