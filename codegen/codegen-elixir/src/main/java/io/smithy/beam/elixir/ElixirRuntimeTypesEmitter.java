@@ -13,11 +13,11 @@ public final class ElixirRuntimeTypesEmitter {
     }
 
     public static void writeBody(ElixirWriter writer, String moduleName) {
-        writer.write("@moduledoc \"\"\"");
-        writer.write("Generated HTTP and client runtime types for Smithy service clients.");
-        writer.write("\"\"\"");
         writer.write("defmodule $L do", moduleName);
         writer.indent();
+        writer.openBlock("@moduledoc \"\"\"");
+        writer.write("Generated HTTP and client runtime types for Smithy service clients.");
+        writer.closeBlock("\"\"\"");
         writer.write("@type http_request :: %__MODULE__.HttpRequest{}");
         writer.write("defmodule HttpRequest do");
         writer.indent();
