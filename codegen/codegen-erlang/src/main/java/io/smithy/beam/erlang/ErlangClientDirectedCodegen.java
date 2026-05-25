@@ -100,6 +100,13 @@ final class ErlangClientDirectedCodegen
         String ns = service.getId().getNamespace();
         BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns);
 
+        ctx.writerDelegator().useFileWriter(
+                ErlangRuntimeTypesEmitter.headerFileName(ctx.settings(), ctx.service()),
+                writer -> {
+                    writer.write("%% Generated runtime types for $L.", ctx.service().getId());
+                    ErlangRuntimeTypesEmitter.writeBody(writer);
+                });
+
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
         List<String> exports = new ArrayList<>();
         for (OperationShape op : operations) {
