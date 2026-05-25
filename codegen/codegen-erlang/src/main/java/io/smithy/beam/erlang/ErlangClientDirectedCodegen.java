@@ -168,6 +168,13 @@ final class ErlangClientDirectedCodegen
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
             writer.write("%% Service closure: $L", service.getId());
+            String override = ctx.settings().baseUrl();
+            if (override != null && !override.isBlank()) {
+                writer.write("%% Default base URL from smithy-build plugin setting baseUrl.");
+                writer.write(
+                        "-define(BEAM_DEFAULT_BASE_URL, <<\"$L\">>).",
+                        ErlangStringLiterals.escapeBinaryContents(override));
+            }
             writer.write(
                     "%% Client configuration is intentionally opaque at this layer; "
                             + "endpoint, transport, and protocol live in future runtime modules.");
