@@ -100,6 +100,14 @@ final class ElixirClientDirectedCodegen
         String ns = service.getId().getNamespace();
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
         String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+        String runtimeTypesModule =
+                ElixirSymbolProvider.toModuleName(
+                        ctx.settings().resolveModule(ctx.service().getId().getNamespace())
+                                + "_runtime_types");
+
+        ctx.writerDelegator().useFileWriter(
+                ElixirRuntimeTypesEmitter.modulePath(ctx.settings(), ctx.service()),
+                w -> ElixirRuntimeTypesEmitter.writeBody(w, runtimeTypesModule));
 
         ctx.writerDelegator().useFileWriter(layout.clientModuleFile(), writer -> {
             writer.pushModuleHeaderSection();
