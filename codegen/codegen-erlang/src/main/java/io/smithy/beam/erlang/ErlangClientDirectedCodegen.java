@@ -165,6 +165,8 @@ final class ErlangClientDirectedCodegen
             ErlangRestJson1Emitter.emitCodecModule(ctx, directive.shape());
         }
 
+        ErlangHttpDispatchEmitter.emit(ctx, service);
+
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
             writer.write("%% Service closure: $L", service.getId());
