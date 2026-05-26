@@ -21,11 +21,15 @@ public final class ErlangHttpDispatchEmitter {
             writer.write("%% Uses httpc from OTP. Replace via adapter for testing.");
             writer.write("-module($L).", httpModule);
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            writer.write("-export([dispatch/2]).");
+            writer.write("-export([dispatch/2, dispatch/3]).");
             writer.write("");
             writer.write("%% @doc Sends an http_request() and returns http_response().");
             writer.write("%% Config may contain `{base_url, <<\"https://...\">>}`.");
-            writer.write("dispatch(Config, #http_request{");
+            writer.write("%% Uses httpc by default; pass another module for tests.");
+            writer.write("dispatch(Config, Request) ->");
+            writer.write("    dispatch(httpc, Config, Request).");
+            writer.write("");
+            writer.write("dispatch(HttpClient, Config, #http_request{");
             writer.write("        method = Method, path = Path,");
             writer.write("        query = Query, headers = Headers, body = Body}) ->");
             writer.indent();
@@ -44,8 +48,8 @@ public final class ErlangHttpDispatchEmitter {
             writer.write("Url = <<BaseUrl/binary, Path/binary, QueryStr/binary>>,");
             writer.write("HttpcHeaders = [{binary_to_list(K), binary_to_list(V)}");
             writer.write("    || {K, V} <- Headers],");
-            writer.write("Req = {binary_to_list(Url), HttpcHeaders, binary_to_list(mime(Headers)), Body},");
-            writer.write("case httpc:request(binary_to_atom(string:lowercase(Method), utf8),");
+            writer.write("Req = {binary_to_list(Url), HttpcHeaders, mime(Headers), Body},");
+            writer.write("case HttpClient:request(binary_to_atom(string:lowercase(Method), utf8),");
             writer.write("        Req, [], [{body_format, binary}]) of");
             writer.indent();
             writer.write("{ok, {{_, Status, _}, RespHeaders, RespBody}} ->");
