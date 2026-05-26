@@ -23,7 +23,6 @@ import software.amazon.smithy.codegen.core.directed.GenerateResourceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
-import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -32,7 +31,6 @@ import software.amazon.smithy.model.shapes.StructureShape;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Client-specific DirectedCodegen. Types are emitted by {@link ErlangTypeGeneration}
@@ -199,37 +197,43 @@ final class ErlangClientDirectedCodegen
         Symbol inSym = sp.toSymbol(input);
         Symbol outSym = sp.toSymbol(output);
 
-        String clientFile = ctx.definitionFile();
+        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(),
+                ctx.service().getId().getNamespace());
+        boolean hasProtocol = ctx.protocolCodegen() != null
+                && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
+                        ctx.protocolCodegen().protocolTraitId());
 
-        ctx.writerDelegator().useFileWriter(clientFile, writer -> {
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
             writer.write(
                     "-spec $L(client_config(), $L) -> {'ok', $L} | {'error', term()}.",
-                    opSym.getName(),
-                    inSym.getName(),
-                    outSym.getName());
-            writer.write("$L(_Cfg, _Input) -> {error, not_implemented}.", opSym.getName());
+                    opSym.getName(), inSym.getName(), outSym.getName());
+            if (hasProtocol) {
+                writer.write("$L(Config, Input) ->", opSym.getName());
+                writer.indent();
+                writer.write("Req = $L:encode_$L_request(Input),",
+                        layout.codecModuleName(), opSym.getName());
+                writer.write("case $L:dispatch(Config, Req) of",
+                        layout.modulePrefix() + "_http");
+                writer.indent();
+                writer.write("{ok, Resp} ->");
+                writer.indent();
+                writer.write("$L:decode_$L_response(Resp);",
+                        layout.codecModuleName(), opSym.getName());
+                writer.dedent();
+                writer.write("{error, Reason} ->");
+                writer.indent();
+                writer.write("{error, Reason}");
+                writer.dedent();
+                writer.dedent();
+                writer.write("end.");
+                writer.dedent();
+            } else {
+                writer.write("$L(_Config, _Input) -> {error, not_implemented}.", opSym.getName());
+            }
             writer.write("");
             writer.popState();
         });
-
-        if (ctx.protocolCodegen() != null) {
-            ctx.writerDelegator().useFileWriter(clientFile, writer -> {
-                ctx.protocolCodegen().emitOperationBindings(ctx, ctx.service(), op);
-                writer.pushOperationBodySection();
-                writer.write("%% HTTP request bindings for $L:", op.getId());
-                for (Map.Entry<String, HttpBinding> entry :
-                        ctx.httpBindings().requestBindings(op).entrySet()) {
-                    HttpBinding binding = entry.getValue();
-                    writer.write("%%   $L @ $L", entry.getKey(), binding.getLocation());
-                }
-                writer.write("");
-                writer.popState();
-                for (ErlangIntegration integration : ctx.integrations()) {
-                    integration.customizeProtocolSerialize(ctx, op, writer);
-                }
-            });
-        }
     }
 
     @Override

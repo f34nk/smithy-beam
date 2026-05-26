@@ -152,7 +152,7 @@ class ErlangClientPluginTest {
     }
 
     @Test
-    void restJson1ProtocolEmitsStubModuleAndBindingComments() {
+    void restJson1ProtocolWiresClientOperationToCodecAndHttp() {
         URL resource = ErlangClientPluginTest.class.getResource("/model/protocol_rest_json_fixture.smithy");
         assertThat(resource).isNotNull();
         Model model = Model.assembler()
@@ -175,11 +175,15 @@ class ErlangClientPluginTest {
         assertThat(manifest.expectFileString("protocoljson_rest_json_1.erl"))
                 .contains("-module(protocoljson_rest_json_1).")
                 .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
-        assertThat(manifest.expectFileString("protocoljson_client.erl"))
-                .contains("%% HTTP request bindings for smithy.beam.demo.protocoljson#DescribeItem:")
-                .contains("%%   id @ LABEL")
-                .contains("%%   requestTag @ HEADER")
-                .contains("%%   verbose @ QUERY");
+        assertThat(manifest.expectFileString("protocoljson_http.erl"))
+                .contains("-module(protocoljson_http).")
+                .contains("dispatch(Config, #http_request{");
+        String client = manifest.expectFileString("protocoljson_client.erl");
+        assertThat(client)
+                .contains("describe_item(Config, Input) ->")
+                .contains("Req = protocoljson_rest_json_1:encode_describe_item_request(Input),")
+                .contains("case protocoljson_http:dispatch(Config, Req) of")
+                .contains("protocoljson_rest_json_1:decode_describe_item_response(Resp);");
     }
 
     @Test
