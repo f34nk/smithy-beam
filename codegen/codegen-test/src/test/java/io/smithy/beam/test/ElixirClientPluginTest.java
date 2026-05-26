@@ -71,7 +71,7 @@ class ElixirClientPluginTest {
         assertThat(clientSource).contains("@moduledoc \"\"\"");
         assertThat(clientSource).contains("alias Basic");
         assertThat(clientSource).contains("@spec get_type_closure(client_config(), Basic.GetTypeClosureInput.t())");
-        assertThat(clientSource).contains("def get_type_closure(_cfg, _input), do: {:error, :not_implemented}");
+        assertThat(clientSource).contains("def get_type_closure(_config, _input), do: {:error, :not_implemented}");
         assertThat(clientSource).contains("@type client_config :: map()");
         int moduleIndex = clientSource.indexOf("defmodule BasicClient do");
         int moduledocIndex = clientSource.indexOf("@moduledoc \"\"\"");
