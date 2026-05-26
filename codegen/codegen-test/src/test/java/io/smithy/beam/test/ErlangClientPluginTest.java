@@ -174,7 +174,7 @@ class ErlangClientPluginTest {
 
         assertThat(manifest.expectFileString("protocoljson_rest_json_1.erl"))
                 .contains("-module(protocoljson_rest_json_1).")
-                .contains("REST JSON codecs for smithy.beam.demo.protocoljson#DemoRestJson");
+                .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
         assertThat(manifest.expectFileString("protocoljson_client.erl"))
                 .contains("%% HTTP request bindings for smithy.beam.demo.protocoljson#DescribeItem:")
                 .contains("%%   id @ LABEL")
