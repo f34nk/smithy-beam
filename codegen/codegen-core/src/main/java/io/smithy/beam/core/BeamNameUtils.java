@@ -20,4 +20,11 @@ public final class BeamNameUtils {
         }
         return result;
     }
+
+    public static String toSnakeCase(String name) {
+        return name
+                .replaceAll("([a-z])([A-Z])", "$1_$2")
+                .replaceAll("([A-Z]+)([A-Z][a-z])", "$1_$2")
+                .toLowerCase();
+    }
 }
