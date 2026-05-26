@@ -161,11 +161,15 @@ class ElixirTypesPluginTest {
         String content = manifest.expectFileString("error_shape_types.ex");
 
         assertThat(content)
+                .contains(
+                        "# Error shape: smithy.beam.demo.error_shape#ServiceUnavailable (server)")
                 .contains("defmodule ServiceUnavailable do")
-                .contains("Error structure ServiceUnavailable.")
-                .contains("retryable=true httpCode=503")
-                .contains("message:")
-                .contains("defstruct [:message]");
+                .contains(
+                        "Error from smithy.beam.demo.error_shape#ServiceUnavailable (fault: server, retryable: true).")
+                .contains("defexception [")
+                .contains("message: nil,")
+                .contains("__beam_error_kind: :server")
+                .contains("def message(e), do: inspect(e)");
     }
 
     private static Model loadSparseCollectionsModel() {

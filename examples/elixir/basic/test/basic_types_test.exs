@@ -1,6 +1,21 @@
 defmodule BasicTypesTest do
   use ExUnit.Case, async: true
 
+  # ── BasicNotFound error exception ────────────────────────────────────────────
+
+  describe "BasicNotFound error" do
+    test "can be created with message and fault kind" do
+      err = %Basic.BasicNotFound{message: "missing", __beam_error_kind: :client}
+      assert err.message == "missing"
+      assert err.__beam_error_kind == :client
+    end
+
+    test "defaults fault kind to client" do
+      err = %Basic.BasicNotFound{message: "gone"}
+      assert err.__beam_error_kind == :client
+    end
+  end
+
   # ── BasicItem struct ─────────────────────────────────────────────────────────
 
   describe "BasicItem struct" do

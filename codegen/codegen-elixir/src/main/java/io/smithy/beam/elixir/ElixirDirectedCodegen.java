@@ -15,7 +15,7 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.NullableIndex;
 import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.*;
-import software.amazon.smithy.model.traits.HttpErrorTrait;
+import software.amazon.smithy.model.traits.ErrorTrait;
 import software.amazon.smithy.model.traits.RetryableTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
 
@@ -144,6 +144,10 @@ final class ElixirDirectedCodegen
         });
     }
 
+    static boolean isPreludeShape(Shape shape) {
+        return shape.getId().getNamespace().equals("smithy.api");
+    }
+
     /**
      * Returns true when a closure shape receives its {@code @type} alias from the preamble pass
      * rather than a {@code generate*} callback (enums, unions, and structures are excluded).
@@ -169,12 +173,16 @@ final class ElixirDirectedCodegen
                 || shape instanceof MapShape;
     }
 
+    static boolean shouldEmitPreambleTypeAlias(Shape shape) {
+        return receivesPreambleTypeAlias(shape) && !isPreludeShape(shape);
+    }
+
     /**
      * Shape ids that must receive exactly one preamble {@code @type} alias for the given closure.
      */
     static Set<ShapeId> expectedPreambleAliasShapeIds(Set<Shape> closure) {
         return closure.stream()
-                .filter(ElixirDirectedCodegen::receivesPreambleTypeAlias)
+                .filter(ElixirDirectedCodegen::shouldEmitPreambleTypeAlias)
                 .map(Shape::getId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
@@ -237,7 +245,7 @@ final class ElixirDirectedCodegen
             Set<ShapeId> preambleAliasesEmitted) {
         shapes.stream()
                 .filter(closure::contains)
-                .filter(ElixirDirectedCodegen::receivesPreambleTypeAlias)
+                .filter(ElixirDirectedCodegen::shouldEmitPreambleTypeAlias)
                 .sorted(Comparator.comparing(s -> s.getId().getName()))
                 .forEach(s -> {
                     recordPreambleAlias(s, preambleAliasesEmitted);
@@ -576,39 +584,38 @@ final class ElixirDirectedCodegen
     }
 
     /**
-     * Emits a nested defmodule for error structures with retryable and httpError metadata
-     * in {@code @moduledoc}, matching structure field typing via {@link NullableIndex}.
+     * Emits a nested {@code defexception} module for {@code @error} structures with fault kind
+     * and retryable metadata in {@code @moduledoc}.
      */
     @Override
     public void generateError(
             GenerateErrorDirective<ElixirContext, BeamSettings> directive) {
-        StructureShape shape = directive.shape();
         ElixirContext ctx = directive.context();
-        SymbolProvider sp = directive.symbolProvider();
-        NullableIndex nullableIndex = NullableIndex.of(directive.model());
-        Symbol symbol = sp.toSymbol(shape);
+        StructureShape shape = directive.shape();
+        String modName = ctx.symbolProvider().toSymbol(shape).getName();
+        ErrorTrait errorTrait = shape.expectTrait(ErrorTrait.class);
+        boolean isRetryable = shape.hasTrait(RetryableTrait.class);
 
-        boolean retryable = shape.hasTrait(RetryableTrait.ID);
-        Integer httpCode =
-                shape.getTrait(HttpErrorTrait.class).map(HttpErrorTrait::getCode).orElse(null);
+        String typesFile = new BeamElixirLayout(ctx.settings(),
+                ctx.service().getId().getNamespace()).typesModuleFile();
 
-        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+        ctx.writerDelegator().useFileWriter(typesFile, writer -> {
             writer.write("");
-            writer.openBlock("defmodule $L do", symbol.getName());
-            writer.openBlock("@moduledoc \"\"\"");
-            writer.write("Error structure $L.", shape.getId().getName());
-            writer.write("retryable=$L httpCode=$L", retryable, httpCode == null ? "nil" : httpCode);
-            writer.closeBlock("\"\"\"");
-            writer.write("");
-
-            writeStructureTypeAndDefstruct(
-                    writer,
-                    ctx,
-                    sp,
-                    nullableIndex,
-                    StreamSupport.stream(shape.members().spliterator(), false).toList());
-
-            writer.closeBlock("end");
+            writer.write("# Error shape: $L ($L)", shape.getId(), errorTrait.getValue());
+            writer.write("defmodule $L do", modName);
+            writer.indent();
+            writer.write("@moduledoc \"Error from $L (fault: $L, retryable: $L).\"",
+                    shape.getId(), errorTrait.getValue(), isRetryable);
+            writer.write("defexception [");
+            for (MemberShape member : shape.members()) {
+                writer.write("  $L: nil,", member.getMemberName());
+            }
+            writer.write("  __beam_error_kind: :$L", errorTrait.getValue());
+            writer.write("]");
+            writer.write("@impl true");
+            writer.write("def message(e), do: inspect(e)");
+            writer.dedent();
+            writer.write("end");
         });
     }
 
