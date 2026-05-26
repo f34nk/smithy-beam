@@ -101,12 +101,10 @@ final class ElixirClientDirectedCodegen
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
         String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
         String runtimeTypesModule =
-                ElixirSymbolProvider.toModuleName(
-                        ctx.settings().resolveModule(ctx.service().getId().getNamespace())
-                                + "_runtime_types");
+                ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_runtime_types");
 
         ctx.writerDelegator().useFileWriter(
-                ElixirRuntimeTypesEmitter.modulePath(ctx.settings(), ctx.service()),
+                layout.runtimeTypesModuleFile(),
                 w -> ElixirRuntimeTypesEmitter.writeBody(w, runtimeTypesModule));
 
         ctx.writerDelegator().useFileWriter(layout.clientModuleFile(), writer -> {
@@ -157,7 +155,7 @@ final class ElixirClientDirectedCodegen
         if (ctx.protocolCodegen() != null
                 && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
-            ElixirRestJson1Emitter.emitStubModule(ctx, directive.shape());
+            ElixirRestJson1Emitter.emitCodecModule(ctx, directive.shape());
         }
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
