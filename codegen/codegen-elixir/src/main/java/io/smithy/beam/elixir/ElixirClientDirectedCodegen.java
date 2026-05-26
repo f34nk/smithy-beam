@@ -191,6 +191,10 @@ final class ElixirClientDirectedCodegen
         String inType = ElixirTopDown.structureSpecType(typesModuleName, inSym);
         String outType = ElixirTopDown.structureSpecType(typesModuleName, outSym);
 
+        boolean hasProtocol = ctx.protocolCodegen() != null
+                && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
+                        ctx.protocolCodegen().protocolTraitId());
+
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
             writer.write(
@@ -198,7 +202,26 @@ final class ElixirClientDirectedCodegen
                     opSym.getName(),
                     inType,
                     outType);
-            writer.write("def $L(_cfg, _input), do: {:error, :not_implemented}", opSym.getName());
+            if (hasProtocol) {
+                String codecMod = ElixirSymbolProvider.toModuleName(
+                        layout.modulePrefix() + "_rest_json_1");
+                String httpMod = ElixirSymbolProvider.toModuleName(
+                        layout.modulePrefix() + "_http");
+                writer.write("def $L(config, input) do", opSym.getName());
+                writer.indent();
+                writer.write("req = $L.encode_$L_request(input)", codecMod, opSym.getName());
+                writer.write("case $L.dispatch(config, req) do", httpMod);
+                writer.indent();
+                writer.write("{:ok, resp} -> $L.decode_$L_response(resp)", codecMod, opSym.getName());
+                writer.write("{:error, reason} -> {:error, reason}");
+                writer.dedent();
+                writer.write("end");
+                writer.dedent();
+                writer.write("end");
+            } else {
+                writer.write("def $L(_config, _input), do: {:error, :not_implemented}",
+                        opSym.getName());
+            }
             writer.write("");
             writer.popState();
         });
