@@ -3,6 +3,38 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-05-26
+
+### Added
+- REST JSON 1 request encoding and response decoding for Erlang and Elixir, with generated codec modules wired into client operation stubs through encode, HTTP dispatch, and decode.
+- HTTP dispatch modules for Erlang and Elixir that wrap httpc and Req respectively.
+- Error shape generation for Erlang as typed records with kind metadata, and for Elixir as defexception modules.
+- Codec and runtime types output paths on the shared Erlang and Elixir layouts, plus snake_case naming support in shared name utilities.
+
+### Changed
+- Runtime types header and module path resolution now flows through the layout helpers instead of duplicated helpers in each language pass.
+
+## 2026-05-25
+
+### Added
+- Runtime types output for Erlang and Elixir, emitted from the client generation pass alongside the existing type surface.
+- Erlang client configuration now carries the configured base URL from plugin settings.
+
+### Fixed
+- Elixir runtime types module documentation is emitted inside the defmodule block.
+- Timestamp binding formats in generated output follow HttpBindingIndex rather than display offsets.
+
+## 2026-05-24
+
+### Added
+- Protocol generation SPI and selection from the resolved service protocol trait, with a small facade over HTTP binding extraction.
+- Dedicated REST JSON codec module stubs per service for Erlang and Elixir, invoked from client service and operation generation.
+- Protocol context and binding handles on Erlang and Elixir codegen context records, plus integration callbacks for protocol customization.
+- REST JSON and HTTP bindings on the basic example model, with a minimal REST JSON service fixture for tests.
+
+### Fixed
+- Elixir operation and resource function names are deconflicted across the full service closure.
+
 ## 2026-05-20
 
 ### Added
