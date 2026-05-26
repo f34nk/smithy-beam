@@ -101,7 +101,7 @@ final class ErlangClientDirectedCodegen
         BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns);
 
         ctx.writerDelegator().useFileWriter(
-                ErlangRuntimeTypesEmitter.headerFileName(ctx.settings(), ctx.service()),
+                layout.runtimeTypesHeaderFile(),
                 writer -> {
                     writer.write("%% Generated runtime types for $L.", ctx.service().getId());
                     ErlangRuntimeTypesEmitter.writeBody(writer);
