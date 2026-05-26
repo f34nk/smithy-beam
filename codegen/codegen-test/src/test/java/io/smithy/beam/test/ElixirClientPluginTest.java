@@ -206,11 +206,40 @@ class ElixirClientPluginTest {
 
         assertThat(manifest.expectFileString("protocoljson_rest_json_1.ex"))
                 .contains("defmodule ProtocoljsonRestJson1 do")
-                .contains("REST JSON codecs for smithy.beam.demo.protocoljson#DemoRestJson");
+                .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
         assertThat(manifest.expectFileString("protocoljson_client.ex"))
                 .contains("# HTTP request bindings for smithy.beam.demo.protocoljson#DescribeItem:")
                 .contains("#   id @ LABEL")
                 .contains("#   requestTag @ HEADER")
                 .contains("#   verbose @ QUERY");
+    }
+
+    @Test
+    void restJson1ProtocolEmitsRealEncoderAndDecoder() {
+        URL resource = ElixirClientPluginTest.class.getResource("/model/protocol_rest_json_fixture.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.protocoljson#DemoRestJson")
+                .withMember("edition", "2026")
+                .withMember("protocol", "aws.protocols#restJson1")
+                .build();
+        new ElixirClientPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+
+        String codec = manifest.expectFileString("protocoljson_rest_json_1.ex");
+        assertThat(codec).contains("def encode_describe_item_request(");
+        assertThat(codec).contains("def decode_describe_item_response(");
+        assertThat(codec).contains("%RuntimeTypes.HttpRequest{");
+        assertThat(codec).contains("Jason.decode!");
+        assertThat(codec).contains("uri_encode(");
     }
 }
