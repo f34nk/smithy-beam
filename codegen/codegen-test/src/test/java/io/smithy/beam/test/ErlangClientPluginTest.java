@@ -211,7 +211,12 @@ class ErlangClientPluginTest {
         assertThat(codec).contains("encode_describe_item_request(");
         assertThat(codec).contains("decode_describe_item_response(");
         assertThat(codec).contains("http_request{");
-        assertThat(codec).contains("thoas:decode!(");
+        assertThat(codec).contains("jsone:decode(Body)");
+        assertThat(codec).contains("{error, _} -> #{}");
+        assertThat(codec).doesNotContain("{error, _} -> #{}}");
+        assertThat(codec).contains("#describe_item_input{");
+        assertThat(codec).doesNotContain("#describe_item_input(){");
+        assertThat(codec).contains("(V) when V =/= undefined");
         assertThat(codec).contains("uri_encode(");
     }
 
