@@ -162,7 +162,7 @@ final class ErlangClientDirectedCodegen
         if (ctx.protocolCodegen() != null
                 && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
-            ErlangRestJson1Emitter.emitStubModule(ctx, directive.shape());
+            ErlangRestJson1Emitter.emitCodecModule(ctx, directive.shape());
         }
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
