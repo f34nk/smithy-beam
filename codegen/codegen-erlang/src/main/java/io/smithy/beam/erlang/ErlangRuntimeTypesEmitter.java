@@ -1,16 +1,8 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.core.BeamSettings;
-import software.amazon.smithy.model.shapes.ServiceShape;
-
 public final class ErlangRuntimeTypesEmitter {
 
     private ErlangRuntimeTypesEmitter() {}
-
-    public static String headerFileName(BeamSettings settings, ServiceShape service) {
-        String ns = service.getId().getNamespace();
-        return settings.resolveModule(ns) + "_runtime_types.hrl";
-    }
 
     public static void writeBody(ErlangWriter writer) {
         writer.write("-ifndef($L).", "BEAM_RUNTIME_TYPES_INCLUDED");
