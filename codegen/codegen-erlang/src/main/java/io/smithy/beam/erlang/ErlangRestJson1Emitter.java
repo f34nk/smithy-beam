@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamNameUtils;
+import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
@@ -67,7 +68,7 @@ public final class ErlangRestJson1Emitter {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
-        String inputRecord = sp.toSymbol(input).getName();
+        String inputRecord = recordName(sp.toSymbol(input));
         HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
         String method = httpTrait.getMethod();
         String uriTemplate = httpTrait.getUri().toString();
@@ -94,8 +95,8 @@ public final class ErlangRestJson1Emitter {
             for (HttpBinding qb : queries) {
                 String fieldName = BeamNameUtils.toSnakeCase(qb.getMember().getMemberName());
                 String paramName = qb.getLocationName();
-                writer.write("    ($L =/= undefined) -> {true, {<<\"$L\">>, encode_query_value($L)}};",
-                        fieldName, paramName, fieldName);
+                writer.write("    (V) when V =/= undefined -> {true, {<<\"$L\">>, encode_query_value(V)}};",
+                        paramName);
             }
             writer.write("    (_) -> false");
             writer.write("end, [$L]),",
@@ -111,8 +112,8 @@ public final class ErlangRestJson1Emitter {
             for (HttpBinding hb : headers) {
                 String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
                 String headerName = hb.getLocationName();
-                writer.write("    ($L =/= undefined) -> {true, {<<\"$L\">>, to_binary($L)}};",
-                        fieldName, headerName, fieldName);
+                writer.write("    (V) when V =/= undefined -> {true, {<<\"$L\">>, to_binary(V)}};",
+                        headerName);
             }
             writer.write("    (_) -> false");
             writer.write("end, [$L]),",
@@ -132,7 +133,7 @@ public final class ErlangRestJson1Emitter {
                 writer.write("    <<\"$L\">> => $L,", jsonKey, fieldName);
             }
             writer.write("}),");
-            writer.write("Body = thoas:encode(BodyMap),");
+            writer.write("Body = jsone:encode(BodyMap),");
         }
 
         writer.write("#http_request{");
@@ -158,7 +159,7 @@ public final class ErlangRestJson1Emitter {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
-        String outputRecord = sp.toSymbol(output).getName();
+        String outputRecord = recordName(sp.toSymbol(output));
         int successCode = httpIndex.getResponseCode(op);
 
         List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
@@ -174,7 +175,15 @@ public final class ErlangRestJson1Emitter {
             writer.write("Decoded = case Body of");
             writer.indent();
             writer.write("<<>> -> #{};");
-            writer.write("_ -> thoas:decode!(Body)");
+            writer.write("_ ->");
+            writer.indent();
+            writer.write("case jsone:decode(Body) of");
+            writer.indent();
+            writer.write("{ok, Val} -> Val;");
+            writer.write("{error, _} -> #{}");
+            writer.dedent();
+            writer.write("end");
+            writer.dedent();
             writer.dedent();
             writer.write("end,");
         }
@@ -186,19 +195,23 @@ public final class ErlangRestJson1Emitter {
                     fieldName, headerName);
         }
 
-        writer.write("{ok, #$L{", outputRecord);
+        List<String> recordFields = new ArrayList<>();
         for (HttpBinding hb : respHeaders) {
             String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
-            writer.write("    $L = $L,", fieldName, fieldName);
+            recordFields.add("    " + fieldName + " = " + fieldName);
         }
         for (HttpBinding db : respDoc) {
             String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
             String jsonKey = db.getMember().getMemberName();
-            writer.write("    $L = maps:get(<<\"$L\">>, Decoded, undefined),", fieldName, jsonKey);
+            recordFields.add("    " + fieldName + " = maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined)");
         }
         for (HttpBinding pb : respPayload) {
             String fieldName = BeamNameUtils.toSnakeCase(pb.getMember().getMemberName());
-            writer.write("    $L = Body,", fieldName);
+            recordFields.add("    " + fieldName + " = Body");
+        }
+        writer.write("{ok, #$L{", outputRecord);
+        if (!recordFields.isEmpty()) {
+            writer.write(String.join(",\n", recordFields));
         }
         writer.write("}};");
 
@@ -235,6 +248,11 @@ public final class ErlangRestJson1Emitter {
         writer.write("");
         writer.write("uri_encode(Value) ->");
         writer.write("    uri_string:quote(Value).");
+    }
+
+    /** Record tag for #-record{} syntax; symbol names carry a trailing {@code ()} type suffix. */
+    private static String recordName(Symbol symbol) {
+        return symbol.getName().replace("()", "");
     }
 
     private static List<String> buildPatternParts(
