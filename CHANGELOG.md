@@ -7,12 +7,18 @@ All notable changes to this project will be documented here.
 
 ### Added
 - REST JSON 1 request encoding and response decoding for Erlang and Elixir, with generated codec modules wired into client operation stubs through encode, HTTP dispatch, and decode.
-- HTTP dispatch modules for Erlang and Elixir that wrap httpc and Req respectively.
+- HTTP dispatch modules for Erlang and Elixir that wrap httpc and Req, with injectable client modules so tests can substitute mocks without network calls.
 - Error shape generation for Erlang as typed records with kind metadata, and for Elixir as defexception modules.
 - Codec and runtime types output paths on the shared Erlang and Elixir layouts, plus snake_case naming support in shared name utilities.
+- HTTP dispatch and REST JSON 1 codec tests for the basic Erlang and Elixir examples.
+- OTP application descriptor for the Erlang basic example.
+
+### Fixed
+- REST JSON 1 codec output uses valid Erlang binding variables and safer JSON body decoding.
 
 ### Changed
 - Runtime types header and module path resolution now flows through the layout helpers instead of duplicated helpers in each language pass.
+- Erlang basic example build compiles generated sources directly.
 
 ## 2026-05-25
 
