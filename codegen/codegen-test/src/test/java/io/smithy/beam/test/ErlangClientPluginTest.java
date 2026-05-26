@@ -183,6 +183,35 @@ class ErlangClientPluginTest {
     }
 
     @Test
+    void restJson1ProtocolEmitsRealEncoderAndDecoder() {
+        URL resource = ErlangClientPluginTest.class.getResource("/model/protocol_rest_json_fixture.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.protocoljson#DemoRestJson")
+                .withMember("edition", "2026")
+                .withMember("protocol", "aws.protocols#restJson1")
+                .build();
+        new ErlangClientPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+
+        String codec = manifest.expectFileString("protocoljson_rest_json_1.erl");
+        assertThat(codec).contains("encode_describe_item_request(");
+        assertThat(codec).contains("decode_describe_item_response(");
+        assertThat(codec).contains("http_request{");
+        assertThat(codec).contains("thoas:decode!(");
+        assertThat(codec).contains("uri_encode(");
+    }
+
+    @Test
     void explicitInvalidProtocolFailsWithCodegenException() {
         URL resource = ErlangClientPluginTest.class.getResource("/model/multi_service.smithy");
         assertThat(resource).isNotNull();
