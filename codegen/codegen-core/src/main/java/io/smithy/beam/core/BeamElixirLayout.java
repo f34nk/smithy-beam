@@ -30,6 +30,14 @@ public final class BeamElixirLayout {
     }
 
     public String restJson1ModuleFile() {
+        return codecModuleFile();
+    }
+
+    public String codecModuleFile() {
         return modulePrefix() + "_rest_json_1.ex";
+    }
+
+    public String runtimeTypesModuleFile() {
+        return modulePrefix() + "_runtime_types.ex";
     }
 }
