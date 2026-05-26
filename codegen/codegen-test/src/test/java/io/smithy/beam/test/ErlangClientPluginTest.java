@@ -177,7 +177,8 @@ class ErlangClientPluginTest {
                 .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
         assertThat(manifest.expectFileString("protocoljson_http.erl"))
                 .contains("-module(protocoljson_http).")
-                .contains("dispatch(Config, #http_request{");
+                .contains("dispatch(httpc, Config, Request)")
+                .contains("dispatch(HttpClient, Config, #http_request{");
         String client = manifest.expectFileString("protocoljson_client.erl");
         assertThat(client)
                 .contains("describe_item(Config, Input) ->")
@@ -211,7 +212,8 @@ class ErlangClientPluginTest {
         assertThat(codec).contains("encode_describe_item_request(");
         assertThat(codec).contains("decode_describe_item_response(");
         assertThat(codec).contains("http_request{");
-        assertThat(codec).contains("jsone:decode(Body)");
+        assertThat(codec).contains("jsone:try_decode(Body)");
+        assertThat(codec).contains("{ok, Val, _} -> Val;");
         assertThat(codec).contains("{error, _} -> #{}");
         assertThat(codec).doesNotContain("{error, _} -> #{}}");
         assertThat(codec).contains("#describe_item_input{");
