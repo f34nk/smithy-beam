@@ -101,7 +101,8 @@ public final class ErlangRestJson1Emitter {
             writer.write("    (_) -> false");
             writer.write("end, [$L]),",
                     queries.stream()
-                            .map(qb -> BeamNameUtils.toSnakeCase(qb.getMember().getMemberName()))
+                            .map(qb -> toBindingVar(
+                                    BeamNameUtils.toSnakeCase(qb.getMember().getMemberName())))
                             .collect(Collectors.joining(", ")));
         }
 
@@ -118,7 +119,8 @@ public final class ErlangRestJson1Emitter {
             writer.write("    (_) -> false");
             writer.write("end, [$L]),",
                     headers.stream()
-                            .map(hb -> BeamNameUtils.toSnakeCase(hb.getMember().getMemberName()))
+                            .map(hb -> toBindingVar(
+                                    BeamNameUtils.toSnakeCase(hb.getMember().getMemberName())))
                             .collect(Collectors.joining(", ")));
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"application/json\">>} | Headers0],");
         }
@@ -130,7 +132,7 @@ public final class ErlangRestJson1Emitter {
             for (HttpBinding db : docMembers) {
                 String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
                 String jsonKey = db.getMember().getMemberName();
-                writer.write("    <<\"$L\">> => $L,", jsonKey, fieldName);
+                writer.write("    <<\"$L\">> => $L,", jsonKey, toBindingVar(fieldName));
             }
             writer.write("}),");
             writer.write("Body = jsone:encode(BodyMap),");
@@ -177,9 +179,9 @@ public final class ErlangRestJson1Emitter {
             writer.write("<<>> -> #{};");
             writer.write("_ ->");
             writer.indent();
-            writer.write("case jsone:decode(Body) of");
+            writer.write("case jsone:try_decode(Body) of");
             writer.indent();
-            writer.write("{ok, Val} -> Val;");
+            writer.write("{ok, Val, _} -> Val;");
             writer.write("{error, _} -> #{}");
             writer.dedent();
             writer.write("end");
@@ -190,15 +192,17 @@ public final class ErlangRestJson1Emitter {
 
         for (HttpBinding hb : respHeaders) {
             String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
+            String bindingVar = toBindingVar(fieldName);
             String headerName = hb.getLocationName();
             writer.write("$L = proplists:get_value(<<\"$L\">>, _Headers, undefined),",
-                    fieldName, headerName);
+                    bindingVar, headerName);
         }
 
         List<String> recordFields = new ArrayList<>();
         for (HttpBinding hb : respHeaders) {
             String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
-            recordFields.add("    " + fieldName + " = " + fieldName);
+            String bindingVar = toBindingVar(fieldName);
+            recordFields.add("    " + fieldName + " = " + bindingVar);
         }
         for (HttpBinding db : respDoc) {
             String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
@@ -265,9 +269,17 @@ public final class ErlangRestJson1Emitter {
         List<String> parts = new ArrayList<>();
         for (HttpBinding b : concat(labels, queries, headers, docMembers)) {
             String field = BeamNameUtils.toSnakeCase(b.getMember().getMemberName());
-            parts.add(field + " = " + field);
+            parts.add(field + " = " + toBindingVar(field));
         }
         return parts;
+    }
+
+    /** Erlang variable for a snake_case record field (atoms are not variables). */
+    private static String toBindingVar(String snakeField) {
+        if (snakeField.isEmpty()) {
+            return snakeField;
+        }
+        return Character.toUpperCase(snakeField.charAt(0)) + snakeField.substring(1);
     }
 
     @SafeVarargs
@@ -301,7 +313,7 @@ public final class ErlangRestJson1Emitter {
             int end = uriTemplate.indexOf('}', start);
             String labelName = uriTemplate.substring(start + 1, end);
             String fieldName = BeamNameUtils.toSnakeCase(labelName);
-            sb.append("(uri_encode(to_binary(").append(fieldName).append(")))/binary");
+            sb.append("(uri_encode(to_binary(").append(toBindingVar(fieldName)).append(")))/binary");
             pos = end + 1;
             if (pos < uriTemplate.length()) {
                 sb.append(", ");
