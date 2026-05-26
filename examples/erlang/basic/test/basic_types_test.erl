@@ -3,6 +3,20 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("basic_types.hrl").
 
+%% ── basic_not_found error record ─────────────────────────────────────────────
+
+basic_not_found_record_test() ->
+    Err = #basic_not_found{
+        message = <<"missing">>,
+        '__beam_error_kind' = client
+    },
+    ?assertEqual(<<"missing">>, Err#basic_not_found.message),
+    ?assertEqual(client, Err#basic_not_found.'__beam_error_kind').
+
+basic_not_found_default_kind_test() ->
+    Err = #basic_not_found{message = <<"gone">>},
+    ?assertEqual(client, Err#basic_not_found.'__beam_error_kind').
+
 %% ── basic_item record ────────────────────────────────────────────────────────
 
 basic_item_all_fields_test() ->

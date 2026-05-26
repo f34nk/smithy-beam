@@ -18,7 +18,7 @@ import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.*;
 
 import software.amazon.smithy.model.knowledge.NullableIndex;
-import software.amazon.smithy.model.traits.HttpErrorTrait;
+import software.amazon.smithy.model.traits.ErrorTrait;
 import software.amazon.smithy.model.traits.RetryableTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
 import software.amazon.smithy.model.shapes.MemberShape;
@@ -496,45 +496,46 @@ final class ErlangDirectedCodegen
     }
 
     /**
-     * Emits {@code -record} and {@code -type} for error structures plus comments
-     * for {@code retryable} and {@code httpError} trait metadata.
+     * Emits {@code -record} and {@code -type} for {@code @error} structures, including
+     * fault kind and retryable metadata on the record.
      */
     @Override
     public void generateError(
             GenerateErrorDirective<ErlangContext, BeamSettings> directive) {
-        StructureShape shape = directive.shape();
         ErlangContext ctx = directive.context();
-        SymbolProvider sp = directive.symbolProvider();
-        NullableIndex nullableIndex = NullableIndex.of(directive.model());
-        Symbol symbol = sp.toSymbol(shape);
-        String recordName = symbol.getName().replace("()", "");
-        String definitionFile = symbol.getDefinitionFile();
+        StructureShape shape = directive.shape();
+        String recordName = ctx.symbolProvider().toSymbol(shape).getName().replace("()", "");
+        ErrorTrait errorTrait = shape.expectTrait(ErrorTrait.class);
+        boolean isRetryable = shape.hasTrait(RetryableTrait.class);
+        boolean isThrottling = shape.hasTrait(RetryableTrait.class)
+                && shape.expectTrait(RetryableTrait.class).getThrottling();
 
-        boolean retryable = shape.hasTrait(RetryableTrait.ID);
-        Integer httpCode =
-                shape.getTrait(HttpErrorTrait.class).map(HttpErrorTrait::getCode).orElse(null);
-
-        ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
-            writer.write(
-                    "%% Error shape $L: retryable=$L httpCode=$L",
-                    shape.getId(),
-                    retryable,
-                    httpCode == null ? "undefined" : httpCode.toString());
-            writer.openBlock("-record($L, {", recordName);
-            List<MemberShape> members =
-                    StreamSupport.stream(shape.members().spliterator(), false).toList();
-            for (int i = 0; i < members.size(); i++) {
-                MemberShape member = members.get(i);
-                Symbol memberSymbol = sp.toSymbol(member);
-                String fieldName = memberSymbol.getProperty("fieldName", String.class).orElseThrow();
-                String memberType = renderErlangType(memberSymbol);
-                boolean nullable = nullableIndex.isMemberNullable(member);
-                String typeSpec = nullable ? memberType + " | undefined" : memberType;
-                String comma = (i < members.size() - 1) ? "," : "";
-                writer.write("$L :: $L$L", fieldName, typeSpec, comma);
-            }
-            writer.closeBlock("}).");
-            writer.write("-type $L :: #$L{}.", symbol.getName(), recordName);
-        });
+        ctx.writerDelegator().useFileWriter(
+                new BeamErlangLayout(ctx.settings(), ctx.service().getId().getNamespace())
+                        .typesHeaderFile(),
+                writer -> {
+                    writer.write("");
+                    writer.write("%% Error shape: $L ($L)", shape.getId(), errorTrait.getValue());
+                    writer.write("-record($L, {", recordName);
+                    NullableIndex ni = NullableIndex.of(ctx.model());
+                    for (MemberShape member : shape.members()) {
+                        Symbol memberSym = ctx.symbolProvider().toSymbol(member);
+                        String typeStr = memberSym.getName();
+                        if (ni.isMemberNullable(member, NullableIndex.CheckMode.CLIENT)) {
+                            writer.write("    $L :: $L | undefined,", member.getMemberName(), typeStr);
+                        } else {
+                            writer.write("    $L :: $L,", member.getMemberName(), typeStr);
+                        }
+                    }
+                    writer.write("    %% fault: $L | retryable: $L | throttling: $L",
+                            errorTrait.getValue(),
+                            isRetryable,
+                            isThrottling);
+                    writer.write("    '__beam_error_kind' = $L :: $L",
+                            errorTrait.getValue().equals("client") ? "client" : "server",
+                            "client | server");
+                    writer.write("}).");
+                    writer.write("-type $L() :: #$L{}.", recordName, recordName);
+                });
     }
 }

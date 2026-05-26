@@ -3,6 +3,9 @@ $version: "2"
 namespace smithy.beam.demo.basic
 
 use aws.protocols#restJson1
+use smithy.api#error
+use smithy.api#String
+use smithy.api#retryable
 
 // Simple shapes — one named type per Smithy prelude scalar.
 
@@ -75,6 +78,12 @@ structure BasicItem {
     count: BasicInteger
 }
 
+@error("client")
+@retryable
+structure BasicNotFound {
+    message: String
+}
+
 // Minimal service so Erlang type codegen can run CodegenDirector with a service scope.
 
 @restJson1
@@ -91,6 +100,7 @@ service BasicService {
 operation GetTypeClosure {
     input: GetTypeClosureInput
     output: TypeClosureOutput
+    errors: [BasicNotFound]
 }
 
 structure GetTypeClosureInput {

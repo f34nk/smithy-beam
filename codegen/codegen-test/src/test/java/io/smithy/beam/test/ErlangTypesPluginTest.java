@@ -144,10 +144,11 @@ class ErlangTypesPluginTest {
 
         assertThat(content)
                 .contains(
-                        "%% Error shape smithy.beam.demo.error_shape#ServiceUnavailable:"
-                                + " retryable=true httpCode=503")
+                        "%% Error shape: smithy.beam.demo.error_shape#ServiceUnavailable (server)")
                 .contains("-record(service_unavailable, {")
-                .contains("message :: binary() | undefined")
+                .contains("message :: binary() | undefined,")
+                .contains("%% fault: server | retryable: true | throttling: false")
+                .contains("'__beam_error_kind' = server :: client | server")
                 .contains("-type service_unavailable() :: #service_unavailable{}.");
     }
 
