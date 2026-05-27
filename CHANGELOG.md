@@ -3,6 +3,16 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-05-27
+
+### Added
+- Shared BeamDocumentation helper in codegen-core extracts Smithy @documentation trait text for generated comments.
+- Erlang and Elixir client and server operation stubs emit documentation from the trait on each operation.
+- The basic example model documents GetTypeClosure with multiline markdown so generated docs can be exercised end to end.
+
+### Changed
+- Documentation formatting converts HTML to markdown, dedents triple-quoted Smithy text, and preserves line breaks in Elixir @doc heredocs and Erlang edoc continuation lines instead of collapsing to a single line.
+
 ## 2026-05-26
 
 ### Added
