@@ -49,12 +49,17 @@ class BeamDocumentationTest {
                 foo()
                 </pre>
                 """;
+        OperationShape op = OperationShape.builder()
+                .id(ShapeId.from("demo.basic#Get"))
+                .addTrait(new DocumentationTrait(raw))
+                .build();
 
-        String markdown = BeamDocumentation.toMarkdown(raw);
+        String doc = BeamDocumentation.forShape(op).orElseThrow();
 
-        assertThat(markdown).contains("## How to call");
-        assertThat(markdown).contains("`name`");
-        assertThat(markdown).contains("```\nfoo()\n```");
+        assertThat(doc).contains("<h2>How to call</h2>");
+        assertThat(doc).contains("<code>name</code>");
+        assertThat(doc).contains("<pre>");
+        assertThat(doc).contains("foo()");
     }
 
     @Test

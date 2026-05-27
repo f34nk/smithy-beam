@@ -11,7 +11,7 @@ All notable changes to this project will be documented here.
 - The basic example model documents GetTypeClosure with multiline markdown so generated docs can be exercised end to end.
 
 ### Changed
-- Documentation formatting converts HTML to markdown, dedents triple-quoted Smithy text, and preserves line breaks in Elixir @doc heredocs and Erlang edoc continuation lines instead of collapsing to a single line.
+- Documentation formatting dedents triple-quoted Smithy text, and preserves line breaks in Elixir @doc heredocs and Erlang edoc continuation lines instead of collapsing to a single line. Allows HTML or markdown.
 
 ## 2026-05-26
 
