@@ -1,0 +1,91 @@
+package io.smithy.beam.core;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.smithy.codegen.core.SymbolWriter;
+import software.amazon.smithy.model.shapes.OperationShape;
+import software.amazon.smithy.model.shapes.ShapeId;
+import software.amazon.smithy.model.traits.DocumentationTrait;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
+@ExtendWith(MockitoExtension.class)
+class BeamDocumentationTest {
+
+    @Mock
+    private SymbolWriter<?, ?> writer;
+
+    @Test
+    void forShape_preservesMarkdownLineBreaks() {
+        OperationShape op = OperationShape.builder()
+                .id(ShapeId.from("demo.basic#Get"))
+                .addTrait(new DocumentationTrait("""
+                        First paragraph.
+
+                        ## Section
+
+                        Second paragraph.
+                        """))
+                .build();
+
+        String doc = BeamDocumentation.forShape(op).orElseThrow();
+
+        assertThat(doc).contains("First paragraph.\n\n## Section");
+        assertThat(doc).contains("Second paragraph.");
+    }
+
+    @Test
+    void toMarkdown_convertsHtmlHeadingsAndCodeBlocks() {
+        String raw = """
+                <h2>How to call</h2>
+                <p>Use <code>name</code> in the path.</p>
+                <pre>
+                foo()
+                </pre>
+                """;
+
+        String markdown = BeamDocumentation.toMarkdown(raw);
+
+        assertThat(markdown).contains("## How to call");
+        assertThat(markdown).contains("`name`");
+        assertThat(markdown).contains("```\nfoo()\n```");
+    }
+
+    @Test
+    void dedent_stripsCommonLeadingWhitespace() {
+        String raw = "    Line one.\n\n        Indented code line.\n";
+
+        assertThat(BeamDocumentation.dedent(raw)).isEqualTo("Line one.\n\n    Indented code line.");
+    }
+
+    @Test
+    void writeElixirDoc_usesHeredocForMultilineText() {
+        BeamDocumentation.writeElixirDoc(writer, "Line one.\n\nLine two.");
+
+        InOrder order = inOrder(writer);
+        order.verify(writer).openBlock("@doc \"\"\"");
+        order.verify(writer).write("$L", "Line one.");
+        order.verify(writer).write("$L", "");
+        order.verify(writer).write("$L", "Line two.");
+        order.verify(writer).closeBlock("\"\"\"");
+        verifyNoMoreInteractions(writer);
+    }
+
+    @Test
+    void writeErlangDoc_usesContinuationLinesForMultilineText() {
+        BeamDocumentation.writeErlangDoc(writer, "Line one.\n\nLine two.");
+
+        InOrder order = inOrder(writer);
+        order.verify(writer).write("%% @doc");
+        order.verify(writer).write("%% $L", "Line one.");
+        order.verify(writer).write("%%");
+        order.verify(writer).write("%% $L", "Line two.");
+        verifyNoMoreInteractions(writer);
+    }
+}
