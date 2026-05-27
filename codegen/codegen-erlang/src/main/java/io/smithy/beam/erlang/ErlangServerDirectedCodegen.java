@@ -176,7 +176,7 @@ final class ErlangServerDirectedCodegen
         BeamDocumentation.forShape(op).ifPresent(doc -> {
             ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
                 writer.pushOperationBodySection();
-                writer.write("%% @doc $L", doc);
+                BeamDocumentation.writeErlangDoc(writer, doc);
                 writer.popState();
             });
         });
