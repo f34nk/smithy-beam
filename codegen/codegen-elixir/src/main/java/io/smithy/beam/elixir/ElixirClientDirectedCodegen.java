@@ -199,7 +199,7 @@ final class ElixirClientDirectedCodegen
         BeamDocumentation.forShape(op).ifPresent(doc -> {
             ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
                 writer.pushOperationBodySection();
-                writer.write("@doc \"$L\"", doc.replace("\"", "\\\""));
+                BeamDocumentation.writeElixirDoc(writer, doc);
                 writer.popState();
             });
         });
