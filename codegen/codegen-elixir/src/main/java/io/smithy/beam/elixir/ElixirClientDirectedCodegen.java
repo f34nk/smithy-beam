@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
@@ -194,6 +195,14 @@ final class ElixirClientDirectedCodegen
         boolean hasProtocol = ctx.protocolCodegen() != null
                 && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
                         ctx.protocolCodegen().protocolTraitId());
+
+        BeamDocumentation.forShape(op).ifPresent(doc -> {
+            ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+                writer.pushOperationBodySection();
+                writer.write("@doc \"$L\"", doc.replace("\"", "\\\""));
+                writer.popState();
+            });
+        });
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
