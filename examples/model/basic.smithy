@@ -95,6 +95,23 @@ service BasicService {
 // Single operation whose output references every named shape above so Walker and
 // DirectedCodegen include them in the service closure (example / codegen demo).
 
+@documentation("""
+    Returns every named type in the service closure for the given name.
+
+    ## How to call
+
+    Supply `name` as the path label. Set the `verbose` query parameter when you want
+    optional fields in the response.
+
+    ```
+    config = %{base_url: "http://localhost:8080"}
+    input  = %{name: "example", verbose: true}
+    {:ok, output} = BasicClient.get_type_closure(config, input)
+    ```
+
+    Failures surface as `{:error, term()}`. A missing name may map to the modeled
+    `BasicNotFound` error.
+    """)
 @readonly
 @http(method: "GET", uri: "/types/{name}", code: 200)
 operation GetTypeClosure {
