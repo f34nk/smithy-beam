@@ -1,6 +1,8 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamDocumentation;
+import io.smithy.beam.core.BeamDocumentation.DocTarget;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
@@ -129,11 +131,15 @@ final class ElixirDirectedCodegen
             writer.indent();
 
             writer.pushGeneratedDocumentationSection();
-            writer.openBlock("@moduledoc \"\"\"");
-            writer.write("Type definitions for the $L model.", ctx.moduleName());
-            writer.write("");
-            writer.write("Named after the model namespace per the baseline spec.");
-            writer.closeBlock("\"\"\"");
+            BeamDocumentation.forShape(directive.service()).ifPresentOrElse(
+                    doc -> BeamDocumentation.writeElixirModuledoc(writer, doc),
+                    () -> {
+                        writer.openBlock("@moduledoc \"\"\"");
+                        writer.write("Type definitions for the $L model.", ctx.moduleName());
+                        writer.write("");
+                        writer.write("Named after the model namespace per the baseline spec.");
+                        writer.closeBlock("\"\"\"");
+                    });
             writer.popState();
 
             writeScalarAliases(writer, model, closure, sp, preambleAliasesEmitted);
@@ -256,6 +262,18 @@ final class ElixirDirectedCodegen
                         writer.write(
                                 "# Streaming payload; framing deferred to protocol layer.");
                     }
+                    BeamDocumentation.forShape(s).ifPresent(doc -> {
+                        writer.pushGeneratedDocumentationSection();
+                        writer.write("# $L", s.getId().getName());
+                        for (String line : doc.split("\n", -1)) {
+                            if (line.isEmpty()) {
+                                writer.write("#");
+                            } else {
+                                writer.write("# $L", line);
+                            }
+                        }
+                        writer.popState();
+                    });
                     writer.write("@type $L :: $L", sym.getName(), baseType);
                 });
     }
@@ -278,6 +296,18 @@ final class ElixirDirectedCodegen
                     if (s.hasTrait(SparseTrait.ID)) {
                         memberType = memberType + " | nil";
                     }
+                    BeamDocumentation.forShape(s).ifPresent(doc -> {
+                        writer.pushGeneratedDocumentationSection();
+                        writer.write("# $L", s.getId().getName());
+                        for (String line : doc.split("\n", -1)) {
+                            if (line.isEmpty()) {
+                                writer.write("#");
+                            } else {
+                                writer.write("# $L", line);
+                            }
+                        }
+                        writer.popState();
+                    });
                     writer.write("@type $L :: [$L]", sym.getName(), memberType);
                 });
     }
@@ -302,6 +332,18 @@ final class ElixirDirectedCodegen
                     if (s.hasTrait(SparseTrait.ID)) {
                         valueType = valueType + " | nil";
                     }
+                    BeamDocumentation.forShape(s).ifPresent(doc -> {
+                        writer.pushGeneratedDocumentationSection();
+                        writer.write("# $L", s.getId().getName());
+                        for (String line : doc.split("\n", -1)) {
+                            if (line.isEmpty()) {
+                                writer.write("#");
+                            } else {
+                                writer.write("# $L", line);
+                            }
+                        }
+                        writer.popState();
+                    });
                     writer.write("@type $L :: %{$L => $L}", sym.getName(), keyType, valueType);
                 });
     }
@@ -398,8 +440,13 @@ final class ElixirDirectedCodegen
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.write("");
             writer.openBlock("defmodule $L do", symbol.getName());
-            writer.write("@moduledoc \"String enum. Unknown values are represented as {:unknown, String.t()}.\"");
+            writer.pushGeneratedDocumentationSection();
+            BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ELIXIR_MODuledoc);
+            if (BeamDocumentation.forShape(shape).isEmpty()) {
+                writer.write("@moduledoc \"String enum. Unknown values are represented as {:unknown, String.t()}.\"");
+            }
             writer.write("");
+            writer.popState();
 
             String atomVariants = atoms.stream()
                     .map(atom -> ":" + atom)
@@ -457,8 +504,13 @@ final class ElixirDirectedCodegen
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.write("");
             writer.openBlock("defmodule $L do", symbol.getName());
-            writer.write("@moduledoc \"Integer enum. Unknown values are represented as {:unknown, integer()}.\"");
+            writer.pushGeneratedDocumentationSection();
+            BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ELIXIR_MODuledoc);
+            if (BeamDocumentation.forShape(shape).isEmpty()) {
+                writer.write("@moduledoc \"Integer enum. Unknown values are represented as {:unknown, integer()}.\"");
+            }
             writer.write("");
+            writer.popState();
 
             String atomVariants = atoms.stream()
                     .map(atom -> ":" + atom)
@@ -519,6 +571,10 @@ final class ElixirDirectedCodegen
         Symbol symbol = sp.toSymbol(shape);
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.pushGeneratedDocumentationSection();
+            BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ELIXIR_TYPEDOC);
+            writer.popState();
+
             List<String> variants = shape.members().stream()
                     .map(m -> {
                         Symbol memberSym = sp.toSymbol(m);
@@ -569,8 +625,12 @@ final class ElixirDirectedCodegen
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.write("");
             writer.openBlock("defmodule $L do", symbol.getName());
-            writer.write("@moduledoc \"structure $L\"", shape.getId().getName());
+            writer.pushGeneratedDocumentationSection();
+            BeamDocumentation.elixirStructureModuledoc(shape).ifPresentOrElse(
+                    doc -> BeamDocumentation.writeElixirModuledoc(writer, doc),
+                    () -> writer.write("@moduledoc \"structure $L\"", shape.getId().getName()));
             writer.write("");
+            writer.popState();
 
             writeStructureTypeAndDefstruct(
                     writer,
@@ -604,8 +664,14 @@ final class ElixirDirectedCodegen
             writer.write("# Error shape: $L ($L)", shape.getId(), errorTrait.getValue());
             writer.write("defmodule $L do", modName);
             writer.indent();
-            writer.write("@moduledoc \"Error from $L (fault: $L, retryable: $L).\"",
-                    shape.getId(), errorTrait.getValue(), isRetryable);
+            writer.pushGeneratedDocumentationSection();
+            BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ELIXIR_MODuledoc);
+            if (BeamDocumentation.forShape(shape).isEmpty()) {
+                writer.write("@moduledoc \"Error from $L (fault: $L, retryable: $L).\"",
+                        shape.getId(), errorTrait.getValue(), isRetryable);
+            }
+            writer.write("");
+            writer.popState();
             writer.write("defexception [");
             for (MemberShape member : shape.members()) {
                 writer.write("  $L: nil,", member.getMemberName());
