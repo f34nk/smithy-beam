@@ -120,8 +120,8 @@ class ElixirTypesPluginTest {
                 .contains("my_type_2");
     }
 
-    private static Model loadErrorShapeModel() {
-        URL resource = ElixirTypesPluginTest.class.getResource("/model/error_shape.smithy");
+    private static Model loadErrorShapesModel() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/error_shapes.smithy");
         assertThat(resource).isNotNull();
         return Model.assembler()
                 .addImport(resource)
@@ -150,22 +150,22 @@ class ElixirTypesPluginTest {
 
     @Test
     void errorShapeEmitsModuleWithModeledMetadata() {
-        Model model = loadErrorShapeModel();
+        Model model = loadErrorShapesModel();
         MockManifest manifest = new MockManifest();
         ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.error_shape#ErrorShapeService")
+                .withMember("service", "smithy.beam.demo.error_shapes#ErrorShapeService")
                 .withMember("edition", "2026")
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("error_shape_types.ex");
+        String content = manifest.expectFileString("error_shapes_types.ex");
 
         assertThat(content)
                 .contains(
-                        "# Error shape: smithy.beam.demo.error_shape#ServiceUnavailable (server)")
+                        "# Error shape: smithy.beam.demo.error_shapes#ServiceUnavailable (server)")
                 .contains("defmodule ServiceUnavailable do")
                 .contains(
-                        "Error from smithy.beam.demo.error_shape#ServiceUnavailable (fault: server, retryable: true).")
+                        "Error from smithy.beam.demo.error_shapes#ServiceUnavailable (fault: server, retryable: true).")
                 .contains("defexception [")
                 .contains("message: nil,")
                 .contains("__beam_error_kind: :server")

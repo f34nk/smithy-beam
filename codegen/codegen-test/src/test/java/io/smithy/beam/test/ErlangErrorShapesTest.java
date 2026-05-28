@@ -16,7 +16,7 @@ class ErlangErrorShapesTest {
     @Test
     void errorShapesGenerateRecordsWithKindField() {
         URL resource = ErlangErrorShapesTest.class
-                .getResource("/model/error_shapes_fixture.smithy");
+                .getResource("/model/error_shapes.smithy");
         assertThat(resource).isNotNull();
         Model model = Model.assembler()
                 .addImport(resource)
@@ -25,7 +25,7 @@ class ErlangErrorShapesTest {
                 .unwrap();
         MockManifest manifest = new MockManifest();
         ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.errors#ErrorFixtureService")
+                .withMember("service", "smithy.beam.demo.error_shapes#ErrorFixtureService")
                 .withMember("edition", "2026")
                 .build();
         new ErlangClientPlugin().execute(PluginContext.builder()
@@ -34,7 +34,7 @@ class ErlangErrorShapesTest {
                 .settings(settings)
                 .build());
 
-        String types = manifest.expectFileString("errors_types.hrl");
+        String types = manifest.expectFileString("error_shapes_types.hrl");
         assertThat(types).contains("-record(not_found_error,");
         assertThat(types).contains("-record(validation_error,");
         assertThat(types).contains("-record(throttling_error,");
