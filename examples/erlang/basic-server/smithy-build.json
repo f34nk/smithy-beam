@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "sources": [
+    "../../model/basic.smithy"
+  ],
+  "maven": {
+    "dependencies": [
+      "io.smithy.beam:codegen-erlang:0.1.0-SNAPSHOT",
+      "software.amazon.smithy:smithy-aws-traits:1.54.0"
+    ],
+    "repositories": [
+      {
+        "url": "https://repo1.maven.org/maven2"
+      },
+      {
+        "url": "file://${user.home}/.m2/repository"
+      }
+    ]
+  },
+  "plugins": {
+    "erlang-server-codegen": {
+      "service": "smithy.beam.demo.basic#BasicService",
+      "edition": "2026",
+      "protocol": "aws.protocols#restJson1"
+    }
+  }
+}
