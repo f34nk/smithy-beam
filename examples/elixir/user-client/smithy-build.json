@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "sources": [
+    "../../model/user.smithy"
+  ],
+  "maven": {
+    "dependencies": [
+      "io.smithy.beam:codegen-elixir:0.1.0-SNAPSHOT",
+      "software.amazon.smithy:smithy-aws-traits:1.54.0"
+    ],
+    "repositories": [
+      {
+        "url": "https://repo1.maven.org/maven2"
+      },
+      {
+        "url": "file://${user.home}/.m2/repository"
+      }
+    ]
+  },
+  "plugins": {
+    "elixir-client-codegen": {
+      "service": "smithy.beam.demo.user#UserService",
+      "edition": "2026",
+      "protocol": "aws.protocols#restJson1"
+    }
+  }
+}

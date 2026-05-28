@@ -43,7 +43,7 @@ Output from `erlang-client-codegen` and `elixir-client-codegen`.
 | REST JSON 1 request encoding | ✅ | Per-service codec module encodes path labels, query params, headers, and JSON document members into an `http_request` record or map. |
 | REST JSON 1 response decoding | ✅ | Codec decodes JSON document, header, and payload bindings into typed output records or structs. |
 | HTTP dispatch | ✅ | Erlang uses OTP `httpc` via a generated `<prefix>_http` module. Elixir uses `Req`. Both honor a configurable HTTP client module in client config for tests. |
-| Configurable base URL | ✅ | Smithy-Build `baseUrl` setting can seed a default endpoint macro or config value. Runtime endpoint selection is otherwise application-owned. |
+| Default endpoint in generated config | ❌ | Callers pass `base_url` in the client config map at runtime. No smithy-build endpoint seeding in generated clients. |
 | Pagination helpers | ✅ | `@paginated` operations get a generated paginator module that walks output tokens and accumulates item lists. |
 | Operation documentation | ✅ | `@documentation` on operations is emitted into generated client function docs. |
 | Type and shape documentation | ✅ | Types plugins emit shape and member docs into generated type files alongside operation docs on client stubs. |

@@ -62,6 +62,7 @@ class ErlangRestJson1CodecTest {
         String codec = manifest.expectFileString("protocoljson_rest_json_1.erl");
         assertThat(codec).contains("encode_create_item_request(");
         assertThat(codec).contains("jsone:encode(");
+        assertThat(codec).doesNotContain(",\n    }),");
     }
 
     @Test
@@ -77,7 +78,7 @@ class ErlangRestJson1CodecTest {
     void codecModuleIncludesRuntimeTypesHeader() {
         MockManifest manifest = runPlugin(loadFixture());
         String codec = manifest.expectFileString("protocoljson_rest_json_1.erl");
-        assertThat(codec).contains("-include(\"protocoljson_runtime_types.hrl\").");
+        assertThat(codec).contains("-include(\"runtime_types.hrl\").");
     }
 
     @Test

@@ -46,8 +46,8 @@ import java.util.stream.StreamSupport;
  * 5. customizeAfterIntegrations -- close defmodule with "end"
  * 6. flushWriters
  *
- * generateService and generateResource are stubs reserved for client/server
- * generation in a future iteration.
+ * generateService is a stub reserved for client/server generation.
+ * Resource helpers are emitted by client/server DirectedCodegen classes.
  *
  * <p>Constraint traits do not narrow generated types; see {@link io.smithy.beam.core.BeamConstraintPolicy}.
  */
@@ -393,12 +393,12 @@ final class ElixirDirectedCodegen
     }
 
     /**
-     * Stub. Future: generate resource-level helper modules.
+     * Types pass: resource helpers are emitted by client/server DirectedCodegen classes.
      */
     @Override
     public void generateResource(
             GenerateResourceDirective<ElixirContext, BeamSettings> directive) {
-        // TODO: generate resource modules.
+        // Client/server passes own resource emission.
     }
 
     // ── Type generation ──────────────────────────────────────────────────────

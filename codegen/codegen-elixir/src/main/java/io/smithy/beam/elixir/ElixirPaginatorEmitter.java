@@ -36,8 +36,7 @@ public final class ElixirPaginatorEmitter {
         String clientMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_client");
         SymbolProvider sp = ctx.symbolProvider();
 
-        ctx.writerDelegator().useFileWriter(
-                "lib/" + layout.modulePrefix() + "_paginators.ex", writer -> {
+        ctx.writerDelegator().useFileWriter(layout.paginatorsModuleFile(), writer -> {
             writer.write("defmodule $L do", paginatorMod);
             writer.indent();
             writer.write("@moduledoc \"Generated paginators for $L (generated).\"", service.getId());

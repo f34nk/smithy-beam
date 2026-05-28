@@ -221,12 +221,12 @@ class ErlangClientPluginTest {
         assertThat(codec).doesNotContain("#describe_item_input(){");
         assertThat(codec).contains("(V) when V =/= undefined");
         assertThat(codec).contains("uri_encode(");
-        assertThat(manifest.expectFileString("protocoljson_runtime_helpers.erl"))
-                .contains("-module(protocoljson_runtime_helpers).")
+        assertThat(manifest.expectFileString("runtime_helpers.erl"))
+                .contains("-module(runtime_helpers).")
                 .contains("parse_labels(Path, Template)");
         assertThat(codec).contains("decode_describe_item_request(");
         assertThat(codec).contains("LabelMap");
-        assertThat(codec).doesNotContain("protocoljson_runtime_helpers:parse_labels(Path");
+        assertThat(codec).doesNotContain("runtime_helpers:parse_labels(Path");
         assertThat(codec).doesNotContain("beam_path:parse_labels");
 
         new ErlangServerPlugin().execute(PluginContext.builder()
@@ -240,6 +240,7 @@ class ErlangClientPluginTest {
         assertThat(router).contains("parse_labels(Path, <<\"/items/{id}\">>)");
         assertThat(router).contains("<<\"/items\">>");
         assertThat(router).doesNotContain("Path = Path");
+        assertThat(router).contains("end;\nroute(");
     }
 
     @Test
@@ -267,5 +268,43 @@ class ErlangClientPluginTest {
                 .isInstanceOf(CodegenException.class)
                 .hasMessageContaining("protocol")
                 .hasMessageContaining("smithy.api#String");
+    }
+
+    @Test
+    void resourceLifecycleEmitsClientHelperModules() {
+        URL resource = ErlangClientPluginTest.class.getResource("/model/resource_lifecycle.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.resource_lifecycle#ResourceLifecycleService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangClientPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+
+        String org = manifest.expectFileString("resource_lifecycle_organization.erl");
+        assertThat(org).contains("-module(resource_lifecycle_organization).");
+        assertThat(org).contains("-type client_config() :: #{binary() => term()}.");
+        assertThat(org).contains("read/2");
+        assertThat(org).contains("resource_lifecycle_client:get_organization(");
+        assertThat(org).contains("#get_organization_input{org_id = org_id}");
+        assertThat(org).contains("create(Config, Input) ->");
+        assertThat(org).contains("resource_lifecycle_client:create_organization(Config, Input).");
+        assertThat(org).doesNotContain("Input#create_organization_input{}");
+        assertThat(org).contains("Top-level organization resource.");
+
+        String employee = manifest.expectFileString("resource_lifecycle_employee.erl");
+        assertThat(employee).contains("get_employee(");
+        assertThat(employee).contains("org_id = org_id");
+        assertThat(employee).contains("employee_id = employee_id");
+        assertThat(employee).contains("list_employees_by_status(");
     }
 }

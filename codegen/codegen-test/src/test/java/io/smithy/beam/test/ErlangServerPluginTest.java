@@ -177,4 +177,32 @@ class ErlangServerPluginTest {
                 .hasMessageContaining("protocol")
                 .hasMessageContaining("smithy.api#String");
     }
+
+    @Test
+    void resourceLifecycleEmitsServerHelperModules() {
+        URL resource = ErlangServerPluginTest.class.getResource("/model/resource_lifecycle.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.resource_lifecycle#ResourceLifecycleService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangServerPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+
+        String org = manifest.expectFileString("resource_lifecycle_organization_server.erl");
+        assertThat(org).contains("-module(resource_lifecycle_organization_server).");
+        assertThat(org).contains("handle_read(");
+        assertThat(org).contains("resource_lifecycle_server:handle_get_organization(");
+        assertThat(org).contains("resource_lifecycle_server:handle_create_organization(Ctx, Input, Meta).");
+        assertThat(org).doesNotContain("Input#create_organization_input{}");
+    }
 }

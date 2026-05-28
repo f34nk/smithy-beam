@@ -1,11 +1,11 @@
 {
   "version": "1.0",
   "sources": [
-    "../../model/basic.smithy"
+    "../../model/user.smithy"
   ],
   "maven": {
     "dependencies": [
-      "io.smithy.beam:codegen-elixir:0.1.0-SNAPSHOT",
+      "io.smithy.beam:codegen-erlang:0.1.0-SNAPSHOT",
       "software.amazon.smithy:smithy-aws-traits:1.54.0"
     ],
     "repositories": [
@@ -18,13 +18,8 @@
     ]
   },
   "plugins": {
-    "elixir-client-codegen": {
-      "service": "smithy.beam.demo.basic#BasicService",
-      "edition": "2026",
-      "protocol": "aws.protocols#restJson1"
-    },
-    "elixir-server-codegen": {
-      "service": "smithy.beam.demo.basic#BasicService",
+    "erlang-server-codegen": {
+      "service": "smithy.beam.demo.user#UserService",
       "edition": "2026",
       "protocol": "aws.protocols#restJson1"
     }

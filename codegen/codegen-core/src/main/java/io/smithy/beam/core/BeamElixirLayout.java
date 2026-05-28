@@ -44,4 +44,16 @@ public final class BeamElixirLayout {
     public String runtimeHelpersModuleFile() {
         return modulePrefix() + "_runtime_helpers.ex";
     }
+
+    public String paginatorsModuleFile() {
+        return modulePrefix() + "_paginators.ex";
+    }
+
+    public String resourceClientModuleFile(String resourceSnakeName) {
+        return modulePrefix() + "_" + resourceSnakeName + ".ex";
+    }
+
+    public String resourceServerModuleFile(String resourceSnakeName) {
+        return modulePrefix() + "_" + resourceSnakeName + "_server.ex";
+    }
 }

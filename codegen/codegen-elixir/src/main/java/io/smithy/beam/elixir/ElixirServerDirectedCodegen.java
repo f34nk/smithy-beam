@@ -8,6 +8,7 @@ import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
+import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -25,6 +26,7 @@ import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
 import software.amazon.smithy.model.shapes.OperationShape;
+import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
@@ -97,6 +99,12 @@ final class ElixirServerDirectedCodegen
         String ns = service.getId().getNamespace();
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
         String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+        String runtimeTypesModule =
+                ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_runtime_types");
+
+        ctx.writerDelegator().useFileWriter(
+                layout.runtimeTypesModuleFile(),
+                w -> ElixirRuntimeTypesEmitter.writeBody(w, runtimeTypesModule));
 
         ctx.writerDelegator().useFileWriter(layout.serverModuleFile(), writer -> {
             writer.pushModuleHeaderSection();
@@ -150,6 +158,10 @@ final class ElixirServerDirectedCodegen
         }
 
         ElixirRouterEmitter.emit(ctx, service);
+        BeamResourceIndex resourceIndex = BeamResourceIndex.of(ctx.model());
+        for (ResourceShape resource : resourceIndex.containedResourcesSorted(service)) {
+            ElixirResourceEmitter.emitServer(ctx, resource);
+        }
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
@@ -207,7 +219,7 @@ final class ElixirServerDirectedCodegen
     @Override
     public void generateResource(
             GenerateResourceDirective<ElixirContext, BeamSettings> directive) {
-        // Reserved for resource helpers.
+        // Emitted from generateService for all contained resources.
     }
 
     @Override

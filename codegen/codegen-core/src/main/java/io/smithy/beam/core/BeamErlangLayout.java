@@ -47,14 +47,30 @@ public final class BeamErlangLayout {
     }
 
     public String runtimeTypesHeaderFile() {
-        return modulePrefix() + "_runtime_types.hrl";
+        return "runtime_types.hrl";
     }
 
     public String runtimeHelpersModuleFile() {
-        return modulePrefix() + "_runtime_helpers.erl";
+        return "runtime_helpers.erl";
     }
 
     public String runtimeHelpersModuleName() {
-        return modulePrefix() + "_runtime_helpers";
+        return "runtime_helpers";
+    }
+
+    public String resourceClientModuleFile(String resourceSnakeName) {
+        return modulePrefix() + "_" + resourceSnakeName + ".erl";
+    }
+
+    public String resourceClientModuleName(String resourceSnakeName) {
+        return modulePrefix() + "_" + resourceSnakeName;
+    }
+
+    public String resourceServerModuleFile(String resourceSnakeName) {
+        return modulePrefix() + "_" + resourceSnakeName + "_server.erl";
+    }
+
+    public String resourceServerModuleName(String resourceSnakeName) {
+        return modulePrefix() + "_" + resourceSnakeName + "_server";
     }
 }
