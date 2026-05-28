@@ -3,6 +3,19 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-05-28
+
+### Added
+- Server-side REST JSON for Erlang and Elixir, including per-service runtime helpers for path label parsing, request decoders, HTTP routers that dispatch by method and path, and codec modules emitted from the server generation pass.
+- Pagination helpers for @paginated operations on Erlang and Elixir, backed by a shared pagination index wrapper in codegen-core, with a paginated operation on the basic example model.
+- Client HTTP dispatch honors a configurable HTTP client module from client configuration on Erlang and Elixir.
+- Shared HTTP URI template path segment parser in codegen-core for consistent labeled route matching.
+
+### Fixed
+- Generated routers match labeled path templates instead of treating label segments as literal path text.
+- Server request decoders decode only wire-bound fields rather than full input shapes.
+- Paginated client helpers preserve item order when accumulating results across pages.
+
 ## 2026-05-27
 
 ### Added
