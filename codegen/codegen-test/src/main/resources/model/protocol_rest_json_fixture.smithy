@@ -7,7 +7,7 @@ use aws.protocols#restJson1
 @restJson1
 service DemoRestJson {
     version: "2026-01-01"
-    operations: [DescribeItem]
+    operations: [DescribeItem, CreateItem]
 }
 
 @readonly
@@ -53,6 +53,31 @@ structure ItemPayload {
 enum ItemStatus {
     READY
     ARCHIVED
+}
+
+@http(method: "POST", uri: "/items", code: 201)
+operation CreateItem {
+    input: CreateItemInput
+    output: CreateItemOutput
+}
+
+structure CreateItemInput {
+    @required
+    name: String
+
+    tags: TagList
+}
+
+structure CreateItemOutput {
+    @httpHeader("Location")
+    location: String
+
+    @required
+    id: ItemId
+}
+
+list TagList {
+    member: String
 }
 
 @error("client")
