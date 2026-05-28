@@ -5,7 +5,7 @@ defmodule BasicRouterTest do
 
   @moduledoc """
   Request flow: %HttpRequest{} -> BasicRouter.dispatch/2 ->
-  BasicRestJson1.decode_get_type_closure_request/1 -> Handler.handle_get_type_closure/3.
+  BasicRestJson1.decode_get_type_closure_request/2 -> Handler.handle_get_type_closure/3.
   Pass BasicServer as the handler module to invoke the generated server stub.
   """
 
@@ -17,6 +17,31 @@ defmodule BasicRouterTest do
       headers: [{"X-Request-Tag", "trace-1"}],
       body: ""
     }
+  end
+
+  test "dispatch routes list basic items before type prefix" do
+    request = %HttpRequest{
+      method: "GET",
+      path: "/basic-items",
+      query: %{},
+      headers: [],
+      body: ""
+    }
+
+    assert {:error, :not_implemented} == BasicRouter.dispatch(BasicServer, request)
+  end
+
+  test "dispatch not found for extra type path segments" do
+    request = %HttpRequest{
+      method: "GET",
+      path: "/types/a/b",
+      query: %{},
+      headers: [],
+      body: ""
+    }
+
+    assert {:error, {:not_found, "GET", "/types/a/b"}} ==
+             BasicRouter.dispatch(BasicServer, request)
   end
 
   test "dispatch routes to BasicServer stub handler" do
