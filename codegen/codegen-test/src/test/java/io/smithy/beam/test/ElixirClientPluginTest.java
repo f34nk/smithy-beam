@@ -295,6 +295,8 @@ class ElixirClientPluginTest {
         assertThat(org).contains("defmodule ResourceLifecycleOrganization do");
         assertThat(org).contains("ResourceLifecycleClient.get_organization(");
         assertThat(org).contains("org_id: org_id");
+        assertThat(org).contains("ResourceLifecycleClient.create_organization(config, input)");
+        assertThat(org).doesNotContain("%{input | }");
         assertThat(org).contains("Top-level organization resource.");
 
         String employee = manifest.expectFileString("resource_lifecycle_employee.ex");

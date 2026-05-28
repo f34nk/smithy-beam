@@ -208,5 +208,7 @@ class ElixirServerPluginTest {
         assertThat(org).contains("defmodule ResourceLifecycleOrganizationServer do");
         assertThat(org).contains("handle_read(");
         assertThat(org).contains("ResourceLifecycleServer.handle_get_organization(");
+        assertThat(org).contains("ResourceLifecycleServer.handle_create_organization(ctx, input, meta)");
+        assertThat(org).doesNotContain("%{input | }");
     }
 }
