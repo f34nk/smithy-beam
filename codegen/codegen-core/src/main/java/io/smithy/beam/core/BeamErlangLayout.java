@@ -49,4 +49,12 @@ public final class BeamErlangLayout {
     public String runtimeTypesHeaderFile() {
         return modulePrefix() + "_runtime_types.hrl";
     }
+
+    public String runtimeHelpersModuleFile() {
+        return modulePrefix() + "_runtime_helpers.erl";
+    }
+
+    public String runtimeHelpersModuleName() {
+        return modulePrefix() + "_runtime_helpers";
+    }
 }
