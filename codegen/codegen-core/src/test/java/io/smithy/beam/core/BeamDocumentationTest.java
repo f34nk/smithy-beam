@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.smithy.codegen.core.SymbolWriter;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ShapeId;
+import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.traits.DocumentationTrait;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,7 +75,7 @@ class BeamDocumentationTest {
         BeamDocumentation.writeElixirDoc(writer, "Line one.\n\nLine two.");
 
         InOrder order = inOrder(writer);
-        order.verify(writer).openBlock("@doc \"\"\"");
+        order.verify(writer).openBlock("$L \"\"\"", "@doc");
         order.verify(writer).write("$L", "Line one.");
         order.verify(writer).write("$L", "");
         order.verify(writer).write("$L", "Line two.");
@@ -91,6 +92,35 @@ class BeamDocumentationTest {
         order.verify(writer).write("%% $L", "Line one.");
         order.verify(writer).write("%%");
         order.verify(writer).write("%% $L", "Line two.");
+        verifyNoMoreInteractions(writer);
+    }
+
+    @Test
+    void memberModuledocAppendix_listsDocumentedMembers() {
+        StructureShape struct = StructureShape.builder()
+                .id(ShapeId.from("demo.basic#Item"))
+                .addMember("name", ShapeId.from("smithy.api#String"),
+                        b -> b.addTrait(new DocumentationTrait("Display name.")))
+                .addMember("count", ShapeId.from("smithy.api#Integer"))
+                .build();
+
+        String appendix = BeamDocumentation.memberModuledocAppendix(struct).orElseThrow();
+
+        assertThat(appendix).contains("## Members");
+        assertThat(appendix).contains("`name` - Display name.");
+        assertThat(appendix).doesNotContain("count");
+    }
+
+    @Test
+    void writeElixirTypedoc_usesHeredocForMultilineText() {
+        BeamDocumentation.writeElixirTypedoc(writer, "Line one.\n\nLine two.");
+
+        InOrder order = inOrder(writer);
+        order.verify(writer).openBlock("$L \"\"\"", "@typedoc");
+        order.verify(writer).write("$L", "Line one.");
+        order.verify(writer).write("$L", "");
+        order.verify(writer).write("$L", "Line two.");
+        order.verify(writer).closeBlock("\"\"\"");
         verifyNoMoreInteractions(writer);
     }
 }
