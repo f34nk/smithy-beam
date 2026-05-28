@@ -1,6 +1,7 @@
 package io.smithy.beam.test;
 
 import io.smithy.beam.elixir.ElixirClientPlugin;
+import io.smithy.beam.elixir.ElixirServerPlugin;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.FileManifest;
 import software.amazon.smithy.build.MockManifest;
@@ -252,7 +253,21 @@ class ElixirClientPluginTest {
         assertThat(manifest.expectFileString("protocoljson_runtime_helpers.ex"))
                 .contains("defmodule ProtocoljsonRuntimeHelpers do")
                 .contains("def parse_labels(path, template)");
-        assertThat(codec).contains("RuntimeHelpers.parse_labels(");
+        assertThat(codec).contains("def decode_describe_item_request(");
+        assertThat(codec).contains("label_map");
+        assertThat(codec).doesNotContain("RuntimeHelpers.parse_labels(");
         assertThat(codec).doesNotContain("BeamPath.parse_labels");
+
+        new ElixirServerPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+
+        String router = manifest.expectFileString("protocoljson_router.ex");
+        assertThat(router).contains("\" <> name_seg = path");
+        assertThat(router).contains("parse_labels(path, \"/items/{id}\")");
+        assertThat(router).contains("\"/items\"");
+        assertThat(router).doesNotContain("path, path");
     }
 }

@@ -1,6 +1,7 @@
 package io.smithy.beam.test;
 
 import io.smithy.beam.erlang.ErlangClientPlugin;
+import io.smithy.beam.erlang.ErlangServerPlugin;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.FileManifest;
 import software.amazon.smithy.build.MockManifest;
@@ -223,8 +224,22 @@ class ErlangClientPluginTest {
         assertThat(manifest.expectFileString("protocoljson_runtime_helpers.erl"))
                 .contains("-module(protocoljson_runtime_helpers).")
                 .contains("parse_labels(Path, Template)");
-        assertThat(codec).contains("protocoljson_runtime_helpers:parse_labels(Path");
+        assertThat(codec).contains("decode_describe_item_request(");
+        assertThat(codec).contains("LabelMap");
+        assertThat(codec).doesNotContain("protocoljson_runtime_helpers:parse_labels(Path");
         assertThat(codec).doesNotContain("beam_path:parse_labels");
+
+        new ErlangServerPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+
+        String router = manifest.expectFileString("protocoljson_router.erl");
+        assertThat(router).contains("<<\"/items/\", NameSeg/binary>>");
+        assertThat(router).contains("parse_labels(Path, <<\"/items/{id}\">>)");
+        assertThat(router).contains("<<\"/items\">>");
+        assertThat(router).doesNotContain("Path = Path");
     }
 
     @Test
