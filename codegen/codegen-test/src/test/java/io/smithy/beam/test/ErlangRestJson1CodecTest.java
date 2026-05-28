@@ -62,6 +62,7 @@ class ErlangRestJson1CodecTest {
         String codec = manifest.expectFileString("protocoljson_rest_json_1.erl");
         assertThat(codec).contains("encode_create_item_request(");
         assertThat(codec).contains("jsone:encode(");
+        assertThat(codec).doesNotContain(",\n    }),");
     }
 
     @Test

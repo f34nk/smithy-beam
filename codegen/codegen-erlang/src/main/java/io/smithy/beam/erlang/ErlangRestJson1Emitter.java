@@ -133,10 +133,12 @@ public final class ErlangRestJson1Emitter {
             writer.write("Body = <<>>,");
         } else {
             writer.write("BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
-            for (HttpBinding db : docMembers) {
+            for (int i = 0; i < docMembers.size(); i++) {
+                HttpBinding db = docMembers.get(i);
                 String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
                 String jsonKey = db.getMember().getMemberName();
-                writer.write("    <<\"$L\">> => $L,", jsonKey, toBindingVar(fieldName));
+                String comma = i < docMembers.size() - 1 ? "," : "";
+                writer.write("    <<\"$L\">> => $L$L", jsonKey, toBindingVar(fieldName), comma);
             }
             writer.write("}),");
             writer.write("Body = jsone:encode(BodyMap),");
