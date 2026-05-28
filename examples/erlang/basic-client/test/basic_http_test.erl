@@ -1,7 +1,7 @@
 -module(basic_http_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("basic_runtime_types.hrl").
+-include("runtime_types.hrl").
 
 dispatch_builds_url_without_query_test() ->
     Config = #{base_url => <<"https://api.example">>},

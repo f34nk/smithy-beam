@@ -2,7 +2,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include("basic_types.hrl").
--include("basic_runtime_types.hrl").
+-include("runtime_types.hrl").
 
 %% encode_get_type_closure_request/1
 
