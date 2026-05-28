@@ -1,6 +1,8 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamDocumentation;
+import io.smithy.beam.core.BeamDocumentation.DocTarget;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
@@ -120,8 +122,12 @@ final class ErlangDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushGeneratedDocumentationSection();
-            writer.write("%% Record and type definitions for the $L model.", ctx.moduleName());
-            writer.write("%% ");
+            BeamDocumentation.forShape(directive.service()).ifPresentOrElse(
+                    doc -> BeamDocumentation.writeErlangDoc(writer, doc),
+                    () -> {
+                        writer.write("%% Record and type definitions for the $L model.", ctx.moduleName());
+                        writer.write("%% ");
+                    });
             writer.popState();
 
             // Write named scalar type aliases in declaration order:
@@ -242,6 +248,8 @@ final class ErlangDirectedCodegen
                     recordPreambleAlias(s, preambleAliasesEmitted);
                     Symbol sym = symbolProvider.toSymbol(s);
                     String baseType = sym.getProperty("baseType", String.class).orElse("term()");
+                    writer.pushGeneratedDocumentationSection();
+                    BeamDocumentation.writeShapeDocIfPresent(writer, s, DocTarget.ERLANG);
                     if (s instanceof BigDecimalShape) {
                         writer.write("-type $L :: $L.       %% decimal:decimal()", sym.getName(), baseType);
                     } else if (s instanceof BlobShape
@@ -253,6 +261,7 @@ final class ErlangDirectedCodegen
                     } else {
                         writer.write("-type $L :: $L.", sym.getName(), baseType);
                     }
+                    writer.popState();
                 });
     }
 
@@ -273,7 +282,10 @@ final class ErlangDirectedCodegen
                     if (s.hasTrait(SparseTrait.ID)) {
                         elementType = elementType + " | undefined";
                     }
+                    writer.pushGeneratedDocumentationSection();
+                    BeamDocumentation.writeShapeDocIfPresent(writer, s, DocTarget.ERLANG);
                     writer.write("-type $L :: [$L].", sym.getName(), elementType);
+                    writer.popState();
                 });
     }
 
@@ -295,8 +307,11 @@ final class ErlangDirectedCodegen
                     if (s.hasTrait(SparseTrait.ID)) {
                         valueType = valueType + " | undefined";
                     }
+                    writer.pushGeneratedDocumentationSection();
+                    BeamDocumentation.writeShapeDocIfPresent(writer, s, DocTarget.ERLANG);
                     writer.write("-type $L :: #{$L => $L}.",
                             sym.getName(), renderErlangType(keySym), valueType);
+                    writer.popState();
                 });
     }
 
@@ -374,9 +389,12 @@ final class ErlangDirectedCodegen
         List<String> atoms = symbol.getProperty("enumAtoms", List.class).orElseThrow();
 
         ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
+            writer.pushGeneratedDocumentationSection();
+            BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
             // Build "active | inactive | pending | {unknown, binary()}"
             String variants = String.join(" | ", atoms) + " | {unknown, binary()}";
             writer.write("-type $L :: $L.", symbol.getName(), variants);
+            writer.popState();
         });
     }
 
@@ -398,8 +416,11 @@ final class ErlangDirectedCodegen
         List<String> atoms = symbol.getProperty("enumAtoms", List.class).orElseThrow();
 
         ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
+            writer.pushGeneratedDocumentationSection();
+            BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
             String variants = String.join(" | ", atoms) + " | {unknown, integer()}";
             writer.write("-type $L :: $L.", symbol.getName(), variants);
+            writer.popState();
         });
     }
 
@@ -422,6 +443,8 @@ final class ErlangDirectedCodegen
         String definitionFile = symbol.getDefinitionFile();
 
         ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
+            writer.pushGeneratedDocumentationSection();
+            BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
             // Build tagged-tuple variant list.
             // Each member becomes: {tag, member_type()}
             // Final variant: {unknown, binary()}
@@ -446,6 +469,7 @@ final class ErlangDirectedCodegen
                     writer.write("    $L$L", variants.get(i), sep);
                 }
             }
+            writer.popState();
         });
     }
 
@@ -472,6 +496,9 @@ final class ErlangDirectedCodegen
         String definitionFile = symbol.getDefinitionFile();
 
         ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
+            writer.pushGeneratedDocumentationSection();
+            BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
+
             List<MemberShape> members =
                     StreamSupport.stream(shape.members().spliterator(), false).toList();
             if (members.isEmpty()) {
@@ -480,18 +507,30 @@ final class ErlangDirectedCodegen
                 writer.openBlock("-record($L, {", recordName);
                 for (int i = 0; i < members.size(); i++) {
                     MemberShape member = members.get(i);
+                    BeamDocumentation.forShape(member).ifPresent(doc -> {
+                        String fieldName = sp.toSymbol(member)
+                                .getProperty("fieldName", String.class).orElseThrow();
+                        writer.write("%% @doc $L", fieldName);
+                        for (String line : doc.split("\n", -1)) {
+                            if (line.isEmpty()) {
+                                writer.write("%%");
+                            } else {
+                                writer.write("%%   $L", line);
+                            }
+                        }
+                    });
                     Symbol memberSymbol = sp.toSymbol(member);
                     String fieldName = memberSymbol.getProperty("fieldName", String.class).orElseThrow();
                     String memberType = renderErlangType(memberSymbol);
                     boolean nullable = nullableIndex.isMemberNullable(member);
                     String typeSpec = nullable ? memberType + " | undefined" : memberType;
-                    // Align field names with padding for readability (match baseline style)
                     String comma = (i < members.size() - 1) ? "," : "";
                     writer.write("$L :: $L$L", fieldName, typeSpec, comma);
                 }
                 writer.closeBlock("}).");
             }
             writer.write("-type $L :: #$L{}.", symbol.getName(), recordName);
+            writer.popState();
         });
     }
 
@@ -514,6 +553,9 @@ final class ErlangDirectedCodegen
                 new BeamErlangLayout(ctx.settings(), ctx.service().getId().getNamespace())
                         .typesHeaderFile(),
                 writer -> {
+                    writer.pushGeneratedDocumentationSection();
+                    BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
+                    writer.popState();
                     writer.write("");
                     writer.write("%% Error shape: $L ($L)", shape.getId(), errorTrait.getValue());
                     writer.write("-record($L, {", recordName);
