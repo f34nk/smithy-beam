@@ -291,9 +291,13 @@ class ErlangClientPluginTest {
 
         String org = manifest.expectFileString("resource_lifecycle_organization.erl");
         assertThat(org).contains("-module(resource_lifecycle_organization).");
+        assertThat(org).contains("-type client_config() :: #{binary() => term()}.");
         assertThat(org).contains("read/2");
         assertThat(org).contains("resource_lifecycle_client:get_organization(");
         assertThat(org).contains("#get_organization_input{org_id = org_id}");
+        assertThat(org).contains("create(Config, Input) ->");
+        assertThat(org).contains("resource_lifecycle_client:create_organization(Config, Input).");
+        assertThat(org).doesNotContain("Input#create_organization_input{}");
         assertThat(org).contains("Top-level organization resource.");
 
         String employee = manifest.expectFileString("resource_lifecycle_employee.erl");

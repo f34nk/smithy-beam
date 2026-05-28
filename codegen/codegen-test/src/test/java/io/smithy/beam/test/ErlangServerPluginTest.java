@@ -202,5 +202,7 @@ class ErlangServerPluginTest {
         assertThat(org).contains("-module(resource_lifecycle_organization_server).");
         assertThat(org).contains("handle_read(");
         assertThat(org).contains("resource_lifecycle_server:handle_get_organization(");
+        assertThat(org).contains("resource_lifecycle_server:handle_create_organization(Ctx, Input, Meta).");
+        assertThat(org).doesNotContain("Input#create_organization_input{}");
     }
 }
