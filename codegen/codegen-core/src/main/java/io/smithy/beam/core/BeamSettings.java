@@ -23,7 +23,6 @@ import java.util.List;
  *                     {@link software.amazon.smithy.codegen.core.directed.CodegenDirector#removeShapesDeprecatedBeforeDate}.
  *   "relativeVersion" -- optional SemVer value forwarded to
  *                     {@link software.amazon.smithy.codegen.core.directed.CodegenDirector#removeShapesDeprecatedBeforeVersion}.
- *   "baseUrl"          -- optional override for generated client default endpoint (HTTPS URL or template).
  */
 public final class BeamSettings {
 
@@ -33,7 +32,6 @@ public final class BeamSettings {
     private String edition;
     private String relativeDate;
     private String relativeVersion;
-    private String baseUrl;
 
     public BeamSettings() {}
 
@@ -83,14 +81,6 @@ public final class BeamSettings {
 
     public String relativeVersion() {
         return relativeVersion;
-    }
-
-    public void baseUrl(String baseUrl) {
-        this.baseUrl = baseUrl;
-    }
-
-    public String baseUrl() {
-        return baseUrl;
     }
 
     public ShapeId resolveService(Model model) {
