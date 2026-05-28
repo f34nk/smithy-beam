@@ -29,7 +29,8 @@ public final class ElixirHttpDispatchEmitter {
             writer.write("        {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}");
             writer.write("def dispatch(config, req) do");
             writer.indent();
-            writer.write("dispatch(ReqClient, config, req)");
+            writer.write("http_client = Map.get(config, :http_client, ReqClient)");
+            writer.write("dispatch(http_client, config, req)");
             writer.dedent();
             writer.write("end");
             writer.write("");
