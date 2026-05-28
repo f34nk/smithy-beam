@@ -12,15 +12,28 @@ All notable changes to this project will be documented here.
 - Shared HTTP URI template path segment parser in codegen-core for consistent labeled route matching.
 - Types output for Erlang and Elixir now carries Smithy @documentation on structures, enums, unions, error shapes, named scalar aliases, and documented members, using shared helpers in codegen-core for shape and member comment formatting.
 - The basic example model documents BasicItem and BasicStatus so generated type comments can be exercised end to end.
+- Per-resource lifecycle helper modules on Erlang and Elixir client and server generation for bound create, read, update, delete, list, and collection operations, backed by shared resource discovery and input building in codegen-core.
+- Separate client and server example projects for the basic Erlang and Elixir REST JSON setups, plus a user service example with matching client and server layouts.
+- Shared Erlang runtime_types header and runtime_helpers module emitted once per generation run instead of duplicating stubs in each service types file.
 
 ### Fixed
 - Generated routers match labeled path templates instead of treating label segments as literal path text.
 - Server request decoders decode only wire-bound fields rather than full input shapes.
 - Paginated client helpers preserve item order when accumulating results across pages.
+- Resource create helpers pass the full operation input on Erlang and Elixir instead of dropping fields during struct assembly.
+- Erlang REST JSON codec document bodies no longer emit a trailing comma in the final map entry.
+- Erlang generated server routers use consistent clause indentation.
+- Elixir paginator modules are written alongside other generated client artifacts.
+
+### Changed
+- Basic Erlang and Elixir examples are split into dedicated client and server projects; the previous combined basic layouts were removed.
+- Unused baseUrl plugin setting and default base URL client emission were dropped from codegen.
 
 ### Docs
 - Trait support tables and shape mapping notes now describe @documentation on types output alongside operation stubs.
 - Added AWS SDK support status reference for generated BEAM output.
+- Trait support and shape mapping now cover resource lifecycle helpers and resource-oriented generated output.
+- AWS SDK support status notes for client default endpoints were refreshed.
 
 ## 2026-05-27
 
