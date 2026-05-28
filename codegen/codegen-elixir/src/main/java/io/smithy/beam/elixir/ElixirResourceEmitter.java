@@ -189,6 +189,9 @@ public final class ElixirResourceEmitter {
     private static String inputExpression(InputPlan plan, String typesMod) {
         String struct = typesMod + "." + plan.inputSymbol().getName();
         if (plan.acceptsFullInput()) {
+            if (plan.identifierArgs().isEmpty()) {
+                return "input";
+            }
             String updates = plan.identifierArgs().stream()
                     .map(arg -> arg.fieldName() + ": " + arg.paramName())
                     .collect(Collectors.joining(", "));
