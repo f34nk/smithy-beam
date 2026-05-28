@@ -2,7 +2,7 @@ defmodule BasicRestJson1Test do
   use ExUnit.Case, async: true
 
   alias Basic.GetTypeClosureInput
-  alias BasicRuntimeTypes.HttpResponse
+  alias BasicRuntimeTypes.{HttpRequest, HttpResponse}
 
   describe "encode_get_type_closure_request/1" do
     test "minimal request" do
@@ -43,6 +43,51 @@ defmodule BasicRestJson1Test do
 
       assert req.query == %{}
       assert req.headers == [{"Content-Type", "application/json"}]
+    end
+  end
+
+  describe "decode_get_type_closure_request/1" do
+    test "minimal request" do
+      req = %HttpRequest{
+        method: "GET",
+        path: "/types/widget",
+        query: %{},
+        headers: [{"Content-Type", "application/json"}],
+        body: ""
+      }
+
+      input = BasicRestJson1.decode_get_type_closure_request(req)
+      assert input.name == "widget"
+      assert input.verbose == nil
+      assert input.request_tag == nil
+    end
+
+    test "full request with optional fields" do
+      req = %HttpRequest{
+        method: "GET",
+        path: "/types/widget",
+        query: %{"verbose" => "true"},
+        headers: [{"X-Request-Tag", "trace-1"}],
+        body: ""
+      }
+
+      input = BasicRestJson1.decode_get_type_closure_request(req)
+      assert input.name == "widget"
+      assert input.verbose == true
+      assert input.request_tag == "trace-1"
+    end
+
+    test "URI-decodes path label" do
+      req = %HttpRequest{
+        method: "GET",
+        path: "/types/hello%20world",
+        query: %{},
+        headers: [],
+        body: ""
+      }
+
+      input = BasicRestJson1.decode_get_type_closure_request(req)
+      assert input.name == "hello world"
     end
   end
 
