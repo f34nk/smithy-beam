@@ -180,7 +180,10 @@ Traits that define operation behavior.
 
 Traits for modeling resources and attaching operations to resource shapes.
 
-**Client codegen** walks the service closure; resource shapes can influence which operations exist in the model, but the traits below are metadata for resource modeling and do not change BEAM type or stub client and server output today.
+**Client and server codegen** emit per-resource lifecycle helper modules for bound create,
+read, update, delete, list, and collection operations. Helpers build operation input from
+identifier arguments and delegate to the flat operation stubs. Property and reference traits
+remain metadata only.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
