@@ -24,10 +24,11 @@ public final class ErlangHttpDispatchEmitter {
             writer.write("-export([dispatch/2, dispatch/3]).");
             writer.write("");
             writer.write("%% @doc Sends an http_request() and returns http_response().");
-            writer.write("%% Config may contain `{base_url, <<\"https://...\">>}`.");
+            writer.write("%% Config may contain `{base_url, ...}` and `{http_client, Module}` for tests.");
             writer.write("%% Uses httpc by default; pass another module for tests.");
             writer.write("dispatch(Config, Request) ->");
-            writer.write("    dispatch(httpc, Config, Request).");
+            writer.write("    HttpClient = maps:get(http_client, Config, httpc),");
+            writer.write("    dispatch(HttpClient, Config, Request).");
             writer.write("");
             writer.write("dispatch(HttpClient, Config, #http_request{");
             writer.write("        method = Method, path = Path,");
