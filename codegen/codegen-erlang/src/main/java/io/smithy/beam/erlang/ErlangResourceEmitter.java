@@ -72,6 +72,9 @@ public final class ErlangResourceEmitter {
 
             writer.write("-module($L).", mod);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
+            if (!server) {
+                writer.write("-type client_config() :: #{binary() => term()}.");
+            }
             writer.write("-export([$L]).", String.join(", ", exports));
             writer.write("");
 
@@ -202,6 +205,9 @@ public final class ErlangResourceEmitter {
     private static String inputExpression(InputPlan plan) {
         String recordName = recordName(plan.inputSymbol());
         if (plan.acceptsFullInput()) {
+            if (plan.identifierArgs().isEmpty()) {
+                return "Input";
+            }
             String updates = plan.identifierArgs().stream()
                     .map(arg -> arg.fieldName() + " = " + arg.paramName())
                     .collect(Collectors.joining(", "));
