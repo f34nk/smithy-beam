@@ -160,6 +160,7 @@ final class ElixirClientDirectedCodegen
         }
 
         ElixirHttpDispatchEmitter.emit(ctx, service);
+        ElixirPaginatorEmitter.emit(ctx, service);
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
