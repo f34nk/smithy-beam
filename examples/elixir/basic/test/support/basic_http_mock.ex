@@ -23,6 +23,22 @@ defmodule BasicHttpMock do
       {:get, "https://api.example/fail", _, _} ->
         {:error, :timeout}
 
+      {:get, "https://api.example/basic-items", params, _} ->
+        case params do
+          %{"nextToken" => "page2"} ->
+            body = Jason.encode!(%{"items" => [%{"name" => "beta", "count" => 2}]})
+            {:ok, %{status: 200, headers: [], body: body}}
+
+          %{} ->
+            body =
+              Jason.encode!(%{
+                "items" => [%{"name" => "alpha", "count" => 1}],
+                "nextToken" => "page2"
+              })
+
+            {:ok, %{status: 200, headers: [], body: body}}
+        end
+
       _ ->
         {:error, {:unexpected_request, req_opts}}
     end
