@@ -89,7 +89,7 @@ structure BasicNotFound {
 @restJson1
 service BasicService {
     version: "2026"
-    operations: [GetTypeClosure]
+    operations: [GetTypeClosure, ListBasicItems]
 }
 
 // Single operation whose output references every named shape above so Walker and
@@ -155,4 +155,57 @@ structure TypeClosureOutput {
     basicMap: BasicMap
     basicUnion: BasicUnion
     basicItem: BasicItem
+}
+
+list BasicItemList {
+    member: BasicItem
+}
+
+// Paginated list operation for exercising generated paginator helpers.
+
+@documentation("""
+    Returns a page of basic items. Pass `nextToken` from a prior response to fetch the next page.
+
+    ## How to call
+
+    Use the generated paginator to walk every page:
+
+    ```
+    config = %{base_url: "http://localhost:8080", http_client: MyHttpMock}
+    input  = %{page_size: 10}
+    {:ok, items} = BasicPaginators.paginate_list_basic_items(config, input)
+    ```
+
+    Or call the client operation directly for a single page:
+
+    ```
+    {:ok, output} = BasicClient.list_basic_items(config, input)
+    items = Map.get(output, :items, [])
+    next_token = Map.get(output, :next_token)
+    ```
+    """)
+@readonly
+@http(method: "GET", uri: "/basic-items", code: 200)
+@paginated(
+    items: "items"
+    inputToken: "nextToken"
+    outputToken: "nextToken"
+    pageSize: "pageSize"
+)
+operation ListBasicItems {
+    input: ListBasicItemsInput
+    output: ListBasicItemsOutput
+}
+
+structure ListBasicItemsInput {
+    @httpQuery("nextToken")
+    nextToken: BasicString
+
+    @httpQuery("pageSize")
+    pageSize: BasicInteger
+}
+
+structure ListBasicItemsOutput {
+    items: BasicItemList
+    nextToken: BasicString
 }
