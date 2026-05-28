@@ -2,9 +2,11 @@
 
 This document lists Smithy 2.0 traits and their implementation status in **generated** Erlang and Elixir code in smithy-beam.
 
-The **types** plugins generate scalar aliases, lists, maps, enums, intEnums, unions, and structures for the selected service closure.
+The **types** plugins generate scalar aliases, lists, maps, enums, intEnums, unions, structures, and error shapes for the selected service closure.
 
-The **client** and **server** plugins are registered and run after types generation, but currently only emit layout stubs. Traits related to HTTP bindings, AWS protocols, authentication, or serialization are not yet interpreted during code generation.
+The **client** and **server** plugins run after types generation. For services using the REST JSON 1 protocol, they emit HTTP dispatch, REST JSON codecs, paginator helpers, and server routers with request decoders. Other protocol traits are not yet implemented.
+
+Trait filtering via the `@deprecated` trait is applied when the Smithy-Build `relativeDate` or `relativeVersion` plugin settings are configured.
 
 A separate column is used for each language to indicate support status with a checkbox.
 
@@ -13,6 +15,19 @@ A separate column is used for each language to indicate support status with a ch
 - ✅ Supported: the trait is read or implied by the model and changes generated output for that language.
 - ❌ Not supported: the trait has no effect on generated code for that language, or generation fails when the feature is required.
 - ➖ Not applicable: the trait does not apply to the current generators (for example build-only validation, or tooling-only metadata).
+
+**Scope notes:**
+
+- HTTP binding traits are honored for REST JSON 1 client and server generation. Bindings such as query maps, prefix headers, explicit response codes, and modeled HTTP errors are not yet emitted into generated codecs.
+- `@documentation` is emitted on client and server operation stubs and on types output.
+  Erlang types use `%% @doc` blocks above records and type aliases, with per-field edoc
+  lines for documented members. Elixir types use `@moduledoc` on nested shape modules,
+  `@typedoc` on union aliases, a Members appendix on structures when members carry docs,
+  and comment lines above documented preamble aliases. Service-level documentation
+  replaces the generic types file header when present.
+- `@deprecated` removes shapes from generated output when the Smithy-Build `relativeDate` or `relativeVersion` setting is set. Without those settings, the trait has no effect on generated code.
+- `@streaming` affects generated type comments and symbol metadata. Event-stream framing and payload streaming are not yet implemented in protocol codecs.
+- Constraint traits (`length`, `range`, `pattern`, and similar) do not narrow generated Dialyzer or typespec surfaces.
 
 ---
 
@@ -24,14 +39,14 @@ Traits that refine or modify type semantics.
 |-------|--------|--------|
 | [`smithy.api#required`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-required-trait) | ✅ | ✅ |
 | [`smithy.api#enumValue`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-enumvalue-trait) | ❌ | ✅ |
-| [`smithy.api#error`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-error-trait) | ❌ | ❌ |
+| [`smithy.api#error`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-error-trait) | ✅ | ✅ |
 | [`smithy.api#input`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-input-trait) | ❌ | ❌ |
 | [`smithy.api#output`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-output-trait) | ❌ | ❌ |
 | [`smithy.api#addedDefault`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-addeddefault-trait) | ❌ | ❌ |
 | [`smithy.api#clientOptional`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-clientoptional-trait) | ❌ | ❌ |
 | [`smithy.api#default`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-default-trait) | ❌ | ❌ |
 | [`smithy.api#mixin`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-mixin-trait) | ❌ | ❌ |
-| [`smithy.api#sparse`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-sparse-trait) | ❌ | ❌ |
+| [`smithy.api#sparse`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-sparse-trait) | ✅ | ✅ |
 
 ---
 
@@ -57,11 +72,11 @@ Traits for HTTP protocol bindings.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
-| [`smithy.api#http`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-http-trait) | ❌ | ❌ |
-| [`smithy.api#httpHeader`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpheader-trait) | ❌ | ❌ |
-| [`smithy.api#httpLabel`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httplabel-trait) | ❌ | ❌ |
-| [`smithy.api#httpPayload`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httppayload-trait) | ❌ | ❌ |
-| [`smithy.api#httpQuery`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpquery-trait) | ❌ | ❌ |
+| [`smithy.api#http`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-http-trait) | ✅ | ✅ |
+| [`smithy.api#httpHeader`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpheader-trait) | ✅ | ✅ |
+| [`smithy.api#httpLabel`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httplabel-trait) | ✅ | ✅ |
+| [`smithy.api#httpPayload`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httppayload-trait) | ✅ | ✅ |
+| [`smithy.api#httpQuery`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpquery-trait) | ✅ | ✅ |
 | [`smithy.api#cors`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-cors-trait) | ❌ | ❌ |
 | [`smithy.api#httpChecksumRequired`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpchecksumrequired-trait) | ❌ | ❌ |
 | [`smithy.api#httpError`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httperror-trait) | ❌ | ❌ |
@@ -84,7 +99,7 @@ Traits for serialization and protocol behavior.
 | [`smithy.api#xmlNamespace`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlnamespace-trait) | ❌ | ❌ |
 | [`smithy.api#mediaType`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-mediatype-trait) | ❌ | ❌ |
 | [`smithy.api#timestampFormat`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-timestampformat-trait) | ❌ | ❌ |
-| [`smithy.api#protocolDefinition`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-protocoldefinition-trait) | ❌ | ❌ |
+| [`smithy.api#protocolDefinition`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-protocoldefinition-trait) | ✅ | ✅ |
 
 ---
 
@@ -98,7 +113,7 @@ AWS-specific protocol traits.
 | [`aws.protocols#awsJson1_1`](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html#aws-protocols-awsjson1_1-trait) | ❌ | ❌ |
 | [`aws.protocols#awsQuery`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquery-trait) | ❌ | ❌ |
 | [`aws.protocols#ec2Query`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2query-trait) | ❌ | ❌ |
-| [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ❌ | ❌ |
+| [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ✅ | ✅ |
 | [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ❌ | ❌ |
 | [`aws.protocols#awsQueryCompatible`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquerycompatible-trait) | ❌ | ❌ |
 | [`aws.protocols#httpChecksum`](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ❌ | ❌ |
@@ -126,8 +141,8 @@ Traits that provide documentation metadata.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
-| [`smithy.api#documentation`](https://smithy.io/2.0/spec/documentation-traits.html#smithy-api-documentation-trait) | ❌ | ❌ |
-| [`smithy.api#deprecated`](https://smithy.io/2.0/spec/documentation-traits.html#smithy-api-deprecated-trait) | ❌ | ❌ |
+| [`smithy.api#documentation`](https://smithy.io/2.0/spec/documentation-traits.html#smithy-api-documentation-trait) | ✅ | ✅ |
+| [`smithy.api#deprecated`](https://smithy.io/2.0/spec/documentation-traits.html#smithy-api-deprecated-trait) | ✅ | ✅ |
 | [`smithy.api#examples`](https://smithy.io/2.0/spec/documentation-traits.html#smithy-api-examples-trait) | ❌ | ❌ |
 | [`smithy.api#externalDocumentation`](https://smithy.io/2.0/spec/documentation-traits.html#smithy-api-externaldocumentation-trait) | ❌ | ❌ |
 | [`smithy.api#internal`](https://smithy.io/2.0/spec/documentation-traits.html#smithy-api-internal-trait) | ❌ | ❌ |
@@ -138,6 +153,12 @@ Traits that provide documentation metadata.
 | [`smithy.api#title`](https://smithy.io/2.0/spec/documentation-traits.html#smithy-api-title-trait) | ❌ | ❌ |
 | [`smithy.api#unstable`](https://smithy.io/2.0/spec/documentation-traits.html#smithy-api-unstable-trait) | ❌ | ❌ |
 
+The `@documentation` trait is emitted on operation stubs (client and server) and on types
+output. On types, shape docs appear above records, enums, unions, error shapes, and
+preamble type aliases. Documented structure members appear as field-level comments in
+Erlang and in a Members section of the shape `@moduledoc` in Elixir. Shapes without the
+trait keep existing fallback module or type header strings.
+
 ---
 
 ## Behavior Traits
@@ -146,12 +167,12 @@ Traits that define operation behavior.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
-| [`smithy.api#paginated`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-paginated-trait) | ❌ | ❌ |
+| [`smithy.api#paginated`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-paginated-trait) | ✅ | ✅ |
 | [`smithy.api#idempotencyToken`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotencytoken-trait) | ❌ | ❌ |
 | [`smithy.api#idempotent`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotent-trait) | ❌ | ❌ |
 | [`smithy.api#readonly`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-readonly-trait) | ❌ | ❌ |
 | [`smithy.api#requestCompression`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-requestcompression-trait) | ❌ | ❌ |
-| [`smithy.api#retryable`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-retryable-trait) | ❌ | ❌ |
+| [`smithy.api#retryable`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-retryable-trait) | ✅ | ✅ |
 
 ---
 
@@ -197,7 +218,7 @@ Traits for streaming data.
 | [`smithy.api#eventHeader`](https://smithy.io/2.0/spec/streaming.html#smithy-api-eventheader-trait) | ❌ | ❌ |
 | [`smithy.api#eventPayload`](https://smithy.io/2.0/spec/streaming.html#smithy-api-eventpayload-trait) | ❌ | ❌ |
 | [`smithy.api#requiresLength`](https://smithy.io/2.0/spec/streaming.html#smithy-api-requireslength-trait) | ❌ | ❌ |
-| [`smithy.api#streaming`](https://smithy.io/2.0/spec/streaming.html#smithy-api-streaming-trait) | ❌ | ❌ |
+| [`smithy.api#streaming`](https://smithy.io/2.0/spec/streaming.html#smithy-api-streaming-trait) | ✅ | ✅ |
 
 ---
 
