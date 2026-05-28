@@ -209,7 +209,7 @@ class ElixirClientPluginTest {
                 .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
         assertThat(manifest.expectFileString("protocoljson_http.ex"))
                 .contains("defmodule ProtocoljsonHttp do")
-                .contains("dispatch(ReqClient, config, req)")
+                .contains("http_client = Map.get(config, :http_client, ReqClient)")
                 .contains("def dispatch(http_client, config, %RuntimeTypes.HttpRequest{} = req) do")
                 .contains("case http_client.request(req_opts) do");
         assertThat(manifest.expectFileString("protocoljson_client.ex"))
