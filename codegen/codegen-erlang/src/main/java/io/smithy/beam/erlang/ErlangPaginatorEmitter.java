@@ -40,7 +40,10 @@ public final class ErlangPaginatorEmitter {
         SymbolProvider sp = ctx.symbolProvider();
 
         List<String> exports = paginated.stream()
-                .map(op -> "paginate_" + sp.toSymbol(op).getName() + "/3")
+                .flatMap(op -> {
+                    String name = "paginate_" + sp.toSymbol(op).getName();
+                    return java.util.stream.Stream.of(name + "/2", name + "/3");
+                })
                 .toList();
 
         ctx.writerDelegator().useFileWriter(paginatorMod + ".erl", writer -> {
@@ -66,6 +69,11 @@ public final class ErlangPaginatorEmitter {
 
                 writer.write("%% @doc Paginates over all pages of $L.", op.getId());
                 writer.write("%%      Returns all accumulated items or {error, Reason}.");
+                writer.write("paginate_$L(Config, Input) ->", opSym.getName());
+                writer.indent();
+                writer.write("paginate_$L(Config, Input, []).", opSym.getName());
+                writer.dedent();
+                writer.write("");
                 writer.write("paginate_$L(Config, Input, Acc) ->", opSym.getName());
                 writer.indent();
                 writer.write("case $L:$L(Config, Input) of", clientMod, opSym.getName());
@@ -79,7 +87,11 @@ public final class ErlangPaginatorEmitter {
                 }
                 writer.write("case $L of", outputTokenExpr);
                 writer.indent();
-                writer.write("undefined -> {ok, lists:reverse(NewAcc)};");
+                if (items != null) {
+                    writer.write("undefined -> {ok, NewAcc};");
+                } else {
+                    writer.write("undefined -> {ok, lists:reverse(NewAcc)};");
+                }
                 writer.write("NextToken ->");
                 writer.indent();
                 writer.write("NextInput = Input#$L{$L = NextToken},", inputRecord, inputToken);
