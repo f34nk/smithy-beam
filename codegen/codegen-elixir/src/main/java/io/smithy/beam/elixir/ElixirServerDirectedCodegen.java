@@ -7,6 +7,7 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
+import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -140,6 +141,15 @@ final class ElixirServerDirectedCodegen
     public void generateService(
             GenerateServiceDirective<ElixirContext, BeamSettings> directive) {
         ElixirContext ctx = directive.context();
+        ServiceShape service = directive.shape();
+
+        if (ctx.protocolCodegen() != null
+                && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ElixirRestJson1Emitter.emitCodecModule(ctx, service);
+        }
+
+        ElixirRouterEmitter.emit(ctx, service);
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
