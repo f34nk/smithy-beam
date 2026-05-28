@@ -46,7 +46,7 @@ defmodule BasicRestJson1Test do
     end
   end
 
-  describe "decode_get_type_closure_request/1" do
+  describe "decode_get_type_closure_request/2" do
     test "minimal request" do
       req = %HttpRequest{
         method: "GET",
@@ -56,7 +56,8 @@ defmodule BasicRestJson1Test do
         body: ""
       }
 
-      input = BasicRestJson1.decode_get_type_closure_request(req)
+      label_map = %{"name" => "widget"}
+      input = BasicRestJson1.decode_get_type_closure_request(req, label_map)
       assert input.name == "widget"
       assert input.verbose == nil
       assert input.request_tag == nil
@@ -71,7 +72,8 @@ defmodule BasicRestJson1Test do
         body: ""
       }
 
-      input = BasicRestJson1.decode_get_type_closure_request(req)
+      label_map = %{"name" => "widget"}
+      input = BasicRestJson1.decode_get_type_closure_request(req, label_map)
       assert input.name == "widget"
       assert input.verbose == true
       assert input.request_tag == "trace-1"
@@ -86,7 +88,8 @@ defmodule BasicRestJson1Test do
         body: ""
       }
 
-      input = BasicRestJson1.decode_get_type_closure_request(req)
+      label_map = %{"name" => "hello world"}
+      input = BasicRestJson1.decode_get_type_closure_request(req, label_map)
       assert input.name == "hello world"
     end
   end
