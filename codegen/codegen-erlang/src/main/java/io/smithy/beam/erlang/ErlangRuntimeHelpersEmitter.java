@@ -10,7 +10,7 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import java.util.List;
 
 /**
- * Emits {@code <app>_runtime_helpers.erl} with HTTP path label parsing helpers.
+ * Emits {@code runtime_helpers.erl} with HTTP path label parsing helpers.
  * Emitted once per service when any operation binds {@code @httpLabel} members.
  */
 public final class ErlangRuntimeHelpersEmitter {
