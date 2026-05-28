@@ -46,8 +46,8 @@ import java.util.stream.StreamSupport;
  *   5. customizeAfterIntegrations
  *   6. flushWriters
  *
- * generateService and generateResource are stubs reserved for client/server
- * generation in a future iteration.
+ * generateService is a stub reserved for client/server generation.
+ * Resource helpers are emitted by client/server DirectedCodegen classes.
  */
 final class ErlangDirectedCodegen
         implements DirectedCodegen<ErlangContext, BeamSettings, ErlangIntegration> {
@@ -361,12 +361,12 @@ final class ErlangDirectedCodegen
     }
 
     /**
-     * Stub. Future: generate resource-level helper modules.
+     * Types pass: resource helpers are emitted by client/server DirectedCodegen classes.
      */
     @Override
     public void generateResource(
             GenerateResourceDirective<ErlangContext, BeamSettings> directive) {
-        // TODO: generate resource modules.
+        // Client/server passes own resource emission.
     }
 
     // ── Type generation ──────────────────────────────────────────────────────
