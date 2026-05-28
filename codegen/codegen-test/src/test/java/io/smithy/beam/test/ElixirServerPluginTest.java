@@ -183,4 +183,30 @@ class ElixirServerPluginTest {
                 .hasMessageContaining("protocol")
                 .hasMessageContaining("smithy.api#String");
     }
+
+    @Test
+    void resourceLifecycleEmitsServerHelperModules() {
+        URL resource = ElixirServerPluginTest.class.getResource("/model/resource_lifecycle.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.resource_lifecycle#ResourceLifecycleService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirServerPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+
+        String org = manifest.expectFileString("resource_lifecycle_organization_server.ex");
+        assertThat(org).contains("defmodule ResourceLifecycleOrganizationServer do");
+        assertThat(org).contains("handle_read(");
+        assertThat(org).contains("ResourceLifecycleServer.handle_get_organization(");
+    }
 }
