@@ -242,9 +242,17 @@ class ElixirClientPluginTest {
 
         String codec = manifest.expectFileString("protocoljson_rest_json_1.ex");
         assertThat(codec).contains("def encode_describe_item_request(");
+        assertThat(codec).contains("def decode_describe_item_request(");
         assertThat(codec).contains("def decode_describe_item_response(");
         assertThat(codec).contains("%RuntimeTypes.HttpRequest{");
         assertThat(codec).contains("Jason.decode!");
         assertThat(codec).contains("uri_encode(");
+        assertThat(codec).contains("uri_decode(");
+        assertThat(codec).contains("decode_query_param(");
+        assertThat(manifest.expectFileString("protocoljson_runtime_helpers.ex"))
+                .contains("defmodule ProtocoljsonRuntimeHelpers do")
+                .contains("def parse_labels(path, template)");
+        assertThat(codec).contains("RuntimeHelpers.parse_labels(");
+        assertThat(codec).doesNotContain("BeamPath.parse_labels");
     }
 }
