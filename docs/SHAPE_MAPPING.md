@@ -40,23 +40,33 @@ with the following BEAM-specific exceptions called out explicitly.
   emit same-namespace unreachable shapes. The test model includes a dummy
   operation whose output structure references all basic types.
 - Enum/intEnum unknown variants MUST be represented in the generated type
-  surface. Full serialization and deserialization round-trip behavior belongs
-  to future protocol serializers and deserializers.
+  surface. Client and server plugins with a configured supported protocol
+  (for example REST JSON 1) emit serializers and deserializers that preserve
+  unknown enum values on the wire.
 - Union unknown variants MUST be represented in the generated type surface.
-  Full protocol round-trip behavior is reserved for the protocol implementation.
-- [Timestamp](https://smithy.io/2.0/spec/simple-types.html#timestamp) mappings represent Smithy instants at the generated type surface only. 
-  The initial type-only generator does not choose or implement a wire timestamp format.
-  Protocol serializers and deserializers must later prove that timestamp
-  encoding preserves instant semantics independent of protocol format.
-- Smithy [@error](https://smithy.io/2.0/spec/type-refinement-traits.html#error-trait) structures are outside the initial type-only implementation. 
-  They MUST NOT be silently omitted. Until error/exception type generation is implemented,
-  reachable error shapes MUST fail code generation with a clear diagnostic that
-  names the shape and explains the scope limit.
-- Plugin settings follow the [HOWTO](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html) shape for type generation. 
+  Wire round-trip for unions follows the same protocol rules as other aggregate
+  shapes when a supported protocol is configured on client or server generation.
+- [Timestamp](https://smithy.io/2.0/spec/simple-types.html#timestamp) mappings represent Smithy instants at the generated type surface
+  (`erlang:timestamp()` / `DateTime.t()`). Client and server plugins with REST
+  JSON 1 configured encode and decode timestamps according to HTTP binding
+  metadata. Type files alone do not fix a wire format.
+- Smithy [@error](https://smithy.io/2.0/spec/type-refinement-traits.html#error-trait) structures are generated as distinguishable error types
+  (Erlang records with fault and retryable metadata; Elixir exception modules).
+  They MUST NOT be silently omitted from the types output for reachable shapes.
+- Plugin settings follow the [HOWTO](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html) shape. 
   [`edition`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#edition) is required. [`service`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#service) may be omitted only when the model contains 
-  exactly one service. [`protocol`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#protocol-client-and-type-codegen-only), [`relativeDate`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#relativedate-client-and-type-codegen-only), and [`relativeVersion`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#relativeversion-client-and-type-codegen-only) are parsed 
-  and retained but are no-ops in the initial type-only implementation; they become
-  behavioral when protocol-aware serialization or deprecation filtering is added (TODO).
+  exactly one service.
+  [`relativeDate`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#relativedate-client-and-type-codegen-only) and
+  [`relativeVersion`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#relativeversion-client-and-type-codegen-only),
+  when set, remove shapes deprecated before the given ISO 8601 date or semantic
+  version from the model before codegen (all plugins). Without either setting,
+  `@deprecated` has no effect on generated output.
+  [`protocol`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#protocol-client-and-type-codegen-only),
+  when set on client or server plugins, selects and validates the service protocol
+  trait and drives codec, HTTP dispatch or router, and paginator emission for
+  supported protocols. When omitted, client and server operation stubs are emitted
+  without wire serialization. The types plugin validates `protocol` when present
+  but does not emit protocol modules.
 - [Erlang](https://www.erlang.org/doc/reference_manual/introduction.html#reserved-words) and [Elixir](https://hexdocs.pm/elixir/syntax-reference.html#reserved-words) reserved words MUST be escaped automatically in the initial generator. 
   The generator must never reject a Smithy model only because a shape, member, enum
   member, union member, module, or generated function name conflicts with an
@@ -89,11 +99,10 @@ with the following BEAM-specific exceptions called out explicitly.
 | [union](https://smithy.io/2.0/spec/aggregate-types.html#union) | `{tag1, t1()} \| ... \| {unknown, binary()}` |
 | [structure](https://smithy.io/2.0/spec/aggregate-types.html#structure) | `-record(name, {...}). -type name() :: #name{}` |
 
-Timestamp note: `erlang:timestamp()` is a provisional BEAM type-file
-representation for a Smithy instant. It is not a Smithy wire-format decision
-and does not by itself describe timestamp serialization. Protocol serializers
-must later document and test conversion between Smithy timestamp formats and
-this Erlang representation while preserving instant semantics.
+Timestamp note: `erlang:timestamp()` is the BEAM type-file representation for a
+Smithy instant. REST JSON 1 client and server generation converts to and from this
+form using HTTP binding timestamp formats. The types file alone does not define
+wire encoding.
 
 ### Naming Convention (Erlang)
 
@@ -136,10 +145,10 @@ All generated Erlang identifiers pass through separate reserved-word escapers:
 | [union](https://smithy.io/2.0/spec/aggregate-types.html#union) | `{:tag1, t1()} \| ... \| {:unknown, String.t()}` |
 | [structure](https://smithy.io/2.0/spec/aggregate-types.html#structure) | nested defmodule with `@type t :: %__MODULE__{...}` and `defstruct` |
 
-Timestamp note: `DateTime.t()` is used as the Elixir type-surface
-representation for a Smithy instant. Protocol serializers must later normalize
-and encode/decode it according to the selected Smithy protocol timestamp format
-without treating local offset or display format as part of the model semantics.
+Timestamp note: `DateTime.t()` is the Elixir type-surface representation for a
+Smithy instant. REST JSON 1 client and server generation normalizes timestamps
+according to HTTP binding metadata. The types module alone does not define wire
+encoding.
 
 All types are placed inside a top-level `defmodule <ModuleName> do ... end`.
 Enums and structures generate nested defmodules inside the top-level module.
