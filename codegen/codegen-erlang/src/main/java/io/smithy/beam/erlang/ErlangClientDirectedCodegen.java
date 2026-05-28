@@ -165,6 +165,7 @@ final class ErlangClientDirectedCodegen
         }
 
         ErlangHttpDispatchEmitter.emit(ctx, service);
+        ErlangPaginatorEmitter.emit(ctx, service);
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
