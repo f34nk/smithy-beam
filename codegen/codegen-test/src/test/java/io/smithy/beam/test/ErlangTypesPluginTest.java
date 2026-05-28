@@ -497,4 +497,28 @@ class ErlangTypesPluginTest {
         assertThat(filtered.expectFileString("relative_deprecation_types.hrl"))
                 .doesNotContain("-type legacy_string() :: binary().");
     }
+
+    @Test
+    void relativeVersionRemovesDeprecatedStringShapeFromGeneratedTypes() {
+        Model model = loadRelativeDeprecationModel();
+
+        MockManifest baseline = new MockManifest();
+        ObjectNode baselineSettings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
+        assertThat(baseline.expectFileString("relative_deprecation_types.hrl"))
+                .contains("-type legacy_version_string() :: binary().");
+
+        MockManifest filtered = new MockManifest();
+        ObjectNode filteredSettings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
+                .withMember("edition", "2026")
+                .withMember("relativeVersion", "1.0.0")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, filtered, filteredSettings));
+        assertThat(filtered.expectFileString("relative_deprecation_types.hrl"))
+                .doesNotContain("-type legacy_version_string() :: binary().");
+    }
 }
