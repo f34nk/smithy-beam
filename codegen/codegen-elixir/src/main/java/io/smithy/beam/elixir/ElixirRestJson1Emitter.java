@@ -28,11 +28,13 @@ public final class ElixirRestJson1Emitter {
     public static void emitCodecModule(ElixirContext ctx, ServiceShape service) {
         Model model = ctx.model();
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), service.getId().getNamespace());
+        ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         String moduleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_rest_json_1");
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_runtime_types");
         String typesMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+        boolean hasLabelBindings = ElixirRuntimeHelpersEmitter.serviceHasLabelBindings(model, service);
 
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
 
@@ -43,10 +45,16 @@ public final class ElixirRestJson1Emitter {
                     service.getId());
             writer.write("alias $L, as: RuntimeTypes", runtimeMod);
             writer.write("alias $L, as: Types", typesMod);
+            if (hasLabelBindings) {
+                String helpersMod = ElixirSymbolProvider.toModuleName(
+                        layout.modulePrefix() + "_runtime_helpers");
+                writer.write("alias $L, as: RuntimeHelpers", helpersMod);
+            }
             writer.write("");
 
             for (OperationShape op : operations) {
                 emitEncoder(writer, model, op, httpIndex, sp, typesMod, runtimeMod);
+                emitRequestDecoder(writer, model, op, httpIndex, sp, typesMod, hasLabelBindings);
                 emitDecoder(writer, model, op, httpIndex, sp, typesMod);
             }
 
@@ -141,6 +149,92 @@ public final class ElixirRestJson1Emitter {
         writer.write("");
     }
 
+    private static void emitRequestDecoder(
+            ElixirWriter writer,
+            Model model,
+            OperationShape op,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            String typesMod,
+            boolean hasLabelBindings) {
+
+        String opName = sp.toSymbol(op).getName();
+        StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
+        String inputStruct = sp.toSymbol(input).getName();
+        HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
+        String uriTemplate = httpTrait.getUri().toString();
+
+        List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
+        List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
+        List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
+
+        writer.write(
+                "def decode_$L_request(%RuntimeTypes.HttpRequest{path: path, query: query, headers: headers, body: body}) do",
+                opName);
+        writer.indent();
+
+        if (!labels.isEmpty() && hasLabelBindings) {
+            writer.write("case RuntimeHelpers.parse_labels(path, \"$L\") do", uriTemplate);
+            writer.indent();
+            writer.write("{:ok, label_map} ->");
+            writer.indent();
+            emitRequestDecoderStruct(writer, labels, queries, headers, docMembers, sp, inputStruct);
+            writer.dedent();
+            writer.write("{:error, :path_mismatch} ->");
+            writer.indent();
+            writer.write("raise ArgumentError, \"path does not match URI template\"");
+            writer.dedent();
+            writer.write("end");
+        } else {
+            emitRequestDecoderStruct(writer, labels, queries, headers, docMembers, sp, inputStruct);
+        }
+
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+    }
+
+    private static void emitRequestDecoderStruct(
+            ElixirWriter writer,
+            List<HttpBinding> labels,
+            List<HttpBinding> queries,
+            List<HttpBinding> headers,
+            List<HttpBinding> docMembers,
+            SymbolProvider sp,
+            String inputStruct) {
+
+        if (!docMembers.isEmpty()) {
+            writer.write("decoded = if body == \"\" or is_nil(body), do: %{}, else: Jason.decode!(body)");
+        }
+
+        writer.write("%Types.$L{", inputStruct);
+        for (HttpBinding lb : labels) {
+            String field = fieldName(sp, lb.getMember());
+            String memberName = lb.getMember().getMemberName();
+            writer.write("  $L: uri_decode(Map.get(label_map, \"$L\")),", field, memberName);
+        }
+        for (HttpBinding qb : queries) {
+            String field = fieldName(sp, qb.getMember());
+            writer.write("  $L: decode_query_param(Map.get(query, \"$L\")),", field, qb.getLocationName());
+        }
+        for (HttpBinding hb : headers) {
+            String field = fieldName(sp, hb.getMember());
+            writer.write("  $L: List.keyfind(headers, \"$L\", 0) |> case do", field, hb.getLocationName());
+            writer.indent();
+            writer.write("{_, v} -> v");
+            writer.write("nil -> nil");
+            writer.dedent();
+            writer.write("end,");
+        }
+        for (HttpBinding db : docMembers) {
+            String field = fieldName(sp, db.getMember());
+            String jsonKey = db.getMember().getMemberName();
+            writer.write("  $L: Map.get(decoded, \"$L\"),", field, jsonKey);
+        }
+        writer.write("}");
+    }
+
     private static void emitDecoder(
             ElixirWriter writer,
             Model model,
@@ -209,6 +303,16 @@ public final class ElixirRestJson1Emitter {
         writer.write("# -- Private helpers --");
         writer.write("");
         writer.write("defp uri_encode(value), do: URI.encode(to_string(value))");
+        writer.write("");
+        writer.write("defp uri_decode(nil), do: nil");
+        writer.write("defp uri_decode(value), do: URI.decode(value)");
+        writer.write("");
+        writer.write("defp decode_query_param(nil), do: nil");
+        writer.write("defp decode_query_param(true), do: true");
+        writer.write("defp decode_query_param(false), do: false");
+        writer.write("defp decode_query_param(\"true\"), do: true");
+        writer.write("defp decode_query_param(\"false\"), do: false");
+        writer.write("defp decode_query_param(value), do: value");
         writer.write("");
     }
 
