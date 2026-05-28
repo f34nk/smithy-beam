@@ -16,6 +16,8 @@ with the following BEAM-specific exceptions called out explicitly.
   generated type files as a documentation and Dialyzer/Dialyxir surface. They do
   not create runtime wrappers, constructors, validators, serialization behavior,
   or new value semantics.
+- Smithy `@documentation` on shapes and members flows into generated type comments
+  (`%% @doc` in Erlang headers, `@moduledoc` / `@typedoc` in Elixir modules).
 - All types for a model file land in one output file derived from the model
   namespace's last segment (e.g. `smithy.beam.demo.basic` -> `basic_types`).
   Reason: the BEAM convention keeps related type specs together.
