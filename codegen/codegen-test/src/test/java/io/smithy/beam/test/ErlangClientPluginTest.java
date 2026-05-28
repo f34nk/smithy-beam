@@ -221,12 +221,12 @@ class ErlangClientPluginTest {
         assertThat(codec).doesNotContain("#describe_item_input(){");
         assertThat(codec).contains("(V) when V =/= undefined");
         assertThat(codec).contains("uri_encode(");
-        assertThat(manifest.expectFileString("protocoljson_runtime_helpers.erl"))
-                .contains("-module(protocoljson_runtime_helpers).")
+        assertThat(manifest.expectFileString("runtime_helpers.erl"))
+                .contains("-module(runtime_helpers).")
                 .contains("parse_labels(Path, Template)");
         assertThat(codec).contains("decode_describe_item_request(");
         assertThat(codec).contains("LabelMap");
-        assertThat(codec).doesNotContain("protocoljson_runtime_helpers:parse_labels(Path");
+        assertThat(codec).doesNotContain("runtime_helpers:parse_labels(Path");
         assertThat(codec).doesNotContain("beam_path:parse_labels");
 
         new ErlangServerPlugin().execute(PluginContext.builder()
