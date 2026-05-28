@@ -2,7 +2,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include("user_types.hrl").
--include("user_runtime_types.hrl").
+-include("runtime_types.hrl").
 
 %% Request flow: http_request -> user_router:dispatch/2 -> codec decode -> Handler:handle_<op>/3.
 %% Pass user_server as Handler to invoke the generated server stub.
