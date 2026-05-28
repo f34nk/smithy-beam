@@ -40,4 +40,8 @@ public final class BeamElixirLayout {
     public String runtimeTypesModuleFile() {
         return modulePrefix() + "_runtime_types.ex";
     }
+
+    public String runtimeHelpersModuleFile() {
+        return modulePrefix() + "_runtime_helpers.ex";
+    }
 }
