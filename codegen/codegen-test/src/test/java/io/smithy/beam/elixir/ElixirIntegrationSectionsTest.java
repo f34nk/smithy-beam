@@ -75,4 +75,52 @@ class ElixirIntegrationSectionsTest {
         assertThat(manifest.expectFileString(TYPES_FILE))
                 .contains("# recording-elixir-integration was here");
     }
+
+    @Test
+    void generatedDocumentationSectionReceivesStructureDocs() {
+        URL resource = ElixirIntegrationSectionsTest.class.getResource("/model/documented_types.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.documented_types#DocumentedTypesService")
+                .withMember("edition", "2026")
+                .build();
+        PluginContext context = PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build();
+
+        CodegenDirector<ElixirWriter, ElixirIntegration, ElixirContext, BeamSettings> runner =
+                new CodegenDirector<>();
+        runner.directedCodegen(new ElixirDirectedCodegen());
+        runner.integrationClass(ElixirIntegration.class);
+        runner.fileManifest(context.getFileManifest());
+        runner.integrationSettings(context.getSettings());
+        context.getPluginClassLoader().ifPresent(runner::integrationClassLoader);
+        runner.integrationFinder(() -> List.of(new RecordingElixirIntegration()));
+        runner.model(context.getModel());
+
+        BeamSettings beamSettings = runner.settings(BeamSettings.class, context.getSettings());
+        var resolvedService = beamSettings.resolveService(context.getModel());
+        runner.service(resolvedService);
+
+        ServiceShape serviceShape = context.getModel().expectShape(resolvedService, ServiceShape.class);
+        if (beamSettings.protocol() != null) {
+            BeamProtocolResolver.resolve(context.getModel(), serviceShape, beamSettings);
+        }
+
+        BeamCodegenTransforms.applySharedCodegenTransforms(runner, beamSettings);
+
+        runner.run();
+
+        String content = manifest.expectFileString("documented_types_types.ex");
+        assertThat(content).contains("# recording-elixir-integration was here");
+        assertThat(content).contains("A documented structure with member docs.");
+    }
 }
