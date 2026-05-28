@@ -514,4 +514,28 @@ class ElixirTypesPluginTest {
         assertThat(filtered.expectFileString("relative_deprecation_types.ex"))
                 .doesNotContain("@type legacy_string :: String.t()");
     }
+
+    @Test
+    void relativeVersionRemovesDeprecatedStringShapeFromGeneratedTypes() {
+        Model model = loadRelativeDeprecationModel();
+
+        MockManifest baseline = new MockManifest();
+        ObjectNode baselineSettings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
+        assertThat(baseline.expectFileString("relative_deprecation_types.ex"))
+                .contains("@type legacy_version_string :: String.t()");
+
+        MockManifest filtered = new MockManifest();
+        ObjectNode filteredSettings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
+                .withMember("edition", "2026")
+                .withMember("relativeVersion", "1.0.0")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, filtered, filteredSettings));
+        assertThat(filtered.expectFileString("relative_deprecation_types.ex"))
+                .doesNotContain("@type legacy_version_string :: String.t()");
+    }
 }
