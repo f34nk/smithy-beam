@@ -268,4 +268,38 @@ class ErlangClientPluginTest {
                 .hasMessageContaining("protocol")
                 .hasMessageContaining("smithy.api#String");
     }
+
+    @Test
+    void resourceLifecycleEmitsClientHelperModules() {
+        URL resource = ErlangClientPluginTest.class.getResource("/model/resource_lifecycle.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.resource_lifecycle#ResourceLifecycleService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangClientPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+
+        String org = manifest.expectFileString("resource_lifecycle_organization.erl");
+        assertThat(org).contains("-module(resource_lifecycle_organization).");
+        assertThat(org).contains("read/2");
+        assertThat(org).contains("resource_lifecycle_client:get_organization(");
+        assertThat(org).contains("#get_organization_input{org_id = org_id}");
+        assertThat(org).contains("Top-level organization resource.");
+
+        String employee = manifest.expectFileString("resource_lifecycle_employee.erl");
+        assertThat(employee).contains("get_employee(");
+        assertThat(employee).contains("org_id = org_id");
+        assertThat(employee).contains("employee_id = employee_id");
+        assertThat(employee).contains("list_employees_by_status(");
+    }
 }
