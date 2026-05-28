@@ -75,6 +75,12 @@ with the following BEAM-specific exceptions called out explicitly.
   If two model identifiers map to the same generated identifier, append stable
   numeric suffixes such as `_2`, `_3` within the relevant scope.
 
+### Resources
+
+Smithy resource shapes produce separate lifecycle helper modules in client and server output.
+Operation stubs remain flat functions on the main client/server module. Identifier parameters
+map to input record fields by member name.
+
 ## Erlang Mappings
 
 | Smithy shape        | Erlang type                                  |
