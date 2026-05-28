@@ -270,4 +270,37 @@ class ElixirClientPluginTest {
         assertThat(router).contains("\"/items\"");
         assertThat(router).doesNotContain("path, path");
     }
+
+    @Test
+    void resourceLifecycleEmitsClientHelperModules() {
+        URL resource = ElixirClientPluginTest.class.getResource("/model/resource_lifecycle.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.resource_lifecycle#ResourceLifecycleService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirClientPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+
+        String org = manifest.expectFileString("resource_lifecycle_organization.ex");
+        assertThat(org).contains("defmodule ResourceLifecycleOrganization do");
+        assertThat(org).contains("ResourceLifecycleClient.get_organization(");
+        assertThat(org).contains("org_id: org_id");
+        assertThat(org).contains("Top-level organization resource.");
+
+        String employee = manifest.expectFileString("resource_lifecycle_employee.ex");
+        assertThat(employee).contains("get_employee(");
+        assertThat(employee).contains("org_id: org_id");
+        assertThat(employee).contains("employee_id: employee_id");
+        assertThat(employee).contains("list_employees_by_status(");
+    }
 }
