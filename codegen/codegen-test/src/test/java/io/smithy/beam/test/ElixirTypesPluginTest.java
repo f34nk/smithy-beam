@@ -516,6 +516,32 @@ class ElixirTypesPluginTest {
     }
 
     @Test
+    void documentedTypesEmitShapeAndMemberDocs() {
+        URL resource = ElixirTypesPluginTest.class.getResource("/model/documented_types.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.documented_types#DocumentedTypesService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("documented_types_types.ex");
+
+        assertThat(content).contains("@moduledoc \"\"\"");
+        assertThat(content).contains("A documented structure with member docs.");
+        assertThat(content).contains("## Members");
+        assertThat(content).contains("`name` - Human-readable item name.");
+        assertThat(content).contains("@typedoc");
+        assertThat(content).contains("Tagged union carrying documented variants.");
+    }
+
+    @Test
     void relativeVersionRemovesDeprecatedStringShapeFromGeneratedTypes() {
         Model model = loadRelativeDeprecationModel();
 

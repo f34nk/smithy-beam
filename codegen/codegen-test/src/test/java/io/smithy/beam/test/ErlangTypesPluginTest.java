@@ -499,6 +499,32 @@ class ErlangTypesPluginTest {
     }
 
     @Test
+    void documentedTypesEmitShapeAndMemberDocs() {
+        URL resource = ErlangTypesPluginTest.class.getResource("/model/documented_types.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.documented_types#DocumentedTypesService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        String content = manifest.expectFileString("documented_types_types.hrl");
+
+        assertThat(content).contains("%% @doc");
+        assertThat(content).contains("A documented structure with member docs.");
+        assertThat(content).contains("%% @doc name");
+        assertThat(content).contains("Human-readable item name.");
+        assertThat(content).contains("-type documented_status()");
+        assertThat(content).contains("String enum with documented variants.");
+    }
+
+    @Test
     void relativeVersionRemovesDeprecatedStringShapeFromGeneratedTypes() {
         Model model = loadRelativeDeprecationModel();
 
