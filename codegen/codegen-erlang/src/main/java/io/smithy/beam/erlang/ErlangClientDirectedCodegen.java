@@ -8,6 +8,7 @@ import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolResolver;
+import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -166,6 +167,10 @@ final class ErlangClientDirectedCodegen
 
         ErlangHttpDispatchEmitter.emit(ctx, service);
         ErlangPaginatorEmitter.emit(ctx, service);
+        BeamResourceIndex resourceIndex = BeamResourceIndex.of(ctx.model());
+        for (ResourceShape resource : resourceIndex.containedResourcesSorted(service)) {
+            ErlangResourceEmitter.emitClient(ctx, resource);
+        }
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
@@ -249,12 +254,7 @@ final class ErlangClientDirectedCodegen
     @Override
     public void generateResource(
             GenerateResourceDirective<ErlangContext, BeamSettings> directive) {
-        ErlangContext ctx = directive.context();
-        ResourceShape resource = directive.shape();
-
-        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
-            writer.write("%% Contained resource: $L", resource.getId());
-        });
+        // Emitted from generateService for all contained resources.
     }
 
     @Override
