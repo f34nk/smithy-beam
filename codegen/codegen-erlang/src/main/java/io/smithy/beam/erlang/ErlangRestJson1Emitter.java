@@ -28,6 +28,7 @@ public final class ErlangRestJson1Emitter {
     public static void emitCodecModule(ErlangContext ctx, ServiceShape service) {
         Model model = ctx.model();
         BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), service.getId().getNamespace());
+        ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
 
@@ -36,6 +37,7 @@ public final class ErlangRestJson1Emitter {
         for (OperationShape op : operations) {
             String name = sp.toSymbol(op).getName();
             exports.add("encode_" + name + "_request/1");
+            exports.add("decode_" + name + "_request/1");
             exports.add("decode_" + name + "_response/1");
         }
 
@@ -50,6 +52,7 @@ public final class ErlangRestJson1Emitter {
 
             for (OperationShape op : operations) {
                 emitEncoder(writer, model, service, op, httpIndex, sp);
+                emitRequestDecoder(writer, model, op, httpIndex, sp, layout);
                 emitDecoder(writer, model, service, op, httpIndex, sp, layout);
             }
 
@@ -144,6 +147,89 @@ public final class ErlangRestJson1Emitter {
         writer.write("    query = maps:from_list(Query),");
         writer.write("    headers = Headers,");
         writer.write("    body = Body");
+        writer.write("}.");
+        writer.dedent();
+        writer.write("");
+    }
+
+    /** Emits decode_<op>_request/1 for one operation (server-side request parsing). */
+    private static void emitRequestDecoder(
+            ErlangWriter writer,
+            Model model,
+            OperationShape op,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            BeamErlangLayout layout) {
+
+        String opName = sp.toSymbol(op).getName();
+        StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
+        String inputRecord = recordName(sp.toSymbol(input));
+        HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
+        String uriTemplate = httpTrait.getUri().toString();
+
+        List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
+        List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
+        List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
+
+        writer.write("%% Decode HTTP request for $L.", op.getId());
+        writer.write(
+                "decode_$L_request(#http_request{path = Path, query = Query, headers = Headers, body = Body}) ->",
+                opName);
+        writer.indent();
+
+        if (!labels.isEmpty()) {
+            writer.write("{ok, LabelMap} = $L:parse_labels(Path, <<\"$L\">>),",
+                    layout.runtimeHelpersModuleName(), uriTemplate);
+        }
+
+        if (!docMembers.isEmpty()) {
+            writer.write("Decoded = case Body of");
+            writer.indent();
+            writer.write("<<>> -> #{};");
+            writer.write("_ ->");
+            writer.indent();
+            writer.write("case jsone:try_decode(Body) of");
+            writer.indent();
+            writer.write("{ok, Val, _} -> Val;");
+            writer.write("{error, _} -> #{}");
+            writer.dedent();
+            writer.write("end");
+            writer.dedent();
+            writer.dedent();
+            writer.write("end,");
+        }
+
+        List<String> recordFields = new ArrayList<>();
+        for (HttpBinding lb : labels) {
+            String fieldName = BeamNameUtils.toSnakeCase(lb.getMember().getMemberName());
+            String memberName = lb.getMember().getMemberName();
+            recordFields.add(
+                    "    " + fieldName + " = uri_decode(maps:get(<<\"" + memberName + "\">>, LabelMap, undefined))");
+        }
+        for (HttpBinding qb : queries) {
+            String fieldName = BeamNameUtils.toSnakeCase(qb.getMember().getMemberName());
+            String paramName = qb.getLocationName();
+            recordFields.add(
+                    "    " + fieldName + " = decode_query_param(maps:get(<<\"" + paramName + "\">>, Query, undefined))");
+        }
+        for (HttpBinding hb : headers) {
+            String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
+            String headerName = hb.getLocationName();
+            recordFields.add(
+                    "    " + fieldName + " = proplists:get_value(<<\"" + headerName + "\">>, Headers, undefined)");
+        }
+        for (HttpBinding db : docMembers) {
+            String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
+            String jsonKey = db.getMember().getMemberName();
+            recordFields.add(
+                    "    " + fieldName + " = maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined)");
+        }
+
+        writer.write("#$L{", inputRecord);
+        if (!recordFields.isEmpty()) {
+            writer.write(String.join(",\n", recordFields));
+        }
         writer.write("}.");
         writer.dedent();
         writer.write("");
@@ -252,6 +338,20 @@ public final class ErlangRestJson1Emitter {
         writer.write("");
         writer.write("uri_encode(Value) ->");
         writer.write("    uri_string:quote(Value).");
+        writer.write("");
+        writer.write("uri_decode(Value) when is_binary(Value) ->");
+        writer.write("    uri_string:unquote(Value);");
+        writer.write("uri_decode(undefined) ->");
+        writer.write("    undefined.");
+        writer.write("");
+        writer.write("decode_query_param(undefined) ->");
+        writer.write("    undefined;");
+        writer.write("decode_query_param(<<\"true\">>) ->");
+        writer.write("    true;");
+        writer.write("decode_query_param(<<\"false\">>) ->");
+        writer.write("    false;");
+        writer.write("decode_query_param(V) when is_binary(V) ->");
+        writer.write("    V.");
     }
 
     /** Record tag for #-record{} syntax; symbol names carry a trailing {@code ()} type suffix. */
