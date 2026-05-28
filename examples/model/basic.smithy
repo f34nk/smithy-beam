@@ -27,6 +27,7 @@ document BasicDocument
 //
 // String-keyed enum. Unknown wire values MUST round-trip without failure.
 
+@documentation("Lifecycle state of a basic resource.")
 enum BasicStatus {
     ACTIVE
     INACTIVE
@@ -71,10 +72,13 @@ union BasicUnion {
 // Required members: typed without nil.
 // Optional members: typed | nil  (NullableIndex rule).
 
+@documentation("Item returned in list responses.")
 structure BasicItem {
+    @documentation("Unique item name.")
     @required
     name: BasicString
 
+    @documentation("Optional count when known.")
     count: BasicInteger
 }
 
