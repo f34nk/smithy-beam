@@ -34,8 +34,6 @@ public final class ElixirRestJson1Emitter {
         String moduleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_rest_json_1");
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_runtime_types");
         String typesMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
-        boolean hasLabelBindings = ElixirRuntimeHelpersEmitter.serviceHasLabelBindings(model, service);
-
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
 
         ctx.writerDelegator().useFileWriter(layout.codecModuleFile(), writer -> {
@@ -45,16 +43,11 @@ public final class ElixirRestJson1Emitter {
                     service.getId());
             writer.write("alias $L, as: RuntimeTypes", runtimeMod);
             writer.write("alias $L, as: Types", typesMod);
-            if (hasLabelBindings) {
-                String helpersMod = ElixirSymbolProvider.toModuleName(
-                        layout.modulePrefix() + "_runtime_helpers");
-                writer.write("alias $L, as: RuntimeHelpers", helpersMod);
-            }
             writer.write("");
 
             for (OperationShape op : operations) {
                 emitEncoder(writer, model, op, httpIndex, sp, typesMod, runtimeMod);
-                emitRequestDecoder(writer, model, op, httpIndex, sp, typesMod, hasLabelBindings);
+                emitRequestDecoder(writer, model, op, httpIndex, sp, typesMod);
                 emitDecoder(writer, model, op, httpIndex, sp, typesMod);
             }
 
@@ -155,41 +148,28 @@ public final class ElixirRestJson1Emitter {
             OperationShape op,
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
-            String typesMod,
-            boolean hasLabelBindings) {
+            String typesMod) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
         String inputStruct = sp.toSymbol(input).getName();
-        HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
-        String uriTemplate = httpTrait.getUri().toString();
 
         List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
         List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
 
-        writer.write(
-                "def decode_$L_request(%RuntimeTypes.HttpRequest{path: path, query: query, headers: headers, body: body}) do",
-                opName);
-        writer.indent();
-
-        if (!labels.isEmpty() && hasLabelBindings) {
-            writer.write("case RuntimeHelpers.parse_labels(path, \"$L\") do", uriTemplate);
-            writer.indent();
-            writer.write("{:ok, label_map} ->");
-            writer.indent();
-            emitRequestDecoderStruct(writer, labels, queries, headers, docMembers, sp, inputStruct);
-            writer.dedent();
-            writer.write("{:error, :path_mismatch} ->");
-            writer.indent();
-            writer.write("raise ArgumentError, \"path does not match URI template\"");
-            writer.dedent();
-            writer.write("end");
+        if (labels.isEmpty()) {
+            writer.write(
+                    "def decode_$L_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}) do",
+                    opName);
         } else {
-            emitRequestDecoderStruct(writer, labels, queries, headers, docMembers, sp, inputStruct);
+            writer.write(
+                    "def decode_$L_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}, label_map) do",
+                    opName);
         }
-
+        writer.indent();
+        emitRequestDecoderStruct(writer, labels, queries, headers, docMembers, sp, inputStruct);
         writer.dedent();
         writer.write("end");
         writer.write("");

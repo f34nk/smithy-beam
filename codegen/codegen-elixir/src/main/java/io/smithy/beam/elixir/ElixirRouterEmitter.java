@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamHttpPathPatterns;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
@@ -9,6 +10,7 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.traits.HttpTrait;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -29,6 +31,18 @@ public final class ElixirRouterEmitter {
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
         String routerMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_router");
         String codecMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_rest_json_1");
+        String helpersMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_runtime_helpers");
+
+        List<OperationShape> literalOps = new ArrayList<>();
+        List<OperationShape> labeledOps = new ArrayList<>();
+        for (OperationShape op : operations) {
+            List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
+            if (labels.isEmpty()) {
+                literalOps.add(op);
+            } else {
+                labeledOps.add(op);
+            }
+        }
 
         ctx.writerDelegator().useFileWriter(layout.modulePrefix() + "_router.ex", writer -> {
             writer.write("defmodule $L do", routerMod);
@@ -43,20 +57,11 @@ public final class ElixirRouterEmitter {
             writer.write("end");
             writer.write("");
 
-            for (OperationShape op : operations) {
-                HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
-                String method = httpTrait.getMethod().toUpperCase();
-                String opName = sp.toSymbol(op).getName();
-                List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
-                String pathPattern = buildPathPattern(httpTrait.getUri().toString(), labels);
-
-                writer.write("defp route(\"$L\", $L, handler, request) do", method, pathPattern);
-                writer.indent();
-                writer.write("input = $L.decode_$L_request(request)", codecMod, opName);
-                writer.write("handler.handle_$L(%{}, input, %{})", opName);
-                writer.dedent();
-                writer.write("end");
-                writer.write("");
+            for (OperationShape op : literalOps) {
+                emitRoute(writer, op, httpIndex, sp, codecMod, helpersMod, false);
+            }
+            for (OperationShape op : labeledOps) {
+                emitRoute(writer, op, httpIndex, sp, codecMod, helpersMod, true);
             }
 
             writer.write("defp route(method, path, _handler, _request) do");
@@ -69,11 +74,109 @@ public final class ElixirRouterEmitter {
         });
     }
 
-    private static String buildPathPattern(String uriTemplate, List<HttpBinding> labels) {
+    private static void emitRoute(
+            ElixirWriter writer,
+            OperationShape op,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            String codecMod,
+            String helpersMod,
+            boolean labeled) {
+
+        HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
+        String method = httpTrait.getMethod().toUpperCase();
+        String uriTemplate = httpTrait.getUri().toString();
+        String opName = sp.toSymbol(op).getName();
+        List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
+
+        String pathPattern = buildElixirPathMatchPattern(uriTemplate, labels);
+        String guard = labeled ? singleTrailingLabelGuard(uriTemplate) : "";
+
+        writer.write("defp route(\"$L\", $L, handler, request)$L do", method, pathPattern, guard);
+        writer.indent();
+
+        if (labeled) {
+            emitLabeledRouteBody(writer, helpersMod, uriTemplate, codecMod, opName, method);
+        } else {
+            writer.write("input = $L.decode_$L_request(request)", codecMod, opName);
+            writer.write("handler.handle_$L(%{}, input, %{})", opName);
+        }
+
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+    }
+
+    private static void emitLabeledRouteBody(
+            ElixirWriter writer,
+            String helpersMod,
+            String uriTemplate,
+            String codecMod,
+            String opName,
+            String method) {
+
+        writer.write("case $L.parse_labels(path, \"$L\") do", helpersMod, escapeElixirString(uriTemplate));
+        writer.indent();
+        writer.write("{:ok, label_map} ->");
+        writer.indent();
+        writer.write("input = $L.decode_$L_request(request, label_map)", codecMod, opName);
+        writer.write("handler.handle_$L(%{}, input, %{})", opName);
+        writer.dedent();
+        writer.write("{:error, :path_mismatch} ->");
+        writer.indent();
+        writer.write("{:error, {:not_found, \"$L\", path}}", method);
+        writer.dedent();
+        writer.dedent();
+        writer.write("end");
+    }
+
+    private static String buildElixirPathMatchPattern(String uriTemplate, List<HttpBinding> labels) {
         if (labels.isEmpty()) {
             return "\"" + escapeElixirString(uriTemplate) + "\"";
         }
-        return "path";
+        StringBuilder sb = new StringBuilder();
+        int labelIndex = 0;
+        List<BeamHttpPathPatterns.PathSegment> segments = BeamHttpPathPatterns.parseTemplate(uriTemplate);
+        for (BeamHttpPathPatterns.PathSegment seg : segments) {
+            if (seg.kind() == BeamHttpPathPatterns.SegmentKind.LABEL) {
+                sb.append(" <> ").append(labelVarName(labelIndex++));
+            } else {
+                if (sb.isEmpty()) {
+                    sb.append("\"").append(escapeElixirString(seg.value())).append("\"");
+                } else {
+                    sb.append(" <> \"").append(escapeElixirString(seg.value())).append("\"");
+                }
+            }
+        }
+        sb.append(" = path");
+        return sb.toString();
+    }
+
+    private static String labelVarName(int index) {
+        return index == 0 ? "name_seg" : "label_seg" + index;
+    }
+
+    private static String trailingLabelVarName(String uriTemplate) {
+        List<BeamHttpPathPatterns.PathSegment> segments = BeamHttpPathPatterns.parseTemplate(uriTemplate);
+        if (segments.isEmpty()
+                || segments.get(segments.size() - 1).kind() != BeamHttpPathPatterns.SegmentKind.LABEL) {
+            return null;
+        }
+        int labelCount = 0;
+        for (BeamHttpPathPatterns.PathSegment seg : segments) {
+            if (seg.kind() == BeamHttpPathPatterns.SegmentKind.LABEL) {
+                labelCount++;
+            }
+        }
+        return labelVarName(labelCount - 1);
+    }
+
+    private static String singleTrailingLabelGuard(String uriTemplate) {
+        String var = trailingLabelVarName(uriTemplate);
+        if (var == null) {
+            return "";
+        }
+        return " when " + var + " != \"\"";
     }
 
     private static String escapeElixirString(String value) {
