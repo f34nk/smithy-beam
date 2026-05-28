@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamHttpPathPatterns;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
@@ -9,6 +10,7 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.traits.HttpTrait;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -31,6 +33,18 @@ public final class ErlangRouterEmitter {
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
         String codecMod = layout.codecModuleName();
         String routerMod = layout.modulePrefix() + "_router";
+        String helpersMod = layout.runtimeHelpersModuleName();
+
+        List<OperationShape> literalOps = new ArrayList<>();
+        List<OperationShape> labeledOps = new ArrayList<>();
+        for (OperationShape op : operations) {
+            List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
+            if (labels.isEmpty()) {
+                literalOps.add(op);
+            } else {
+                labeledOps.add(op);
+            }
+        }
 
         ctx.writerDelegator().useFileWriter(routerMod + ".erl", writer -> {
             writer.write("%% Generated HTTP router for $L.", service.getId());
@@ -47,23 +61,11 @@ public final class ErlangRouterEmitter {
             writer.dedent();
             writer.write("");
 
-            for (OperationShape op : operations) {
-                HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
-                String method = httpTrait.getMethod().toUpperCase();
-                String opName = sp.toSymbol(op).getName();
-                String handlerFn = "handle_" + opName;
-
-                List<HttpBinding> labels = httpIndex.getRequestBindings(op,
-                        HttpBinding.Location.LABEL);
-
-                String pathPattern = buildPathPattern(httpTrait.getUri().toString(), labels);
-
-                writer.write("route(<<\"$L\">>, $L = Path, Handler, Req) ->", method, pathPattern);
-                writer.indent();
-                writer.write("Input = $L:decode_$L_request(Req),",
-                        codecMod, opName);
-                writer.write("Handler:$L(#{}, Input, #{});", handlerFn);
-                writer.dedent();
+            for (OperationShape op : literalOps) {
+                emitRoute(writer, op, httpIndex, sp, codecMod, helpersMod, false);
+            }
+            for (OperationShape op : labeledOps) {
+                emitRoute(writer, op, httpIndex, sp, codecMod, helpersMod, true);
             }
 
             writer.write("route(Method, Path, _Handler, _Req) ->");
@@ -73,11 +75,104 @@ public final class ErlangRouterEmitter {
         });
     }
 
-    private static String buildPathPattern(String uriTemplate, List<HttpBinding> labels) {
+    private static void emitRoute(
+            ErlangWriter writer,
+            OperationShape op,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            String codecMod,
+            String helpersMod,
+            boolean labeled) {
+
+        HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
+        String method = httpTrait.getMethod().toUpperCase();
+        String uriTemplate = httpTrait.getUri().toString();
+        String opName = sp.toSymbol(op).getName();
+        String handlerFn = "handle_" + opName;
+        List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
+
+        String pathPattern = buildErlangPathMatchPattern(uriTemplate, labels);
+        String guard = labeled ? singleTrailingLabelGuard(uriTemplate) : "";
+
+        writer.write("route(<<\"$L\">>, $L = Path, Handler, Req)$L ->", method, pathPattern, guard);
+        writer.indent();
+
+        if (labeled) {
+            emitLabeledRouteBody(writer, helpersMod, uriTemplate, codecMod, opName, handlerFn, method);
+        } else {
+            writer.write("Input = $L:decode_$L_request(Req),", codecMod, opName);
+            writer.write("Handler:$L(#{}, Input, #{});", handlerFn);
+        }
+
+        writer.dedent();
+    }
+
+    private static void emitLabeledRouteBody(
+            ErlangWriter writer,
+            String helpersMod,
+            String uriTemplate,
+            String codecMod,
+            String opName,
+            String handlerFn,
+            String method) {
+
+        writer.write("case $L:parse_labels(Path, <<\"$L\">>) of", helpersMod, uriTemplate);
+        writer.indent();
+        writer.write("{ok, LabelMap} ->");
+        writer.indent();
+        writer.write("Input = $L:decode_$L_request(Req, LabelMap),", codecMod, opName);
+        writer.write("Handler:$L(#{}, Input, #{});", handlerFn);
+        writer.dedent();
+        writer.write("{error, path_mismatch} ->");
+        writer.indent();
+        writer.write("{error, {not_found, <<\"$L\">>, Path}}", method);
+        writer.dedent();
+        writer.write("end;");
+    }
+
+    private static String buildErlangPathMatchPattern(String uriTemplate, List<HttpBinding> labels) {
         if (labels.isEmpty()) {
             return "<<\"" + uriTemplate + "\">>";
         }
-        return "Path";
+        StringBuilder sb = new StringBuilder("<<");
+        int labelIndex = 0;
+        List<BeamHttpPathPatterns.PathSegment> segments = BeamHttpPathPatterns.parseTemplate(uriTemplate);
+        for (BeamHttpPathPatterns.PathSegment seg : segments) {
+            if (seg.kind() == BeamHttpPathPatterns.SegmentKind.LABEL) {
+                String var = labelVarName(labelIndex++);
+                sb.append(", ").append(var).append("/binary");
+            } else {
+                sb.append("\"").append(seg.value()).append("\"");
+            }
+        }
+        sb.append(">>");
+        return sb.toString();
     }
 
+    private static String labelVarName(int index) {
+        return index == 0 ? "NameSeg" : "LabelSeg" + index;
+    }
+
+    private static String trailingLabelVarName(String uriTemplate) {
+        List<BeamHttpPathPatterns.PathSegment> segments = BeamHttpPathPatterns.parseTemplate(uriTemplate);
+        if (segments.isEmpty()
+                || segments.get(segments.size() - 1).kind() != BeamHttpPathPatterns.SegmentKind.LABEL) {
+            return null;
+        }
+        int labelCount = 0;
+        for (BeamHttpPathPatterns.PathSegment seg : segments) {
+            if (seg.kind() == BeamHttpPathPatterns.SegmentKind.LABEL) {
+                labelCount++;
+            }
+        }
+        return labelVarName(labelCount - 1);
+    }
+
+    private static String singleTrailingLabelGuard(String uriTemplate) {
+        String var = trailingLabelVarName(uriTemplate);
+        if (var == null) {
+            return "";
+        }
+        return " when " + var + " =/= <<>>";
+    }
 }

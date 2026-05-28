@@ -36,8 +36,9 @@ public final class ErlangRestJson1Emitter {
         List<String> exports = new ArrayList<>();
         for (OperationShape op : operations) {
             String name = sp.toSymbol(op).getName();
+            List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
             exports.add("encode_" + name + "_request/1");
-            exports.add("decode_" + name + "_request/1");
+            exports.add("decode_" + name + "_request/" + (labels.isEmpty() ? "1" : "2"));
             exports.add("decode_" + name + "_response/1");
         }
 
@@ -52,7 +53,7 @@ public final class ErlangRestJson1Emitter {
 
             for (OperationShape op : operations) {
                 emitEncoder(writer, model, service, op, httpIndex, sp);
-                emitRequestDecoder(writer, model, op, httpIndex, sp, layout);
+                emitRequestDecoder(writer, model, op, httpIndex, sp);
                 emitDecoder(writer, model, service, op, httpIndex, sp, layout);
             }
 
@@ -152,20 +153,17 @@ public final class ErlangRestJson1Emitter {
         writer.write("");
     }
 
-    /** Emits decode_<op>_request/1 for one operation (server-side request parsing). */
+    /** Emits decode_<op>_request for one operation (server-side request parsing). */
     private static void emitRequestDecoder(
             ErlangWriter writer,
             Model model,
             OperationShape op,
             HttpBindingIndex httpIndex,
-            SymbolProvider sp,
-            BeamErlangLayout layout) {
+            SymbolProvider sp) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
         String inputRecord = recordName(sp.toSymbol(input));
-        HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
-        String uriTemplate = httpTrait.getUri().toString();
 
         List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
         List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
@@ -173,15 +171,16 @@ public final class ErlangRestJson1Emitter {
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
 
         writer.write("%% Decode HTTP request for $L.", op.getId());
-        writer.write(
-                "decode_$L_request(#http_request{path = Path, query = Query, headers = Headers, body = Body}) ->",
-                opName);
-        writer.indent();
-
-        if (!labels.isEmpty()) {
-            writer.write("{ok, LabelMap} = $L:parse_labels(Path, <<\"$L\">>),",
-                    layout.runtimeHelpersModuleName(), uriTemplate);
+        if (labels.isEmpty()) {
+            writer.write(
+                    "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body}) ->",
+                    opName);
+        } else {
+            writer.write(
+                    "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body}, LabelMap) ->",
+                    opName);
         }
+        writer.indent();
 
         if (!docMembers.isEmpty()) {
             writer.write("Decoded = case Body of");
