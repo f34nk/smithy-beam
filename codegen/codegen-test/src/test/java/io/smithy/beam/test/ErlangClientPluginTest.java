@@ -177,7 +177,7 @@ class ErlangClientPluginTest {
                 .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
         assertThat(manifest.expectFileString("protocoljson_http.erl"))
                 .contains("-module(protocoljson_http).")
-                .contains("dispatch(httpc, Config, Request)")
+                .contains("HttpClient = maps:get(http_client, Config, httpc),")
                 .contains("dispatch(HttpClient, Config, #http_request{");
         String client = manifest.expectFileString("protocoljson_client.erl");
         assertThat(client)
