@@ -10,11 +10,17 @@ All notable changes to this project will be documented here.
 - Pagination helpers for @paginated operations on Erlang and Elixir, backed by a shared pagination index wrapper in codegen-core, with a paginated operation on the basic example model.
 - Client HTTP dispatch honors a configurable HTTP client module from client configuration on Erlang and Elixir.
 - Shared HTTP URI template path segment parser in codegen-core for consistent labeled route matching.
+- Types output for Erlang and Elixir now carries Smithy @documentation on structures, enums, unions, error shapes, named scalar aliases, and documented members, using shared helpers in codegen-core for shape and member comment formatting.
+- The basic example model documents BasicItem and BasicStatus so generated type comments can be exercised end to end.
 
 ### Fixed
 - Generated routers match labeled path templates instead of treating label segments as literal path text.
 - Server request decoders decode only wire-bound fields rather than full input shapes.
 - Paginated client helpers preserve item order when accumulating results across pages.
+
+### Docs
+- Trait support tables and shape mapping notes now describe @documentation on types output alongside operation stubs.
+- Added AWS SDK support status reference for generated BEAM output.
 
 ## 2026-05-27
 
