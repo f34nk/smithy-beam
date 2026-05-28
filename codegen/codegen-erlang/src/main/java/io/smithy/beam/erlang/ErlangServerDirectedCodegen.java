@@ -8,6 +8,7 @@ import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
+import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -25,6 +26,7 @@ import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
 import software.amazon.smithy.model.shapes.OperationShape;
+import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
@@ -98,6 +100,13 @@ final class ErlangServerDirectedCodegen
         String ns = service.getId().getNamespace();
         BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns);
 
+        ctx.writerDelegator().useFileWriter(
+                layout.runtimeTypesHeaderFile(),
+                writer -> {
+                    writer.write("%% Generated runtime types for $L.", ctx.service().getId());
+                    ErlangRuntimeTypesEmitter.writeBody(writer);
+                });
+
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
         List<String> exports = new ArrayList<>();
         for (OperationShape op : operations) {
@@ -157,6 +166,10 @@ final class ErlangServerDirectedCodegen
         }
 
         ErlangRouterEmitter.emit(ctx, service);
+        BeamResourceIndex resourceIndex = BeamResourceIndex.of(ctx.model());
+        for (ResourceShape resource : resourceIndex.containedResourcesSorted(service)) {
+            ErlangResourceEmitter.emitServer(ctx, resource);
+        }
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
@@ -207,7 +220,7 @@ final class ErlangServerDirectedCodegen
     @Override
     public void generateResource(
             GenerateResourceDirective<ErlangContext, BeamSettings> directive) {
-        // Reserved for resource helpers.
+        // Emitted from generateService for all contained resources.
     }
 
     @Override
