@@ -128,6 +128,7 @@ public final class ErlangRouterEmitter {
         writer.write("{error, {not_found, <<\"$L\">>, Path}}", method);
         writer.dedent();
         writer.write("end;");
+        writer.dedent();
     }
 
     private static String buildErlangPathMatchPattern(String uriTemplate, List<HttpBinding> labels) {

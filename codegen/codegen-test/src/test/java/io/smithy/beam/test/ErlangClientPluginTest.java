@@ -240,6 +240,7 @@ class ErlangClientPluginTest {
         assertThat(router).contains("parse_labels(Path, <<\"/items/{id}\">>)");
         assertThat(router).contains("<<\"/items\">>");
         assertThat(router).doesNotContain("Path = Path");
+        assertThat(router).contains("end;\nroute(");
     }
 
     @Test
