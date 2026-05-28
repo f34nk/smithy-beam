@@ -66,7 +66,11 @@ public final class ElixirPaginatorEmitter {
                 }
                 writer.write("case $L do", outputTokenExpr);
                 writer.indent();
-                writer.write("nil -> {:ok, Enum.reverse(new_acc)}");
+                if (items != null) {
+                    writer.write("nil -> {:ok, new_acc}");
+                } else {
+                    writer.write("nil -> {:ok, Enum.reverse(new_acc)}");
+                }
                 writer.write("next_token ->");
                 writer.indent();
                 writer.write("paginate_$L(config, Map.put(input, :$L, next_token), new_acc)",
