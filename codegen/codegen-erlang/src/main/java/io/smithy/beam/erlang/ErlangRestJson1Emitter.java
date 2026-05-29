@@ -23,6 +23,7 @@ import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.traits.TimestampFormatTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
+import software.amazon.smithy.model.traits.JsonNameTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
 
 import java.util.ArrayList;
@@ -195,25 +196,25 @@ public final class ErlangRestJson1Emitter {
             for (int i = 0; i < docMembers.size(); i++) {
                 HttpBinding db = docMembers.get(i);
                 String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
-                String jsonKey = db.getMember().getMemberName();
+                String wireKey = jsonKey(db.getMember());
                 String comma = i < docMembers.size() - 1 ? "," : "";
                 Shape target = model.expectShape(db.getMember().getTarget());
                 if (target instanceof EnumShape || target instanceof IntEnumShape) {
                     String helperName = sp.toSymbol(target).getName().replace("()", "");
                     writer.write("    <<\"$L\">> => encode_$L($L)$L",
-                            jsonKey, helperName, toBindingVar(fieldName), comma);
+                            wireKey, helperName, toBindingVar(fieldName), comma);
                 } else if (target instanceof UnionShape) {
                     String helperName = sp.toSymbol(target).getName().replace("()", "");
                     writer.write("    <<\"$L\">> => encode_$L($L)$L",
-                            jsonKey, helperName, toBindingVar(fieldName), comma);
+                            wireKey, helperName, toBindingVar(fieldName), comma);
                 } else if (target instanceof TimestampShape) {
                     String encodeHelper = timestampEncodeHelper(
                             httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
                     writer.write("    <<\"$L\">> => $L($L)$L",
-                            jsonKey, encodeHelper, toBindingVar(fieldName), comma);
+                            wireKey, encodeHelper, toBindingVar(fieldName), comma);
                 } else {
                     writer.write("    <<\"$L\">> => $L$L",
-                            jsonKey, encodeDocumentValue(target, fieldName), comma);
+                            wireKey, encodeDocumentValue(target, fieldName), comma);
                 }
             }
             writer.write("}),");
@@ -298,23 +299,23 @@ public final class ErlangRestJson1Emitter {
         }
         for (HttpBinding db : docMembers) {
             String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
-            String jsonKey = db.getMember().getMemberName();
+            String wireKey = jsonKey(db.getMember());
             Shape target = model.expectShape(db.getMember().getTarget());
             if (target instanceof EnumShape || target instanceof IntEnumShape) {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
                 recordFields.add("    " + fieldName + " = decode_" + helperName
-                        + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
+                        + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
             } else if (target instanceof UnionShape) {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
                 recordFields.add("    " + fieldName + " = decode_" + helperName
-                        + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
+                        + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
             } else if (target instanceof TimestampShape) {
                 String decodeHelper = timestampDecodeHelper(
                         httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
                 recordFields.add("    " + fieldName + " = " + decodeHelper
-                        + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
+                        + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
             } else {
-                recordFields.add("    " + documentDecodeAssignment(fieldName, jsonKey, target));
+                recordFields.add("    " + documentDecodeAssignment(fieldName, wireKey, target));
             }
         }
 
@@ -383,24 +384,24 @@ public final class ErlangRestJson1Emitter {
             for (int i = 0; i < respDoc.size(); i++) {
                 HttpBinding db = respDoc.get(i);
                 String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
-                String jsonKey = db.getMember().getMemberName();
+                String wireKey = jsonKey(db.getMember());
                 String comma = i < respDoc.size() - 1 ? "," : "";
                 Shape target = model.expectShape(db.getMember().getTarget());
                 if (target instanceof EnumShape || target instanceof IntEnumShape) {
                     String helperName = sp.toSymbol(target).getName().replace("()", "");
                     writer.write("    <<\"$L\">> => encode_$L($L)$L",
-                            jsonKey, helperName, toBindingVar(fieldName), comma);
+                            wireKey, helperName, toBindingVar(fieldName), comma);
                 } else if (target instanceof UnionShape) {
                     String helperName = sp.toSymbol(target).getName().replace("()", "");
                     writer.write("    <<\"$L\">> => encode_$L($L)$L",
-                            jsonKey, helperName, toBindingVar(fieldName), comma);
+                            wireKey, helperName, toBindingVar(fieldName), comma);
                 } else if (target instanceof TimestampShape) {
                     String encodeHelper = timestampEncodeHelper(
                             httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
                     writer.write("    <<\"$L\">> => $L($L)$L",
-                            jsonKey, encodeHelper, toBindingVar(fieldName), comma);
+                            wireKey, encodeHelper, toBindingVar(fieldName), comma);
                 } else {
-                    writer.write("    <<\"$L\">> => $L$L", jsonKey, toBindingVar(fieldName), comma);
+                    writer.write("    <<\"$L\">> => $L$L", wireKey, toBindingVar(fieldName), comma);
                 }
             }
             writer.write("}),");
@@ -475,23 +476,23 @@ public final class ErlangRestJson1Emitter {
         }
         for (HttpBinding db : respDoc) {
             String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
-            String jsonKey = db.getMember().getMemberName();
+            String wireKey = jsonKey(db.getMember());
             Shape target = model.expectShape(db.getMember().getTarget());
             if (target instanceof EnumShape || target instanceof IntEnumShape) {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
                 recordFields.add("    " + fieldName + " = decode_" + helperName
-                        + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
+                        + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
             } else if (target instanceof UnionShape) {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
                 recordFields.add("    " + fieldName + " = decode_" + helperName
-                        + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
+                        + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
             } else if (target instanceof TimestampShape) {
                 String decodeHelper = timestampDecodeHelper(
                         httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
                 recordFields.add("    " + fieldName + " = " + decodeHelper
-                        + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
+                        + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
             } else {
-                recordFields.add("    " + documentDecodeAssignment(fieldName, jsonKey, target));
+                recordFields.add("    " + documentDecodeAssignment(fieldName, wireKey, target));
             }
         }
         for (HttpBinding pb : respPayload) {
@@ -903,6 +904,12 @@ public final class ErlangRestJson1Emitter {
             return fieldName + " = " + raw;
         }
         return fieldName + " = " + raw;
+    }
+
+    private static String jsonKey(MemberShape member) {
+        return member.getTrait(JsonNameTrait.class)
+                .map(JsonNameTrait::getValue)
+                .orElse(member.getMemberName());
     }
 
     private static String timestampEncodeHelper(
