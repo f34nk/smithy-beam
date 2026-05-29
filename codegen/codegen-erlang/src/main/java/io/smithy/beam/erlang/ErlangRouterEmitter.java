@@ -31,7 +31,7 @@ public final class ErlangRouterEmitter {
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
-        String codecMod = layout.codecModuleName();
+        String codecMod = layout.serverCodecModuleName();
         String routerMod = layout.modulePrefix() + "_router";
         String helpersMod = layout.runtimeHelpersModuleName();
 
