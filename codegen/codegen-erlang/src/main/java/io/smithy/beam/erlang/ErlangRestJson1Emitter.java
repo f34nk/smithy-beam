@@ -437,10 +437,18 @@ public final class ErlangRestJson1Emitter {
         List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
         List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
+        List<HttpBinding> respCode = httpIndex.getResponseBindings(op, HttpBinding.Location.RESPONSE_CODE);
 
         writer.write("%% Decode HTTP response for $L.", op.getId());
-        writer.write("decode_$L_response(#http_response{status = $L, headers = _Headers, body = Body}) ->",
-                opName, successCode);
+        if (!respCode.isEmpty()) {
+            writer.write(
+                    "decode_$L_response(#http_response{status = HttpStatus, headers = _Headers, body = Body})"
+                            + " when HttpStatus >= 200, HttpStatus < 300 ->",
+                    opName);
+        } else {
+            writer.write("decode_$L_response(#http_response{status = $L, headers = _Headers, body = Body}) ->",
+                    opName, successCode);
+        }
         writer.indent();
 
         if (!respDoc.isEmpty() || !respPayload.isEmpty()) {
@@ -498,6 +506,10 @@ public final class ErlangRestJson1Emitter {
         for (HttpBinding pb : respPayload) {
             String fieldName = BeamNameUtils.toSnakeCase(pb.getMember().getMemberName());
             recordFields.add("    " + fieldName + " = Body");
+        }
+        for (HttpBinding rcb : respCode) {
+            String fieldName = BeamNameUtils.toSnakeCase(rcb.getMember().getMemberName());
+            recordFields.add("    " + fieldName + " = HttpStatus");
         }
         writer.write("{ok, #$L{", outputRecord);
         if (!recordFields.isEmpty()) {
