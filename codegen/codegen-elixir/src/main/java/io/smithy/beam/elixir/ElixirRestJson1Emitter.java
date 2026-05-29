@@ -134,6 +134,7 @@ public final class ElixirRestJson1Emitter {
 
         List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
         List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
+        List<HttpBinding> queryParams = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY_PARAMS);
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
 
@@ -158,6 +159,29 @@ public final class ElixirRestJson1Emitter {
             writer.write("|> Map.new()");
         } else {
             writer.write("query = %{}");
+        }
+
+        if (!queryParams.isEmpty()) {
+            for (HttpBinding qp : queryParams) {
+                String field = fieldName(sp, qp.getMember());
+                writer.write("query_extra =");
+                writer.indent();
+                writer.write("case input.$L do", field);
+                writer.indent();
+                writer.write("nil -> []");
+                writer.write("m when is_map(m) -> Map.to_list(m)");
+                writer.dedent();
+                writer.write("end");
+                writer.dedent();
+                writer.write("");
+                writer.write("query =");
+                writer.indent();
+                writer.write("query");
+                writer.write("|> Map.to_list()");
+                writer.write("|> Enum.concat(query_extra)");
+                writer.write("|> Map.new()");
+                writer.dedent();
+            }
         }
 
         if (!headers.isEmpty()) {
@@ -304,6 +328,7 @@ public final class ElixirRestJson1Emitter {
 
         List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
         List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
+        List<HttpBinding> queryParams = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY_PARAMS);
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
 
@@ -317,7 +342,8 @@ public final class ElixirRestJson1Emitter {
                     opName);
         }
         writer.indent();
-        emitRequestDecoderStruct(writer, model, httpIndex, labels, queries, headers, docMembers, sp, inputStruct);
+        emitRequestDecoderStruct(
+                writer, model, httpIndex, labels, queries, queryParams, headers, docMembers, sp, inputStruct);
         writer.dedent();
         writer.write("end");
         writer.write("");
@@ -329,6 +355,7 @@ public final class ElixirRestJson1Emitter {
             HttpBindingIndex httpIndex,
             List<HttpBinding> labels,
             List<HttpBinding> queries,
+            List<HttpBinding> queryParams,
             List<HttpBinding> headers,
             List<HttpBinding> docMembers,
             SymbolProvider sp,
@@ -347,6 +374,10 @@ public final class ElixirRestJson1Emitter {
         for (HttpBinding qb : queries) {
             String field = fieldName(sp, qb.getMember());
             writer.write("  $L: decode_query_param(Map.get(query, \"$L\")),", field, qb.getLocationName());
+        }
+        for (HttpBinding qp : queryParams) {
+            String field = fieldName(sp, qp.getMember());
+            writer.write("  $L: query,", field);
         }
         for (HttpBinding hb : headers) {
             String field = fieldName(sp, hb.getMember());
