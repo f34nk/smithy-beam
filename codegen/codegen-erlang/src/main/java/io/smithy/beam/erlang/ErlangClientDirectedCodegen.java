@@ -33,6 +33,7 @@ import software.amazon.smithy.model.shapes.StructureShape;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Client-specific DirectedCodegen. Types are emitted by {@link ErlangTypeGeneration}
@@ -63,12 +64,11 @@ final class ErlangClientDirectedCodegen
         ServiceShape service = directive.service();
         BeamHttpBindings httpBindings = BeamHttpBindings.from(directive.model());
         BeamProtocolCodegen protocolCodegen = null;
-        if (directive.settings().protocol() != null) {
-            ShapeId protocolId =
-                    BeamProtocolResolver.resolve(
-                            directive.model(), service, directive.settings());
+        Optional<ShapeId> serviceProtocol =
+                BeamProtocolResolver.resolveServiceProtocol(directive.model(), service);
+        if (serviceProtocol.isPresent()) {
             protocolCodegen =
-                    BeamProtocolCodegenFactory.create(directive.model(), protocolId);
+                    BeamProtocolCodegenFactory.create(directive.model(), serviceProtocol.get());
         }
         String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
@@ -97,11 +97,11 @@ final class ErlangClientDirectedCodegen
             CustomizeDirective<ErlangContext, BeamSettings> directive) {
         ErlangContext ctx = directive.context();
         ServiceShape service = ctx.service();
-        if (directive.settings().protocol() != null) {
-            ShapeId protocol =
-                    BeamProtocolResolver.resolve(directive.model(), service, directive.settings());
-            BeamProtocolResolver.assertClosureSupported(directive.model(), service, protocol);
-        }
+        BeamProtocolResolver.resolveServiceProtocol(directive.model(), service)
+                .ifPresent(
+                        protocol ->
+                                BeamProtocolResolver.assertClosureSupported(
+                                        directive.model(), service, protocol));
 
         String ns = service.getId().getNamespace();
         BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns);
