@@ -17,8 +17,10 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.shapes.TimestampShape;
 import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.EnumValueTrait;
+import software.amazon.smithy.model.traits.TimestampFormatTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
@@ -184,6 +186,10 @@ public final class ElixirRestJson1Emitter {
                 } else if (target instanceof UnionShape) {
                     String helperName = unionHelperName(target);
                     writer.write("  \"$L\" => encode_$L(input.$L),", jsonKey, helperName, field);
+                } else if (target instanceof TimestampShape) {
+                    String encodeHelper = timestampEncodeHelper(
+                            httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
+                    writer.write("  \"$L\" => $L(input.$L),", jsonKey, encodeHelper, field);
                 } else {
                     writer.write("  \"$L\" => input.$L,", jsonKey, field);
                 }
@@ -248,6 +254,10 @@ public final class ElixirRestJson1Emitter {
                 } else if (target instanceof UnionShape) {
                     String helperName = unionHelperName(target);
                     writer.write("  \"$L\" => encode_$L(output.$L),", jsonKey, helperName, field);
+                } else if (target instanceof TimestampShape) {
+                    String encodeHelper = timestampEncodeHelper(
+                            httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
+                    writer.write("  \"$L\" => $L(output.$L),", jsonKey, encodeHelper, field);
                 } else {
                     writer.write("  \"$L\" => output.$L,", jsonKey, field);
                 }
@@ -306,7 +316,7 @@ public final class ElixirRestJson1Emitter {
                     opName);
         }
         writer.indent();
-        emitRequestDecoderStruct(writer, model, labels, queries, headers, docMembers, sp, inputStruct);
+        emitRequestDecoderStruct(writer, model, httpIndex, labels, queries, headers, docMembers, sp, inputStruct);
         writer.dedent();
         writer.write("end");
         writer.write("");
@@ -315,6 +325,7 @@ public final class ElixirRestJson1Emitter {
     private static void emitRequestDecoderStruct(
             ElixirWriter writer,
             Model model,
+            HttpBindingIndex httpIndex,
             List<HttpBinding> labels,
             List<HttpBinding> queries,
             List<HttpBinding> headers,
@@ -355,6 +366,10 @@ public final class ElixirRestJson1Emitter {
             } else if (target instanceof UnionShape) {
                 String helperName = unionHelperName(target);
                 writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, jsonKey);
+            } else if (target instanceof TimestampShape) {
+                String decodeHelper = timestampDecodeHelper(
+                        httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
+                writer.write("  $L: $L(Map.get(decoded, \"$L\")),", field, decodeHelper, jsonKey);
             } else {
                 writer.write("  $L: $L,", field, documentDecodeExpr(jsonKey, target));
             }
@@ -413,6 +428,10 @@ public final class ElixirRestJson1Emitter {
             } else if (target instanceof UnionShape) {
                 String helperName = unionHelperName(target);
                 writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, jsonKey);
+            } else if (target instanceof TimestampShape) {
+                String decodeHelper = timestampDecodeHelper(
+                        httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
+                writer.write("  $L: $L(Map.get(decoded, \"$L\")),", field, decodeHelper, jsonKey);
             } else {
                 writer.write("  $L: $L,", field, documentDecodeExpr(jsonKey, target));
             }
@@ -708,6 +727,30 @@ public final class ElixirRestJson1Emitter {
         writer.write("defp decode_sparse_map(map) when is_map(map),");
         writer.write("    do: Map.new(map, fn {k, nil} -> {k, nil}; {k, v} -> {k, v} end)");
         writer.write("");
+        writer.write("defp encode_timestamp_epoch_seconds(nil), do: nil");
+        writer.write("defp encode_timestamp_epoch_seconds(%DateTime{} = dt),");
+        writer.write("    do: DateTime.to_unix(dt)");
+        writer.write("");
+        writer.write("defp encode_timestamp_date_time(nil), do: nil");
+        writer.write("defp encode_timestamp_date_time(%DateTime{} = dt),");
+        writer.write("    do: DateTime.to_iso8601(dt)");
+        writer.write("");
+        writer.write("defp decode_timestamp_epoch_seconds(nil), do: nil");
+        writer.write("defp decode_timestamp_epoch_seconds(v) when is_number(v),");
+        writer.write("    do: DateTime.from_unix!(trunc(v))");
+        writer.write("");
+        writer.write("defp decode_timestamp_date_time(nil), do: nil");
+        writer.write("defp decode_timestamp_date_time(v) when is_binary(v) do");
+        writer.indent();
+        writer.write("case DateTime.from_iso8601(v) do");
+        writer.indent();
+        writer.write("{:ok, dt, _} -> dt");
+        writer.write("_ -> nil");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
         emitDecodeJsonBodyHelper(writer);
     }
 
@@ -759,6 +802,24 @@ public final class ElixirRestJson1Emitter {
         }
         sb.append("\"");
         return sb.toString();
+    }
+
+    private static String timestampEncodeHelper(
+            HttpBindingIndex httpIndex, MemberShape member, HttpBinding.Location location) {
+        TimestampFormatTrait.Format fmt = httpIndex.determineTimestampFormat(
+                member, location, TimestampFormatTrait.Format.DATE_TIME);
+        return fmt == TimestampFormatTrait.Format.EPOCH_SECONDS
+                ? "encode_timestamp_epoch_seconds"
+                : "encode_timestamp_date_time";
+    }
+
+    private static String timestampDecodeHelper(
+            HttpBindingIndex httpIndex, MemberShape member, HttpBinding.Location location) {
+        TimestampFormatTrait.Format fmt = httpIndex.determineTimestampFormat(
+                member, location, TimestampFormatTrait.Format.DATE_TIME);
+        return fmt == TimestampFormatTrait.Format.EPOCH_SECONDS
+                ? "decode_timestamp_epoch_seconds"
+                : "decode_timestamp_date_time";
     }
 
     private static String documentDecodeExpr(String jsonKey, Shape target) {
