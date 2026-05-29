@@ -135,9 +135,9 @@ decode_invalid_json_returns_empty_document_test() ->
     {ok, Out} = basic_rest_json_1:decode_get_type_closure_response(Resp),
     ?assertEqual(undefined, Out#get_type_closure_output.basic_string).
 
-decode_http_error_test() ->
+decode_unknown_error_test() ->
     Resp = #http_response{status = 404, body = <<"{\"message\":\"missing\"}">>},
     ?assertEqual(
-        {error, {http_error, 404, <<"{\"message\":\"missing\"}">>}},
+        {error, {unknown_error, 404, <<"{\"message\":\"missing\"}">>}},
         basic_rest_json_1:decode_get_type_closure_response(Resp)
     ).
