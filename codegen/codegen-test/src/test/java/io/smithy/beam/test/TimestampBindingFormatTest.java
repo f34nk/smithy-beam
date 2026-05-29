@@ -121,7 +121,6 @@ class TimestampBindingFormatTest {
                 .settings(ObjectNode.builder()
                         .withMember("service", serviceId)
                         .withMember("edition", "2026")
-                        .withMember("protocol", "aws.protocols#restJson1")
                         .build())
                 .build());
         return manifest;
