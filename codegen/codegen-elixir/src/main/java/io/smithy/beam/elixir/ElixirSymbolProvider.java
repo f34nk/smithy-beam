@@ -337,6 +337,10 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
         return new ArrayList<>(enumAtomNames.get(shape.getId()).values());
     }
 
+    String toEnumAtomName(Shape enumShape, String memberName) {
+        return enumAtomNames.get(enumShape.getId()).get(memberName);
+    }
+
     static String toSnakeCase(String name) {
         return name
                 .replaceAll("([a-z])([A-Z])", "$1_$2")
