@@ -2,6 +2,8 @@ $version: "2"
 
 namespace smithy.beam.demo.reserved
 
+use aws.protocols#restJson1
+
 string RwString
 
 enum RwKwEnum {
@@ -31,12 +33,14 @@ string MyType
 
 string My_Type
 
+@restJson1
 service ReservedService {
     version: "2026"
     operations: [GetReservedClosure]
 }
 
 @readonly
+@http(method: "GET", uri: "/reserved", code: 200)
 operation GetReservedClosure {
     output: ReservedClosureOutput
 }
