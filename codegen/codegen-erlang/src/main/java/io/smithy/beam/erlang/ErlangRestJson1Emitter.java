@@ -15,6 +15,7 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
@@ -72,6 +73,7 @@ public final class ErlangRestJson1Emitter {
             }
 
             emitEnumHelpers(writer, model, service, sp);
+            emitUnionHelpers(writer, model, service, sp);
             emitHelpers(writer);
         });
     }
@@ -108,6 +110,7 @@ public final class ErlangRestJson1Emitter {
                 emitResponseEncoder(writer, model, op, httpIndex, sp);
             }
             emitEnumHelpers(writer, model, service, sp);
+            emitUnionHelpers(writer, model, service, sp);
             emitHelpers(writer);
         });
     }
@@ -191,6 +194,10 @@ public final class ErlangRestJson1Emitter {
                 String comma = i < docMembers.size() - 1 ? "," : "";
                 Shape target = model.expectShape(db.getMember().getTarget());
                 if (target instanceof EnumShape || target instanceof IntEnumShape) {
+                    String helperName = sp.toSymbol(target).getName().replace("()", "");
+                    writer.write("    <<\"$L\">> => encode_$L($L)$L",
+                            jsonKey, helperName, toBindingVar(fieldName), comma);
+                } else if (target instanceof UnionShape) {
                     String helperName = sp.toSymbol(target).getName().replace("()", "");
                     writer.write("    <<\"$L\">> => encode_$L($L)$L",
                             jsonKey, helperName, toBindingVar(fieldName), comma);
@@ -286,6 +293,10 @@ public final class ErlangRestJson1Emitter {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
                 recordFields.add("    " + fieldName + " = decode_" + helperName
                         + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
+            } else if (target instanceof UnionShape) {
+                String helperName = sp.toSymbol(target).getName().replace("()", "");
+                recordFields.add("    " + fieldName + " = decode_" + helperName
+                        + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
             } else {
                 recordFields.add(
                         "    " + fieldName + " = maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined)");
@@ -361,6 +372,10 @@ public final class ErlangRestJson1Emitter {
                 String comma = i < respDoc.size() - 1 ? "," : "";
                 Shape target = model.expectShape(db.getMember().getTarget());
                 if (target instanceof EnumShape || target instanceof IntEnumShape) {
+                    String helperName = sp.toSymbol(target).getName().replace("()", "");
+                    writer.write("    <<\"$L\">> => encode_$L($L)$L",
+                            jsonKey, helperName, toBindingVar(fieldName), comma);
+                } else if (target instanceof UnionShape) {
                     String helperName = sp.toSymbol(target).getName().replace("()", "");
                     writer.write("    <<\"$L\">> => encode_$L($L)$L",
                             jsonKey, helperName, toBindingVar(fieldName), comma);
@@ -443,6 +458,10 @@ public final class ErlangRestJson1Emitter {
             String jsonKey = db.getMember().getMemberName();
             Shape target = model.expectShape(db.getMember().getTarget());
             if (target instanceof EnumShape || target instanceof IntEnumShape) {
+                String helperName = sp.toSymbol(target).getName().replace("()", "");
+                recordFields.add("    " + fieldName + " = decode_" + helperName
+                        + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
+            } else if (target instanceof UnionShape) {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
                 recordFields.add("    " + fieldName + " = decode_" + helperName
                         + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
@@ -588,6 +607,70 @@ public final class ErlangRestJson1Emitter {
         if (target instanceof EnumShape || target instanceof IntEnumShape) {
             out.add(target.getId());
         }
+    }
+
+    private static void emitUnionHelpers(
+            ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
+
+        Set<ShapeId> emitted = new LinkedHashSet<>();
+        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+
+        for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
+            for (HttpBinding.Location loc : HttpBinding.Location.values()) {
+                for (HttpBinding b : httpIndex.getRequestBindings(op, loc)) {
+                    collectUnionTarget(model, b.getMember(), emitted);
+                }
+                for (HttpBinding b : httpIndex.getResponseBindings(op, loc)) {
+                    collectUnionTarget(model, b.getMember(), emitted);
+                }
+            }
+        }
+
+        for (ShapeId unionId : emitted) {
+            UnionShape union = model.expectShape(unionId, UnionShape.class);
+            emitUnionDecodeEncode(writer, union, sp);
+        }
+    }
+
+    private static void collectUnionTarget(Model model, MemberShape member, Set<ShapeId> out) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof UnionShape) {
+            out.add(target.getId());
+        }
+    }
+
+    private static void emitUnionDecodeEncode(ErlangWriter writer, UnionShape shape, SymbolProvider sp) {
+        String helperName = sp.toSymbol(shape).getName().replace("()", "");
+        writer.write("%% Union helpers for $L", shape.getId());
+        writer.write("decode_$L(#{} = Map) ->", helperName);
+        writer.indent();
+        writer.write("case maps:to_list(Map) of");
+        writer.indent();
+        for (MemberShape m : shape.members()) {
+            String wireKey = m.getMemberName();
+            String tag = unionTagForMember(sp, m);
+            writer.write("[{<<\"$L\">>, V}] -> {$L, V};", wireKey, tag);
+        }
+        writer.write("[{K, _V}] -> {unknown, K};");
+        writer.write("_ -> undefined");
+        writer.dedent();
+        writer.write("end;");
+        writer.dedent();
+        writer.write("decode_$L(undefined) -> undefined;", helperName);
+        writer.write("decode_$L(null) -> undefined.", helperName);
+        writer.write("");
+
+        for (MemberShape m : shape.members()) {
+            String wireKey = m.getMemberName();
+            String tag = unionTagForMember(sp, m);
+            writer.write("encode_$L({$L, V}) -> #{<<\"$L\">> => V};", helperName, tag, wireKey);
+        }
+        writer.write("encode_$L({unknown, K}) when is_binary(K) -> #{K => null}.", helperName);
+        writer.write("");
+    }
+
+    private static String unionTagForMember(SymbolProvider sp, MemberShape member) {
+        return sp.toSymbol(member).getProperty("unionTag", String.class).orElseThrow();
     }
 
     private static void emitEnumDecodeEncode(ErlangWriter writer, EnumShape shape, SymbolProvider sp) {
