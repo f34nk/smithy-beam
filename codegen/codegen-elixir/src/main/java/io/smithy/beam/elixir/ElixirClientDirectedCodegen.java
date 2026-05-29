@@ -99,9 +99,11 @@ final class ElixirClientDirectedCodegen
             CustomizeDirective<ElixirContext, BeamSettings> directive) {
         ElixirContext ctx = directive.context();
         ServiceShape service = ctx.service();
-        ShapeId protocol =
-                BeamProtocolResolver.resolve(directive.model(), service, directive.settings());
-        BeamProtocolResolver.assertClosureSupported(directive.model(), service, protocol);
+        if (directive.settings().protocol() != null) {
+            ShapeId protocol =
+                    BeamProtocolResolver.resolve(directive.model(), service, directive.settings());
+            BeamProtocolResolver.assertClosureSupported(directive.model(), service, protocol);
+        }
 
         String ns = service.getId().getNamespace();
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);

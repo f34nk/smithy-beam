@@ -31,7 +31,6 @@ class ExamplesBasicTypesTest {
         ObjectNode.builder()
             .withMember("service", "smithy.beam.demo.basic#BasicService")
             .withMember("edition", "2026")
-            .withMember("protocol", "aws.protocols#restJson1")
             .build();
     new ErlangClientPlugin()
         .execute(
