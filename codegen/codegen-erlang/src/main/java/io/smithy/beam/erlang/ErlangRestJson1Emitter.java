@@ -71,7 +71,8 @@ public final class ErlangRestJson1Emitter {
     /** Entry point called from ErlangServerDirectedCodegen#generateService. */
     public static void emitServerCodecModule(ErlangContext ctx, ServiceShape service) {
         Model model = ctx.model();
-        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), service.getId().getNamespace());
+        BeamErlangLayout layout = new BeamErlangLayout(
+                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
         ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
