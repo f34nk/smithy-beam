@@ -140,10 +140,10 @@ defmodule BasicRestJson1Test do
       end
     end
 
-    test "HTTP error" do
+    test "unknown error" do
       resp = %HttpResponse{status: 404, body: ~s({"message":"missing"})}
 
-      assert {:error, {:http_error, 404, ~s({"message":"missing"})}} ==
+      assert {:error, {:unknown_error, 404, ~s({"message":"missing"})}} ==
                BasicRestJson1.decode_get_type_closure_response(resp)
     end
   end
