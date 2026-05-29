@@ -1,7 +1,6 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenTransforms;
-import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.test.support.RecordingElixirIntegration;
 import org.junit.jupiter.api.Test;
@@ -10,7 +9,6 @@ import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.codegen.core.directed.CodegenDirector;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.node.ObjectNode;
-import software.amazon.smithy.model.shapes.ServiceShape;
 
 import java.net.URL;
 import java.util.List;
@@ -63,11 +61,6 @@ class ElixirIntegrationSectionsTest {
         var resolvedService = settings.resolveService(context.getModel());
         runner.service(resolvedService);
 
-        ServiceShape serviceShape = context.getModel().expectShape(resolvedService, ServiceShape.class);
-        if (settings.protocol() != null) {
-            BeamProtocolResolver.resolve(context.getModel(), serviceShape, settings);
-        }
-
         BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
 
         runner.run();
@@ -109,11 +102,6 @@ class ElixirIntegrationSectionsTest {
         BeamSettings beamSettings = runner.settings(BeamSettings.class, context.getSettings());
         var resolvedService = beamSettings.resolveService(context.getModel());
         runner.service(resolvedService);
-
-        ServiceShape serviceShape = context.getModel().expectShape(resolvedService, ServiceShape.class);
-        if (beamSettings.protocol() != null) {
-            BeamProtocolResolver.resolve(context.getModel(), serviceShape, beamSettings);
-        }
 
         BeamCodegenTransforms.applySharedCodegenTransforms(runner, beamSettings);
 
