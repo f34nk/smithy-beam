@@ -28,6 +28,39 @@ public final class ElixirRestJson1Emitter {
 
     private ElixirRestJson1Emitter() {}
 
+    public static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
+        Model model = ctx.model();
+        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), service.getId().getNamespace());
+        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+        SymbolProvider sp = ctx.symbolProvider();
+        List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
+
+        String serverCodecModule =
+                ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName());
+        String runtimeMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_runtime_types");
+        String typesMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+
+        ctx.writerDelegator().useFileWriter(layout.serverCodecModuleFile(), writer -> {
+            writer.write("defmodule $L do", serverCodecModule);
+            writer.indent();
+            writer.write("@moduledoc \"Server REST JSON 1 codecs for $L (generated). Do not edit.\"",
+                    service.getId());
+            writer.write("alias $L, as: RuntimeTypes", runtimeMod);
+            writer.write("alias $L, as: Types", typesMod);
+            writer.write("");
+
+            for (OperationShape op : operations) {
+                emitRequestDecoder(writer, model, op, httpIndex, sp, typesMod);
+                emitResponseEncoder(writer, model, op, httpIndex, sp, typesMod);
+            }
+
+            emitHelpers(writer);
+
+            writer.dedent();
+            writer.write("end");
+        });
+    }
+
     public static void emitCodecModule(ElixirContext ctx, ServiceShape service) {
         Model model = ctx.model();
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), service.getId().getNamespace());
@@ -144,6 +177,67 @@ public final class ElixirRestJson1Emitter {
         writer.write("  headers: headers,");
         writer.write("  body: body");
         writer.write("}");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+    }
+
+    private static void emitResponseEncoder(
+            ElixirWriter writer,
+            Model model,
+            OperationShape op,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            String typesMod) {
+
+        String opName = sp.toSymbol(op).getName();
+        StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
+        String outputStruct = sp.toSymbol(output).getName();
+        int statusCode = httpIndex.getResponseCode(op);
+
+        List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
+        List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
+
+        String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
+
+        writer.write("@doc \"Encode response for $L.\"", op.getId());
+        writer.write("@spec encode_$L_response($L) :: map()", opName, outputType);
+        writer.write("def encode_$L_response(%Types.$L{} = output) do", opName, outputStruct);
+        writer.indent();
+
+        if (!respPayload.isEmpty()) {
+            HttpBinding pb = respPayload.get(0);
+            String field = fieldName(sp, pb.getMember());
+            writer.write("body = output.$L", field);
+        } else if (!respDoc.isEmpty()) {
+            writer.write("body_map = %{");
+            for (HttpBinding db : respDoc) {
+                String field = fieldName(sp, db.getMember());
+                writer.write("  \"$L\" => output.$L,", db.getMember().getMemberName(), field);
+            }
+            writer.write("}");
+            writer.write("|> Enum.reject(fn {_, v} -> is_nil(v) end)");
+            writer.write("|> Map.new()");
+            writer.write("body = Jason.encode!(body_map)");
+        } else {
+            writer.write("body = \"\"");
+        }
+
+        if (!respHeaders.isEmpty()) {
+            writer.write("extra_headers = [");
+            for (HttpBinding hb : respHeaders) {
+                String field = fieldName(sp, hb.getMember());
+                writer.write("  (if output.$L != nil, do: {\"$L\", to_string(output.$L)}, else: nil),",
+                        field, hb.getLocationName(), field);
+            }
+            writer.write("] |> Enum.reject(&is_nil/1)");
+            writer.write("headers = [{\"Content-Type\", \"application/json\"} | extra_headers]");
+        } else {
+            writer.write("headers = [{\"Content-Type\", \"application/json\"}]");
+        }
+
+        writer.write("%{status: $L, headers: headers, body: body}", statusCode);
         writer.dedent();
         writer.write("end");
         writer.write("");

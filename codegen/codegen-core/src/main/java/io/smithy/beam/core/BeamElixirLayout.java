@@ -56,4 +56,12 @@ public final class BeamElixirLayout {
     public String resourceServerModuleFile(String resourceSnakeName) {
         return modulePrefix() + "_" + resourceSnakeName + "_server.ex";
     }
+
+    public String serverCodecModuleFile() {
+        return modulePrefix() + "_server_rest_json_1.ex";
+    }
+
+    public String serverCodecModuleName() {
+        return modulePrefix() + "_server_rest_json_1";
+    }
 }
