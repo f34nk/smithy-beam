@@ -42,7 +42,7 @@ class ErlangRestJson1CodecTest {
     @Test
     void getOperationEncoderBuildsPathWithLabel() {
         MockManifest manifest = runPlugin(loadFixture());
-        String codec = manifest.expectFileString("protocoljson_rest_json_1.erl");
+        String codec = manifest.expectFileString("protocoljson_service_rest_json_1.erl");
         assertThat(codec).contains("encode_describe_item_request(");
         assertThat(codec).contains("uri_encode(");
         assertThat(codec).contains("/items/");
@@ -51,7 +51,7 @@ class ErlangRestJson1CodecTest {
     @Test
     void getOperationEncoderHandlesQueryAndHeader() {
         MockManifest manifest = runPlugin(loadFixture());
-        String codec = manifest.expectFileString("protocoljson_rest_json_1.erl");
+        String codec = manifest.expectFileString("protocoljson_service_rest_json_1.erl");
         assertThat(codec).contains("verbose");
         assertThat(codec).contains("X-Request-Tag");
     }
@@ -59,7 +59,7 @@ class ErlangRestJson1CodecTest {
     @Test
     void postOperationEncoderEmitsJsonBody() {
         MockManifest manifest = runPlugin(loadFixture());
-        String codec = manifest.expectFileString("protocoljson_rest_json_1.erl");
+        String codec = manifest.expectFileString("protocoljson_service_rest_json_1.erl");
         assertThat(codec).contains("encode_create_item_request(");
         assertThat(codec).contains("jsone:encode(");
         assertThat(codec).doesNotContain(",\n    }),");
@@ -68,7 +68,7 @@ class ErlangRestJson1CodecTest {
     @Test
     void decoderHandlesResponseHeaderExtraction() {
         MockManifest manifest = runPlugin(loadFixture());
-        String codec = manifest.expectFileString("protocoljson_rest_json_1.erl");
+        String codec = manifest.expectFileString("protocoljson_service_rest_json_1.erl");
         assertThat(codec).contains("decode_describe_item_response(");
         assertThat(codec).contains("ETag");
         assertThat(codec).contains("proplists:get_value(");
@@ -77,24 +77,24 @@ class ErlangRestJson1CodecTest {
     @Test
     void codecModuleIncludesRuntimeTypesHeader() {
         MockManifest manifest = runPlugin(loadFixture());
-        String codec = manifest.expectFileString("protocoljson_rest_json_1.erl");
+        String codec = manifest.expectFileString("protocoljson_service_rest_json_1.erl");
         assertThat(codec).contains("-include(\"runtime_types.hrl\").");
     }
 
     @Test
     void clientModuleCallsCodecAndDispatch() {
         MockManifest manifest = runPlugin(loadFixture());
-        String client = manifest.expectFileString("protocoljson_client.erl");
-        assertThat(client).contains("protocoljson_rest_json_1:encode_describe_item_request(");
-        assertThat(client).contains("protocoljson_http:dispatch(");
-        assertThat(client).contains("protocoljson_rest_json_1:decode_describe_item_response(");
+        String client = manifest.expectFileString("protocoljson_service_client.erl");
+        assertThat(client).contains("protocoljson_service_rest_json_1:encode_describe_item_request(");
+        assertThat(client).contains("runtime_http:dispatch(");
+        assertThat(client).contains("protocoljson_service_rest_json_1:decode_describe_item_response(");
     }
 
     @Test
     void httpDispatchModuleIsEmitted() {
         MockManifest manifest = runPlugin(loadFixture());
-        String http = manifest.expectFileString("protocoljson_http.erl");
-        assertThat(http).contains("-module(protocoljson_http).");
+        String http = manifest.expectFileString("runtime_http.erl");
+        assertThat(http).contains("-module(runtime_http).");
         assertThat(http).contains("dispatch(HttpClient, Config, #http_request{");
         assertThat(http).contains("HttpClient:request(");
     }
