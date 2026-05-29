@@ -88,10 +88,10 @@ defmodule UserRestJson1Test do
       end
     end
 
-    test "HTTP error" do
+    test "unknown error" do
       resp = %HttpResponse{status: 404, body: ~s({"message":"missing"})}
 
-      assert {:error, {:http_error, 404, ~s({"message":"missing"})}} ==
+      assert {:error, {:unknown_error, 404, ~s({"message":"missing"})}} ==
                UserRestJson1.decode_get_user_response(resp)
     end
   end
