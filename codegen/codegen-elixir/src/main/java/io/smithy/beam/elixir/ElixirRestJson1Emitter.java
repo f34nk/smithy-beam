@@ -9,6 +9,8 @@ import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.EnumShape;
 import software.amazon.smithy.model.shapes.IntEnumShape;
+import software.amazon.smithy.model.shapes.ListShape;
+import software.amazon.smithy.model.shapes.MapShape;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -19,6 +21,7 @@ import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
+import software.amazon.smithy.model.traits.SparseTrait;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -353,7 +356,7 @@ public final class ElixirRestJson1Emitter {
                 String helperName = unionHelperName(target);
                 writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, jsonKey);
             } else {
-                writer.write("  $L: Map.get(decoded, \"$L\"),", field, jsonKey);
+                writer.write("  $L: $L,", field, documentDecodeExpr(jsonKey, target));
             }
         }
         writer.write("}");
@@ -411,7 +414,7 @@ public final class ElixirRestJson1Emitter {
                 String helperName = unionHelperName(target);
                 writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, jsonKey);
             } else {
-                writer.write("  $L: Map.get(decoded, \"$L\"),", field, jsonKey);
+                writer.write("  $L: $L,", field, documentDecodeExpr(jsonKey, target));
             }
         }
         for (HttpBinding pb : respPayload) {
@@ -693,6 +696,18 @@ public final class ElixirRestJson1Emitter {
         writer.write("defp decode_query_param(\"false\"), do: false");
         writer.write("defp decode_query_param(value), do: value");
         writer.write("");
+        writer.write("defp decode_sparse_list(nil), do: nil");
+        writer.write("defp decode_sparse_list(list) when is_list(list),");
+        writer.write("    do: Enum.map(list, fn nil -> nil; v -> v end)");
+        writer.write("");
+        writer.write("defp decode_list(nil), do: nil");
+        writer.write("defp decode_list(list) when is_list(list),");
+        writer.write("    do: Enum.reject(list, &is_nil/1)");
+        writer.write("");
+        writer.write("defp decode_sparse_map(nil), do: nil");
+        writer.write("defp decode_sparse_map(map) when is_map(map),");
+        writer.write("    do: Map.new(map, fn {k, nil} -> {k, nil}; {k, v} -> {k, v} end)");
+        writer.write("");
         emitDecodeJsonBodyHelper(writer);
     }
 
@@ -744,6 +759,21 @@ public final class ElixirRestJson1Emitter {
         }
         sb.append("\"");
         return sb.toString();
+    }
+
+    private static String documentDecodeExpr(String jsonKey, Shape target) {
+        String raw = "Map.get(decoded, \"" + jsonKey + "\")";
+        if (target instanceof ListShape) {
+            String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
+            return helper + "(" + raw + ")";
+        }
+        if (target instanceof MapShape) {
+            if (target.hasTrait(SparseTrait.class)) {
+                return "decode_sparse_map(" + raw + ")";
+            }
+            return raw;
+        }
+        return raw;
     }
 
     private static String fieldName(SymbolProvider sp, MemberShape member) {
