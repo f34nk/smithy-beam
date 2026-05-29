@@ -22,6 +22,7 @@ import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.traits.TimestampFormatTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
+import software.amazon.smithy.model.traits.JsonNameTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
 
@@ -178,20 +179,20 @@ public final class ElixirRestJson1Emitter {
             writer.write("body_map = %{");
             for (HttpBinding db : docMembers) {
                 String field = fieldName(sp, db.getMember());
-                String jsonKey = db.getMember().getMemberName();
+                String wireKey = jsonKey(db.getMember());
                 Shape target = model.expectShape(db.getMember().getTarget());
                 if (target instanceof EnumShape || target instanceof IntEnumShape) {
                     String helperName = enumHelperName(target);
-                    writer.write("  \"$L\" => encode_$L(input.$L),", jsonKey, helperName, field);
+                    writer.write("  \"$L\" => encode_$L(input.$L),", wireKey, helperName, field);
                 } else if (target instanceof UnionShape) {
                     String helperName = unionHelperName(target);
-                    writer.write("  \"$L\" => encode_$L(input.$L),", jsonKey, helperName, field);
+                    writer.write("  \"$L\" => encode_$L(input.$L),", wireKey, helperName, field);
                 } else if (target instanceof TimestampShape) {
                     String encodeHelper = timestampEncodeHelper(
                             httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
-                    writer.write("  \"$L\" => $L(input.$L),", jsonKey, encodeHelper, field);
+                    writer.write("  \"$L\" => $L(input.$L),", wireKey, encodeHelper, field);
                 } else {
-                    writer.write("  \"$L\" => input.$L,", jsonKey, field);
+                    writer.write("  \"$L\" => input.$L,", wireKey, field);
                 }
             }
             writer.write("}");
@@ -246,20 +247,20 @@ public final class ElixirRestJson1Emitter {
             writer.write("body_map = %{");
             for (HttpBinding db : respDoc) {
                 String field = fieldName(sp, db.getMember());
-                String jsonKey = db.getMember().getMemberName();
+                String wireKey = jsonKey(db.getMember());
                 Shape target = model.expectShape(db.getMember().getTarget());
                 if (target instanceof EnumShape || target instanceof IntEnumShape) {
                     String helperName = enumHelperName(target);
-                    writer.write("  \"$L\" => encode_$L(output.$L),", jsonKey, helperName, field);
+                    writer.write("  \"$L\" => encode_$L(output.$L),", wireKey, helperName, field);
                 } else if (target instanceof UnionShape) {
                     String helperName = unionHelperName(target);
-                    writer.write("  \"$L\" => encode_$L(output.$L),", jsonKey, helperName, field);
+                    writer.write("  \"$L\" => encode_$L(output.$L),", wireKey, helperName, field);
                 } else if (target instanceof TimestampShape) {
                     String encodeHelper = timestampEncodeHelper(
                             httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
-                    writer.write("  \"$L\" => $L(output.$L),", jsonKey, encodeHelper, field);
+                    writer.write("  \"$L\" => $L(output.$L),", wireKey, encodeHelper, field);
                 } else {
-                    writer.write("  \"$L\" => output.$L,", jsonKey, field);
+                    writer.write("  \"$L\" => output.$L,", wireKey, field);
                 }
             }
             writer.write("}");
@@ -358,20 +359,20 @@ public final class ElixirRestJson1Emitter {
         }
         for (HttpBinding db : docMembers) {
             String field = fieldName(sp, db.getMember());
-            String jsonKey = db.getMember().getMemberName();
+            String wireKey = jsonKey(db.getMember());
             Shape target = model.expectShape(db.getMember().getTarget());
             if (target instanceof EnumShape || target instanceof IntEnumShape) {
                 String helperName = enumHelperName(target);
-                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, jsonKey);
+                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, wireKey);
             } else if (target instanceof UnionShape) {
                 String helperName = unionHelperName(target);
-                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, jsonKey);
+                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, wireKey);
             } else if (target instanceof TimestampShape) {
                 String decodeHelper = timestampDecodeHelper(
                         httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
-                writer.write("  $L: $L(Map.get(decoded, \"$L\")),", field, decodeHelper, jsonKey);
+                writer.write("  $L: $L(Map.get(decoded, \"$L\")),", field, decodeHelper, wireKey);
             } else {
-                writer.write("  $L: $L,", field, documentDecodeExpr(jsonKey, target));
+                writer.write("  $L: $L,", field, documentDecodeExpr(wireKey, target));
             }
         }
         writer.write("}");
@@ -420,20 +421,20 @@ public final class ElixirRestJson1Emitter {
         }
         for (HttpBinding db : respDoc) {
             String field = fieldName(sp, db.getMember());
-            String jsonKey = db.getMember().getMemberName();
+            String wireKey = jsonKey(db.getMember());
             Shape target = model.expectShape(db.getMember().getTarget());
             if (target instanceof EnumShape || target instanceof IntEnumShape) {
                 String helperName = enumHelperName(target);
-                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, jsonKey);
+                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, wireKey);
             } else if (target instanceof UnionShape) {
                 String helperName = unionHelperName(target);
-                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, jsonKey);
+                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, wireKey);
             } else if (target instanceof TimestampShape) {
                 String decodeHelper = timestampDecodeHelper(
                         httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
-                writer.write("  $L: $L(Map.get(decoded, \"$L\")),", field, decodeHelper, jsonKey);
+                writer.write("  $L: $L(Map.get(decoded, \"$L\")),", field, decodeHelper, wireKey);
             } else {
-                writer.write("  $L: $L,", field, documentDecodeExpr(jsonKey, target));
+                writer.write("  $L: $L,", field, documentDecodeExpr(wireKey, target));
             }
         }
         for (HttpBinding pb : respPayload) {
@@ -841,6 +842,12 @@ public final class ElixirRestJson1Emitter {
         Symbol sym = sp.toSymbol(member);
         return sym.getProperty("fieldName", String.class)
                 .orElseGet(() -> BeamNameUtils.toSnakeCase(member.getMemberName()));
+    }
+
+    private static String jsonKey(MemberShape member) {
+        return member.getTrait(JsonNameTrait.class)
+                .map(JsonNameTrait::getValue)
+                .orElse(member.getMemberName());
     }
 
     private static String escapeElixirString(String value) {
