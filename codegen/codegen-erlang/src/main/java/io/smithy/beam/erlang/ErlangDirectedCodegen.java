@@ -20,6 +20,7 @@ import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.*;
 
 import software.amazon.smithy.model.knowledge.NullableIndex;
+import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.traits.ErrorTrait;
 import software.amazon.smithy.model.traits.RetryableTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
@@ -28,6 +29,7 @@ import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.UnionShape;
 
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -387,6 +389,8 @@ final class ErlangDirectedCodegen
         String definitionFile = symbol.getDefinitionFile();
 
         List<String> atoms = symbol.getProperty("enumAtoms", List.class).orElseThrow();
+        @SuppressWarnings("unchecked")
+        Map<String, String> atomByMember = symbol.getProperty("enumAtomByMember", Map.class).orElseThrow();
 
         ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
             writer.pushGeneratedDocumentationSection();
@@ -394,6 +398,14 @@ final class ErlangDirectedCodegen
             // Build "active | inactive | pending | {unknown, binary()}"
             String variants = String.join(" | ", atoms) + " | {unknown, binary()}";
             writer.write("-type $L :: $L.", symbol.getName(), variants);
+            writer.write("%% Wire values for $L:", shape.getId());
+            for (MemberShape m : shape.members()) {
+                String wireValue = m.getTrait(EnumValueTrait.class)
+                        .flatMap(EnumValueTrait::getStringValue)
+                        .orElse(m.getMemberName());
+                String atom = atomByMember.get(m.getMemberName());
+                writer.write("%%   $L -> <<\"$L\">>", atom, wireValue);
+            }
             writer.popState();
         });
     }
