@@ -24,7 +24,6 @@ class ReservedWordParityTest {
     private static final ObjectNode SETTINGS = ObjectNode.builder()
             .withMember("service", "smithy.beam.demo.reserved#ReservedService")
             .withMember("edition", "2026")
-            .withMember("protocol", "aws.protocols#restJson1")
             .build();
 
     private static final String TYPES_FILE = "reserved_types.hrl";

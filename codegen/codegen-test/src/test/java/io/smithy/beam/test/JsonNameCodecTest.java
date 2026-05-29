@@ -53,7 +53,6 @@ class JsonNameCodecTest {
                         .withMember("service",
                                 "smithy.beam.test.jsonname#JsonNameService")
                         .withMember("edition", "2026")
-                        .withMember("protocol", "aws.protocols#restJson1")
                         .build())
                 .build());
 
