@@ -103,6 +103,22 @@ class ErlangTypesPluginTest {
     }
 
     @Test
+    void restJson1ServiceEmitsTypesOnlyWithoutWireModules() {
+        Model model = loadReservedWordsModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.reserved#ReservedService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        assertThat(manifest.expectFileString("reserved_types.hrl")).contains("-type");
+        assertThat(manifest.getFileString("reserved_service_rest_json_1.erl")).isEmpty();
+        assertThat(manifest.getFileString("reserved_service_router.erl")).isEmpty();
+        assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
+    }
+
+    @Test
     void reservedWordsEscapeAndDeconflictInErlangOutput() {
         MockManifest manifest = new MockManifest();
         new ErlangTypesPlugin().execute(buildReservedWordsContext(manifest));

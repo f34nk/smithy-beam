@@ -103,6 +103,22 @@ class ElixirTypesPluginTest {
     }
 
     @Test
+    void restJson1ServiceEmitsTypesOnlyWithoutWireModules() {
+        Model model = loadReservedWordsModel();
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", "smithy.beam.demo.reserved#ReservedService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+        assertThat(manifest.expectFileString("reserved_types.ex")).contains("@type");
+        assertThat(manifest.getFileString("reserved_service_rest_json_1.ex")).isEmpty();
+        assertThat(manifest.getFileString("reserved_service_router.ex")).isEmpty();
+        assertThat(manifest.getFileString("runtime_http.ex")).isEmpty();
+    }
+
+    @Test
     void reservedWordsEscapeAndDeconflictInElixirOutput() {
         MockManifest manifest = new MockManifest();
         new ElixirTypesPlugin().execute(buildReservedWordsContext(manifest));
