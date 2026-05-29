@@ -27,7 +27,7 @@ class BeamHttpBindingsFixtureTest {
         OperationShape op = model.expectShape(opId, OperationShape.class);
 
         assertThat(bindings.requestBindings(opId, HttpBinding.Location.LABEL)).hasSize(1);
-        assertThat(bindings.requestBindings(opId, HttpBinding.Location.QUERY)).hasSize(1);
+        assertThat(bindings.requestBindings(opId, HttpBinding.Location.QUERY)).hasSize(2);
         assertThat(bindings.requestBindings(opId, HttpBinding.Location.HEADER)).hasSize(1);
         assertThat(bindings.hasResponseBody(opId)).isTrue();
         assertThat(bindings.httpResponseCode(op)).isEqualTo(200);
