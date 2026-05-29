@@ -121,8 +121,8 @@ class ElixirServerPluginTest {
     }
 
     @Test
-    void relativeDateAndRelativeVersionWithoutProtocolDoNotChangeTypesOrServerStubOutput() {
-        URL resource = ElixirServerPluginTest.class.getResource("/model/multi_service.smithy");
+    void relativeDateAndRelativeVersionDoNotChangeTypesOrServerStubOutput() {
+        URL resource = ElixirServerPluginTest.class.getResource("/model/dedicated_operation_io.smithy");
         assertThat(resource).isNotNull();
         Model model = Model.assembler()
                 .addImport(resource)
@@ -131,7 +131,7 @@ class ElixirServerPluginTest {
                 .unwrap();
         MockManifest baseline = new MockManifest();
         ObjectNode baselineSettings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.multi#ServiceA")
+                .withMember("service", "smithy.beam.demo.dedicated_io#DedicatedIoService")
                 .withMember("edition", "2026")
                 .build();
         new ElixirServerPlugin().execute(PluginContext.builder()
@@ -141,7 +141,7 @@ class ElixirServerPluginTest {
                 .build());
         MockManifest extended = new MockManifest();
         ObjectNode extendedSettings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.multi#ServiceA")
+                .withMember("service", "smithy.beam.demo.dedicated_io#DedicatedIoService")
                 .withMember("edition", "2026")
                 .withMember("relativeDate", "2026-01-01")
                 .withMember("relativeVersion", "1.0.0")
@@ -151,10 +151,10 @@ class ElixirServerPluginTest {
                 .fileManifest(extended)
                 .settings(extendedSettings)
                 .build());
-        assertThat(extended.expectFileString("multi_types.ex"))
-                .isEqualTo(baseline.expectFileString("multi_types.ex"));
-        assertThat(extended.expectFileString("service_a_server.ex"))
-                .isEqualTo(baseline.expectFileString("service_a_server.ex"));
+        assertThat(extended.expectFileString("dedicated_io_types.ex"))
+                .isEqualTo(baseline.expectFileString("dedicated_io_types.ex"));
+        assertThat(extended.expectFileString("dedicated_io_service_server.ex"))
+                .isEqualTo(baseline.expectFileString("dedicated_io_service_server.ex"));
     }
 
     @Test
@@ -170,7 +170,6 @@ class ElixirServerPluginTest {
         ObjectNode settings = ObjectNode.builder()
                 .withMember("service", "smithy.beam.demo.multi#ServiceA")
                 .withMember("edition", "2026")
-                .withMember("protocol", "smithy.api#String")
                 .withMember("relativeDate", "2026-01-01")
                 .withMember("relativeVersion", "1.0.0")
                 .build();
@@ -180,8 +179,8 @@ class ElixirServerPluginTest {
                         .settings(settings)
                         .build()))
                 .isInstanceOf(CodegenException.class)
-                .hasMessageContaining("protocol")
-                .hasMessageContaining("smithy.api#String");
+                .hasMessageContaining("No BeamProtocolCodegen registered for protocol trait")
+                .hasMessageContaining("smithy.beam.demo.multi#TestProtocol");
     }
 
     @Test
