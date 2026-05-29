@@ -321,6 +321,10 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
         return new ArrayList<>(enumAtomNames.get(shape.getId()).values());
     }
 
+    String toEnumAtomName(Shape enumShape, String memberName) {
+        return enumAtomNames.get(enumShape.getId()).get(memberName);
+    }
+
     private String memberBaseName(MemberShape member) {
         ShapeId id = member.getId();
         return id.getMember().orElseGet(() -> id.getName(service));
