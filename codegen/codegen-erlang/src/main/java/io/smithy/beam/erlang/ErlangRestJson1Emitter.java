@@ -826,7 +826,7 @@ public final class ErlangRestJson1Emitter {
         writer.write("%% Erlang timestamp() is {MegaSecs, Secs, MicroSecs}.");
         writer.write("encode_timestamp_epoch_seconds({Mega, Secs, _Micro}) ->");
         writer.write("    Mega * 1000000 + Secs;");
-        writer.write("encode_timestamp_epoch_seconds(undefined) -> null.");
+        writer.write("encode_timestamp_epoch_seconds(undefined) -> undefined.");
         writer.write("");
         writer.write("encode_timestamp_date_time({Mega, Secs, _Micro}) ->");
         writer.write("    EpochSecs = Mega * 1000000 + Secs,");
@@ -835,7 +835,7 @@ public final class ErlangRestJson1Emitter {
         writer.write("    iolist_to_binary(io_lib:format(");
         writer.write("        \"~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0BZ\",");
         writer.write("        [Y, Mo, D, H, Mi, S]));");
-        writer.write("encode_timestamp_date_time(undefined) -> null.");
+        writer.write("encode_timestamp_date_time(undefined) -> undefined.");
         writer.write("");
         writer.write("decode_timestamp_epoch_seconds(null) -> undefined;");
         writer.write("decode_timestamp_epoch_seconds(undefined) -> undefined;");
