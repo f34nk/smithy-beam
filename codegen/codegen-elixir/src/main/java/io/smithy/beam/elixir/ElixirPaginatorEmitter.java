@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Generates a {@code <App>Paginators.ex} helper for {@code @paginated} operations.
+ * Generates a {@code <App>ServicePaginators.ex} helper for {@code @paginated} operations.
  */
 public final class ElixirPaginatorEmitter {
 
@@ -32,8 +32,8 @@ public final class ElixirPaginatorEmitter {
 
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(),
                 service.getId().getNamespace());
-        String paginatorMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_paginators");
-        String clientMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_client");
+        String paginatorMod = ElixirSymbolProvider.toModuleName(layout.paginatorsModuleName());
+        String clientMod = ElixirSymbolProvider.toModuleName(layout.clientModuleName());
         SymbolProvider sp = ctx.symbolProvider();
 
         ctx.writerDelegator().useFileWriter(layout.paginatorsModuleFile(), writer -> {
