@@ -15,7 +15,7 @@ import software.amazon.smithy.model.shapes.StructureShape;
 import java.util.List;
 
 /**
- * Generates a {@code <app>_paginators.erl} helper for {@code @paginated} operations.
+ * Generates a {@code <app>_service_paginators.erl} helper for {@code @paginated} operations.
  * Each paginator function calls the base operation in a recursive loop
  * accumulating items until the output token is undefined.
  */
@@ -35,7 +35,7 @@ public final class ErlangPaginatorEmitter {
 
         BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(),
                 service.getId().getNamespace());
-        String paginatorMod = layout.modulePrefix() + "_paginators";
+        String paginatorMod = layout.paginatorsModuleName();
         String clientMod = layout.clientModuleName();
         SymbolProvider sp = ctx.symbolProvider();
 
@@ -46,7 +46,7 @@ public final class ErlangPaginatorEmitter {
                 })
                 .toList();
 
-        ctx.writerDelegator().useFileWriter(paginatorMod + ".erl", writer -> {
+        ctx.writerDelegator().useFileWriter(layout.paginatorsModuleFile(), writer -> {
             writer.write("%% Generated paginators for $L.", service.getId());
             writer.write("-module($L).", paginatorMod);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
