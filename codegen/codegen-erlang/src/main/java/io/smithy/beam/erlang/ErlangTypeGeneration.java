@@ -1,10 +1,8 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenTransforms;
-import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.build.PluginContext;
-import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.codegen.core.directed.CodegenDirector;
 
 /**
@@ -31,11 +29,6 @@ public final class ErlangTypeGeneration {
         BeamSettings settings = runner.settings(BeamSettings.class, context.getSettings());
         var resolvedService = settings.resolveService(context.getModel());
         runner.service(resolvedService);
-
-        ServiceShape serviceShape = context.getModel().expectShape(resolvedService, ServiceShape.class);
-        if (settings.protocol() != null) {
-            BeamProtocolResolver.resolve(context.getModel(), serviceShape, settings);
-        }
 
         BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
 
