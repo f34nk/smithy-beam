@@ -34,7 +34,7 @@ class ErlangClientErrorDispatchTest {
                         .build())
                 .build());
 
-        String codec = manifest.expectFileString("error_shapes_rest_json_1.erl");
+        String codec = manifest.expectFileString("error_shapes_service_rest_json_1.erl");
         assertThat(codec).contains("decode_get_item_response_error(");
         assertThat(codec).contains("{error, #not_found_error{");
         assertThat(codec).contains("unknown_error");

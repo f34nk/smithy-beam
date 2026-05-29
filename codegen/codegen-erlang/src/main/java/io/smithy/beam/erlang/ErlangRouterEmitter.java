@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Generates <app>_router.erl: a dispatch module that matches incoming HTTP
+ * Generates a service-scoped router module that matches incoming HTTP
  * requests to server handler functions using the @http trait bindings.
  */
 public final class ErlangRouterEmitter {
@@ -26,13 +26,13 @@ public final class ErlangRouterEmitter {
             return;
         }
         Model model = ctx.model();
-        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(),
-                service.getId().getNamespace());
+        BeamErlangLayout layout = new BeamErlangLayout(
+                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
         String codecMod = layout.serverCodecModuleName();
-        String routerMod = layout.modulePrefix() + "_router";
+        String routerMod = layout.routerModuleName();
         String helpersMod = layout.runtimeHelpersModuleName();
 
         List<OperationShape> literalOps = new ArrayList<>();
@@ -46,7 +46,7 @@ public final class ErlangRouterEmitter {
             }
         }
 
-        ctx.writerDelegator().useFileWriter(routerMod + ".erl", writer -> {
+        ctx.writerDelegator().useFileWriter(layout.routerModuleFile(), writer -> {
             writer.write("%% Generated HTTP router for $L.", service.getId());
             writer.write("-module($L).", routerMod);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());

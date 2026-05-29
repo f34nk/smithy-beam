@@ -30,15 +30,17 @@ public final class ElixirRestJson1Emitter {
 
     public static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
         Model model = ctx.model();
-        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), service.getId().getNamespace());
+        BeamElixirLayout layout = new BeamElixirLayout(
+                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
+        ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
 
         String serverCodecModule =
                 ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName());
-        String runtimeMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_runtime_types");
-        String typesMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+        String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
+        String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
 
         ctx.writerDelegator().useFileWriter(layout.serverCodecModuleFile(), writer -> {
             writer.write("defmodule $L do", serverCodecModule);
@@ -67,9 +69,9 @@ public final class ElixirRestJson1Emitter {
         ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
-        String moduleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_rest_json_1");
-        String runtimeMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_runtime_types");
-        String typesMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+        String moduleName = ElixirSymbolProvider.toModuleName(layout.clientCodecModuleName());
+        String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
+        String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
 
         ctx.writerDelegator().useFileWriter(layout.codecModuleFile(), writer -> {

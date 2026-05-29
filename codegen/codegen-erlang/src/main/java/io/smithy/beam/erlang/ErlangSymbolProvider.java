@@ -194,7 +194,8 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
     @Override
     public Symbol serviceShape(ServiceShape shape) {
-        BeamErlangLayout layout = new BeamErlangLayout(settings, shape.getId().getNamespace());
+        BeamErlangLayout layout =
+                new BeamErlangLayout(settings, shape.getId().getNamespace(), service.getId().getName());
         String module =
                 switch (kind) {
                     case TYPES -> layout.modulePrefix();

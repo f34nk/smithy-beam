@@ -25,13 +25,14 @@ public final class ElixirRouterEmitter {
             return;
         }
         Model model = ctx.model();
-        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), service.getId().getNamespace());
+        BeamElixirLayout layout = new BeamElixirLayout(
+                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
-        String routerMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_router");
-        String codecMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_rest_json_1");
-        String helpersMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_runtime_helpers");
+        String routerMod = ElixirSymbolProvider.toModuleName(layout.routerModuleName());
+        String codecMod = ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName());
+        String helpersMod = ElixirSymbolProvider.toModuleName(layout.runtimeHelpersModuleName());
 
         List<OperationShape> literalOps = new ArrayList<>();
         List<OperationShape> labeledOps = new ArrayList<>();
@@ -44,7 +45,7 @@ public final class ElixirRouterEmitter {
             }
         }
 
-        ctx.writerDelegator().useFileWriter(layout.modulePrefix() + "_router.ex", writer -> {
+        ctx.writerDelegator().useFileWriter(layout.routerModuleFile(), writer -> {
             writer.write("defmodule $L do", routerMod);
             writer.indent();
             writer.write("@moduledoc \"Generated HTTP router for $L.\"", service.getId());

@@ -63,7 +63,7 @@ final class ElixirDirectedCodegen
         BeamSettings settings = directive.settings();
         BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
         String definitionFile = layout.typesModuleFile();
-        String moduleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+        String moduleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         return SymbolProvider.cache(
                 new ElixirSymbolProvider(
                         settings,
@@ -91,7 +91,7 @@ final class ElixirDirectedCodegen
         BeamSettings settings = directive.settings();
         BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
         String definitionFile = layout.typesModuleFile();
-        String moduleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+        String moduleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         return new ElixirContext(
                 directive.model(),
                 directive.settings(),
@@ -134,8 +134,11 @@ final class ElixirDirectedCodegen
             BeamDocumentation.forShape(directive.service()).ifPresentOrElse(
                     doc -> BeamDocumentation.writeElixirModuledoc(writer, doc),
                     () -> {
+                        BeamElixirLayout layout =
+                                new BeamElixirLayout(ctx.settings(), ctx.service().getId().getNamespace());
+                        String modelName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
                         writer.openBlock("@moduledoc \"\"\"");
-                        writer.write("Type definitions for the $L model.", ctx.moduleName());
+                        writer.write("Type definitions for the $L model.", modelName);
                         writer.write("");
                         writer.write("Named after the model namespace per the baseline spec.");
                         writer.closeBlock("\"\"\"");

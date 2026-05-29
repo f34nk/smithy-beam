@@ -1,7 +1,7 @@
-defmodule BasicHttpTest do
+defmodule RuntimeHttpTest do
   use ExUnit.Case, async: true
 
-  alias BasicRuntimeTypes.HttpRequest
+  alias RuntimeTypes.HttpRequest
 
   describe "dispatch/3" do
     test "builds url without query" do
@@ -14,7 +14,7 @@ defmodule BasicHttpTest do
         body: ""
       }
 
-      assert {:ok, resp} = BasicHttp.dispatch(BasicHttpMock, config, req)
+      assert {:ok, resp} = RuntimeHttp.dispatch(RuntimeHttpMock, config, req)
       assert resp.status == 200
       assert resp.headers == [{"etag", "\"v1\""}]
       assert resp.body == ~s({"ok":true})
@@ -30,7 +30,7 @@ defmodule BasicHttpTest do
         body: ""
       }
 
-      assert {:ok, resp} = BasicHttp.dispatch(BasicHttpMock, config, req)
+      assert {:ok, resp} = RuntimeHttp.dispatch(RuntimeHttpMock, config, req)
       assert resp.status == 200
       assert resp.body == ""
     end
@@ -45,14 +45,14 @@ defmodule BasicHttpTest do
         body: ""
       }
 
-      assert {:error, :timeout} == BasicHttp.dispatch(BasicHttpMock, config, req)
+      assert {:error, :timeout} == RuntimeHttp.dispatch(RuntimeHttpMock, config, req)
     end
   end
 
   describe "dispatch exports" do
     test "exports two- and three-arity dispatch" do
-      assert {:dispatch, 2} in BasicHttp.__info__(:functions)
-      assert {:dispatch, 3} in BasicHttp.__info__(:functions)
+      assert {:dispatch, 2} in RuntimeHttp.__info__(:functions)
+      assert {:dispatch, 3} in RuntimeHttp.__info__(:functions)
     end
   end
 end

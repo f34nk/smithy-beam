@@ -1,4 +1,4 @@
--module(user_http_test).
+-module(runtime_http_test).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("runtime_types.hrl").
@@ -12,7 +12,7 @@ dispatch_builds_url_without_query_test() ->
         headers = [{<<"Content-Type">>, <<"application/json">>}],
         body = <<>>
     },
-    {ok, Resp} = user_http:dispatch(user_http_mock, Config, Req),
+    {ok, Resp} = runtime_http:dispatch(runtime_http_mock, Config, Req),
     ?assertEqual(200, Resp#http_response.status),
     ?assertEqual([{<<"etag">>, <<"\"v1\"">>}], Resp#http_response.headers),
     ?assertEqual(<<"{\"ok\":true}">>, Resp#http_response.body).
@@ -26,7 +26,7 @@ dispatch_appends_query_string_test() ->
         headers = [],
         body = <<>>
     },
-    {ok, Resp} = user_http:dispatch(user_http_mock, Config, Req),
+    {ok, Resp} = runtime_http:dispatch(runtime_http_mock, Config, Req),
     ?assertEqual(200, Resp#http_response.status),
     ?assertEqual(<<>>, Resp#http_response.body).
 
@@ -41,10 +41,10 @@ dispatch_propagates_client_error_test() ->
     },
     ?assertEqual(
         {error, timeout},
-        user_http:dispatch(user_http_mock, Config, Req)
+        runtime_http:dispatch(runtime_http_mock, Config, Req)
     ).
 
 dispatch_exports_test() ->
-    Exports = user_http:module_info(exports),
+    Exports = runtime_http:module_info(exports),
     ?assert(lists:member({dispatch, 2}, Exports)),
     ?assert(lists:member({dispatch, 3}, Exports)).

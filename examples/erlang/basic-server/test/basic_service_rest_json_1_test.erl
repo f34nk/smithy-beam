@@ -1,4 +1,4 @@
--module(basic_server_rest_json_1_test).
+-module(basic_service_rest_json_1_test).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("basic_types.hrl").
@@ -15,7 +15,7 @@ decode_get_type_closure_request_uses_label_map_test() ->
         body = <<>>
     },
     LabelMap = #{<<"name">> => <<"widget">>},
-    Input = basic_server_rest_json_1:decode_get_type_closure_request(Req, LabelMap),
+    Input = basic_service_rest_json_1:decode_get_type_closure_request(Req, LabelMap),
     ?assertEqual(<<"widget">>, Input#get_type_closure_input.name),
     ?assertEqual(true, Input#get_type_closure_input.verbose),
     ?assertEqual(<<"trace-1">>, Input#get_type_closure_input.request_tag).
@@ -29,7 +29,7 @@ decode_minimal_request_test() ->
         body = <<>>
     },
     LabelMap = #{<<"name">> => <<"widget">>},
-    Input = basic_server_rest_json_1:decode_get_type_closure_request(Req, LabelMap),
+    Input = basic_service_rest_json_1:decode_get_type_closure_request(Req, LabelMap),
     ?assertEqual(<<"widget">>, Input#get_type_closure_input.name),
     ?assertEqual(undefined, Input#get_type_closure_input.verbose),
     ?assertEqual(undefined, Input#get_type_closure_input.request_tag).
@@ -43,7 +43,7 @@ decode_full_request_test() ->
         body = <<>>
     },
     LabelMap = #{<<"name">> => <<"widget">>},
-    Input = basic_server_rest_json_1:decode_get_type_closure_request(Req, LabelMap),
+    Input = basic_service_rest_json_1:decode_get_type_closure_request(Req, LabelMap),
     ?assertEqual(<<"widget">>, Input#get_type_closure_input.name),
     ?assertEqual(true, Input#get_type_closure_input.verbose),
     ?assertEqual(<<"trace-1">>, Input#get_type_closure_input.request_tag).
@@ -57,7 +57,7 @@ decode_uri_decodes_path_label_test() ->
         body = <<>>
     },
     LabelMap = #{<<"name">> => <<"hello world">>},
-    Input = basic_server_rest_json_1:decode_get_type_closure_request(Req, LabelMap),
+    Input = basic_service_rest_json_1:decode_get_type_closure_request(Req, LabelMap),
     ?assertEqual(<<"hello world">>, Input#get_type_closure_input.name).
 
 %% encode_get_type_closure_response/1
@@ -67,7 +67,7 @@ encode_get_type_closure_response_empty_body_test() ->
         etag = <<"\"v1\"">>,
         basic_string = undefined
     },
-    Resp = basic_server_rest_json_1:encode_get_type_closure_response(Out),
+    Resp = basic_service_rest_json_1:encode_get_type_closure_response(Out),
     ?assertEqual(200, Resp#http_response.status),
     ?assertEqual(jsone:encode(#{}), Resp#http_response.body).
 
@@ -78,7 +78,7 @@ encode_get_type_closure_response_json_body_test() ->
         basic_integer = 42,
         basic_boolean = true
     },
-    Resp = basic_server_rest_json_1:encode_get_type_closure_response(Out),
+    Resp = basic_service_rest_json_1:encode_get_type_closure_response(Out),
     ?assertEqual(200, Resp#http_response.status),
     ?assertEqual(
         jsone:encode(#{

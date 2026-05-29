@@ -1,13 +1,13 @@
-defmodule BasicRestJson1Test do
+defmodule BasicServiceRestJson1Test do
   use ExUnit.Case, async: true
 
-  alias Basic.GetTypeClosureInput
-  alias BasicRuntimeTypes.{HttpRequest, HttpResponse}
+  alias BasicTypes.GetTypeClosureInput
+  alias RuntimeTypes.{HttpRequest, HttpResponse}
 
   describe "encode_get_type_closure_request/1" do
     test "minimal request" do
       input = %GetTypeClosureInput{name: "widget"}
-      req = BasicRestJson1.encode_get_type_closure_request(input)
+      req = BasicServiceRestJson1.encode_get_type_closure_request(input)
 
       assert req.method == "GET"
       assert req.path == "/types/widget"
@@ -23,7 +23,7 @@ defmodule BasicRestJson1Test do
         request_tag: "trace-1"
       }
 
-      req = BasicRestJson1.encode_get_type_closure_request(input)
+      req = BasicServiceRestJson1.encode_get_type_closure_request(input)
 
       assert req.query == %{"verbose" => true}
       assert {"X-Request-Tag", "trace-1"} in req.headers
@@ -32,14 +32,14 @@ defmodule BasicRestJson1Test do
 
     test "URI-encodes path label" do
       input = %GetTypeClosureInput{name: "a/b c"}
-      req = BasicRestJson1.encode_get_type_closure_request(input)
+      req = BasicServiceRestJson1.encode_get_type_closure_request(input)
 
       assert req.path == "/types/a/b%20c"
     end
 
     test "omits optional fields when nil" do
       input = %GetTypeClosureInput{name: "x", verbose: nil, request_tag: nil}
-      req = BasicRestJson1.encode_get_type_closure_request(input)
+      req = BasicServiceRestJson1.encode_get_type_closure_request(input)
 
       assert req.query == %{}
       assert req.headers == [{"Content-Type", "application/json"}]
@@ -57,7 +57,7 @@ defmodule BasicRestJson1Test do
       }
 
       label_map = %{"name" => "widget"}
-      input = BasicRestJson1.decode_get_type_closure_request(req, label_map)
+      input = BasicServiceRestJson1.decode_get_type_closure_request(req, label_map)
       assert input.name == "widget"
       assert input.verbose == nil
       assert input.request_tag == nil
@@ -73,7 +73,7 @@ defmodule BasicRestJson1Test do
       }
 
       label_map = %{"name" => "widget"}
-      input = BasicRestJson1.decode_get_type_closure_request(req, label_map)
+      input = BasicServiceRestJson1.decode_get_type_closure_request(req, label_map)
       assert input.name == "widget"
       assert input.verbose == true
       assert input.request_tag == "trace-1"
@@ -89,7 +89,7 @@ defmodule BasicRestJson1Test do
       }
 
       label_map = %{"name" => "hello world"}
-      input = BasicRestJson1.decode_get_type_closure_request(req, label_map)
+      input = BasicServiceRestJson1.decode_get_type_closure_request(req, label_map)
       assert input.name == "hello world"
     end
   end
@@ -102,7 +102,7 @@ defmodule BasicRestJson1Test do
         body: ""
       }
 
-      assert {:ok, out} = BasicRestJson1.decode_get_type_closure_response(resp)
+      assert {:ok, out} = BasicServiceRestJson1.decode_get_type_closure_response(resp)
       assert out.etag == "\"v1\""
       assert out.basic_string == nil
     end
@@ -121,7 +121,7 @@ defmodule BasicRestJson1Test do
         body: body
       }
 
-      assert {:ok, out} = BasicRestJson1.decode_get_type_closure_response(resp)
+      assert {:ok, out} = BasicServiceRestJson1.decode_get_type_closure_response(resp)
       assert out.etag == "\"etag\""
       assert out.basic_string == "hello"
       assert out.basic_integer == 42
@@ -136,7 +136,7 @@ defmodule BasicRestJson1Test do
       }
 
       assert_raise Jason.DecodeError, fn ->
-        BasicRestJson1.decode_get_type_closure_response(resp)
+        BasicServiceRestJson1.decode_get_type_closure_response(resp)
       end
     end
 
@@ -144,7 +144,7 @@ defmodule BasicRestJson1Test do
       resp = %HttpResponse{status: 404, body: ~s({"message":"missing"})}
 
       assert {:error, {:unknown_error, 404, ~s({"message":"missing"})}} ==
-               BasicRestJson1.decode_get_type_closure_response(resp)
+               BasicServiceRestJson1.decode_get_type_closure_response(resp)
     end
   end
 end

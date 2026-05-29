@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ErlangServerPluginTest {
 
     private static final String TYPES_FILE = "basic_types.hrl";
-    private static final String SERVER_FILE = "basic_server.erl";
+    private static final String SERVER_FILE = "basic_service_server.erl";
 
     private static Model loadModel() {
         URL resource = ErlangServerPluginTest.class.getResource("/model/basic.smithy");
@@ -67,10 +67,10 @@ class ErlangServerPluginTest {
     }
 
     private static void assertServerStubHeaderOrder(String serverSource) {
-        assertThat(serverSource).contains("-module(basic_server).");
+        assertThat(serverSource).contains("-module(basic_service_server).");
         assertThat(serverSource).contains("-include(\"basic_types.hrl\").");
         assertThat(serverSource).contains("-export([handle_get_type_closure/3]).");
-        int moduleIndex = serverSource.indexOf("-module(basic_server).");
+        int moduleIndex = serverSource.indexOf("-module(basic_service_server).");
         int includeIndex = serverSource.indexOf("-include(\"basic_types.hrl\").");
         int exportIndex = serverSource.indexOf("-export([handle_get_type_closure/3]).");
         assertThat(moduleIndex).isLessThan(includeIndex);
@@ -147,8 +147,8 @@ class ErlangServerPluginTest {
                 .build());
         assertThat(extended.expectFileString("multi_types.hrl"))
                 .isEqualTo(baseline.expectFileString("multi_types.hrl"));
-        assertThat(extended.expectFileString("multi_server.erl"))
-                .isEqualTo(baseline.expectFileString("multi_server.erl"));
+        assertThat(extended.expectFileString("service_a_server.erl"))
+                .isEqualTo(baseline.expectFileString("service_a_server.erl"));
     }
 
     @Test
@@ -198,11 +198,11 @@ class ErlangServerPluginTest {
                 .settings(settings)
                 .build());
 
-        String org = manifest.expectFileString("resource_lifecycle_organization_server.erl");
-        assertThat(org).contains("-module(resource_lifecycle_organization_server).");
+        String org = manifest.expectFileString("organization_resource.erl");
+        assertThat(org).contains("-module(organization_resource).");
         assertThat(org).contains("handle_read(");
-        assertThat(org).contains("resource_lifecycle_server:handle_get_organization(");
-        assertThat(org).contains("resource_lifecycle_server:handle_create_organization(Ctx, Input, Meta).");
+        assertThat(org).contains("resource_lifecycle_service_server:handle_get_organization(");
+        assertThat(org).contains("resource_lifecycle_service_server:handle_create_organization(Ctx, Input, Meta).");
         assertThat(org).doesNotContain("Input#create_organization_input{}");
     }
 }

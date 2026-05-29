@@ -1,11 +1,11 @@
--module(basic_router_test).
+-module(basic_service_router_test).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("basic_types.hrl").
 -include("runtime_types.hrl").
 
-%% Request flow: http_request -> basic_router:dispatch/2 -> codec decode -> Handler:handle_<op>/3.
-%% Pass basic_server as Handler to invoke the generated server stub.
+%% Request flow: http_request -> basic_service_router:dispatch/2 -> codec decode -> Handler:handle_<op>/3.
+%% Pass basic_service_server as Handler to invoke the generated server stub.
 
 dispatch_routes_list_basic_items_before_type_prefix_test() ->
     Req = #http_request{
@@ -15,7 +15,7 @@ dispatch_routes_list_basic_items_before_type_prefix_test() ->
         headers = [],
         body = <<>>
     },
-    ?assertEqual({error, not_implemented}, basic_router:dispatch(basic_server, Req)).
+    ?assertEqual({error, not_implemented}, basic_service_router:dispatch(basic_service_server, Req)).
 
 dispatch_not_found_for_extra_type_segments_test() ->
     Req = #http_request{
@@ -27,7 +27,7 @@ dispatch_not_found_for_extra_type_segments_test() ->
     },
     ?assertEqual(
         {error, {not_found, <<"GET">>, <<"/types/a/b">>}},
-        basic_router:dispatch(basic_server, Req)
+        basic_service_router:dispatch(basic_service_server, Req)
     ).
 
 dispatch_routes_to_basic_server_handler_test() ->
@@ -40,7 +40,7 @@ dispatch_routes_to_basic_server_handler_test() ->
     },
     ?assertEqual(
         {error, not_implemented},
-        basic_router:dispatch(basic_server, Req)
+        basic_service_router:dispatch(basic_service_server, Req)
     ).
 
 dispatch_decodes_wire_request_before_handler_test() ->
@@ -51,7 +51,7 @@ dispatch_decodes_wire_request_before_handler_test() ->
         headers = [{<<"X-Request-Tag">>, <<"trace-1">>}],
         body = <<>>
     },
-    {ok, Out} = basic_router:dispatch(basic_server_probe, Req),
+    {ok, Out} = basic_service_router:dispatch(basic_service_server_probe, Req),
     ?assertEqual(<<"widget">>, Out#get_type_closure_output.basic_string),
     ?assertEqual(true, Out#get_type_closure_output.basic_boolean).
 
@@ -65,5 +65,5 @@ dispatch_not_found_for_unknown_route_test() ->
     },
     ?assertEqual(
         {error, {not_found, <<"POST">>, <<"/types/widget">>}},
-        basic_router:dispatch(basic_server, Req)
+        basic_service_router:dispatch(basic_service_server, Req)
     ).

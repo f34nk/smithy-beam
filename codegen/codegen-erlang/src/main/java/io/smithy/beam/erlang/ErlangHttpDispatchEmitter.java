@@ -4,7 +4,7 @@ import io.smithy.beam.core.BeamErlangLayout;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
- * Emits a generated <app>_http.erl module that wraps httpc for the generated client.
+ * Emits {@code runtime_http.erl} with an httpc-based HTTP dispatcher for generated clients.
  * The wrapper is thin: it converts http_request() to httpc args and wraps the response.
  */
 public final class ErlangHttpDispatchEmitter {
@@ -14,9 +14,9 @@ public final class ErlangHttpDispatchEmitter {
     public static void emit(ErlangContext ctx, ServiceShape service) {
         BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(),
                 service.getId().getNamespace());
-        String httpModule = layout.modulePrefix() + "_http";
+        String httpModule = layout.runtimeHttpModuleName();
 
-        ctx.writerDelegator().useFileWriter(httpModule + ".erl", writer -> {
+        ctx.writerDelegator().useFileWriter(layout.runtimeHttpModuleFile(), writer -> {
             writer.write("%% Generated HTTP dispatcher for $L.", service.getId());
             writer.write("%% Uses httpc from OTP. Replace via adapter for testing.");
             writer.write("-module($L).", httpModule);

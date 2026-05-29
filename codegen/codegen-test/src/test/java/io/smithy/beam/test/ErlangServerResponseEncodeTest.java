@@ -34,7 +34,7 @@ class ErlangServerResponseEncodeTest {
                         .build())
                 .build());
 
-        String serverCodec = manifest.getFileString("protocoljson_server_rest_json_1.erl")
+        String serverCodec = manifest.getFileString("demo_rest_json_rest_json_1.erl")
                 .orElse("");
         assertThat(serverCodec).contains("encode_describe_item_response(");
         assertThat(serverCodec).contains("encode_create_item_response(");

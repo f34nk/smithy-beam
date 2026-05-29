@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ElixirClientPluginTest {
 
     private static final String TYPES_FILE = "basic_types.ex";
-    private static final String CLIENT_FILE = "basic_client.ex";
+    private static final String CLIENT_FILE = "basic_service_client.ex";
 
     private static Model loadModel() {
         URL resource = ElixirClientPluginTest.class.getResource("/model/basic.smithy");
@@ -68,15 +68,15 @@ class ElixirClientPluginTest {
     }
 
     private static void assertClientStubHeaderOrder(String clientSource) {
-        assertThat(clientSource).contains("defmodule BasicClient do");
+        assertThat(clientSource).contains("defmodule BasicServiceClient do");
         assertThat(clientSource).contains("@moduledoc \"\"\"");
-        assertThat(clientSource).contains("alias Basic");
-        assertThat(clientSource).contains("@spec get_type_closure(client_config(), Basic.GetTypeClosureInput.t())");
+        assertThat(clientSource).contains("alias BasicTypes");
+        assertThat(clientSource).contains("@spec get_type_closure(client_config(), BasicTypes.GetTypeClosureInput.t())");
         assertThat(clientSource).contains("def get_type_closure(_config, _input), do: {:error, :not_implemented}");
         assertThat(clientSource).contains("@type client_config :: map()");
-        int moduleIndex = clientSource.indexOf("defmodule BasicClient do");
+        int moduleIndex = clientSource.indexOf("defmodule BasicServiceClient do");
         int moduledocIndex = clientSource.indexOf("@moduledoc \"\"\"");
-        int aliasIndex = clientSource.indexOf("alias Basic");
+        int aliasIndex = clientSource.indexOf("alias BasicTypes");
         int specIndex = clientSource.indexOf("@spec get_type_closure");
         assertThat(moduleIndex).isLessThan(moduledocIndex);
         assertThat(moduledocIndex).isLessThan(aliasIndex);
@@ -153,8 +153,8 @@ class ElixirClientPluginTest {
                 .build());
         assertThat(extended.expectFileString("multi_types.ex"))
                 .isEqualTo(baseline.expectFileString("multi_types.ex"));
-        assertThat(extended.expectFileString("multi_client.ex"))
-                .isEqualTo(baseline.expectFileString("multi_client.ex"));
+        assertThat(extended.expectFileString("multi_service_client.ex"))
+                .isEqualTo(baseline.expectFileString("multi_service_client.ex"));
     }
 
     @Test
@@ -205,15 +205,15 @@ class ElixirClientPluginTest {
                 .settings(settings)
                 .build());
 
-        assertThat(manifest.expectFileString("protocoljson_rest_json_1.ex"))
-                .contains("defmodule ProtocoljsonRestJson1 do")
+        assertThat(manifest.expectFileString("protocoljson_service_rest_json_1.ex"))
+                .contains("defmodule ProtocoljsonServiceRestJson1 do")
                 .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
-        assertThat(manifest.expectFileString("protocoljson_http.ex"))
-                .contains("defmodule ProtocoljsonHttp do")
+        assertThat(manifest.expectFileString("runtime_http.ex"))
+                .contains("defmodule RuntimeHttp do")
                 .contains("http_client = Map.get(config, :http_client, ReqClient)")
                 .contains("def dispatch(http_client, config, %RuntimeTypes.HttpRequest{} = req) do")
                 .contains("case http_client.request(req_opts) do");
-        assertThat(manifest.expectFileString("protocoljson_client.ex"))
+        assertThat(manifest.expectFileString("protocoljson_service_client.ex"))
                 .contains("# HTTP request bindings for smithy.beam.demo.protocoljson#DescribeItem:")
                 .contains("#   id @ LABEL")
                 .contains("#   requestTag @ HEADER")
@@ -241,7 +241,7 @@ class ElixirClientPluginTest {
                 .settings(settings)
                 .build());
 
-        String codec = manifest.expectFileString("protocoljson_rest_json_1.ex");
+        String codec = manifest.expectFileString("protocoljson_service_rest_json_1.ex");
         assertThat(codec).contains("def encode_describe_item_request(");
         assertThat(codec).contains("def decode_describe_item_request(");
         assertThat(codec).contains("def decode_describe_item_response(");
@@ -250,8 +250,8 @@ class ElixirClientPluginTest {
         assertThat(codec).contains("uri_encode(");
         assertThat(codec).contains("uri_decode(");
         assertThat(codec).contains("decode_query_param(");
-        assertThat(manifest.expectFileString("protocoljson_runtime_helpers.ex"))
-                .contains("defmodule ProtocoljsonRuntimeHelpers do")
+        assertThat(manifest.expectFileString("runtime_helpers.ex"))
+                .contains("defmodule RuntimeHelpers do")
                 .contains("def parse_labels(path, template)");
         assertThat(codec).contains("def decode_describe_item_request(");
         assertThat(codec).contains("label_map");
@@ -264,9 +264,10 @@ class ElixirClientPluginTest {
                 .settings(settings)
                 .build());
 
-        String router = manifest.expectFileString("protocoljson_router.ex");
+        String router = manifest.expectFileString("demo_rest_json_router.ex");
         assertThat(router).contains("\" <> name_seg = path");
         assertThat(router).contains("parse_labels(path, \"/items/{id}\")");
+        assertThat(router).contains("DemoRestJsonRestJson1.decode_describe_item_request");
         assertThat(router).contains("\"/items\"");
         assertThat(router).doesNotContain("path, path");
     }
@@ -291,15 +292,15 @@ class ElixirClientPluginTest {
                 .settings(settings)
                 .build());
 
-        String org = manifest.expectFileString("resource_lifecycle_organization.ex");
-        assertThat(org).contains("defmodule ResourceLifecycleOrganization do");
-        assertThat(org).contains("ResourceLifecycleClient.get_organization(");
+        String org = manifest.expectFileString("organization_resource.ex");
+        assertThat(org).contains("defmodule OrganizationResource do");
+        assertThat(org).contains("ResourceLifecycleServiceClient.get_organization(");
         assertThat(org).contains("org_id: org_id");
-        assertThat(org).contains("ResourceLifecycleClient.create_organization(config, input)");
+        assertThat(org).contains("ResourceLifecycleServiceClient.create_organization(config, input)");
         assertThat(org).doesNotContain("%{input | }");
         assertThat(org).contains("Top-level organization resource.");
 
-        String employee = manifest.expectFileString("resource_lifecycle_employee.ex");
+        String employee = manifest.expectFileString("employee_resource.ex");
         assertThat(employee).contains("get_employee(");
         assertThat(employee).contains("org_id: org_id");
         assertThat(employee).contains("employee_id: employee_id");

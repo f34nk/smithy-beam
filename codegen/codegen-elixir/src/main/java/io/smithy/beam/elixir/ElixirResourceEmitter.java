@@ -44,14 +44,16 @@ public final class ElixirResourceEmitter {
     private static void emit(ElixirContext ctx, ResourceShape resource, boolean server) {
         BeamResourceIndex index = BeamResourceIndex.of(ctx.model());
         BeamElixirLayout layout = new BeamElixirLayout(
-                ctx.settings(), ctx.service().getId().getNamespace());
+                ctx.settings(), ctx.service().getId().getNamespace(), ctx.service().getId().getName());
         SymbolProvider sp = ctx.symbolProvider();
         String resourceSnake = sp.toSymbol(resource).getName();
         String mod = ElixirSymbolProvider.toModuleName(
-                layout.modulePrefix() + "_" + resourceSnake + (server ? "_server" : ""));
+                server
+                        ? layout.resourceServerModuleName(resourceSnake)
+                        : layout.resourceClientModuleName(resourceSnake));
         String delegateMod = ElixirSymbolProvider.toModuleName(
-                layout.modulePrefix() + (server ? "_server" : "_client"));
-        String typesMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+                server ? layout.serverModuleName() : layout.clientModuleName());
+        String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         String file = server
                 ? layout.resourceServerModuleFile(resourceSnake)
                 : layout.resourceClientModuleFile(resourceSnake);
