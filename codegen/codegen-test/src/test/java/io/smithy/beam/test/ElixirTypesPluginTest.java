@@ -56,7 +56,7 @@ class ElixirTypesPluginTest {
         String content = manifest.expectFileString("basic_types.ex");
 
         assertThat(content)
-                .contains("defmodule Basic do")
+                .contains("defmodule BasicTypes do")
                 .contains("Type definitions for the Basic model.")
                 .contains("@type basic_string :: String.t()")
                 .contains("@type basic_integer :: integer()")
@@ -81,13 +81,13 @@ class ElixirTypesPluginTest {
                 .contains("defmodule BasicPriority do")
                 .contains(":low | :medium | :high | {:unknown, integer()}")
                 .contains("@type basic_union ::")
-                .contains("{:text, Basic.basic_string()}")
-                .contains("{:number, Basic.basic_integer()}")
-                .contains("{:flag, Basic.basic_boolean()}")
+                .contains("{:text, BasicTypes.basic_string()}")
+                .contains("{:number, BasicTypes.basic_integer()}")
+                .contains("{:flag, BasicTypes.basic_boolean()}")
                 .contains("{:unknown, String.t()}")
                 .contains("defmodule BasicItem do")
-                .contains("name: Basic.basic_string(),")
-                .contains("count: Basic.basic_integer() | nil");
+                .contains("name: BasicTypes.basic_string(),")
+                .contains("count: BasicTypes.basic_integer() | nil");
     }
 
     private static PluginContext buildContext(Model model, MockManifest manifest) {
