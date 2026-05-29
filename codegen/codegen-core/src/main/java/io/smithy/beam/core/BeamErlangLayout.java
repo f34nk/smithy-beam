@@ -8,10 +8,16 @@ public final class BeamErlangLayout {
 
     private final BeamSettings settings;
     private final String namespace;
+    private final String serviceName;
 
     public BeamErlangLayout(BeamSettings settings, String namespace) {
+        this(settings, namespace, null);
+    }
+
+    public BeamErlangLayout(BeamSettings settings, String namespace, String serviceName) {
         this.settings = settings;
         this.namespace = namespace;
+        this.serviceName = serviceName;
     }
 
     public String modulePrefix() {
@@ -23,35 +29,47 @@ public final class BeamErlangLayout {
     }
 
     public String clientModuleFile() {
-        return modulePrefix() + "_client.erl";
+        return clientModuleName() + ".erl";
     }
 
     public String serverModuleFile() {
-        return modulePrefix() + "_server.erl";
+        return serverModuleName() + ".erl";
     }
 
     public String clientModuleName() {
-        return modulePrefix() + "_client";
+        return modulePrefix() + "_service_client";
     }
 
     public String serverModuleName() {
-        return modulePrefix() + "_server";
+        return serviceSnakeName() + "_server";
+    }
+
+    public String routerModuleFile() {
+        return routerModuleName() + ".erl";
+    }
+
+    public String routerModuleName() {
+        return serviceSnakeName() + "_router";
     }
 
     public String codecModuleFile() {
-        return modulePrefix() + "_rest_json_1.erl";
+        return clientCodecModuleName() + ".erl";
     }
 
     public String codecModuleName() {
-        return modulePrefix() + "_rest_json_1";
+        return clientCodecModuleName();
+    }
+
+    public String clientCodecModuleName() {
+        return modulePrefix() + "_service_rest_json_1";
     }
 
     public String serverCodecModuleFile() {
-        return modulePrefix() + "_server_rest_json_1.erl";
+        return serverCodecModuleName() + ".erl";
     }
 
     public String serverCodecModuleName() {
-        return modulePrefix() + "_server_rest_json_1";
+        return serviceSnakeName() + "_rest_json_1";
     }
 
     public String runtimeTypesHeaderFile() {
@@ -66,19 +84,46 @@ public final class BeamErlangLayout {
         return "runtime_helpers";
     }
 
+    public String runtimeHttpModuleFile() {
+        return runtimeHttpModuleName() + ".erl";
+    }
+
+    public String runtimeHttpModuleName() {
+        return "runtime_http";
+    }
+
+    public String paginatorsModuleFile() {
+        return paginatorsModuleName() + ".erl";
+    }
+
+    public String paginatorsModuleName() {
+        return modulePrefix() + "_service_paginators";
+    }
+
     public String resourceClientModuleFile(String resourceSnakeName) {
-        return modulePrefix() + "_" + resourceSnakeName + ".erl";
+        return resourceClientModuleName(resourceSnakeName) + ".erl";
     }
 
     public String resourceClientModuleName(String resourceSnakeName) {
-        return modulePrefix() + "_" + resourceSnakeName;
+        return resourceSnakeName + "_resource";
     }
 
     public String resourceServerModuleFile(String resourceSnakeName) {
-        return modulePrefix() + "_" + resourceSnakeName + "_server.erl";
+        return resourceServerModuleName(resourceSnakeName) + ".erl";
     }
 
     public String resourceServerModuleName(String resourceSnakeName) {
-        return modulePrefix() + "_" + resourceSnakeName + "_server";
+        return resourceSnakeName + "_resource";
+    }
+
+    private String serviceSnakeName() {
+        return BeamNameUtils.toSnakeCase(requireServiceName());
+    }
+
+    private String requireServiceName() {
+        if (serviceName == null || serviceName.isEmpty()) {
+            throw new IllegalStateException("serviceName is required for server module layout");
+        }
+        return serviceName;
     }
 }

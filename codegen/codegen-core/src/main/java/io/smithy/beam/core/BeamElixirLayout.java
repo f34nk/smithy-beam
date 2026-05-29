@@ -7,10 +7,16 @@ public final class BeamElixirLayout {
 
     private final BeamSettings settings;
     private final String namespace;
+    private final String serviceName;
 
     public BeamElixirLayout(BeamSettings settings, String namespace) {
+        this(settings, namespace, null);
+    }
+
+    public BeamElixirLayout(BeamSettings settings, String namespace, String serviceName) {
         this.settings = settings;
         this.namespace = namespace;
+        this.serviceName = serviceName;
     }
 
     public String modulePrefix() {
@@ -18,15 +24,35 @@ public final class BeamElixirLayout {
     }
 
     public String typesModuleFile() {
-        return modulePrefix() + "_types.ex";
+        return typesModuleName() + ".ex";
+    }
+
+    public String typesModuleName() {
+        return modulePrefix() + "_types";
     }
 
     public String clientModuleFile() {
-        return modulePrefix() + "_client.ex";
+        return clientModuleName() + ".ex";
+    }
+
+    public String clientModuleName() {
+        return modulePrefix() + "_service_client";
     }
 
     public String serverModuleFile() {
-        return modulePrefix() + "_server.ex";
+        return serverModuleName() + ".ex";
+    }
+
+    public String serverModuleName() {
+        return serviceSnakeName() + "_server";
+    }
+
+    public String routerModuleFile() {
+        return routerModuleName() + ".ex";
+    }
+
+    public String routerModuleName() {
+        return serviceSnakeName() + "_router";
     }
 
     public String restJson1ModuleFile() {
@@ -34,34 +60,77 @@ public final class BeamElixirLayout {
     }
 
     public String codecModuleFile() {
-        return modulePrefix() + "_rest_json_1.ex";
+        return clientCodecModuleName() + ".ex";
+    }
+
+    public String clientCodecModuleName() {
+        return modulePrefix() + "_service_rest_json_1";
     }
 
     public String runtimeTypesModuleFile() {
-        return modulePrefix() + "_runtime_types.ex";
+        return runtimeTypesModuleName() + ".ex";
+    }
+
+    public String runtimeTypesModuleName() {
+        return "runtime_types";
     }
 
     public String runtimeHelpersModuleFile() {
-        return modulePrefix() + "_runtime_helpers.ex";
+        return runtimeHelpersModuleName() + ".ex";
+    }
+
+    public String runtimeHelpersModuleName() {
+        return "runtime_helpers";
+    }
+
+    public String runtimeHttpModuleFile() {
+        return runtimeHttpModuleName() + ".ex";
+    }
+
+    public String runtimeHttpModuleName() {
+        return "runtime_http";
     }
 
     public String paginatorsModuleFile() {
-        return modulePrefix() + "_paginators.ex";
+        return paginatorsModuleName() + ".ex";
+    }
+
+    public String paginatorsModuleName() {
+        return modulePrefix() + "_service_paginators";
     }
 
     public String resourceClientModuleFile(String resourceSnakeName) {
-        return modulePrefix() + "_" + resourceSnakeName + ".ex";
+        return resourceClientModuleName(resourceSnakeName) + ".ex";
+    }
+
+    public String resourceClientModuleName(String resourceSnakeName) {
+        return resourceSnakeName + "_resource";
     }
 
     public String resourceServerModuleFile(String resourceSnakeName) {
-        return modulePrefix() + "_" + resourceSnakeName + "_server.ex";
+        return resourceServerModuleName(resourceSnakeName) + ".ex";
+    }
+
+    public String resourceServerModuleName(String resourceSnakeName) {
+        return resourceSnakeName + "_resource";
     }
 
     public String serverCodecModuleFile() {
-        return modulePrefix() + "_server_rest_json_1.ex";
+        return serverCodecModuleName() + ".ex";
     }
 
     public String serverCodecModuleName() {
-        return modulePrefix() + "_server_rest_json_1";
+        return serviceSnakeName() + "_rest_json_1";
+    }
+
+    private String serviceSnakeName() {
+        return BeamNameUtils.toSnakeCase(requireServiceName());
+    }
+
+    private String requireServiceName() {
+        if (serviceName == null || serviceName.isEmpty()) {
+            throw new IllegalStateException("serviceName is required for server module layout");
+        }
+        return serviceName;
     }
 }
