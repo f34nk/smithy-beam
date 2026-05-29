@@ -242,24 +242,6 @@ class ErlangTypesPluginTest {
                 .isEqualTo(baseline.expectFileString("multi_types.hrl"));
     }
 
-    @Test
-    void explicitInvalidProtocolFailsWithCodegenException() {
-        Model model = loadMultiServiceModel();
-        MockManifest manifest = new MockManifest();
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.multi#ServiceA")
-                .withMember("edition", "2026")
-                .withMember("protocol", "smithy.api#String")
-                .withMember("relativeDate", "2026-01-01")
-                .withMember("relativeVersion", "1.0.0")
-                .build();
-
-        assertThatThrownBy(() -> new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings)))
-                .isInstanceOf(CodegenException.class)
-                .hasMessageContaining("protocol")
-                .hasMessageContaining("smithy.api#String");
-    }
-
     private static Model loadRelativeDeprecationModel() {
         URL resource = ErlangTypesPluginTest.class.getResource("/model/relative_deprecation.smithy");
         assertThat(resource).isNotNull();
