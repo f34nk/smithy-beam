@@ -99,6 +99,10 @@ final class ErlangServerDirectedCodegen
             CustomizeDirective<ErlangContext, BeamSettings> directive) {
         ErlangContext ctx = directive.context();
         ServiceShape service = ctx.service();
+        ShapeId protocol =
+                BeamProtocolResolver.resolve(directive.model(), service, directive.settings());
+        BeamProtocolResolver.assertClosureSupported(directive.model(), service, protocol);
+
         String ns = service.getId().getNamespace();
         BeamErlangLayout layout =
                 new BeamErlangLayout(ctx.settings(), ns, service.getId().getName());
