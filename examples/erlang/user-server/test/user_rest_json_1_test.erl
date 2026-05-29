@@ -72,10 +72,10 @@ decode_invalid_json_returns_empty_document_test() ->
     {ok, Out} = user_rest_json_1:decode_get_user_response(Resp),
     ?assertEqual(undefined, Out#get_user_output.user).
 
-decode_http_error_test() ->
+decode_unknown_error_test() ->
     Resp = #http_response{status = 404, body = <<"{\"message\":\"missing\"}">>},
     ?assertEqual(
-        {error, {http_error, 404, <<"{\"message\":\"missing\"}">>}},
+        {error, {unknown_error, 404, <<"{\"message\":\"missing\"}">>}},
         user_rest_json_1:decode_get_user_response(Resp)
     ).
 
