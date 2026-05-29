@@ -15,7 +15,24 @@ class ErlangClientErrorDispatchTest {
 
     @Test
     void errorDispatcherEmitsStatusClauseAndUnknownFallback() {
-        URL resource = getClass().getResource("/model/error_shapes.smithy");
+        String codec = generateGetItemCodec();
+        assertThat(codec).contains("decode_get_item_response_error(");
+        assertThat(codec).contains("{error, #not_found_error{");
+        assertThat(codec).contains("unknown_error");
+        assertThat(codec).contains("__type");
+    }
+
+    @Test
+    void httpErrorStatusClauseComesBeforeTypeDiscriminator() {
+        String codec = generateGetItemCodec();
+        int statusClausePos = codec.indexOf("decode_get_item_response_error(404,");
+        int typeClausePos = codec.indexOf("__type");
+        assertThat(statusClausePos).isGreaterThan(0);
+        assertThat(statusClausePos).isLessThan(typeClausePos);
+    }
+
+    private static String generateGetItemCodec() {
+        URL resource = ErlangClientErrorDispatchTest.class.getResource("/model/error_shapes.smithy");
         assertThat(resource).isNotNull();
         Model model = Model.assembler()
                 .addImport(resource)
@@ -33,11 +50,6 @@ class ErlangClientErrorDispatchTest {
                         .withMember("protocol", "aws.protocols#restJson1")
                         .build())
                 .build());
-
-        String codec = manifest.expectFileString("error_shapes_service_rest_json_1.erl");
-        assertThat(codec).contains("decode_get_item_response_error(");
-        assertThat(codec).contains("{error, #not_found_error{");
-        assertThat(codec).contains("unknown_error");
-        assertThat(codec).contains("__type");
+        return manifest.expectFileString("error_shapes_service_rest_json_1.erl");
     }
 }

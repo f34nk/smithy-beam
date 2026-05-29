@@ -17,6 +17,7 @@ structure ServiceUnavailable {
 
 @error("client")
 @retryable
+@httpError(404)
 structure NotFoundError {
     message: String
 }
