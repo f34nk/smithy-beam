@@ -442,7 +442,7 @@ class ElixirSymbolProviderTest {
         @Test
         void serviceShapeUsesTypesModuleNameAndClearsDefinitionFileForTypesPass() {
             Symbol sym = provider.toSymbol(service);
-            assertThat(sym.getName()).isEqualTo("Example");
+            assertThat(sym.getName()).isEqualTo("ExampleTypes");
             assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
             assertThat(sym.getDefinitionFile()).isEmpty();
         }
@@ -458,7 +458,7 @@ class ElixirSymbolProviderTest {
                             "Example",
                             BeamCodegenKind.CLIENT);
             Symbol sym = clientProvider.toSymbol(service);
-            assertThat(sym.getName()).isEqualTo("ExampleClient");
+            assertThat(sym.getName()).isEqualTo("ExampleServiceClient");
             assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
             assertThat(sym.getDefinitionFile()).isEqualTo("example_client.ex");
         }
@@ -474,7 +474,7 @@ class ElixirSymbolProviderTest {
                             "Example",
                             BeamCodegenKind.SERVER);
             Symbol sym = serverProvider.toSymbol(service);
-            assertThat(sym.getName()).isEqualTo("ExampleServer");
+            assertThat(sym.getName()).isEqualTo("TestServiceServer");
             assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
             assertThat(sym.getDefinitionFile()).isEqualTo("example_server.ex");
         }
