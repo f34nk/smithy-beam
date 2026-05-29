@@ -22,6 +22,7 @@ import software.amazon.smithy.model.traits.HttpTrait;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -596,7 +597,7 @@ public final class ErlangRestJson1Emitter {
             String wireValue = m.getTrait(EnumValueTrait.class)
                     .flatMap(EnumValueTrait::getStringValue)
                     .orElse(m.getMemberName());
-            String atom = ((ErlangSymbolProvider) sp).toEnumAtomName(shape, m.getMemberName());
+            String atom = enumAtomForMember(sp, shape, m.getMemberName());
             writer.write("decode_$L(<<\"$L\">>) -> $L;", helperName, wireValue, atom);
         }
         writer.write("decode_$L(V) when is_binary(V) -> {unknown, V};", helperName);
@@ -607,10 +608,11 @@ public final class ErlangRestJson1Emitter {
             String wireValue = m.getTrait(EnumValueTrait.class)
                     .flatMap(EnumValueTrait::getStringValue)
                     .orElse(m.getMemberName());
-            String atom = ((ErlangSymbolProvider) sp).toEnumAtomName(shape, m.getMemberName());
+            String atom = enumAtomForMember(sp, shape, m.getMemberName());
             writer.write("encode_$L($L) -> <<\"$L\">>;", helperName, atom, wireValue);
         }
-        writer.write("encode_$L({unknown, V}) when is_binary(V) -> V.", helperName);
+        writer.write("encode_$L({unknown, V}) when is_binary(V) -> V;", helperName);
+        writer.write("encode_$L(undefined) -> undefined.", helperName);
         writer.write("");
     }
 
@@ -619,7 +621,7 @@ public final class ErlangRestJson1Emitter {
         writer.write("%% IntEnum helpers for $L", shape.getId());
         for (MemberShape m : shape.members()) {
             int wireValue = m.expectTrait(EnumValueTrait.class).expectIntValue();
-            String atom = ((ErlangSymbolProvider) sp).toEnumAtomName(shape, m.getMemberName());
+            String atom = enumAtomForMember(sp, shape, m.getMemberName());
             writer.write("decode_$L($L) -> $L;", helperName, wireValue, atom);
         }
         writer.write("decode_$L(V) when is_integer(V) -> {unknown, V};", helperName);
@@ -628,11 +630,20 @@ public final class ErlangRestJson1Emitter {
         writer.write("");
         for (MemberShape m : shape.members()) {
             int wireValue = m.expectTrait(EnumValueTrait.class).expectIntValue();
-            String atom = ((ErlangSymbolProvider) sp).toEnumAtomName(shape, m.getMemberName());
+            String atom = enumAtomForMember(sp, shape, m.getMemberName());
             writer.write("encode_$L($L) -> $L;", helperName, atom, wireValue);
         }
-        writer.write("encode_$L({unknown, V}) when is_integer(V) -> V.", helperName);
+        writer.write("encode_$L({unknown, V}) when is_integer(V) -> V;", helperName);
+        writer.write("encode_$L(undefined) -> undefined.", helperName);
         writer.write("");
+    }
+
+    private static String enumAtomForMember(SymbolProvider sp, Shape enumShape, String memberName) {
+        @SuppressWarnings("unchecked")
+        Map<String, String> byMember = sp.toSymbol(enumShape)
+                .getProperty("enumAtomByMember", Map.class)
+                .orElseThrow();
+        return byMember.get(memberName);
     }
 
     /** Emits private helper functions used across all codecs. */

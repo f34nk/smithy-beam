@@ -180,6 +180,7 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     public Symbol enumShape(EnumShape shape) {
         return namedModule(shape).toBuilder()
             .putProperty("enumAtoms", new ArrayList<>(enumAtomNames.get(shape.getId()).values()))
+            .putProperty("enumAtomByMember", enumAtomNames.get(shape.getId()))
             .build();
     }
 
@@ -187,6 +188,7 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     public Symbol intEnumShape(IntEnumShape shape) {
         return namedModule(shape).toBuilder()
             .putProperty("enumAtoms", new ArrayList<>(enumAtomNames.get(shape.getId()).values()))
+            .putProperty("enumAtomByMember", enumAtomNames.get(shape.getId()))
             .build();
     }
 
