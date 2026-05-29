@@ -32,7 +32,7 @@ class HttpQueryParamsTest {
             }
 
             structure ListItemsInput {
-                @httpQuery
+                @httpQuery("limit")
                 limit: Integer
 
                 @httpQueryParams
