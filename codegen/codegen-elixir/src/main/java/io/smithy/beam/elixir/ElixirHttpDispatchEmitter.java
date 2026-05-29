@@ -4,7 +4,7 @@ import io.smithy.beam.core.BeamElixirLayout;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
- * Emits a generated <App>Http Elixir module wrapping Req for the generated client.
+ * Emits {@code runtime_http.ex} with a Req-based HTTP dispatcher for generated clients.
  */
 public final class ElixirHttpDispatchEmitter {
 
@@ -13,16 +13,14 @@ public final class ElixirHttpDispatchEmitter {
     public static void emit(ElixirContext ctx, ServiceShape service) {
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(),
                 service.getId().getNamespace());
-        String httpModule = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_http");
-        String runtimeMod = ElixirSymbolProvider.toModuleName(
-                layout.modulePrefix() + "_runtime_types");
+        String httpModule = ElixirSymbolProvider.toModuleName(layout.runtimeHttpModuleName());
+        String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
 
         ctx.writerDelegator().useFileWriter(
-                layout.modulePrefix() + "_http.ex", writer -> {
+                layout.runtimeHttpModuleFile(), writer -> {
             writer.write("defmodule $L do", httpModule);
             writer.indent();
-            writer.write("@moduledoc \"Generated HTTP dispatcher for $L. Uses Req.\"",
-                    service.getId());
+            writer.write("@moduledoc \"Generated HTTP dispatcher for Smithy service clients. Uses Req.\"");
             writer.write("alias $L, as: RuntimeTypes", runtimeMod);
             writer.write("");
             writer.write("@spec dispatch(map(), RuntimeTypes.HttpRequest.t()) ::");
