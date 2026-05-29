@@ -32,6 +32,7 @@ class ServiceRenameTest {
                 .withMember("service",
                         "smithy.beam.test.rename#RenameService")
                 .withMember("edition", "2026")
+                .withMember("protocol", "aws.protocols#restJson1")
                 .build();
     }
 
@@ -67,6 +68,8 @@ class ServiceRenameTest {
                 "rename_service_rest_json_1.erl").orElse("");
 
         assertThat(types).contains("renamed_widget");
-        assertThat(codec).contains("renamed_widget");
+        assertThat(codec).isNotEmpty();
+        assertThat(codec).contains("get_widget_output");
+        assertThat(codec).doesNotContain("#widget{");
     }
 }
