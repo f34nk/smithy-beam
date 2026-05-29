@@ -25,42 +25,23 @@ public final class BeamProtocolResolver {
     private BeamProtocolResolver() {}
 
     /**
-     * Returns the chosen protocol trait id.
-     *
-     * <p>If {@link BeamSettings#protocol()} is set, it must match one of the protocol
-     * traits present on the service. If it is not set, exactly one protocol trait on
-     * the service must exist, otherwise this method throws {@link CodegenException}.
+     * Returns the sole protocol trait on the service, or empty when the service
+     * declares none. Used by client and server plugins to decide wire emission.
      */
-    public static ShapeId resolve(Model model, ServiceShape service, BeamSettings settings) {
-        List<ShapeId> protocolTraits = findProtocolTraitIds(model, service);
-        ShapeId explicit = settings.protocol();
-        if (explicit != null) {
-            if (!protocolTraits.contains(explicit)) {
-                throw new CodegenException(
-                        "Configured protocol \""
-                                + explicit
-                                + "\" is not attached to service "
-                                + service.getId()
-                                + ". Attached protocol traits: "
-                                + protocolTraits);
-            }
-            return explicit;
+    public static Optional<ShapeId> resolveServiceProtocol(Model model, ServiceShape service) {
+        List<ShapeId> traits = findProtocolTraitIds(model, service);
+        if (traits.isEmpty()) {
+            return Optional.empty();
         }
-        if (protocolTraits.isEmpty()) {
+        if (traits.size() > 1) {
             throw new CodegenException(
-                    "No protocol trait found on service "
+                    "Service "
                             + service.getId()
-                            + ". Add a supported protocol trait to the service or set \"protocol\" in the plugin settings.");
+                            + " declares multiple protocol traits: "
+                            + traits
+                            + ". Attach exactly one protocol trait to the service.");
         }
-        if (protocolTraits.size() > 1) {
-            throw new CodegenException(
-                    "Multiple protocol traits found on service "
-                            + service.getId()
-                            + ": "
-                            + protocolTraits
-                            + ". Set \"protocol\" in the plugin settings to select one.");
-        }
-        return protocolTraits.get(0);
+        return Optional.of(traits.get(0));
     }
 
     /**
