@@ -146,19 +146,16 @@ class BeamSettingsTest {
     @Test
     void accessors_roundTrip() {
         ShapeId serviceId = ShapeId.from("com.example#Svc");
-        ShapeId protocolId = ShapeId.from("com.example#Protocol");
 
         BeamSettings settings = new BeamSettings();
         settings.service(serviceId);
         settings.module("my_module");
-        settings.protocol(protocolId);
         settings.edition("2026");
         settings.relativeDate("2026-01-01");
         settings.relativeVersion("1.0");
 
         assertThat(settings.service()).isEqualTo(serviceId);
         assertThat(settings.module()).isEqualTo("my_module");
-        assertThat(settings.protocol()).isEqualTo(protocolId);
         assertThat(settings.edition()).isEqualTo("2026");
         assertThat(settings.relativeDate()).isEqualTo("2026-01-01");
         assertThat(settings.relativeVersion()).isEqualTo("1.0");
@@ -170,7 +167,6 @@ class BeamSettingsTest {
 
         assertThat(settings.service()).isNull();
         assertThat(settings.module()).isNull();
-        assertThat(settings.protocol()).isNull();
         assertThat(settings.edition()).isNull();
         assertThat(settings.relativeDate()).isNull();
         assertThat(settings.relativeVersion()).isNull();
