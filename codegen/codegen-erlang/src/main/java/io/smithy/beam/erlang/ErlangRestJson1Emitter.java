@@ -147,10 +147,11 @@ public final class ErlangRestJson1Emitter {
 
         List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
         List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
+        List<HttpBinding> queryParams = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY_PARAMS);
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
 
-        List<String> patternParts = buildPatternParts(labels, queries, headers, docMembers, sp, model);
+        List<String> patternParts = buildPatternParts(labels, queries, queryParams, headers, docMembers, sp, model);
         String pattern = patternParts.isEmpty() ? "" : "\n    " + String.join(",\n    ", patternParts) + "\n";
 
         writer.write("%% Encode HTTP request for $L.", op.getId());
@@ -176,6 +177,23 @@ public final class ErlangRestJson1Emitter {
                             .map(qb -> toBindingVar(
                                     BeamNameUtils.toSnakeCase(qb.getMember().getMemberName())))
                             .collect(Collectors.joining(", ")));
+        }
+
+        if (!queryParams.isEmpty()) {
+            for (HttpBinding qp : queryParams) {
+                String fieldName = BeamNameUtils.toSnakeCase(qp.getMember().getMemberName());
+                String bindingVar = toBindingVar(fieldName);
+                writer.write("QueryExtra = case $L of", bindingVar);
+                writer.indent();
+                writer.write("undefined -> [];");
+                writer.write("M when is_map(M) ->");
+                writer.indent();
+                writer.write("[{K, V} || {K, V} <- maps:to_list(M)]");
+                writer.dedent();
+                writer.dedent();
+                writer.write("end,");
+                writer.write("Query = Query ++ QueryExtra,");
+            }
         }
 
         if (headers.isEmpty()) {
@@ -254,6 +272,7 @@ public final class ErlangRestJson1Emitter {
 
         List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
         List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
+        List<HttpBinding> queryParams = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY_PARAMS);
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
 
@@ -298,6 +317,10 @@ public final class ErlangRestJson1Emitter {
             String paramName = qb.getLocationName();
             recordFields.add(
                     "    " + fieldName + " = decode_query_param(maps:get(<<\"" + paramName + "\">>, Query, undefined))");
+        }
+        for (HttpBinding qp : queryParams) {
+            String fieldName = BeamNameUtils.toSnakeCase(qp.getMember().getMemberName());
+            recordFields.add("    " + fieldName + " = maps:from_list(maps:to_list(Query))");
         }
         for (HttpBinding hb : headers) {
             String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
@@ -944,12 +967,13 @@ public final class ErlangRestJson1Emitter {
     private static List<String> buildPatternParts(
             List<HttpBinding> labels,
             List<HttpBinding> queries,
+            List<HttpBinding> queryParams,
             List<HttpBinding> headers,
             List<HttpBinding> docMembers,
             SymbolProvider sp,
             Model model) {
         List<String> parts = new ArrayList<>();
-        for (HttpBinding b : concat(labels, queries, headers, docMembers)) {
+        for (HttpBinding b : concat(labels, queries, queryParams, headers, docMembers)) {
             String field = BeamNameUtils.toSnakeCase(b.getMember().getMemberName());
             parts.add(field + " = " + toBindingVar(field));
         }
