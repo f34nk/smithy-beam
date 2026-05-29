@@ -17,8 +17,10 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.shapes.TimestampShape;
 import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.EnumValueTrait;
+import software.amazon.smithy.model.traits.TimestampFormatTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
@@ -204,6 +206,11 @@ public final class ErlangRestJson1Emitter {
                     String helperName = sp.toSymbol(target).getName().replace("()", "");
                     writer.write("    <<\"$L\">> => encode_$L($L)$L",
                             jsonKey, helperName, toBindingVar(fieldName), comma);
+                } else if (target instanceof TimestampShape) {
+                    String encodeHelper = timestampEncodeHelper(
+                            httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
+                    writer.write("    <<\"$L\">> => $L($L)$L",
+                            jsonKey, encodeHelper, toBindingVar(fieldName), comma);
                 } else {
                     writer.write("    <<\"$L\">> => $L$L",
                             jsonKey, encodeDocumentValue(target, fieldName), comma);
@@ -301,6 +308,11 @@ public final class ErlangRestJson1Emitter {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
                 recordFields.add("    " + fieldName + " = decode_" + helperName
                         + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
+            } else if (target instanceof TimestampShape) {
+                String decodeHelper = timestampDecodeHelper(
+                        httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
+                recordFields.add("    " + fieldName + " = " + decodeHelper
+                        + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
             } else {
                 recordFields.add("    " + documentDecodeAssignment(fieldName, jsonKey, target));
             }
@@ -382,6 +394,11 @@ public final class ErlangRestJson1Emitter {
                     String helperName = sp.toSymbol(target).getName().replace("()", "");
                     writer.write("    <<\"$L\">> => encode_$L($L)$L",
                             jsonKey, helperName, toBindingVar(fieldName), comma);
+                } else if (target instanceof TimestampShape) {
+                    String encodeHelper = timestampEncodeHelper(
+                            httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
+                    writer.write("    <<\"$L\">> => $L($L)$L",
+                            jsonKey, encodeHelper, toBindingVar(fieldName), comma);
                 } else {
                     writer.write("    <<\"$L\">> => $L$L", jsonKey, toBindingVar(fieldName), comma);
                 }
@@ -467,6 +484,11 @@ public final class ErlangRestJson1Emitter {
             } else if (target instanceof UnionShape) {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
                 recordFields.add("    " + fieldName + " = decode_" + helperName
+                        + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
+            } else if (target instanceof TimestampShape) {
+                String decodeHelper = timestampDecodeHelper(
+                        httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
+                recordFields.add("    " + fieldName + " = " + decodeHelper
                         + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
             } else {
                 recordFields.add("    " + documentDecodeAssignment(fieldName, jsonKey, target));
@@ -800,6 +822,44 @@ public final class ErlangRestJson1Emitter {
         writer.write("encode_sparse_map(Map) when is_map(Map) ->");
         writer.write("    maps:map(fun(_K, undefined) -> null; (_K, V) -> V end, Map).");
         writer.write("");
+        writer.write("%% Timestamp helpers");
+        writer.write("%% Erlang timestamp() is {MegaSecs, Secs, MicroSecs}.");
+        writer.write("encode_timestamp_epoch_seconds({Mega, Secs, _Micro}) ->");
+        writer.write("    Mega * 1000000 + Secs;");
+        writer.write("encode_timestamp_epoch_seconds(undefined) -> null.");
+        writer.write("");
+        writer.write("encode_timestamp_date_time({Mega, Secs, _Micro}) ->");
+        writer.write("    EpochSecs = Mega * 1000000 + Secs,");
+        writer.write("    {{Y, Mo, D}, {H, Mi, S}} = calendar:gregorian_seconds_to_datetime(");
+        writer.write("        EpochSecs + 62167219200),");
+        writer.write("    iolist_to_binary(io_lib:format(");
+        writer.write("        \"~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0BZ\",");
+        writer.write("        [Y, Mo, D, H, Mi, S]));");
+        writer.write("encode_timestamp_date_time(undefined) -> null.");
+        writer.write("");
+        writer.write("decode_timestamp_epoch_seconds(null) -> undefined;");
+        writer.write("decode_timestamp_epoch_seconds(undefined) -> undefined;");
+        writer.write("decode_timestamp_epoch_seconds(V) when is_number(V) ->");
+        writer.write("    Mega = V div 1000000,");
+        writer.write("    Secs = V rem 1000000,");
+        writer.write("    {Mega, Secs, 0}.");
+        writer.write("");
+        writer.write("decode_timestamp_date_time(null) -> undefined;");
+        writer.write("decode_timestamp_date_time(undefined) -> undefined;");
+        writer.write("decode_timestamp_date_time(V) when is_binary(V) ->");
+        writer.write("    %% Minimal ISO 8601 parse: YYYY-MM-DDTHH:MM:SSZ");
+        writer.write("    try");
+        writer.write("        <<Y:4/binary, \"-\", Mo:2/binary, \"-\", D:2/binary, \"T\",");
+        writer.write("          H:2/binary, \":\", Mi:2/binary, \":\", S:2/binary, _/binary>> = V,");
+        writer.write("        Dt = {{binary_to_integer(Y), binary_to_integer(Mo), binary_to_integer(D)},");
+        writer.write("              {binary_to_integer(H), binary_to_integer(Mi), binary_to_integer(S)}},");
+        writer.write("        GregorianSecs = calendar:datetime_to_gregorian_seconds(Dt),");
+        writer.write("        EpochSecs = GregorianSecs - 62167219200,");
+        writer.write("        Mega = EpochSecs div 1000000,");
+        writer.write("        {Mega, EpochSecs rem 1000000, 0}");
+        writer.write("    catch _:_ -> undefined");
+        writer.write("    end.");
+        writer.write("");
     }
 
     /** Record tag for #-record{} syntax; symbol names carry a trailing {@code ()} type suffix. */
@@ -843,6 +903,24 @@ public final class ErlangRestJson1Emitter {
             return fieldName + " = " + raw;
         }
         return fieldName + " = " + raw;
+    }
+
+    private static String timestampEncodeHelper(
+            HttpBindingIndex httpIndex, MemberShape member, HttpBinding.Location location) {
+        TimestampFormatTrait.Format fmt = httpIndex.determineTimestampFormat(
+                member, location, TimestampFormatTrait.Format.DATE_TIME);
+        return fmt == TimestampFormatTrait.Format.EPOCH_SECONDS
+                ? "encode_timestamp_epoch_seconds"
+                : "encode_timestamp_date_time";
+    }
+
+    private static String timestampDecodeHelper(
+            HttpBindingIndex httpIndex, MemberShape member, HttpBinding.Location location) {
+        TimestampFormatTrait.Format fmt = httpIndex.determineTimestampFormat(
+                member, location, TimestampFormatTrait.Format.DATE_TIME);
+        return fmt == TimestampFormatTrait.Format.EPOCH_SECONDS
+                ? "decode_timestamp_epoch_seconds"
+                : "decode_timestamp_date_time";
     }
 
     private static String encodeDocumentValue(Shape target, String fieldName) {
