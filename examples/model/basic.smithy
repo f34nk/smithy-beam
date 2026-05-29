@@ -7,7 +7,8 @@ use smithy.api#error
 use smithy.api#String
 use smithy.api#retryable
 
-// Simple shapes — one named type per Smithy prelude scalar.
+// Simple shapes — one named type per Smithy prelude scalar supported by restJson1.
+// bigDecimal is omitted here; restJson1 wire encoding requires an explicit opt-in codec.
 
 string BasicString
 integer BasicInteger
@@ -18,7 +19,6 @@ blob BasicBlob
 byte BasicByte
 short BasicShort
 double BasicDouble
-bigDecimal BasicBigDecimal
 bigInteger BasicBigInteger
 timestamp BasicTimestamp
 document BasicDocument
@@ -149,7 +149,6 @@ structure TypeClosureOutput {
     basicByte: BasicByte
     basicShort: BasicShort
     basicDouble: BasicDouble
-    basicBigDecimal: BasicBigDecimal
     basicBigInteger: BasicBigInteger
     basicTimestamp: BasicTimestamp
     basicDocument: BasicDocument
