@@ -125,30 +125,29 @@ class BeamProtocolResolverTest {
                         $version: "2"
                         namespace test
 
-                        use aws.protocols#restJson1
+                        use smithy.api#default
                         use smithy.api#streaming
 
-                        @restJson1
                         service Svc {
                             version: "2026"
                             operations: [Op]
                         }
 
-                        @http(method: "POST", uri: "/op")
+                        @readonly
                         operation Op {
-                            input: OpInput
                             output: OpOutput
                         }
 
-                        structure OpInput {
+                        structure OpOutput {
+                            @default("")
                             data: StreamBlob
                         }
-                        structure OpOutput {}
 
                         @streaming
                         blob StreamBlob
                         """)
-                .discoverModels().assemble().unwrap();
+                .assemble()
+                .unwrap();
 
         ServiceShape service = model.getServiceShapes().iterator().next();
         ShapeId protocol = ShapeId.from("aws.protocols#restJson1");
