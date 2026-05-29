@@ -9,6 +9,8 @@ import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.EnumShape;
 import software.amazon.smithy.model.shapes.IntEnumShape;
+import software.amazon.smithy.model.shapes.ListShape;
+import software.amazon.smithy.model.shapes.MapShape;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -19,6 +21,7 @@ import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
+import software.amazon.smithy.model.traits.SparseTrait;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -202,7 +205,8 @@ public final class ErlangRestJson1Emitter {
                     writer.write("    <<\"$L\">> => encode_$L($L)$L",
                             jsonKey, helperName, toBindingVar(fieldName), comma);
                 } else {
-                    writer.write("    <<\"$L\">> => $L$L", jsonKey, toBindingVar(fieldName), comma);
+                    writer.write("    <<\"$L\">> => $L$L",
+                            jsonKey, encodeDocumentValue(target, fieldName), comma);
                 }
             }
             writer.write("}),");
@@ -298,8 +302,7 @@ public final class ErlangRestJson1Emitter {
                 recordFields.add("    " + fieldName + " = decode_" + helperName
                         + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
             } else {
-                recordFields.add(
-                        "    " + fieldName + " = maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined)");
+                recordFields.add("    " + documentDecodeAssignment(fieldName, jsonKey, target));
             }
         }
 
@@ -466,7 +469,7 @@ public final class ErlangRestJson1Emitter {
                 recordFields.add("    " + fieldName + " = decode_" + helperName
                         + "(maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined))");
             } else {
-                recordFields.add("    " + fieldName + " = maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined)");
+                recordFields.add("    " + documentDecodeAssignment(fieldName, jsonKey, target));
             }
         }
         for (HttpBinding pb : respPayload) {
@@ -777,6 +780,26 @@ public final class ErlangRestJson1Emitter {
         writer.write("        _ -> #{}");
         writer.write("    end.");
         writer.write("");
+        writer.write("decode_sparse_list(undefined) -> undefined;");
+        writer.write("decode_sparse_list(List) when is_list(List) ->");
+        writer.write("    [case V of null -> undefined; _ -> V end || V <- List].");
+        writer.write("");
+        writer.write("decode_list(undefined) -> undefined;");
+        writer.write("decode_list(List) when is_list(List) ->");
+        writer.write("    [V || V <- List, V =/= null].");
+        writer.write("");
+        writer.write("decode_sparse_map(undefined) -> undefined;");
+        writer.write("decode_sparse_map(Map) when is_map(Map) ->");
+        writer.write("    maps:map(fun(_K, null) -> undefined; (_K, V) -> V end, Map).");
+        writer.write("");
+        writer.write("encode_sparse_list(undefined) -> null;");
+        writer.write("encode_sparse_list(List) when is_list(List) ->");
+        writer.write("    [case V of undefined -> null; _ -> V end || V <- List].");
+        writer.write("");
+        writer.write("encode_sparse_map(undefined) -> null;");
+        writer.write("encode_sparse_map(Map) when is_map(Map) ->");
+        writer.write("    maps:map(fun(_K, undefined) -> null; (_K, V) -> V end, Map).");
+        writer.write("");
     }
 
     /** Record tag for #-record{} syntax; symbol names carry a trailing {@code ()} type suffix. */
@@ -805,6 +828,32 @@ public final class ErlangRestJson1Emitter {
             return snakeField;
         }
         return Character.toUpperCase(snakeField.charAt(0)) + snakeField.substring(1);
+    }
+
+    private static String documentDecodeAssignment(String fieldName, String jsonKey, Shape target) {
+        String raw = "maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined)";
+        if (target instanceof ListShape) {
+            String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
+            return fieldName + " = " + helper + "(" + raw + ")";
+        }
+        if (target instanceof MapShape) {
+            if (target.hasTrait(SparseTrait.class)) {
+                return fieldName + " = decode_sparse_map(" + raw + ")";
+            }
+            return fieldName + " = " + raw;
+        }
+        return fieldName + " = " + raw;
+    }
+
+    private static String encodeDocumentValue(Shape target, String fieldName) {
+        String binding = toBindingVar(fieldName);
+        if (target instanceof ListShape && target.hasTrait(SparseTrait.class)) {
+            return "encode_sparse_list(" + binding + ")";
+        }
+        if (target instanceof MapShape && target.hasTrait(SparseTrait.class)) {
+            return "encode_sparse_map(" + binding + ")";
+        }
+        return binding;
     }
 
     @SafeVarargs
