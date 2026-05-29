@@ -30,6 +30,7 @@ class ErlangClientErrorDispatchTest {
                         .withMember("service",
                                 "smithy.beam.demo.error_shapes#ErrorFixtureService")
                         .withMember("edition", "2026")
+                        .withMember("protocol", "aws.protocols#restJson1")
                         .build())
                 .build());
 
