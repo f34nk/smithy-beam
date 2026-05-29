@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ElixirServerPluginTest {
 
     private static final String TYPES_FILE = "basic_types.ex";
-    private static final String SERVER_FILE = "basic_server.ex";
+    private static final String SERVER_FILE = "basic_service_server.ex";
 
     private static Model loadModel() {
         URL resource = ElixirServerPluginTest.class.getResource("/model/basic.smithy");
@@ -67,16 +67,16 @@ class ElixirServerPluginTest {
     }
 
     private static void assertServerStubHeaderOrder(String serverSource) {
-        assertThat(serverSource).contains("defmodule BasicServer do");
+        assertThat(serverSource).contains("defmodule BasicServiceServer do");
         assertThat(serverSource).contains("@moduledoc \"\"\"");
-        assertThat(serverSource).contains("alias Basic");
+        assertThat(serverSource).contains("alias BasicTypes");
         assertThat(serverSource)
-                .contains("@spec handle_get_type_closure(term(), Basic.GetTypeClosureInput.t(), term())");
+                .contains("@spec handle_get_type_closure(term(), BasicTypes.GetTypeClosureInput.t(), term())");
         assertThat(serverSource)
                 .contains("def handle_get_type_closure(_ctx, _input, _meta), do: {:error, :not_implemented}");
-        int moduleIndex = serverSource.indexOf("defmodule BasicServer do");
+        int moduleIndex = serverSource.indexOf("defmodule BasicServiceServer do");
         int moduledocIndex = serverSource.indexOf("@moduledoc \"\"\"");
-        int aliasIndex = serverSource.indexOf("alias Basic");
+        int aliasIndex = serverSource.indexOf("alias BasicTypes");
         int specIndex = serverSource.indexOf("@spec handle_get_type_closure");
         assertThat(moduleIndex).isLessThan(moduledocIndex);
         assertThat(moduledocIndex).isLessThan(aliasIndex);
@@ -153,8 +153,8 @@ class ElixirServerPluginTest {
                 .build());
         assertThat(extended.expectFileString("multi_types.ex"))
                 .isEqualTo(baseline.expectFileString("multi_types.ex"));
-        assertThat(extended.expectFileString("multi_server.ex"))
-                .isEqualTo(baseline.expectFileString("multi_server.ex"));
+        assertThat(extended.expectFileString("service_a_server.ex"))
+                .isEqualTo(baseline.expectFileString("service_a_server.ex"));
     }
 
     @Test
@@ -204,11 +204,11 @@ class ElixirServerPluginTest {
                 .settings(settings)
                 .build());
 
-        String org = manifest.expectFileString("resource_lifecycle_organization_server.ex");
-        assertThat(org).contains("defmodule ResourceLifecycleOrganizationServer do");
+        String org = manifest.expectFileString("organization_resource.ex");
+        assertThat(org).contains("defmodule OrganizationResource do");
         assertThat(org).contains("handle_read(");
-        assertThat(org).contains("ResourceLifecycleServer.handle_get_organization(");
-        assertThat(org).contains("ResourceLifecycleServer.handle_create_organization(ctx, input, meta)");
+        assertThat(org).contains("ResourceLifecycleServiceServer.handle_get_organization(");
+        assertThat(org).contains("ResourceLifecycleServiceServer.handle_create_organization(ctx, input, meta)");
         assertThat(org).doesNotContain("%{input | }");
     }
 }
