@@ -1,9 +1,13 @@
 package io.smithy.beam.test;
 
 import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.erlang.ErlangClientPlugin;
 import org.junit.jupiter.api.Test;
+import software.amazon.smithy.build.MockManifest;
+import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
+import software.amazon.smithy.model.node.ObjectNode;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
@@ -15,6 +19,54 @@ import java.util.Objects;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class TimestampBindingFormatTest {
+
+    private static final String DATE_TIME_MODEL = """
+            $version: "2"
+            namespace smithy.beam.demo.timestamps
+
+            use aws.protocols#restJson1
+
+            @restJson1
+            service DateTimeTimestampService {
+                version: "2026"
+                operations: [RecordDateTimeTimestamp]
+            }
+
+            @http(method: "POST", uri: "/record-date-time", code: 200)
+            operation RecordDateTimeTimestamp {
+                input: DateTimeTimestampBody
+                output: DateTimeTimestampBody
+            }
+
+            structure DateTimeTimestampBody {
+                @timestampFormat("date-time")
+                createdAt: Timestamp
+            }
+            """;
+
+    private static final String EPOCH_SECONDS_MODEL = """
+            $version: "2"
+            namespace smithy.beam.demo.timestamps
+
+            use aws.protocols#restJson1
+
+            @restJson1
+            service EpochTimestampService {
+                version: "2026"
+                operations: [RecordEpochTimestamp]
+            }
+
+            @http(method: "POST", uri: "/record-epoch", code: 200)
+            operation RecordEpochTimestamp {
+                input: EpochTimestampBody
+                output: EpochTimestampBody
+            }
+
+            structure EpochTimestampBody {
+                @timestampFormat("epoch-seconds")
+                recordedAt: Timestamp
+            }
+            """;
 
     @Test
     void fixtureChoosesFormatFromBindingIndex() {
@@ -31,7 +83,47 @@ class TimestampBindingFormatTest {
         TimestampFormatTrait.Format format =
                 bindings.timestampFormat(created, HttpBinding.Location.DOCUMENT, TimestampFormatTrait.Format.DATE_TIME);
         assertThat(format).isNotNull();
-        // TODO: when codecs emit literals, assert encoder ignores modeled timezone display strings
-        // and always serializes instants using the resolved TimestampFormatTrait.Format.
+    }
+
+    @Test
+    void dateTimeTimestampMemberUsesDateTimeHelper() {
+        Model model = Model.assembler()
+                .addUnparsedModel("timestamp_date_time.smithy", DATE_TIME_MODEL)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = runCodec(
+                model, "smithy.beam.demo.timestamps#DateTimeTimestampService");
+        String codec = manifest.getFileString("timestamps_service_rest_json_1.erl").orElse("");
+        assertThat(codec).contains("decode_timestamp_date_time(");
+        assertThat(codec).contains("encode_timestamp_date_time(");
+    }
+
+    @Test
+    void epochSecondsTimestampMemberUsesEpochHelper() {
+        Model model = Model.assembler()
+                .addUnparsedModel("timestamp_epoch_seconds.smithy", EPOCH_SECONDS_MODEL)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = runCodec(
+                model, "smithy.beam.demo.timestamps#EpochTimestampService");
+        String codec = manifest.getFileString("timestamps_service_rest_json_1.erl").orElse("");
+        assertThat(codec).contains("decode_timestamp_epoch_seconds(");
+        assertThat(codec).contains("encode_timestamp_epoch_seconds(");
+    }
+
+    private static MockManifest runCodec(Model model, String serviceId) {
+        MockManifest manifest = new MockManifest();
+        new ErlangClientPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(ObjectNode.builder()
+                        .withMember("service", serviceId)
+                        .withMember("edition", "2026")
+                        .withMember("protocol", "aws.protocols#restJson1")
+                        .build())
+                .build());
+        return manifest;
     }
 }
