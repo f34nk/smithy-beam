@@ -352,7 +352,7 @@ final class ErlangDirectedCodegen
 
     /**
      * Stub. Future: generate the Erlang client module
-     * ({service_name}_client.erl) with operation stubs and request/response types.
+     * ({module_prefix}_service_client.erl) with operation stubs and request/response types.
      */
     @Override
     public void generateService(
