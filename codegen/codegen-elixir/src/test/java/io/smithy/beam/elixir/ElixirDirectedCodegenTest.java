@@ -293,7 +293,7 @@ class ElixirDirectedCodegenTest {
         settings.edition("2026");
         BeamElixirLayout layout = new BeamElixirLayout(settings, service.getId().getNamespace());
         String typesModule = layout.typesModuleFile();
-        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         SymbolProvider symbolProvider = new ElixirSymbolProvider(
                 settings,
                 preambleModel,
