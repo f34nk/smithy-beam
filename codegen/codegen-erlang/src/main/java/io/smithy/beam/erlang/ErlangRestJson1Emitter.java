@@ -665,7 +665,8 @@ public final class ErlangRestJson1Emitter {
             String tag = unionTagForMember(sp, m);
             writer.write("encode_$L({$L, V}) -> #{<<\"$L\">> => V};", helperName, tag, wireKey);
         }
-        writer.write("encode_$L({unknown, K}) when is_binary(K) -> #{K => null}.", helperName);
+        writer.write("encode_$L({unknown, K}) when is_binary(K) -> #{K => null};", helperName);
+        writer.write("encode_$L(undefined) -> undefined.", helperName);
         writer.write("");
     }
 

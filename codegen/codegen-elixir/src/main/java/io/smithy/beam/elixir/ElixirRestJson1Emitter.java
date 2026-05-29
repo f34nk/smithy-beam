@@ -608,6 +608,7 @@ public final class ElixirRestJson1Emitter {
             writer.write("defp encode_$L({$L, v}), do: %{\"$L\" => v}", helperName, tag, wireKey);
         }
         writer.write("defp encode_$L({:unknown, k}) when is_binary(k), do: %{k => nil}", helperName);
+        writer.write("defp encode_$L(nil), do: nil", helperName);
         writer.write("");
     }
 
