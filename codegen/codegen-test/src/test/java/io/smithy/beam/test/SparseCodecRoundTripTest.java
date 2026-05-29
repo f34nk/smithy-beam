@@ -29,7 +29,7 @@ class SparseCodecRoundTripTest {
                 .build());
 
         String codec = manifest.getFileString(
-                "sparse_collections_service_rest_json_1.erl").orElse("");
+                "sparse_collections_rest_json_rest_json_1.erl").orElse("");
         assertThat(codec).contains("decode_sparse_list(");
         assertThat(codec).contains("decode_list(");
         assertThat(codec).contains("null -> undefined");

@@ -155,10 +155,10 @@ class ErlangIntegrationSectionsTest {
 
         runClientDirectedCodegen(context);
 
-        assertThat(manifest.getFileString("protocoljson_service_rest_json_1.erl"))
+        assertThat(manifest.getFileString("demo_rest_json_rest_json_1.erl"))
                 .isPresent();
         assertThat(manifest.getFileString("runtime_http.erl")).isPresent();
-        assertThat(manifest.expectFileString("protocoljson_service_client.erl"))
+        assertThat(manifest.expectFileString("demo_rest_json_client.erl"))
                 .contains("%% recording-erlang-integration was here");
     }
 

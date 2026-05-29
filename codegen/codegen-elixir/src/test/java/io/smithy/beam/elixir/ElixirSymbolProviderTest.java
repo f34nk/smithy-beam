@@ -458,7 +458,7 @@ class ElixirSymbolProviderTest {
                             "Example",
                             BeamCodegenKind.CLIENT);
             Symbol sym = clientProvider.toSymbol(service);
-            assertThat(sym.getName()).isEqualTo("ExampleServiceClient");
+            assertThat(sym.getName()).isEqualTo("TestServiceClient");
             assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
             assertThat(sym.getDefinitionFile()).isEqualTo("example_client.ex");
         }

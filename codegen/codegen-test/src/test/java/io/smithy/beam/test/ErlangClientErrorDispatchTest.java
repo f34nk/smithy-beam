@@ -49,6 +49,6 @@ class ErlangClientErrorDispatchTest {
                         .withMember("edition", "2026")
                         .build())
                 .build());
-        return manifest.expectFileString("error_shapes_service_rest_json_1.erl");
+        return manifest.expectFileString("error_fixture_service_rest_json_1.erl");
     }
 }

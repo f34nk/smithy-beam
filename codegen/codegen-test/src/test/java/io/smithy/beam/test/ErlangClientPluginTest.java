@@ -173,19 +173,19 @@ class ErlangClientPluginTest {
                 .settings(settings)
                 .build());
 
-        assertThat(manifest.expectFileString("protocoljson_service_rest_json_1.erl"))
-                .contains("-module(protocoljson_service_rest_json_1).")
+        assertThat(manifest.expectFileString("demo_rest_json_rest_json_1.erl"))
+                .contains("-module(demo_rest_json_rest_json_1).")
                 .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
         assertThat(manifest.expectFileString("runtime_http.erl"))
                 .contains("-module(runtime_http).")
                 .contains("HttpClient = maps:get(http_client, Config, httpc),")
                 .contains("dispatch(HttpClient, Config, #http_request{");
-        String client = manifest.expectFileString("protocoljson_service_client.erl");
+        String client = manifest.expectFileString("demo_rest_json_client.erl");
         assertThat(client)
                 .contains("describe_item(Config, Input) ->")
-                .contains("Req = protocoljson_service_rest_json_1:encode_describe_item_request(Input),")
+                .contains("Req = demo_rest_json_rest_json_1:encode_describe_item_request(Input),")
                 .contains("case runtime_http:dispatch(Config, Req) of")
-                .contains("protocoljson_service_rest_json_1:decode_describe_item_response(Resp);");
+                .contains("demo_rest_json_rest_json_1:decode_describe_item_response(Resp);");
     }
 
     @Test
@@ -208,7 +208,7 @@ class ErlangClientPluginTest {
                 .settings(settings)
                 .build());
 
-        String codec = manifest.expectFileString("protocoljson_service_rest_json_1.erl");
+        String codec = manifest.expectFileString("demo_rest_json_rest_json_1.erl");
         assertThat(codec).contains("encode_describe_item_request(");
         assertThat(codec).contains("decode_describe_item_response(");
         assertThat(codec).contains("http_request{");
@@ -238,7 +238,7 @@ class ErlangClientPluginTest {
         assertThat(router).contains("<<\"/items/\", NameSeg/binary>>");
         assertThat(router).contains("parse_labels(Path, <<\"/items/{id}\">>)");
         assertThat(router).contains("demo_rest_json_rest_json_1:decode_describe_item_request");
-        assertThat(router).doesNotContain("protocoljson_service_rest_json_1:decode_");
+        assertThat(router).doesNotContain("demo_rest_json_rest_json_1:decode_describe_item_response");
         assertThat(router).contains("<<\"/items\">>");
         assertThat(router).doesNotContain("Path = Path");
         assertThat(router).contains("end;\nroute(");

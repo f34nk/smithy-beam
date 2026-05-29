@@ -36,7 +36,7 @@ public final class BeamElixirLayout {
     }
 
     public String clientModuleName() {
-        return modulePrefix() + "_service_client";
+        return serviceSnakeName() + "_client";
     }
 
     public String serverModuleFile() {
@@ -64,7 +64,7 @@ public final class BeamElixirLayout {
     }
 
     public String clientCodecModuleName() {
-        return modulePrefix() + "_service_rest_json_1";
+        return serviceSnakeName() + "_rest_json_1";
     }
 
     public String runtimeTypesModuleFile() {
@@ -96,7 +96,7 @@ public final class BeamElixirLayout {
     }
 
     public String paginatorsModuleName() {
-        return modulePrefix() + "_service_paginators";
+        return serviceSnakeName() + "_paginators";
     }
 
     public String resourceClientModuleFile(String resourceSnakeName) {

@@ -32,7 +32,7 @@ class EnumRoundTripTest {
                         .build())
                 .build());
 
-        String codec = manifest.getFileString("protocoljson_service_rest_json_1.erl").orElse("");
+        String codec = manifest.getFileString("demo_rest_json_rest_json_1.erl").orElse("");
         assertThat(codec).contains("when is_binary(V) -> {unknown, V}");
         assertThat(codec).contains("encode_");
         assertThat(codec).contains("{unknown, V}) when is_binary(V) -> V");

@@ -30,8 +30,8 @@ public final class ElixirPaginatorEmitter {
             return;
         }
 
-        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(),
-                service.getId().getNamespace());
+        BeamElixirLayout layout = new BeamElixirLayout(
+                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
         String paginatorMod = ElixirSymbolProvider.toModuleName(layout.paginatorsModuleName());
         String clientMod = ElixirSymbolProvider.toModuleName(layout.clientModuleName());
         SymbolProvider sp = ctx.symbolProvider();

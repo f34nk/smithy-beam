@@ -46,8 +46,9 @@ final class ElixirClientDirectedCodegen
     public SymbolProvider createSymbolProvider(
             CreateSymbolProviderDirective<BeamSettings> directive) {
         String ns = directive.service().getId().getNamespace();
+        String serviceName = directive.service().getId().getName();
         BeamSettings settings = directive.settings();
-        BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
+        BeamElixirLayout layout = new BeamElixirLayout(settings, ns, serviceName);
         String definitionFile = layout.clientModuleFile();
         String clientModuleName = ElixirSymbolProvider.toModuleName(layout.clientModuleName());
         return SymbolProvider.cache(
@@ -73,8 +74,9 @@ final class ElixirClientDirectedCodegen
                     BeamProtocolCodegenFactory.create(directive.model(), serviceProtocol.get());
         }
         String ns = service.getId().getNamespace();
+        String serviceName = service.getId().getName();
         BeamSettings settings = directive.settings();
-        BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
+        BeamElixirLayout layout = new BeamElixirLayout(settings, ns, serviceName);
         String definitionFile = layout.clientModuleFile();
         String clientModuleName = ElixirSymbolProvider.toModuleName(layout.clientModuleName());
         return new ElixirContext(
@@ -106,7 +108,8 @@ final class ElixirClientDirectedCodegen
                                         directive.model(), service, protocol));
 
         String ns = service.getId().getNamespace();
-        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
+        BeamElixirLayout layout = new BeamElixirLayout(
+                ctx.settings(), ns, service.getId().getName());
         String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         String runtimeTypesModule =
                 ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
@@ -194,7 +197,8 @@ final class ElixirClientDirectedCodegen
         Symbol opSym = sp.toSymbol(op);
 
         String ns = ctx.service().getId().getNamespace();
-        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
+        BeamElixirLayout layout = new BeamElixirLayout(
+                ctx.settings(), ns, ctx.service().getId().getName());
         String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
 
         StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);

@@ -57,7 +57,7 @@ class JsonNameCodecTest {
                 .build());
 
         String codec = manifest.getFileString(
-                "jsonname_service_rest_json_1.erl").orElse("");
+                "json_name_service_rest_json_1.erl").orElse("");
         assertThat(codec).contains("<<\"displayName\">>");
         assertThat(codec).doesNotContain("<<\"name\">>");
     }

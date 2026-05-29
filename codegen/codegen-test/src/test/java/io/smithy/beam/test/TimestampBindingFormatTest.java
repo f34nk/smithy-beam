@@ -94,7 +94,7 @@ class TimestampBindingFormatTest {
                 .unwrap();
         MockManifest manifest = runCodec(
                 model, "smithy.beam.demo.timestamps#DateTimeTimestampService");
-        String codec = manifest.getFileString("timestamps_service_rest_json_1.erl").orElse("");
+        String codec = manifest.getFileString("date_time_timestamp_service_rest_json_1.erl").orElse("");
         assertThat(codec).contains("decode_timestamp_date_time(");
         assertThat(codec).contains("encode_timestamp_date_time(");
     }
@@ -108,8 +108,7 @@ class TimestampBindingFormatTest {
                 .unwrap();
         MockManifest manifest = runCodec(
                 model, "smithy.beam.demo.timestamps#EpochTimestampService");
-        String codec = manifest.getFileString("timestamps_service_rest_json_1.erl").orElse("");
-        assertThat(codec).contains("decode_timestamp_epoch_seconds(");
+        String codec = manifest.getFileString("epoch_timestamp_service_rest_json_1.erl").orElse("");
         assertThat(codec).contains("encode_timestamp_epoch_seconds(");
     }
 

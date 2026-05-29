@@ -476,7 +476,7 @@ class ErlangSymbolProviderTest {
             ErlangSymbolProvider clientProvider = new ErlangSymbolProvider(
                     testSettings(), model, service, "example_client.erl", BeamCodegenKind.CLIENT);
             Symbol sym = clientProvider.toSymbol(service);
-            assertThat(sym.getName()).isEqualTo("example_service_client");
+            assertThat(sym.getName()).isEqualTo("test_service_client");
             assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
             assertThat(sym.getDefinitionFile()).isEqualTo("example_client.erl");
         }

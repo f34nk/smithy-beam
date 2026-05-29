@@ -46,8 +46,9 @@ final class ErlangClientDirectedCodegen
     public SymbolProvider createSymbolProvider(
             CreateSymbolProviderDirective<BeamSettings> directive) {
         String ns = directive.service().getId().getNamespace();
+        String serviceName = directive.service().getId().getName();
         BeamSettings settings = directive.settings();
-        BeamErlangLayout layout = new BeamErlangLayout(settings, ns);
+        BeamErlangLayout layout = new BeamErlangLayout(settings, ns, serviceName);
         String definitionFile = layout.clientModuleFile();
         return SymbolProvider.cache(
                 new ErlangSymbolProvider(
@@ -71,8 +72,9 @@ final class ErlangClientDirectedCodegen
                     BeamProtocolCodegenFactory.create(directive.model(), serviceProtocol.get());
         }
         String ns = service.getId().getNamespace();
+        String serviceName = service.getId().getName();
         BeamSettings settings = directive.settings();
-        BeamErlangLayout layout = new BeamErlangLayout(settings, ns);
+        BeamErlangLayout layout = new BeamErlangLayout(settings, ns, serviceName);
         String definitionFile = layout.clientModuleFile();
         String moduleName = layout.clientModuleName();
         return new ErlangContext(
@@ -104,7 +106,8 @@ final class ErlangClientDirectedCodegen
                                         directive.model(), service, protocol));
 
         String ns = service.getId().getNamespace();
-        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns);
+        BeamErlangLayout layout = new BeamErlangLayout(
+                ctx.settings(), ns, service.getId().getName());
 
         ctx.writerDelegator().useFileWriter(
                 layout.runtimeTypesHeaderFile(),
@@ -203,8 +206,8 @@ final class ErlangClientDirectedCodegen
         Symbol inSym = sp.toSymbol(input);
         Symbol outSym = sp.toSymbol(output);
 
-        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(),
-                ctx.service().getId().getNamespace());
+        BeamErlangLayout layout = new BeamErlangLayout(
+                ctx.settings(), ctx.service().getId().getNamespace(), ctx.service().getId().getName());
         boolean hasProtocol = ctx.protocolCodegen() != null
                 && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
                         ctx.protocolCodegen().protocolTraitId());

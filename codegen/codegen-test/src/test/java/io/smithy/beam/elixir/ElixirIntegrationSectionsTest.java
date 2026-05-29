@@ -155,10 +155,10 @@ class ElixirIntegrationSectionsTest {
 
         runClientDirectedCodegen(context);
 
-        assertThat(manifest.getFileString("protocoljson_service_rest_json_1.ex"))
+        assertThat(manifest.getFileString("demo_rest_json_rest_json_1.ex"))
                 .isPresent();
         assertThat(manifest.getFileString("runtime_http.ex")).isPresent();
-        assertThat(manifest.expectFileString("protocoljson_service_client.ex"))
+        assertThat(manifest.expectFileString("demo_rest_json_client.ex"))
                 .contains("# recording-elixir-integration was here");
     }
 

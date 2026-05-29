@@ -33,8 +33,8 @@ public final class ErlangPaginatorEmitter {
             return;
         }
 
-        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(),
-                service.getId().getNamespace());
+        BeamErlangLayout layout = new BeamErlangLayout(
+                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
         String paginatorMod = layout.paginatorsModuleName();
         String clientMod = layout.clientModuleName();
         SymbolProvider sp = ctx.symbolProvider();

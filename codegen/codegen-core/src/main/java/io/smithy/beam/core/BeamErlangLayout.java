@@ -37,7 +37,7 @@ public final class BeamErlangLayout {
     }
 
     public String clientModuleName() {
-        return modulePrefix() + "_service_client";
+        return serviceSnakeName() + "_client";
     }
 
     public String serverModuleName() {
@@ -61,7 +61,7 @@ public final class BeamErlangLayout {
     }
 
     public String clientCodecModuleName() {
-        return modulePrefix() + "_service_rest_json_1";
+        return serviceSnakeName() + "_rest_json_1";
     }
 
     public String serverCodecModuleFile() {
@@ -97,7 +97,7 @@ public final class BeamErlangLayout {
     }
 
     public String paginatorsModuleName() {
-        return modulePrefix() + "_service_paginators";
+        return serviceSnakeName() + "_paginators";
     }
 
     public String resourceClientModuleFile(String resourceSnakeName) {

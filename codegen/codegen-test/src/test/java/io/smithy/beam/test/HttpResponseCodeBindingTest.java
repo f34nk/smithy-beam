@@ -60,7 +60,7 @@ class HttpResponseCodeBindingTest {
                 .build());
 
         String codec = manifest.getFileString(
-                "httpresponsecode_service_rest_json_1.erl").orElse("");
+                "http_response_code_service_rest_json_1.erl").orElse("");
         assertThat(codec).contains("HttpStatus");
         assertThat(codec).contains("status_code = HttpStatus");
     }
@@ -81,7 +81,7 @@ class HttpResponseCodeBindingTest {
                 .build());
 
         String codec = manifest.getFileString(
-                "httpresponsecode_service_rest_json_1.ex").orElse("");
+                "http_response_code_service_rest_json_1.ex").orElse("");
         assertThat(codec).contains("http_status");
         assertThat(codec).contains("status_code: http_status");
     }

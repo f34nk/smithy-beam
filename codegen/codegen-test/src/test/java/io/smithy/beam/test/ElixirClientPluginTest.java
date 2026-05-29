@@ -204,15 +204,15 @@ class ElixirClientPluginTest {
                 .settings(settings)
                 .build());
 
-        assertThat(manifest.expectFileString("protocoljson_service_rest_json_1.ex"))
-                .contains("defmodule ProtocoljsonServiceRestJson1 do")
+        assertThat(manifest.expectFileString("demo_rest_json_rest_json_1.ex"))
+                .contains("defmodule DemoRestJsonRestJson1 do")
                 .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
         assertThat(manifest.expectFileString("runtime_http.ex"))
                 .contains("defmodule RuntimeHttp do")
                 .contains("http_client = Map.get(config, :http_client, ReqClient)")
                 .contains("def dispatch(http_client, config, %RuntimeTypes.HttpRequest{} = req) do")
                 .contains("case http_client.request(req_opts) do");
-        assertThat(manifest.expectFileString("protocoljson_service_client.ex"))
+        assertThat(manifest.expectFileString("demo_rest_json_client.ex"))
                 .contains("# HTTP request bindings for smithy.beam.demo.protocoljson#DescribeItem:")
                 .contains("#   id @ LABEL")
                 .contains("#   requestTag @ HEADER")
@@ -239,7 +239,7 @@ class ElixirClientPluginTest {
                 .settings(settings)
                 .build());
 
-        String codec = manifest.expectFileString("protocoljson_service_rest_json_1.ex");
+        String codec = manifest.expectFileString("demo_rest_json_rest_json_1.ex");
         assertThat(codec).contains("def encode_describe_item_request(");
         assertThat(codec).contains("def decode_describe_item_request(");
         assertThat(codec).contains("def decode_describe_item_response(");

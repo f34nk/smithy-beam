@@ -69,7 +69,7 @@ class HttpQueryParamsTest {
                 .build());
 
         String codec = manifest.getFileString(
-                "httpqueryparams_service_rest_json_1.erl").orElse("");
+                "http_query_params_service_rest_json_1.erl").orElse("");
         assertThat(codec).contains("maps:to_list(");
         assertThat(codec).contains("QueryExtra");
     }
@@ -90,7 +90,7 @@ class HttpQueryParamsTest {
                 .build());
 
         String codec = manifest.getFileString(
-                "httpqueryparams_service_rest_json_1.ex").orElse("");
+                "http_query_params_service_rest_json_1.ex").orElse("");
         assertThat(codec).contains("Map.to_list(");
         assertThat(codec).contains("query_extra");
         assertThat(codec).contains("Enum.concat(");

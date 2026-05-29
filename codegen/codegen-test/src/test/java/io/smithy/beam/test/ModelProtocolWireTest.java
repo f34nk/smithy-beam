@@ -83,7 +83,7 @@ class ModelProtocolWireTest {
 
             String ext = plugin.ext();
             if (plugin.client()) {
-                assertThat(manifest.getFileString("protocoljson_service_rest_json_1." + ext))
+                assertThat(manifest.getFileString("demo_rest_json_rest_json_1." + ext))
                         .isPresent();
                 assertThat(manifest.getFileString("runtime_http." + ext)).isPresent();
             } else {
