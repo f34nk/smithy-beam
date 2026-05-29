@@ -182,6 +182,7 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     public Symbol enumShape(EnumShape shape) {
         return namedModule(shape).toBuilder()
                 .putProperty("enumAtoms", new ArrayList<>(enumAtomNames.get(shape.getId()).values()))
+                .putProperty("enumAtomByMember", enumAtomNames.get(shape.getId()))
                 .putProperty("fromValueFunction", toFunctionName("from_string"))
                 .putProperty("toValueFunction", toFunctionName("to_string"))
                 .putProperty("valuesFunction", toFunctionName("values"))
@@ -192,6 +193,7 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     public Symbol intEnumShape(IntEnumShape shape) {
         return namedModule(shape).toBuilder()
                 .putProperty("enumAtoms", new ArrayList<>(enumAtomNames.get(shape.getId()).values()))
+                .putProperty("enumAtomByMember", enumAtomNames.get(shape.getId()))
                 .putProperty("fromValueFunction", toFunctionName("from_integer"))
                 .putProperty("toValueFunction", toFunctionName("to_integer"))
                 .putProperty("valuesFunction", toFunctionName("values"))

@@ -543,7 +543,7 @@ public final class ElixirRestJson1Emitter {
             String wireValue = m.getTrait(EnumValueTrait.class)
                     .flatMap(EnumValueTrait::getStringValue)
                     .orElse(m.getMemberName());
-            String atom = ":" + ((ElixirSymbolProvider) sp).toEnumAtomName(shape, m.getMemberName());
+            String atom = ":" + enumAtomForMember(sp, shape, m.getMemberName());
             writer.write("defp decode_$L(\"$L\"), do: $L", helperName, wireValue, atom);
         }
         writer.write("defp decode_$L(v) when is_binary(v), do: {:unknown, v}", helperName);
@@ -553,10 +553,11 @@ public final class ElixirRestJson1Emitter {
             String wireValue = m.getTrait(EnumValueTrait.class)
                     .flatMap(EnumValueTrait::getStringValue)
                     .orElse(m.getMemberName());
-            String atom = ":" + ((ElixirSymbolProvider) sp).toEnumAtomName(shape, m.getMemberName());
+            String atom = ":" + enumAtomForMember(sp, shape, m.getMemberName());
             writer.write("defp encode_$L($L), do: \"$L\"", helperName, atom, wireValue);
         }
         writer.write("defp encode_$L({:unknown, v}) when is_binary(v), do: v", helperName);
+        writer.write("defp encode_$L(nil), do: nil", helperName);
         writer.write("");
     }
 
@@ -565,7 +566,7 @@ public final class ElixirRestJson1Emitter {
         writer.write("# IntEnum helpers for $L", shape.getId());
         for (MemberShape m : shape.members()) {
             int wireValue = m.expectTrait(EnumValueTrait.class).expectIntValue();
-            String atom = ":" + ((ElixirSymbolProvider) sp).toEnumAtomName(shape, m.getMemberName());
+            String atom = ":" + enumAtomForMember(sp, shape, m.getMemberName());
             writer.write("defp decode_$L($L), do: $L", helperName, wireValue, atom);
         }
         writer.write("defp decode_$L(v) when is_integer(v), do: {:unknown, v}", helperName);
@@ -573,15 +574,24 @@ public final class ElixirRestJson1Emitter {
         writer.write("");
         for (MemberShape m : shape.members()) {
             int wireValue = m.expectTrait(EnumValueTrait.class).expectIntValue();
-            String atom = ":" + ((ElixirSymbolProvider) sp).toEnumAtomName(shape, m.getMemberName());
+            String atom = ":" + enumAtomForMember(sp, shape, m.getMemberName());
             writer.write("defp encode_$L($L), do: $L", helperName, atom, wireValue);
         }
         writer.write("defp encode_$L({:unknown, v}) when is_integer(v), do: v", helperName);
+        writer.write("defp encode_$L(nil), do: nil", helperName);
         writer.write("");
     }
 
     private static String enumHelperName(Shape shape) {
         return BeamNameUtils.toSnakeCase(shape.getId().getName());
+    }
+
+    private static String enumAtomForMember(SymbolProvider sp, Shape enumShape, String memberName) {
+        @SuppressWarnings("unchecked")
+        Map<String, String> byMember = sp.toSymbol(enumShape)
+                .getProperty("enumAtomByMember", Map.class)
+                .orElseThrow();
+        return byMember.get(memberName);
     }
 
     private static void emitHelpers(ElixirWriter writer) {
