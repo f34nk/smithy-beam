@@ -37,5 +37,6 @@ class EnumRoundTripTest {
         assertThat(codec).contains("when is_binary(V) -> {unknown, V}");
         assertThat(codec).contains("encode_");
         assertThat(codec).contains("{unknown, V}) when is_binary(V) -> V");
+        assertThat(codec).contains("undefined) -> undefined");
     }
 }
