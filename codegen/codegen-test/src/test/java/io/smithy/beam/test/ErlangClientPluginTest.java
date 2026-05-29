@@ -116,8 +116,8 @@ class ErlangClientPluginTest {
     }
 
     @Test
-    void relativeDateAndRelativeVersionWithoutProtocolDoNotChangeTypesOrClientStubOutput() {
-        URL resource = ErlangClientPluginTest.class.getResource("/model/multi_service.smithy");
+    void relativeDateAndRelativeVersionDoNotChangeTypesOrClientStubOutput() {
+        URL resource = ErlangClientPluginTest.class.getResource("/model/dedicated_operation_io.smithy");
         assertThat(resource).isNotNull();
         Model model = Model.assembler()
                 .addImport(resource)
@@ -126,7 +126,7 @@ class ErlangClientPluginTest {
                 .unwrap();
         MockManifest baseline = new MockManifest();
         ObjectNode baselineSettings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.multi#ServiceA")
+                .withMember("service", "smithy.beam.demo.dedicated_io#DedicatedIoService")
                 .withMember("edition", "2026")
                 .build();
         new ErlangClientPlugin().execute(PluginContext.builder()
@@ -136,7 +136,7 @@ class ErlangClientPluginTest {
                 .build());
         MockManifest extended = new MockManifest();
         ObjectNode extendedSettings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.multi#ServiceA")
+                .withMember("service", "smithy.beam.demo.dedicated_io#DedicatedIoService")
                 .withMember("edition", "2026")
                 .withMember("relativeDate", "2026-01-01")
                 .withMember("relativeVersion", "1.0.0")
@@ -146,10 +146,10 @@ class ErlangClientPluginTest {
                 .fileManifest(extended)
                 .settings(extendedSettings)
                 .build());
-        assertThat(extended.expectFileString("multi_types.hrl"))
-                .isEqualTo(baseline.expectFileString("multi_types.hrl"));
-        assertThat(extended.expectFileString("multi_service_client.erl"))
-                .isEqualTo(baseline.expectFileString("multi_service_client.erl"));
+        assertThat(extended.expectFileString("dedicated_io_types.hrl"))
+                .isEqualTo(baseline.expectFileString("dedicated_io_types.hrl"));
+        assertThat(extended.expectFileString("dedicated_io_service_client.erl"))
+                .isEqualTo(baseline.expectFileString("dedicated_io_service_client.erl"));
     }
 
     @Test
@@ -165,7 +165,6 @@ class ErlangClientPluginTest {
         ObjectNode settings = ObjectNode.builder()
                 .withMember("service", "smithy.beam.demo.protocoljson#DemoRestJson")
                 .withMember("edition", "2026")
-                .withMember("protocol", "aws.protocols#restJson1")
                 .build();
         new ErlangClientPlugin().execute(PluginContext.builder()
                 .model(model)
@@ -201,7 +200,6 @@ class ErlangClientPluginTest {
         ObjectNode settings = ObjectNode.builder()
                 .withMember("service", "smithy.beam.demo.protocoljson#DemoRestJson")
                 .withMember("edition", "2026")
-                .withMember("protocol", "aws.protocols#restJson1")
                 .build();
         new ErlangClientPlugin().execute(PluginContext.builder()
                 .model(model)
@@ -258,7 +256,6 @@ class ErlangClientPluginTest {
         ObjectNode settings = ObjectNode.builder()
                 .withMember("service", "smithy.beam.demo.multi#ServiceA")
                 .withMember("edition", "2026")
-                .withMember("protocol", "smithy.api#String")
                 .withMember("relativeDate", "2026-01-01")
                 .withMember("relativeVersion", "1.0.0")
                 .build();
@@ -268,8 +265,8 @@ class ErlangClientPluginTest {
                         .settings(settings)
                         .build()))
                 .isInstanceOf(CodegenException.class)
-                .hasMessageContaining("protocol")
-                .hasMessageContaining("smithy.api#String");
+                .hasMessageContaining("No BeamProtocolCodegen registered for protocol trait")
+                .hasMessageContaining("smithy.beam.demo.multi#TestProtocol");
     }
 
     @Test
