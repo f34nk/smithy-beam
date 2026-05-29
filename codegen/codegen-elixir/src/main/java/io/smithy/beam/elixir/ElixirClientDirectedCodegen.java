@@ -48,7 +48,7 @@ final class ElixirClientDirectedCodegen
         BeamSettings settings = directive.settings();
         BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
         String definitionFile = layout.clientModuleFile();
-        String clientModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_client");
+        String clientModuleName = ElixirSymbolProvider.toModuleName(layout.clientModuleName());
         return SymbolProvider.cache(
                 new ElixirSymbolProvider(
                         settings,
@@ -76,7 +76,7 @@ final class ElixirClientDirectedCodegen
         BeamSettings settings = directive.settings();
         BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
         String definitionFile = layout.clientModuleFile();
-        String clientModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_client");
+        String clientModuleName = ElixirSymbolProvider.toModuleName(layout.clientModuleName());
         return new ElixirContext(
                 directive.model(),
                 directive.settings(),
@@ -101,9 +101,9 @@ final class ElixirClientDirectedCodegen
         ServiceShape service = ctx.service();
         String ns = service.getId().getNamespace();
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
-        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         String runtimeTypesModule =
-                ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_runtime_types");
+                ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
 
         ctx.writerDelegator().useFileWriter(
                 layout.runtimeTypesModuleFile(),
@@ -189,7 +189,7 @@ final class ElixirClientDirectedCodegen
 
         String ns = ctx.service().getId().getNamespace();
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns);
-        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
 
         StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
         StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
@@ -218,10 +218,9 @@ final class ElixirClientDirectedCodegen
                     inType,
                     outType);
             if (hasProtocol) {
-                String codecMod = ElixirSymbolProvider.toModuleName(
-                        layout.modulePrefix() + "_rest_json_1");
+                String codecMod = ElixirSymbolProvider.toModuleName(layout.clientCodecModuleName());
                 String httpMod = ElixirSymbolProvider.toModuleName(
-                        layout.modulePrefix() + "_http");
+                        layout.runtimeHttpModuleName());
                 writer.write("def $L(config, input) do", opSym.getName());
                 writer.indent();
                 writer.write("req = $L.encode_$L_request(input)", codecMod, opSym.getName());
