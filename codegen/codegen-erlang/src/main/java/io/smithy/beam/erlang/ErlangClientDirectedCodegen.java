@@ -222,7 +222,7 @@ final class ErlangClientDirectedCodegen
                 writer.write("Req = $L:encode_$L_request(Input),",
                         layout.codecModuleName(), opSym.getName());
                 writer.write("case $L:dispatch(Config, Req) of",
-                        layout.modulePrefix() + "_http");
+                        layout.runtimeHttpModuleName());
                 writer.indent();
                 writer.write("{ok, Resp} ->");
                 writer.indent();
