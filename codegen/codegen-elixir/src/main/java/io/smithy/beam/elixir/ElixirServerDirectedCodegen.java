@@ -31,6 +31,8 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 
+import java.util.Optional;
+
 /**
  * Server-specific DirectedCodegen pass. Types are emitted by {@link ElixirTypeGeneration}
  * before this runs; this class must not write type files again.
@@ -63,12 +65,11 @@ final class ElixirServerDirectedCodegen
         ServiceShape service = directive.service();
         BeamHttpBindings httpBindings = BeamHttpBindings.from(directive.model());
         BeamProtocolCodegen protocolCodegen = null;
-        if (directive.settings().protocol() != null) {
-            ShapeId protocolId =
-                    BeamProtocolResolver.resolve(
-                            directive.model(), service, directive.settings());
+        Optional<ShapeId> serviceProtocol =
+                BeamProtocolResolver.resolveServiceProtocol(directive.model(), service);
+        if (serviceProtocol.isPresent()) {
             protocolCodegen =
-                    BeamProtocolCodegenFactory.create(directive.model(), protocolId);
+                    BeamProtocolCodegenFactory.create(directive.model(), serviceProtocol.get());
         }
         String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
@@ -98,11 +99,11 @@ final class ElixirServerDirectedCodegen
             CustomizeDirective<ElixirContext, BeamSettings> directive) {
         ElixirContext ctx = directive.context();
         ServiceShape service = ctx.service();
-        if (directive.settings().protocol() != null) {
-            ShapeId protocol =
-                    BeamProtocolResolver.resolve(directive.model(), service, directive.settings());
-            BeamProtocolResolver.assertClosureSupported(directive.model(), service, protocol);
-        }
+        BeamProtocolResolver.resolveServiceProtocol(directive.model(), service)
+                .ifPresent(
+                        protocol ->
+                                BeamProtocolResolver.assertClosureSupported(
+                                        directive.model(), service, protocol));
 
         String ns = service.getId().getNamespace();
         BeamElixirLayout layout =
