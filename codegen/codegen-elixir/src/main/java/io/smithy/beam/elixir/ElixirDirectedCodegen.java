@@ -6,8 +6,6 @@ import io.smithy.beam.core.BeamDocumentation.DocTarget;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
-import io.smithy.beam.core.BeamProtocolCodegenFactory;
-import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -80,13 +78,6 @@ final class ElixirDirectedCodegen
         ServiceShape service = directive.service();
         BeamHttpBindings httpBindings = BeamHttpBindings.from(directive.model());
         BeamProtocolCodegen protocolCodegen = null;
-        if (directive.settings().protocol() != null) {
-            ShapeId protocolId =
-                    BeamProtocolResolver.resolve(
-                            directive.model(), service, directive.settings());
-            protocolCodegen =
-                    BeamProtocolCodegenFactory.create(directive.model(), protocolId);
-        }
         String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
         BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
