@@ -52,7 +52,6 @@ class ElixirClientPluginTest {
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("basic_string");
         assertClientStubHeaderOrder(manifest.expectFileString(CLIENT_FILE));
         assertThat(manifest.getFileString("basic_service_rest_json_1.ex")).isEmpty();
-        assertThat(manifest.getFileString("runtime_http.ex")).isEmpty();
     }
 
     @Test

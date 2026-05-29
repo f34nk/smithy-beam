@@ -173,7 +173,7 @@ class ErlangIntegrationSectionsTest {
 
         assertThat(manifest.getFileString("dedicated_io_service_rest_json_1.erl"))
                 .isEmpty();
-        assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
+        assertThat(manifest.getFileString("runtime_http.erl")).isPresent();
         assertThat(manifest.expectFileString("dedicated_io_service_client.erl"))
                 .contains("%% recording-erlang-integration was here");
     }

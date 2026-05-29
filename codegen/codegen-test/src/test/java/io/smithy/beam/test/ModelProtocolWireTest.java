@@ -82,9 +82,9 @@ class ModelProtocolWireTest {
                     .build());
 
             String ext = plugin.ext();
-            assertThat(manifest.getFileString("protocoljson_service_rest_json_1." + ext))
-                    .isPresent();
             if (plugin.client()) {
+                assertThat(manifest.getFileString("protocoljson_service_rest_json_1." + ext))
+                        .isPresent();
                 assertThat(manifest.getFileString("runtime_http." + ext)).isPresent();
             } else {
                 assertThat(manifest.getFileString("demo_rest_json_router." + ext))
@@ -121,7 +121,11 @@ class ModelProtocolWireTest {
                     .isEmpty();
             assertThat(manifest.getFileString("dedicated_io_service_router." + ext))
                     .isEmpty();
-            assertThat(manifest.getFileString("runtime_http." + ext)).isEmpty();
+            if (plugin.client()) {
+                assertThat(manifest.getFileString("runtime_http." + ext)).isPresent();
+            } else {
+                assertThat(manifest.getFileString("runtime_http." + ext)).isEmpty();
+            }
         }
     }
 

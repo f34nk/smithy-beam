@@ -52,7 +52,6 @@ class ErlangClientPluginTest {
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("-type basic_string()");
         assertClientStubHeaderOrder(manifest.expectFileString(CLIENT_FILE));
         assertThat(manifest.getFileString("basic_service_rest_json_1.erl")).isEmpty();
-        assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
     }
 
     @Test

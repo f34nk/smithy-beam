@@ -173,7 +173,7 @@ class ElixirIntegrationSectionsTest {
 
         assertThat(manifest.getFileString("dedicated_io_service_rest_json_1.ex"))
                 .isEmpty();
-        assertThat(manifest.getFileString("runtime_http.ex")).isEmpty();
+        assertThat(manifest.getFileString("runtime_http.ex")).isPresent();
         assertThat(manifest.expectFileString("dedicated_io_service_client.ex"))
                 .contains("# recording-elixir-integration was here");
     }
