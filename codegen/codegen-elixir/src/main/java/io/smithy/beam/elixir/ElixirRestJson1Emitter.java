@@ -15,6 +15,7 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
@@ -63,6 +64,7 @@ public final class ElixirRestJson1Emitter {
             }
 
             emitEnumHelpers(writer, model, service, sp);
+            emitUnionHelpers(writer, model, service, sp);
             emitHelpers(writer);
 
             writer.dedent();
@@ -101,6 +103,7 @@ public final class ElixirRestJson1Emitter {
             }
 
             emitEnumHelpers(writer, model, service, sp);
+            emitUnionHelpers(writer, model, service, sp);
             emitHelpers(writer);
 
             writer.dedent();
@@ -175,6 +178,9 @@ public final class ElixirRestJson1Emitter {
                 if (target instanceof EnumShape || target instanceof IntEnumShape) {
                     String helperName = enumHelperName(target);
                     writer.write("  \"$L\" => encode_$L(input.$L),", jsonKey, helperName, field);
+                } else if (target instanceof UnionShape) {
+                    String helperName = unionHelperName(target);
+                    writer.write("  \"$L\" => encode_$L(input.$L),", jsonKey, helperName, field);
                 } else {
                     writer.write("  \"$L\" => input.$L,", jsonKey, field);
                 }
@@ -235,6 +241,9 @@ public final class ElixirRestJson1Emitter {
                 Shape target = model.expectShape(db.getMember().getTarget());
                 if (target instanceof EnumShape || target instanceof IntEnumShape) {
                     String helperName = enumHelperName(target);
+                    writer.write("  \"$L\" => encode_$L(output.$L),", jsonKey, helperName, field);
+                } else if (target instanceof UnionShape) {
+                    String helperName = unionHelperName(target);
                     writer.write("  \"$L\" => encode_$L(output.$L),", jsonKey, helperName, field);
                 } else {
                     writer.write("  \"$L\" => output.$L,", jsonKey, field);
@@ -340,6 +349,9 @@ public final class ElixirRestJson1Emitter {
             if (target instanceof EnumShape || target instanceof IntEnumShape) {
                 String helperName = enumHelperName(target);
                 writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, jsonKey);
+            } else if (target instanceof UnionShape) {
+                String helperName = unionHelperName(target);
+                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, jsonKey);
             } else {
                 writer.write("  $L: Map.get(decoded, \"$L\"),", field, jsonKey);
             }
@@ -394,6 +406,9 @@ public final class ElixirRestJson1Emitter {
             Shape target = model.expectShape(db.getMember().getTarget());
             if (target instanceof EnumShape || target instanceof IntEnumShape) {
                 String helperName = enumHelperName(target);
+                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, jsonKey);
+            } else if (target instanceof UnionShape) {
+                String helperName = unionHelperName(target);
                 writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, jsonKey);
             } else {
                 writer.write("  $L: Map.get(decoded, \"$L\"),", field, jsonKey);
@@ -534,6 +549,74 @@ public final class ElixirRestJson1Emitter {
         if (target instanceof EnumShape || target instanceof IntEnumShape) {
             out.add(target.getId());
         }
+    }
+
+    private static void emitUnionHelpers(
+            ElixirWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
+
+        Set<ShapeId> emitted = new LinkedHashSet<>();
+        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+
+        for (OperationShape op : ElixirTopDown.containedOperationsSorted(model, service)) {
+            for (HttpBinding.Location loc : HttpBinding.Location.values()) {
+                for (HttpBinding b : httpIndex.getRequestBindings(op, loc)) {
+                    collectUnionTarget(model, b.getMember(), emitted);
+                }
+                for (HttpBinding b : httpIndex.getResponseBindings(op, loc)) {
+                    collectUnionTarget(model, b.getMember(), emitted);
+                }
+            }
+        }
+
+        for (ShapeId unionId : emitted) {
+            UnionShape union = model.expectShape(unionId, UnionShape.class);
+            emitElixirUnionHelpers(writer, union, sp);
+        }
+    }
+
+    private static void collectUnionTarget(Model model, MemberShape member, Set<ShapeId> out) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof UnionShape) {
+            out.add(target.getId());
+        }
+    }
+
+    private static void emitElixirUnionHelpers(ElixirWriter writer, UnionShape shape, SymbolProvider sp) {
+        String helperName = unionHelperName(shape);
+        writer.write("# Union helpers for $L", shape.getId());
+        writer.write("defp decode_$L(map) when is_map(map) do", helperName);
+        writer.indent();
+        writer.write("case Map.to_list(map) do");
+        writer.indent();
+        for (MemberShape m : shape.members()) {
+            String wireKey = m.getMemberName();
+            String tag = unionTagForMember(sp, m);
+            writer.write("[{\"$L\", v}] -> {$L, v}", wireKey, tag);
+        }
+        writer.write("[{k, _v}] -> {:unknown, k}");
+        writer.write("_ -> nil");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
+        writer.write("defp decode_$L(nil), do: nil", helperName);
+        writer.write("");
+
+        for (MemberShape m : shape.members()) {
+            String wireKey = m.getMemberName();
+            String tag = unionTagForMember(sp, m);
+            writer.write("defp encode_$L({$L, v}), do: %{\"$L\" => v}", helperName, tag, wireKey);
+        }
+        writer.write("defp encode_$L({:unknown, k}) when is_binary(k), do: %{k => nil}", helperName);
+        writer.write("");
+    }
+
+    private static String unionHelperName(Shape shape) {
+        return BeamNameUtils.toSnakeCase(shape.getId().getName());
+    }
+
+    private static String unionTagForMember(SymbolProvider sp, MemberShape member) {
+        return ":" + sp.toSymbol(member).getProperty("unionTag", String.class).orElseThrow();
     }
 
     private static void emitElixirEnumHelpers(ElixirWriter writer, EnumShape shape, SymbolProvider sp) {
