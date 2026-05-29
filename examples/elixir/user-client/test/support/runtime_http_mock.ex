@@ -1,4 +1,4 @@
-defmodule UserHttpMock do
+defmodule RuntimeHttpMock do
   @moduledoc false
 
   def request(req_opts) do

@@ -1,13 +1,13 @@
-defmodule UserRestJson1Test do
+defmodule UserServiceRestJson1Test do
   use ExUnit.Case, async: true
 
-  alias User.{CreateUserInput, GetUserInput, ListUsersInput}
-  alias UserRuntimeTypes.{HttpRequest, HttpResponse}
+  alias UserTypes.{CreateUserInput, GetUserInput, ListUsersInput}
+  alias RuntimeTypes.{HttpRequest, HttpResponse}
 
   describe "encode_get_user_request/1" do
     test "minimal request" do
       input = %GetUserInput{user_id: "u-1"}
-      req = UserRestJson1.encode_get_user_request(input)
+      req = UserServiceRestJson1.encode_get_user_request(input)
 
       assert req.method == "GET"
       assert req.path == "/users/u-1"
@@ -18,7 +18,7 @@ defmodule UserRestJson1Test do
 
     test "URI-encodes path label" do
       input = %GetUserInput{user_id: "a/b c"}
-      req = UserRestJson1.encode_get_user_request(input)
+      req = UserServiceRestJson1.encode_get_user_request(input)
 
       assert req.path == "/users/a/b%20c"
     end
@@ -35,7 +35,7 @@ defmodule UserRestJson1Test do
       }
 
       label_map = %{"userId" => "u-1"}
-      input = UserRestJson1.decode_get_user_request(req, label_map)
+      input = UserServiceRestJson1.decode_get_user_request(req, label_map)
       assert input.user_id == "u-1"
     end
 
@@ -49,7 +49,7 @@ defmodule UserRestJson1Test do
       }
 
       label_map = %{"userId" => "hello world"}
-      input = UserRestJson1.decode_get_user_request(req, label_map)
+      input = UserServiceRestJson1.decode_get_user_request(req, label_map)
       assert input.user_id == "hello world"
     end
   end
@@ -67,7 +67,7 @@ defmodule UserRestJson1Test do
 
       resp = %HttpResponse{status: 200, headers: [], body: body}
 
-      assert {:ok, out} = UserRestJson1.decode_get_user_response(resp)
+      assert {:ok, out} = UserServiceRestJson1.decode_get_user_response(resp)
       assert out.user["userId"] == "u-1"
       assert out.user["email"] == "alice@example.com"
       assert out.user["displayName"] == "Alice"
@@ -76,7 +76,7 @@ defmodule UserRestJson1Test do
     test "success with empty body" do
       resp = %HttpResponse{status: 200, headers: [], body: ""}
 
-      assert {:ok, out} = UserRestJson1.decode_get_user_response(resp)
+      assert {:ok, out} = UserServiceRestJson1.decode_get_user_response(resp)
       assert out.user == nil
     end
 
@@ -84,14 +84,14 @@ defmodule UserRestJson1Test do
       resp = %HttpResponse{status: 404, body: ~s({"message":"missing"})}
 
       assert {:error, {:unknown_error, 404, ~s({"message":"missing"})}} ==
-               UserRestJson1.decode_get_user_response(resp)
+               UserServiceRestJson1.decode_get_user_response(resp)
     end
   end
 
   describe "encode_create_user_request/1" do
     test "builds POST with JSON body" do
       input = %CreateUserInput{email: "bob@example.com", display_name: "Bob"}
-      req = UserRestJson1.encode_create_user_request(input)
+      req = UserServiceRestJson1.encode_create_user_request(input)
 
       assert req.method == "POST"
       assert req.path == "/users"
@@ -108,7 +108,7 @@ defmodule UserRestJson1Test do
 
       resp = %HttpResponse{status: 201, headers: [], body: body}
 
-      assert {:ok, out} = UserRestJson1.decode_create_user_response(resp)
+      assert {:ok, out} = UserServiceRestJson1.decode_create_user_response(resp)
       assert out.user["userId"] == "u-2"
     end
   end
@@ -116,7 +116,7 @@ defmodule UserRestJson1Test do
   describe "encode_list_users_request/1" do
     test "builds GET /users" do
       input = %ListUsersInput{}
-      req = UserRestJson1.encode_list_users_request(input)
+      req = UserServiceRestJson1.encode_list_users_request(input)
 
       assert req.method == "GET"
       assert req.path == "/users"
@@ -136,7 +136,7 @@ defmodule UserRestJson1Test do
 
       resp = %HttpResponse{status: 200, headers: [], body: body}
 
-      assert {:ok, out} = UserRestJson1.decode_list_users_response(resp)
+      assert {:ok, out} = UserServiceRestJson1.decode_list_users_response(resp)
       assert length(out.users) == 2
     end
   end

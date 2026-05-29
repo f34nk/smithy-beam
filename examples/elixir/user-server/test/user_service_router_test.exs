@@ -1,12 +1,12 @@
-defmodule UserRouterTest do
+defmodule UserServiceRouterTest do
   use ExUnit.Case, async: true
 
-  alias UserRuntimeTypes.HttpRequest
+  alias RuntimeTypes.HttpRequest
 
   @moduledoc """
-  Request flow: %HttpRequest{} -> UserRouter.dispatch/2 ->
-  UserRestJson1.decode_get_user_request/2 -> Handler.handle_get_user/3.
-  Pass UserServer as the handler module to invoke the generated server stub.
+  Request flow: %HttpRequest{} -> UserServiceRouter.dispatch/2 ->
+  UserServiceRestJson1.decode_get_user_request/2 -> Handler.handle_get_user/3.
+  Pass UserServiceServer as the handler module to invoke the generated server stub.
   """
 
   defp get_user_request do
@@ -28,7 +28,7 @@ defmodule UserRouterTest do
       body: ""
     }
 
-    assert {:error, :not_implemented} == UserRouter.dispatch(UserServer, request)
+    assert {:error, :not_implemented} == UserServiceRouter.dispatch(UserServiceServer, request)
   end
 
   test "dispatch not found for extra user path segments" do
@@ -41,15 +41,15 @@ defmodule UserRouterTest do
     }
 
     assert {:error, {:not_found, "GET", "/users/u-1/extra"}} ==
-             UserRouter.dispatch(UserServer, request)
+             UserServiceRouter.dispatch(UserServiceServer, request)
   end
 
   test "dispatch routes to UserServer stub handler" do
-    assert {:error, :not_implemented} == UserRouter.dispatch(UserServer, get_user_request())
+    assert {:error, :not_implemented} == UserServiceRouter.dispatch(UserServiceServer, get_user_request())
   end
 
   test "dispatch decodes wire request before handler" do
-    assert {:ok, out} = UserRouter.dispatch(UserServerProbe, get_user_request())
+    assert {:ok, out} = UserServiceRouter.dispatch(UserServiceServerProbe, get_user_request())
     assert out.user == %{"userId" => "u-1"}
   end
 
@@ -57,7 +57,7 @@ defmodule UserRouterTest do
     request = %{get_user_request() | method: "POST"}
 
     assert {:error, {:not_found, "POST", "/users/u-1"}} ==
-             UserRouter.dispatch(UserServer, request)
+             UserServiceRouter.dispatch(UserServiceServer, request)
   end
 
   test "dispatch routes create user" do
@@ -69,6 +69,6 @@ defmodule UserRouterTest do
       body: Jason.encode!(%{"email" => "a@example.com"})
     }
 
-    assert {:error, :not_implemented} == UserRouter.dispatch(UserServer, request)
+    assert {:error, :not_implemented} == UserServiceRouter.dispatch(UserServiceServer, request)
   end
 end

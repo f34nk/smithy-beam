@@ -110,7 +110,7 @@ service BasicService {
     ```
     config = %{base_url: "http://localhost:8080"}
     input  = %{name: "example", verbose: true}
-    {:ok, output} = BasicClient.get_type_closure(config, input)
+    {:ok, output} = BasicServiceClient.get_type_closure(config, input)
     ```
 
     Failures surface as `{:error, term()}`. A missing name may map to the modeled
@@ -177,13 +177,13 @@ list BasicItemList {
     ```
     config = %{base_url: "http://localhost:8080", http_client: MyHttpMock}
     input  = %{page_size: 10}
-    {:ok, items} = BasicPaginators.paginate_list_basic_items(config, input)
+    {:ok, items} = BasicServicePaginators.paginate_list_basic_items(config, input)
     ```
 
     Or call the client operation directly for a single page:
 
     ```
-    {:ok, output} = BasicClient.list_basic_items(config, input)
+    {:ok, output} = BasicServiceClient.list_basic_items(config, input)
     items = Map.get(output, :items, [])
     next_token = Map.get(output, :next_token)
     ```

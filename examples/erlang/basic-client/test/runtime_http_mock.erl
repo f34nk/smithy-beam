@@ -1,4 +1,4 @@
--module(basic_http_mock).
+-module(runtime_http_mock).
 -export([request/4]).
 
 request(get, {Url, _Headers, Mime, _Body}, [], [{body_format, binary}]) ->

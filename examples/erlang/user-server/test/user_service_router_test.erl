@@ -1,11 +1,11 @@
--module(user_router_test).
+-module(user_service_router_test).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("user_types.hrl").
 -include("runtime_types.hrl").
 
-%% Request flow: http_request -> user_router:dispatch/2 -> codec decode -> Handler:handle_<op>/3.
-%% Pass user_server as Handler to invoke the generated server stub.
+%% Request flow: http_request -> user_service_router:dispatch/2 -> codec decode -> Handler:handle_<op>/3.
+%% Pass user_service_server as Handler to invoke the generated server stub.
 
 dispatch_routes_list_users_before_user_id_path_test() ->
     Req = #http_request{
@@ -15,7 +15,7 @@ dispatch_routes_list_users_before_user_id_path_test() ->
         headers = [],
         body = <<>>
     },
-    ?assertEqual({error, not_implemented}, user_router:dispatch(user_server, Req)).
+    ?assertEqual({error, not_implemented}, user_service_router:dispatch(user_service_server, Req)).
 
 dispatch_not_found_for_extra_user_path_segments_test() ->
     Req = #http_request{
@@ -27,7 +27,7 @@ dispatch_not_found_for_extra_user_path_segments_test() ->
     },
     ?assertEqual(
         {error, {not_found, <<"GET">>, <<"/users/u-1/extra">>}},
-        user_router:dispatch(user_server, Req)
+        user_service_router:dispatch(user_service_server, Req)
     ).
 
 dispatch_routes_to_user_server_handler_test() ->
@@ -40,7 +40,7 @@ dispatch_routes_to_user_server_handler_test() ->
     },
     ?assertEqual(
         {error, not_implemented},
-        user_router:dispatch(user_server, Req)
+        user_service_router:dispatch(user_service_server, Req)
     ).
 
 dispatch_decodes_wire_request_before_handler_test() ->
@@ -51,7 +51,7 @@ dispatch_decodes_wire_request_before_handler_test() ->
         headers = [],
         body = <<>>
     },
-    {ok, Out} = user_router:dispatch(user_server_probe, Req),
+    {ok, Out} = user_service_router:dispatch(user_service_server_probe, Req),
     ?assertEqual(#{<<"userId">> => <<"u-1">>}, Out#get_user_output.user).
 
 dispatch_not_found_for_unknown_route_test() ->
@@ -64,7 +64,7 @@ dispatch_not_found_for_unknown_route_test() ->
     },
     ?assertEqual(
         {error, {not_found, <<"POST">>, <<"/users/u-1">>}},
-        user_router:dispatch(user_server, Req)
+        user_service_router:dispatch(user_service_server, Req)
     ).
 
 dispatch_routes_create_user_test() ->
@@ -75,4 +75,4 @@ dispatch_routes_create_user_test() ->
         headers = [{<<"Content-Type">>, <<"application/json">>}],
         body = jsone:encode(#{<<"email">> => <<"a@example.com">>})
     },
-    ?assertEqual({error, not_implemented}, user_router:dispatch(user_server, Req)).
+    ?assertEqual({error, not_implemented}, user_service_router:dispatch(user_service_server, Req)).
