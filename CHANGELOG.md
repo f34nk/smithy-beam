@@ -3,6 +3,30 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+### Docs
+- Trait support and AWS SDK support references refreshed for REST JSON codec bindings, closure validation, reserved-word escaping, and service rename behavior.
+
+## 2026-05-29
+
+### Added
+- Typed error dispatch in REST JSON 1 client decoders, with @httpError status matching before type-discriminated errors and an unknown-error fallback.
+- Server response encoding in REST JSON 1 server codecs for Erlang and Elixir, including modeled error responses.
+- REST JSON codec support for enum and intEnum round-trips, union helpers, sparse null preservation, timestamp formats, @jsonName wire keys, @httpQueryParams expansion, and @httpResponseCode binding.
+- Aggregated unsupported-shape diagnostic when walking the service closure for protocol codegen.
+- Erlang string enum types document @enumValue wire mappings in generated comments.
+- Service-scoped layout naming for routers, codecs, paginators, runtime HTTP dispatch, and shared runtime helpers.
+
+### Fixed
+- Enum codec helpers resolve atom mappings through cached symbol providers.
+- Union encode helpers skip absent optional values.
+- Erlang server routers decode requests through the server codec module; runtime helpers are emitted with server codec generation.
+- Unset timestamps are omitted from Erlang REST JSON request and response bodies.
+- Basic REST JSON example no longer models bigDecimal in the service closure.
+
+### Changed
+- Erlang and Elixir generated module names follow centralized layout helpers with per-service router and codec modules.
+- Error shape test fixtures consolidated into a shared model.
+
 ## 2026-05-28
 
 ### Added

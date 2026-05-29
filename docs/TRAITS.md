@@ -18,7 +18,8 @@ A separate column is used for each language to indicate support status with a ch
 
 **Scope notes:**
 
-- HTTP binding traits are honored for REST JSON 1 client and server generation. Bindings such as query maps, prefix headers, explicit response codes, and modeled HTTP errors are not yet emitted into generated codecs.
+- REST JSON 1 client and server generation honor `@http`, `@httpLabel`, `@httpQuery`, `@httpQueryParams`, `@httpHeader`, `@httpPayload`, `@httpResponseCode`, `@httpError`, `@jsonName`, and `@timestampFormat` in generated codecs and routers. `@httpPrefixHeaders` is not yet emitted.
+- Client and server plugins emit REST JSON codecs only when the Smithy-Build plugin settings include an explicit `"protocol"` value (for example `"aws.protocols#restJson1"`).
 - `@documentation` is emitted on client and server operation stubs and on types output.
   Erlang types use `%% @doc` blocks above records and type aliases, with per-field edoc
   lines for documented members. Elixir types use `@moduledoc` on nested shape modules,
@@ -28,6 +29,8 @@ A separate column is used for each language to indicate support status with a ch
 - `@deprecated` removes shapes from generated output when the Smithy-Build `relativeDate` or `relativeVersion` setting is set. Without those settings, the trait has no effect on generated code.
 - `@streaming` affects generated type comments and symbol metadata. Event-stream framing and payload streaming are not yet implemented in protocol codecs.
 - Constraint traits (`length`, `range`, `pattern`, and similar) do not narrow generated Dialyzer or typespec surfaces.
+- Erlang keywords and colliding shape names are escaped consistently across types, client, and server output through the shared symbol provider.
+- Service `rename` maps change generated type identifiers; codecs use renamed record names for operation input and output shapes.
 
 ---
 
@@ -38,7 +41,7 @@ Traits that refine or modify type semantics.
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
 | [`smithy.api#required`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-required-trait) | ✅ | ✅ |
-| [`smithy.api#enumValue`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-enumvalue-trait) | ❌ | ✅ |
+| [`smithy.api#enumValue`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-enumvalue-trait) | ✅ | ✅ |
 | [`smithy.api#error`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-error-trait) | ✅ | ✅ |
 | [`smithy.api#input`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-input-trait) | ❌ | ❌ |
 | [`smithy.api#output`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-output-trait) | ❌ | ❌ |
@@ -79,10 +82,10 @@ Traits for HTTP protocol bindings.
 | [`smithy.api#httpQuery`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpquery-trait) | ✅ | ✅ |
 | [`smithy.api#cors`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-cors-trait) | ❌ | ❌ |
 | [`smithy.api#httpChecksumRequired`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpchecksumrequired-trait) | ❌ | ❌ |
-| [`smithy.api#httpError`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httperror-trait) | ❌ | ❌ |
+| [`smithy.api#httpError`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httperror-trait) | ✅ | ✅ |
 | [`smithy.api#httpPrefixHeaders`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpprefixheaders-trait) | ❌ | ❌ |
-| [`smithy.api#httpQueryParams`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpqueryparams-trait) | ❌ | ❌ |
-| [`smithy.api#httpResponseCode`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpresponsecode-trait) | ❌ | ❌ |
+| [`smithy.api#httpQueryParams`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpqueryparams-trait) | ✅ | ✅ |
+| [`smithy.api#httpResponseCode`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpresponsecode-trait) | ✅ | ✅ |
 
 ---
 
@@ -92,13 +95,13 @@ Traits for serialization and protocol behavior.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
-| [`smithy.api#jsonName`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-jsonname-trait) | ❌ | ❌ |
+| [`smithy.api#jsonName`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-jsonname-trait) | ✅ | ✅ |
 | [`smithy.api#xmlAttribute`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlattribute-trait) | ❌ | ❌ |
 | [`smithy.api#xmlFlattened`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlflattened-trait) | ❌ | ❌ |
 | [`smithy.api#xmlName`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlname-trait) | ❌ | ❌ |
 | [`smithy.api#xmlNamespace`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlnamespace-trait) | ❌ | ❌ |
 | [`smithy.api#mediaType`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-mediatype-trait) | ❌ | ❌ |
-| [`smithy.api#timestampFormat`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-timestampformat-trait) | ❌ | ❌ |
+| [`smithy.api#timestampFormat`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-timestampformat-trait) | ✅ | ✅ |
 | [`smithy.api#protocolDefinition`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-protocoldefinition-trait) | ✅ | ✅ |
 
 ---

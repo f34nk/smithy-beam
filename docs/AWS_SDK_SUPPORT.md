@@ -28,8 +28,10 @@ Output from `erlang-types-codegen` and `elixir-types-codegen`.
 | Error shape types | ✅ | `@error` structures become typed records (Erlang) or `defexception` modules (Elixir) with fault kind metadata. |
 | Shape and member documentation | ✅ | `@documentation` on shapes and members flows into generated type comments. Service docs replace the generic types file header when present. |
 | Deprecation filtering | ✅ | `@deprecated` removes shapes from generated output when Smithy-Build `relativeDate` or `relativeVersion` is configured. |
-| Sparse collections | ✅ | `@sparse` widens list element and map value types to include `undefined` (Erlang) or `nil` (Elixir). |
+| Sparse collections | ✅ | `@sparse` widens list element and map value types to include `undefined` (Erlang) or `nil` (Elixir). REST JSON codecs encode and decode sparse nulls on the wire. |
 | Streaming blob metadata | ⚠️ | `@streaming` affects generated type comments and symbol metadata only; wire streaming is not implemented. |
+| Erlang reserved-word escaping | ✅ | Erlang keywords and colliding identifiers are escaped in types output; client and server codecs use the same escaped record names. |
+| Service shape rename maps | ⚠️ | Rename targets flow into types output and operation record names in codecs. Nested document members decode as raw maps without nested record literals. |
 
 ---
 
@@ -54,8 +56,8 @@ Output from `erlang-client-codegen` and `elixir-client-codegen`.
 | Endpoint discovery | ❌ | Not implemented. |
 | Input validation helpers | ❌ | `@required` affects generated types only; no runtime `validate_*` helpers. |
 | HTTP prefix headers | ❌ | `@httpPrefixHeaders` not implemented. |
-| HTTP response code binding | ❌ | `@httpResponseCode` not emitted into codecs. |
-| Modeled HTTP errors | ❌ | `@httpError` is not mapped to status codes in generated dispatch or codecs. |
+| HTTP response code binding | ✅ | `@httpResponseCode` members populate the modeled output field from the HTTP status on decode. |
+| Modeled HTTP errors | ✅ | Client codecs dispatch `@httpError` status codes before type-discriminated errors. Server codecs encode error responses with modeled status codes. |
 | Idempotency token | ❌ | `@idempotencyToken` not implemented. |
 | Host label | ❌ | `@hostLabel` not implemented. |
 | Endpoint override trait | ❌ | `@endpoint` not implemented. |
@@ -74,13 +76,13 @@ Output from `erlang-server-codegen` and `elixir-server-codegen`.
 | Handler stubs | ✅ | One handler function per operation with typed input and output; default body returns `{error, not_implemented}`. |
 | HTTP router | ✅ | Generated router matches HTTP method and URI template (literal segments and labeled path prefixes) and delegates to handler functions. |
 | REST JSON 1 request decoders | ✅ | Per-service codec decodes wire-bound fields (labels, query, headers, JSON body) into input types. |
-| REST JSON 1 response encoding | ⚠️ | Client-side response decode and request encode are implemented; server-side response encode is not yet generated from the server plugin. |
+| REST JSON 1 response encoding | ✅ | Server codec modules encode success and error responses into `http_response` records or maps. |
 | Runtime helpers | ✅ | Label parsing helpers shared by router and codec modules. |
 | Operation documentation | ✅ | `@documentation` on operations is emitted into generated handler docs. |
 | Type and shape documentation | ✅ | Types plugins emit shape and member docs into generated type files alongside operation docs on handler stubs. |
 | Transport integration | ❌ | No Cowboy, Bandit, or Plug handler is generated. Applications wire the router to their HTTP stack. |
 | Input validation | ❌ | No generated server-side validation helpers. |
-| Error to HTTP mapping | ❌ | No generated mapping from modeled errors to HTTP status codes or JSON error envelopes. |
+| Error to HTTP mapping | ⚠️ | Server codecs encode modeled errors with `@httpError` status codes and JSON bodies. Applications still wire handler results to the codec layer. |
 | Request streaming | ❌ | `@streaming` wire handling not implemented. |
 | WebSocket / event streams | ❌ | Not implemented. |
 
@@ -92,13 +94,13 @@ Protocol selection uses `@protocolDefinition` traits on the service. `BeamProtoc
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ⚠️ | Request encoding, client response decoding, server request decoding, routing, and paginators are implemented for Erlang and Elixir. JSON member naming uses Smithy member names, not `@jsonName`. Content type is fixed to `application/json`. Covered by the basic Erlang and Elixir examples. |
+| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ⚠️ | Request encoding, client response decoding, server request decoding, server response encoding, routing, and paginators are implemented for Erlang and Elixir. Codecs honor `@jsonName`, `@httpQueryParams`, `@httpResponseCode`, `@httpError`, `@timestampFormat`, and sparse collection nulls. Content type is fixed to `application/json`. Set `"protocol": "aws.protocols#restJson1"` in plugin settings to enable codec emission. |
 | [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ❌ | Not implemented. |
 | [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ❌ | Not implemented. |
 | [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ❌ | Not implemented. |
 | [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ❌ | Not implemented. |
 | [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ❌ | Not implemented. |
-| Custom protocols via `@protocolDefinition` | ⚠️ | Protocol traits are discovered and validated at codegen time. Additional protocols require a new `BeamProtocolCodegen` implementation; generation fails with a clear error when no implementation is registered. Language integrations can extend output via Java SPI. |
+| Custom protocols via `@protocolDefinition` | ⚠️ | Protocol traits are discovered and validated at codegen time. `BeamProtocolResolver` walks the service closure and fails with one aggregated diagnostic when shapes are unsupported for the selected protocol (for example streaming blobs or `bigDecimal`). Additional protocols require a new `BeamProtocolCodegen` implementation. |
 | [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ❌ | No test emission from `@httpRequestTests` or `@httpResponseTests`. |
 
 ---
@@ -114,12 +116,12 @@ Bindings honored in generated REST JSON 1 codecs and routers today.
 | `@httpQuery` | ✅ | Query string encoding and decoding. |
 | `@httpHeader` | ✅ | Request and response header binding. |
 | `@httpPayload` | ✅ | Request and response payload members. |
-| `@httpQueryParams` | ❌ | Map-to-query expansion not implemented. |
+| `@httpQueryParams` | ✅ | Map members expand into query string key/value pairs on encode and decode. |
 | `@httpPrefixHeaders` | ❌ | Not implemented. |
-| `@httpResponseCode` | ❌ | Not emitted into generated decode output. |
-| `@httpError` | ❌ | Not used for error dispatch. |
-| `@jsonName` | ❌ | Wire keys use Smithy member names. |
-| `@timestampFormat` | ❌ | Timestamp helpers exist in `BeamHttpBindings` but are not yet wired into generated codec logic. |
+| `@httpResponseCode` | ✅ | Response status populates the bound output member on client decode and server request decode. |
+| `@httpError` | ✅ | Status-code clauses in client error dispatch; server error response encoders use modeled HTTP status. |
+| `@jsonName` | ✅ | Wire JSON keys follow `@jsonName` when present. |
+| `@timestampFormat` | ✅ | Timestamp helpers follow binding location and `@timestampFormat` (epoch seconds or date-time). |
 | `@mediaType` | ❌ | JSON requests use a fixed `application/json` content type. |
 
 ---
