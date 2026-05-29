@@ -29,7 +29,6 @@ class ErlangRestJson1CodecTest {
         ObjectNode settings = ObjectNode.builder()
                 .withMember("service", "smithy.beam.demo.protocoljson#DemoRestJson")
                 .withMember("edition", "2026")
-                .withMember("protocol", "aws.protocols#restJson1")
                 .build();
         new ErlangClientPlugin().execute(PluginContext.builder()
                 .model(model)
