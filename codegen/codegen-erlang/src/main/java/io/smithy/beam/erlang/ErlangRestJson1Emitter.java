@@ -95,11 +95,17 @@ public final class ErlangRestJson1Emitter {
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
         List<String> exports = new ArrayList<>();
+        Set<ShapeId> errorIds = new LinkedHashSet<>();
         for (OperationShape op : operations) {
             String name = sp.toSymbol(op).getName();
             List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
             exports.add("decode_" + name + "_request/" + (labels.isEmpty() ? "1" : "2"));
             exports.add("encode_" + name + "_response/1");
+            errorIds.addAll(op.getErrors());
+        }
+        for (ShapeId errorId : errorIds) {
+            StructureShape errShape = model.expectShape(errorId, StructureShape.class);
+            exports.add("encode_" + recordName(sp.toSymbol(errShape)) + "_response/1");
         }
 
         ctx.writerDelegator().useFileWriter(layout.serverCodecModuleFile(), writer -> {
@@ -111,9 +117,11 @@ public final class ErlangRestJson1Emitter {
             writer.write("-export([$L]).", String.join(", ", exports));
             writer.write("");
 
+            Set<ShapeId> emittedErrorEncoders = new LinkedHashSet<>();
             for (OperationShape op : operations) {
                 emitRequestDecoder(writer, model, op, httpIndex, sp);
                 emitResponseEncoder(writer, model, op, httpIndex, sp);
+                emitErrorResponseEncoders(writer, model, op, sp, emittedErrorEncoders);
             }
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
@@ -417,6 +425,59 @@ public final class ErlangRestJson1Emitter {
         writer.write("}.");
         writer.dedent();
         writer.write("");
+    }
+
+    /** Emits encode_<error>_response/1 for each operation error record. */
+    private static void emitErrorResponseEncoders(
+            ErlangWriter writer,
+            Model model,
+            OperationShape op,
+            SymbolProvider sp,
+            Set<ShapeId> emitted) {
+
+        for (ShapeId errorId : op.getErrors()) {
+            if (!emitted.add(errorId)) {
+                continue;
+            }
+            StructureShape errShape = model.expectShape(errorId, StructureShape.class);
+            String recName = recordName(sp.toSymbol(errShape));
+            int status = errShape.hasTrait(HttpErrorTrait.class)
+                    ? errShape.expectTrait(HttpErrorTrait.class).getCode()
+                    : 500;
+
+            List<String> patternParts = errShape.members().stream()
+                    .filter(m -> !m.getMemberName().equals("__beam_error_kind"))
+                    .map(m -> {
+                        String field = BeamNameUtils.toSnakeCase(m.getMemberName());
+                        return field + " = " + toBindingVar(field);
+                    })
+                    .collect(Collectors.toList());
+
+            String pattern = patternParts.isEmpty()
+                    ? "" : "\n    " + String.join(",\n    ", patternParts) + "\n";
+
+            writer.write("%% Encode HTTP error response for $L.", errorId);
+            writer.write("encode_$L_response(#$L{$L}) ->", recName, recName, pattern);
+            writer.indent();
+            writer.write("BodyMap = #{");
+            writer.write("    <<\"__type\">> => <<\"$L\">>", errorId.getName());
+            for (MemberShape m : errShape.members()) {
+                if (m.getMemberName().equals("__beam_error_kind")) {
+                    continue;
+                }
+                String field = BeamNameUtils.toSnakeCase(m.getMemberName());
+                writer.write("    , <<\"$L\">> => $L", m.getMemberName(), toBindingVar(field));
+            }
+            writer.write("},");
+            writer.write("Body = jsone:encode(BodyMap),");
+            writer.write("#http_response{");
+            writer.write("    status = $L,", status);
+            writer.write("    headers = [{<<\"Content-Type\">>, <<\"application/json\">>}],");
+            writer.write("    body = Body");
+            writer.write("}.");
+            writer.dedent();
+            writer.write("");
+        }
     }
 
     /** Emits decode_<op>_response/1 for one operation. */
