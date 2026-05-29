@@ -56,7 +56,6 @@ class HttpResponseCodeBindingTest {
                         .withMember("service",
                                 "smithy.beam.test.httpresponsecode#HttpResponseCodeService")
                         .withMember("edition", "2026")
-                        .withMember("protocol", "aws.protocols#restJson1")
                         .build())
                 .build());
 
@@ -78,7 +77,6 @@ class HttpResponseCodeBindingTest {
                         .withMember("service",
                                 "smithy.beam.test.httpresponsecode#HttpResponseCodeService")
                         .withMember("edition", "2026")
-                        .withMember("protocol", "aws.protocols#restJson1")
                         .build())
                 .build());
 

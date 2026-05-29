@@ -65,7 +65,6 @@ class HttpQueryParamsTest {
                         .withMember("service",
                                 "smithy.beam.test.httpqueryparams#HttpQueryParamsService")
                         .withMember("edition", "2026")
-                        .withMember("protocol", "aws.protocols#restJson1")
                         .build())
                 .build());
 
@@ -87,7 +86,6 @@ class HttpQueryParamsTest {
                         .withMember("service",
                                 "smithy.beam.test.httpqueryparams#HttpQueryParamsService")
                         .withMember("edition", "2026")
-                        .withMember("protocol", "aws.protocols#restJson1")
                         .build())
                 .build());
 
