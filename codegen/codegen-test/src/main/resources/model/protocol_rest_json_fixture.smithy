@@ -26,6 +26,9 @@ structure DescribeItemInput {
     @httpQuery("verbose")
     verbose: Boolean
 
+    @httpQuery("status")
+    status: ItemStatus
+
     @httpHeader("X-Request-Tag")
     requestTag: String
 }
