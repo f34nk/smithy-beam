@@ -238,6 +238,8 @@ class ErlangClientPluginTest {
         String router = manifest.expectFileString("protocoljson_router.erl");
         assertThat(router).contains("<<\"/items/\", NameSeg/binary>>");
         assertThat(router).contains("parse_labels(Path, <<\"/items/{id}\">>)");
+        assertThat(router).contains("protocoljson_server_rest_json_1:decode_describe_item_request");
+        assertThat(router).doesNotContain("protocoljson_rest_json_1:decode_");
         assertThat(router).contains("<<\"/items\">>");
         assertThat(router).doesNotContain("Path = Path");
         assertThat(router).contains("end;\nroute(");
