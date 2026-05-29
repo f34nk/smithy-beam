@@ -10,9 +10,12 @@ import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +52,10 @@ public final class ElixirRestJson1Emitter {
                 emitEncoder(writer, model, op, httpIndex, sp, typesMod, runtimeMod);
                 emitRequestDecoder(writer, model, op, httpIndex, sp, typesMod);
                 emitDecoder(writer, model, op, httpIndex, sp, typesMod);
+            }
+
+            for (OperationShape op : operations) {
+                emitErrorDispatch(writer, model, op, sp, typesMod);
             }
 
             emitHelpers(writer);
@@ -270,13 +277,98 @@ public final class ElixirRestJson1Emitter {
         writer.dedent();
         writer.write("end");
         writer.write("");
-        writer.write("def decode_$L_response(%RuntimeTypes.HttpResponse{status: status, body: body}) do",
+        writer.write(
+                "def decode_$L_response(%RuntimeTypes.HttpResponse{status: status, headers: headers, body: body}) do",
                 opName);
         writer.indent();
-        writer.write("{:error, {:http_error, status, body}}");
+        writer.write("decode_$L_response_error(status, headers, body)", opName);
         writer.dedent();
         writer.write("end");
         writer.write("");
+    }
+
+    private static void emitErrorDispatch(
+            ElixirWriter writer,
+            Model model,
+            OperationShape op,
+            SymbolProvider sp,
+            String typesMod) {
+
+        String opName = sp.toSymbol(op).getName();
+        List<ShapeId> errors = new ArrayList<>(op.getErrors());
+
+        writer.write("# Error dispatch for $L", op.getId());
+        for (ShapeId errorId : errors) {
+            StructureShape errShape = model.expectShape(errorId, StructureShape.class);
+            String modName = sp.toSymbol(errShape).getName();
+            int httpStatus = errShape.hasTrait(HttpErrorTrait.class)
+                    ? errShape.expectTrait(HttpErrorTrait.class).getCode()
+                    : -1;
+            if (httpStatus <= 0) {
+                continue;
+            }
+            writer.write("defp decode_$L_response_error($L, _headers, body) do", opName, httpStatus);
+            writer.indent();
+            writer.write("decoded = decode_json_body(body)");
+            List<String> fields = buildErrorFields(model, errShape, sp);
+            writer.write("{:error, struct!($L.$L, %{$L})}", typesMod, modName,
+                    String.join(", ", fields));
+            writer.dedent();
+            writer.write("end");
+            writer.write("");
+        }
+
+        boolean hasTypeDiscriminated = errors.stream().anyMatch(e ->
+                !model.expectShape(e, StructureShape.class).hasTrait(HttpErrorTrait.class));
+
+        if (hasTypeDiscriminated) {
+            writer.write("defp decode_$L_response_error(status, _headers, body) when status >= 400 do", opName);
+            writer.indent();
+            writer.write("decoded = decode_json_body(body)");
+            writer.write("error_type = Map.get(decoded, \"__type\")");
+            writer.write("case error_type do");
+            writer.indent();
+            for (ShapeId errorId : errors) {
+                StructureShape errShape = model.expectShape(errorId, StructureShape.class);
+                if (errShape.hasTrait(HttpErrorTrait.class)) {
+                    continue;
+                }
+                String modName = sp.toSymbol(errShape).getName();
+                String localName = errorId.getName();
+                List<String> fields = buildErrorFields(model, errShape, sp);
+                writer.write("\"$L\" ->", localName);
+                writer.indent();
+                writer.write("{:error, struct!($L.$L, %{$L})}", typesMod, modName,
+                        String.join(", ", fields));
+                writer.dedent();
+            }
+            writer.write("_ -> {:error, {:unknown_error, status, body}}");
+            writer.dedent();
+            writer.write("end");
+            writer.dedent();
+            writer.write("end");
+            writer.write("");
+        } else {
+            writer.write("defp decode_$L_response_error(status, _headers, body) do", opName);
+            writer.indent();
+            writer.write("{:error, {:unknown_error, status, body}}");
+            writer.dedent();
+            writer.write("end");
+            writer.write("");
+        }
+    }
+
+    private static List<String> buildErrorFields(Model model, StructureShape errShape, SymbolProvider sp) {
+        List<String> fields = new ArrayList<>();
+        for (MemberShape member : errShape.members()) {
+            if (member.getMemberName().equals("__beam_error_kind")) {
+                continue;
+            }
+            String field = fieldName(sp, member);
+            String jsonKey = member.getMemberName();
+            fields.add(field + ": Map.get(decoded, \"" + jsonKey + "\")");
+        }
+        return fields;
     }
 
     private static void emitHelpers(ElixirWriter writer) {
@@ -293,6 +385,22 @@ public final class ElixirRestJson1Emitter {
         writer.write("defp decode_query_param(\"true\"), do: true");
         writer.write("defp decode_query_param(\"false\"), do: false");
         writer.write("defp decode_query_param(value), do: value");
+        writer.write("");
+        emitDecodeJsonBodyHelper(writer);
+    }
+
+    private static void emitDecodeJsonBodyHelper(ElixirWriter writer) {
+        writer.write("defp decode_json_body(\"\"), do: %{}");
+        writer.write("defp decode_json_body(body) do");
+        writer.indent();
+        writer.write("case Jason.decode(body) do");
+        writer.indent();
+        writer.write("{:ok, map} when is_map(map) -> map");
+        writer.write("_ -> %{}");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
         writer.write("");
     }
 
