@@ -51,6 +51,8 @@ class ErlangClientPluginTest {
 
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("-type basic_string()");
         assertClientStubHeaderOrder(manifest.expectFileString(CLIENT_FILE));
+        assertThat(manifest.getFileString("basic_service_rest_json_1.erl")).isEmpty();
+        assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
     }
 
     @Test
@@ -244,7 +246,7 @@ class ErlangClientPluginTest {
     }
 
     @Test
-    void explicitInvalidProtocolFailsWithCodegenException() {
+    void unsupportedModelProtocolFailsWithCodegenException() {
         URL resource = ErlangClientPluginTest.class.getResource("/model/multi_service.smithy");
         assertThat(resource).isNotNull();
         Model model = Model.assembler()
@@ -288,6 +290,10 @@ class ErlangClientPluginTest {
                 .fileManifest(manifest)
                 .settings(settings)
                 .build());
+
+        assertThat(manifest.getFileString("resource_lifecycle_service_rest_json_1.erl"))
+                .isPresent();
+        assertThat(manifest.getFileString("runtime_http.erl")).isPresent();
 
         String org = manifest.expectFileString("organization_resource.erl");
         assertThat(org).contains("-module(organization_resource).");

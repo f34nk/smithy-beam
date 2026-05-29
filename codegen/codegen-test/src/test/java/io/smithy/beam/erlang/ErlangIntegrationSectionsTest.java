@@ -29,9 +29,19 @@ class ErlangIntegrationSectionsTest {
                 .unwrap();
     }
 
-    private static PluginContext buildContext(Model model, MockManifest manifest) {
+    private static Model loadModel(String resourcePath) {
+        URL resource = ErlangIntegrationSectionsTest.class.getResource(resourcePath);
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    private static PluginContext buildContext(Model model, MockManifest manifest, String service) {
         ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.basic#BasicService")
+                .withMember("service", service)
                 .withMember("edition", "2026")
                 .build();
         return PluginContext.builder()
@@ -39,6 +49,30 @@ class ErlangIntegrationSectionsTest {
                 .fileManifest(manifest)
                 .settings(settings)
                 .build();
+    }
+
+    private static PluginContext buildContext(Model model, MockManifest manifest) {
+        return buildContext(model, manifest, "smithy.beam.demo.basic#BasicService");
+    }
+
+    private static void runClientDirectedCodegen(PluginContext context) {
+        CodegenDirector<ErlangWriter, ErlangIntegration, ErlangContext, BeamSettings> runner =
+                new CodegenDirector<>();
+        runner.directedCodegen(new ErlangClientDirectedCodegen());
+        runner.integrationClass(ErlangIntegration.class);
+        runner.fileManifest(context.getFileManifest());
+        runner.integrationSettings(context.getSettings());
+        context.getPluginClassLoader().ifPresent(runner::integrationClassLoader);
+        runner.integrationFinder(() -> List.of(new RecordingErlangIntegration()));
+        runner.model(context.getModel());
+
+        BeamSettings settings = runner.settings(BeamSettings.class, context.getSettings());
+        var resolvedService = settings.resolveService(context.getModel());
+        runner.service(resolvedService);
+
+        BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
+
+        runner.run();
     }
 
     @Test
@@ -110,5 +144,37 @@ class ErlangIntegrationSectionsTest {
         String content = manifest.expectFileString("documented_types_types.hrl");
         assertThat(content).contains("recording-erlang-integration was here");
         assertThat(content).contains("A documented structure with member docs.");
+    }
+
+    @Test
+    void clientDirectedCodegenEmitsWireModulesWhenServiceDeclaresRestJson1() {
+        Model model = loadModel("/model/protocol_rest_json_fixture.smithy");
+        MockManifest manifest = new MockManifest();
+        PluginContext context = buildContext(
+                model, manifest, "smithy.beam.demo.protocoljson#DemoRestJson");
+
+        runClientDirectedCodegen(context);
+
+        assertThat(manifest.getFileString("protocoljson_service_rest_json_1.erl"))
+                .isPresent();
+        assertThat(manifest.getFileString("runtime_http.erl")).isPresent();
+        assertThat(manifest.expectFileString("protocoljson_service_client.erl"))
+                .contains("%% recording-erlang-integration was here");
+    }
+
+    @Test
+    void clientDirectedCodegenOmitsWireModulesWhenServiceHasNoProtocolTrait() {
+        Model model = loadModel("/model/dedicated_operation_io.smithy");
+        MockManifest manifest = new MockManifest();
+        PluginContext context = buildContext(
+                model, manifest, "smithy.beam.demo.dedicated_io#DedicatedIoService");
+
+        runClientDirectedCodegen(context);
+
+        assertThat(manifest.getFileString("dedicated_io_service_rest_json_1.erl"))
+                .isEmpty();
+        assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
+        assertThat(manifest.expectFileString("dedicated_io_service_client.erl"))
+                .contains("%% recording-erlang-integration was here");
     }
 }

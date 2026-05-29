@@ -50,6 +50,8 @@ class ElixirServerPluginTest {
 
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("basic_string");
         assertServerStubHeaderOrder(manifest.expectFileString(SERVER_FILE));
+        assertThat(manifest.getFileString("basic_service_rest_json_1.ex")).isEmpty();
+        assertThat(manifest.getFileString("basic_service_router.ex")).isEmpty();
     }
 
     @Test
@@ -158,7 +160,7 @@ class ElixirServerPluginTest {
     }
 
     @Test
-    void explicitInvalidProtocolFailsWithCodegenException() {
+    void unsupportedModelProtocolFailsWithCodegenException() {
         URL resource = ElixirServerPluginTest.class.getResource("/model/multi_service.smithy");
         assertThat(resource).isNotNull();
         Model model = Model.assembler()
@@ -202,6 +204,11 @@ class ElixirServerPluginTest {
                 .fileManifest(manifest)
                 .settings(settings)
                 .build());
+
+        assertThat(manifest.getFileString("resource_lifecycle_service_rest_json_1.ex"))
+                .isPresent();
+        assertThat(manifest.getFileString("resource_lifecycle_service_router.ex"))
+                .isPresent();
 
         String org = manifest.expectFileString("organization_resource.ex");
         assertThat(org).contains("defmodule OrganizationResource do");

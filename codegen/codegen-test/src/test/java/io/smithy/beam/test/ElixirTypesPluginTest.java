@@ -436,7 +436,7 @@ class ElixirTypesPluginTest {
     }
 
     @Test
-    void relativeDateAndRelativeVersionWithoutProtocolDoNotChangeElixirTypeOnlyOutput() {
+    void relativeDateAndRelativeVersionWithModelProtocolDoNotChangeElixirTypeOnlyOutput() {
         URL resource = ElixirTypesPluginTest.class.getResource("/model/multi_service.smithy");
         assertThat(resource).isNotNull();
         Model model = Model.assembler()

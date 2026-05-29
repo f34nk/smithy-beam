@@ -236,7 +236,7 @@ class ErlangTypesPluginTest {
     }
 
     @Test
-    void relativeDateAndRelativeVersionWithoutProtocolDoNotChangeMultiServiceTypesOutput() {
+    void relativeDateAndRelativeVersionWithModelProtocolDoNotChangeMultiServiceTypesOutput() {
         Model model = loadMultiServiceModel();
         MockManifest baseline = new MockManifest();
         ObjectNode baselineSettings = ObjectNode.builder()
