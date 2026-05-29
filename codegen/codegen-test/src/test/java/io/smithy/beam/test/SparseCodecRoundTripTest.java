@@ -25,7 +25,6 @@ class SparseCodecRoundTripTest {
                 .settings(ObjectNode.builder()
                         .withMember("service", "smithy.beam.demo.sparse_collections#SparseCollectionsRestJson")
                         .withMember("edition", "2026")
-                        .withMember("protocol", "aws.protocols#restJson1")
                         .build())
                 .build());
 

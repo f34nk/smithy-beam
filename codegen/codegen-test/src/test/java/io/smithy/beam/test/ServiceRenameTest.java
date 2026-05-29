@@ -32,7 +32,6 @@ class ServiceRenameTest {
                 .withMember("service",
                         "smithy.beam.test.rename#RenameService")
                 .withMember("edition", "2026")
-                .withMember("protocol", "aws.protocols#restJson1")
                 .build();
     }
 
