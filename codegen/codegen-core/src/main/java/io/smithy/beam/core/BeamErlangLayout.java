@@ -46,6 +46,14 @@ public final class BeamErlangLayout {
         return modulePrefix() + "_rest_json_1";
     }
 
+    public String serverCodecModuleFile() {
+        return modulePrefix() + "_server_rest_json_1.erl";
+    }
+
+    public String serverCodecModuleName() {
+        return modulePrefix() + "_server_rest_json_1";
+    }
+
     public String runtimeTypesHeaderFile() {
         return "runtime_types.hrl";
     }
