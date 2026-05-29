@@ -20,8 +20,7 @@
   "plugins": {
     "erlang-client-codegen": {
       "service": "smithy.beam.demo.user#UserService",
-      "edition": "2026",
-      "protocol": "aws.protocols#restJson1"
+      "edition": "2026"
     }
   }
 }
