@@ -394,10 +394,18 @@ public final class ElixirRestJson1Emitter {
         List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
         List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
+        List<HttpBinding> respCode = httpIndex.getResponseBindings(op, HttpBinding.Location.RESPONSE_CODE);
 
-        writer.write(
-                "def decode_$L_response(%RuntimeTypes.HttpResponse{status: $L, headers: headers, body: body}) do",
-                opName, successCode);
+        if (!respCode.isEmpty()) {
+            writer.write(
+                    "def decode_$L_response(%RuntimeTypes.HttpResponse{status: http_status, headers: headers,"
+                            + " body: body}) when http_status >= 200 and http_status < 300 do",
+                    opName);
+        } else {
+            writer.write(
+                    "def decode_$L_response(%RuntimeTypes.HttpResponse{status: $L, headers: headers, body: body}) do",
+                    opName, successCode);
+        }
         writer.indent();
 
         if (!respDoc.isEmpty()) {
@@ -440,6 +448,10 @@ public final class ElixirRestJson1Emitter {
         for (HttpBinding pb : respPayload) {
             String field = fieldName(sp, pb.getMember());
             writer.write("  $L: body,", field);
+        }
+        for (HttpBinding rcb : respCode) {
+            String field = fieldName(sp, rcb.getMember());
+            writer.write("  $L: http_status,", field);
         }
         writer.write("}}");
 
