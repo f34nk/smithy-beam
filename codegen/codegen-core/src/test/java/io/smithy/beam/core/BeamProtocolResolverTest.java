@@ -12,6 +12,7 @@ import software.amazon.smithy.model.traits.ProtocolDefinitionTrait;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class BeamProtocolResolverTest {
 
@@ -115,5 +116,47 @@ class BeamProtocolResolverTest {
         assertThatThrownBy(() -> BeamProtocolResolver.resolve(model, service, new BeamSettings()))
                 .isInstanceOf(CodegenException.class)
                 .hasMessageContaining("Multiple protocol traits found");
+    }
+
+    @Test
+    void closureAuditCollectsAllUnsupportedShapesInOneException() {
+        Model model = Model.assembler()
+                .addUnparsedModel("test.smithy", """
+                        $version: "2"
+                        namespace test
+
+                        use aws.protocols#restJson1
+                        use smithy.api#streaming
+
+                        @restJson1
+                        service Svc {
+                            version: "2026"
+                            operations: [Op]
+                        }
+
+                        @http(method: "POST", uri: "/op")
+                        operation Op {
+                            input: OpInput
+                            output: OpOutput
+                        }
+
+                        structure OpInput {
+                            data: StreamBlob
+                        }
+                        structure OpOutput {}
+
+                        @streaming
+                        blob StreamBlob
+                        """)
+                .discoverModels().assemble().unwrap();
+
+        ServiceShape service = model.getServiceShapes().iterator().next();
+        ShapeId protocol = ShapeId.from("aws.protocols#restJson1");
+
+        CodegenException ex = assertThrows(CodegenException.class, () ->
+                BeamProtocolResolver.assertClosureSupported(model, service, protocol));
+
+        assertThat(ex.getMessage()).contains("streaming blob");
+        assertThat(ex.getMessage()).contains("StreamBlob");
     }
 }
