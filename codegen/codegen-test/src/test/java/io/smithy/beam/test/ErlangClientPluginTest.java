@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ErlangClientPluginTest {
 
     private static final String TYPES_FILE = "basic_types.hrl";
-    private static final String CLIENT_FILE = "basic_client.erl";
+    private static final String CLIENT_FILE = "basic_service_client.erl";
 
     private static Model loadModel() {
         URL resource = ErlangClientPluginTest.class.getResource("/model/basic.smithy");
@@ -68,10 +68,10 @@ class ErlangClientPluginTest {
     }
 
     private static void assertClientStubHeaderOrder(String clientSource) {
-        assertThat(clientSource).contains("-module(basic_client).");
+        assertThat(clientSource).contains("-module(basic_service_client).");
         assertThat(clientSource).contains("-include(\"basic_types.hrl\").");
         assertThat(clientSource).contains("-export([get_type_closure/2]).");
-        int moduleIndex = clientSource.indexOf("-module(basic_client).");
+        int moduleIndex = clientSource.indexOf("-module(basic_service_client).");
         int includeIndex = clientSource.indexOf("-include(\"basic_types.hrl\").");
         int exportIndex = clientSource.indexOf("-export([get_type_closure/2]).");
         assertThat(moduleIndex).isLessThan(includeIndex);
@@ -148,8 +148,8 @@ class ErlangClientPluginTest {
                 .build());
         assertThat(extended.expectFileString("multi_types.hrl"))
                 .isEqualTo(baseline.expectFileString("multi_types.hrl"));
-        assertThat(extended.expectFileString("multi_client.erl"))
-                .isEqualTo(baseline.expectFileString("multi_client.erl"));
+        assertThat(extended.expectFileString("multi_service_client.erl"))
+                .isEqualTo(baseline.expectFileString("multi_service_client.erl"));
     }
 
     @Test
@@ -173,19 +173,19 @@ class ErlangClientPluginTest {
                 .settings(settings)
                 .build());
 
-        assertThat(manifest.expectFileString("protocoljson_rest_json_1.erl"))
-                .contains("-module(protocoljson_rest_json_1).")
+        assertThat(manifest.expectFileString("protocoljson_service_rest_json_1.erl"))
+                .contains("-module(protocoljson_service_rest_json_1).")
                 .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
-        assertThat(manifest.expectFileString("protocoljson_http.erl"))
-                .contains("-module(protocoljson_http).")
+        assertThat(manifest.expectFileString("runtime_http.erl"))
+                .contains("-module(runtime_http).")
                 .contains("HttpClient = maps:get(http_client, Config, httpc),")
                 .contains("dispatch(HttpClient, Config, #http_request{");
-        String client = manifest.expectFileString("protocoljson_client.erl");
+        String client = manifest.expectFileString("protocoljson_service_client.erl");
         assertThat(client)
                 .contains("describe_item(Config, Input) ->")
-                .contains("Req = protocoljson_rest_json_1:encode_describe_item_request(Input),")
-                .contains("case protocoljson_http:dispatch(Config, Req) of")
-                .contains("protocoljson_rest_json_1:decode_describe_item_response(Resp);");
+                .contains("Req = protocoljson_service_rest_json_1:encode_describe_item_request(Input),")
+                .contains("case runtime_http:dispatch(Config, Req) of")
+                .contains("protocoljson_service_rest_json_1:decode_describe_item_response(Resp);");
     }
 
     @Test
@@ -209,7 +209,7 @@ class ErlangClientPluginTest {
                 .settings(settings)
                 .build());
 
-        String codec = manifest.expectFileString("protocoljson_rest_json_1.erl");
+        String codec = manifest.expectFileString("protocoljson_service_rest_json_1.erl");
         assertThat(codec).contains("encode_describe_item_request(");
         assertThat(codec).contains("decode_describe_item_response(");
         assertThat(codec).contains("http_request{");
@@ -235,11 +235,11 @@ class ErlangClientPluginTest {
                 .settings(settings)
                 .build());
 
-        String router = manifest.expectFileString("protocoljson_router.erl");
+        String router = manifest.expectFileString("demo_rest_json_router.erl");
         assertThat(router).contains("<<\"/items/\", NameSeg/binary>>");
         assertThat(router).contains("parse_labels(Path, <<\"/items/{id}\">>)");
-        assertThat(router).contains("protocoljson_server_rest_json_1:decode_describe_item_request");
-        assertThat(router).doesNotContain("protocoljson_rest_json_1:decode_");
+        assertThat(router).contains("demo_rest_json_rest_json_1:decode_describe_item_request");
+        assertThat(router).doesNotContain("protocoljson_service_rest_json_1:decode_");
         assertThat(router).contains("<<\"/items\">>");
         assertThat(router).doesNotContain("Path = Path");
         assertThat(router).contains("end;\nroute(");
@@ -292,18 +292,18 @@ class ErlangClientPluginTest {
                 .settings(settings)
                 .build());
 
-        String org = manifest.expectFileString("resource_lifecycle_organization.erl");
-        assertThat(org).contains("-module(resource_lifecycle_organization).");
+        String org = manifest.expectFileString("organization_resource.erl");
+        assertThat(org).contains("-module(organization_resource).");
         assertThat(org).contains("-type client_config() :: #{binary() => term()}.");
         assertThat(org).contains("read/2");
-        assertThat(org).contains("resource_lifecycle_client:get_organization(");
+        assertThat(org).contains("resource_lifecycle_service_client:get_organization(");
         assertThat(org).contains("#get_organization_input{org_id = org_id}");
         assertThat(org).contains("create(Config, Input) ->");
-        assertThat(org).contains("resource_lifecycle_client:create_organization(Config, Input).");
+        assertThat(org).contains("resource_lifecycle_service_client:create_organization(Config, Input).");
         assertThat(org).doesNotContain("Input#create_organization_input{}");
         assertThat(org).contains("Top-level organization resource.");
 
-        String employee = manifest.expectFileString("resource_lifecycle_employee.erl");
+        String employee = manifest.expectFileString("employee_resource.erl");
         assertThat(employee).contains("get_employee(");
         assertThat(employee).contains("org_id = org_id");
         assertThat(employee).contains("employee_id = employee_id");
