@@ -7,9 +7,12 @@ import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
+import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 
 import java.util.ArrayList;
@@ -55,6 +58,10 @@ public final class ErlangRestJson1Emitter {
                 emitEncoder(writer, model, service, op, httpIndex, sp);
                 emitRequestDecoder(writer, model, op, httpIndex, sp);
                 emitDecoder(writer, model, service, op, httpIndex, sp, layout);
+            }
+
+            for (OperationShape op : operations) {
+                emitErrorDispatch(writer, model, service, op, httpIndex, sp);
             }
 
             emitHelpers(writer);
@@ -307,11 +314,98 @@ public final class ErlangRestJson1Emitter {
         writer.write("}};");
 
         writer.dedent();
-        writer.write("decode_$L_response(#http_response{status = Status, body = Body}) ->", opName);
+        writer.write(
+                "decode_$L_response(#http_response{status = Status, headers = RespHeaders, body = Body}) ->",
+                opName);
         writer.indent();
-        writer.write("{error, {http_error, Status, Body}}.");
+        writer.write("decode_$L_response_error(Status, RespHeaders, Body).", opName);
         writer.dedent();
         writer.write("");
+    }
+
+    private static void emitErrorDispatch(
+            ErlangWriter writer,
+            Model model,
+            ServiceShape service,
+            OperationShape op,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp) {
+
+        String opName = sp.toSymbol(op).getName();
+        List<ShapeId> errors = new ArrayList<>();
+        errors.addAll(op.getErrors());
+
+        writer.write("%% Error dispatch for $L.", op.getId());
+        for (ShapeId errorId : errors) {
+            StructureShape errShape = model.expectShape(errorId, StructureShape.class);
+            String recName = recordName(sp.toSymbol(errShape));
+            int httpStatus = errShape.hasTrait(HttpErrorTrait.class)
+                    ? errShape.expectTrait(HttpErrorTrait.class).getCode()
+                    : -1;
+            if (httpStatus <= 0) {
+                continue;
+            }
+            writer.write("decode_$L_response_error($L, _Hdrs, Body) ->", opName, httpStatus);
+            writer.indent();
+            writer.write("Decoded = decode_json_body(Body),");
+            List<String> fields = buildErrorFields(model, errShape, sp);
+            writer.write("{error, #$L{$L}};", recName,
+                    fields.isEmpty() ? "" : "\n    " + String.join(",\n    ", fields) + "\n");
+            writer.dedent();
+        }
+
+        boolean hasTypeDiscriminated = errors.stream().anyMatch(e ->
+                !model.expectShape(e, StructureShape.class).hasTrait(HttpErrorTrait.class));
+
+        if (hasTypeDiscriminated) {
+            writer.write("decode_$L_response_error(Status, _Hdrs, Body) when Status >= 400 ->", opName);
+            writer.indent();
+            writer.write("Decoded = decode_json_body(Body),");
+            writer.write("ErrorType = maps:get(<<\"__type\">>, Decoded, undefined),");
+            writer.write("case ErrorType of");
+            writer.indent();
+            for (ShapeId errorId : errors) {
+                StructureShape errShape = model.expectShape(errorId, StructureShape.class);
+                if (errShape.hasTrait(HttpErrorTrait.class)) {
+                    continue;
+                }
+                String recName = recordName(sp.toSymbol(errShape));
+                String localName = errorId.getName();
+                List<String> fields = buildErrorFields(model, errShape, sp);
+                writer.write("<<\"$L\">> ->", localName);
+                writer.indent();
+                writer.write("{error, #$L{$L}};", recName,
+                        fields.isEmpty() ? "" : "\n        " + String.join(",\n        ", fields) + "\n    ");
+                writer.dedent();
+            }
+            writer.write("_ ->");
+            writer.indent();
+            writer.write("{error, {unknown_error, Status, Body}}");
+            writer.dedent();
+            writer.dedent();
+            writer.write("end.");
+            writer.dedent();
+            writer.write("");
+        } else {
+            writer.write("decode_$L_response_error(Status, _Hdrs, Body) ->", opName);
+            writer.indent();
+            writer.write("{error, {unknown_error, Status, Body}}.");
+            writer.dedent();
+            writer.write("");
+        }
+    }
+
+    private static List<String> buildErrorFields(Model model, StructureShape errShape, SymbolProvider sp) {
+        List<String> fields = new ArrayList<>();
+        for (MemberShape member : errShape.members()) {
+            if (member.getMemberName().equals("__beam_error_kind")) {
+                continue;
+            }
+            String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+            String jsonKey = member.getMemberName();
+            fields.add(field + " = maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined)");
+        }
+        return fields;
     }
 
     /** Emits private helper functions used across all codecs. */
@@ -353,6 +447,14 @@ public final class ErlangRestJson1Emitter {
         writer.write("    false;");
         writer.write("decode_query_param(V) when is_binary(V) ->");
         writer.write("    V.");
+        writer.write("");
+        writer.write("decode_json_body(<<>>) -> #{};");
+        writer.write("decode_json_body(Body) ->");
+        writer.write("    case jsone:try_decode(Body) of");
+        writer.write("        {ok, V, _} when is_map(V) -> V;");
+        writer.write("        _ -> #{}");
+        writer.write("    end.");
+        writer.write("");
     }
 
     /** Record tag for #-record{} syntax; symbol names carry a trailing {@code ()} type suffix. */
