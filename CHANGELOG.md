@@ -3,8 +3,12 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+### Changed
+- Client and server plugins derive the wire protocol from protocol traits on the service in the Smithy model. The `"protocol"` smithy-build setting is no longer used. The types plugin never emits wire modules. Services without a protocol trait continue to produce stub-only client and server output.
+
 ### Docs
 - Trait support and AWS SDK support references refreshed for REST JSON codec bindings, closure validation, reserved-word escaping, and service rename behavior.
+- Shape mapping and trait docs describe model-driven wire emission and types-never-wire per-plugin behavior.
 
 ## 2026-05-29
 

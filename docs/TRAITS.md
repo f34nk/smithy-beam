@@ -19,7 +19,7 @@ A separate column is used for each language to indicate support status with a ch
 **Scope notes:**
 
 - REST JSON 1 client and server generation honor `@http`, `@httpLabel`, `@httpQuery`, `@httpQueryParams`, `@httpHeader`, `@httpPayload`, `@httpResponseCode`, `@httpError`, `@jsonName`, and `@timestampFormat` in generated codecs and routers. `@httpPrefixHeaders` is not yet emitted.
-- Client and server plugins emit REST JSON codecs only when the Smithy-Build plugin settings include an explicit `"protocol"` value (for example `"aws.protocols#restJson1"`).
+- Client and server plugins emit REST JSON codecs when the selected service carries `@restJson1` (or another supported protocol trait) in the Smithy model.
 - `@documentation` is emitted on client and server operation stubs and on types output.
   Erlang types use `%% @doc` blocks above records and type aliases, with per-field edoc
   lines for documented members. Elixir types use `@moduledoc` on nested shape modules,

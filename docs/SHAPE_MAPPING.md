@@ -40,16 +40,18 @@ with the following BEAM-specific exceptions called out explicitly.
   emit same-namespace unreachable shapes. The test model includes a dummy
   operation whose output structure references all basic types.
 - Enum/intEnum unknown variants MUST be represented in the generated type
-  surface. Client and server plugins with a configured supported protocol
-  (for example REST JSON 1) emit serializers and deserializers that preserve
-  unknown enum values on the wire.
+  surface. Client and server plugins emit serializers and deserializers that
+  preserve unknown enum values on the wire when the service declares a
+  supported protocol trait (for example `@restJson1`).
 - Union unknown variants MUST be represented in the generated type surface.
   Wire round-trip for unions follows the same protocol rules as other aggregate
-  shapes when a supported protocol is configured on client or server generation.
+  shapes when the service declares a supported protocol trait on client or
+  server generation.
 - [Timestamp](https://smithy.io/2.0/spec/simple-types.html#timestamp) mappings represent Smithy instants at the generated type surface
-  (`erlang:timestamp()` / `DateTime.t()`). Client and server plugins with REST
-  JSON 1 configured encode and decode timestamps according to HTTP binding
-  metadata. Type files alone do not fix a wire format.
+  (`erlang:timestamp()` / `DateTime.t()`). Client and server plugins encode and
+  decode timestamps according to HTTP binding metadata when the service carries
+  a supported protocol trait such as REST JSON 1. Type files alone do not fix
+  a wire format.
 - Smithy [@error](https://smithy.io/2.0/spec/type-refinement-traits.html#error-trait) structures are generated as distinguishable error types
   (Erlang records with fault and retryable metadata; Elixir exception modules).
   They MUST NOT be silently omitted from the types output for reachable shapes.
@@ -61,12 +63,12 @@ with the following BEAM-specific exceptions called out explicitly.
   when set, remove shapes deprecated before the given ISO 8601 date or semantic
   version from the model before codegen (all plugins). Without either setting,
   `@deprecated` has no effect on generated output.
-  [`protocol`](https://smithy.io/2.0/guides/building-codegen/configuring-the-generator.html#protocol-client-and-type-codegen-only),
-  when set on client or server plugins, selects and validates the service protocol
-  trait and drives codec, HTTP dispatch or router, and paginator emission for
-  supported protocols. When omitted, client and server operation stubs are emitted
-  without wire serialization. The types plugin validates `protocol` when present
-  but does not emit protocol modules.
+  Wire protocol selection is model-driven: client and server plugins read the
+  sole protocol trait on the selected service (for example `@restJson1`) and
+  emit codecs, HTTP dispatch or router modules, and paginator helpers when a
+  supported protocol is declared. Services without a protocol trait produce
+  stub-only client and server output with no wire modules. The types plugin
+  never resolves protocol traits and never emits wire modules.
 - [Erlang](https://www.erlang.org/doc/reference_manual/introduction.html#reserved-words) and [Elixir](https://hexdocs.pm/elixir/syntax-reference.html#reserved-words) reserved words MUST be escaped automatically in the initial generator. 
   The generator must never reject a Smithy model only because a shape, member, enum
   member, union member, module, or generated function name conflicts with an

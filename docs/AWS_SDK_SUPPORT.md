@@ -90,11 +90,11 @@ Output from `erlang-server-codegen` and `elixir-server-codegen`.
 
 ## AWS Protocols
 
-Protocol selection uses `@protocolDefinition` traits on the service. `BeamProtocolResolver` validates the configured or inferred protocol trait. `BeamProtocolCodegenFactory` currently registers one built-in implementation.
+Protocol selection reads the sole `@protocolDefinition` trait on the selected service. `BeamProtocolResolver.resolveServiceProtocol` returns that trait id, or empty when the service declares none. `BeamProtocolCodegenFactory` currently registers one built-in implementation.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ⚠️ | Request encoding, client response decoding, server request decoding, server response encoding, routing, and paginators are implemented for Erlang and Elixir. Codecs honor `@jsonName`, `@httpQueryParams`, `@httpResponseCode`, `@httpError`, `@timestampFormat`, and sparse collection nulls. Content type is fixed to `application/json`. Set `"protocol": "aws.protocols#restJson1"` in plugin settings to enable codec emission. |
+| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ⚠️ | Request encoding, client response decoding, server request decoding, server response encoding, routing, and paginators are implemented for Erlang and Elixir when the service carries `@restJson1`. Codecs honor `@jsonName`, `@httpQueryParams`, `@httpResponseCode`, `@httpError`, `@timestampFormat`, and sparse collection nulls. Content type is fixed to `application/json`. AWS service models such as S3 already declare the trait; no smithy-build protocol setting is required. |
 | [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ❌ | Not implemented. |
 | [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ❌ | Not implemented. |
 | [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ❌ | Not implemented. |
