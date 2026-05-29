@@ -10,7 +10,7 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import java.util.List;
 
 /**
- * Emits {@code <app>_runtime_helpers.ex} with HTTP path label parsing helpers.
+ * Emits {@code runtime_helpers.ex} with HTTP path label parsing helpers.
  * Emitted once per service when any operation binds {@code @httpLabel} members.
  */
 public final class ElixirRuntimeHelpersEmitter {
@@ -22,7 +22,7 @@ public final class ElixirRuntimeHelpersEmitter {
             return;
         }
         BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), service.getId().getNamespace());
-        String helpersMod = ElixirSymbolProvider.toModuleName(layout.modulePrefix() + "_runtime_helpers");
+        String helpersMod = ElixirSymbolProvider.toModuleName(layout.runtimeHelpersModuleName());
 
         ctx.writerDelegator().useFileWriter(layout.runtimeHelpersModuleFile(), writer -> {
             writer.write("defmodule $L do", helpersMod);
