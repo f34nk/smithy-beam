@@ -1,5 +1,7 @@
 package io.smithy.beam.core;
 
+import software.amazon.smithy.model.shapes.ServiceShape;
+
 /**
  * Single place for Elixir artifact paths derived from {@link BeamSettings} and namespace.
  */
@@ -10,13 +12,21 @@ public final class BeamElixirLayout {
     private final String serviceName;
 
     public BeamElixirLayout(BeamSettings settings, String namespace) {
-        this(settings, namespace, null);
+        this(settings, namespace, (String) null);
     }
 
+    /**
+     * @param serviceName effective service name from {@link BeamServiceNaming#effectiveServiceName},
+     *                    not the raw shape id name
+     */
     public BeamElixirLayout(BeamSettings settings, String namespace, String serviceName) {
         this.settings = settings;
         this.namespace = namespace;
         this.serviceName = serviceName;
+    }
+
+    public BeamElixirLayout(BeamSettings settings, String namespace, ServiceShape service) {
+        this(settings, namespace, BeamServiceNaming.effectiveServiceName(service));
     }
 
     public String modulePrefix() {

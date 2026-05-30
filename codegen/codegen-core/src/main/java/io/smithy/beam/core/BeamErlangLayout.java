@@ -1,5 +1,7 @@
 package io.smithy.beam.core;
 
+import software.amazon.smithy.model.shapes.ServiceShape;
+
 /**
  * Single place for Erlang output filenames derived from {@link BeamSettings} and namespace.
  * Call from every {@code createSymbolProvider} and from writers that open the same paths.
@@ -11,13 +13,21 @@ public final class BeamErlangLayout {
     private final String serviceName;
 
     public BeamErlangLayout(BeamSettings settings, String namespace) {
-        this(settings, namespace, null);
+        this(settings, namespace, (String) null);
     }
 
+    /**
+     * @param serviceName effective service name from {@link BeamServiceNaming#effectiveServiceName},
+     *                    not the raw shape id name
+     */
     public BeamErlangLayout(BeamSettings settings, String namespace, String serviceName) {
         this.settings = settings;
         this.namespace = namespace;
         this.serviceName = serviceName;
+    }
+
+    public BeamErlangLayout(BeamSettings settings, String namespace, ServiceShape service) {
+        this(settings, namespace, BeamServiceNaming.effectiveServiceName(service));
     }
 
     public String modulePrefix() {
