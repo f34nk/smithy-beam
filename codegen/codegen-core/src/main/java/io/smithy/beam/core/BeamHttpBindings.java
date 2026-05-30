@@ -72,4 +72,12 @@ public final class BeamHttpBindings {
             TimestampFormatTrait.Format defaultFormat) {
         return delegate.determineTimestampFormat(shapeOrMember, location, defaultFormat);
     }
+
+    public List<HttpBinding> requestPrefixHeaderBindings(ToShapeId operation) {
+        return delegate.getRequestBindings(operation, HttpBinding.Location.PREFIX_HEADERS);
+    }
+
+    public List<HttpBinding> responsePrefixHeaderBindings(ToShapeId operation) {
+        return delegate.getResponseBindings(operation, HttpBinding.Location.PREFIX_HEADERS);
+    }
 }
