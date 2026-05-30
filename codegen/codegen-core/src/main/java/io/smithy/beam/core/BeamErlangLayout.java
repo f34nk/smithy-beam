@@ -1,6 +1,7 @@
 package io.smithy.beam.core;
 
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 
 /**
  * Single place for Erlang output filenames derived from {@link BeamSettings} and namespace.
@@ -71,7 +72,11 @@ public final class BeamErlangLayout {
     }
 
     public String clientCodecModuleName() {
-        return serviceSnakeName() + "_rest_json_1";
+        return clientCodecModuleName(BeamRestJson1ProtocolCodegen.REST_JSON_1);
+    }
+
+    public String clientCodecModuleName(ShapeId protocolTraitId) {
+        return serviceSnakeName() + "_" + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId);
     }
 
     public String serverCodecModuleFile() {
@@ -79,7 +84,11 @@ public final class BeamErlangLayout {
     }
 
     public String serverCodecModuleName() {
-        return serviceSnakeName() + "_rest_json_1";
+        return serverCodecModuleName(BeamRestJson1ProtocolCodegen.REST_JSON_1);
+    }
+
+    public String serverCodecModuleName(ShapeId protocolTraitId) {
+        return serviceSnakeName() + "_" + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId);
     }
 
     public String runtimeTypesHeaderFile() {

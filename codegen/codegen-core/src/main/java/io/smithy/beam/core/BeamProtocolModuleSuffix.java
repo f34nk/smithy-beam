@@ -1,0 +1,31 @@
+package io.smithy.beam.core;
+
+import software.amazon.smithy.codegen.core.CodegenException;
+import software.amazon.smithy.model.shapes.ShapeId;
+
+public final class BeamProtocolModuleSuffix {
+
+    private BeamProtocolModuleSuffix() {}
+
+    public static String codecSuffix(ShapeId protocolTraitId) {
+        if (BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(protocolTraitId)) {
+            return "rest_json_1";
+        }
+        if (BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(protocolTraitId)) {
+            return "aws_json_1_0";
+        }
+        if (BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(protocolTraitId)) {
+            return "aws_json_1_1";
+        }
+        if (BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(protocolTraitId)) {
+            return "aws_query";
+        }
+        if (BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(protocolTraitId)) {
+            return "ec2_query";
+        }
+        if (BeamRestXmlProtocolCodegen.REST_XML.equals(protocolTraitId)) {
+            return "rest_xml";
+        }
+        throw new CodegenException("No codec module suffix for protocol " + protocolTraitId);
+    }
+}
