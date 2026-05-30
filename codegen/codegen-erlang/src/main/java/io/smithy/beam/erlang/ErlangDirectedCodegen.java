@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamMemberNullability;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamDocumentation.DocTarget;
@@ -525,7 +526,7 @@ final class ErlangDirectedCodegen
                     Symbol memberSymbol = sp.toSymbol(member);
                     String fieldName = memberSymbol.getProperty("fieldName", String.class).orElseThrow();
                     String memberType = renderErlangType(memberSymbol);
-                    boolean nullable = nullableIndex.isMemberNullable(member);
+                    boolean nullable = BeamMemberNullability.isMemberNullable(nullableIndex, shape, member);
                     String typeSpec = nullable ? memberType + " | undefined" : memberType;
                     String comma = (i < members.size() - 1) ? "," : "";
                     writer.write("$L :: $L$L", fieldName, typeSpec, comma);
