@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.smithy.beam.core.BeamMemberNullability;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamDocumentation.DocTarget;
@@ -631,6 +632,7 @@ final class ElixirDirectedCodegen
                     ctx,
                     sp,
                     nullableIndex,
+                    shape,
                     StreamSupport.stream(shape.members().spliterator(), false).toList());
 
             writer.closeBlock("end");
@@ -684,6 +686,7 @@ final class ElixirDirectedCodegen
             ElixirContext ctx,
             SymbolProvider sp,
             NullableIndex nullableIndex,
+            StructureShape shape,
             List<MemberShape> members) {
 
         writer.openBlock("@type t :: %__MODULE__{");
@@ -692,7 +695,7 @@ final class ElixirDirectedCodegen
             Symbol memberSym = sp.toSymbol(member);
             String fieldName = memberSym.getProperty("fieldName", String.class).orElseThrow();
             String fullType = renderElixirType(ctx, memberSym);
-            boolean nullable = nullableIndex.isMemberNullable(member);
+            boolean nullable = BeamMemberNullability.isMemberNullable(nullableIndex, shape, member);
             String typeExpr = nullable ? fullType + " | nil" : fullType;
             String comma = (i < members.size() - 1) ? "," : "";
             writer.write("$L: $L$L", fieldName, typeExpr, comma);
