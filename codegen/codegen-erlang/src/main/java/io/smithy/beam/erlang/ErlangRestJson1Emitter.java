@@ -156,9 +156,11 @@ public final class ErlangRestJson1Emitter {
         List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
         List<HttpBinding> queryParams = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY_PARAMS);
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> prefixHeaders = httpIndex.getRequestBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
 
-        List<String> patternParts = buildPatternParts(labels, queries, queryParams, headers, docMembers, sp, model);
+        List<String> patternParts = buildPatternParts(
+                labels, queries, queryParams, headers, prefixHeaders, docMembers, sp, model);
         String pattern = patternParts.isEmpty() ? "" : "\n    " + String.join(",\n    ", patternParts) + "\n";
 
         writer.write("%% Encode HTTP request for $L.", op.getId());
@@ -222,6 +224,13 @@ public final class ErlangRestJson1Emitter {
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"application/json\">>} | Headers0],");
         }
 
+        for (HttpBinding ph : prefixHeaders) {
+            String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
+            String prefix = ph.getLocationName();
+            writer.write("Headers = Headers ++ prefix_headers_to_list(<<\"$L\">>, $L),",
+                    prefix, toBindingVar(fieldName));
+        }
+
         if (docMembers.isEmpty() || method.equals("GET") || method.equals("DELETE") || method.equals("HEAD")) {
             writer.write("Body = <<>>,");
         } else {
@@ -281,6 +290,7 @@ public final class ErlangRestJson1Emitter {
         List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
         List<HttpBinding> queryParams = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY_PARAMS);
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> prefixHeaders = httpIndex.getRequestBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
 
         writer.write("%% Decode HTTP request for $L.", op.getId());
@@ -335,6 +345,11 @@ public final class ErlangRestJson1Emitter {
             recordFields.add(
                     "    " + fieldName + " = proplists:get_value(<<\"" + headerName + "\">>, Headers, undefined)");
         }
+        for (HttpBinding ph : prefixHeaders) {
+            String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
+            String prefix = ph.getLocationName();
+            recordFields.add("    " + fieldName + " = prefix_headers_from_list(Headers, <<\"" + prefix + "\">>)");
+        }
         for (HttpBinding db : docMembers) {
             String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
             String wireKey = jsonKey(db.getMember());
@@ -380,11 +395,12 @@ public final class ErlangRestJson1Emitter {
         int successCode = httpIndex.getResponseCode(op);
 
         List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> respPrefixHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
 
         List<String> patternParts = new ArrayList<>();
-        for (HttpBinding b : concat(respHeaders, respDoc, respPayload)) {
+        for (HttpBinding b : concat(respHeaders, respPrefixHeaders, respDoc, respPayload)) {
             String field = BeamNameUtils.toSnakeCase(b.getMember().getMemberName());
             patternParts.add(field + " = " + toBindingVar(field));
         }
@@ -411,6 +427,13 @@ public final class ErlangRestJson1Emitter {
                                     BeamNameUtils.toSnakeCase(hb.getMember().getMemberName())))
                             .collect(Collectors.joining(", ")));
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"application/json\">>} | ExtraHeaders],");
+        }
+
+        for (HttpBinding ph : respPrefixHeaders) {
+            String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
+            String prefix = ph.getLocationName();
+            writer.write("Headers = Headers ++ prefix_headers_to_list(<<\"$L\">>, $L),",
+                    prefix, toBindingVar(fieldName));
         }
 
         if (!respPayload.isEmpty()) {
@@ -526,6 +549,7 @@ public final class ErlangRestJson1Emitter {
         int successCode = httpIndex.getResponseCode(op);
 
         List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> respPrefixHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
         List<HttpBinding> respCode = httpIndex.getResponseBindings(op, HttpBinding.Location.RESPONSE_CODE);
@@ -572,6 +596,11 @@ public final class ErlangRestJson1Emitter {
             String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
             String bindingVar = toBindingVar(fieldName);
             recordFields.add("    " + fieldName + " = " + bindingVar);
+        }
+        for (HttpBinding ph : respPrefixHeaders) {
+            String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
+            String prefix = ph.getLocationName();
+            recordFields.add("    " + fieldName + " = prefix_headers_from_list(_Headers, <<\"" + prefix + "\">>)");
         }
         for (HttpBinding db : respDoc) {
             String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
@@ -899,6 +928,23 @@ public final class ErlangRestJson1Emitter {
         writer.write("decode_query_param(V) when is_binary(V) ->");
         writer.write("    V.");
         writer.write("");
+        writer.write("prefix_headers_to_list(_Prefix, undefined) ->");
+        writer.write("    [];");
+        writer.write("prefix_headers_to_list(Prefix, Map) when is_map(Map) ->");
+        writer.write("    [{<<Prefix/binary, H/binary>>, to_binary(V)} || {H, V} <- maps:to_list(Map)].");
+        writer.write("");
+        writer.write("prefix_headers_from_list(Headers, Prefix) ->");
+        writer.write("    Map = maps:from_list([");
+        writer.write("        {binary:part(Name, byte_size(Prefix)), Val}");
+        writer.write("        || {Name, Val} <- Headers,");
+        writer.write("           byte_size(Name) > byte_size(Prefix),");
+        writer.write("           binary:part(Name, 0, byte_size(Prefix)) =:= Prefix");
+        writer.write("    ]),");
+        writer.write("    case maps:size(Map) of");
+        writer.write("        0 -> undefined;");
+        writer.write("        _ -> Map");
+        writer.write("    end.");
+        writer.write("");
         writer.write("decode_json_body(<<>>) -> #{};");
         writer.write("decode_json_body(Body) ->");
         writer.write("    case jsone:try_decode(Body) of");
@@ -976,11 +1022,12 @@ public final class ErlangRestJson1Emitter {
             List<HttpBinding> queries,
             List<HttpBinding> queryParams,
             List<HttpBinding> headers,
+            List<HttpBinding> prefixHeaders,
             List<HttpBinding> docMembers,
             SymbolProvider sp,
             Model model) {
         List<String> parts = new ArrayList<>();
-        for (HttpBinding b : concat(labels, queries, queryParams, headers, docMembers)) {
+        for (HttpBinding b : concat(labels, queries, queryParams, headers, prefixHeaders, docMembers)) {
             String field = BeamNameUtils.toSnakeCase(b.getMember().getMemberName());
             parts.add(field + " = " + toBindingVar(field));
         }
