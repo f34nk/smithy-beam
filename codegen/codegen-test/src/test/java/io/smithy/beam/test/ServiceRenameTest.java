@@ -1,6 +1,7 @@
 package io.smithy.beam.test;
 
 import io.smithy.beam.erlang.ErlangClientPlugin;
+import io.smithy.beam.erlang.ErlangServerPlugin;
 import io.smithy.beam.erlang.ErlangTypesPlugin;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -70,5 +71,28 @@ class ServiceRenameTest {
         assertThat(codec).isNotEmpty();
         assertThat(codec).contains("get_widget_output");
         assertThat(codec).doesNotContain("#widget{");
+    }
+
+    @Test
+    void selfRenamedServiceProducesRenamedServerModuleFile() {
+        Model model = Model.assembler()
+                .addImport(getClass().getResource("/model/service_self_rename.smithy"))
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        new ErlangServerPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(ObjectNode.builder()
+                        .withMember("service", "smithy.beam.test#OriginalName")
+                        .withMember("edition", "2026")
+                        .build())
+                .build());
+
+        assertThat(manifest.getFileString("renamed_service_server.erl")).isPresent();
+        assertThat(manifest.getFileString("original_name_server.erl")).isEmpty();
+        assertThat(manifest.getFileString("renamed_service_router.erl")).isPresent();
+        assertThat(manifest.getFileString("renamed_service_rest_json_1.erl")).isPresent();
     }
 }
