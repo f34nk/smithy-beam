@@ -26,7 +26,7 @@ public final class ElixirRouterEmitter {
         }
         Model model = ctx.model();
         BeamElixirLayout layout = new BeamElixirLayout(
-                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
+                ctx.settings(), service.getId().getNamespace(), service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);

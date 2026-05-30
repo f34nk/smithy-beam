@@ -44,7 +44,7 @@ public final class ElixirResourceEmitter {
     private static void emit(ElixirContext ctx, ResourceShape resource, boolean server) {
         BeamResourceIndex index = BeamResourceIndex.of(ctx.model());
         BeamElixirLayout layout = new BeamElixirLayout(
-                ctx.settings(), ctx.service().getId().getNamespace(), ctx.service().getId().getName());
+                ctx.settings(), ctx.service().getId().getNamespace(), ctx.service());
         SymbolProvider sp = ctx.symbolProvider();
         String resourceSnake = sp.toSymbol(resource).getName();
         String mod = ElixirSymbolProvider.toModuleName(

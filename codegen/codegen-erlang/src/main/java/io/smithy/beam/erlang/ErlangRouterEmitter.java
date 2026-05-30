@@ -27,7 +27,7 @@ public final class ErlangRouterEmitter {
         }
         Model model = ctx.model();
         BeamErlangLayout layout = new BeamErlangLayout(
-                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
+                ctx.settings(), service.getId().getNamespace(), service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);

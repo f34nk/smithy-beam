@@ -48,7 +48,7 @@ final class ErlangServerDirectedCodegen
         String ns = directive.service().getId().getNamespace();
         BeamSettings settings = directive.settings();
         BeamErlangLayout layout =
-                new BeamErlangLayout(settings, ns, directive.service().getId().getName());
+                new BeamErlangLayout(settings, ns, directive.service());
         String definitionFile = layout.serverModuleFile();
         return SymbolProvider.cache(
                 new ErlangSymbolProvider(
@@ -74,7 +74,7 @@ final class ErlangServerDirectedCodegen
         String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
         BeamErlangLayout layout =
-                new BeamErlangLayout(settings, ns, service.getId().getName());
+                new BeamErlangLayout(settings, ns, service);
         String definitionFile = layout.serverModuleFile();
         String moduleName = layout.serverModuleName();
         return new ErlangContext(
@@ -107,7 +107,7 @@ final class ErlangServerDirectedCodegen
 
         String ns = service.getId().getNamespace();
         BeamErlangLayout layout =
-                new BeamErlangLayout(ctx.settings(), ns, service.getId().getName());
+                new BeamErlangLayout(ctx.settings(), ns, service);
 
         ctx.writerDelegator().useFileWriter(
                 layout.runtimeTypesHeaderFile(),

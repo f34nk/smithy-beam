@@ -205,7 +205,7 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     @Override
     public Symbol serviceShape(ServiceShape shape) {
         BeamElixirLayout layout =
-                new BeamElixirLayout(settings, shape.getId().getNamespace(), service.getId().getName());
+                new BeamElixirLayout(settings, shape.getId().getNamespace(), service);
         String name =
                 switch (kind) {
                     case TYPES -> ElixirSymbolProvider.toModuleName(layout.typesModuleName());

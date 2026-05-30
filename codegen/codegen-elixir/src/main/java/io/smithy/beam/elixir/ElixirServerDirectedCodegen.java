@@ -46,7 +46,7 @@ final class ElixirServerDirectedCodegen
         String ns = directive.service().getId().getNamespace();
         BeamSettings settings = directive.settings();
         BeamElixirLayout layout =
-                new BeamElixirLayout(settings, ns, directive.service().getId().getName());
+                new BeamElixirLayout(settings, ns, directive.service());
         String definitionFile = layout.serverModuleFile();
         String serverModuleName = ElixirSymbolProvider.toModuleName(layout.serverModuleName());
         return SymbolProvider.cache(
@@ -74,7 +74,7 @@ final class ElixirServerDirectedCodegen
         String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
         BeamElixirLayout layout =
-                new BeamElixirLayout(settings, ns, directive.service().getId().getName());
+                new BeamElixirLayout(settings, ns, directive.service());
         String definitionFile = layout.serverModuleFile();
         String serverModuleName = ElixirSymbolProvider.toModuleName(layout.serverModuleName());
         return new ElixirContext(
@@ -107,7 +107,7 @@ final class ElixirServerDirectedCodegen
 
         String ns = service.getId().getNamespace();
         BeamElixirLayout layout =
-                new BeamElixirLayout(ctx.settings(), ns, service.getId().getName());
+                new BeamElixirLayout(ctx.settings(), ns, service);
         String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         String runtimeTypesModule =
                 ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
@@ -195,7 +195,7 @@ final class ElixirServerDirectedCodegen
 
         String ns = ctx.service().getId().getNamespace();
         BeamElixirLayout layout =
-                new BeamElixirLayout(ctx.settings(), ns, ctx.service().getId().getName());
+                new BeamElixirLayout(ctx.settings(), ns, ctx.service());
         String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
 
         StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);

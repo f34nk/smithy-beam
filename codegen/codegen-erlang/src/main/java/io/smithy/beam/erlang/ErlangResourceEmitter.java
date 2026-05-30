@@ -44,7 +44,7 @@ public final class ErlangResourceEmitter {
     private static void emit(ErlangContext ctx, ResourceShape resource, boolean server) {
         BeamResourceIndex index = BeamResourceIndex.of(ctx.model());
         BeamErlangLayout layout = new BeamErlangLayout(
-                ctx.settings(), ctx.service().getId().getNamespace(), ctx.service().getId().getName());
+                ctx.settings(), ctx.service().getId().getNamespace(), ctx.service());
         SymbolProvider sp = ctx.symbolProvider();
         String resourceSnake = sp.toSymbol(resource).getName();
         String mod = server

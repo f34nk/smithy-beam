@@ -44,7 +44,7 @@ public final class ElixirRestJson1Emitter {
     public static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
         Model model = ctx.model();
         BeamElixirLayout layout = new BeamElixirLayout(
-                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
+                ctx.settings(), service.getId().getNamespace(), service);
         ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
@@ -81,7 +81,7 @@ public final class ElixirRestJson1Emitter {
     public static void emitCodecModule(ElixirContext ctx, ServiceShape service) {
         Model model = ctx.model();
         BeamElixirLayout layout = new BeamElixirLayout(
-                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
+                ctx.settings(), service.getId().getNamespace(), service);
         ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
