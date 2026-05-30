@@ -141,6 +141,7 @@ public final class ElixirRestJson1Emitter {
         List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
         List<HttpBinding> queryParams = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY_PARAMS);
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> prefixHeaders = httpIndex.getRequestBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
 
         String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
@@ -202,6 +203,12 @@ public final class ElixirRestJson1Emitter {
             writer.write("headers = [{\"Content-Type\", \"application/json\"}]");
         }
 
+        for (HttpBinding ph : prefixHeaders) {
+            String field = fieldName(sp, ph.getMember());
+            String prefix = ph.getLocationName();
+            writer.write("headers = headers ++ prefix_headers_to_list(\"$L\", input.$L)", prefix, field);
+        }
+
         boolean hasBody = !docMembers.isEmpty()
                 && !method.equals("GET") && !method.equals("DELETE") && !method.equals("HEAD");
         if (hasBody) {
@@ -258,6 +265,7 @@ public final class ElixirRestJson1Emitter {
         int statusCode = httpIndex.getResponseCode(op);
 
         List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> respPrefixHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
 
@@ -313,6 +321,12 @@ public final class ElixirRestJson1Emitter {
             writer.write("headers = [{\"Content-Type\", \"application/json\"}]");
         }
 
+        for (HttpBinding ph : respPrefixHeaders) {
+            String field = fieldName(sp, ph.getMember());
+            String prefix = ph.getLocationName();
+            writer.write("headers = headers ++ prefix_headers_to_list(\"$L\", output.$L)", prefix, field);
+        }
+
         writer.write("%{status: $L, headers: headers, body: body}", statusCode);
         writer.dedent();
         writer.write("end");
@@ -335,6 +349,7 @@ public final class ElixirRestJson1Emitter {
         List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
         List<HttpBinding> queryParams = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY_PARAMS);
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> prefixHeaders = httpIndex.getRequestBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
 
         if (labels.isEmpty()) {
@@ -348,7 +363,8 @@ public final class ElixirRestJson1Emitter {
         }
         writer.indent();
         emitRequestDecoderStruct(
-                writer, model, httpIndex, labels, queries, queryParams, headers, docMembers, sp, inputStruct);
+                writer, model, httpIndex, labels, queries, queryParams, headers, prefixHeaders, docMembers, sp,
+                inputStruct);
         writer.dedent();
         writer.write("end");
         writer.write("");
@@ -362,6 +378,7 @@ public final class ElixirRestJson1Emitter {
             List<HttpBinding> queries,
             List<HttpBinding> queryParams,
             List<HttpBinding> headers,
+            List<HttpBinding> prefixHeaders,
             List<HttpBinding> docMembers,
             SymbolProvider sp,
             String inputStruct) {
@@ -392,6 +409,10 @@ public final class ElixirRestJson1Emitter {
             writer.write("nil -> nil");
             writer.dedent();
             writer.write("end,");
+        }
+        for (HttpBinding ph : prefixHeaders) {
+            String field = fieldName(sp, ph.getMember());
+            writer.write("  $L: prefix_headers_from_list(headers, \"$L\"),", field, ph.getLocationName());
         }
         for (HttpBinding db : docMembers) {
             String field = fieldName(sp, db.getMember());
@@ -428,6 +449,7 @@ public final class ElixirRestJson1Emitter {
         int successCode = httpIndex.getResponseCode(op);
 
         List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> respPrefixHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
         List<HttpBinding> respCode = httpIndex.getResponseBindings(op, HttpBinding.Location.RESPONSE_CODE);
@@ -462,6 +484,10 @@ public final class ElixirRestJson1Emitter {
         for (HttpBinding hb : respHeaders) {
             String field = fieldName(sp, hb.getMember());
             writer.write("  $L: $L,", field, field);
+        }
+        for (HttpBinding ph : respPrefixHeaders) {
+            String field = fieldName(sp, ph.getMember());
+            writer.write("  $L: prefix_headers_from_list(headers, \"$L\"),", field, ph.getLocationName());
         }
         for (HttpBinding db : respDoc) {
             String field = fieldName(sp, db.getMember());
@@ -763,6 +789,27 @@ public final class ElixirRestJson1Emitter {
         writer.write("defp decode_query_param(\"true\"), do: true");
         writer.write("defp decode_query_param(\"false\"), do: false");
         writer.write("defp decode_query_param(value), do: value");
+        writer.write("");
+        writer.write("defp prefix_headers_to_list(_prefix, nil), do: []");
+        writer.write("defp prefix_headers_to_list(prefix, map) when is_map(map) do");
+        writer.indent();
+        writer.write("Enum.map(map, fn {k, v} -> {prefix <> k, to_string(v)} end)");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+        writer.write("defp prefix_headers_from_list(headers, prefix) do");
+        writer.indent();
+        writer.write("headers");
+        writer.write("|> Enum.filter(fn {name, _} -> String.starts_with?(name, prefix) end)");
+        writer.write("|> Map.new(fn {name, val} -> {String.slice(name, byte_size(prefix)..-1//1), val} end)");
+        writer.write("|> case do");
+        writer.indent();
+        writer.write("map when map == %{} -> nil");
+        writer.write("map -> map");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
         writer.write("");
         writer.write("defp decode_sparse_list(nil), do: nil");
         writer.write("defp decode_sparse_list(list) when is_list(list),");
