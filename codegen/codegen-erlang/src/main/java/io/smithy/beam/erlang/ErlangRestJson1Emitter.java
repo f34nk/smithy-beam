@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -19,12 +20,15 @@ import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.TimestampShape;
 import software.amazon.smithy.model.shapes.UnionShape;
+import software.amazon.smithy.model.traits.EndpointTrait;
 import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.traits.TimestampFormatTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 import software.amazon.smithy.model.traits.JsonNameTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
+
+import software.amazon.smithy.model.pattern.SmithyPattern;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -54,11 +58,12 @@ public final class ErlangRestJson1Emitter {
         SymbolProvider sp = ctx.symbolProvider();
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
+        boolean encodeWithConfig = serviceHasHostLabelOperations(model, service);
         List<String> exports = new ArrayList<>();
         for (OperationShape op : operations) {
             String name = sp.toSymbol(op).getName();
             List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
-            exports.add("encode_" + name + "_request/1");
+            exports.add("encode_" + name + "_request/" + (encodeWithConfig ? "2" : "1"));
             exports.add("decode_" + name + "_request/" + (labels.isEmpty() ? "1" : "2"));
             exports.add("decode_" + name + "_response/1");
         }
@@ -73,7 +78,7 @@ public final class ErlangRestJson1Emitter {
             writer.write("");
 
             for (OperationShape op : operations) {
-                emitEncoder(writer, model, service, op, httpIndex, sp);
+                emitEncoder(writer, model, service, op, httpIndex, sp, encodeWithConfig);
                 emitRequestDecoder(writer, model, op, httpIndex, sp);
                 emitDecoder(writer, model, service, op, httpIndex, sp, layout);
             }
@@ -85,6 +90,9 @@ public final class ErlangRestJson1Emitter {
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
             emitHelpers(writer);
+            if (encodeWithConfig) {
+                emitBuildHostHelpers(writer, model, service, sp);
+            }
         });
     }
 
@@ -136,14 +144,15 @@ public final class ErlangRestJson1Emitter {
         });
     }
 
-    /** Emits encode_<op>_request/1 for one operation. */
+    /** Emits encode_<op>_request for one operation. */
     private static void emitEncoder(
             ErlangWriter writer,
             Model model,
             ServiceShape service,
             OperationShape op,
             HttpBindingIndex httpIndex,
-            SymbolProvider sp) {
+            SymbolProvider sp,
+            boolean encodeWithConfig) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
@@ -164,8 +173,16 @@ public final class ErlangRestJson1Emitter {
         String pattern = patternParts.isEmpty() ? "" : "\n    " + String.join(",\n    ", patternParts) + "\n";
 
         writer.write("%% Encode HTTP request for $L.", op.getId());
-        writer.write("encode_$L_request(#$L{$L}) ->", opName, inputRecord, pattern);
+        if (encodeWithConfig) {
+            writer.write("encode_$L_request(Config, Input = #$L{$L}) ->", opName, inputRecord, pattern);
+        } else {
+            writer.write("encode_$L_request(Input = #$L{$L}) ->", opName, inputRecord, pattern);
+        }
         writer.indent();
+
+        BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
+        boolean hasHostLabels = !hostLabelIndex.hostLabelMembers(op).isEmpty()
+                && op.hasTrait(EndpointTrait.class);
 
         String pathExpr = buildPathExpression(uriTemplate, labels, sp, model);
         writer.write("Path = $L,", pathExpr);
@@ -263,12 +280,19 @@ public final class ErlangRestJson1Emitter {
             writer.write("Body = jsone:encode(BodyMap),");
         }
 
+        if (hasHostLabels) {
+            writer.write("Host = build_host(Input, Config),");
+        }
+
         writer.write("#http_request{");
         writer.write("    method = <<\"$L\">>,", method);
         writer.write("    path = Path,");
         writer.write("    query = maps:from_list(Query),");
         writer.write("    headers = Headers,");
         writer.write("    body = Body");
+        if (hasHostLabels) {
+            writer.write("    ,host = Host");
+        }
         writer.write("}.");
         writer.dedent();
         writer.write("");
@@ -1010,6 +1034,106 @@ public final class ErlangRestJson1Emitter {
         writer.write("    catch _:_ -> undefined");
         writer.write("    end.");
         writer.write("");
+    }
+
+    private static void emitBuildHostHelpers(
+            ErlangWriter writer,
+            Model model,
+            ServiceShape service,
+            SymbolProvider sp) {
+
+        writer.write("%% Host label helpers for @endpoint hostPrefix expansion.");
+        writer.write("split_base_url(<<>>) ->");
+        writer.indent();
+        writer.write("{<<>>, <<>>};");
+        writer.dedent();
+        writer.write("split_base_url(BaseUrl) ->");
+        writer.indent();
+        writer.write("case uri_string:parse(binary_to_list(BaseUrl)) of");
+        writer.indent();
+        writer.write("#{scheme := Scheme, host := Host} = Parts ->");
+        writer.indent();
+        writer.write("PortSuffix = case maps:get(port, Parts, undefined) of");
+        writer.indent();
+        writer.write("undefined -> <<>>;");
+        writer.write("Port -> <<\":\", (integer_to_binary(Port))/binary>>");
+        writer.dedent();
+        writer.write("end,");
+        writer.write("{<< (list_to_binary(Scheme))/binary, \"://\">>,");
+        writer.write(" << (list_to_binary(Host))/binary, PortSuffix/binary >>};");
+        writer.dedent();
+        writer.write("_ ->");
+        writer.indent();
+        writer.write("{<<>>, BaseUrl}");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
+        writer.write("");
+
+        BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
+        for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
+            List<MemberShape> hostLabels = hostLabelIndex.hostLabelMembers(op);
+            if (hostLabels.isEmpty() || !op.hasTrait(EndpointTrait.class)) {
+                continue;
+            }
+            StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
+            String inputRecord = recordName(sp.toSymbol(input));
+            SmithyPattern hostPrefix = op.expectTrait(EndpointTrait.class).getHostPrefix();
+            String prefixExpr = buildHostPrefixExpression(hostPrefix);
+            List<String> patternParts = hostLabels.stream()
+                    .map(m -> {
+                        String field = BeamNameUtils.toSnakeCase(m.getMemberName());
+                        return field + " = " + toBindingVar(field);
+                    })
+                    .toList();
+            String pattern = patternParts.isEmpty()
+                    ? "" : "\n    " + String.join(",\n    ", patternParts) + "\n";
+
+            writer.write("build_host(#$L{$L}, Config) ->", inputRecord, pattern);
+            writer.indent();
+            writer.write("BaseUrl = maps:get(base_url, Config, <<>>),");
+            writer.write("{_Scheme, Authority} = split_base_url(BaseUrl),");
+            writer.write("Prefix = $L,", prefixExpr);
+            writer.write("<<Prefix/binary, Authority/binary>>.");
+            writer.dedent();
+            writer.write("");
+        }
+    }
+
+    public static boolean serviceHasHostLabelOperations(Model model, ServiceShape service) {
+        BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
+        for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
+            if (!hostLabelIndex.hostLabelMembers(op).isEmpty() && op.hasTrait(EndpointTrait.class)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String buildHostPrefixExpression(SmithyPattern hostPrefix) {
+        if (hostPrefix.getSegments().isEmpty()) {
+            return "<<>>";
+        }
+        StringBuilder sb = new StringBuilder("<<");
+        List<SmithyPattern.Segment> segments = hostPrefix.getSegments();
+        for (int i = 0; i < segments.size(); i++) {
+            SmithyPattern.Segment segment = segments.get(i);
+            if (segment.isLabel()) {
+                String memberName = segment.getContent();
+                String fieldName = BeamNameUtils.toSnakeCase(memberName);
+                sb.append("(uri_encode(to_binary(")
+                        .append(toBindingVar(fieldName))
+                        .append(")))/binary");
+            } else {
+                sb.append("\"").append(segment.getContent()).append("\"");
+            }
+            if (i < segments.size() - 1) {
+                sb.append(", ");
+            }
+        }
+        sb.append(">>");
+        return sb.toString();
     }
 
     /** Record tag for #-record{} syntax; symbol names carry a trailing {@code ()} type suffix. */

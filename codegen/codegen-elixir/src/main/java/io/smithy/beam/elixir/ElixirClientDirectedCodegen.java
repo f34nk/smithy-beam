@@ -235,7 +235,11 @@ final class ElixirClientDirectedCodegen
                         layout.runtimeHttpModuleName());
                 writer.write("def $L(config, input) do", opSym.getName());
                 writer.indent();
-                writer.write("req = $L.encode_$L_request(input)", codecMod, opSym.getName());
+                if (ElixirRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())) {
+                    writer.write("req = $L.encode_$L_request(config, input)", codecMod, opSym.getName());
+                } else {
+                    writer.write("req = $L.encode_$L_request(input)", codecMod, opSym.getName());
+                }
                 writer.write("case $L.dispatch(config, req) do", httpMod);
                 writer.indent();
                 writer.write("{:ok, resp} -> $L.decode_$L_response(resp)", codecMod, opSym.getName());

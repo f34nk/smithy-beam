@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -19,12 +20,15 @@ import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.TimestampShape;
 import software.amazon.smithy.model.shapes.UnionShape;
+import software.amazon.smithy.model.traits.EndpointTrait;
 import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.traits.TimestampFormatTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.JsonNameTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
+
+import software.amazon.smithy.model.pattern.SmithyPattern;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -93,6 +97,7 @@ public final class ElixirRestJson1Emitter {
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
         String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
+        boolean encodeWithConfig = serviceHasHostLabelOperations(model, service);
 
         ctx.writerDelegator().useFileWriter(codecFile, writer -> {
             writer.write("defmodule $L do", moduleName);
@@ -104,7 +109,7 @@ public final class ElixirRestJson1Emitter {
             writer.write("");
 
             for (OperationShape op : operations) {
-                emitEncoder(writer, model, op, httpIndex, sp, typesMod, runtimeMod);
+                emitEncoder(writer, model, op, httpIndex, sp, typesMod, runtimeMod, encodeWithConfig);
                 emitRequestDecoder(writer, model, op, httpIndex, sp, typesMod);
                 emitDecoder(writer, model, op, httpIndex, sp, typesMod);
             }
@@ -116,6 +121,9 @@ public final class ElixirRestJson1Emitter {
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
             emitHelpers(writer);
+            if (encodeWithConfig) {
+                emitBuildHostHelpers(writer, model, service, sp);
+            }
 
             writer.dedent();
             writer.write("end");
@@ -129,13 +137,18 @@ public final class ElixirRestJson1Emitter {
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
             String typesMod,
-            String runtimeMod) {
+            String runtimeMod,
+            boolean encodeWithConfig) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
         HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
         String method = httpTrait.getMethod();
         String uriTemplate = httpTrait.getUri().toString();
+
+        BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
+        boolean hasHostLabels = !hostLabelIndex.hostLabelMembers(op).isEmpty()
+                && op.hasTrait(EndpointTrait.class);
 
         List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
         List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
@@ -147,8 +160,13 @@ public final class ElixirRestJson1Emitter {
         String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
         String httpRequestType = "%" + runtimeMod + ".HttpRequest{}";
 
-        writer.write("@spec encode_$L_request($L) :: $L", opName, inputType, httpRequestType);
-        writer.write("def encode_$L_request(input) do", opName);
+        if (encodeWithConfig) {
+            writer.write("@spec encode_$L_request(map(), $L) :: $L", opName, inputType, httpRequestType);
+            writer.write("def encode_$L_request(config, input) do", opName);
+        } else {
+            writer.write("@spec encode_$L_request($L) :: $L", opName, inputType, httpRequestType);
+            writer.write("def encode_$L_request(input) do", opName);
+        }
         writer.indent();
 
         String pathExpr = buildElixirPathExpression(uriTemplate, labels, sp);
@@ -239,12 +257,19 @@ public final class ElixirRestJson1Emitter {
             writer.write("body = \"\"");
         }
 
+        if (hasHostLabels) {
+            writer.write("host = build_host(input, config)");
+        }
+
         writer.write("%RuntimeTypes.HttpRequest{");
         writer.write("  method: \"$L\",", method);
         writer.write("  path: path,");
         writer.write("  query: query,");
         writer.write("  headers: headers,");
         writer.write("  body: body");
+        if (hasHostLabels) {
+            writer.write("  ,host: host");
+        }
         writer.write("}");
         writer.dedent();
         writer.write("end");
@@ -947,5 +972,106 @@ public final class ElixirRestJson1Emitter {
 
     private static String escapeElixirString(String value) {
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private static void emitBuildHostHelpers(
+            ElixirWriter writer,
+            Model model,
+            ServiceShape service,
+            SymbolProvider sp) {
+
+        writer.write("defp split_base_url(\"\"), do: {\"\", \"\"}");
+        writer.write("defp split_base_url(base_url) do");
+        writer.indent();
+        writer.write("case URI.parse(base_url) do");
+        writer.indent();
+        writer.write("%URI{scheme: scheme, host: host} = uri when is_binary(host) ->");
+        writer.indent();
+        writer.write("port_suffix =");
+        writer.indent();
+        writer.write("case uri.port do");
+        writer.indent();
+        writer.write("nil -> \"\"");
+        writer.write("port -> \":#{port}\"");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("{scheme <> \"://\", host <> port_suffix}");
+        writer.dedent();
+        writer.write("_ ->");
+        writer.indent();
+        writer.write("{\"\", base_url}");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+
+        BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
+        for (OperationShape op : ElixirTopDown.containedOperationsSorted(model, service)) {
+            List<MemberShape> hostLabels = hostLabelIndex.hostLabelMembers(op);
+            if (hostLabels.isEmpty() || !op.hasTrait(EndpointTrait.class)) {
+                continue;
+            }
+            StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
+            String inputStruct = sp.toSymbol(input).getName();
+            SmithyPattern hostPrefix = op.expectTrait(EndpointTrait.class).getHostPrefix();
+            String prefixExpr = buildElixirHostPrefixExpression(hostPrefix, hostLabels, sp);
+
+            writer.write("defp build_host(%Types.$L{", inputStruct);
+            for (int i = 0; i < hostLabels.size(); i++) {
+                MemberShape member = hostLabels.get(i);
+                String field = fieldName(sp, member);
+                String comma = i < hostLabels.size() - 1 ? "," : "";
+                writer.write("  $L: $L$L", field, field, comma);
+            }
+            writer.write("}, config) do");
+            writer.indent();
+            writer.write("base_url = Map.get(config, :base_url, \"\")");
+            writer.write("{_scheme, authority} = split_base_url(base_url)");
+            writer.write("prefix = $L", prefixExpr);
+            writer.write("prefix <> authority");
+            writer.dedent();
+            writer.write("end");
+            writer.write("");
+        }
+    }
+
+    public static boolean serviceHasHostLabelOperations(Model model, ServiceShape service) {
+        BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
+        for (OperationShape op : ElixirTopDown.containedOperationsSorted(model, service)) {
+            if (!hostLabelIndex.hostLabelMembers(op).isEmpty() && op.hasTrait(EndpointTrait.class)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String buildElixirHostPrefixExpression(
+            SmithyPattern hostPrefix, List<MemberShape> hostLabels, SymbolProvider sp) {
+        if (hostPrefix.getSegments().isEmpty()) {
+            return "\"\"";
+        }
+        Map<String, String> labelFields = new HashMap<>();
+        for (MemberShape member : hostLabels) {
+            labelFields.put(member.getMemberName(), fieldName(sp, member));
+        }
+        StringBuilder sb = new StringBuilder();
+        List<SmithyPattern.Segment> segments = hostPrefix.getSegments();
+        for (int i = 0; i < segments.size(); i++) {
+            SmithyPattern.Segment segment = segments.get(i);
+            if (segment.isLabel()) {
+                String field = labelFields.getOrDefault(
+                        segment.getContent(), BeamNameUtils.toSnakeCase(segment.getContent()));
+                sb.append("URI.encode(to_string(").append(field).append("))");
+            } else {
+                sb.append("\"").append(escapeElixirString(segment.getContent())).append("\"");
+            }
+            if (i < segments.size() - 1) {
+                sb.append(" <> ");
+            }
+        }
+        return sb.toString();
     }
 }

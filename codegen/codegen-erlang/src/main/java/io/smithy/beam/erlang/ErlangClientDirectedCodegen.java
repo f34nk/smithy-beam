@@ -230,8 +230,13 @@ final class ErlangClientDirectedCodegen
             if (hasProtocol) {
                 writer.write("$L(Config, Input) ->", opSym.getName());
                 writer.indent();
-                writer.write("Req = $L:encode_$L_request(Input),",
-                        layout.codecModuleName(), opSym.getName());
+                if (ErlangRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())) {
+                    writer.write("Req = $L:encode_$L_request(Config, Input),",
+                            layout.codecModuleName(), opSym.getName());
+                } else {
+                    writer.write("Req = $L:encode_$L_request(Input),",
+                            layout.codecModuleName(), opSym.getName());
+                }
                 writer.write("case $L:dispatch(Config, Req) of",
                         layout.runtimeHttpModuleName());
                 writer.indent();

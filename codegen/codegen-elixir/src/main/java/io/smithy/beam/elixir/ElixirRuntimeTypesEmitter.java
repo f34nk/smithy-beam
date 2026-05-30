@@ -13,7 +13,7 @@ public final class ElixirRuntimeTypesEmitter {
         writer.write("@type http_request :: %__MODULE__.HttpRequest{}");
         writer.write("defmodule HttpRequest do");
         writer.indent();
-        writer.write("defstruct method: \"GET\", path: \"/\", query: %{}, headers: [], body: \"\"");
+        writer.write("defstruct method: \"GET\", path: \"/\", query: %{}, headers: [], body: \"\", host: nil");
         writer.dedent();
         writer.write("end");
         writer.write("defmodule HttpResponse do");

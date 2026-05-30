@@ -14,7 +14,8 @@ public final class ErlangRuntimeTypesEmitter {
         writer.write("  path = <<\"/\">> :: binary(),");
         writer.write("  query = #{} :: #{binary() => binary()},");
         writer.write("  headers = [] :: [{binary(), binary()}],");
-        writer.write("  body = <<>> :: iodata()");
+        writer.write("  body = <<>> :: iodata(),");
+        writer.write("  host = undefined :: binary() | undefined");
         writer.write("}).");
         writer.write("-type http_request() :: #http_request{}.");
         writer.write("");
