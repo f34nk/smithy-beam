@@ -3,6 +3,7 @@ dependencies {
     api(libs.smithy.codegen.core)
 
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.smithy.aws.traits)
     testImplementation(libs.assertj.core)
     testImplementation("org.mockito:mockito-junit-jupiter:5.14.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
