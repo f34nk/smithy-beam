@@ -95,6 +95,7 @@ final class ErlangDirectedCodegen
                 service,
                 httpBindings,
                 protocolCodegen,
+                null,
                 moduleName,
                 definitionFile);
     }

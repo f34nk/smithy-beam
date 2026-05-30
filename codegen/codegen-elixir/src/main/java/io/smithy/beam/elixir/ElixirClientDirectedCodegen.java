@@ -69,6 +69,7 @@ final class ElixirClientDirectedCodegen
         BeamProtocolCodegen protocolCodegen = null;
         Optional<ShapeId> serviceProtocol =
                 BeamProtocolResolver.resolveServiceProtocol(directive.model(), service);
+        ShapeId resolvedProtocolTraitId = serviceProtocol.orElse(null);
         if (serviceProtocol.isPresent()) {
             protocolCodegen =
                     BeamProtocolCodegenFactory.create(directive.model(), serviceProtocol.get());
@@ -92,6 +93,7 @@ final class ElixirClientDirectedCodegen
                 service,
                 httpBindings,
                 protocolCodegen,
+                resolvedProtocolTraitId,
                 clientModuleName,
                 definitionFile);
     }

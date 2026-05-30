@@ -97,6 +97,7 @@ final class ElixirDirectedCodegen
                 service,
                 httpBindings,
                 protocolCodegen,
+                null,
                 moduleName,
                 definitionFile);
     }

@@ -67,6 +67,7 @@ final class ErlangClientDirectedCodegen
         BeamProtocolCodegen protocolCodegen = null;
         Optional<ShapeId> serviceProtocol =
                 BeamProtocolResolver.resolveServiceProtocol(directive.model(), service);
+        ShapeId resolvedProtocolTraitId = serviceProtocol.orElse(null);
         if (serviceProtocol.isPresent()) {
             protocolCodegen =
                     BeamProtocolCodegenFactory.create(directive.model(), serviceProtocol.get());
@@ -90,6 +91,7 @@ final class ErlangClientDirectedCodegen
                 service,
                 httpBindings,
                 protocolCodegen,
+                resolvedProtocolTraitId,
                 moduleName,
                 definitionFile);
     }
