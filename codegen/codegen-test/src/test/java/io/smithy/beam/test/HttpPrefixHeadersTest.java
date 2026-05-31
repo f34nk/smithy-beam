@@ -21,7 +21,7 @@ class HttpPrefixHeadersTest {
             @restJson1
             service PrefixHeadersService {
                 version: "2026"
-                operations: [PutObject]
+                operations: [PutObject, GetObject]
             }
 
             @http(method: "PUT", uri: "/objects/{key}")
@@ -45,6 +45,27 @@ class HttpPrefixHeadersTest {
             }
 
             structure PutObjectOutput {
+                etag: String
+            }
+
+            @http(method: "GET", uri: "/objects/{key}")
+            @readonly
+            operation GetObject {
+                input: GetObjectInput
+                output: GetObjectOutput
+            }
+
+            structure GetObjectInput {
+                @required
+                @httpLabel
+                key: String
+            }
+
+            structure GetObjectOutput {
+                @httpPrefixHeaders("x-amz-meta-")
+                metadata: MetadataMap
+
+                @httpHeader("ETag")
                 etag: String
             }
             """;
@@ -86,22 +107,24 @@ class HttpPrefixHeadersTest {
     }
 
     @Test
-    void prefixHeadersRoundTripInErlangCodec() {
-        MockManifest manifest = runErlangPlugin(loadModel());
-        String codec = manifest.getFileString("prefix_headers_service_rest_json_1.erl").orElse("");
+    void requestPrefixHeadersMergedIntoHeadersOnErlangEncode() {
+        String codec = runErlangPlugin(loadModel())
+                .getFileString("prefix_headers_service_rest_json_1.erl")
+                .orElse("");
         assertThat(codec).contains("encode_put_object_request(");
-        assertThat(codec).contains("prefix_headers_to_list(<<\"x-amz-meta-\">>");
-        assertThat(codec).contains("decode_put_object_request(");
-        assertThat(codec).contains("prefix_headers_from_list(Headers, <<\"x-amz-meta-\">>)");
+        assertThat(codec).contains("Headers = Headers ++ prefix_headers_to_list(<<\"x-amz-meta-\">>, Metadata)");
+        assertThat(codec).contains("prefix_headers_to_list(_Prefix, undefined) ->");
+        assertThat(codec).contains("prefix_headers_from_list(Headers, Prefix) ->");
     }
 
     @Test
-    void prefixHeadersRoundTripInElixirCodec() {
-        MockManifest manifest = runElixirPlugin(loadModel());
-        String codec = manifest.getFileString("prefix_headers_service_rest_json_1.ex").orElse("");
+    void requestPrefixHeadersMergedIntoHeadersOnElixirEncode() {
+        String codec = runElixirPlugin(loadModel())
+                .getFileString("prefix_headers_service_rest_json_1.ex")
+                .orElse("");
         assertThat(codec).contains("def encode_put_object_request(");
-        assertThat(codec).contains("prefix_headers_to_list(\"x-amz-meta-\"");
-        assertThat(codec).contains("def decode_put_object_request(");
-        assertThat(codec).contains("prefix_headers_from_list(headers, \"x-amz-meta-\")");
+        assertThat(codec).contains("prefix_headers_to_list(\"x-amz-meta-\", input.metadata)");
+        assertThat(codec).contains("defp prefix_headers_to_list(_prefix, nil), do: []");
+        assertThat(codec).contains("defp prefix_headers_from_list(headers, prefix) do");
     }
 }
