@@ -25,6 +25,7 @@ import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.traits.TimestampFormatTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
+import software.amazon.smithy.model.traits.IdempotencyTokenTrait;
 import software.amazon.smithy.model.traits.JsonNameTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
 
@@ -179,6 +180,31 @@ public final class ErlangRestJson1Emitter {
             writer.write("encode_$L_request(Input = #$L{$L}) ->", opName, inputRecord, pattern);
         }
         writer.indent();
+
+        List<MemberShape> idempotencyMembers = input.members().stream()
+                .filter(m -> m.hasTrait(IdempotencyTokenTrait.class))
+                .collect(Collectors.toList());
+        if (!idempotencyMembers.isEmpty()) {
+            String currentInput = "Input";
+            int step = 1;
+            for (MemberShape member : idempotencyMembers) {
+                String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+                String nextInput = "Input" + step;
+                writer.write("$L = case $L#$L of", nextInput, currentInput, field);
+                writer.indent();
+                writer.write("undefined -> $L#$L{ $L = generate_uuid() };", currentInput, inputRecord, field);
+                writer.write("_ -> $L", currentInput);
+                writer.dedent();
+                writer.write("end,");
+                currentInput = nextInput;
+                step++;
+            }
+            for (MemberShape member : idempotencyMembers) {
+                String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+                writer.write("$L = $L#$L,",
+                        toBindingVar(field), currentInput, field);
+            }
+        }
 
         BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
         boolean hasHostLabels = !hostLabelIndex.hostLabelMembers(op).isEmpty()
@@ -1033,6 +1059,9 @@ public final class ErlangRestJson1Emitter {
         writer.write("        {Mega, EpochSecs rem 1000000, 0}");
         writer.write("    catch _:_ -> undefined");
         writer.write("    end.");
+        writer.write("");
+        writer.write("generate_uuid() ->");
+        writer.write("    list_to_binary(uuid:to_string(uuid:v4())).");
         writer.write("");
     }
 
