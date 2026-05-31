@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHostLabelIndex;
+import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamNameUtils;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -27,6 +28,7 @@ import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 import software.amazon.smithy.model.traits.IdempotencyTokenTrait;
 import software.amazon.smithy.model.traits.JsonNameTrait;
+import software.amazon.smithy.model.traits.MediaTypeTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
 
 import software.amazon.smithy.model.pattern.SmithyPattern;
@@ -170,6 +172,8 @@ public final class ErlangRestJson1Emitter {
         List<HttpBinding> prefixHeaders = httpIndex.getRequestBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
 
+        String requestContentType = resolvedRequestContentType(model, op);
+
         List<String> patternParts = buildPatternParts(
                 labels, queries, queryParams, headers, prefixHeaders, docMembers, sp, model);
         String pattern = patternParts.isEmpty() ? "" : "\n    " + String.join(",\n    ", patternParts) + "\n";
@@ -253,7 +257,7 @@ public final class ErlangRestJson1Emitter {
         }
 
         if (headers.isEmpty()) {
-            writer.write("Headers = [{<<\"Content-Type\">>, <<\"application/json\">>}],");
+            writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>}],", requestContentType);
         } else {
             writer.write("Headers0 = lists:filtermap(fun");
             for (HttpBinding hb : headers) {
@@ -268,7 +272,7 @@ public final class ErlangRestJson1Emitter {
                             .map(hb -> toBindingVar(
                                     BeamNameUtils.toSnakeCase(hb.getMember().getMemberName())))
                             .collect(Collectors.joining(", ")));
-            writer.write("Headers = [{<<\"Content-Type\">>, <<\"application/json\">>} | Headers0],");
+            writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>} | Headers0],", requestContentType);
         }
 
         for (HttpBinding ph : prefixHeaders) {
@@ -457,6 +461,8 @@ public final class ErlangRestJson1Emitter {
         List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
 
+        String responseContentType = resolvedResponseContentType(model, op);
+
         List<String> patternParts = new ArrayList<>();
         for (HttpBinding b : concat(respHeaders, respPrefixHeaders, respDoc, respPayload)) {
             String field = BeamNameUtils.toSnakeCase(b.getMember().getMemberName());
@@ -471,7 +477,7 @@ public final class ErlangRestJson1Emitter {
         writer.indent();
 
         if (respHeaders.isEmpty()) {
-            writer.write("Headers = [{<<\"Content-Type\">>, <<\"application/json\">>}],");
+            writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>}],", responseContentType);
         } else {
             writer.write("ExtraHeaders = lists:filtermap(fun");
             for (HttpBinding hb : respHeaders) {
@@ -485,7 +491,7 @@ public final class ErlangRestJson1Emitter {
                             .map(hb -> toBindingVar(
                                     BeamNameUtils.toSnakeCase(hb.getMember().getMemberName())))
                             .collect(Collectors.joining(", ")));
-            writer.write("Headers = [{<<\"Content-Type\">>, <<\"application/json\">>} | ExtraHeaders],");
+            writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>} | ExtraHeaders],", responseContentType);
         }
 
         for (HttpBinding ph : respPrefixHeaders) {
@@ -628,7 +634,21 @@ public final class ErlangRestJson1Emitter {
         }
         writer.indent();
 
-        if (!respDoc.isEmpty() || !respPayload.isEmpty()) {
+        boolean needsContentTypeCheck = responsePayloadRequiresContentTypeCheck(model, respPayload);
+        if (needsContentTypeCheck) {
+            String expectedContentType = resolvedResponseContentType(model, op);
+            writer.write("case content_type_matches(Headers, <<\"$L\">>) of", expectedContentType);
+            writer.indent();
+            writer.write("false ->");
+            writer.indent();
+            writer.write("{error, {invalid_content_type,");
+            writer.write("    proplists:get_value(<<\"Content-Type\">>, Headers, undefined)}};");
+            writer.dedent();
+            writer.write("true ->");
+            writer.indent();
+        }
+
+        if (!respDoc.isEmpty() || (!respPayload.isEmpty() && !needsContentTypeCheck)) {
             writer.write("Decoded = case Body of");
             writer.indent();
             writer.write("<<>> -> #{};");
@@ -697,7 +717,13 @@ public final class ErlangRestJson1Emitter {
         if (!recordFields.isEmpty()) {
             writer.write(String.join(",\n", recordFields));
         }
-        writer.write("}};");
+        if (needsContentTypeCheck) {
+            writer.write("}}");
+            writer.dedent();
+            writer.write("end;");
+        } else {
+            writer.write("}};");
+        }
 
         writer.dedent();
         writer.write(
@@ -1014,6 +1040,20 @@ public final class ErlangRestJson1Emitter {
         writer.write("        _ -> #{}");
         writer.write("    end.");
         writer.write("");
+        writer.write("content_type_matches(Headers, Expected) ->");
+        writer.write("    case proplists:get_value(<<\"Content-Type\">>, Headers, undefined) of");
+        writer.write("        Expected -> true;");
+        writer.write("        <<_/binary>> = CT ->");
+        writer.write("            ct_base(CT) =:= ct_base(Expected);");
+        writer.write("        _ -> false");
+        writer.write("    end.");
+        writer.write("");
+        writer.write("ct_base(CT) ->");
+        writer.write("    case binary:split(CT, <<\";\">>) of");
+        writer.write("        [Base | _] -> Base;");
+        writer.write("        _ -> CT");
+        writer.write("    end.");
+        writer.write("");
         writer.write("decode_sparse_list(undefined) -> undefined;");
         writer.write("decode_sparse_list(List) when is_list(List) ->");
         writer.write("    [case V of null -> undefined; _ -> V end || V <- List].");
@@ -1293,5 +1333,26 @@ public final class ErlangRestJson1Emitter {
         }
         sb.append(">>");
         return sb.toString();
+    }
+
+    private static String resolvedRequestContentType(Model model, OperationShape op) {
+        return BeamHttpBindings.from(model)
+                .requestContentType(op, "application/json")
+                .orElse("application/json");
+    }
+
+    private static String resolvedResponseContentType(Model model, OperationShape op) {
+        return BeamHttpBindings.from(model)
+                .responseContentType(op, "application/json")
+                .orElse("application/json");
+    }
+
+    private static boolean responsePayloadRequiresContentTypeCheck(
+            Model model, List<HttpBinding> respPayload) {
+        if (respPayload.isEmpty()) {
+            return false;
+        }
+        Shape target = model.expectShape(respPayload.get(0).getMember().getTarget());
+        return target.hasTrait(MediaTypeTrait.class);
     }
 }
