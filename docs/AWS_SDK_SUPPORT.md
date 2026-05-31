@@ -122,7 +122,7 @@ Bindings honored in generated REST JSON 1 codecs and routers today.
 | `@httpError` | ✅ | Status-code clauses in client error dispatch; server error response encoders use modeled HTTP status. |
 | `@jsonName` | ✅ | Wire JSON keys follow `@jsonName` when present. |
 | `@timestampFormat` | ✅ | Timestamp helpers follow binding location and `@timestampFormat` (epoch seconds or date-time). |
-| `@mediaType` | ❌ | JSON requests use a fixed `application/json` content type. |
+| `@mediaType` | ✅ | Request and response Content-Type headers follow HttpBindingIndex negotiation. |
 
 ---
 

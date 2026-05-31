@@ -2,6 +2,7 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHostLabelIndex;
+import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamNameUtils;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -26,6 +27,7 @@ import software.amazon.smithy.model.traits.TimestampFormatTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.IdempotencyTokenTrait;
 import software.amazon.smithy.model.traits.JsonNameTrait;
+import software.amazon.smithy.model.traits.MediaTypeTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
 
@@ -158,6 +160,8 @@ public final class ElixirRestJson1Emitter {
         List<HttpBinding> prefixHeaders = httpIndex.getRequestBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
 
+        String requestContentType = resolvedRequestContentType(model, op);
+
         String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
         String httpRequestType = "%" + runtimeMod + ".HttpRequest{}";
 
@@ -233,9 +237,9 @@ public final class ElixirRestJson1Emitter {
                         field, hb.getLocationName(), field);
             }
             writer.write("] |> Enum.reject(&is_nil/1)");
-            writer.write("headers = [{\"Content-Type\", \"application/json\"} | extra_headers]");
+            writer.write("headers = [{\"Content-Type\", \"$L\"} | extra_headers]", requestContentType);
         } else {
-            writer.write("headers = [{\"Content-Type\", \"application/json\"}]");
+            writer.write("headers = [{\"Content-Type\", \"$L\"}]", requestContentType);
         }
 
         for (HttpBinding ph : prefixHeaders) {
@@ -311,6 +315,8 @@ public final class ElixirRestJson1Emitter {
         List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
 
+        String responseContentType = resolvedResponseContentType(model, op);
+
         String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
 
         writer.write("@doc \"Encode response for $L.\"", op.getId());
@@ -358,9 +364,9 @@ public final class ElixirRestJson1Emitter {
                         field, hb.getLocationName(), field);
             }
             writer.write("] |> Enum.reject(&is_nil/1)");
-            writer.write("headers = [{\"Content-Type\", \"application/json\"} | extra_headers]");
+            writer.write("headers = [{\"Content-Type\", \"$L\"} | extra_headers]", responseContentType);
         } else {
-            writer.write("headers = [{\"Content-Type\", \"application/json\"}]");
+            writer.write("headers = [{\"Content-Type\", \"$L\"}]", responseContentType);
         }
 
         for (HttpBinding ph : respPrefixHeaders) {
@@ -508,6 +514,13 @@ public final class ElixirRestJson1Emitter {
         }
         writer.indent();
 
+        boolean needsContentTypeCheck = responsePayloadRequiresContentTypeCheck(model, respPayload);
+        if (needsContentTypeCheck) {
+            String expectedContentType = resolvedResponseContentType(model, op);
+            writer.write("with :ok <- content_type_matches(headers, \"$L\") do", expectedContentType);
+            writer.indent();
+        }
+
         if (!respDoc.isEmpty()) {
             writer.write("decoded = if body == \"\" or is_nil(body), do: %{}, else: Jason.decode!(body)");
         }
@@ -557,7 +570,13 @@ public final class ElixirRestJson1Emitter {
             String field = fieldName(sp, rcb.getMember());
             writer.write("  $L: http_status,", field);
         }
-        writer.write("}}");
+        if (needsContentTypeCheck) {
+            writer.write("}}");
+            writer.dedent();
+            writer.write("end");
+        } else {
+            writer.write("}}");
+        }
 
         writer.dedent();
         writer.write("end");
@@ -919,6 +938,32 @@ public final class ElixirRestJson1Emitter {
         writer.dedent();
         writer.write("end");
         writer.write("");
+        writer.write("defp content_type_matches(headers, expected) do");
+        writer.indent();
+        writer.write("case List.keyfind(headers, \"Content-Type\", 0) do");
+        writer.indent();
+        writer.write("{_, ct} when ct == expected -> :ok");
+        writer.write("{_, ct} when is_binary(ct) ->");
+        writer.indent();
+        writer.write("if ct_base(ct) == ct_base(expected), do: :ok, else: {:error, {:invalid_content_type, ct}}");
+        writer.dedent();
+        writer.write("_ -> {:error, {:invalid_content_type, nil}}");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+        writer.write("defp ct_base(ct) do");
+        writer.indent();
+        writer.write("case String.split(ct, \";\") do");
+        writer.indent();
+        writer.write("[base | _] -> base");
+        writer.write("_ -> ct");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
     }
 
     private static String buildElixirPathExpression(
@@ -1106,5 +1151,26 @@ public final class ElixirRestJson1Emitter {
             }
         }
         return sb.toString();
+    }
+
+    private static String resolvedRequestContentType(Model model, OperationShape op) {
+        return BeamHttpBindings.from(model)
+                .requestContentType(op, "application/json")
+                .orElse("application/json");
+    }
+
+    private static String resolvedResponseContentType(Model model, OperationShape op) {
+        return BeamHttpBindings.from(model)
+                .responseContentType(op, "application/json")
+                .orElse("application/json");
+    }
+
+    private static boolean responsePayloadRequiresContentTypeCheck(
+            Model model, List<HttpBinding> respPayload) {
+        if (respPayload.isEmpty()) {
+            return false;
+        }
+        Shape target = model.expectShape(respPayload.get(0).getMember().getTarget());
+        return target.hasTrait(MediaTypeTrait.class);
     }
 }
