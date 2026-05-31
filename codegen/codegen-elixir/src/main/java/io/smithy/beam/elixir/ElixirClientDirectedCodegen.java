@@ -10,6 +10,7 @@ import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
+import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
@@ -180,6 +181,10 @@ final class ElixirClientDirectedCodegen
                 && BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ElixirAwsJson11Emitter.emitCodecModule(ctx, directive.shape());
+        } else if (ctx.protocolCodegen() != null
+                && BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ElixirAwsQueryEmitter.emitCodecModule(ctx, directive.shape());
         }
 
         ElixirHttpDispatchEmitter.emit(ctx, service);
@@ -243,6 +248,8 @@ final class ElixirClientDirectedCodegen
                         || BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(
                                 ctx.protocolCodegen().protocolTraitId())
                         || BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(
+                                ctx.protocolCodegen().protocolTraitId())
+                        || BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(
                                 ctx.protocolCodegen().protocolTraitId()));
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {
