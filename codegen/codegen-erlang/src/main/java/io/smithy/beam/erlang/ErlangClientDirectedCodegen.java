@@ -12,6 +12,7 @@ import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
 import io.smithy.beam.core.BeamEc2QueryProtocolCodegen;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
+import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
@@ -195,6 +196,10 @@ final class ErlangClientDirectedCodegen
                 && BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ErlangEc2QueryEmitter.emitCodecModule(ctx, directive.shape());
+        } else if (ctx.protocolCodegen() != null
+                && BeamRestXmlProtocolCodegen.REST_XML.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ErlangRestXmlEmitter.emitCodecModule(ctx, directive.shape());
         }
 
         ErlangHttpDispatchEmitter.emit(ctx, service);
@@ -253,6 +258,8 @@ final class ErlangClientDirectedCodegen
                         || BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(
                                 ctx.protocolCodegen().protocolTraitId())
                         || BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(
+                                ctx.protocolCodegen().protocolTraitId())
+                        || BeamRestXmlProtocolCodegen.REST_XML.equals(
                                 ctx.protocolCodegen().protocolTraitId()));
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {
@@ -272,7 +279,8 @@ final class ErlangClientDirectedCodegen
                 String codecModule = layout.clientCodecModuleName(ctx.resolvedProtocolTraitId());
                 writer.write("$L(Config, Input) ->", opSym.getName());
                 writer.indent();
-                if (ErlangRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())) {
+                if (ErlangRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())
+                        || ErlangRestXmlEmitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())) {
                     writer.write("Req = $L:encode_$L_request(Config, Input),",
                             codecModule, opSym.getName());
                 } else {
