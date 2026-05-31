@@ -4,12 +4,15 @@ import io.smithy.beam.core.BeamAwsQueryFormEncoder;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamXmlDecoder;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
+import software.amazon.smithy.model.shapes.ListShape;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.traits.XmlNameTrait;
 
@@ -44,6 +47,7 @@ public final class ErlangAwsQueryEmitter {
         for (OperationShape op : operations) {
             String name = sp.toSymbol(op).getName();
             exports.add("encode_" + name + "_request/1");
+            exports.add("decode_" + name + "_response/1");
         }
 
         Set<StructureShape> inputShapes = new LinkedHashSet<>();
@@ -62,6 +66,7 @@ public final class ErlangAwsQueryEmitter {
 
             for (OperationShape op : operations) {
                 emitEncoder(writer, model, service, op, httpIndex, sp);
+                emitDecoder(writer, model, service, op, sp);
             }
 
             for (StructureShape input : inputShapes) {
@@ -69,6 +74,7 @@ public final class ErlangAwsQueryEmitter {
             }
 
             emitQueryHelpers(writer);
+            emitXmlHelpers(writer);
         });
     }
 
@@ -147,6 +153,199 @@ public final class ErlangAwsQueryEmitter {
             }
             writer.write("]).");
         }
+        writer.dedent();
+        writer.write("");
+    }
+
+    private static void emitDecoder(
+            ErlangWriter writer,
+            Model model,
+            ServiceShape service,
+            OperationShape op,
+            SymbolProvider sp) {
+
+        String opName = sp.toSymbol(op).getName();
+        StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
+        String outputRecord = recordName(sp.toSymbol(output));
+        String outputType = sp.toSymbol(output).getName();
+        String resultElement = BeamXmlDecoder.queryResultElementName(op, service);
+
+        writer.write("%% Decode AWS Query response for $L.", op.getId());
+        writer.write("-spec decode_$L_response(#http_response{}) -> {'ok', $L} | {'error', term()}.",
+                opName, outputType);
+        writer.write("decode_$L_response(#http_response{status = 200, body = Body}) ->", opName);
+        writer.indent();
+        writer.write("case unwrap_query_result(Body, <<\"$L\">>) of", resultElement);
+        writer.indent();
+        writer.write("{ok, Result} ->");
+        writer.indent();
+        writer.write("{ok, #$L{", outputRecord);
+        emitOutputFields(writer, model, sp, output, "Result");
+        writer.write("}};");
+        writer.dedent();
+        writer.write("{error, Reason} ->");
+        writer.indent();
+        writer.write("{error, Reason}");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end;");
+        writer.dedent();
+        writer.write("decode_$L_response(#http_response{status = Status, body = Body}) ->", opName);
+        writer.indent();
+        writer.write("decode_query_error(Status, Body).");
+        writer.dedent();
+        writer.write("");
+    }
+
+    private static void emitOutputFields(
+            ErlangWriter writer,
+            Model model,
+            SymbolProvider sp,
+            StructureShape output,
+            String resultVar) {
+
+        List<String> fields = new ArrayList<>();
+        for (MemberShape member : output.members()) {
+            String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+            String element = BeamXmlDecoder.memberElementName(member);
+            Shape target = model.expectShape(member.getTarget());
+            if (target instanceof ListShape listShape) {
+                String itemElement = BeamXmlDecoder.listItemElementName(listShape);
+                fields.add("    " + field + " = xml_child_list(" + resultVar
+                        + ", <<\"" + element + "\">, <<\"" + itemElement + "\">>)");
+            } else {
+                fields.add("    " + field + " = xml_child_text(" + resultVar + ", <<\"" + element + "\">>)");
+            }
+        }
+        if (!fields.isEmpty()) {
+            writer.write(String.join(",\n", fields));
+        }
+    }
+
+    private static void emitXmlHelpers(ErlangWriter writer) {
+        writer.write("unwrap_query_result(Body, ResultName) ->");
+        writer.indent();
+        writer.write("try");
+        writer.indent();
+        writer.write("{Xml, _} = xmerl_scan:string(binary_to_list(Body)),");
+        writer.write("case find_element(ResultName, element_content(Xml)) of");
+        writer.indent();
+        writer.write("undefined -> {error, {missing_result, ResultName}};");
+        writer.write("Result -> {ok, Result}");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("catch");
+        writer.indent();
+        writer.write("_:Reason -> {error, {xml_parse_error, Reason}}");
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
+        writer.write("");
+        writer.write("element_content({_, _, Content, _, _, _}) -> Content;");
+        writer.write("element_content([H | _]) -> element_content(H);");
+        writer.write("element_content(_) -> [].");
+        writer.write("");
+        writer.write("find_element(Name, Content) ->");
+        writer.indent();
+        writer.write("case [C || C <- Content, is_element(C), element_name(C) =:= Name] of");
+        writer.indent();
+        writer.write("[Element | _] -> Element;");
+        writer.write("[] -> undefined");
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
+        writer.write("");
+        writer.write("is_element({_, _, _, _, _, _}) -> true;");
+        writer.write("is_element(_) -> false.");
+        writer.write("");
+        writer.write("element_name({Name, _, _, _, _, _}) when is_atom(Name) -> list_to_binary(atom_to_list(Name));");
+        writer.write("element_name({Name, _, _, _, _, _}) when is_list(Name) -> list_to_binary(Name);");
+        writer.write("element_name({Name, _, _, _, _, _}) when is_binary(Name) -> Name.");
+        writer.write("");
+        writer.write("xml_child_text(Parent, Name) ->");
+        writer.indent();
+        writer.write("case find_element(Name, element_content(Parent)) of");
+        writer.indent();
+        writer.write("undefined -> undefined;");
+        writer.write("Element ->");
+        writer.indent();
+        writer.write("case element_text(Element) of");
+        writer.indent();
+        writer.write("[] -> undefined;");
+        writer.write("Text -> list_to_binary(Text)");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
+        writer.write("");
+        writer.write("element_text({_, _, Content, _, _, _}) ->");
+        writer.indent();
+        writer.write("[T || T <- Content, is_list(T), not is_element_string(T)];");
+        writer.dedent();
+        writer.write("element_text(_) -> [].");
+        writer.write("");
+        writer.write("is_element_string(T) when is_list(T) ->");
+        writer.indent();
+        writer.write("case T of");
+        writer.indent();
+        writer.write("{_, _, _, _, _, _} -> true;");
+        writer.write("_ -> false");
+        writer.dedent();
+        writer.write("end;");
+        writer.dedent();
+        writer.write("is_element_string(_) -> false.");
+        writer.write("");
+        writer.write("xml_child_list(Parent, ListName, ItemName) ->");
+        writer.indent();
+        writer.write("case find_element(ListName, element_content(Parent)) of");
+        writer.indent();
+        writer.write("undefined -> undefined;");
+        writer.write("ListElement ->");
+        writer.indent();
+        writer.write("[ItemText || Item <- element_content(ListElement),");
+        writer.write("             is_element(Item),");
+        writer.write("             element_name(Item) =:= ItemName,");
+        writer.write("             ItemText <- [list_to_binary(element_text(Item))],");
+        writer.write("             ItemText =/= <<>>]");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
+        writer.write("");
+        writer.write("decode_query_error(Status, Body) ->");
+        writer.indent();
+        writer.write("try");
+        writer.indent();
+        writer.write("{Xml, _} = xmerl_scan:string(binary_to_list(Body)),");
+        writer.write("case find_element(<<\"$L\">>, element_content(Xml)) of",
+                BeamXmlDecoder.ERROR_RESPONSE_ELEMENT);
+        writer.indent();
+        writer.write("undefined -> {error, {unknown_error, Status, Body}};");
+        writer.write("ErrorResponse ->");
+        writer.indent();
+        writer.write("case find_element(<<\"$L\">>, element_content(ErrorResponse)) of",
+                BeamXmlDecoder.ERROR_ELEMENT);
+        writer.indent();
+        writer.write("undefined -> {error, {unknown_error, Status, Body}};");
+        writer.write("Error ->");
+        writer.indent();
+        writer.write("{error, {");
+        writer.write("    xml_child_text(Error, <<\"$L\">>),", BeamXmlDecoder.ERROR_CODE_ELEMENT);
+        writer.write("    xml_child_text(Error, <<\"$L\">>)", BeamXmlDecoder.ERROR_MESSAGE_ELEMENT);
+        writer.write("}}");
+        writer.dedent();
+        writer.dedent();
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("catch");
+        writer.indent();
+        writer.write("_:Reason -> {error, {unknown_error, Status, Body}}");
+        writer.dedent();
+        writer.write("end.");
         writer.dedent();
         writer.write("");
     }
