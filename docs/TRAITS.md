@@ -18,7 +18,7 @@ A separate column is used for each language to indicate support status with a ch
 
 **Scope notes:**
 
-- REST JSON 1 client and server generation honor `@http`, `@httpLabel`, `@httpQuery`, `@httpQueryParams`, `@httpHeader`, `@httpPayload`, `@httpResponseCode`, `@httpError`, `@jsonName`, and `@timestampFormat` in generated codecs and routers. `@httpPrefixHeaders` is not yet emitted.
+- REST JSON 1 client and server generation honor `@http`, `@httpLabel`, `@httpQuery`, `@httpQueryParams`, `@httpHeader`, `@httpPrefixHeaders`, `@httpPayload`, `@httpResponseCode`, `@httpError`, `@jsonName`, and `@timestampFormat` in generated codecs and routers.
 - Client and server plugins emit REST JSON codecs when the selected service carries `@restJson1` (or another supported protocol trait) in the Smithy model.
 - `@documentation` is emitted on client and server operation stubs and on types output.
   Erlang types use `%% @doc` blocks above records and type aliases, with per-field edoc
@@ -83,7 +83,7 @@ Traits for HTTP protocol bindings.
 | [`smithy.api#cors`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-cors-trait) | ❌ | ❌ |
 | [`smithy.api#httpChecksumRequired`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpchecksumrequired-trait) | ❌ | ❌ |
 | [`smithy.api#httpError`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httperror-trait) | ✅ | ✅ |
-| [`smithy.api#httpPrefixHeaders`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpprefixheaders-trait) | ❌ | ❌ |
+| [`smithy.api#httpPrefixHeaders`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpprefixheaders-trait) | ✅ | ✅ |
 | [`smithy.api#httpQueryParams`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpqueryparams-trait) | ✅ | ✅ |
 | [`smithy.api#httpResponseCode`](https://smithy.io/2.0/spec/http-bindings.html#smithy-api-httpresponsecode-trait) | ✅ | ✅ |
 
