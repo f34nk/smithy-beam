@@ -114,6 +114,14 @@ public final class BeamElixirLayout {
         return serviceSnakeName() + "_paginators";
     }
 
+    public String sigv4ModuleFile() {
+        return sigv4ModuleName() + ".ex";
+    }
+
+    public String sigv4ModuleName() {
+        return serviceSnakeName() + "_sigv4";
+    }
+
     public String resourceClientModuleFile(String resourceSnakeName) {
         return resourceClientModuleName(resourceSnakeName) + ".ex";
     }

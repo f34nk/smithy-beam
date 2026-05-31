@@ -212,13 +212,15 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
                     case CLIENT -> ElixirSymbolProvider.toModuleName(layout.clientModuleName());
                     case SERVER -> ElixirSymbolProvider.toModuleName(layout.serverModuleName());
                 };
-        return Symbol.builder()
-                .name(name)
-                .namespace(moduleNamespace, ".")
-                .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
-                .putProperty("builtIn", false)
-                .putProperty("beamKind", kind.name())
-                .build();
+        Symbol.Builder builder =
+                Symbol.builder()
+                        .name(name)
+                        .namespace(moduleNamespace, ".")
+                        .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
+                        .putProperty("builtIn", false)
+                        .putProperty("beamKind", kind.name());
+        BeamSymbolRuntimeDeps.applyElixirService(service, builder);
+        return builder.build();
     }
 
     @Override

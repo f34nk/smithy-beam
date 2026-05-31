@@ -27,4 +27,11 @@ public final class BeamSymbolRuntimeDeps {
         }
         return builder;
     }
+
+    public static Symbol.Builder applyElixirService(ServiceShape service, Symbol.Builder builder) {
+        if (service.hasTrait(SigV4Trait.class)) {
+            builder.addDependency("hex", "aws_signature", "0.3.2");
+        }
+        return builder;
+    }
 }
