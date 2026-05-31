@@ -129,6 +129,9 @@ All generated Erlang identifiers pass through separate reserved-word escapers:
 - union tags
 - future generated function names
 
+Erlang record field names use snake_case; codec pattern variables use Inaka CamelCase
+(client_token field, ClientToken variable). See docs/ARCHITECTURE.md.
+
 ## Elixir Mappings
 
 | Smithy shape        | Elixir type                                           |

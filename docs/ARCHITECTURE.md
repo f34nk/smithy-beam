@@ -77,6 +77,16 @@ Erlang and Elixir compile to BEAM bytecode and share the same runtime. They diff
 | Error conventions | `{ok, Value} \| {error, Reason}` tagged tuples | same, plus `!`-suffix bang variants |
 | Header/type sharing | [.hrl include files](https://www.erlang.org/doc/system/modules.html) | type specs in `.ex` modules |
 
+### Erlang type headers
+
+Generated Erlang services emit one `{model}_types.hrl` per Smithy model file. All structure
+records and named type aliases for that model live in this header and are included by client,
+server, codec, and test modules.
+
+This differs from Inaka's recommendation to avoid sharing record definitions across modules via
+headers. smithy-beam keeps a single types file so client and server share the same Smithy shape
+surface and Dialyzer types without duplicating record definitions per module.
+
 A single plugin targeting "BEAM" and branching internally on a `language` flag would produce a plugin that is harder to reason about and harder to extend. Separate plugins with a shared core give each language its own [SymbolProvider](https://smithy.io/2.0/guides/building-codegen/mapping-shapes-to-languages.html), [SymbolWriter](https://smithy.io/2.0/guides/building-codegen/decoupling-codegen-with-symbols.html), and file-layout logic while sharing the parts that are truly identical.
 
 ---
