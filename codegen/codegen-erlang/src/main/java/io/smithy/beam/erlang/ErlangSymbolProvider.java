@@ -204,11 +204,13 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
                     case CLIENT -> layout.clientModuleName();
                     case SERVER -> layout.serverModuleName();
                 };
-        return Symbol.builder()
-                .name(module)
-                .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
-                .putProperty("builtIn", false)
-                .build();
+        Symbol.Builder builder =
+                Symbol.builder()
+                        .name(module)
+                        .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
+                        .putProperty("builtIn", false);
+        BeamSymbolRuntimeDeps.applyService(service, builder);
+        return builder.build();
     }
 
     @Override

@@ -1,6 +1,8 @@
 package io.smithy.beam.core;
 
+import software.amazon.smithy.aws.traits.auth.SigV4Trait;
 import software.amazon.smithy.codegen.core.Symbol;
+import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 
 /**
@@ -15,6 +17,13 @@ public final class BeamSymbolRuntimeDeps {
     public static Symbol.Builder apply(Shape shape, Symbol.Builder builder) {
         if (shape.isDocumentShape()) {
             builder.addDependency("hex", "jsx", "3.1");
+        }
+        return builder;
+    }
+
+    public static Symbol.Builder applyService(ServiceShape service, Symbol.Builder builder) {
+        if (service.hasTrait(SigV4Trait.class)) {
+            builder.addDependency("deps", "aws_sigv4", "1.0.0");
         }
         return builder;
     }

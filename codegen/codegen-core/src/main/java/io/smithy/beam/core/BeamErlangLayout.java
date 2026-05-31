@@ -119,6 +119,14 @@ public final class BeamErlangLayout {
         return serviceSnakeName() + "_paginators";
     }
 
+    public String sigv4ModuleFile() {
+        return sigv4ModuleName() + ".erl";
+    }
+
+    public String sigv4ModuleName() {
+        return serviceSnakeName() + "_sigv4";
+    }
+
     public String resourceClientModuleFile(String resourceSnakeName) {
         return resourceClientModuleName(resourceSnakeName) + ".erl";
     }

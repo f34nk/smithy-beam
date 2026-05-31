@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamSigV4Metadata;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
@@ -13,8 +14,10 @@ public final class ErlangHttpDispatchEmitter {
 
     public static void emit(ErlangContext ctx, ServiceShape service) {
         BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(),
-                service.getId().getNamespace());
+                service.getId().getNamespace(), service);
         String httpModule = layout.runtimeHttpModuleName();
+        boolean sigv4 = BeamSigV4Metadata.from(service).isPresent();
+        String sigv4Module = layout.sigv4ModuleName();
 
         ctx.writerDelegator().useFileWriter(layout.runtimeHttpModuleFile(), writer -> {
             writer.write("%% Generated HTTP dispatcher for $L.", service.getId());
@@ -30,7 +33,22 @@ public final class ErlangHttpDispatchEmitter {
             writer.write("    HttpClient = maps:get(http_client, Config, httpc),");
             writer.write("    dispatch(HttpClient, Config, Request).");
             writer.write("");
-            writer.write("dispatch(HttpClient, Config, #http_request{");
+            writer.write("dispatch(HttpClient, Config, Request) ->");
+            writer.indent();
+            if (sigv4) {
+                writer.write("SignedRequest = case maps:get(credentials, Config, undefined) of");
+                writer.indent();
+                writer.write("undefined -> Request;");
+                writer.write("_ -> $L:sign(Config, Request)", sigv4Module);
+                writer.dedent();
+                writer.write("end,");
+                writer.write("dispatch_signed(HttpClient, Config, SignedRequest).");
+            } else {
+                writer.write("dispatch_signed(HttpClient, Config, Request).");
+            }
+            writer.dedent();
+            writer.write("");
+            writer.write("dispatch_signed(HttpClient, Config, #http_request{");
             writer.write("        method = Method, path = Path,");
             writer.write("        query = Query, headers = Headers, body = Body, host = Host}) ->");
             writer.indent();
