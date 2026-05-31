@@ -27,4 +27,25 @@ public final class BeamNameUtils {
                 .replaceAll("([A-Z]+)([A-Z][a-z])", "$1_$2")
                 .toLowerCase();
     }
+
+    /**
+     * Erlang variable name for a snake_case record field per Inaka guidelines:
+     * CamelCase, no underscores (e.g. {@code client_token} -> {@code ClientToken}).
+     */
+    public static String toCamelCaseVariable(String snakeField) {
+        if (snakeField.isEmpty()) {
+            return snakeField;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String part : snakeField.split("_")) {
+            if (part.isEmpty()) {
+                continue;
+            }
+            sb.append(Character.toUpperCase(part.charAt(0)));
+            if (part.length() > 1) {
+                sb.append(part.substring(1));
+            }
+        }
+        return sb.toString();
+    }
 }
