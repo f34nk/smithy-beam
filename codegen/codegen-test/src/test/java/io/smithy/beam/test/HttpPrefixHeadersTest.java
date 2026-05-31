@@ -1,6 +1,7 @@
 package io.smithy.beam.test;
 
 import io.smithy.beam.elixir.ElixirClientPlugin;
+import io.smithy.beam.elixir.ElixirServerPlugin;
 import io.smithy.beam.erlang.ErlangClientPlugin;
 import io.smithy.beam.erlang.ErlangServerPlugin;
 import org.junit.jupiter.api.Test;
@@ -127,6 +128,26 @@ class HttpPrefixHeadersTest {
         return manifest;
     }
 
+    private static MockManifest runElixirServerPlugin(Model model) {
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service",
+                        "smithy.beam.test.prefixheaders#PrefixHeadersService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirClientPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+        new ElixirServerPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+        return manifest;
+    }
+
     @Test
     void requestPrefixHeadersMergedIntoHeadersOnErlangEncode() {
         String codec = runErlangPlugin(loadModel())
@@ -201,5 +222,23 @@ class HttpPrefixHeadersTest {
                 .orElse("");
         assertThat(codec).contains("encode_get_object_response(");
         assertThat(codec).contains("Headers = Headers ++ prefix_headers_to_list(<<\"x-amz-meta-\">>, Metadata)");
+    }
+
+    @Test
+    void requestPrefixHeadersExtractedOnElixirServerDecode() {
+        String codec = runElixirServerPlugin(loadModel())
+                .getFileString("prefix_headers_service_rest_json_1.ex")
+                .orElse("");
+        assertThat(codec).contains("def decode_put_object_request(");
+        assertThat(codec).contains("metadata: prefix_headers_from_list(headers, \"x-amz-meta-\")");
+    }
+
+    @Test
+    void responsePrefixHeadersMergedOnElixirServerEncode() {
+        String codec = runElixirServerPlugin(loadModel())
+                .getFileString("prefix_headers_service_rest_json_1.ex")
+                .orElse("");
+        assertThat(codec).contains("def encode_get_object_response(");
+        assertThat(codec).contains("prefix_headers_to_list(\"x-amz-meta-\", output.metadata)");
     }
 }
