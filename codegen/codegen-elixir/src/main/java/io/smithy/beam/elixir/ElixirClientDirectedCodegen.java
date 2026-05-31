@@ -8,6 +8,7 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
+import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
@@ -170,6 +171,10 @@ final class ElixirClientDirectedCodegen
                 && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ElixirRestJson1Emitter.emitCodecModule(ctx, directive.shape());
+        } else if (ctx.protocolCodegen() != null
+                && BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ElixirAwsJson10Emitter.emitCodecModule(ctx, directive.shape());
         }
 
         ElixirHttpDispatchEmitter.emit(ctx, service);
@@ -229,8 +234,9 @@ final class ElixirClientDirectedCodegen
         String outType = ElixirTopDown.structureSpecType(typesModuleName, outSym);
 
         boolean hasProtocol = ctx.protocolCodegen() != null
-                && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
-                        ctx.protocolCodegen().protocolTraitId());
+                && (BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(ctx.protocolCodegen().protocolTraitId())
+                        || BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(
+                                ctx.protocolCodegen().protocolTraitId()));
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {
             ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
@@ -248,7 +254,8 @@ final class ElixirClientDirectedCodegen
                     inType,
                     outType);
             if (hasProtocol) {
-                String codecMod = ElixirSymbolProvider.toModuleName(layout.clientCodecModuleName());
+                String codecMod = ElixirSymbolProvider.toModuleName(
+                        layout.clientCodecModuleName(ctx.resolvedProtocolTraitId()));
                 String httpMod = ElixirSymbolProvider.toModuleName(
                         layout.runtimeHttpModuleName());
                 writer.write("def $L(config, input) do", opSym.getName());

@@ -836,6 +836,13 @@ public final class ElixirRestJson1Emitter {
         return byMember.get(memberName);
     }
 
+    static void emitSharedCodecHelpers(
+            ElixirWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
+        emitEnumHelpers(writer, model, service, sp);
+        emitUnionHelpers(writer, model, service, sp);
+        emitHelpers(writer);
+    }
+
     private static void emitHelpers(ElixirWriter writer) {
         writer.write("# -- Private helpers --");
         writer.write("");
