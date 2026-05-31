@@ -24,6 +24,7 @@ import software.amazon.smithy.model.traits.EndpointTrait;
 import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.traits.TimestampFormatTrait;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
+import software.amazon.smithy.model.traits.IdempotencyTokenTrait;
 import software.amazon.smithy.model.traits.JsonNameTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
@@ -168,6 +169,22 @@ public final class ElixirRestJson1Emitter {
             writer.write("def encode_$L_request(input) do", opName);
         }
         writer.indent();
+
+        for (MemberShape member : input.members()) {
+            if (member.hasTrait(IdempotencyTokenTrait.class)) {
+                String field = fieldName(sp, member);
+                writer.write("input =");
+                writer.indent();
+                writer.write("case input.$L do", field);
+                writer.indent();
+                writer.write("nil -> %{input | $L: generate_uuid()}", field);
+                writer.write("_ -> input");
+                writer.dedent();
+                writer.write("end");
+                writer.dedent();
+                writer.write("");
+            }
+        }
 
         String pathExpr = buildElixirPathExpression(uriTemplate, labels, sp);
         writer.write("path = $L", pathExpr);
@@ -869,6 +886,20 @@ public final class ElixirRestJson1Emitter {
         writer.write("_ -> nil");
         writer.dedent();
         writer.write("end");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+        writer.write("defp generate_uuid do");
+        writer.indent();
+        writer.write("<<a::32, b::16, _::4, c::12, _::2, d::14, e::48>> = :crypto.strong_rand_bytes(16)");
+        writer.write("<<a::32, b::16, 4::4, c::12, 2::2, d::14, e::48>>");
+        writer.write("|> Base.encode16(case: :lower)");
+        writer.write("|> then(fn hex ->");
+        writer.indent();
+        writer.write("<<part_a::8, part_b::4, part_c::4, part_d::4, part_e::12>> = hex");
+        writer.write("\"#{part_a}-#{part_b}-#{part_c}-#{part_d}-#{part_e}\"");
+        writer.dedent();
+        writer.write("end)");
         writer.dedent();
         writer.write("end");
         writer.write("");
