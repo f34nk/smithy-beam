@@ -127,4 +127,40 @@ class HttpPrefixHeadersTest {
         assertThat(codec).contains("defp prefix_headers_to_list(_prefix, nil), do: []");
         assertThat(codec).contains("defp prefix_headers_from_list(headers, prefix) do");
     }
+
+    @Test
+    void requestPrefixHeadersReconstructedFromHeadersOnErlangDecode() {
+        String codec = runErlangPlugin(loadModel())
+                .getFileString("prefix_headers_service_rest_json_1.erl")
+                .orElse("");
+        assertThat(codec).contains("decode_put_object_request(");
+        assertThat(codec).contains("metadata = prefix_headers_from_list(Headers, <<\"x-amz-meta-\">>)");
+    }
+
+    @Test
+    void responsePrefixHeadersReconstructedFromHeadersOnErlangDecode() {
+        String codec = runErlangPlugin(loadModel())
+                .getFileString("prefix_headers_service_rest_json_1.erl")
+                .orElse("");
+        assertThat(codec).contains("decode_get_object_response(");
+        assertThat(codec).contains("metadata = prefix_headers_from_list(Headers, <<\"x-amz-meta-\">>)");
+    }
+
+    @Test
+    void requestPrefixHeadersReconstructedFromHeadersOnElixirDecode() {
+        String codec = runElixirPlugin(loadModel())
+                .getFileString("prefix_headers_service_rest_json_1.ex")
+                .orElse("");
+        assertThat(codec).contains("def decode_put_object_request(");
+        assertThat(codec).contains("metadata: prefix_headers_from_list(headers, \"x-amz-meta-\")");
+    }
+
+    @Test
+    void responsePrefixHeadersReconstructedFromHeadersOnElixirDecode() {
+        String codec = runElixirPlugin(loadModel())
+                .getFileString("prefix_headers_service_rest_json_1.ex")
+                .orElse("");
+        assertThat(codec).contains("def decode_get_object_response(");
+        assertThat(codec).contains("metadata: prefix_headers_from_list(headers, \"x-amz-meta-\")");
+    }
 }
