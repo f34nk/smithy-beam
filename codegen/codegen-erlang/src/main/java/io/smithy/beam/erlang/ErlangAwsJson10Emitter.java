@@ -3,6 +3,7 @@ package io.smithy.beam.erlang;
 import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamNameUtils;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
@@ -11,6 +12,7 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.traits.HttpErrorTrait;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +44,7 @@ public final class ErlangAwsJson10Emitter {
         for (OperationShape op : operations) {
             String name = sp.toSymbol(op).getName();
             exports.add("encode_" + name + "_request/1");
+            exports.add("decode_" + name + "_response/1");
         }
 
         ctx.writerDelegator().useFileWriter(codecFile, writer -> {
@@ -55,6 +58,11 @@ public final class ErlangAwsJson10Emitter {
 
             for (OperationShape op : operations) {
                 emitEncoder(writer, model, op, httpIndex, sp, targetPrefix);
+                emitDecoder(writer, model, op, httpIndex, sp);
+            }
+
+            for (OperationShape op : operations) {
+                emitErrorDispatch(writer, model, op, sp);
             }
 
             ErlangRestJson1Emitter.emitSharedCodecHelpers(writer, model, service, sp);
@@ -99,5 +107,118 @@ public final class ErlangAwsJson10Emitter {
         writer.write("}.");
         writer.dedent();
         writer.write("");
+    }
+
+    private static void emitDecoder(
+            ErlangWriter writer,
+            Model model,
+            OperationShape op,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp) {
+
+        String opName = sp.toSymbol(op).getName();
+        StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
+        String outputRecord = ErlangJsonCodecSupport.recordName(sp.toSymbol(output));
+        String outputType = sp.toSymbol(output).getName();
+        List<software.amazon.smithy.model.shapes.MemberShape> members =
+                ErlangJsonCodecSupport.documentMembers(httpIndex, op, output, false);
+
+        writer.write("%% Decode AWS JSON response for $L.", op.getId());
+        writer.write("-spec decode_$L_response(#http_response{}) -> {'ok', $L} | {'error', term()}.",
+                opName, outputType);
+        writer.write("decode_$L_response(#http_response{status = 200, body = Body}) ->", opName);
+        writer.indent();
+        ErlangJsonCodecSupport.emitDecodeJsonBody(writer);
+        writer.write("{ok, #$L{", outputRecord);
+        ErlangJsonCodecSupport.emitRecordFieldsFromDecoded(
+                writer, model, httpIndex, sp, members, HttpBinding.Location.DOCUMENT);
+        writer.write("}};");
+        writer.dedent();
+        writer.write(
+                "decode_$L_response(#http_response{status = Status, headers = RespHeaders, body = Body}) ->",
+                opName);
+        writer.indent();
+        writer.write("decode_$L_response_error(Status, RespHeaders, Body).", opName);
+        writer.dedent();
+        writer.write("");
+    }
+
+    private static void emitErrorDispatch(
+            ErlangWriter writer, Model model, OperationShape op, SymbolProvider sp) {
+
+        String opName = sp.toSymbol(op).getName();
+        List<ShapeId> errors = new ArrayList<>(op.getErrors());
+
+        writer.write("%% Error dispatch for $L.", op.getId());
+        for (ShapeId errorId : errors) {
+            StructureShape errShape = model.expectShape(errorId, StructureShape.class);
+            String recName = ErlangJsonCodecSupport.recordName(sp.toSymbol(errShape));
+            int httpStatus = errShape.hasTrait(HttpErrorTrait.class)
+                    ? errShape.expectTrait(HttpErrorTrait.class).getCode()
+                    : -1;
+            if (httpStatus <= 0) {
+                continue;
+            }
+            writer.write("decode_$L_response_error($L, _Hdrs, Body) ->", opName, httpStatus);
+            writer.indent();
+            writer.write("Decoded = decode_json_body(Body),");
+            List<String> fields = buildErrorFields(errShape);
+            writer.write("{error, #$L{$L}};", recName,
+                    fields.isEmpty() ? "" : "\n    " + String.join(",\n    ", fields) + "\n");
+            writer.dedent();
+        }
+
+        boolean hasTypeDiscriminated = errors.stream().anyMatch(e ->
+                !model.expectShape(e, StructureShape.class).hasTrait(HttpErrorTrait.class));
+
+        if (hasTypeDiscriminated) {
+            writer.write("decode_$L_response_error(Status, _Hdrs, Body) when Status >= 400 ->", opName);
+            writer.indent();
+            writer.write("Decoded = decode_json_body(Body),");
+            writer.write("ErrorType = maps:get(<<\"__type\">>, Decoded, undefined),");
+            writer.write("case ErrorType of");
+            writer.indent();
+            for (ShapeId errorId : errors) {
+                StructureShape errShape = model.expectShape(errorId, StructureShape.class);
+                if (errShape.hasTrait(HttpErrorTrait.class)) {
+                    continue;
+                }
+                String recName = ErlangJsonCodecSupport.recordName(sp.toSymbol(errShape));
+                String localName = errorId.getName();
+                List<String> fields = buildErrorFields(errShape);
+                writer.write("<<\"$L\">> ->", localName);
+                writer.indent();
+                writer.write("{error, #$L{$L}};", recName,
+                        fields.isEmpty() ? "" : "\n        " + String.join(",\n        ", fields) + "\n    ");
+                writer.dedent();
+            }
+            writer.write("_ ->");
+            writer.indent();
+            writer.write("{error, {unknown_error, Status, Body}}");
+            writer.dedent();
+            writer.dedent();
+            writer.write("end.");
+            writer.dedent();
+            writer.write("");
+        } else {
+            writer.write("decode_$L_response_error(Status, _Hdrs, Body) ->", opName);
+            writer.indent();
+            writer.write("{error, {unknown_error, Status, Body}}.");
+            writer.dedent();
+            writer.write("");
+        }
+    }
+
+    private static List<String> buildErrorFields(StructureShape errShape) {
+        List<String> fields = new ArrayList<>();
+        for (software.amazon.smithy.model.shapes.MemberShape member : errShape.members()) {
+            if (member.getMemberName().equals("__beam_error_kind")) {
+                continue;
+            }
+            String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+            String jsonKey = member.getMemberName();
+            fields.add(field + " = maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined)");
+        }
+        return fields;
     }
 }
