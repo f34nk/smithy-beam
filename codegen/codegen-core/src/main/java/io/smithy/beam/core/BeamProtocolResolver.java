@@ -5,6 +5,7 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.BigDecimalShape;
 import software.amazon.smithy.model.shapes.BlobShape;
+import software.amazon.smithy.model.shapes.DocumentShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.ShapeId;
@@ -76,6 +77,13 @@ public final class BeamProtocolResolver {
                                 + ": event-stream union shapes are not supported by "
                                 + protocol
                                 + "; event streams are not implemented");
+            }
+            if (BeamRestXmlProtocolCodegen.REST_XML.equals(protocol) && shape instanceof DocumentShape) {
+                diagnostics.add(
+                        shape.getId()
+                                + ": document is not supported by "
+                                + protocol
+                                + "; restXml does not serialize document types");
             }
         }
 

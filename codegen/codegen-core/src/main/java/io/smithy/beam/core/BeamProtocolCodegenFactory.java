@@ -28,6 +28,9 @@ public final class BeamProtocolCodegenFactory {
         if (BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(resolvedProtocolTraitId)) {
             return new BeamEc2QueryProtocolCodegen();
         }
+        if (BeamRestXmlProtocolCodegen.REST_XML.equals(resolvedProtocolTraitId)) {
+            return new BeamRestXmlProtocolCodegen(bindings);
+        }
         throw new CodegenException(
                 "No BeamProtocolCodegen registered for protocol trait " + resolvedProtocolTraitId);
     }
