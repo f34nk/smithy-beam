@@ -158,6 +158,7 @@ public final class ErlangRestJson1Emitter {
         String opName = sp.toSymbol(op).getName();
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
         String inputRecord = recordName(sp.toSymbol(input));
+        String inputType = sp.toSymbol(input).getName();
         HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
         String method = httpTrait.getMethod();
         String uriTemplate = httpTrait.getUri().toString();
@@ -175,8 +176,11 @@ public final class ErlangRestJson1Emitter {
 
         writer.write("%% Encode HTTP request for $L.", op.getId());
         if (encodeWithConfig) {
+            writer.write("-spec encode_$L_request(client_config(), $L) -> #http_request{}.",
+                    opName, inputType);
             writer.write("encode_$L_request(Config, Input = #$L{$L}) ->", opName, inputRecord, pattern);
         } else {
+            writer.write("-spec encode_$L_request($L) -> #http_request{}.", opName, inputType);
             writer.write("encode_$L_request(Input = #$L{$L}) ->", opName, inputRecord, pattern);
         }
         writer.indent();
@@ -335,6 +339,7 @@ public final class ErlangRestJson1Emitter {
         String opName = sp.toSymbol(op).getName();
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
         String inputRecord = recordName(sp.toSymbol(input));
+        String inputType = sp.toSymbol(input).getName();
 
         List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
         List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
@@ -345,10 +350,12 @@ public final class ErlangRestJson1Emitter {
 
         writer.write("%% Decode HTTP request for $L.", op.getId());
         if (labels.isEmpty()) {
+            writer.write("-spec decode_$L_request(#http_request{}) -> $L.", opName, inputType);
             writer.write(
                     "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body}) ->",
                     opName);
         } else {
+            writer.write("-spec decode_$L_request(#http_request{}, map()) -> $L.", opName, inputType);
             writer.write(
                     "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body}, LabelMap) ->",
                     opName);
@@ -442,6 +449,7 @@ public final class ErlangRestJson1Emitter {
         String opName = sp.toSymbol(op).getName();
         StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
         String outputRecord = recordName(sp.toSymbol(output));
+        String outputType = sp.toSymbol(output).getName();
         int successCode = httpIndex.getResponseCode(op);
 
         List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
@@ -458,6 +466,7 @@ public final class ErlangRestJson1Emitter {
                 ? "" : "\n    " + String.join(",\n    ", patternParts) + "\n";
 
         writer.write("%% Encode HTTP response for $L.", op.getId());
+        writer.write("-spec encode_$L_response($L) -> #http_response{}.", opName, outputType);
         writer.write("encode_$L_response(#$L{$L}) ->", opName, outputRecord, pattern);
         writer.indent();
 
@@ -596,6 +605,7 @@ public final class ErlangRestJson1Emitter {
         String opName = sp.toSymbol(op).getName();
         StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
         String outputRecord = recordName(sp.toSymbol(output));
+        String outputType = sp.toSymbol(output).getName();
         int successCode = httpIndex.getResponseCode(op);
 
         List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
@@ -605,6 +615,8 @@ public final class ErlangRestJson1Emitter {
         List<HttpBinding> respCode = httpIndex.getResponseBindings(op, HttpBinding.Location.RESPONSE_CODE);
 
         writer.write("%% Decode HTTP response for $L.", op.getId());
+        writer.write("-spec decode_$L_response(#http_response{}) -> {'ok', $L} | {'error', term()}.",
+                opName, outputType);
         if (!respCode.isEmpty()) {
             writer.write(
                     "decode_$L_response(#http_response{status = HttpStatus, headers = Headers, body = Body})"
