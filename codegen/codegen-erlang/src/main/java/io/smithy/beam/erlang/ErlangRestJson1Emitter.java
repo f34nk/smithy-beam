@@ -976,6 +976,14 @@ public final class ErlangRestJson1Emitter {
         return byMember.get(memberName);
     }
 
+    /** Shared enum, union, and helper functions for REST JSON and AWS JSON emitters. */
+    static void emitSharedCodecHelpers(
+            ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
+        emitEnumHelpers(writer, model, service, sp);
+        emitUnionHelpers(writer, model, service, sp);
+        emitHelpers(writer);
+    }
+
     /** Emits private helper functions used across all codecs. */
     private static void emitHelpers(ErlangWriter writer) {
         writer.write("%% -- Private helpers --");

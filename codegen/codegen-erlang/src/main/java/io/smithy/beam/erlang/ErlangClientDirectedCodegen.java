@@ -7,6 +7,7 @@ import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
+import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamResourceIndex;
@@ -175,6 +176,10 @@ final class ErlangClientDirectedCodegen
                 && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ErlangRestJson1Emitter.emitCodecModule(ctx, directive.shape());
+        } else if (ctx.protocolCodegen() != null
+                && BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ErlangAwsJson10Emitter.emitCodecModule(ctx, directive.shape());
         }
 
         ErlangHttpDispatchEmitter.emit(ctx, service);
@@ -225,8 +230,10 @@ final class ErlangClientDirectedCodegen
         BeamErlangLayout layout = new BeamErlangLayout(
                 ctx.settings(), ctx.service().getId().getNamespace(), ctx.service().getId().getName());
         boolean hasProtocol = ctx.protocolCodegen() != null
-                && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
-                        ctx.protocolCodegen().protocolTraitId());
+                && (BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(ctx.protocolCodegen().protocolTraitId())
+                        || BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(
+                                ctx.protocolCodegen().protocolTraitId()));
+        String codecModule = layout.clientCodecModuleName(ctx.resolvedProtocolTraitId());
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {
             ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
@@ -246,10 +253,10 @@ final class ErlangClientDirectedCodegen
                 writer.indent();
                 if (ErlangRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())) {
                     writer.write("Req = $L:encode_$L_request(Config, Input),",
-                            layout.codecModuleName(), opSym.getName());
+                            codecModule, opSym.getName());
                 } else {
                     writer.write("Req = $L:encode_$L_request(Input),",
-                            layout.codecModuleName(), opSym.getName());
+                            codecModule, opSym.getName());
                 }
                 writer.write("case $L:dispatch(Config, Req) of",
                         layout.runtimeHttpModuleName());
@@ -257,7 +264,7 @@ final class ErlangClientDirectedCodegen
                 writer.write("{ok, Resp} ->");
                 writer.indent();
                 writer.write("$L:decode_$L_response(Resp);",
-                        layout.codecModuleName(), opSym.getName());
+                        codecModule, opSym.getName());
                 writer.dedent();
                 writer.write("{error, Reason} ->");
                 writer.indent();
