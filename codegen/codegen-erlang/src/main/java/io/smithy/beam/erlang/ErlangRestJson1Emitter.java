@@ -9,6 +9,7 @@ import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
+import software.amazon.smithy.model.shapes.BlobShape;
 import software.amazon.smithy.model.shapes.EnumShape;
 import software.amazon.smithy.model.shapes.IntEnumShape;
 import software.amazon.smithy.model.shapes.ListShape;
@@ -18,6 +19,7 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.ShapeId;
+import software.amazon.smithy.model.shapes.StringShape;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.TimestampShape;
 import software.amazon.smithy.model.shapes.UnionShape;
@@ -30,6 +32,7 @@ import software.amazon.smithy.model.traits.IdempotencyTokenTrait;
 import software.amazon.smithy.model.traits.JsonNameTrait;
 import software.amazon.smithy.model.traits.MediaTypeTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
+import software.amazon.smithy.model.traits.StreamingTrait;
 
 import software.amazon.smithy.model.pattern.SmithyPattern;
 
@@ -171,11 +174,12 @@ public final class ErlangRestJson1Emitter {
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
         List<HttpBinding> prefixHeaders = httpIndex.getRequestBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
+        List<HttpBinding> reqPayload = httpIndex.getRequestBindings(op, HttpBinding.Location.PAYLOAD);
 
         String requestContentType = resolvedRequestContentType(model, op);
 
         List<String> patternParts = buildPatternParts(
-                labels, queries, queryParams, headers, prefixHeaders, docMembers, sp, model);
+                labels, queries, queryParams, headers, prefixHeaders, docMembers, reqPayload, sp, model);
         String pattern = patternParts.isEmpty() ? "" : "\n    " + String.join(",\n    ", patternParts) + "\n";
 
         writer.write("%% Encode HTTP request for $L.", op.getId());
@@ -282,36 +286,17 @@ public final class ErlangRestJson1Emitter {
                     prefix, toBindingVar(fieldName));
         }
 
-        if (docMembers.isEmpty() || method.equals("GET") || method.equals("DELETE") || method.equals("HEAD")) {
-            writer.write("Body = <<>>,");
-        } else {
-            writer.write("BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
-            for (int i = 0; i < docMembers.size(); i++) {
-                HttpBinding db = docMembers.get(i);
-                String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
-                String wireKey = jsonKey(db.getMember());
-                String comma = i < docMembers.size() - 1 ? "," : "";
-                Shape target = model.expectShape(db.getMember().getTarget());
-                if (target instanceof EnumShape || target instanceof IntEnumShape) {
-                    String helperName = sp.toSymbol(target).getName().replace("()", "");
-                    writer.write("    <<\"$L\">> => encode_$L($L)$L",
-                            wireKey, helperName, toBindingVar(fieldName), comma);
-                } else if (target instanceof UnionShape) {
-                    String helperName = sp.toSymbol(target).getName().replace("()", "");
-                    writer.write("    <<\"$L\">> => encode_$L($L)$L",
-                            wireKey, helperName, toBindingVar(fieldName), comma);
-                } else if (target instanceof TimestampShape) {
-                    String encodeHelper = timestampEncodeHelper(
-                            httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
-                    writer.write("    <<\"$L\">> => $L($L)$L",
-                            wireKey, encodeHelper, toBindingVar(fieldName), comma);
-                } else {
-                    writer.write("    <<\"$L\">> => $L$L",
-                            wireKey, encodeDocumentValue(target, fieldName), comma);
-                }
-            }
-            writer.write("}),");
-            writer.write("Body = jsone:encode(BodyMap),");
+        boolean streamingRequestPayload = hasStreamingRequestPayload(model, reqPayload, method);
+        emitRequestBody(writer, model, httpIndex, reqPayload, docMembers, method, sp);
+        if (streamingRequestPayload) {
+            HttpBinding payload = reqPayload.get(0);
+            String fieldName = BeamNameUtils.toSnakeCase(payload.getMember().getMemberName());
+            writer.write("Stream = case $L of", toBindingVar(fieldName));
+            writer.indent();
+            writer.write("undefined -> undefined;");
+            writer.write("Value -> Value");
+            writer.dedent();
+            writer.write("end,");
         }
 
         if (hasHostLabels) {
@@ -324,6 +309,9 @@ public final class ErlangRestJson1Emitter {
         writer.write("    query = maps:from_list(Query),");
         writer.write("    headers = Headers,");
         writer.write("    body = Body");
+        if (streamingRequestPayload) {
+            writer.write("    ,stream = Stream");
+        }
         if (hasHostLabels) {
             writer.write("    ,host = Host");
         }
@@ -351,18 +339,32 @@ public final class ErlangRestJson1Emitter {
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
         List<HttpBinding> prefixHeaders = httpIndex.getRequestBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
+        List<HttpBinding> reqPayload = httpIndex.getRequestBindings(op, HttpBinding.Location.PAYLOAD);
+        boolean streamingRequestPayload = hasStreamingRequestPayload(model, reqPayload, null);
 
         writer.write("%% Decode HTTP request for $L.", op.getId());
         if (labels.isEmpty()) {
             writer.write("-spec decode_$L_request(#http_request{}) -> $L.", opName, inputType);
-            writer.write(
-                    "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body}) ->",
-                    opName);
+            if (streamingRequestPayload) {
+                writer.write(
+                        "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body, stream = Stream}) ->",
+                        opName);
+            } else {
+                writer.write(
+                        "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body}) ->",
+                        opName);
+            }
         } else {
             writer.write("-spec decode_$L_request(#http_request{}, map()) -> $L.", opName, inputType);
-            writer.write(
-                    "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body}, LabelMap) ->",
-                    opName);
+            if (streamingRequestPayload) {
+                writer.write(
+                        "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body, stream = Stream}, LabelMap) ->",
+                        opName);
+            } else {
+                writer.write(
+                        "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body}, LabelMap) ->",
+                        opName);
+            }
         }
         writer.indent();
 
@@ -430,6 +432,14 @@ public final class ErlangRestJson1Emitter {
                         + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
             } else {
                 recordFields.add("    " + documentDecodeAssignment(fieldName, wireKey, target));
+            }
+        }
+        for (HttpBinding pb : reqPayload) {
+            String fieldName = BeamNameUtils.toSnakeCase(pb.getMember().getMemberName());
+            if (isStreamingBlob(model, pb.getMember())) {
+                recordFields.add("    " + fieldName + " = Stream");
+            } else {
+                recordFields.add("    " + fieldName + " = Body");
             }
         }
 
@@ -504,7 +514,17 @@ public final class ErlangRestJson1Emitter {
         if (!respPayload.isEmpty()) {
             HttpBinding pb = respPayload.get(0);
             String fieldName = BeamNameUtils.toSnakeCase(pb.getMember().getMemberName());
-            writer.write("Body = $L,", toBindingVar(fieldName));
+            if (isStreamingBlob(model, pb.getMember())) {
+                writer.write("Stream = case $L of", toBindingVar(fieldName));
+                writer.indent();
+                writer.write("undefined -> undefined;");
+                writer.write("Value -> Value");
+                writer.dedent();
+                writer.write("end,");
+                writer.write("Body = <<>>,");
+            } else {
+                writer.write("Body = $L,", toBindingVar(fieldName));
+            }
         } else if (!respDoc.isEmpty()) {
             writer.write("BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
             for (int i = 0; i < respDoc.size(); i++) {
@@ -540,6 +560,9 @@ public final class ErlangRestJson1Emitter {
         writer.write("    status = $L,", successCode);
         writer.write("    headers = Headers,");
         writer.write("    body = Body");
+        if (!respPayload.isEmpty() && isStreamingBlob(model, respPayload.get(0).getMember())) {
+            writer.write("    ,stream = Stream");
+        }
         writer.write("}.");
         writer.dedent();
         writer.write("");
@@ -619,15 +642,28 @@ public final class ErlangRestJson1Emitter {
         List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
         List<HttpBinding> respCode = httpIndex.getResponseBindings(op, HttpBinding.Location.RESPONSE_CODE);
+        boolean streamingResponsePayload = !respPayload.isEmpty()
+                && isStreamingBlob(model, respPayload.get(0).getMember());
 
         writer.write("%% Decode HTTP response for $L.", op.getId());
         writer.write("-spec decode_$L_response(#http_response{}) -> {'ok', $L} | {'error', term()}.",
                 opName, outputType);
         if (!respCode.isEmpty()) {
+            if (streamingResponsePayload) {
+                writer.write(
+                        "decode_$L_response(#http_response{status = HttpStatus, headers = Headers, body = Body, stream = Stream})"
+                                + " when HttpStatus >= 200, HttpStatus < 300 ->",
+                        opName);
+            } else {
+                writer.write(
+                        "decode_$L_response(#http_response{status = HttpStatus, headers = Headers, body = Body})"
+                                + " when HttpStatus >= 200, HttpStatus < 300 ->",
+                        opName);
+            }
+        } else if (streamingResponsePayload) {
             writer.write(
-                    "decode_$L_response(#http_response{status = HttpStatus, headers = Headers, body = Body})"
-                            + " when HttpStatus >= 200, HttpStatus < 300 ->",
-                    opName);
+                    "decode_$L_response(#http_response{status = $L, headers = Headers, body = Body, stream = Stream}) ->",
+                    opName, successCode);
         } else {
             writer.write("decode_$L_response(#http_response{status = $L, headers = Headers, body = Body}) ->",
                     opName, successCode);
@@ -707,7 +743,11 @@ public final class ErlangRestJson1Emitter {
         }
         for (HttpBinding pb : respPayload) {
             String fieldName = BeamNameUtils.toSnakeCase(pb.getMember().getMemberName());
-            recordFields.add("    " + fieldName + " = Body");
+            if (isStreamingBlob(model, pb.getMember())) {
+                recordFields.add("    " + fieldName + " = Stream");
+            } else {
+                recordFields.add("    " + fieldName + " = Body");
+            }
         }
         for (HttpBinding rcb : respCode) {
             String fieldName = BeamNameUtils.toSnakeCase(rcb.getMember().getMemberName());
@@ -1237,14 +1277,98 @@ public final class ErlangRestJson1Emitter {
             List<HttpBinding> headers,
             List<HttpBinding> prefixHeaders,
             List<HttpBinding> docMembers,
+            List<HttpBinding> reqPayload,
             SymbolProvider sp,
             Model model) {
         List<String> parts = new ArrayList<>();
-        for (HttpBinding b : concat(labels, queries, queryParams, headers, prefixHeaders, docMembers)) {
+        for (HttpBinding b : concat(labels, queries, queryParams, headers, prefixHeaders, docMembers, reqPayload)) {
             String field = BeamNameUtils.toSnakeCase(b.getMember().getMemberName());
             parts.add(field + " = " + toBindingVar(field));
         }
         return parts;
+    }
+
+    private static void emitRequestBody(
+            ErlangWriter writer,
+            Model model,
+            HttpBindingIndex httpIndex,
+            List<HttpBinding> reqPayload,
+            List<HttpBinding> docMembers,
+            String method,
+            SymbolProvider sp) {
+
+        if (!reqPayload.isEmpty()
+                && !method.equals("GET")
+                && !method.equals("DELETE")
+                && !method.equals("HEAD")) {
+            HttpBinding payload = reqPayload.get(0);
+            MemberShape member = payload.getMember();
+            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+            String bindingVar = toBindingVar(fieldName);
+            if (isStreamingBlob(model, member)) {
+                writer.write("Body = <<>>,");
+                return;
+            }
+            Shape target = model.expectShape(member.getTarget());
+            if (target instanceof BlobShape || target instanceof StringShape) {
+                writer.write("Body = case $L of", bindingVar);
+                writer.indent();
+                writer.write("undefined -> <<>>;");
+                writer.write("Value -> Value");
+                writer.dedent();
+                writer.write("end,");
+                return;
+            }
+        }
+
+        if (docMembers.isEmpty() || method.equals("GET") || method.equals("DELETE") || method.equals("HEAD")) {
+            writer.write("Body = <<>>,");
+        } else {
+            writer.write("BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
+            for (int i = 0; i < docMembers.size(); i++) {
+                HttpBinding db = docMembers.get(i);
+                String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
+                String wireKey = jsonKey(db.getMember());
+                String comma = i < docMembers.size() - 1 ? "," : "";
+                Shape target = model.expectShape(db.getMember().getTarget());
+                if (target instanceof EnumShape || target instanceof IntEnumShape) {
+                    String helperName = sp.toSymbol(target).getName().replace("()", "");
+                    writer.write("    <<\"$L\">> => encode_$L($L)$L",
+                            wireKey, helperName, toBindingVar(fieldName), comma);
+                } else if (target instanceof UnionShape) {
+                    String helperName = sp.toSymbol(target).getName().replace("()", "");
+                    writer.write("    <<\"$L\">> => encode_$L($L)$L",
+                            wireKey, helperName, toBindingVar(fieldName), comma);
+                } else if (target instanceof TimestampShape) {
+                    String encodeHelper = timestampEncodeHelper(
+                            httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
+                    writer.write("    <<\"$L\">> => $L($L)$L",
+                            wireKey, encodeHelper, toBindingVar(fieldName), comma);
+                } else {
+                    writer.write("    <<\"$L\">> => $L$L",
+                            wireKey, encodeDocumentValue(target, fieldName), comma);
+                }
+            }
+            writer.write("}),");
+            writer.write("Body = jsone:encode(BodyMap),");
+        }
+    }
+
+    private static boolean hasStreamingRequestPayload(
+            Model model, List<HttpBinding> reqPayload, String method) {
+        if (reqPayload.isEmpty()) {
+            return false;
+        }
+        if (method != null
+                && (method.equals("GET") || method.equals("DELETE") || method.equals("HEAD"))) {
+            return false;
+        }
+        return isStreamingBlob(model, reqPayload.get(0).getMember());
+    }
+
+    private static boolean isStreamingBlob(Model model, MemberShape member) {
+        Shape target = model.expectShape(member.getTarget());
+        return target instanceof BlobShape && target.hasTrait(StreamingTrait.class);
     }
 
     /** Erlang variable for a snake_case record field (Inaka CamelCase, no underscores). */

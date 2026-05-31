@@ -4,7 +4,6 @@ import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.BigDecimalShape;
-import software.amazon.smithy.model.shapes.BlobShape;
 import software.amazon.smithy.model.shapes.DocumentShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
@@ -57,13 +56,6 @@ public final class BeamProtocolResolver {
 
         List<String> diagnostics = new ArrayList<>();
         for (Shape shape : closure) {
-            if (shape.hasTrait(StreamingTrait.class) && shape instanceof BlobShape) {
-                diagnostics.add(
-                        shape.getId()
-                                + ": streaming blob shapes are not supported by "
-                                + protocol
-                                + "; wire streaming is not implemented");
-            }
             if (shape instanceof BigDecimalShape) {
                 diagnostics.add(
                         shape.getId()

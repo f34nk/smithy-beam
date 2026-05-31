@@ -6,12 +6,13 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class BeamProtocolResolverTest {
 
     @Test
-    void closureAuditCollectsAllUnsupportedShapesInOneException() {
+    void closureAuditAllowsStreamingBlobShapes() {
         Model model = Model.assembler()
                 .addUnparsedModel("test.smithy", """
                         $version: "2"
@@ -44,10 +45,47 @@ class BeamProtocolResolverTest {
         ServiceShape service = model.getServiceShapes().iterator().next();
         var protocol = software.amazon.smithy.model.shapes.ShapeId.from("aws.protocols#restJson1");
 
+        assertDoesNotThrow(() -> BeamProtocolResolver.assertClosureSupported(model, service, protocol));
+    }
+
+    @Test
+    void closureAuditCollectsEventStreamUnionsInOneException() {
+        Model model = Model.assembler()
+                .addUnparsedModel("test.smithy", """
+                        $version: "2"
+                        namespace test
+
+                        use smithy.api#streaming
+
+                        service Svc {
+                            version: "2026"
+                            operations: [Op]
+                        }
+
+                        @readonly
+                        operation Op {
+                            output: OpOutput
+                        }
+
+                        structure OpOutput {
+                            events: EventStream
+                        }
+
+                        @streaming
+                        union EventStream {
+                            member: String
+                        }
+                        """)
+                .assemble()
+                .unwrap();
+
+        ServiceShape service = model.getServiceShapes().iterator().next();
+        var protocol = software.amazon.smithy.model.shapes.ShapeId.from("aws.protocols#restJson1");
+
         CodegenException ex = assertThrows(CodegenException.class, () ->
                 BeamProtocolResolver.assertClosureSupported(model, service, protocol));
 
-        assertThat(ex.getMessage()).contains("streaming blob");
-        assertThat(ex.getMessage()).contains("StreamBlob");
+        assertThat(ex.getMessage()).contains("event-stream union");
+        assertThat(ex.getMessage()).contains("EventStream");
     }
 }

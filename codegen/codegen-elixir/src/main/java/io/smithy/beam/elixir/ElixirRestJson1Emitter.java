@@ -9,6 +9,7 @@ import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
+import software.amazon.smithy.model.shapes.BlobShape;
 import software.amazon.smithy.model.shapes.EnumShape;
 import software.amazon.smithy.model.shapes.IntEnumShape;
 import software.amazon.smithy.model.shapes.ListShape;
@@ -30,6 +31,7 @@ import software.amazon.smithy.model.traits.JsonNameTrait;
 import software.amazon.smithy.model.traits.MediaTypeTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
+import software.amazon.smithy.model.traits.StreamingTrait;
 
 import software.amazon.smithy.model.pattern.SmithyPattern;
 
@@ -159,8 +161,10 @@ public final class ElixirRestJson1Emitter {
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
         List<HttpBinding> prefixHeaders = httpIndex.getRequestBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
+        List<HttpBinding> reqPayload = httpIndex.getRequestBindings(op, HttpBinding.Location.PAYLOAD);
 
         String requestContentType = resolvedRequestContentType(model, op);
+        boolean streamingRequestPayload = hasStreamingRequestPayload(model, reqPayload, method);
 
         String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
         String httpRequestType = "%" + runtimeMod + ".HttpRequest{}";
@@ -250,7 +254,17 @@ public final class ElixirRestJson1Emitter {
 
         boolean hasBody = !docMembers.isEmpty()
                 && !method.equals("GET") && !method.equals("DELETE") && !method.equals("HEAD");
-        if (hasBody) {
+        if (streamingRequestPayload) {
+            HttpBinding payload = reqPayload.get(0);
+            String field = fieldName(sp, payload.getMember());
+            writer.write("stream = input.$L", field);
+            writer.write("body = \"\"");
+        } else if (!reqPayload.isEmpty()
+                && !method.equals("GET") && !method.equals("DELETE") && !method.equals("HEAD")) {
+            HttpBinding payload = reqPayload.get(0);
+            String field = fieldName(sp, payload.getMember());
+            writer.write("body = input.$L || \"\"", field);
+        } else if (hasBody) {
             writer.write("body_map = %{");
             for (HttpBinding db : docMembers) {
                 String field = fieldName(sp, db.getMember());
@@ -288,6 +302,9 @@ public final class ElixirRestJson1Emitter {
         writer.write("  query: query,");
         writer.write("  headers: headers,");
         writer.write("  body: body");
+        if (streamingRequestPayload) {
+            writer.write("  ,stream: stream");
+        }
         if (hasHostLabels) {
             writer.write("  ,host: host");
         }
@@ -327,7 +344,12 @@ public final class ElixirRestJson1Emitter {
         if (!respPayload.isEmpty()) {
             HttpBinding pb = respPayload.get(0);
             String field = fieldName(sp, pb.getMember());
-            writer.write("body = output.$L", field);
+            if (isStreamingBlob(model, pb.getMember())) {
+                writer.write("stream = output.$L", field);
+                writer.write("body = \"\"");
+            } else {
+                writer.write("body = output.$L", field);
+            }
         } else if (!respDoc.isEmpty()) {
             writer.write("body_map = %{");
             for (HttpBinding db : respDoc) {
@@ -375,7 +397,11 @@ public final class ElixirRestJson1Emitter {
             writer.write("headers = headers ++ prefix_headers_to_list(\"$L\", output.$L)", prefix, field);
         }
 
-        writer.write("%{status: $L, headers: headers, body: body}", statusCode);
+        writer.write("%{status: $L, headers: headers, body: body", statusCode);
+        if (!respPayload.isEmpty() && isStreamingBlob(model, respPayload.get(0).getMember())) {
+            writer.write(", stream: stream");
+        }
+        writer.write("}");
         writer.dedent();
         writer.write("end");
         writer.write("");
@@ -399,20 +425,34 @@ public final class ElixirRestJson1Emitter {
         List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
         List<HttpBinding> prefixHeaders = httpIndex.getRequestBindings(op, HttpBinding.Location.PREFIX_HEADERS);
         List<HttpBinding> docMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
+        List<HttpBinding> reqPayload = httpIndex.getRequestBindings(op, HttpBinding.Location.PAYLOAD);
+        boolean streamingRequestPayload = hasStreamingRequestPayload(model, reqPayload, null);
 
         if (labels.isEmpty()) {
-            writer.write(
-                    "def decode_$L_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}) do",
-                    opName);
+            if (streamingRequestPayload) {
+                writer.write(
+                        "def decode_$L_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body, stream: stream}) do",
+                        opName);
+            } else {
+                writer.write(
+                        "def decode_$L_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}) do",
+                        opName);
+            }
         } else {
-            writer.write(
-                    "def decode_$L_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}, label_map) do",
-                    opName);
+            if (streamingRequestPayload) {
+                writer.write(
+                        "def decode_$L_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body, stream: stream}, label_map) do",
+                        opName);
+            } else {
+                writer.write(
+                        "def decode_$L_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}, label_map) do",
+                        opName);
+            }
         }
         writer.indent();
         emitRequestDecoderStruct(
-                writer, model, httpIndex, labels, queries, queryParams, headers, prefixHeaders, docMembers, sp,
-                inputStruct);
+                writer, model, httpIndex, labels, queries, queryParams, headers, prefixHeaders, docMembers,
+                reqPayload, sp, inputStruct);
         writer.dedent();
         writer.write("end");
         writer.write("");
@@ -428,6 +468,7 @@ public final class ElixirRestJson1Emitter {
             List<HttpBinding> headers,
             List<HttpBinding> prefixHeaders,
             List<HttpBinding> docMembers,
+            List<HttpBinding> reqPayload,
             SymbolProvider sp,
             String inputStruct) {
 
@@ -480,6 +521,14 @@ public final class ElixirRestJson1Emitter {
                 writer.write("  $L: $L,", field, documentDecodeExpr(wireKey, target));
             }
         }
+        for (HttpBinding pb : reqPayload) {
+            String field = fieldName(sp, pb.getMember());
+            if (isStreamingBlob(model, pb.getMember())) {
+                writer.write("  $L: stream,", field);
+            } else {
+                writer.write("  $L: body,", field);
+            }
+        }
         writer.write("}");
     }
 
@@ -501,12 +550,25 @@ public final class ElixirRestJson1Emitter {
         List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
         List<HttpBinding> respCode = httpIndex.getResponseBindings(op, HttpBinding.Location.RESPONSE_CODE);
+        boolean streamingResponsePayload = !respPayload.isEmpty()
+                && isStreamingBlob(model, respPayload.get(0).getMember());
 
         if (!respCode.isEmpty()) {
+            if (streamingResponsePayload) {
+                writer.write(
+                        "def decode_$L_response(%RuntimeTypes.HttpResponse{status: http_status, headers: headers,"
+                                + " body: body, stream: stream}) when http_status >= 200 and http_status < 300 do",
+                        opName);
+            } else {
+                writer.write(
+                        "def decode_$L_response(%RuntimeTypes.HttpResponse{status: http_status, headers: headers,"
+                                + " body: body}) when http_status >= 200 and http_status < 300 do",
+                        opName);
+            }
+        } else if (streamingResponsePayload) {
             writer.write(
-                    "def decode_$L_response(%RuntimeTypes.HttpResponse{status: http_status, headers: headers,"
-                            + " body: body}) when http_status >= 200 and http_status < 300 do",
-                    opName);
+                    "def decode_$L_response(%RuntimeTypes.HttpResponse{status: $L, headers: headers, body: body, stream: stream}) do",
+                    opName, successCode);
         } else {
             writer.write(
                     "def decode_$L_response(%RuntimeTypes.HttpResponse{status: $L, headers: headers, body: body}) do",
@@ -564,7 +626,11 @@ public final class ElixirRestJson1Emitter {
         }
         for (HttpBinding pb : respPayload) {
             String field = fieldName(sp, pb.getMember());
-            writer.write("  $L: body,", field);
+            if (isStreamingBlob(model, pb.getMember())) {
+                writer.write("  $L: stream,", field);
+            } else {
+                writer.write("  $L: body,", field);
+            }
         }
         for (HttpBinding rcb : respCode) {
             String field = fieldName(sp, rcb.getMember());
@@ -1179,5 +1245,22 @@ public final class ElixirRestJson1Emitter {
         }
         Shape target = model.expectShape(respPayload.get(0).getMember().getTarget());
         return target.hasTrait(MediaTypeTrait.class);
+    }
+
+    private static boolean hasStreamingRequestPayload(
+            Model model, List<HttpBinding> reqPayload, String method) {
+        if (reqPayload.isEmpty()) {
+            return false;
+        }
+        if (method != null
+                && (method.equals("GET") || method.equals("DELETE") || method.equals("HEAD"))) {
+            return false;
+        }
+        return isStreamingBlob(model, reqPayload.get(0).getMember());
+    }
+
+    private static boolean isStreamingBlob(Model model, MemberShape member) {
+        Shape target = model.expectShape(member.getTarget());
+        return target instanceof BlobShape && target.hasTrait(StreamingTrait.class);
     }
 }
