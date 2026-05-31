@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpPathPatterns;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -8,6 +9,7 @@ import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.traits.HttpTrait;
 
 import java.util.ArrayList;
@@ -31,9 +33,15 @@ public final class ErlangRouterEmitter {
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
-        String codecMod = layout.serverCodecModuleName();
+        ShapeId protocol = ctx.resolvedProtocolTraitId();
+        String codecMod = layout.serverCodecModuleName(protocol);
         String routerMod = layout.routerModuleName();
         String helpersMod = layout.runtimeHelpersModuleName();
+
+        if (BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(protocol)) {
+            emitAwsJsonRouter(ctx, service, layout, codecMod, routerMod, operations, sp);
+            return;
+        }
 
         List<OperationShape> literalOps = new ArrayList<>();
         List<OperationShape> labeledOps = new ArrayList<>();
@@ -69,6 +77,61 @@ public final class ErlangRouterEmitter {
             }
 
             writer.write("route(Method, Path, _Handler, _Req) ->");
+            writer.indent();
+            writer.write("{error, {not_found, Method, Path}}.");
+            writer.dedent();
+        });
+    }
+
+    private static void emitAwsJsonRouter(
+            ErlangContext ctx,
+            ServiceShape service,
+            BeamErlangLayout layout,
+            String codecMod,
+            String routerMod,
+            List<OperationShape> operations,
+            SymbolProvider sp) {
+
+        String targetPrefix = service.getId().getName();
+
+        ctx.writerDelegator().useFileWriter(layout.routerModuleFile(), writer -> {
+            writer.write("%% Generated AWS JSON 1.0 router for $L.", service.getId());
+            writer.write("-module($L).", routerMod);
+            writer.write("-include(\"$L\").", layout.typesHeaderFile());
+            writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
+            writer.write("-export([dispatch/2]).");
+            writer.write("");
+            writer.write("%% @doc Routes POST / requests by X-Amz-Target header.");
+            writer.write("dispatch(Handler, #http_request{method = Method, path = Path, headers = Headers} = Req) ->");
+            writer.indent();
+            writer.write("route(Method, Path, Headers, Handler, Req).");
+            writer.dedent();
+            writer.write("");
+
+            writer.write("route(<<\"POST\">>, <<\"/\">>, Headers, Handler, Req) ->");
+            writer.indent();
+            writer.write("case proplists:get_value(<<\"X-Amz-Target\">>, Headers, undefined) of");
+            writer.indent();
+            for (OperationShape op : operations) {
+                String opName = sp.toSymbol(op).getName();
+                String handlerFn = "handle_" + opName;
+                String amzTarget = targetPrefix + "." + op.getId().getName();
+                writer.write("<<\"$L\">> ->", amzTarget);
+                writer.indent();
+                writer.write("Input = $L:decode_$L_request(Req),", codecMod, opName);
+                writer.write("Handler:$L(#{}, Input, #{});", handlerFn);
+                writer.dedent();
+            }
+            writer.write("_ ->");
+            writer.indent();
+            writer.write("{error, {not_found, <<\"POST\">>, <<\"/\">>}};");
+            writer.dedent();
+            writer.dedent();
+            writer.write("end;");
+            writer.dedent();
+            writer.write("");
+
+            writer.write("route(Method, Path, _Headers, _Handler, _Req) ->");
             writer.indent();
             writer.write("{error, {not_found, Method, Path}}.");
             writer.dedent();
