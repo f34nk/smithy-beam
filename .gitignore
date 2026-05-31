@@ -1,4 +1,5 @@
 .gradle/
+.gradle-local/
 .vscode/
 build/
 _build/
