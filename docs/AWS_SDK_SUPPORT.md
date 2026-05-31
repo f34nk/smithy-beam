@@ -55,7 +55,7 @@ Output from `erlang-client-codegen` and `elixir-client-codegen`.
 | Credential providers | ❌ | No AWS credential chain in generated output. |
 | Endpoint discovery | ❌ | Not implemented. |
 | Input validation helpers | ❌ | `@required` affects generated types only; no runtime `validate_*` helpers. |
-| HTTP prefix headers | ❌ | `@httpPrefixHeaders` not implemented. |
+| HTTP prefix headers | ✅ | Map members bound with `@httpPrefixHeaders` expand into prefixed request headers on encode and reconstruct on decode. |
 | HTTP response code binding | ✅ | `@httpResponseCode` members populate the modeled output field from the HTTP status on decode. |
 | Modeled HTTP errors | ✅ | Client codecs dispatch `@httpError` status codes before type-discriminated errors. Server codecs encode error responses with modeled status codes. |
 | Idempotency token | ❌ | `@idempotencyToken` not implemented. |
@@ -94,7 +94,7 @@ Protocol selection reads the sole `@protocolDefinition` trait on the selected se
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ⚠️ | Request encoding, client response decoding, server request decoding, server response encoding, routing, and paginators are implemented for Erlang and Elixir when the service carries `@restJson1`. Codecs honor `@jsonName`, `@httpQueryParams`, `@httpResponseCode`, `@httpError`, `@timestampFormat`, and sparse collection nulls. Content type is fixed to `application/json`. AWS service models such as S3 already declare the trait; no smithy-build protocol setting is required. |
+| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ⚠️ | Request encoding, client response decoding, server request decoding, server response encoding, routing, and paginators are implemented for Erlang and Elixir when the service carries `@restJson1`. Codecs honor `@jsonName`, `@httpQueryParams`, `@httpPrefixHeaders`, `@httpResponseCode`, `@httpError`, `@timestampFormat`, and sparse collection nulls. Content type is fixed to `application/json`. AWS service models such as S3 already declare the trait; no smithy-build protocol setting is required. |
 | [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ❌ | Not implemented. |
 | [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ❌ | Not implemented. |
 | [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ❌ | Not implemented. |
@@ -117,7 +117,7 @@ Bindings honored in generated REST JSON 1 codecs and routers today.
 | `@httpHeader` | ✅ | Request and response header binding. |
 | `@httpPayload` | ✅ | Request and response payload members. |
 | `@httpQueryParams` | ✅ | Map members expand into query string key/value pairs on encode and decode. |
-| `@httpPrefixHeaders` | ❌ | Not implemented. |
+| `@httpPrefixHeaders` | ✅ | Map members expand into prefixed HTTP headers on encode and collapse back into a map on decode. |
 | `@httpResponseCode` | ✅ | Response status populates the bound output member on client decode and server request decode. |
 | `@httpError` | ✅ | Status-code clauses in client error dispatch; server error response encoders use modeled HTTP status. |
 | `@jsonName` | ✅ | Wire JSON keys follow `@jsonName` when present. |
