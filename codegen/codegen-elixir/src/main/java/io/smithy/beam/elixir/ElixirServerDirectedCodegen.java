@@ -8,6 +8,7 @@ import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
+import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -167,6 +168,10 @@ final class ElixirServerDirectedCodegen
                 && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ElixirRestJson1Emitter.emitServerCodecModule(ctx, service);
+        } else if (ctx.protocolCodegen() != null
+                && BeamRestXmlProtocolCodegen.REST_XML.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ElixirRestXmlEmitter.emitServerCodecModule(ctx, service);
         }
 
         ElixirRouterEmitter.emit(ctx, service);

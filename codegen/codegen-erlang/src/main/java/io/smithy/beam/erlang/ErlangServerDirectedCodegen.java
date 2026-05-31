@@ -10,6 +10,7 @@ import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
+import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -184,6 +185,10 @@ final class ErlangServerDirectedCodegen
                 && BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ErlangAwsJson11Emitter.emitServerCodecModule(ctx, service);
+        } else if (ctx.protocolCodegen() != null
+                && BeamRestXmlProtocolCodegen.REST_XML.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ErlangRestXmlEmitter.emitServerCodecModule(ctx, service);
         }
 
         ErlangRouterEmitter.emit(ctx, service);

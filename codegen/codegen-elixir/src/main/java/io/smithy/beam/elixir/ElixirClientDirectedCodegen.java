@@ -13,6 +13,7 @@ import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
 import io.smithy.beam.core.BeamEc2QueryProtocolCodegen;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
+import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -190,6 +191,10 @@ final class ElixirClientDirectedCodegen
                 && BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ElixirEc2QueryEmitter.emitCodecModule(ctx, directive.shape());
+        } else if (ctx.protocolCodegen() != null
+                && BeamRestXmlProtocolCodegen.REST_XML.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ElixirRestXmlEmitter.emitCodecModule(ctx, directive.shape());
         }
 
         ElixirHttpDispatchEmitter.emit(ctx, service);
@@ -257,6 +262,8 @@ final class ElixirClientDirectedCodegen
                         || BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(
                                 ctx.protocolCodegen().protocolTraitId())
                         || BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(
+                                ctx.protocolCodegen().protocolTraitId())
+                        || BeamRestXmlProtocolCodegen.REST_XML.equals(
                                 ctx.protocolCodegen().protocolTraitId()));
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {
