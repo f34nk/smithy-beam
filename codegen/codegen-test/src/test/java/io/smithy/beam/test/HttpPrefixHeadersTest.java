@@ -1,5 +1,6 @@
 package io.smithy.beam.test;
 
+import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.elixir.ElixirClientPlugin;
 import io.smithy.beam.elixir.ElixirServerPlugin;
 import io.smithy.beam.erlang.ErlangClientPlugin;
@@ -8,7 +9,10 @@ import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.node.ObjectNode;
+import software.amazon.smithy.model.shapes.OperationShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -240,5 +244,26 @@ class HttpPrefixHeadersTest {
                 .orElse("");
         assertThat(codec).contains("def encode_get_object_response(");
         assertThat(codec).contains("prefix_headers_to_list(\"x-amz-meta-\", output.metadata)");
+    }
+
+    @Test
+    void prefixHeaderBindingsResolvedFromModel() {
+        Model model = loadModel();
+        BeamHttpBindings bindings = BeamHttpBindings.from(model);
+        ShapeId putObject = ShapeId.from("smithy.beam.test.prefixheaders#PutObject");
+        ShapeId getObject = ShapeId.from("smithy.beam.test.prefixheaders#GetObject");
+
+        assertThat(bindings.requestPrefixHeaderBindings(putObject)).hasSize(1);
+        assertThat(bindings.requestPrefixHeaderBindings(putObject).get(0).getLocation())
+                .isEqualTo(HttpBinding.Location.PREFIX_HEADERS);
+        assertThat(bindings.requestPrefixHeaderBindings(putObject).get(0).getLocationName())
+                .isEqualTo("x-amz-meta-");
+
+        assertThat(bindings.responsePrefixHeaderBindings(getObject)).hasSize(1);
+        assertThat(bindings.responsePrefixHeaderBindings(getObject).get(0).getLocationName())
+                .isEqualTo("x-amz-meta-");
+
+        OperationShape getOp = model.expectShape(getObject, OperationShape.class);
+        assertThat(bindings.requestPrefixHeaderBindings(getOp)).isEmpty();
     }
 }
