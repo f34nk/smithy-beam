@@ -17,7 +17,9 @@ class StreamingPayloadTest {
             namespace smithy.beam.test.streaming
 
             use aws.protocols#restJson1
+            use smithy.api#default
             use smithy.api#httpPayload
+            use smithy.api#required
             use smithy.api#streaming
 
             @restJson1
@@ -36,6 +38,7 @@ class StreamingPayloadTest {
             }
 
             structure PutStreamingBodyInput {
+                @required
                 @httpPayload
                 body: StreamingBlob
             }
@@ -54,6 +57,7 @@ class StreamingPayloadTest {
             structure GetStreamingBodyInput {}
 
             structure GetStreamingBodyOutput {
+                @default("")
                 @httpPayload
                 body: StreamingBlob
             }

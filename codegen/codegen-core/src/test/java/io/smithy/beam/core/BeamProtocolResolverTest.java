@@ -73,7 +73,11 @@ class BeamProtocolResolverTest {
 
                         @streaming
                         union EventStream {
-                            member: String
+                            member: MemberEvent
+                        }
+
+                        structure MemberEvent {
+                            value: String
                         }
                         """)
                 .assemble()
