@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamElixirLayout;
@@ -186,6 +187,23 @@ final class ElixirClientDirectedCodegen
                             + "endpoint, transport, and protocol live in future runtime modules.");
             writer.write("@type client_config :: map()");
             writer.write("");
+            BeamAwsServiceMetadata.from(service).ifPresent(meta -> {
+                writer.write("# AWS service metadata from model:");
+                writer.write("#   sdkId: $L", meta.sdkId());
+                writer.write("#   endpointPrefix: $L", meta.endpointPrefix());
+                writer.write("def default_config do");
+                writer.write("  %{");
+                writer.write("    region: \"us-east-1\",");
+                writer.write("    endpoint_prefix: \"$L\",", meta.endpointPrefix());
+                writer.write("    signing_name: \"$L\"", meta.signingName());
+                writer.write("  }");
+                writer.write("end");
+                writer.write("");
+                writer.write("def resolve_base_url(%{endpoint_prefix: prefix, region: region}) do");
+                writer.write("  \"https://#{prefix}.#{region}.amazonaws.com\"");
+                writer.write("end");
+                writer.write("");
+            });
             writer.popState();
         });
     }

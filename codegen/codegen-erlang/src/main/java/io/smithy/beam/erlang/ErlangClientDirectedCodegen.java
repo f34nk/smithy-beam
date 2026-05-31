@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamErlangLayout;
@@ -191,6 +192,19 @@ final class ErlangClientDirectedCodegen
                             + "endpoint, transport, and protocol live in future runtime modules.");
             writer.write("-type client_config() :: #{binary() => term()}.");
             writer.write("");
+            BeamAwsServiceMetadata.from(service).ifPresent(meta -> {
+                writer.write("%% AWS service metadata from model:");
+                writer.write("%%   sdkId: $L", meta.sdkId());
+                writer.write("%%   endpointPrefix: $L", meta.endpointPrefix());
+                writer.write("default_config() ->");
+                writer.write("    #{region => <<\"us-east-1\">>,");
+                writer.write("      endpoint_prefix => <<\"$L\">>,", meta.endpointPrefix());
+                writer.write("      signing_name => <<\"$L\">>>}.", meta.signingName());
+                writer.write("");
+                writer.write("resolve_base_url(#{endpoint_prefix := Prefix, region := Region}) ->");
+                writer.write("    <<\"https://\", Prefix/binary, \".\", Region/binary, \".amazonaws.com\">>.");
+                writer.write("");
+            });
             writer.popState();
         });
     }
