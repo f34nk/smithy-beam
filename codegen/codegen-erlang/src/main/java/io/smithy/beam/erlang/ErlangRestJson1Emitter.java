@@ -607,11 +607,11 @@ public final class ErlangRestJson1Emitter {
         writer.write("%% Decode HTTP response for $L.", op.getId());
         if (!respCode.isEmpty()) {
             writer.write(
-                    "decode_$L_response(#http_response{status = HttpStatus, headers = _Headers, body = Body})"
+                    "decode_$L_response(#http_response{status = HttpStatus, headers = Headers, body = Body})"
                             + " when HttpStatus >= 200, HttpStatus < 300 ->",
                     opName);
         } else {
-            writer.write("decode_$L_response(#http_response{status = $L, headers = _Headers, body = Body}) ->",
+            writer.write("decode_$L_response(#http_response{status = $L, headers = Headers, body = Body}) ->",
                     opName, successCode);
         }
         writer.indent();
@@ -637,7 +637,7 @@ public final class ErlangRestJson1Emitter {
             String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
             String bindingVar = toBindingVar(fieldName);
             String headerName = hb.getLocationName();
-            writer.write("$L = proplists:get_value(<<\"$L\">>, _Headers, undefined),",
+            writer.write("$L = proplists:get_value(<<\"$L\">>, Headers, undefined),",
                     bindingVar, headerName);
         }
 
@@ -650,7 +650,7 @@ public final class ErlangRestJson1Emitter {
         for (HttpBinding ph : respPrefixHeaders) {
             String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
             String prefix = ph.getLocationName();
-            recordFields.add("    " + fieldName + " = prefix_headers_from_list(_Headers, <<\"" + prefix + "\">>)");
+            recordFields.add("    " + fieldName + " = prefix_headers_from_list(Headers, <<\"" + prefix + "\">>)");
         }
         for (HttpBinding db : respDoc) {
             String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
