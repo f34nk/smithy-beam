@@ -1,10 +1,13 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamAwsQueryFormEncoder;
+import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
+import io.smithy.beam.core.BeamEc2QueryProtocolCodegen;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamXmlDecoder;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
@@ -14,7 +17,6 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.StructureShape;
-import software.amazon.smithy.model.traits.XmlNameTrait;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -31,14 +33,17 @@ public final class ErlangAwsQueryEmitter {
     private ErlangAwsQueryEmitter() {}
 
     static void emitCodecModule(ErlangContext ctx, ServiceShape service) {
+        emitCodecModule(ctx, service, BeamAwsQueryProtocolCodegen.AWS_QUERY);
+    }
+
+    static void emitCodecModule(ErlangContext ctx, ServiceShape service, ShapeId protocolTraitId) {
+        boolean ec2Query = BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(protocolTraitId);
         BeamAwsServiceMetadata.from(service).orElseThrow();
         Model model = ctx.model();
         BeamErlangLayout layout = new BeamErlangLayout(
                 ctx.settings(), service.getId().getNamespace(), service);
-        String codecFile = layout.clientCodecModuleName(
-                io.smithy.beam.core.BeamAwsQueryProtocolCodegen.AWS_QUERY) + ".erl";
-        String codecModule = layout.clientCodecModuleName(
-                io.smithy.beam.core.BeamAwsQueryProtocolCodegen.AWS_QUERY);
+        String codecFile = layout.clientCodecModuleName(protocolTraitId) + ".erl";
+        String codecModule = layout.clientCodecModuleName(protocolTraitId);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
 
@@ -66,15 +71,15 @@ public final class ErlangAwsQueryEmitter {
 
             for (OperationShape op : operations) {
                 emitEncoder(writer, model, service, op, httpIndex, sp);
-                emitDecoder(writer, model, service, op, sp);
+                emitDecoder(writer, model, service, op, sp, ec2Query);
             }
 
             for (StructureShape input : inputShapes) {
-                emitFlattenInputClause(writer, model, httpIndex, sp, input);
+                emitFlattenInputClause(writer, model, httpIndex, sp, input, ec2Query);
             }
 
-            emitQueryHelpers(writer);
-            emitXmlHelpers(writer);
+            emitQueryHelpers(writer, ec2Query);
+            emitXmlHelpers(writer, ec2Query);
         });
     }
 
@@ -120,7 +125,8 @@ public final class ErlangAwsQueryEmitter {
             Model model,
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
-            StructureShape input) {
+            StructureShape input,
+            boolean ec2Query) {
 
         String inputRecord = recordName(sp.toSymbol(input));
         List<MemberShape> members = documentMembers(httpIndex, input);
@@ -144,7 +150,7 @@ public final class ErlangAwsQueryEmitter {
             for (int i = 0; i < members.size(); i++) {
                 MemberShape member = members.get(i);
                 String field = BeamNameUtils.toSnakeCase(member.getMemberName());
-                String wireKey = queryFormKey(member);
+                String wireKey = queryFormKey(member, ec2Query);
                 if (i < members.size() - 1) {
                     writer.write("    flatten_member(<<\"$L\">>, $L),", wireKey, toBindingVar(field));
                 } else {
@@ -162,13 +168,16 @@ public final class ErlangAwsQueryEmitter {
             Model model,
             ServiceShape service,
             OperationShape op,
-            SymbolProvider sp) {
+            SymbolProvider sp,
+            boolean ec2Query) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
         String outputRecord = recordName(sp.toSymbol(output));
         String outputType = sp.toSymbol(output).getName();
-        String resultElement = BeamXmlDecoder.queryResultElementName(op, service);
+        String resultElement = ec2Query
+                ? BeamXmlDecoder.ec2QueryResultElementName(op, service)
+                : BeamXmlDecoder.queryResultElementName(op, service);
 
         writer.write("%% Decode AWS Query response for $L.", op.getId());
         writer.write("-spec decode_$L_response(#http_response{}) -> {'ok', $L} | {'error', term()}.",
@@ -222,7 +231,7 @@ public final class ErlangAwsQueryEmitter {
         }
     }
 
-    private static void emitXmlHelpers(ErlangWriter writer) {
+    private static void emitXmlHelpers(ErlangWriter writer, boolean ec2Query) {
         writer.write("unwrap_query_result(Body, ResultName) ->");
         writer.indent();
         writer.write("try");
@@ -315,6 +324,15 @@ public final class ErlangAwsQueryEmitter {
         writer.write("end.");
         writer.dedent();
         writer.write("");
+        if (ec2Query) {
+            emitEc2QueryErrorDecoder(writer);
+        } else {
+            emitAwsQueryErrorDecoder(writer);
+        }
+        writer.write("");
+    }
+
+    private static void emitAwsQueryErrorDecoder(ErlangWriter writer) {
         writer.write("decode_query_error(Status, Body) ->");
         writer.indent();
         writer.write("try");
@@ -347,24 +365,79 @@ public final class ErlangAwsQueryEmitter {
         writer.dedent();
         writer.write("end.");
         writer.dedent();
-        writer.write("");
     }
 
-    private static void emitQueryHelpers(ErlangWriter writer) {
+    private static void emitEc2QueryErrorDecoder(ErlangWriter writer) {
+        writer.write("decode_query_error(Status, Body) ->");
+        writer.indent();
+        writer.write("try");
+        writer.indent();
+        writer.write("{Xml, _} = xmerl_scan:string(binary_to_list(Body)),");
+        writer.write("case find_element(<<\"$L\">>, element_content(Xml)) of",
+                BeamXmlDecoder.EC2_RESPONSE_ELEMENT);
+        writer.indent();
+        writer.write("undefined -> {error, {unknown_error, Status, Body}};");
+        writer.write("Response ->");
+        writer.indent();
+        writer.write("case find_element(<<\"$L\">>, element_content(Response)) of",
+                BeamXmlDecoder.EC2_ERRORS_ELEMENT);
+        writer.indent();
+        writer.write("undefined -> {error, {unknown_error, Status, Body}};");
+        writer.write("Errors ->");
+        writer.indent();
+        writer.write("case find_element(<<\"$L\">>, element_content(Errors)) of",
+                BeamXmlDecoder.ERROR_ELEMENT);
+        writer.indent();
+        writer.write("undefined -> {error, {unknown_error, Status, Body}};");
+        writer.write("Error ->");
+        writer.indent();
+        writer.write("{error, {");
+        writer.write("    xml_child_text(Error, <<\"$L\">>),", BeamXmlDecoder.ERROR_CODE_ELEMENT);
+        writer.write("    xml_child_text(Error, <<\"$L\">>)", BeamXmlDecoder.ERROR_MESSAGE_ELEMENT);
+        writer.write("}}");
+        writer.dedent();
+        writer.dedent();
+        writer.dedent();
+        writer.dedent();
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("catch");
+        writer.indent();
+        writer.write("_:Reason -> {error, {unknown_error, Status, Body}}");
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
+    }
+
+    private static void emitQueryHelpers(ErlangWriter writer, boolean ec2Query) {
         writer.write("flatten_member(_Key, undefined) ->");
         writer.indent();
         writer.write("[].");
         writer.dedent();
-        writer.write("flatten_member(Key, Value) when is_list(Value) ->");
-        writer.indent();
-        writer.write("lists:append([");
-        writer.write("    flatten_member(");
-        writer.write("        <<Key/binary, \".member.\", (integer_to_binary(I))/binary>>,");
-        writer.write("        V");
-        writer.write("    )");
-        writer.write("    || {I, V} <- lists:enumerate(Value), V =/= undefined");
-        writer.write("]).");
-        writer.dedent();
+        if (ec2Query) {
+            writer.write("flatten_member(Key, Value) when is_list(Value) ->");
+            writer.indent();
+            writer.write("lists:append([");
+            writer.write("    flatten_member(");
+            writer.write("        <<Key/binary, \".\", (integer_to_binary(I))/binary>>,");
+            writer.write("        V");
+            writer.write("    )");
+            writer.write("    || {I, V} <- lists:enumerate(Value), V =/= undefined");
+            writer.write("]).");
+            writer.dedent();
+        } else {
+            writer.write("flatten_member(Key, Value) when is_list(Value) ->");
+            writer.indent();
+            writer.write("lists:append([");
+            writer.write("    flatten_member(");
+            writer.write("        <<Key/binary, \".member.\", (integer_to_binary(I))/binary>>,");
+            writer.write("        V");
+            writer.write("    )");
+            writer.write("    || {I, V} <- lists:enumerate(Value), V =/= undefined");
+            writer.write("]).");
+            writer.dedent();
+        }
         writer.write("flatten_member(Key, Value) when is_map(Value) ->");
         writer.indent();
         writer.write("lists:append([");
@@ -419,17 +492,10 @@ public final class ErlangAwsQueryEmitter {
         return new ArrayList<>(structure.members());
     }
 
-    private static String queryFormKey(MemberShape member) {
-        return member.getTrait(XmlNameTrait.class)
-                .map(XmlNameTrait::getValue)
-                .orElseGet(() -> capitalizeFirst(member.getMemberName()));
-    }
-
-    private static String capitalizeFirst(String name) {
-        if (name.isEmpty()) {
-            return name;
-        }
-        return Character.toUpperCase(name.charAt(0)) + name.substring(1);
+    private static String queryFormKey(MemberShape member, boolean ec2Query) {
+        return ec2Query
+                ? BeamAwsQueryFormEncoder.ec2QueryFormKey(member)
+                : BeamAwsQueryFormEncoder.awsQueryFormKey(member);
     }
 
     private static String recordName(software.amazon.smithy.codegen.core.Symbol symbol) {

@@ -25,6 +25,9 @@ public final class BeamProtocolCodegenFactory {
         if (BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(resolvedProtocolTraitId)) {
             return new BeamAwsQueryProtocolCodegen();
         }
+        if (BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(resolvedProtocolTraitId)) {
+            return new BeamEc2QueryProtocolCodegen();
+        }
         throw new CodegenException(
                 "No BeamProtocolCodegen registered for protocol trait " + resolvedProtocolTraitId);
     }

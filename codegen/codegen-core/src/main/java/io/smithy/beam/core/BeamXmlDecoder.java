@@ -15,6 +15,8 @@ import software.amazon.smithy.model.traits.XmlNameTrait;
 public final class BeamXmlDecoder {
 
     public static final String ERROR_RESPONSE_ELEMENT = "ErrorResponse";
+    public static final String EC2_RESPONSE_ELEMENT = "Response";
+    public static final String EC2_ERRORS_ELEMENT = "Errors";
     public static final String ERROR_ELEMENT = "Error";
     public static final String ERROR_CODE_ELEMENT = "Code";
     public static final String ERROR_MESSAGE_ELEMENT = "Message";
@@ -24,6 +26,10 @@ public final class BeamXmlDecoder {
 
     public static String queryResultElementName(OperationShape operation, ServiceShape service) {
         return operation.getId().getName(service) + "Result";
+    }
+
+    public static String ec2QueryResultElementName(OperationShape operation, ServiceShape service) {
+        return operation.getId().getName(service) + "Response";
     }
 
     public static String memberElementName(MemberShape member) {

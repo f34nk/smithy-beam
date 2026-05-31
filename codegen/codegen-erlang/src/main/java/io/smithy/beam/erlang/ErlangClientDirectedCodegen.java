@@ -10,6 +10,7 @@ import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
+import io.smithy.beam.core.BeamEc2QueryProtocolCodegen;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamResourceIndex;
@@ -190,6 +191,10 @@ final class ErlangClientDirectedCodegen
                 && BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ErlangAwsQueryEmitter.emitCodecModule(ctx, directive.shape());
+        } else if (ctx.protocolCodegen() != null
+                && BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ErlangEc2QueryEmitter.emitCodecModule(ctx, directive.shape());
         }
 
         ErlangHttpDispatchEmitter.emit(ctx, service);
@@ -246,6 +251,8 @@ final class ErlangClientDirectedCodegen
                         || BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(
                                 ctx.protocolCodegen().protocolTraitId())
                         || BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(
+                                ctx.protocolCodegen().protocolTraitId())
+                        || BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(
                                 ctx.protocolCodegen().protocolTraitId()));
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {

@@ -1,10 +1,13 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamAwsQueryFormEncoder;
+import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
+import io.smithy.beam.core.BeamEc2QueryProtocolCodegen;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamXmlDecoder;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
@@ -14,7 +17,6 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.StructureShape;
-import software.amazon.smithy.model.traits.XmlNameTrait;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -32,6 +34,11 @@ public final class ElixirAwsQueryEmitter {
     private ElixirAwsQueryEmitter() {}
 
     static void emitCodecModule(ElixirContext ctx, ServiceShape service) {
+        emitCodecModule(ctx, service, BeamAwsQueryProtocolCodegen.AWS_QUERY);
+    }
+
+    static void emitCodecModule(ElixirContext ctx, ServiceShape service, ShapeId protocolTraitId) {
+        boolean ec2Query = BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(protocolTraitId);
         BeamAwsServiceMetadata.from(service).orElseThrow();
         Model model = ctx.model();
         BeamElixirLayout layout = new BeamElixirLayout(
@@ -40,9 +47,8 @@ public final class ElixirAwsQueryEmitter {
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         String moduleName = ElixirSymbolProvider.toModuleName(
-                layout.clientCodecModuleName(io.smithy.beam.core.BeamAwsQueryProtocolCodegen.AWS_QUERY));
-        String codecFile = layout.clientCodecModuleName(
-                io.smithy.beam.core.BeamAwsQueryProtocolCodegen.AWS_QUERY) + ".ex";
+                layout.clientCodecModuleName(protocolTraitId));
+        String codecFile = layout.clientCodecModuleName(protocolTraitId) + ".ex";
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
         String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
 
@@ -61,15 +67,15 @@ public final class ElixirAwsQueryEmitter {
 
             for (OperationShape op : operations) {
                 emitEncoder(writer, model, service, op, sp, typesMod, runtimeMod);
-                emitDecoder(writer, model, service, op, sp, typesMod);
+                emitDecoder(writer, model, service, op, sp, typesMod, ec2Query);
             }
 
             for (StructureShape input : inputShapes) {
-                emitFlattenInputClause(writer, sp, input);
+                emitFlattenInputClause(writer, sp, input, ec2Query);
             }
 
-            emitQueryHelpers(writer);
-            emitXmlHelpers(writer);
+            emitQueryHelpers(writer, ec2Query);
+            emitXmlHelpers(writer, ec2Query);
 
             writer.dedent();
             writer.write("end");
@@ -126,13 +132,16 @@ public final class ElixirAwsQueryEmitter {
             ServiceShape service,
             OperationShape op,
             SymbolProvider sp,
-            String typesMod) {
+            String typesMod,
+            boolean ec2Query) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
         String outputStruct = sp.toSymbol(output).getName();
         String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
-        String resultElement = BeamXmlDecoder.queryResultElementName(op, service);
+        String resultElement = ec2Query
+                ? BeamXmlDecoder.ec2QueryResultElementName(op, service)
+                : BeamXmlDecoder.queryResultElementName(op, service);
 
         writer.write("@spec decode_$L_response(map()) :: {:ok, $L} | {:error, term()}", opName, outputType);
         writer.write("def decode_$L_response(%RuntimeTypes.HttpResponse{status: 200, body: body}) do", opName);
@@ -194,7 +203,8 @@ public final class ElixirAwsQueryEmitter {
     private static void emitFlattenInputClause(
             ElixirWriter writer,
             SymbolProvider sp,
-            StructureShape input) {
+            StructureShape input,
+            boolean ec2Query) {
 
         String inputStruct = sp.toSymbol(input).getName();
         List<MemberShape> members = new ArrayList<>(input.members());
@@ -218,7 +228,7 @@ public final class ElixirAwsQueryEmitter {
             for (int i = 0; i < members.size(); i++) {
                 MemberShape member = members.get(i);
                 String field = fieldName(sp, member);
-                String wireKey = queryFormKey(member);
+                String wireKey = queryFormKey(member, ec2Query);
                 if (i < members.size() - 1) {
                     writer.write("  flatten_member(\"$L\", $L),", wireKey, field);
                 } else {
@@ -233,19 +243,33 @@ public final class ElixirAwsQueryEmitter {
         writer.write("");
     }
 
-    private static void emitQueryHelpers(ElixirWriter writer) {
+    private static void emitQueryHelpers(ElixirWriter writer, boolean ec2Query) {
         writer.write("defp flatten_member(_key, nil), do: []");
-        writer.write("defp flatten_member(key, value) when is_list(value) do");
-        writer.indent();
-        writer.write("value");
-        writer.write("|> Enum.with_index(1)");
-        writer.write("|> Enum.flat_map(fn {v, i} ->");
-        writer.indent();
-        writer.write("if is_nil(v), do: [], else: flatten_member(\"#{key}.member.#{i}\", v)");
-        writer.dedent();
-        writer.write("end)");
-        writer.dedent();
-        writer.write("");
+        if (ec2Query) {
+            writer.write("defp flatten_member(key, value) when is_list(value) do");
+            writer.indent();
+            writer.write("value");
+            writer.write("|> Enum.with_index(1)");
+            writer.write("|> Enum.flat_map(fn {v, i} ->");
+            writer.indent();
+            writer.write("if is_nil(v), do: [], else: flatten_member(\"#{key}.#{i}\", v)");
+            writer.dedent();
+            writer.write("end)");
+            writer.dedent();
+            writer.write("");
+        } else {
+            writer.write("defp flatten_member(key, value) when is_list(value) do");
+            writer.indent();
+            writer.write("value");
+            writer.write("|> Enum.with_index(1)");
+            writer.write("|> Enum.flat_map(fn {v, i} ->");
+            writer.indent();
+            writer.write("if is_nil(v), do: [], else: flatten_member(\"#{key}.member.#{i}\", v)");
+            writer.dedent();
+            writer.write("end)");
+            writer.dedent();
+            writer.write("");
+        }
         writer.write("defp flatten_member(key, value) when is_map(value) do");
         writer.indent();
         writer.write("value");
@@ -269,7 +293,7 @@ public final class ElixirAwsQueryEmitter {
         writer.write("");
     }
 
-    private static void emitXmlHelpers(ElixirWriter writer) {
+    private static void emitXmlHelpers(ElixirWriter writer, boolean ec2Query) {
         writer.write("defp unwrap_query_result(body, result_name) do");
         writer.indent();
         writer.write("case :xmerl_scan.string(:erlang.binary_to_list(body)) do");
@@ -379,6 +403,15 @@ public final class ElixirAwsQueryEmitter {
         writer.dedent();
         writer.write("end");
         writer.write("");
+        if (ec2Query) {
+            emitEc2QueryErrorDecoder(writer);
+        } else {
+            emitAwsQueryErrorDecoder(writer);
+        }
+        writer.write("");
+    }
+
+    private static void emitAwsQueryErrorDecoder(ElixirWriter writer) {
         writer.write("defp decode_query_error(status, body) do");
         writer.indent();
         writer.write("try do");
@@ -416,23 +449,61 @@ public final class ElixirAwsQueryEmitter {
         writer.write("end");
         writer.dedent();
         writer.write("end");
-        writer.write("");
+    }
+
+    private static void emitEc2QueryErrorDecoder(ElixirWriter writer) {
+        writer.write("defp decode_query_error(status, body) do");
+        writer.indent();
+        writer.write("try do");
+        writer.indent();
+        writer.write("{:xmlElement, _, _, _, _, _, _, _, _, _, _, _} = xml =");
+        writer.indent();
+        writer.write("case :xmerl_scan.string(:erlang.binary_to_list(body)) do");
+        writer.indent();
+        writer.write("{doc, _} -> doc");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("case find_element(\"$L\", element_content(xml)) do", BeamXmlDecoder.EC2_RESPONSE_ELEMENT);
+        writer.indent();
+        writer.write("nil -> {:error, {:unknown_error, status, body}}");
+        writer.write("response ->");
+        writer.indent();
+        writer.write("case find_element(\"$L\", element_content(response)) do", BeamXmlDecoder.EC2_ERRORS_ELEMENT);
+        writer.indent();
+        writer.write("nil -> {:error, {:unknown_error, status, body}}");
+        writer.write("errors ->");
+        writer.indent();
+        writer.write("case find_element(\"$L\", element_content(errors)) do", BeamXmlDecoder.ERROR_ELEMENT);
+        writer.indent();
+        writer.write("nil -> {:error, {:unknown_error, status, body}}");
+        writer.write("error ->");
+        writer.indent();
+        writer.write("{:error, {");
+        writer.write("  xml_child_text(error, \"$L\"),", BeamXmlDecoder.ERROR_CODE_ELEMENT);
+        writer.write("  xml_child_text(error, \"$L\")", BeamXmlDecoder.ERROR_MESSAGE_ELEMENT);
+        writer.write("}}");
+        writer.dedent();
+        writer.dedent();
+        writer.dedent();
+        writer.dedent();
+        writer.dedent();
+        writer.write("rescue");
+        writer.indent();
+        writer.write("_ -> {:error, {:unknown_error, status, body}}");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
     }
 
     private static String fieldName(SymbolProvider sp, MemberShape member) {
         return BeamNameUtils.toSnakeCase(member.getMemberName());
     }
 
-    private static String queryFormKey(MemberShape member) {
-        return member.getTrait(XmlNameTrait.class)
-                .map(XmlNameTrait::getValue)
-                .orElseGet(() -> capitalizeFirst(member.getMemberName()));
-    }
-
-    private static String capitalizeFirst(String name) {
-        if (name.isEmpty()) {
-            return name;
-        }
-        return Character.toUpperCase(name.charAt(0)) + name.substring(1);
+    private static String queryFormKey(MemberShape member, boolean ec2Query) {
+        return ec2Query
+                ? BeamAwsQueryFormEncoder.ec2QueryFormKey(member)
+                : BeamAwsQueryFormEncoder.awsQueryFormKey(member);
     }
 }
