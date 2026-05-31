@@ -1187,12 +1187,9 @@ public final class ErlangRestJson1Emitter {
         return parts;
     }
 
-    /** Erlang variable for a snake_case record field (atoms are not variables). */
+    /** Erlang variable for a snake_case record field (Inaka CamelCase, no underscores). */
     private static String toBindingVar(String snakeField) {
-        if (snakeField.isEmpty()) {
-            return snakeField;
-        }
-        return Character.toUpperCase(snakeField.charAt(0)) + snakeField.substring(1);
+        return BeamNameUtils.toCamelCaseVariable(snakeField);
     }
 
     private static String documentDecodeAssignment(String fieldName, String jsonKey, Shape target) {
