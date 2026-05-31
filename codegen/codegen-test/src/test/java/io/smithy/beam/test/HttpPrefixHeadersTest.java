@@ -2,6 +2,7 @@ package io.smithy.beam.test;
 
 import io.smithy.beam.elixir.ElixirClientPlugin;
 import io.smithy.beam.erlang.ErlangClientPlugin;
+import io.smithy.beam.erlang.ErlangServerPlugin;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.build.PluginContext;
@@ -106,6 +107,26 @@ class HttpPrefixHeadersTest {
         return manifest;
     }
 
+    private static MockManifest runErlangServerPlugin(Model model) {
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service",
+                        "smithy.beam.test.prefixheaders#PrefixHeadersService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangClientPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+        new ErlangServerPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+        return manifest;
+    }
+
     @Test
     void requestPrefixHeadersMergedIntoHeadersOnErlangEncode() {
         String codec = runErlangPlugin(loadModel())
@@ -162,5 +183,23 @@ class HttpPrefixHeadersTest {
                 .orElse("");
         assertThat(codec).contains("def decode_get_object_response(");
         assertThat(codec).contains("metadata: prefix_headers_from_list(headers, \"x-amz-meta-\")");
+    }
+
+    @Test
+    void requestPrefixHeadersExtractedOnErlangServerDecode() {
+        String codec = runErlangServerPlugin(loadModel())
+                .getFileString("prefix_headers_service_rest_json_1.erl")
+                .orElse("");
+        assertThat(codec).contains("decode_put_object_request(");
+        assertThat(codec).contains("metadata = prefix_headers_from_list(Headers, <<\"x-amz-meta-\">>)");
+    }
+
+    @Test
+    void responsePrefixHeadersMergedOnErlangServerEncode() {
+        String codec = runErlangServerPlugin(loadModel())
+                .getFileString("prefix_headers_service_rest_json_1.erl")
+                .orElse("");
+        assertThat(codec).contains("encode_get_object_response(");
+        assertThat(codec).contains("Headers = Headers ++ prefix_headers_to_list(<<\"x-amz-meta-\">>, Metadata)");
     }
 }
