@@ -233,7 +233,6 @@ final class ErlangClientDirectedCodegen
                 && (BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(ctx.protocolCodegen().protocolTraitId())
                         || BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(
                                 ctx.protocolCodegen().protocolTraitId()));
-        String codecModule = layout.clientCodecModuleName(ctx.resolvedProtocolTraitId());
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {
             ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
@@ -249,6 +248,7 @@ final class ErlangClientDirectedCodegen
                     "-spec $L(client_config(), $L) -> {'ok', $L} | {'error', term()}.",
                     opSym.getName(), inSym.getName(), outSym.getName());
             if (hasProtocol) {
+                String codecModule = layout.clientCodecModuleName(ctx.resolvedProtocolTraitId());
                 writer.write("$L(Config, Input) ->", opSym.getName());
                 writer.indent();
                 if (ErlangRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())) {
