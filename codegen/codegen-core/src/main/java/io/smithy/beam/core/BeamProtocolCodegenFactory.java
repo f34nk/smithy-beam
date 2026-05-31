@@ -19,6 +19,9 @@ public final class BeamProtocolCodegenFactory {
         if (BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(resolvedProtocolTraitId)) {
             return new BeamAwsJson10ProtocolCodegen();
         }
+        if (BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(resolvedProtocolTraitId)) {
+            return new BeamAwsJson11ProtocolCodegen();
+        }
         throw new CodegenException(
                 "No BeamProtocolCodegen registered for protocol trait " + resolvedProtocolTraitId);
     }

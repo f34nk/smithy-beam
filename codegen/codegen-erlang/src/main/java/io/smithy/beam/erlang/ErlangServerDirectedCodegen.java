@@ -8,6 +8,7 @@ import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
+import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
@@ -179,6 +180,10 @@ final class ErlangServerDirectedCodegen
                 && BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ErlangAwsJson10Emitter.emitServerCodecModule(ctx, service);
+        } else if (ctx.protocolCodegen() != null
+                && BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ErlangAwsJson11Emitter.emitServerCodecModule(ctx, service);
         }
 
         ErlangRouterEmitter.emit(ctx, service);
