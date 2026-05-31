@@ -83,10 +83,12 @@ public final class ElixirHttpDispatchEmitter {
             writer.indent();
             writer.write("port_suffix =");
             writer.indent();
-            writer.write("case uri.port do");
+            writer.write("case {uri.scheme, uri.port} do");
             writer.indent();
-            writer.write("nil -> \"\"");
-            writer.write("port -> \":#{port}\"");
+            writer.write("{\"https\", 443} -> \"\"");
+            writer.write("{\"http\", 80} -> \"\"");
+            writer.write("{_, nil} -> \"\"");
+            writer.write("{_, port} -> \":#{port}\"");
             writer.dedent();
             writer.write("end");
             writer.dedent();
