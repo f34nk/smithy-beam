@@ -19,6 +19,7 @@ import java.util.List;
  *                     {@link software.amazon.smithy.codegen.core.directed.CodegenDirector#removeShapesDeprecatedBeforeDate}.
  *   "relativeVersion" -- optional SemVer value forwarded to
  *                     {@link software.amazon.smithy.codegen.core.directed.CodegenDirector#removeShapesDeprecatedBeforeVersion}.
+ *   "packageVersion" -- optional SemVer for the generated package, recorded in dependency metadata.
  */
 public final class BeamSettings {
 
@@ -27,6 +28,7 @@ public final class BeamSettings {
     private String edition;
     private String relativeDate;
     private String relativeVersion;
+    private String packageVersion;
 
     public BeamSettings() {}
 
@@ -68,6 +70,14 @@ public final class BeamSettings {
 
     public String relativeVersion() {
         return relativeVersion;
+    }
+
+    public void packageVersion(String packageVersion) {
+        this.packageVersion = packageVersion;
+    }
+
+    public String packageVersion() {
+        return packageVersion;
     }
 
     public ShapeId resolveService(Model model) {
