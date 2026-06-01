@@ -20,6 +20,18 @@ structure GetItemInput {
     id: String
 }
 
+@input
+structure MixedInput {
+    @required
+    requiredField: String
+
+    @clientOptional
+    optionalOnClient: String
+
+    @default("active")
+    status: String
+}
+
 structure GetItemOutput {
     id: String
 }
