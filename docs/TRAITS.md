@@ -29,6 +29,8 @@ A separate column is used for each language to indicate support status with a ch
 - `@deprecated` removes shapes from generated output when the Smithy-Build `relativeDate` or `relativeVersion` setting is set. Without those settings, the trait has no effect on generated code.
 - `@streaming` affects generated type comments and symbol metadata. Event-stream framing and payload streaming are not yet implemented in protocol codecs.
 - Constraint traits (`length`, `range`, `pattern`, and similar) do not narrow generated Dialyzer or typespec surfaces.
+- Dedicated operation input shapes use `NullableIndex` CLIENT mode so `@clientOptional` and `@default` affect generated member optionality.
+- `@input` and `@output` are applied by the model transformer when dedicated operation shapes are synthesized.
 - Erlang keywords and colliding shape names are escaped consistently across types, client, and server output through the shared symbol provider.
 - Service `rename` maps change generated type identifiers; codecs use renamed record names for operation input and output shapes.
 
@@ -43,11 +45,11 @@ Traits that refine or modify type semantics.
 | [`smithy.api#required`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-required-trait) | ✅ | ✅ |
 | [`smithy.api#enumValue`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-enumvalue-trait) | ✅ | ✅ |
 | [`smithy.api#error`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-error-trait) | ✅ | ✅ |
-| [`smithy.api#input`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-input-trait) | ❌ | ❌ |
-| [`smithy.api#output`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-output-trait) | ❌ | ❌ |
+| [`smithy.api#input`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-input-trait) | ✅ | ✅ |
+| [`smithy.api#output`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-output-trait) | ✅ | ✅ |
 | [`smithy.api#addedDefault`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-addeddefault-trait) | ❌ | ❌ |
-| [`smithy.api#clientOptional`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-clientoptional-trait) | ❌ | ❌ |
-| [`smithy.api#default`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-default-trait) | ❌ | ❌ |
+| [`smithy.api#clientOptional`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-clientoptional-trait) | ✅ | ✅ |
+| [`smithy.api#default`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-default-trait) | ✅ | ✅ |
 | [`smithy.api#mixin`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-mixin-trait) | ❌ | ❌ |
 | [`smithy.api#sparse`](https://smithy.io/2.0/spec/type-refinement-traits.html#smithy-api-sparse-trait) | ✅ | ✅ |
 
