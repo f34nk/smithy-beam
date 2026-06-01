@@ -16,14 +16,14 @@ public final class BeamSymbolRuntimeDeps {
 
     public static Symbol.Builder apply(Shape shape, Symbol.Builder builder) {
         if (shape.isDocumentShape()) {
-            builder.addDependency("hex", "jsx", "3.1");
+            builder.addDependency(BeamRuntimeDependency.JSX);
         }
         return builder;
     }
 
     public static Symbol.Builder applyService(ServiceShape service, Symbol.Builder builder) {
         if (service.hasTrait(SigV4Trait.class)) {
-            builder.addDependency("deps", "aws_sigv4", "1.0.0");
+            builder.addDependency(BeamRuntimeDependency.AWS_SIGV4);
         }
         return builder;
     }

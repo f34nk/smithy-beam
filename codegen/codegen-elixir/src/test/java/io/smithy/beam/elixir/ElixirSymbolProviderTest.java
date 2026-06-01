@@ -782,9 +782,9 @@ class ElixirSymbolProviderTest {
             assertThat(sym.getDependencies())
                     .anySatisfy(
                             (SymbolDependency dep) -> {
-                                assertThat(dep.getDependencyType()).isEqualTo("hex");
+                                assertThat(dep.getDependencyType()).isEqualTo("deps");
                                 assertThat(dep.getPackageName()).isEqualTo("jsx");
-                                assertThat(dep.getVersion()).isEqualTo("3.1");
+                                assertThat(dep.getVersion()).isEqualTo("3.1.0");
                             });
         }
     }
