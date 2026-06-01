@@ -1,9 +1,12 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenTransforms;
+import io.smithy.beam.core.BeamDependencyManifestEmitter;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.codegen.core.directed.CodegenDirector;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Runs Elixir type generation then client-specific DirectedCodegen on the same
@@ -20,7 +23,10 @@ public final class ElixirClientGeneration {
         CodegenDirector<ElixirWriter, ElixirIntegration, ElixirContext, BeamSettings> runner =
                 new CodegenDirector<>();
 
-        runner.directedCodegen(new ElixirClientDirectedCodegen());
+        AtomicReference<ElixirContext> clientContext = new AtomicReference<>();
+        runner.directedCodegen(
+                BeamDependencyManifestEmitter.capturingContext(
+                        new ElixirClientDirectedCodegen(), clientContext));
         runner.integrationClass(ElixirIntegration.class);
         runner.fileManifest(context.getFileManifest());
         runner.integrationSettings(context.getSettings());
@@ -34,5 +40,8 @@ public final class ElixirClientGeneration {
         BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
 
         runner.run();
+
+        BeamDependencyManifestEmitter.emit(
+                context.getFileManifest(), clientContext.get().writerDelegator(), settings);
     }
 }
