@@ -2,7 +2,7 @@
 
 This document lists AWS-oriented features from the [Smithy AWS integrations](https://smithy.io/2.0/aws/index.html) specification and how they relate to **generated** Erlang and Elixir code in smithy-beam today.
 
-smithy-beam is a Smithy DirectedCodegen project for the BEAM. AWS service clients are a long-term goal; the current baseline focuses on REST JSON 1 over HTTP bindings with generated codecs, dispatch, routers, and paginator helpers. There is no bundled SigV4 runtime, endpoint rules engine, or AWS Query/JSON/XML protocol stack yet.
+smithy-beam is a Smithy DirectedCodegen project for the BEAM. AWS service clients are a long-term goal; the current baseline implements REST JSON 1, AWS JSON 1.0 and 1.1, AWS Query, EC2 Query, and REST-XML protocol stacks with generated codecs, dispatch, routers, and paginator helpers. Generated clients emit a SigV4 signing hook and AWS service metadata defaults when the model carries the relevant traits; there is no bundled credential chain, rules-based endpoint engine, or service-specific customizations yet.
 
 For trait-level detail across all Smithy specs, see [TRAITS.md](TRAITS.md).
 
@@ -29,9 +29,9 @@ Output from `erlang-types-codegen` and `elixir-types-codegen`.
 | Shape and member documentation | ✅ | `@documentation` on shapes and members flows into generated type comments. Service docs replace the generic types file header when present. |
 | Deprecation filtering | ✅ | `@deprecated` removes shapes from generated output when Smithy-Build `relativeDate` or `relativeVersion` is configured. |
 | Sparse collections | ✅ | `@sparse` widens list element and map value types to include `undefined` (Erlang) or `nil` (Elixir). REST JSON codecs encode and decode sparse nulls on the wire. |
-| Streaming blob metadata | ⚠️ | `@streaming` affects generated type comments and symbol metadata only; wire streaming is not implemented. |
+| Streaming blob metadata | ⚠️ | `@streaming` blob payloads encode and decode on the wire in REST JSON 1 codecs. Event-stream framing is not implemented. |
 | Erlang reserved-word escaping | ✅ | Erlang keywords and colliding identifiers are escaped in types output; client and server codecs use the same escaped record names. |
-| Service shape rename maps | ⚠️ | Rename targets flow into types output and operation record names in codecs. Nested document members decode as raw maps without nested record literals. |
+| Service shape rename maps | ✅ | Rename targets flow into types output, module filenames, and operation record names in codecs. |
 
 ---
 
@@ -41,28 +41,28 @@ Output from `erlang-client-codegen` and `elixir-client-codegen`.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Operation stubs | ✅ | One function per operation; REST JSON 1 services wire encode, HTTP dispatch, and decode. Other protocols emit `{error, not_implemented}` stubs. |
+| Operation stubs | ✅ | One function per operation; supported AWS protocols wire encode, HTTP dispatch, and decode. Unsupported protocols emit `{error, not_implemented}` stubs. |
 | REST JSON 1 request encoding | ✅ | Per-service codec module encodes path labels, query params, headers, and JSON document members into an `http_request` record or map. |
 | REST JSON 1 response decoding | ✅ | Codec decodes JSON document, header, and payload bindings into typed output records or structs. |
 | HTTP dispatch | ✅ | Erlang uses OTP `httpc` via a generated `<prefix>_http` module. Elixir uses `Req`. Both honor a configurable HTTP client module in client config for tests. |
-| Default endpoint in generated config | ❌ | Callers pass `base_url` in the client config map at runtime. No smithy-build endpoint seeding in generated clients. |
+| Default endpoint in generated config | ⚠️ | Generated clients emit `default_config/0` and `resolve_base_url/1` when `aws.api#service` is present. HTTP dispatch still reads `base_url` from config; callers merge the resolved URL or set it explicitly. |
 | Pagination helpers | ✅ | `@paginated` operations get a generated paginator module that walks output tokens and accumulates item lists. |
 | Operation documentation | ✅ | `@documentation` on operations is emitted into generated client function docs. |
 | Type and shape documentation | ✅ | Types plugins emit shape and member docs into generated type files alongside operation docs on client stubs. |
 | Error shape types | ✅ | `@error` structures become typed records (Erlang) or `defexception` modules (Elixir) with fault kind metadata. |
 | Retry | ❌ | No generated retry wrappers or backoff. |
-| SigV4 signing | ❌ | No request signing in generated clients. |
+| SigV4 signing | ⚠️ | Generated signing module invoked from HTTP dispatch when `@aws.auth#sigv4` is present. Callers supply credentials in client config; no bundled credential chain. |
 | Credential providers | ❌ | No AWS credential chain in generated output. |
 | Endpoint discovery | ❌ | Not implemented. |
 | Input validation helpers | ❌ | `@required` affects generated types only; no runtime `validate_*` helpers. |
 | HTTP prefix headers | ✅ | Map members bound with `@httpPrefixHeaders` expand into prefixed request headers on encode and reconstruct on decode. |
 | HTTP response code binding | ✅ | `@httpResponseCode` members populate the modeled output field from the HTTP status on decode. |
 | Modeled HTTP errors | ✅ | Client codecs dispatch `@httpError` status codes before type-discriminated errors. Server codecs encode error responses with modeled status codes. |
-| Idempotency token | ❌ | `@idempotencyToken` not implemented. |
-| Host label | ❌ | `@hostLabel` not implemented. |
-| Endpoint override trait | ❌ | `@endpoint` not implemented. |
+| Idempotency token | ✅ | `@idempotencyToken` members receive an auto-generated UUID on encode when unset. |
+| Host label | ✅ | `@hostLabel` members substitute into URI templates and operation `@endpoint` host prefixes on encode. |
+| Endpoint override trait | ❌ | Service-level `@endpoint` host override is not implemented. Operation `hostPrefix` is honored via host label expansion. |
 | Request compression | ❌ | `@requestCompression` not implemented. |
-| Streaming | ⚠️ | `@streaming` affects generated type metadata and comments only; wire streaming is not implemented. |
+| Streaming | ⚠️ | REST JSON 1 codecs encode and decode `@streaming` blob payloads on the wire. Event streams are not implemented. |
 | Waiters | ❌ | `@waitable` not implemented. |
 
 ---
@@ -83,24 +83,24 @@ Output from `erlang-server-codegen` and `elixir-server-codegen`.
 | Transport integration | ❌ | No Cowboy, Bandit, or Plug handler is generated. Applications wire the router to their HTTP stack. |
 | Input validation | ❌ | No generated server-side validation helpers. |
 | Error to HTTP mapping | ⚠️ | Server codecs encode modeled errors with `@httpError` status codes and JSON bodies. Applications still wire handler results to the codec layer. |
-| Request streaming | ❌ | `@streaming` wire handling not implemented. |
+| Request streaming | ⚠️ | REST JSON 1 server codecs decode and encode `@streaming` blob payloads. Event streams are not implemented. |
 | WebSocket / event streams | ❌ | Not implemented. |
 
 ---
 
 ## AWS Protocols
 
-Protocol selection reads the sole `@protocolDefinition` trait on the selected service. `BeamProtocolResolver.resolveServiceProtocol` returns that trait id, or empty when the service declares none. `BeamProtocolCodegenFactory` currently registers one built-in implementation.
+Protocol selection reads the sole `@protocolDefinition` trait on the selected service. `BeamProtocolResolver.resolveServiceProtocol` returns that trait id, or empty when the service declares none. `BeamProtocolCodegenFactory` registers built-in implementations for REST JSON 1, AWS JSON 1.0, AWS JSON 1.1, AWS Query, EC2 Query, and REST-XML.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ⚠️ | Request encoding, client response decoding, server request decoding, server response encoding, routing, and paginators are implemented for Erlang and Elixir when the service carries `@restJson1`. Codecs honor `@jsonName`, `@httpQueryParams`, `@httpPrefixHeaders`, `@httpResponseCode`, `@httpError`, `@timestampFormat`, and sparse collection nulls. Content type is fixed to `application/json`. AWS service models such as S3 already declare the trait; no smithy-build protocol setting is required. |
-| [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ❌ | Not implemented. |
-| [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ⚠️ | Client and server codecs plus Erlang router dispatch for POST / with X-Amz-Target and content type application/x-amz-json-1.1. Same wire rules as JSON 1.0. |
-| [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ❌ | Not implemented. |
-| [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ❌ | Not implemented. |
-| [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ❌ | Not implemented. |
-| Custom protocols via `@protocolDefinition` | ⚠️ | Protocol traits are discovered and validated at codegen time. `BeamProtocolResolver` walks the service closure and fails with one aggregated diagnostic when shapes are unsupported for the selected protocol (for example streaming blobs or `bigDecimal`). Additional protocols require a new `BeamProtocolCodegen` implementation. |
+| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ✅ | Request encoding, client response decoding, server request decoding, server response encoding, routing, and paginators for Erlang and Elixir when the service carries `@restJson1`. Codecs honor `@jsonName`, `@httpQueryParams`, `@httpPrefixHeaders`, `@httpResponseCode`, `@httpError`, `@timestampFormat`, `@mediaType`, `@hostLabel`, `@idempotencyToken`, sparse collection nulls, and `@streaming` blob payloads. |
+| [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ✅ | Client and server codecs plus Erlang router dispatch for POST / with X-Amz-Target and content type application/x-amz-json-1.0. |
+| [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ✅ | Client and server codecs plus Erlang router dispatch for POST / with X-Amz-Target and content type application/x-amz-json-1.1. Same wire rules as JSON 1.0. |
+| [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ✅ | Form-urlencoded request encoding and XML response decoding for Erlang and Elixir clients and servers. |
+| [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ✅ | EC2 Query name mapping and form encoding with XML response decoding. |
+| [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ✅ | HTTP-bound request and response encoding with XML payload members. Honors `@xmlName`, `@xmlAttribute`, `@xmlFlattened`, and `@xmlNamespace` in generated codecs. |
+| Custom protocols via `@protocolDefinition` | ⚠️ | Protocol traits are discovered and validated at codegen time. `BeamProtocolResolver` walks the service closure and fails with one aggregated diagnostic when shapes are unsupported for the selected protocol (for example event streams or `bigDecimal`). Additional protocols require a new `BeamProtocolCodegen` implementation. |
 | [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ❌ | No test emission from `@httpRequestTests` or `@httpResponseTests`. |
 
 ---
@@ -132,10 +132,10 @@ XML serialization traits for REST-XML and query protocols.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [`@xmlName`](https://smithy.io/2.0/spec/protocol-traits.html#xmlname-trait) | ❌ | Not implemented. |
-| [`@xmlFlattened`](https://smithy.io/2.0/spec/protocol-traits.html#xmlflattened-trait) | ❌ | Not implemented. |
-| [`@xmlNamespace`](https://smithy.io/2.0/spec/protocol-traits.html#xmlnamespace-trait) | ❌ | Not implemented. |
-| [`@xmlAttribute`](https://smithy.io/2.0/spec/protocol-traits.html#xmlattribute-trait) | ❌ | Not implemented. |
+| [`@xmlName`](https://smithy.io/2.0/spec/protocol-traits.html#xmlname-trait) | ✅ | Wire element names follow `@xmlName` in REST-XML and Query XML codecs. |
+| [`@xmlFlattened`](https://smithy.io/2.0/spec/protocol-traits.html#xmlflattened-trait) | ✅ | Flattened list serialization in REST-XML and Query XML codecs. |
+| [`@xmlNamespace`](https://smithy.io/2.0/spec/protocol-traits.html#xmlnamespace-trait) | ✅ | Namespace URI and prefix on XML payload elements. |
+| [`@xmlAttribute`](https://smithy.io/2.0/spec/protocol-traits.html#xmlattribute-trait) | ✅ | Member values serialize as XML attributes in REST-XML and Query XML codecs. |
 
 ---
 
@@ -145,7 +145,7 @@ Authentication mechanisms for AWS services.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [AWS Signature Version 4 (SigV4)](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ❌ | `@aws.auth#sigv4` is not read into generated clients. |
+| [AWS Signature Version 4 (SigV4)](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ⚠️ | Generated signing module invoked from HTTP dispatch when `@aws.auth#sigv4` is present. Callers supply credentials; no bundled credential chain. |
 | [Credential Provider Chain](https://smithy.io/2.0/aws/aws-auth.html) | ❌ | Not implemented. |
 | [AWS Signature Version 4A (SigV4A)](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4a-trait) | ❌ | Not implemented. |
 | [Cognito User Pools Authentication](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-cognitouserpools-trait) | ❌ | Not implemented. |
@@ -159,7 +159,7 @@ Core AWS service traits and metadata.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [Service Trait (`aws.api#service`)](https://smithy.io/2.0/aws/aws-core.html#aws-api-service-trait) | ❌ | Service metadata (sdkId, endpoint prefix, and similar) is not read into generated config. |
+| [Service Trait (`aws.api#service`)](https://smithy.io/2.0/aws/aws-core.html#aws-api-service-trait) | ✅ | `sdkId`, `endpointPrefix`, and signing name flow into generated `default_config/0` and `resolve_base_url/1` when the trait is present. |
 | [Endpoint Discovery](https://smithy.io/2.0/aws/aws-core.html#aws-api-clientendpointdiscovery-trait) | ❌ | Not implemented. |
 | [HTTP Checksum (`aws.protocols#httpChecksum`)](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ❌ | Not implemented. |
 | [ARN References (`aws.api#arnReference`)](https://smithy.io/2.0/aws/aws-core.html#aws-api-arnreference-trait) | ➖ | Server-side resource modeling metadata. |
@@ -177,8 +177,8 @@ Endpoint resolution and regional configuration.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | [Partition Support](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
-| [Region Configuration](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
-| [Static Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
+| [Region Configuration](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ⚠️ | Generated `default_config/0` seeds a default region. Callers override via client config. |
+| [Static Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ⚠️ | Generated `resolve_base_url/1` builds regional HTTPS URLs from `endpointPrefix` and config region. HTTP dispatch does not apply it automatically; callers set or merge `base_url`. |
 | [Dual-Stack Endpoints](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-dualstackonlyendpoints-trait) | ❌ | Not implemented. |
 | [FIPS Endpoints](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
 | [Declarative Endpoint Traits](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |

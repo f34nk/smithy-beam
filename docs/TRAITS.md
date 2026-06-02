@@ -4,7 +4,7 @@ This document lists Smithy 2.0 traits and their implementation status in **gener
 
 The **types** plugins generate scalar aliases, lists, maps, enums, intEnums, unions, structures, and error shapes for the selected service closure.
 
-The **client** and **server** plugins run after types generation. For services using the REST JSON 1 protocol, they emit HTTP dispatch, REST JSON codecs, paginator helpers, and server routers with request decoders. Other protocol traits are not yet implemented.
+The **client** and **server** plugins run after types generation. For services using a supported AWS protocol trait, they emit HTTP dispatch, protocol codecs, paginator helpers, and server routers with request decoders. Supported protocols are REST JSON 1, AWS JSON 1.0, AWS JSON 1.1, AWS Query, EC2 Query, and REST-XML.
 
 Trait filtering via the `@deprecated` trait is applied when the Smithy-Build `relativeDate` or `relativeVersion` plugin settings are configured.
 
@@ -18,8 +18,8 @@ A separate column is used for each language to indicate support status with a ch
 
 **Scope notes:**
 
-- REST JSON 1 client and server generation honor `@http`, `@httpLabel`, `@httpQuery`, `@httpQueryParams`, `@httpHeader`, `@httpPrefixHeaders`, `@httpPayload`, `@httpResponseCode`, `@httpError`, `@jsonName`, and `@timestampFormat` in generated codecs and routers.
-- Client and server plugins emit REST JSON codecs when the selected service carries `@restJson1` (or another supported protocol trait) in the Smithy model.
+- REST JSON 1, AWS JSON, AWS Query, EC2 Query, and REST-XML client and server generation honor `@http`, `@httpLabel`, `@httpQuery`, `@httpQueryParams`, `@httpHeader`, `@httpPrefixHeaders`, `@httpPayload`, `@httpResponseCode`, `@httpError`, `@jsonName`, `@timestampFormat`, and `@mediaType` in generated codecs and routers. REST-XML and Query XML codecs also honor `@xmlName`, `@xmlAttribute`, `@xmlFlattened`, and `@xmlNamespace`.
+- Client and server plugins emit protocol codecs when the selected service carries a registered `@protocolDefinition` trait in the Smithy model.
 - `@documentation` is emitted on client and server operation stubs and on types output.
   Erlang types use `%% @doc` blocks above records and type aliases, with per-field edoc
   lines for documented members. Elixir types use `@moduledoc` on nested shape modules,
@@ -27,12 +27,12 @@ A separate column is used for each language to indicate support status with a ch
   and comment lines above documented preamble aliases. Service-level documentation
   replaces the generic types file header when present.
 - `@deprecated` removes shapes from generated output when the Smithy-Build `relativeDate` or `relativeVersion` setting is set. Without those settings, the trait has no effect on generated code.
-- `@streaming` affects generated type comments and symbol metadata. Event-stream framing and payload streaming are not yet implemented in protocol codecs.
+- `@streaming` blob payloads encode and decode on the wire in REST JSON 1 codecs. Event-stream framing and non-blob streaming are not implemented.
 - Constraint traits (`length`, `range`, `pattern`, and similar) do not narrow generated Dialyzer or typespec surfaces.
 - Dedicated operation input shapes use `NullableIndex` CLIENT mode so `@clientOptional` and `@default` affect generated member optionality.
 - `@input` and `@output` are applied by the model transformer when dedicated operation shapes are synthesized.
 - Erlang keywords and colliding shape names are escaped consistently across types, client, and server output through the shared symbol provider.
-- Service `rename` maps change generated type identifiers; codecs use renamed record names for operation input and output shapes.
+- Service `rename` maps change generated type identifiers, module filenames, and codec record names for operation input and output shapes.
 
 ---
 
@@ -98,10 +98,10 @@ Traits for serialization and protocol behavior.
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
 | [`smithy.api#jsonName`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-jsonname-trait) | ✅ | ✅ |
-| [`smithy.api#xmlAttribute`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlattribute-trait) | ❌ | ❌ |
-| [`smithy.api#xmlFlattened`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlflattened-trait) | ❌ | ❌ |
-| [`smithy.api#xmlName`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlname-trait) | ❌ | ❌ |
-| [`smithy.api#xmlNamespace`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlnamespace-trait) | ❌ | ❌ |
+| [`smithy.api#xmlAttribute`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlattribute-trait) | ✅ | ✅ |
+| [`smithy.api#xmlFlattened`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlflattened-trait) | ✅ | ✅ |
+| [`smithy.api#xmlName`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlname-trait) | ✅ | ✅ |
+| [`smithy.api#xmlNamespace`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-xmlnamespace-trait) | ✅ | ✅ |
 | [`smithy.api#mediaType`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-mediatype-trait) | ✅ | ✅ |
 | [`smithy.api#timestampFormat`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-timestampformat-trait) | ✅ | ✅ |
 | [`smithy.api#protocolDefinition`](https://smithy.io/2.0/spec/protocol-traits.html#smithy-api-protocoldefinition-trait) | ✅ | ✅ |
@@ -114,16 +114,16 @@ AWS-specific protocol traits.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
-| [`aws.protocols#awsJson1_0`](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html#aws-protocols-awsjson1_0-trait) | ❌ | ❌ |
+| [`aws.protocols#awsJson1_0`](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html#aws-protocols-awsjson1_0-trait) | ✅ | ✅ |
 | [`aws.protocols#awsJson1_1`](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html#aws-protocols-awsjson1_1-trait) | ✅ | ✅ |
-| [`aws.protocols#awsQuery`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquery-trait) | ❌ | ❌ |
-| [`aws.protocols#ec2Query`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2query-trait) | ❌ | ❌ |
+| [`aws.protocols#awsQuery`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquery-trait) | ✅ | ✅ |
+| [`aws.protocols#ec2Query`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2query-trait) | ✅ | ✅ |
 | [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ✅ | ✅ |
-| [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ❌ | ❌ |
+| [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ✅ | ✅ |
 | [`aws.protocols#awsQueryCompatible`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquerycompatible-trait) | ❌ | ❌ |
 | [`aws.protocols#httpChecksum`](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ❌ | ❌ |
 | [`aws.protocols#awsQueryError`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsqueryerror-trait) | ➖ | ➖ |
-| [`aws.protocols#ec2QueryName`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2queryname-trait) | ❌ | ❌ |
+| [`aws.protocols#ec2QueryName`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2queryname-trait) | ✅ | ✅ |
 
 ---
 
@@ -133,7 +133,7 @@ AWS-specific authentication traits.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
-| [`aws.auth#sigv4`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ❌ | ❌ |
+| [`aws.auth#sigv4`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ✅ | ✅ |
 | [`aws.auth#cognitoUserPools`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-cognitouserpools-trait) | ❌ | ❌ |
 | [`aws.auth#sigv4a`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4a-trait) | ❌ | ❌ |
 | [`aws.auth#unsignedPayload`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-unsignedpayload-trait) | ❌ | ❌ |
@@ -173,7 +173,7 @@ Traits that define operation behavior.
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
 | [`smithy.api#paginated`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-paginated-trait) | ✅ | ✅ |
-| [`smithy.api#idempotencyToken`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotencytoken-trait) | ❌ | ❌ |
+| [`smithy.api#idempotencyToken`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotencytoken-trait) | ✅ | ✅ |
 | [`smithy.api#idempotent`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotent-trait) | ❌ | ❌ |
 | [`smithy.api#readonly`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-readonly-trait) | ❌ | ❌ |
 | [`smithy.api#requestCompression`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-requestcompression-trait) | ❌ | ❌ |
@@ -237,7 +237,7 @@ Traits for endpoint configuration.
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
 | [`smithy.api#endpoint`](https://smithy.io/2.0/spec/endpoint-traits.html#smithy-api-endpoint-trait) | ❌ | ❌ |
-| [`smithy.api#hostLabel`](https://smithy.io/2.0/spec/endpoint-traits.html#smithy-api-hostlabel-trait) | ❌ | ❌ |
+| [`smithy.api#hostLabel`](https://smithy.io/2.0/spec/endpoint-traits.html#smithy-api-hostlabel-trait) | ✅ | ✅ |
 
 ---
 
@@ -259,7 +259,7 @@ AWS service metadata traits.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
-| [`aws.api#service`](https://smithy.io/2.0/aws/aws-core.html#aws-api-service-trait) | ❌ | ❌ |
+| [`aws.api#service`](https://smithy.io/2.0/aws/aws-core.html#aws-api-service-trait) | ✅ | ✅ |
 | [`aws.api#clientDiscoveredEndpoint`](https://smithy.io/2.0/aws/aws-core.html#aws-api-clientdiscoveredendpoint-trait) | ❌ | ❌ |
 | [`aws.api#clientEndpointDiscovery`](https://smithy.io/2.0/aws/aws-core.html#aws-api-clientendpointdiscovery-trait) | ❌ | ❌ |
 | [`aws.api#clientEndpointDiscoveryId`](https://smithy.io/2.0/aws/aws-core.html#aws-api-clientendpointdiscoveryid-trait) | ❌ | ❌ |
