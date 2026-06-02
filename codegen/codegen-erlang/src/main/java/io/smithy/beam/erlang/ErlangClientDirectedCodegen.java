@@ -202,6 +202,7 @@ final class ErlangClientDirectedCodegen
             ErlangRestXmlEmitter.emitCodecModule(ctx, directive.shape());
         }
 
+        ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         ErlangHttpDispatchEmitter.emit(ctx, service);
         ErlangSigV4Emitter.emit(ctx, service);
         ErlangPaginatorEmitter.emit(ctx, service);
@@ -226,9 +227,6 @@ final class ErlangClientDirectedCodegen
                 writer.write("    #{region => <<\"us-east-1\">>,");
                 writer.write("      endpoint_prefix => <<\"$L\">>,", meta.endpointPrefix());
                 writer.write("      signing_name => <<\"$L\">>>}.", meta.signingName());
-                writer.write("");
-                writer.write("resolve_base_url(#{endpoint_prefix := Prefix, region := Region}) ->");
-                writer.write("    <<\"https://\", Prefix/binary, \".\", Region/binary, \".amazonaws.com\">>.");
                 writer.write("");
             });
             writer.popState();

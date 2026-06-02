@@ -18,6 +18,7 @@ public final class ErlangHttpDispatchEmitter {
         String httpModule = layout.runtimeHttpModuleName();
         boolean sigv4 = BeamSigV4Metadata.from(service).isPresent();
         String sigv4Module = layout.sigv4ModuleName();
+        String helpersMod = layout.runtimeHelpersModuleName();
 
         ctx.writerDelegator().useFileWriter(layout.runtimeHttpModuleFile(), writer -> {
             writer.write("%% Generated HTTP dispatcher for $L.", service.getId());
@@ -52,7 +53,20 @@ public final class ErlangHttpDispatchEmitter {
             writer.write("        method = Method, path = Path,");
             writer.write("        query = Query, headers = Headers, body = Body, host = Host}) ->");
             writer.indent();
-            writer.write("BaseUrl = maps:get(base_url, Config, <<\"\">>),");
+            writer.write("BaseUrl = case maps:get(base_url, Config, undefined) of");
+            writer.indent();
+            writer.write("undefined ->");
+            writer.indent();
+            writer.write("case maps:get(endpoint_prefix, Config, undefined) of");
+            writer.indent();
+            writer.write("undefined -> <<>>;");
+            writer.write("_ -> $L:resolve_base_url(Config)", helpersMod);
+            writer.dedent();
+            writer.write("end;");
+            writer.dedent();
+            writer.write("Url -> Url");
+            writer.dedent();
+            writer.write("end,");
             writer.write("QueryStr = case maps:to_list(Query) of");
             writer.indent();
             writer.write("[] -> <<>>;");

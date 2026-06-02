@@ -18,6 +18,7 @@ public final class ElixirHttpDispatchEmitter {
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
         boolean sigv4 = BeamSigV4Metadata.from(service).isPresent();
         String sigv4Module = ElixirSymbolProvider.toModuleName(layout.sigv4ModuleName());
+        String helpersModule = ElixirSymbolProvider.toModuleName(layout.runtimeHelpersModuleName());
 
         ctx.writerDelegator().useFileWriter(
                 layout.runtimeHttpModuleFile(), writer -> {
@@ -25,6 +26,7 @@ public final class ElixirHttpDispatchEmitter {
             writer.indent();
             writer.write("@moduledoc \"Generated HTTP dispatcher for Smithy service clients. Uses Req.\"");
             writer.write("alias $L, as: RuntimeTypes", runtimeMod);
+            writer.write("alias $L, as: RuntimeHelpers", helpersModule);
             writer.write("");
             writer.write("@spec dispatch(map(), RuntimeTypes.HttpRequest.t()) ::");
             writer.write("        {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}");
@@ -60,7 +62,22 @@ public final class ElixirHttpDispatchEmitter {
             writer.write("        {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}");
             writer.write("defp dispatch_signed(http_client, config, %RuntimeTypes.HttpRequest{} = req) do");
             writer.indent();
-            writer.write("base_url = Map.get(config, :base_url, \"\")");
+            writer.write("base_url =");
+            writer.indent();
+            writer.write("case Map.get(config, :base_url) do");
+            writer.indent();
+            writer.write("nil ->");
+            writer.indent();
+            writer.write("case Map.get(config, :endpoint_prefix) do");
+            writer.indent();
+            writer.write("nil -> \"\"");
+            writer.write("_ -> RuntimeHelpers.resolve_base_url(config)");
+            writer.dedent();
+            writer.write("end");
+            writer.dedent();
+            writer.write("url -> url");
+            writer.dedent();
+            writer.write("end");
             writer.write("{scheme, default_authority} = split_base_url(base_url)");
             writer.write("authority =");
             writer.indent();

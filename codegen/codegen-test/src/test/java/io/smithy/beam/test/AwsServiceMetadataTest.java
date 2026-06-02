@@ -79,8 +79,11 @@ class AwsServiceMetadataTest {
         assertThat(client).contains("default_config() ->");
         assertThat(client).contains("endpoint_prefix => <<\"testprefix\">>");
         assertThat(client).contains("signing_name => <<\"testsign\">>");
-        assertThat(client).contains("resolve_base_url(#{endpoint_prefix := Prefix, region := Region}) ->");
-        assertThat(client).contains("<<\"https://\", Prefix/binary, \".\", Region/binary, \".amazonaws.com\">>");
+        assertThat(client).doesNotContain("resolve_base_url");
+
+        String helpers = manifest.expectFileString("runtime_helpers.erl");
+        assertThat(helpers).contains("resolve_base_url(Config) ->");
+        assertThat(helpers).contains("<<\"https://\", Prefix/binary, \".\", Region/binary, \".amazonaws.com\">>");
     }
 
     @Test
@@ -93,8 +96,11 @@ class AwsServiceMetadataTest {
         assertThat(client).contains("def default_config do");
         assertThat(client).contains("endpoint_prefix: \"testprefix\"");
         assertThat(client).contains("signing_name: \"testsign\"");
-        assertThat(client).contains("def resolve_base_url(%{endpoint_prefix: prefix, region: region}) do");
-        assertThat(client).contains("\"https://#{prefix}.#{region}.amazonaws.com\"");
+        assertThat(client).doesNotContain("def resolve_base_url");
+
+        String helpers = manifest.expectFileString("runtime_helpers.ex");
+        assertThat(helpers).contains("def resolve_base_url(config) do");
+        assertThat(helpers).contains("\"https://#{prefix}.#{region}.amazonaws.com\"");
     }
 
     @Test

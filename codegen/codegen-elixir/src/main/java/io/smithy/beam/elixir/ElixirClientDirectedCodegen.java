@@ -197,6 +197,7 @@ final class ElixirClientDirectedCodegen
             ElixirRestXmlEmitter.emitCodecModule(ctx, directive.shape());
         }
 
+        ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         ElixirHttpDispatchEmitter.emit(ctx, service);
         ElixirSigV4Emitter.emit(ctx, service);
         ElixirPaginatorEmitter.emit(ctx, service);
@@ -223,10 +224,6 @@ final class ElixirClientDirectedCodegen
                 writer.write("    endpoint_prefix: \"$L\",", meta.endpointPrefix());
                 writer.write("    signing_name: \"$L\"", meta.signingName());
                 writer.write("  }");
-                writer.write("end");
-                writer.write("");
-                writer.write("def resolve_base_url(%{endpoint_prefix: prefix, region: region}) do");
-                writer.write("  \"https://#{prefix}.#{region}.amazonaws.com\"");
                 writer.write("end");
                 writer.write("");
             });
