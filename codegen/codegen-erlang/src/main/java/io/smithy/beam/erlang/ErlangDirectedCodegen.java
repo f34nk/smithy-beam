@@ -346,13 +346,13 @@ final class ErlangDirectedCodegen
     // not generate service, resource, or operation code.
 
     /**
-     * Stub. Future: generate the Erlang client module
-     * ({module_prefix}_service_client.erl) with operation stubs and request/response types.
+     * Types pass: service clients and servers are emitted by
+     * {@link ErlangClientDirectedCodegen} and {@link ErlangServerDirectedCodegen}.
      */
     @Override
     public void generateService(
             GenerateServiceDirective<ErlangContext, BeamSettings> directive) {
-        // TODO: generate service client module.
+        // Client/server passes own service emission.
     }
 
     /**

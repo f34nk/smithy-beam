@@ -379,13 +379,13 @@ final class ElixirDirectedCodegen
     // ── Service / Resource / Operation stubs ─────────────────────────────────
 
     /**
-     * Stub. Future: generate the Elixir client module
-     * ({ServiceName}Client) with operation functions and HTTP plumbing.
+     * Types pass: service clients and servers are emitted by
+     * {@link ElixirClientDirectedCodegen} and {@link ElixirServerDirectedCodegen}.
      */
     @Override
     public void generateService(
             GenerateServiceDirective<ElixirContext, BeamSettings> directive) {
-        // TODO: generate service client module.
+        // Client/server passes own service emission.
     }
 
     /**
