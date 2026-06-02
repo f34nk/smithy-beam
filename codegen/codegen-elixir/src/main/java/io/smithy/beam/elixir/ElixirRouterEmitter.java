@@ -1,5 +1,7 @@
 package io.smithy.beam.elixir;
 
+import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
+import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpPathPatterns;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -8,6 +10,7 @@ import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.traits.HttpTrait;
 
 import java.util.ArrayList;
@@ -30,9 +33,16 @@ public final class ElixirRouterEmitter {
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
+        ShapeId protocol = ctx.resolvedProtocolTraitId();
         String routerMod = ElixirSymbolProvider.toModuleName(layout.routerModuleName());
-        String codecMod = ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName());
+        String codecMod = ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName(protocol));
         String helpersMod = ElixirSymbolProvider.toModuleName(layout.runtimeHelpersModuleName());
+
+        if (BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(protocol)
+                || BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(protocol)) {
+            emitAwsJsonRouter(ctx, service, layout, codecMod, routerMod, operations, sp);
+            return;
+        }
 
         List<OperationShape> literalOps = new ArrayList<>();
         List<OperationShape> labeledOps = new ArrayList<>();
@@ -66,6 +76,63 @@ public final class ElixirRouterEmitter {
             }
 
             writer.write("defp route(method, path, _handler, _request) do");
+            writer.indent();
+            writer.write("{:error, {:not_found, method, path}}");
+            writer.dedent();
+            writer.write("end");
+            writer.dedent();
+            writer.write("end");
+        });
+    }
+
+    private static void emitAwsJsonRouter(
+            ElixirContext ctx,
+            ServiceShape service,
+            BeamElixirLayout layout,
+            String codecMod,
+            String routerMod,
+            List<OperationShape> operations,
+            SymbolProvider sp) {
+
+        String targetPrefix = service.getId().getName();
+
+        ctx.writerDelegator().useFileWriter(layout.routerModuleFile(), writer -> {
+            writer.write("defmodule $L do", routerMod);
+            writer.indent();
+            writer.write("@moduledoc \"Generated AWS JSON router for $L.\"", service.getId());
+            writer.write("");
+            writer.write("@spec dispatch(module(), map()) :: term()");
+            writer.write("def dispatch(handler, request) do");
+            writer.indent();
+            writer.write("route(request.method, request.path, request.headers, handler, request)");
+            writer.dedent();
+            writer.write("end");
+            writer.write("");
+
+            writer.write("defp route(\"POST\", \"/\", headers, handler, request) do");
+            writer.indent();
+            writer.write("case List.keyfind(headers, \"X-Amz-Target\", 0) do");
+            writer.indent();
+            for (OperationShape op : operations) {
+                String opName = sp.toSymbol(op).getName();
+                String amzTarget = targetPrefix + "." + op.getId().getName();
+                writer.write("{_, \"$L\"} ->", amzTarget);
+                writer.indent();
+                writer.write("input = $L.decode_$L_request(request)", codecMod, opName);
+                writer.write("handler.handle_$L(%{}, input, %{})", opName);
+                writer.dedent();
+            }
+            writer.write("_ ->");
+            writer.indent();
+            writer.write("{:error, {:not_found, \"POST\", \"/\"}}");
+            writer.dedent();
+            writer.dedent();
+            writer.write("end");
+            writer.dedent();
+            writer.write("end");
+            writer.write("");
+
+            writer.write("defp route(method, path, _headers, _handler, _request) do");
             writer.indent();
             writer.write("{:error, {:not_found, method, path}}");
             writer.dedent();
