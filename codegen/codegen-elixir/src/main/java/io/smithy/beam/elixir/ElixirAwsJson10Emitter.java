@@ -16,4 +16,9 @@ public final class ElixirAwsJson10Emitter {
         ElixirAwsJsonRpcEmitter.emitCodecModule(
                 ctx, service, BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0, CONTENT_TYPE, "1.0");
     }
+
+    public static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
+        ElixirAwsJsonRpcEmitter.emitServerCodecModule(
+                ctx, service, BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0, CONTENT_TYPE, "1.0");
+    }
 }

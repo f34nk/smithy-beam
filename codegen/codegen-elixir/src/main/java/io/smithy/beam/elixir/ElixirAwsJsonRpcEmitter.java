@@ -32,6 +32,46 @@ final class ElixirAwsJsonRpcEmitter {
 
     private ElixirAwsJsonRpcEmitter() {}
 
+    static void emitServerCodecModule(
+            ElixirContext ctx,
+            ServiceShape service,
+            ShapeId protocol,
+            String contentType,
+            String versionLabel) {
+        Model model = ctx.model();
+        BeamElixirLayout layout = new BeamElixirLayout(
+                ctx.settings(), service.getId().getNamespace(), service);
+        String serverCodecFile = layout.serverCodecModuleName(protocol) + ".ex";
+        String serverCodecModule = ElixirSymbolProvider.toModuleName(
+                layout.serverCodecModuleName(protocol));
+        ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
+        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+        SymbolProvider sp = ctx.symbolProvider();
+        String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
+        String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+
+        List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
+
+        ctx.writerDelegator().useFileWriter(serverCodecFile, writer -> {
+            writer.write("defmodule $L do", serverCodecModule);
+            writer.indent();
+            writer.write("@moduledoc \"Server AWS JSON $L codecs for $L (generated).\"",
+                    versionLabel, service.getId());
+            writer.write("alias $L, as: RuntimeTypes", runtimeMod);
+            writer.write("alias $L, as: Types", typesMod);
+            writer.write("");
+
+            for (OperationShape op : operations) {
+                emitServerRequestDecoder(writer, model, op, httpIndex, sp, typesMod, runtimeMod);
+                emitServerResponseEncoder(writer, model, op, httpIndex, sp, typesMod, runtimeMod, contentType);
+            }
+
+            ElixirRestJson1Emitter.emitSharedCodecHelpers(writer, model, service, sp);
+            writer.dedent();
+            writer.write("end");
+        });
+    }
+
     static void emitCodecModule(
             ElixirContext ctx, ServiceShape service, ShapeId protocol, String contentType, String versionLabel) {
         BeamAwsServiceMetadata.from(service).orElseThrow();
@@ -72,6 +112,65 @@ final class ElixirAwsJsonRpcEmitter {
             writer.dedent();
             writer.write("end");
         });
+    }
+
+    private static void emitServerRequestDecoder(
+            ElixirWriter writer,
+            Model model,
+            OperationShape op,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            String typesMod,
+            String runtimeMod) {
+
+        String opName = sp.toSymbol(op).getName();
+        StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
+        String inputStruct = sp.toSymbol(input).getName();
+        String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
+        List<MemberShape> members = documentMembers(httpIndex, op, input, true);
+
+        writer.write("@spec decode_$L_request(map()) :: $L", opName, inputType);
+        writer.write("def decode_$L_request(%RuntimeTypes.HttpRequest{body: body}) do", opName);
+        writer.indent();
+        writer.write("decoded = decode_json_body(body)");
+        writer.write("%Types.$L{", inputStruct);
+        emitStructFieldsFromDecoded(writer, model, httpIndex, sp, members);
+        writer.write("}");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+    }
+
+    private static void emitServerResponseEncoder(
+            ElixirWriter writer,
+            Model model,
+            OperationShape op,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            String typesMod,
+            String runtimeMod,
+            String contentType) {
+
+        String opName = sp.toSymbol(op).getName();
+        StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
+        String outputStruct = sp.toSymbol(output).getName();
+        String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
+        List<MemberShape> members = documentMembers(httpIndex, op, output, false);
+
+        writer.write("@spec encode_$L_response($L) :: map()", opName, outputType);
+        writer.write("def encode_$L_response(%Types.$L{} = output) do", opName, outputStruct);
+        writer.indent();
+        writer.write("body_map = %{");
+        emitBodyMapEntries(writer, model, httpIndex, sp, members);
+        writer.write("}");
+        writer.write("|> Enum.reject(fn {_, v} -> is_nil(v) end)");
+        writer.write("|> Map.new()");
+        writer.write("body = Jason.encode!(body_map)");
+        writer.write("headers = [{\"Content-Type\", \"$L\"}]", contentType);
+        writer.write("%{status: 200, headers: headers, body: body}");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
     }
 
     private static void emitEncoder(

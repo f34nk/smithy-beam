@@ -7,6 +7,8 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
+import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
+import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
 import io.smithy.beam.core.BeamResourceIndex;
@@ -172,6 +174,14 @@ final class ElixirServerDirectedCodegen
                 && BeamRestXmlProtocolCodegen.REST_XML.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ElixirRestXmlEmitter.emitServerCodecModule(ctx, service);
+        } else if (ctx.protocolCodegen() != null
+                && BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ElixirAwsJson10Emitter.emitServerCodecModule(ctx, service);
+        } else if (ctx.protocolCodegen() != null
+                && BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ElixirAwsJson11Emitter.emitServerCodecModule(ctx, service);
         }
 
         ElixirRouterEmitter.emit(ctx, service);
