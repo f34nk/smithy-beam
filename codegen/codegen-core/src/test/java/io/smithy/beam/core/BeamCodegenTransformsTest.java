@@ -10,6 +10,8 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 
+import java.net.URL;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.inOrder;
@@ -72,6 +74,23 @@ class BeamCodegenTransformsTest {
         verify(runner).createDedicatedInputsAndOutputs();
         verify(runner, never()).removeShapesDeprecatedBeforeDate(anyString());
         verify(runner, never()).removeShapesDeprecatedBeforeVersion(anyString());
+    }
+
+    @Test
+    void pruneModelToServiceClosure_retainsProtocolTraitDefinitions() {
+        URL resource = BeamCodegenTransformsTest.class.getResource("/model/protocol_rest_json_fixture.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        ShapeId serviceId = ShapeId.from("smithy.beam.demo.protocoljson#DemoRestJson");
+        ServiceShape service = model.expectShape(serviceId, ServiceShape.class);
+
+        Model pruned = BeamCodegenTransforms.pruneModelToServiceClosure(model, service);
+
+        assertThat(BeamProtocolResolver.resolveServiceProtocol(pruned, service)).isPresent();
     }
 
     @Test

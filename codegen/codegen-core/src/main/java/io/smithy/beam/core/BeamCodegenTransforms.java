@@ -2,6 +2,7 @@ package io.smithy.beam.core;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.BiFunction;
 import software.amazon.smithy.codegen.core.CodegenContext;
@@ -14,6 +15,7 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.transform.ModelTransformer;
 
 /**
@@ -78,16 +80,32 @@ public final class BeamCodegenTransforms {
      */
     public static void pruneToServiceClosure(
             CodegenDirector<?, ?, ?, BeamSettings> director, ServiceShape service) {
+        ShapeId serviceId = service.getId();
         addDirectorTransform(
                 director,
-                (model, transformer) -> pruneModelToServiceClosure(model, service));
+                (model, transformer) ->
+                        pruneModelToServiceClosure(
+                                model, model.expectShape(serviceId, ServiceShape.class)));
     }
 
     static Model pruneModelToServiceClosure(Model model, ServiceShape service) {
-        Walker walker = new Walker(model);
-        Set<Shape> closure = walker.walkShapes(service);
+        Set<ShapeId> keepIds = closureAndTraitDefinitionIds(model, service);
         ModelTransformer transformer = ModelTransformer.create();
-        return transformer.removeShapesIf(model, shape -> !closure.contains(shape));
+        return transformer.removeShapesIf(model, shape -> !keepIds.contains(shape.getId()));
+    }
+
+    /**
+     * Shape ids to retain: the service closure plus trait definition shapes attached to
+     * any shape in that closure (for example protocol traits on the service).
+     */
+    static Set<ShapeId> closureAndTraitDefinitionIds(Model model, ServiceShape service) {
+        Walker walker = new Walker(model);
+        Set<ShapeId> keepIds = new LinkedHashSet<>();
+        for (Shape shape : walker.walkShapes(service)) {
+            keepIds.add(shape.getId());
+            shape.getAllTraits().keySet().forEach(keepIds::add);
+        }
+        return keepIds;
     }
 
     @SuppressWarnings("unchecked")
