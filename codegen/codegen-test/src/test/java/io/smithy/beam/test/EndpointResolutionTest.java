@@ -34,6 +34,8 @@ class EndpointResolutionTest {
         String http = manifest.expectFileString("runtime_http.erl");
 
         assertThat(http).contains("case maps:get(base_url, Config, undefined) of");
+        assertThat(http).contains("GivenUrl -> GivenUrl");
+        assertThat(http).doesNotContain("Url -> Url");
         assertThat(http).contains("runtime_helpers:resolve_base_url(Config)");
 
         String helpers = manifest.expectFileString("runtime_helpers.erl");

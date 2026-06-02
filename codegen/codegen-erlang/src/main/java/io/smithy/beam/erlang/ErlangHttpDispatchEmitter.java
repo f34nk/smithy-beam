@@ -64,7 +64,7 @@ public final class ErlangHttpDispatchEmitter {
             writer.dedent();
             writer.write("end;");
             writer.dedent();
-            writer.write("Url -> Url");
+            writer.write("GivenUrl -> GivenUrl");
             writer.dedent();
             writer.write("end,");
             writer.write("QueryStr = case maps:to_list(Query) of");
