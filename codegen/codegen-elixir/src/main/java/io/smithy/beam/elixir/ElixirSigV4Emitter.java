@@ -44,7 +44,7 @@ public final class ElixirSigV4Emitter {
             writer.dedent();
             writer.write("end");
             writer.write("");
-            writer.write("defp endpoint_host_from_config(config) do");
+            writer.write("def endpoint_host_from_config(config) do");
             writer.indent();
             writer.write("case Map.get(config, :base_url) do");
             writer.indent();
