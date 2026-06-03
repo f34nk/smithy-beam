@@ -6,8 +6,8 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
  * Emits a thin {@code <service>_sigv4.ex} signing hook for services with
- * {@code @aws.auth#sigv4}. Callers supply credentials in client config; no
- * bundled credential chain is generated.
+ * {@code @aws.auth#sigv4}. Callers may supply credentials in client config or
+ * rely on the generated credential provider module.
  */
 public final class ElixirSigV4Emitter {
 

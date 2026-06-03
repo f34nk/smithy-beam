@@ -203,6 +203,7 @@ final class ElixirClientDirectedCodegen
         ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         ElixirHttpDispatchEmitter.emit(ctx, service);
         ElixirSigV4Emitter.emit(ctx, service);
+        ElixirCredentialProviderEmitter.emit(ctx, service);
         ElixirPaginatorEmitter.emit(ctx, service);
         BeamResourceIndex resourceIndex = BeamResourceIndex.of(ctx.model());
         for (ResourceShape resource : resourceIndex.containedResourcesSorted(service)) {

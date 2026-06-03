@@ -11,7 +11,8 @@ import java.util.List;
  */
 public enum BeamRuntimeDependency implements SymbolDependencyContainer {
     JSX("deps", "jsx", "3.1.0"),
-    AWS_SIGV4("deps", "aws_sigv4", "1.0.0");
+    AWS_SIGV4("deps", "aws_sigv4", "1.0.0"),
+    AWS_CREDENTIALS("deps", "aws_credentials", "1.0.0");
 
     public final SymbolDependency dependency;
 

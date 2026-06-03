@@ -122,6 +122,14 @@ public final class BeamElixirLayout {
         return serviceSnakeName() + "_sigv4";
     }
 
+    public String credentialsModuleFile() {
+        return credentialsModuleName() + ".ex";
+    }
+
+    public String credentialsModuleName() {
+        return serviceSnakeName() + "_credentials";
+    }
+
     public String resourceClientModuleFile(String resourceSnakeName) {
         return resourceClientModuleName(resourceSnakeName) + ".ex";
     }
