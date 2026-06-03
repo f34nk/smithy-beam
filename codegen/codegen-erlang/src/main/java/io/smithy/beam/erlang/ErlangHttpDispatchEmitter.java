@@ -55,6 +55,7 @@ public final class ErlangHttpDispatchEmitter {
                 writer.write("{ok, Creds} -> Config#{credentials => Creds};");
                 writer.write("_ -> Config");
                 writer.dedent();
+                writer.write("end;");
                 writer.dedent();
                 writer.write("_ -> Config");
                 writer.dedent();
@@ -102,7 +103,12 @@ public final class ErlangHttpDispatchEmitter {
             writer.write("Url = <<Scheme/binary, Authority/binary, Path/binary, QueryStr/binary>>,");
             writer.write("HttpcHeaders = [{binary_to_list(K), binary_to_list(V)}");
             writer.write("    || {K, V} <- Headers],");
-            writer.write("Req = {binary_to_list(Url), HttpcHeaders, mime(Headers), Body},");
+            writer.write("Req = case Body of");
+            writer.indent();
+            writer.write("<<>> -> {binary_to_list(Url), HttpcHeaders};");
+            writer.write("_ -> {binary_to_list(Url), HttpcHeaders, mime(Headers), Body}");
+            writer.dedent();
+            writer.write("end,");
             writer.write("case HttpClient:request(binary_to_atom(string:lowercase(Method), utf8),");
             writer.write("        Req, [], [{body_format, binary}]) of");
             writer.indent();
