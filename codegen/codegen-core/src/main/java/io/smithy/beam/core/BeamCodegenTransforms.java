@@ -22,17 +22,34 @@ import software.amazon.smithy.model.transform.ModelTransformer;
  * Applies the standard Smithy-Build directed-codegen model transforms for smithy-beam,
  * driven by {@link BeamSettings}. Keeps Erlang and Elixir generators aligned on
  * transform order.
+ *
+ * <p>Service closure pruning registers a deferred model transform on {@link CodegenDirector}.
+ * Smithy 1.54.0 does not expose a public API for that registration, so this class reads
+ * the private {@code transforms} and {@code model} fields via reflection. Field names and
+ * layout can change across Smithy releases; {@code BeamCodegenTransformsTest} pins the
+ * expected names for the pinned Smithy version.
+ *
+ * <p>When Smithy exposes public transform registration (for example
+ * {@code director.registerTransform(...)}), replace the reflection helpers below rather
+ * than extending them.
  */
 public final class BeamCodegenTransforms {
+
+    /** Private {@link CodegenDirector} field name on Smithy 1.54.0. */
+    static final String CODEGEN_DIRECTOR_TRANSFORMS_FIELD = "transforms";
+
+    /** Private {@link CodegenDirector} field name on Smithy 1.54.0. */
+    static final String CODEGEN_DIRECTOR_MODEL_FIELD = "model";
 
     private static final Field TRANSFORMS_FIELD;
     private static final Field MODEL_FIELD;
 
     static {
         try {
-            TRANSFORMS_FIELD = CodegenDirector.class.getDeclaredField("transforms");
+            TRANSFORMS_FIELD =
+                    CodegenDirector.class.getDeclaredField(CODEGEN_DIRECTOR_TRANSFORMS_FIELD);
             TRANSFORMS_FIELD.setAccessible(true);
-            MODEL_FIELD = CodegenDirector.class.getDeclaredField("model");
+            MODEL_FIELD = CodegenDirector.class.getDeclaredField(CODEGEN_DIRECTOR_MODEL_FIELD);
             MODEL_FIELD.setAccessible(true);
         } catch (NoSuchFieldException e) {
             throw new ExceptionInInitializerError(e);
@@ -77,6 +94,9 @@ public final class BeamCodegenTransforms {
     /**
      * Removes shapes that are not in the closure of the given service from the director model
      * during {@link CodegenDirector#run()}.
+     *
+     * <p>Uses reflection to append to {@link CodegenDirector}'s private transform list because
+     * no public registration hook exists on Smithy 1.54.0.
      */
     public static void pruneToServiceClosure(
             CodegenDirector<?, ?, ?, BeamSettings> director, ServiceShape service) {
@@ -108,6 +128,7 @@ public final class BeamCodegenTransforms {
         return keepIds;
     }
 
+    /** Appends a deferred transform via reflection; see class Javadoc for upgrade path. */
     @SuppressWarnings("unchecked")
     private static void addDirectorTransform(
             CodegenDirector<?, ?, ?, BeamSettings> director,
@@ -121,6 +142,7 @@ public final class BeamCodegenTransforms {
         }
     }
 
+    /** Reads the director working model via reflection; see class Javadoc for upgrade path. */
     private static Model getDirectorModel(CodegenDirector<?, ?, ?, BeamSettings> director) {
         try {
             return (Model) MODEL_FIELD.get(director);
