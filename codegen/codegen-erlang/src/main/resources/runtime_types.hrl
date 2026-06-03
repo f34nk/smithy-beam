@@ -21,4 +21,7 @@
 }).
 -type http_response() :: #http_response{}.
 
+%% Smithy @endpointRuleSet payload shape at runtime (evaluated by aws_endpoint_rules).
+-type endpoint_rule_set() :: map().
+
 -endif.

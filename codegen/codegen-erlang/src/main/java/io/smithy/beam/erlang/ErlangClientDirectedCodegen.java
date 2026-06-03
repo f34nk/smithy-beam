@@ -4,6 +4,7 @@ import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
@@ -123,7 +124,10 @@ final class ErlangClientDirectedCodegen
                 layout.runtimeTypesHeaderFile(),
                 writer -> {
                     writer.write("%% Generated runtime types for $L.", ctx.service().getId());
-                    ErlangRuntimeTypesEmitter.writeBody(writer);
+                    Optional<String> ruleSet =
+                            BeamEndpointRuleSetEmitter.serializeRuleSetErlangMap(
+                                    directive.model(), service);
+                    ErlangRuntimeTypesEmitter.writeBody(writer, ruleSet);
                 });
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
