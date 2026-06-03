@@ -521,10 +521,8 @@ public final class ErlangRestXmlEmitter {
                 fields.add(field + " = xml_attribute(" + xmlVar + ", <<\""
                         + BeamXmlBindingIndex.memberElementName(member) + "\">>)");
             } else if (target instanceof ListShape listShape) {
-                String element = BeamXmlBindingIndex.memberElementName(member);
-                String itemElement = BeamXmlBindingIndex.listItemElementName(listShape);
-                fields.add(field + " = xml_child_list(" + xmlVar + ", <<\"" + element + "\">, <<\""
-                        + itemElement + "\">>)");
+                fields.add(field + " = "
+                        + decodeListFieldFromXml(model, member, listShape, xmlVar, sp));
             } else {
                 fields.add(field + " = xml_child_text(" + xmlVar + ", <<\""
                         + BeamXmlBindingIndex.memberElementName(member) + "\">>)");
@@ -534,6 +532,24 @@ public final class ErlangRestXmlEmitter {
             return "#" + recordTag + "{}";
         }
         return "#" + recordTag + "{" + String.join(", ", fields) + "}";
+    }
+
+    private static String decodeListFieldFromXml(
+            Model model,
+            MemberShape member,
+            ListShape listShape,
+            String xmlVar,
+            SymbolProvider sp) {
+        String element = BeamXmlBindingIndex.memberElementName(member);
+        String itemElement = BeamXmlBindingIndex.listItemElementName(member, listShape, model);
+        String listNameExpr = "<<" + "\"" + element + "\"" + ">>";
+        Shape listMember = model.expectShape(listShape.getMember().getTarget());
+        if (listMember instanceof StructureShape nested) {
+            String itemRecord = decodeStructureFromXml(model, nested, "Item", sp);
+            return "xml_child_struct_list(" + xmlVar + ", " + listNameExpr + ", <<\""
+                    + itemElement + "\">>, fun(Item) -> " + itemRecord + " end)";
+        }
+        return "xml_child_list(" + xmlVar + ", " + listNameExpr + ", <<\"" + itemElement + "\">>)";
     }
 
     private static void emitStructureFieldsFromXml(
@@ -551,10 +567,9 @@ public final class ErlangRestXmlEmitter {
                 writer.write(indent + "$L = xml_attribute($L, <<\"$L\">>),",
                         toBindingVar(field), xmlVar, BeamXmlBindingIndex.memberElementName(member));
             } else if (target instanceof ListShape listShape) {
-                String element = BeamXmlBindingIndex.memberElementName(member);
-                String itemElement = BeamXmlBindingIndex.listItemElementName(listShape);
-                writer.write(indent + "$L = xml_child_list($L, <<\"$L\">>, <<\"$L\">>),",
-                        toBindingVar(field), xmlVar, element, itemElement);
+                writer.write(indent + "$L = $L,",
+                        toBindingVar(field),
+                        decodeListFieldFromXml(model, member, listShape, xmlVar, sp));
             } else if (target instanceof StructureShape nested) {
                 String element = BeamXmlBindingIndex.memberElementName(member);
                 writer.write(indent + "$L = case find_element(<<\"$L\">>, element_content($L)) of",
@@ -576,10 +591,17 @@ public final class ErlangRestXmlEmitter {
         writer.write("try");
         writer.indent();
         writer.write("{Xml, _} = xmerl_scan:string(binary_to_list(Body)),");
+        writer.write("case xml_element_named(Xml, RootName) of");
+        writer.indent();
+        writer.write("true -> {ok, Xml};");
+        writer.write("false ->");
+        writer.indent();
         writer.write("case find_element(RootName, element_content(Xml)) of");
         writer.indent();
         writer.write("undefined -> {error, {missing_root, RootName}};");
         writer.write("Root -> {ok, Root}");
+        writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.write("end");
         writer.dedent();
@@ -590,7 +612,13 @@ public final class ErlangRestXmlEmitter {
         writer.write("end.");
         writer.dedent();
         writer.write("");
-        writer.write("element_content({_, _, Content, _, _, _}) -> Content;");
+        writer.write("xml_element_named(Element, Name) ->");
+        writer.indent();
+        writer.write("is_element(Element) andalso element_name(Element) =:= Name.");
+        writer.dedent();
+        writer.write("");
+        writer.write("element_content({xmlElement, _, _, _, _, _, _, _, Content, _, _, _}) -> Content;");
+        writer.write("element_content({_, _, Content, _, _, _}) when is_list(Content) -> Content;");
         writer.write("element_content([H | _]) -> element_content(H);");
         writer.write("element_content(_) -> [].");
         writer.write("");
@@ -604,9 +632,19 @@ public final class ErlangRestXmlEmitter {
         writer.write("end.");
         writer.dedent();
         writer.write("");
-        writer.write("is_element({_, _, _, _, _, _}) -> true;");
+        writer.write("is_element({xmlElement, _, _, _, _, _, _, _, _, _, _, _}) -> true;");
+        writer.write("is_element({_, _, Content, _, _, _}) when is_list(Content) -> true;");
         writer.write("is_element(_) -> false.");
         writer.write("");
+        writer.write("element_name({xmlElement, Name, _, _, _, _, _, _, _, _, _, _}) when is_atom(Name) ->");
+        writer.indent();
+        writer.write("list_to_binary(atom_to_list(Name));");
+        writer.dedent();
+        writer.write("element_name({xmlElement, Name, _, _, _, _, _, _, _, _, _, _}) when is_list(Name) ->");
+        writer.indent();
+        writer.write("list_to_binary(Name);");
+        writer.dedent();
+        writer.write("element_name({xmlElement, Name, _, _, _, _, _, _, _, _, _, _}) when is_binary(Name) -> Name;");
         writer.write("element_name({Name, _, _, _, _, _}) when is_atom(Name) -> list_to_binary(atom_to_list(Name));");
         writer.write("element_name({Name, _, _, _, _, _}) when is_list(Name) -> list_to_binary(Name);");
         writer.write("element_name({Name, _, _, _, _, _}) when is_binary(Name) -> Name.");
@@ -629,16 +667,32 @@ public final class ErlangRestXmlEmitter {
         writer.write("end.");
         writer.dedent();
         writer.write("");
-        writer.write("element_text({_, _, Content, _, _, _}) ->");
+        writer.write("element_text({xmlElement, _, _, _, _, _, _, _, Content, _, _, _}) ->");
+        writer.indent();
+        writer.write("xml_text_values(Content);");
+        writer.dedent();
+        writer.write("element_text({_, _, Content, _, _, _}) when is_list(Content) ->");
         writer.indent();
         writer.write("[T || T <- Content, is_list(T), not is_element_string(T)];");
         writer.dedent();
         writer.write("element_text(_) -> [].");
         writer.write("");
+        writer.write("xml_text_values(Content) ->");
+        writer.indent();
+        writer.write("lists:flatten([case C of");
+        writer.indent();
+        writer.write("{xmlText, _, _, _, V, _} when is_list(V) -> V;");
+        writer.write("{xmlText, _, _, _, V, _} when is_binary(V) -> binary_to_list(V);");
+        writer.write("_ -> []");
+        writer.dedent();
+        writer.write("end || C <- Content]).");
+        writer.dedent();
+        writer.write("");
         writer.write("is_element_string(T) when is_list(T) ->");
         writer.indent();
         writer.write("case T of");
         writer.indent();
+        writer.write("{xmlElement, _, _, _, _, _, _, _, _, _, _, _} -> true;");
         writer.write("{_, _, _, _, _, _} -> true;");
         writer.write("_ -> false");
         writer.dedent();
@@ -656,6 +710,14 @@ public final class ErlangRestXmlEmitter {
         writer.write("end.");
         writer.dedent();
         writer.write("");
+        writer.write("xml_child_list(Parent, undefined, ItemName) ->");
+        writer.indent();
+        writer.write("[ItemText || Item <- element_content(Parent),");
+        writer.write("             is_element(Item),");
+        writer.write("             element_name(Item) =:= ItemName,");
+        writer.write("             ItemText <- [list_to_binary(element_text(Item))],");
+        writer.write("             ItemText =/= <<>>];");
+        writer.dedent();
         writer.write("xml_child_list(Parent, ListName, ItemName) ->");
         writer.indent();
         writer.write("case find_element(ListName, element_content(Parent)) of");
@@ -668,6 +730,27 @@ public final class ErlangRestXmlEmitter {
         writer.write("             element_name(Item) =:= ItemName,");
         writer.write("             ItemText <- [list_to_binary(element_text(Item))],");
         writer.write("             ItemText =/= <<>>]");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
+        writer.write("");
+        writer.write("xml_child_struct_list(Parent, undefined, ItemName, DecodeFun) ->");
+        writer.indent();
+        writer.write("[DecodeFun(Item) || Item <- element_content(Parent),");
+        writer.write("                    is_element(Item),");
+        writer.write("                    element_name(Item) =:= ItemName];");
+        writer.dedent();
+        writer.write("xml_child_struct_list(Parent, ListName, ItemName, DecodeFun) ->");
+        writer.indent();
+        writer.write("case find_element(ListName, element_content(Parent)) of");
+        writer.indent();
+        writer.write("undefined -> undefined;");
+        writer.write("ListElement ->");
+        writer.indent();
+        writer.write("[DecodeFun(Item) || Item <- element_content(ListElement),");
+        writer.write("                    is_element(Item),");
+        writer.write("                    element_name(Item) =:= ItemName]");
         writer.dedent();
         writer.dedent();
         writer.write("end.");
@@ -690,7 +773,7 @@ public final class ErlangRestXmlEmitter {
         writer.indent();
         writer.write("{error, {xml_child_text(Error, <<\"Code\">>), xml_child_text(Error, <<\"Message\">>)}}");
         writer.dedent();
-        writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.write("end");
         writer.dedent();
@@ -1005,7 +1088,7 @@ public final class ErlangRestXmlEmitter {
             ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
         writer.write("split_base_url(BaseUrl) ->");
         writer.indent();
-        writer.write("case uri_string:parse(BaseUrl) of");
+        writer.write("case uri_string:parse(binary_to_list(BaseUrl)) of");
         writer.indent();
         writer.write("#{scheme := Scheme, host := Host} = Parts ->");
         writer.indent();
