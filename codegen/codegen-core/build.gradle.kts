@@ -5,6 +5,7 @@ dependencies {
     implementation(libs.smithy.rules.engine)
     implementation(libs.smithy.aws.endpoints)
     implementation(libs.smithy.waiters)
+    implementation(libs.smithy.protocol.test.traits)
 
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.smithy.aws.traits)
