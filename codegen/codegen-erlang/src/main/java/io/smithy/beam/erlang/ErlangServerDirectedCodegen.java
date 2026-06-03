@@ -202,6 +202,7 @@ final class ErlangServerDirectedCodegen
         }
 
         ErlangRouterEmitter.emit(ctx, service);
+        ErlangComplianceTestEmitter.emit(ctx, service);
         BeamResourceIndex resourceIndex = BeamResourceIndex.of(ctx.model());
         for (ResourceShape resource : resourceIndex.containedResourcesSorted(service)) {
             ErlangResourceEmitter.emitServer(ctx, resource);

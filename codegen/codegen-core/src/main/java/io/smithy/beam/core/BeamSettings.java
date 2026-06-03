@@ -19,6 +19,7 @@ import java.util.List;
  *   "relativeVersion" -- optional SemVer value forwarded to
  *                     {@link software.amazon.smithy.codegen.core.directed.CodegenDirector#removeShapesDeprecatedBeforeVersion}.
  *   "packageVersion" -- optional SemVer for the generated package, recorded in dependency metadata.
+ *   "emitComplianceTests" -- when true, emit HTTP protocol compliance test modules from model traits.
  */
 public final class BeamSettings {
 
@@ -27,6 +28,7 @@ public final class BeamSettings {
     private String relativeDate;
     private String relativeVersion;
     private String packageVersion;
+    private boolean emitComplianceTests;
 
     public BeamSettings() {}
 
@@ -68,6 +70,14 @@ public final class BeamSettings {
 
     public String packageVersion() {
         return packageVersion;
+    }
+
+    public void emitComplianceTests(boolean emitComplianceTests) {
+        this.emitComplianceTests = emitComplianceTests;
+    }
+
+    public boolean emitComplianceTests() {
+        return emitComplianceTests;
     }
 
     public ShapeId resolveService(Model model) {

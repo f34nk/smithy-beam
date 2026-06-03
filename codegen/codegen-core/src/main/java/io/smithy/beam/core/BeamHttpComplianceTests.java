@@ -124,12 +124,28 @@ public final class BeamHttpComplianceTests {
                 .toList();
     }
 
+    public static List<HttpRequestTestCase> clientRequestTests(List<HttpRequestTestCase> cases, ShapeId protocol) {
+        return filterRequestTests(cases, AppliesTo.CLIENT, protocol);
+    }
+
+    public static List<HttpRequestTestCase> serverRequestTests(List<HttpRequestTestCase> cases, ShapeId protocol) {
+        return filterRequestTests(cases, AppliesTo.SERVER, protocol);
+    }
+
     public static List<HttpResponseTestCase> filterResponseTests(
             List<HttpResponseTestCase> cases, AppliesTo appliesTo, ShapeId protocol) {
         return cases.stream()
                 .filter(testCase -> matchesProtocol(testCase.protocol(), protocol))
                 .filter(testCase -> matchesAppliesTo(testCase.appliesTo(), appliesTo))
                 .toList();
+    }
+
+    public static List<HttpResponseTestCase> clientResponseTests(List<HttpResponseTestCase> cases, ShapeId protocol) {
+        return filterResponseTests(cases, AppliesTo.CLIENT, protocol);
+    }
+
+    public static List<HttpResponseTestCase> serverResponseTests(List<HttpResponseTestCase> cases, ShapeId protocol) {
+        return filterResponseTests(cases, AppliesTo.SERVER, protocol);
     }
 
     private static HttpRequestTestCase mapRequestCase(

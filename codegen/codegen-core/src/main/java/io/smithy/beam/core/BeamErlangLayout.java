@@ -135,6 +135,14 @@ public final class BeamErlangLayout {
         return serviceSnakeName() + "_waiters";
     }
 
+    public String complianceTestsModuleFile() {
+        return "test/" + complianceTestsModuleName() + ".erl";
+    }
+
+    public String complianceTestsModuleName() {
+        return serviceSnakeName() + "_compliance_tests";
+    }
+
     public String sigv4ModuleFile() {
         return sigv4ModuleName() + ".erl";
     }
