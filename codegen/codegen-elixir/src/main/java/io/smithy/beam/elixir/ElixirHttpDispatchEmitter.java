@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamSigV4Metadata;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
@@ -16,6 +17,9 @@ public final class ElixirHttpDispatchEmitter {
         String httpModule = ElixirSymbolProvider.toModuleName(layout.runtimeHttpModuleName());
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
         String helpersModule = ElixirSymbolProvider.toModuleName(layout.runtimeHelpersModuleName());
+        boolean sigv4 = BeamSigV4Metadata.from(service).isPresent();
+        String credentialsModule = ElixirSymbolProvider.toModuleName(layout.credentialsModuleName());
+        String configVar = sigv4 ? "config1" : "config";
 
         ctx.writerDelegator().useFileWriter(
                 layout.runtimeHttpModuleFile(), writer -> {
@@ -46,16 +50,34 @@ public final class ElixirHttpDispatchEmitter {
             writer.write("        {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}");
             writer.write("defp dispatch_signed(http_client, config, %RuntimeTypes.HttpRequest{} = req) do");
             writer.indent();
+            if (sigv4) {
+                writer.write("config1 =");
+                writer.indent();
+                writer.write("case Map.get(config, :credentials) do");
+                writer.indent();
+                writer.write("nil ->");
+                writer.indent();
+                writer.write("case $L.resolve(config) do", credentialsModule);
+                writer.indent();
+                writer.write("{:ok, creds} -> Map.put(config, :credentials, creds)");
+                writer.write("_ -> config");
+                writer.dedent();
+                writer.dedent();
+                writer.write("_ -> config");
+                writer.dedent();
+                writer.write("end");
+                writer.dedent();
+            }
             writer.write("base_url =");
             writer.indent();
-            writer.write("case Map.get(config, :base_url) do");
+            writer.write("case Map.get($L, :base_url) do", configVar);
             writer.indent();
             writer.write("nil ->");
             writer.indent();
-            writer.write("case Map.get(config, :endpoint_prefix) do");
+            writer.write("case Map.get($L, :endpoint_prefix) do", configVar);
             writer.indent();
             writer.write("nil -> \"\"");
-            writer.write("_ -> RuntimeHelpers.resolve_base_url(config)");
+            writer.write("_ -> RuntimeHelpers.resolve_base_url($L)", configVar);
             writer.dedent();
             writer.write("end");
             writer.dedent();

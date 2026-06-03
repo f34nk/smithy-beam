@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamSigV4Metadata;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
@@ -16,6 +17,9 @@ public final class ErlangHttpDispatchEmitter {
                 service.getId().getNamespace(), service);
         String httpModule = layout.runtimeHttpModuleName();
         String helpersMod = layout.runtimeHelpersModuleName();
+        boolean sigv4 = BeamSigV4Metadata.from(service).isPresent();
+        String credentialsMod = layout.credentialsModuleName();
+        String configVar = sigv4 ? "Config1" : "Config";
 
         ctx.writerDelegator().useFileWriter(layout.runtimeHttpModuleFile(), writer -> {
             writer.write("%% Generated HTTP dispatcher for $L.", service.getId());
@@ -38,14 +42,29 @@ public final class ErlangHttpDispatchEmitter {
             writer.write("        method = Method, path = Path,");
             writer.write("        query = Query, headers = Headers, body = Body, host = Host}) ->");
             writer.indent();
-            writer.write("BaseUrl = case maps:get(base_url, Config, undefined) of");
+            if (sigv4) {
+                writer.write("Config1 = case maps:get(credentials, Config, undefined) of");
+                writer.indent();
+                writer.write("undefined ->");
+                writer.indent();
+                writer.write("case $L:resolve(Config) of", credentialsMod);
+                writer.indent();
+                writer.write("{ok, Creds} -> Config#{credentials => Creds};");
+                writer.write("_ -> Config");
+                writer.dedent();
+                writer.dedent();
+                writer.write("_ -> Config");
+                writer.dedent();
+                writer.write("end,");
+            }
+            writer.write("BaseUrl = case maps:get(base_url, $L, undefined) of", configVar);
             writer.indent();
             writer.write("undefined ->");
             writer.indent();
-            writer.write("case maps:get(endpoint_prefix, Config, undefined) of");
+            writer.write("case maps:get(endpoint_prefix, $L, undefined) of", configVar);
             writer.indent();
             writer.write("undefined -> <<>>;");
-            writer.write("_ -> $L:resolve_base_url(Config)", helpersMod);
+            writer.write("_ -> $L:resolve_base_url($L)", helpersMod, configVar);
             writer.dedent();
             writer.write("end;");
             writer.dedent();
