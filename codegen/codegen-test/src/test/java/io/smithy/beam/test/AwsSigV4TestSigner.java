@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 /**
  * SigV4 signing helper for golden-vector tests. Mirrors inputs the generated
- * aws_sigv4 signing hook receives from client operation stubs.
+ * SigV4 signing hook receives from client operation stubs.
  */
 final class AwsSigV4TestSigner {
 

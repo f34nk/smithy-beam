@@ -49,8 +49,9 @@ class SigV4SigningTest {
         String sigv4 = manifest.expectFileString("sigv4test_service_sigv4.erl");
 
         assertThat(sigv4).contains("-module(sigv4test_service_sigv4).");
-        assertThat(sigv4).contains("-export([sign/3, endpoint_host_from_config/1]).");
-        assertThat(sigv4).contains("aws_sigv4:sign(Request, Credentials, Region, Service, Opts).");
+        assertThat(sigv4).contains("-export([sign/3, presign/5, endpoint_host_from_config/1]).");
+        assertThat(sigv4).contains("sign_request(Request, Credentials, Region, Service, Opts).");
+        assertThat(sigv4).contains("aws_signature:sign_v4(");
         assertThat(sigv4).contains("endpoint_host_from_config(Config)");
         assertThat(sigv4).contains("end;");
         assertThat(sigv4).contains("BaseUrl ->");
@@ -59,7 +60,7 @@ class SigV4SigningTest {
         String presigner = manifest.expectFileString("sigv4test_service_presigner.erl");
         assertThat(presigner).contains("-module(sigv4test_service_presigner).");
         assertThat(presigner).contains("endpoint_host => sigv4test_service_sigv4:endpoint_host_from_config(Config)");
-        assertThat(presigner).contains("aws_sigv4:presign(Request, Credentials, Region, Service, Opts).");
+        assertThat(presigner).contains("sigv4test_service_sigv4:presign(Request, Credentials, Region, Service, Opts).");
 
         String client = manifest.expectFileString("sigv4test_service_client.erl");
         assertThat(client).contains("sigv4test_service_sigv4:sign(Config, ping, Req)");
@@ -71,14 +72,15 @@ class SigV4SigningTest {
         String sigv4 = manifest.expectFileString("sigv4test_service_sigv4.ex");
 
         assertThat(sigv4).contains("defmodule Sigv4testServiceSigv4 do");
-        assertThat(sigv4).contains("AwsSigv4.sign(request, credentials, region, service, opts)");
+        assertThat(sigv4).contains("defp sign_request(%HttpRequest{} = request, credentials, region, service, opts) do");
+        assertThat(sigv4).contains(":aws_signature.sign_v4(");
         assertThat(sigv4).contains("endpoint_host: endpoint_host_from_config(config)");
         assertThat(sigv4).contains("def endpoint_host_from_config(config)");
 
         String presigner = manifest.expectFileString("sigv4test_service_presigner.ex");
         assertThat(presigner).contains("alias Sigv4testServiceSigv4, as: ServiceSigv4");
         assertThat(presigner).contains("endpoint_host: ServiceSigv4.endpoint_host_from_config(config)");
-        assertThat(presigner).contains("AwsSigv4.presign(request, credentials, region, service, opts)");
+        assertThat(presigner).contains("ServiceSigv4.presign(request, credentials, region, service, opts)");
 
         String client = manifest.expectFileString("sigv4test_service_client.ex");
         assertThat(client).contains("Sigv4testServiceSigv4.sign(config, :ping, req)");
