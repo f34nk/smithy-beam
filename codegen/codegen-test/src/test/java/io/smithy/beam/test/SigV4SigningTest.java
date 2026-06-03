@@ -70,7 +70,9 @@ class SigV4SigningTest {
         String sigv4 = manifest.expectFileString("sigv4test_service_sigv4.ex");
 
         assertThat(sigv4).contains("defmodule Sigv4testServiceSigv4 do");
-        assertThat(sigv4).contains("AwsSignature.sign(request, credentials, region, service, %{unsigned_payload: unsigned})");
+        assertThat(sigv4).contains("AwsSignature.sign(request, credentials, region, service, opts)");
+        assertThat(sigv4).contains("endpoint_host: endpoint_host_from_config(config)");
+        assertThat(sigv4).contains("defp endpoint_host_from_config(config)");
 
         String presigner = manifest.expectFileString("sigv4test_service_presigner.ex");
         assertThat(presigner).contains("AwsSignature.presign(request, credentials, region, service, opts)");
