@@ -46,6 +46,7 @@ public final class ElixirRetryEmitter {
             writer.write("base_delay_ms = Keyword.get(opts, :base_delay_ms, 100)");
             writer.write("with_retry(fun, max_attempts, base_delay_ms, 1)");
             writer.dedent();
+            writer.write("end");
             writer.write("");
             writer.write("defp with_retry(fun, 0, _base, _n), do: fun.()");
             writer.write("defp with_retry(fun, attempts, base, n) do");
@@ -72,6 +73,7 @@ public final class ElixirRetryEmitter {
             writer.dedent();
             writer.write("end");
             writer.dedent();
+            writer.write("end");
             writer.write("");
             for (StructureShape error : retryableErrors) {
                 String exceptionMod = sp.toSymbol(error).getName();
