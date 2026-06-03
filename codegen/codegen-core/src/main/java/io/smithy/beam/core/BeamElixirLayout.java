@@ -138,6 +138,14 @@ public final class BeamElixirLayout {
         return serviceSnakeName() + "_credentials";
     }
 
+    public String endpointsModuleFile() {
+        return endpointsModuleName() + ".ex";
+    }
+
+    public String endpointsModuleName() {
+        return serviceSnakeName() + "_endpoints";
+    }
+
     public String resourceClientModuleFile(String resourceSnakeName) {
         return resourceClientModuleName(resourceSnakeName) + ".ex";
     }
