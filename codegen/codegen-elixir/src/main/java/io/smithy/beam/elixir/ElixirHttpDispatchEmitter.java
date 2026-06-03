@@ -36,7 +36,7 @@ public final class ElixirHttpDispatchEmitter {
             writer.write("        {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}");
             writer.write("def dispatch(config, req) do");
             writer.indent();
-            writer.write("http_client = Map.get(config, :http_client, ReqClient)");
+            writer.write("http_client = Map.get(config, :http_client, __MODULE__.ReqClient)");
             writer.write("dispatch(http_client, config, req)");
             writer.dedent();
             writer.write("end");
@@ -65,6 +65,7 @@ public final class ElixirHttpDispatchEmitter {
                 writer.write("{:ok, creds} -> Map.put(config, :credentials, creds)");
                 writer.write("_ -> config");
                 writer.dedent();
+                writer.write("end");
                 writer.dedent();
                 writer.write("_ -> config");
                 writer.dedent();
@@ -108,7 +109,6 @@ public final class ElixirHttpDispatchEmitter {
             writer.write("host -> host");
             writer.dedent();
             writer.write("end");
-            writer.dedent();
             writer.write("url = scheme <> authority <> req.path");
             writer.write("req_opts = [");
             writer.write("  method: String.downcase(req.method) |> String.to_atom(),");
@@ -172,7 +172,7 @@ public final class ElixirHttpDispatchEmitter {
             writer.write("@spec request(keyword()) :: {:ok, map()} | {:error, term()}");
             writer.write("def request(req_opts) do");
             writer.indent();
-            writer.write("case Req.new(req_opts) |> Req.run() do");
+            writer.write("case Req.request(req_opts) do");
             writer.indent();
             writer.write("{:ok, %Req.Response{status: status, headers: headers, body: body}} ->");
             writer.indent();
