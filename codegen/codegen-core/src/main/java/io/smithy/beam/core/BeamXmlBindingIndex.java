@@ -1,5 +1,6 @@
 package io.smithy.beam.core;
 
+import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ListShape;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.Shape;
@@ -64,6 +65,18 @@ public final class BeamXmlBindingIndex {
             return memberElementName(listShape.getMember());
         }
         return LIST_MEMBER_ELEMENT;
+    }
+
+    /**
+     * Resolves list item element names when {@code @xmlFlattened} is applied to the
+     * container structure member (Smithy selector), not the list shape itself.
+     */
+    public static String listItemElementName(MemberShape containerMember, ListShape listShape, Model model) {
+        if (containerMember != null && containerMember.hasTrait(XmlFlattenedTrait.class)) {
+            Shape itemShape = model.expectShape(listShape.getMember().getTarget());
+            return shapeElementName(itemShape);
+        }
+        return listItemElementName(listShape);
     }
 
     private static String capitalizeFirst(String name) {
