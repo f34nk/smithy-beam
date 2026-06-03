@@ -645,7 +645,7 @@ public final class ErlangAwsQueryEmitter {
         writer.write("    xml_child_text(Error, <<\"$L\">>)", BeamXmlDecoder.ERROR_MESSAGE_ELEMENT);
         writer.write("}}");
         writer.dedent();
-        writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.write("end");
         writer.dedent();
@@ -686,9 +686,9 @@ public final class ErlangAwsQueryEmitter {
         writer.write("    xml_child_text(Error, <<\"$L\">>)", BeamXmlDecoder.ERROR_MESSAGE_ELEMENT);
         writer.write("}}");
         writer.dedent();
+        writer.write("end");
         writer.dedent();
-        writer.dedent();
-        writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.write("end");
         writer.dedent();
