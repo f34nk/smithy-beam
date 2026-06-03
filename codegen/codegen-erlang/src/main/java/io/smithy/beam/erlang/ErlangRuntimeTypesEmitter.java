@@ -16,6 +16,7 @@ public final class ErlangRuntimeTypesEmitter {
         endpointRuleSetMap.ifPresent(map -> {
             writer.write("");
             writer.write("%% @endpointRuleSet embedded at codegen time.");
+            writer.write("-type endpoint_rule_set() :: map().");
             writer.write("-define(ENDPOINT_RULE_SET, $L).", map);
         });
     }

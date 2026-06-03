@@ -21,6 +21,7 @@ public final class ElixirRuntimeTypesEmitter {
         }
         endpointRuleSetMap.ifPresent(map -> {
             writer.write("");
+            writer.write("@type endpoint_rule_set :: map()");
             writer.write("Module.register_attribute(__MODULE__, :endpoint_rule_set, persist: true)");
             writer.write("@endpoint_rule_set $L", map);
         });
