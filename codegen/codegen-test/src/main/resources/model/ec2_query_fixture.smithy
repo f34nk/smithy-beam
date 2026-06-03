@@ -4,6 +4,7 @@ namespace smithy.beam.test.ec2query
 use aws.protocols#ec2Query
 use aws.protocols#ec2QueryName
 use aws.api#service
+use smithy.api#http
 use smithy.api#xmlNamespace
 
 @ec2Query
@@ -14,6 +15,7 @@ service Ec2QueryService {
     operations: [DescribeInstances]
 }
 
+@http(method: "POST", uri: "/")
 operation DescribeInstances {
     input: DescribeInstancesInput
     output: DescribeInstancesOutput

@@ -3,7 +3,9 @@ package io.smithy.beam.test;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.elixir.ElixirClientPlugin;
+import io.smithy.beam.elixir.ElixirServerPlugin;
 import io.smithy.beam.erlang.ErlangClientPlugin;
+import io.smithy.beam.erlang.ErlangServerPlugin;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.build.PluginContext;
@@ -60,6 +62,34 @@ class AwsQueryCodecTest {
         return manifest;
     }
 
+    private static MockManifest runErlangServer(Model model) {
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", SERVICE)
+                .withMember("edition", "2026")
+                .build();
+        new ErlangServerPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+        return manifest;
+    }
+
+    private static MockManifest runElixirServer(Model model) {
+        MockManifest manifest = new MockManifest();
+        ObjectNode settings = ObjectNode.builder()
+                .withMember("service", SERVICE)
+                .withMember("edition", "2026")
+                .build();
+        new ElixirServerPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+        return manifest;
+    }
+
     @Test
     void fixtureModelResolvesAwsQueryProtocol() {
         Model model = loadModel();
@@ -97,6 +127,26 @@ class AwsQueryCodecTest {
         assertThat(codec).contains("application/x-www-form-urlencoded");
         assertThat(codec).contains("unwrap_query_result(");
         assertThat(codec).contains("\"ListUsersResult\"");
+    }
+
+    @Test
+    void erlangServerCodecEmitsDecodeAndEncodeFunctions() {
+        MockManifest manifest = runErlangServer(loadModel());
+        String codec = manifest.expectFileString(findAwsQueryErlangCodec(manifest));
+        assertThat(codec).contains("decode_list_users_request(");
+        assertThat(codec).contains("encode_list_users_response(");
+        assertThat(codec).contains("parse_query_params(");
+        assertThat(codec).contains("wrap_aws_query_response(");
+    }
+
+    @Test
+    void elixirServerCodecEmitsDecodeAndEncodeFunctions() {
+        MockManifest manifest = runElixirServer(loadModel());
+        String codec = manifest.expectFileString(findAwsQueryElixirCodec(manifest));
+        assertThat(codec).contains("def decode_list_users_request(");
+        assertThat(codec).contains("def encode_list_users_response(");
+        assertThat(codec).contains("parse_query_params(");
+        assertThat(codec).contains("wrap_aws_query_response(");
     }
 
     private static String findAwsQueryErlangCodec(MockManifest manifest) {

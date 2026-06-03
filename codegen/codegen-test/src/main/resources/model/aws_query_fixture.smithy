@@ -3,6 +3,7 @@ namespace smithy.beam.test.awsquery
 
 use aws.protocols#awsQuery
 use aws.api#service
+use smithy.api#http
 use smithy.api#xmlNamespace
 
 @awsQuery
@@ -13,6 +14,7 @@ service QueryService {
     operations: [ListUsers]
 }
 
+@http(method: "POST", uri: "/")
 operation ListUsers {
     input: ListUsersInput
     output: ListUsersOutput

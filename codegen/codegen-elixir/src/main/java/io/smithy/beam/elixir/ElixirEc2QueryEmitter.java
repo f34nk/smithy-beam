@@ -13,4 +13,8 @@ public final class ElixirEc2QueryEmitter {
     static void emitCodecModule(ElixirContext ctx, ServiceShape service) {
         ElixirAwsQueryEmitter.emitCodecModule(ctx, service, BeamEc2QueryProtocolCodegen.EC2_QUERY);
     }
+
+    static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
+        ElixirAwsQueryEmitter.emitServerCodecModule(ctx, service, BeamEc2QueryProtocolCodegen.EC2_QUERY);
+    }
 }
