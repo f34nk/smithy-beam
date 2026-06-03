@@ -480,7 +480,7 @@ public final class ElixirRestXmlEmitter {
         writer.write("");
         writer.write("defp build_xml_element(name, content, xml_ns) do");
         writer.indent();
-        writer.write("{name, xml_namespace_attrs(xml_ns), [{:text, to_string(content)}]}");
+        writer.write("{name, xml_namespace_attrs(xml_ns), [{:text, xml_text(content)}]}");
         writer.dedent();
         writer.write("end");
         writer.write("");
@@ -491,7 +491,7 @@ public final class ElixirRestXmlEmitter {
         writer.dedent();
         writer.write("end");
         writer.write("");
-        writer.write("defp build_xml_child(name, value), do: {name, [], [{:text, to_string(value)}]}");
+        writer.write("defp build_xml_child(name, value), do: {name, [], [{:text, xml_text(value)}]}");
         writer.write("");
         writer.write("defp xml_namespace_attrs(%{uri: uri}), do: [xmlns: uri]");
         writer.write("defp xml_namespace_attrs(_), do: []");
@@ -501,10 +501,18 @@ public final class ElixirRestXmlEmitter {
         writer.write("try do");
         writer.indent();
         writer.write("{xml, _} = :xmerl_scan.string(String.to_charlist(body))");
+        writer.write("cond do");
+        writer.indent();
+        writer.write("xml_element_named(xml, root_name) -> {:ok, xml}");
+        writer.write("true ->");
+        writer.indent();
         writer.write("case find_element(root_name, element_content(xml)) do");
         writer.indent();
         writer.write("nil -> {:error, {:missing_root, root_name}}");
         writer.write("root -> {:ok, root}");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
         writer.dedent();
         writer.write("end");
         writer.dedent();
@@ -527,31 +535,151 @@ public final class ElixirRestXmlEmitter {
         writer.dedent();
         writer.write("end");
         writer.write("");
-        writer.write("defp element_content({_, _, content, _, _, _}), do: content");
+        writer.write("defp xml_element_named(element, name), do: is_element(element) and element_name(element) == name");
+        writer.write("");
+        writer.write("defp element_content({:xmlElement, _, _, _, _, _, _, _, content, _, _, _}), do: content");
+        writer.write("defp element_content({_, _, content, _, _, _}) when is_list(content), do: content");
         writer.write("defp element_content([h | _]), do: element_content(h)");
         writer.write("defp element_content(_), do: []");
         writer.write("");
         writer.write("defp find_element(name, content) do");
         writer.indent();
-        writer.write("Enum.find_value(content, fn");
+        writer.write("Enum.find_value(content, fn item ->");
         writer.indent();
-        writer.write("item when is_tuple(item) ->");
-        writer.indent();
-        writer.write("if element_name(item) == name, do: item");
-        writer.dedent();
-        writer.write("_ -> nil");
+        writer.write("if is_element(item) and element_name(item) == name, do: item");
         writer.dedent();
         writer.write("end)");
         writer.dedent();
         writer.write("end");
         writer.write("");
+        writer.write("defp is_element({:xmlElement, _, _, _, _, _, _, _, _, _, _, _}), do: true");
+        writer.write("defp is_element({_, _, content, _, _, _}) when is_list(content), do: true");
+        writer.write("defp is_element(_), do: false");
+        writer.write("");
+        writer.write("defp element_name({:xmlElement, name, _, _, _, _, _, _, _, _, _, _}) when is_atom(name),");
+        writer.indent();
+        writer.write("do: Atom.to_string(name)");
+        writer.dedent();
+        writer.write("defp element_name({:xmlElement, name, _, _, _, _, _, _, _, _, _, _}) when is_list(name),");
+        writer.indent();
+        writer.write("do: List.to_string(name)");
+        writer.dedent();
+        writer.write("defp element_name({:xmlElement, name, _, _, _, _, _, _, _, _, _, _}) when is_binary(name),");
+        writer.indent();
+        writer.write("do: name");
+        writer.dedent();
         writer.write("defp element_name({name, _, _, _, _, _}) when is_atom(name), do: Atom.to_string(name)");
         writer.write("defp element_name({name, _, _, _, _, _}) when is_list(name), do: List.to_string(name)");
         writer.write("defp element_name({name, _, _, _, _, _}) when is_binary(name), do: name");
         writer.write("");
-        writer.write("defp to_string(v) when is_binary(v), do: v");
-        writer.write("defp to_string(v) when is_atom(v), do: Atom.to_string(v)");
-        writer.write("defp to_string(v), do: inspect(v)");
+        writer.write("defp xml_child_text(parent, name) do");
+        writer.indent();
+        writer.write("case find_element(name, element_content(parent)) do");
+        writer.indent();
+        writer.write("nil -> nil");
+        writer.write("element ->");
+        writer.indent();
+        writer.write("case element_text(element) do");
+        writer.indent();
+        writer.write("[] -> nil");
+        writer.write("[text | _] -> List.to_string(text)");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+        writer.write("defp element_text({:xmlElement, _, _, _, _, _, _, _, content, _, _, _}) do");
+        writer.indent();
+        writer.write("Enum.flat_map(content, &collect_text/1)");
+        writer.dedent();
+        writer.write("end");
+        writer.write("defp element_text(_), do: []");
+        writer.write("");
+        writer.write("defp collect_text({:xmlText, _, _, _, text, _}), do: [text]");
+        writer.write("defp collect_text(text) when is_list(text), do: [text]");
+        writer.write("defp collect_text(_), do: []");
+        writer.write("");
+        writer.write("defp is_element_string({:xmlElement, _, _, _, _, _, _, _, _, _, _, _}), do: true");
+        writer.write("defp is_element_string(_), do: false");
+        writer.write("");
+        writer.write("defp xml_child_list(parent, nil, item_name) do");
+        writer.indent();
+        writer.write("parent");
+        writer.write("|> element_content()");
+        writer.write("|> Enum.filter(fn item -> is_element(item) and element_name(item) == item_name end)");
+        writer.write("|> Enum.map(fn item ->");
+        writer.indent();
+        writer.write("case element_text(item) do");
+        writer.indent();
+        writer.write("[] -> nil");
+        writer.write("[text | _] -> List.to_string(text)");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end)");
+        writer.write("|> Enum.reject(&is_nil/1)");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+        writer.write("defp xml_child_list(parent, list_name, item_name) do");
+        writer.indent();
+        writer.write("case find_element(list_name, element_content(parent)) do");
+        writer.indent();
+        writer.write("nil -> nil");
+        writer.write("list_element ->");
+        writer.indent();
+        writer.write("list_element");
+        writer.write("|> element_content()");
+        writer.write("|> Enum.filter(fn item -> is_element(item) and element_name(item) == item_name end)");
+        writer.write("|> Enum.map(fn item ->");
+        writer.indent();
+        writer.write("case element_text(item) do");
+        writer.indent();
+        writer.write("[] -> nil");
+        writer.write("[text | _] -> List.to_string(text)");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end)");
+        writer.write("|> Enum.reject(&is_nil/1)");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+        writer.write("defp xml_child_struct_list(parent, nil, item_name, decode_fun) do");
+        writer.indent();
+        writer.write("parent");
+        writer.write("|> element_content()");
+        writer.write("|> Enum.filter(fn item -> is_element(item) and element_name(item) == item_name end)");
+        writer.write("|> Enum.map(decode_fun)");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+        writer.write("defp xml_child_struct_list(parent, list_name, item_name, decode_fun) do");
+        writer.indent();
+        writer.write("case find_element(list_name, element_content(parent)) do");
+        writer.indent();
+        writer.write("nil -> nil");
+        writer.write("list_element ->");
+        writer.indent();
+        writer.write("list_element");
+        writer.write("|> element_content()");
+        writer.write("|> Enum.filter(fn item -> is_element(item) and element_name(item) == item_name end)");
+        writer.write("|> Enum.map(decode_fun)");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+        writer.write("defp xml_text(v) when is_binary(v), do: v");
+        writer.write("defp xml_text(v) when is_atom(v), do: Atom.to_string(v)");
+        writer.write("defp xml_text(v), do: inspect(v)");
         writer.write("");
         if (checksumBindings) {
             ElixirHttpChecksumEmitter.emitChecksumHelpers(writer);
@@ -584,15 +712,31 @@ public final class ElixirRestXmlEmitter {
             String field = fieldName(sp, member);
             Shape target = model.expectShape(member.getTarget());
             if (target instanceof ListShape listShape) {
-                String element = BeamXmlBindingIndex.memberElementName(member);
-                String itemElement = BeamXmlBindingIndex.listItemElementName(member, listShape, model);
-                fields.add(field + ": xml_child_list(" + xmlVar + ", \"" + element + "\", \"" + itemElement + "\")");
+                fields.add(field + ": " + decodeListFieldFromXml(model, member, listShape, xmlVar, sp));
             } else {
                 fields.add(field + ": xml_child_text(" + xmlVar + ", \""
                         + BeamXmlBindingIndex.memberElementName(member) + "\")");
             }
         }
         return "%Types." + structName(sp, structure) + "{" + String.join(", ", fields) + "}";
+    }
+
+    private static String decodeListFieldFromXml(
+            Model model,
+            MemberShape member,
+            ListShape listShape,
+            String xmlVar,
+            SymbolProvider sp) {
+        String element = BeamXmlBindingIndex.memberElementName(member);
+        String itemElement = BeamXmlBindingIndex.listItemElementName(member, listShape, model);
+        String listNameArg = element == null ? "nil" : "\"" + element + "\"";
+        Shape listMember = model.expectShape(listShape.getMember().getTarget());
+        if (listMember instanceof StructureShape nested) {
+            String itemStruct = decodeStructure(model, nested, "item", sp);
+            return "xml_child_struct_list(" + xmlVar + ", " + listNameArg + ", \""
+                    + itemElement + "\", fn item -> " + itemStruct + " end)";
+        }
+        return "xml_child_list(" + xmlVar + ", " + listNameArg + ", \"" + itemElement + "\")";
     }
 
     private static String decodeOutputStruct(
