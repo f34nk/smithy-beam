@@ -42,7 +42,7 @@ public final class ErlangPresignerEmitter {
             writer.write("    unsigned_payload => Unsigned,");
             writer.write("    endpoint_host => $L:endpoint_host_from_config(Config)", sigv4Module);
             writer.write("},");
-            writer.write("aws_sigv4:presign(Request, Credentials, Region, Service, Opts).");
+            writer.write("$L:presign(Request, Credentials, Region, Service, Opts).", sigv4Module);
             writer.dedent();
         });
     }

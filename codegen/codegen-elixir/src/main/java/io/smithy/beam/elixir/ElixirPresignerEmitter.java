@@ -43,7 +43,7 @@ public final class ElixirPresignerEmitter {
             writer.write("  unsigned_payload: unsigned,");
             writer.write("  endpoint_host: ServiceSigv4.endpoint_host_from_config(config)");
             writer.write("}");
-            writer.write("AwsSigv4.presign(request, credentials, region, service, opts)");
+            writer.write("ServiceSigv4.presign(request, credentials, region, service, opts)");
             writer.dedent();
             writer.write("end");
             writer.dedent();

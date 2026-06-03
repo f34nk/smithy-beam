@@ -24,7 +24,7 @@ public final class BeamSymbolRuntimeDeps {
 
     public static Symbol.Builder applyService(Model model, ServiceShape service, Symbol.Builder builder) {
         if (service.hasTrait(SigV4Trait.class)) {
-            builder.addDependency(BeamRuntimeDependency.AWS_SIGV4);
+            builder.addDependency(BeamRuntimeDependency.AWS_SIGNATURE);
         }
         if (BeamEndpointRuleSetEmitter.hasRuleSet(model, service)) {
             builder.addDependency(BeamRuntimeDependency.AWS_ENDPOINT_RULES);
@@ -34,7 +34,7 @@ public final class BeamSymbolRuntimeDeps {
 
     public static Symbol.Builder applyService(ServiceShape service, Symbol.Builder builder) {
         if (service.hasTrait(SigV4Trait.class)) {
-            builder.addDependency(BeamRuntimeDependency.AWS_SIGV4);
+            builder.addDependency(BeamRuntimeDependency.AWS_SIGNATURE);
         }
         return builder;
     }
