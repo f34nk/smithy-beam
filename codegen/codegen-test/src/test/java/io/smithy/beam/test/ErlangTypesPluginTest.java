@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ErlangTypesPluginTest {
 
-    private static final String TYPES_FILE = "basic_types.hrl";
+    private static final String TYPES_FILE = "basic_service_types.hrl";
 
     private static Model loadModel() {
         URL resource = ErlangTypesPluginTest.class.getResource("/model/basic.smithy");
@@ -41,7 +41,7 @@ class ErlangTypesPluginTest {
     }
 
     @Test
-    void generatesExpectedTypesInBasicTypesHeader() {
+    void generatesExpectedTypesInBasicServiceTypesHeader() {
         Model model = loadModel();
         MockManifest manifest = new MockManifest();
 
@@ -50,7 +50,7 @@ class ErlangTypesPluginTest {
         String content = manifest.expectFileString(TYPES_FILE);
 
         assertThat(content)
-                .contains("%% Record and type definitions for the basic model.")
+                .contains("%% Record and type definitions for the basic_service_types model.")
                 .contains("-type basic_string() :: binary().")
                 .contains("-type basic_integer() :: integer().")
                 .contains("-type basic_long() :: integer().")
@@ -112,7 +112,7 @@ class ErlangTypesPluginTest {
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        assertThat(manifest.expectFileString("reserved_types.hrl")).contains("-type");
+        assertThat(manifest.expectFileString("reserved_service_types.hrl")).contains("-type");
         assertThat(manifest.getFileString("reserved_service_rest_json_1.erl")).isEmpty();
         assertThat(manifest.getFileString("reserved_service_router.erl")).isEmpty();
         assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
@@ -122,7 +122,7 @@ class ErlangTypesPluginTest {
     void reservedWordsEscapeAndDeconflictInErlangOutput() {
         MockManifest manifest = new MockManifest();
         new ErlangTypesPlugin().execute(buildReservedWordsContext(manifest));
-        String content = manifest.expectFileString("reserved_types.hrl");
+        String content = manifest.expectFileString("reserved_service_types.hrl");
         assertThat(content)
                 .contains("after_")
                 .contains("begin_")
@@ -156,7 +156,7 @@ class ErlangTypesPluginTest {
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("error_shapes_types.hrl");
+        String content = manifest.expectFileString("error_shape_service_types.hrl");
 
         assertThat(content)
                 .contains(
@@ -178,7 +178,7 @@ class ErlangTypesPluginTest {
                             .settings(settings)
                             .build();
             new ErlangTypesPlugin().execute(context);
-            assertThat(manifest.expectFileString("basic_types.hrl")).contains("-type basic_string()");
+            assertThat(manifest.expectFileString("basic_service_types.hrl")).contains("-type basic_string()");
     }
 
     @Test
@@ -254,8 +254,8 @@ class ErlangTypesPluginTest {
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, extended, extendedSettings));
 
-        assertThat(extended.expectFileString("multi_types.hrl"))
-                .isEqualTo(baseline.expectFileString("multi_types.hrl"));
+        assertThat(extended.expectFileString("service_a_types.hrl"))
+                .isEqualTo(baseline.expectFileString("service_a_types.hrl"));
     }
 
     private static Model loadRelativeDeprecationModel() {
@@ -348,7 +348,7 @@ class ErlangTypesPluginTest {
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("recursive_tree_types.hrl");
+        String content = manifest.expectFileString("recursive_tree_service_types.hrl");
 
         assertThat(content)
                 .contains("-type rt_string() :: binary().")
@@ -380,7 +380,7 @@ class ErlangTypesPluginTest {
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("sparse_collections_types.hrl");
+        String content = manifest.expectFileString("sparse_collections_service_types.hrl");
 
         assertThat(content)
                 .contains("-type sc_sparse_list() :: [sc_string() | undefined].")
@@ -397,7 +397,7 @@ class ErlangTypesPluginTest {
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("nullable_members_types.hrl");
+        String content = manifest.expectFileString("nullable_members_service_types.hrl");
 
         assertThat(content)
                 .contains("-type nm_list() :: [nm_string()].")
@@ -418,7 +418,7 @@ class ErlangTypesPluginTest {
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("streaming_blob_types.hrl");
+        String content = manifest.expectFileString("streaming_blob_service_types.hrl");
 
         assertThat(content)
                 .contains(
@@ -438,7 +438,7 @@ class ErlangTypesPluginTest {
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("dedicated_io_types.hrl");
+        String content = manifest.expectFileString("dedicated_io_service_types.hrl");
 
         assertThat(content)
                 .contains("-record(health_check_input, {}).")
@@ -461,7 +461,7 @@ class ErlangTypesPluginTest {
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("member_order_types.hrl");
+        String content = manifest.expectFileString("member_order_service_types.hrl");
         int zebra = content.indexOf("zebra ::");
         int alpha = content.indexOf("alpha ::");
         int mike = content.indexOf("mike ::");
@@ -482,7 +482,7 @@ class ErlangTypesPluginTest {
                 .withMember("edition", "2026")
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
-        assertThat(baseline.expectFileString("relative_deprecation_types.hrl"))
+        assertThat(baseline.expectFileString("relative_deprecation_service_types.hrl"))
                 .contains("-type legacy_string() :: binary().");
 
         MockManifest filtered = new MockManifest();
@@ -492,7 +492,7 @@ class ErlangTypesPluginTest {
                 .withMember("relativeDate", "2026-01-01")
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, filtered, filteredSettings));
-        assertThat(filtered.expectFileString("relative_deprecation_types.hrl"))
+        assertThat(filtered.expectFileString("relative_deprecation_service_types.hrl"))
                 .doesNotContain("-type legacy_string() :: binary().");
     }
 
@@ -512,7 +512,7 @@ class ErlangTypesPluginTest {
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("documented_types_types.hrl");
+        String content = manifest.expectFileString("documented_types_service_types.hrl");
 
         assertThat(content).contains("%% @doc");
         assertThat(content).contains("A documented structure with member docs.");
@@ -532,7 +532,7 @@ class ErlangTypesPluginTest {
                 .withMember("edition", "2026")
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
-        assertThat(baseline.expectFileString("relative_deprecation_types.hrl"))
+        assertThat(baseline.expectFileString("relative_deprecation_service_types.hrl"))
                 .contains("-type legacy_version_string() :: binary().");
 
         MockManifest filtered = new MockManifest();
@@ -542,7 +542,7 @@ class ErlangTypesPluginTest {
                 .withMember("relativeVersion", "1.0.0")
                 .build();
         new ErlangTypesPlugin().execute(pluginContext(model, filtered, filteredSettings));
-        assertThat(filtered.expectFileString("relative_deprecation_types.hrl"))
+        assertThat(filtered.expectFileString("relative_deprecation_service_types.hrl"))
                 .doesNotContain("-type legacy_version_string() :: binary().");
     }
 }
