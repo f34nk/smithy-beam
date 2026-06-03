@@ -5,6 +5,7 @@ import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamRequestCompressionIndex;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -66,6 +67,7 @@ public final class ErlangRestJson1Emitter {
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
         boolean encodeWithConfig = serviceHasHostLabelOperations(model, service);
         boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
+        boolean compressionBindings = serviceHasCompressionOperations(model, service);
         List<String> exports = new ArrayList<>();
         for (OperationShape op : operations) {
             String name = sp.toSymbol(op).getName();
@@ -96,7 +98,7 @@ public final class ErlangRestJson1Emitter {
 
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
-            emitHelpers(writer, checksumBindings);
+            emitHelpers(writer, checksumBindings, compressionBindings);
             if (encodeWithConfig) {
                 emitBuildHostHelpers(writer, model, service, sp);
             }
@@ -148,7 +150,7 @@ public final class ErlangRestJson1Emitter {
             }
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
-            emitHelpers(writer, checksumBindings);
+            emitHelpers(writer, checksumBindings, false);
         });
     }
 
@@ -291,6 +293,7 @@ public final class ErlangRestJson1Emitter {
         boolean streamingRequestPayload = hasStreamingRequestPayload(model, reqPayload, method);
         emitRequestBody(writer, model, httpIndex, reqPayload, docMembers, method, sp);
         ErlangHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp);
+        emitRequestCompression(writer, op);
         if (streamingRequestPayload) {
             HttpBinding payload = reqPayload.get(0);
             String fieldName = BeamNameUtils.toSnakeCase(payload.getMember().getMemberName());
@@ -1031,13 +1034,50 @@ public final class ErlangRestJson1Emitter {
     static void emitSharedCodecHelpers(
             ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
         boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
+        boolean compressionBindings = serviceHasCompressionOperations(model, service);
         emitEnumHelpers(writer, model, service, sp);
         emitUnionHelpers(writer, model, service, sp);
-        emitHelpers(writer, checksumBindings);
+        emitHelpers(writer, checksumBindings, compressionBindings);
+    }
+
+    private static boolean serviceHasCompressionOperations(Model model, ServiceShape service) {
+        for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
+            if (supportsGzipCompression(op)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean supportsGzipCompression(OperationShape op) {
+        return BeamRequestCompressionIndex.forOperation(op)
+                .map(trait -> trait.getEncodings().stream()
+                        .anyMatch(encoding -> encoding.equalsIgnoreCase("gzip")))
+                .orElse(false);
+    }
+
+    private static void emitRequestCompression(ErlangWriter writer, OperationShape op) {
+        if (!supportsGzipCompression(op)) {
+            return;
+        }
+        writer.write("Headers1 = Headers,");
+        writer.write("{Body, Headers} = case byte_size(Body) >= 10240 of");
+        writer.indent();
+        writer.write("true ->");
+        writer.indent();
+        writer.write("Compressed = zlib:gzip(Body),");
+        writer.write("{Compressed, headers_set(<<\"Content-Encoding\">>, <<\"gzip\">>, Headers1)};");
+        writer.dedent();
+        writer.write("false ->");
+        writer.indent();
+        writer.write("{Body, Headers1}");
+        writer.dedent();
+        writer.write("end,");
     }
 
     /** Emits private helper functions used across all codecs. */
-    private static void emitHelpers(ErlangWriter writer, boolean checksumBindings) {
+    private static void emitHelpers(
+            ErlangWriter writer, boolean checksumBindings, boolean compressionBindings) {
         writer.write("%% -- Private helpers --");
         writer.write("");
         writer.write("to_binary(V) when is_binary(V) -> V;");
@@ -1177,6 +1217,10 @@ public final class ErlangRestJson1Emitter {
         writer.write("");
         if (checksumBindings) {
             ErlangHttpChecksumEmitter.emitChecksumHelpers(writer);
+        } else if (compressionBindings) {
+            writer.write("headers_set(Name, Value, Headers) ->");
+            writer.write("    lists:keystore(Name, 1, Headers, {Name, Value}).");
+            writer.write("");
         }
     }
 

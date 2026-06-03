@@ -5,6 +5,7 @@ import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamRequestCompressionIndex;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -61,6 +62,7 @@ public final class ElixirRestJson1Emitter {
         SymbolProvider sp = ctx.symbolProvider();
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
         boolean checksumBindings = ElixirHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
+        boolean compressionBindings = serviceHasCompressionOperations(model, service);
 
         String serverCodecModule =
                 ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName(protocol));
@@ -84,7 +86,7 @@ public final class ElixirRestJson1Emitter {
 
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
-            emitHelpers(writer, checksumBindings);
+            emitHelpers(writer, checksumBindings, false);
 
             writer.dedent();
             writer.write("end");
@@ -105,6 +107,7 @@ public final class ElixirRestJson1Emitter {
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
         boolean encodeWithConfig = serviceHasHostLabelOperations(model, service);
         boolean checksumBindings = ElixirHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
+        boolean compressionBindings = serviceHasCompressionOperations(model, service);
 
         ctx.writerDelegator().useFileWriter(codecFile, writer -> {
             writer.write("defmodule $L do", moduleName);
@@ -127,7 +130,7 @@ public final class ElixirRestJson1Emitter {
 
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
-            emitHelpers(writer, checksumBindings);
+            emitHelpers(writer, checksumBindings, compressionBindings);
             if (encodeWithConfig) {
                 emitBuildHostHelpers(writer, model, service, sp);
             }
@@ -295,6 +298,7 @@ public final class ElixirRestJson1Emitter {
         }
 
         ElixirHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp);
+        emitRequestCompression(writer, op);
 
         if (hasHostLabels) {
             writer.write("host = build_host(input, config)");
@@ -911,12 +915,54 @@ public final class ElixirRestJson1Emitter {
     static void emitSharedCodecHelpers(
             ElixirWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
         boolean checksumBindings = ElixirHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
+        boolean compressionBindings = serviceHasCompressionOperations(model, service);
         emitEnumHelpers(writer, model, service, sp);
         emitUnionHelpers(writer, model, service, sp);
-        emitHelpers(writer, checksumBindings);
+        emitHelpers(writer, checksumBindings, compressionBindings);
     }
 
-    private static void emitHelpers(ElixirWriter writer, boolean checksumBindings) {
+    private static boolean serviceHasCompressionOperations(Model model, ServiceShape service) {
+        for (OperationShape op : ElixirTopDown.containedOperationsSorted(model, service)) {
+            if (supportsGzipCompression(op)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean supportsGzipCompression(OperationShape op) {
+        return BeamRequestCompressionIndex.forOperation(op)
+                .map(trait -> trait.getEncodings().stream()
+                        .anyMatch(encoding -> encoding.equalsIgnoreCase("gzip")))
+                .orElse(false);
+    }
+
+    private static void emitRequestCompression(ElixirWriter writer, OperationShape op) {
+        if (!supportsGzipCompression(op)) {
+            return;
+        }
+        writer.write("headers1 = headers");
+        writer.write("{body, headers} =");
+        writer.indent();
+        writer.write("case :erlang.byte_size(body) >= 10240 do");
+        writer.indent();
+        writer.write("true ->");
+        writer.indent();
+        writer.write("compressed = :zlib.gzip(body)");
+        writer.write("{compressed, headers_set(\"Content-Encoding\", \"gzip\", headers1)}");
+        writer.dedent();
+        writer.write("false ->");
+        writer.indent();
+        writer.write("{body, headers1}");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("");
+    }
+
+    private static void emitHelpers(
+            ElixirWriter writer, boolean checksumBindings, boolean compressionBindings) {
         writer.write("# -- Private helpers --");
         writer.write("");
         writer.write("defp uri_encode(value), do: URI.encode(to_string(value))");
@@ -1004,6 +1050,13 @@ public final class ElixirRestJson1Emitter {
         writer.write("");
         if (checksumBindings) {
             ElixirHttpChecksumEmitter.emitChecksumHelpers(writer);
+        } else if (compressionBindings) {
+            writer.write("defp headers_set(name, value, headers) do");
+            writer.indent();
+            writer.write("List.keystore(name, 0, headers, {name, value})");
+            writer.dedent();
+            writer.write("end");
+            writer.write("");
         }
         emitDecodeJsonBodyHelper(writer);
     }
