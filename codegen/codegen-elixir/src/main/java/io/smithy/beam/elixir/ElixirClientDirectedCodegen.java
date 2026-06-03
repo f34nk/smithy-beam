@@ -201,6 +201,7 @@ final class ElixirClientDirectedCodegen
         }
 
         ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
+        ElixirEndpointRulesEmitter.emit(ctx, service);
         ElixirHttpDispatchEmitter.emit(ctx, service);
         ElixirSigV4Emitter.emit(ctx, service);
         ElixirCredentialProviderEmitter.emit(ctx, service);

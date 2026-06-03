@@ -209,7 +209,7 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
                         .name(module)
                         .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
                         .putProperty("builtIn", false);
-        BeamSymbolRuntimeDeps.applyService(service, builder);
+        BeamSymbolRuntimeDeps.applyService(model, service, builder);
         return builder.build();
     }
 

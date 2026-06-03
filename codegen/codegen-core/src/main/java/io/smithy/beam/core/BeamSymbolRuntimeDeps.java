@@ -2,6 +2,7 @@ package io.smithy.beam.core;
 
 import software.amazon.smithy.aws.traits.auth.SigV4Trait;
 import software.amazon.smithy.codegen.core.Symbol;
+import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 
@@ -21,9 +22,29 @@ public final class BeamSymbolRuntimeDeps {
         return builder;
     }
 
+    public static Symbol.Builder applyService(Model model, ServiceShape service, Symbol.Builder builder) {
+        if (service.hasTrait(SigV4Trait.class)) {
+            builder.addDependency(BeamRuntimeDependency.AWS_SIGV4);
+        }
+        if (BeamEndpointRuleSetEmitter.hasRuleSet(model, service)) {
+            builder.addDependency(BeamRuntimeDependency.AWS_ENDPOINT_RULES);
+        }
+        return builder;
+    }
+
     public static Symbol.Builder applyService(ServiceShape service, Symbol.Builder builder) {
         if (service.hasTrait(SigV4Trait.class)) {
             builder.addDependency(BeamRuntimeDependency.AWS_SIGV4);
+        }
+        return builder;
+    }
+
+    public static Symbol.Builder applyElixirService(Model model, ServiceShape service, Symbol.Builder builder) {
+        if (service.hasTrait(SigV4Trait.class)) {
+            builder.addDependency("hex", "aws_signature", "0.3.2");
+        }
+        if (BeamEndpointRuleSetEmitter.hasRuleSet(model, service)) {
+            builder.addDependency(BeamRuntimeDependency.AWS_ENDPOINT_RULES);
         }
         return builder;
     }

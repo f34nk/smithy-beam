@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamSigV4Metadata;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
@@ -18,6 +19,8 @@ public final class ElixirHttpDispatchEmitter {
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
         String helpersModule = ElixirSymbolProvider.toModuleName(layout.runtimeHelpersModuleName());
         boolean sigv4 = BeamSigV4Metadata.from(service).isPresent();
+        boolean endpointRules = BeamEndpointRuleSetEmitter.hasRuleSet(ctx.model(), service);
+        String endpointsModule = ElixirSymbolProvider.toModuleName(layout.endpointsModuleName());
         String credentialsModule = ElixirSymbolProvider.toModuleName(layout.credentialsModuleName());
         String configVar = sigv4 ? "config1" : "config";
 
@@ -77,7 +80,19 @@ public final class ElixirHttpDispatchEmitter {
             writer.write("case Map.get($L, :endpoint_prefix) do", configVar);
             writer.indent();
             writer.write("nil -> \"\"");
-            writer.write("_ -> RuntimeHelpers.resolve_base_url($L)", configVar);
+            if (endpointRules) {
+                writer.write("_ ->");
+                writer.indent();
+                writer.write("case $L.resolve($L, %{}) do", endpointsModule, configVar);
+                writer.indent();
+                writer.write("{:ok, %{url: url}} -> url");
+                writer.write("_ -> RuntimeHelpers.resolve_base_url($L)", configVar);
+                writer.dedent();
+                writer.write("end");
+                writer.dedent();
+            } else {
+                writer.write("_ -> RuntimeHelpers.resolve_base_url($L)", configVar);
+            }
             writer.dedent();
             writer.write("end");
             writer.dedent();

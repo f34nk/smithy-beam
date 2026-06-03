@@ -219,7 +219,7 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
                         .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
                         .putProperty("builtIn", false)
                         .putProperty("beamKind", kind.name());
-        BeamSymbolRuntimeDeps.applyElixirService(service, builder);
+        BeamSymbolRuntimeDeps.applyElixirService(model, service, builder);
         return builder.build();
     }
 

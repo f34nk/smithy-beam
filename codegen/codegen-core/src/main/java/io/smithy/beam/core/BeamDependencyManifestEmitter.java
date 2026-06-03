@@ -6,6 +6,8 @@ import software.amazon.smithy.codegen.core.SmithyIntegration;
 import software.amazon.smithy.codegen.core.SymbolDependency;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.SymbolWriter;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.codegen.core.directed.CreateContextDirective;
 import software.amazon.smithy.codegen.core.directed.CreateSymbolProviderDirective;
@@ -55,12 +57,22 @@ public final class BeamDependencyManifestEmitter {
     /**
      * Emits dependency metadata collected by the given writer delegator.
      */
-    public static void emit(FileManifest fileManifest, WriterDelegator<?> writerDelegator, BeamSettings settings) {
+    public static void emit(
+            FileManifest fileManifest,
+            WriterDelegator<?> writerDelegator,
+            BeamSettings settings,
+            Model model,
+            ServiceShape service) {
         List<SymbolDependency> dependencies = writerDelegator.getDependencies();
 
         Map<String, SymbolDependency> uniqueByName = new LinkedHashMap<>();
         for (SymbolDependency dependency : dependencies) {
             uniqueByName.putIfAbsent(dependency.getPackageName(), dependency);
+        }
+
+        if (BeamEndpointRuleSetEmitter.hasRuleSet(model, service)) {
+            SymbolDependency endpointRules = BeamRuntimeDependency.AWS_ENDPOINT_RULES.dependency;
+            uniqueByName.putIfAbsent(endpointRules.getPackageName(), endpointRules);
         }
 
         ObjectNode.Builder root = ObjectNode.builder();

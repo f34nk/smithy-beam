@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamSigV4Metadata;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
@@ -18,6 +19,8 @@ public final class ErlangHttpDispatchEmitter {
         String httpModule = layout.runtimeHttpModuleName();
         String helpersMod = layout.runtimeHelpersModuleName();
         boolean sigv4 = BeamSigV4Metadata.from(service).isPresent();
+        boolean endpointRules = BeamEndpointRuleSetEmitter.hasRuleSet(ctx.model(), service);
+        String endpointsMod = layout.endpointsModuleName();
         String credentialsMod = layout.credentialsModuleName();
         String configVar = sigv4 ? "Config1" : "Config";
 
@@ -64,7 +67,19 @@ public final class ErlangHttpDispatchEmitter {
             writer.write("case maps:get(endpoint_prefix, $L, undefined) of", configVar);
             writer.indent();
             writer.write("undefined -> <<>>;");
-            writer.write("_ -> $L:resolve_base_url($L)", helpersMod, configVar);
+            if (endpointRules) {
+                writer.write("_ ->");
+                writer.indent();
+                writer.write("case $L:resolve($L, #{}) of", endpointsMod, configVar);
+                writer.indent();
+                writer.write("{ok, #{url := Url}} -> Url;");
+                writer.write("_ -> $L:resolve_base_url($L)", helpersMod, configVar);
+                writer.dedent();
+                writer.write("end");
+                writer.dedent();
+            } else {
+                writer.write("_ -> $L:resolve_base_url($L)", helpersMod, configVar);
+            }
             writer.dedent();
             writer.write("end;");
             writer.dedent();
