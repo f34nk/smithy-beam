@@ -29,13 +29,14 @@ public final class ElixirSigV4Emitter {
             writer.write("@moduledoc false");
             writer.write("alias $L, as: RuntimeTypes", runtimeMod);
             writer.write("");
-            writer.write("@spec sign(map(), RuntimeTypes.HttpRequest.t()) :: RuntimeTypes.HttpRequest.t()");
-            writer.write("def sign(config, request) do");
+            writer.write("@spec sign(map(), atom(), RuntimeTypes.HttpRequest.t()) :: RuntimeTypes.HttpRequest.t()");
+            writer.write("def sign(config, operation, request) do");
             writer.indent();
             writer.write("credentials = Map.fetch!(config, :credentials)");
             writer.write("region = Map.get(config, :region, \"us-east-1\")");
             writer.write("service = Map.fetch!(config, :signing_name)");
-            writer.write("AwsSignature.sign(request, credentials, region, service)");
+            writer.write("unsigned = Map.get(config, {:unsigned_payload, operation}, false)");
+            writer.write("AwsSignature.sign(request, credentials, region, service, %{unsigned_payload: unsigned})");
             writer.dedent();
             writer.write("end");
             writer.dedent();

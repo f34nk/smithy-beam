@@ -16,6 +16,8 @@ import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.core.BeamSigV4Index;
+import io.smithy.beam.core.BeamSigV4Metadata;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
@@ -38,6 +40,7 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -218,11 +221,26 @@ final class ElixirClientDirectedCodegen
                 writer.write("# AWS service metadata from model:");
                 writer.write("#   sdkId: $L", meta.sdkId());
                 writer.write("#   endpointPrefix: $L", meta.endpointPrefix());
+                BeamSigV4Index sigv4Index = BeamSigV4Index.of(ctx.model(), service);
+                List<OperationShape> unsignedOps =
+                        sigv4Index.operationsWithUnsignedPayload(ctx.model(), service);
                 writer.write("def default_config do");
                 writer.write("  %{");
                 writer.write("    region: \"us-east-1\",");
                 writer.write("    endpoint_prefix: \"$L\",", meta.endpointPrefix());
-                writer.write("    signing_name: \"$L\"", meta.signingName());
+                if (unsignedOps.isEmpty()) {
+                    writer.write("    signing_name: \"$L\"", meta.signingName());
+                } else {
+                    writer.write("    signing_name: \"$L\",", meta.signingName());
+                    for (int i = 0; i < unsignedOps.size(); i++) {
+                        Symbol opSym = directive.symbolProvider().toSymbol(unsignedOps.get(i));
+                        if (i == unsignedOps.size() - 1) {
+                            writer.write("    {:unsigned_payload, :$L} => true", opSym.getName());
+                        } else {
+                            writer.write("    {:unsigned_payload, :$L} => true,", opSym.getName());
+                        }
+                    }
+                }
                 writer.write("  }");
                 writer.write("end");
                 writer.write("");
@@ -263,6 +281,8 @@ final class ElixirClientDirectedCodegen
                                 ctx.protocolCodegen().protocolTraitId())
                         || BeamRestXmlProtocolCodegen.REST_XML.equals(
                                 ctx.protocolCodegen().protocolTraitId()));
+        boolean sigv4 = BeamSigV4Metadata.from(ctx.service()).isPresent();
+        String sigv4Module = ElixirSymbolProvider.toModuleName(layout.sigv4ModuleName());
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {
             ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
@@ -291,7 +311,20 @@ final class ElixirClientDirectedCodegen
                 } else {
                     writer.write("req = $L.encode_$L_request(input)", codecMod, opSym.getName());
                 }
-                writer.write("case $L.dispatch(config, req) do", httpMod);
+                if (sigv4) {
+                    writer.write("signed_req =");
+                    writer.indent();
+                    writer.write("case Map.get(config, :credentials) do");
+                    writer.indent();
+                    writer.write("nil -> req");
+                    writer.write("_ -> $L.sign(config, :$L, req)", sigv4Module, opSym.getName());
+                    writer.dedent();
+                    writer.write("end");
+                    writer.dedent();
+                    writer.write("case $L.dispatch(config, signed_req) do", httpMod);
+                } else {
+                    writer.write("case $L.dispatch(config, req) do", httpMod);
+                }
                 writer.indent();
                 writer.write("{:ok, resp} -> $L.decode_$L_response(resp)", codecMod, opSym.getName());
                 writer.write("{:error, reason} -> {:error, reason}");

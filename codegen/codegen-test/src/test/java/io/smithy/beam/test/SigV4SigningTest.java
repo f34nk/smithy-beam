@@ -40,7 +40,7 @@ class SigV4SigningTest {
 
         assertThat(meta).isPresent();
         assertThat(meta.get().signingName()).isEqualTo("sigv4test");
-        assertThat(meta.get().signingRegion()).isEqualTo("us-east-1");
+        assertThat(meta.get().unsignedPayload()).isFalse();
     }
 
     @Test
@@ -49,10 +49,11 @@ class SigV4SigningTest {
         String sigv4 = manifest.expectFileString("sigv4test_service_sigv4.erl");
 
         assertThat(sigv4).contains("-module(sigv4test_service_sigv4).");
-        assertThat(sigv4).contains("aws_sigv4:sign(Request, Credentials, Region, Service).");
+        assertThat(sigv4).contains("-export([sign/3]).");
+        assertThat(sigv4).contains("aws_sigv4:sign(Request, Credentials, Region, Service, #{unsigned_payload => Unsigned}).");
 
-        String http = manifest.expectFileString("runtime_http.erl");
-        assertThat(http).contains("sigv4test_service_sigv4:sign(Config, Request)");
+        String client = manifest.expectFileString("sigv4test_service_client.erl");
+        assertThat(client).contains("sigv4test_service_sigv4:sign(Config, ping, Req)");
     }
 
     @Test
@@ -61,10 +62,10 @@ class SigV4SigningTest {
         String sigv4 = manifest.expectFileString("sigv4test_service_sigv4.ex");
 
         assertThat(sigv4).contains("defmodule Sigv4testServiceSigv4 do");
-        assertThat(sigv4).contains("AwsSignature.sign(request, credentials, region, service)");
+        assertThat(sigv4).contains("AwsSignature.sign(request, credentials, region, service, %{unsigned_payload: unsigned})");
 
-        String http = manifest.expectFileString("runtime_http.ex");
-        assertThat(http).contains("Sigv4testServiceSigv4.sign(config, req)");
+        String client = manifest.expectFileString("sigv4test_service_client.ex");
+        assertThat(client).contains("Sigv4testServiceSigv4.sign(config, :ping, req)");
     }
 
     @Test
@@ -87,8 +88,8 @@ class SigV4SigningTest {
                 .build());
 
         assertThat(manifest.getFileString("basic_service_sigv4.erl")).isEmpty();
-        assertThat(manifest.expectFileString("runtime_http.erl"))
-                .doesNotContain(":sign(Config, Request)");
+        assertThat(manifest.expectFileString("basic_service_client.erl"))
+                .doesNotContain(":sign(Config,");
     }
 
     private static MockManifest runErlangClient() {

@@ -1,7 +1,6 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.core.BeamSigV4Metadata;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
@@ -16,8 +15,6 @@ public final class ElixirHttpDispatchEmitter {
                 service.getId().getNamespace(), service);
         String httpModule = ElixirSymbolProvider.toModuleName(layout.runtimeHttpModuleName());
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
-        boolean sigv4 = BeamSigV4Metadata.from(service).isPresent();
-        String sigv4Module = ElixirSymbolProvider.toModuleName(layout.sigv4ModuleName());
         String helpersModule = ElixirSymbolProvider.toModuleName(layout.runtimeHelpersModuleName());
 
         ctx.writerDelegator().useFileWriter(
@@ -41,20 +38,7 @@ public final class ElixirHttpDispatchEmitter {
             writer.write("        {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}");
             writer.write("def dispatch(http_client, config, %RuntimeTypes.HttpRequest{} = req) do");
             writer.indent();
-            if (sigv4) {
-                writer.write("signed_req =");
-                writer.indent();
-                writer.write("case Map.get(config, :credentials) do");
-                writer.indent();
-                writer.write("nil -> req");
-                writer.write("_ -> $L.sign(config, req)", sigv4Module);
-                writer.dedent();
-                writer.write("end");
-                writer.dedent();
-                writer.write("dispatch_signed(http_client, config, signed_req)");
-            } else {
-                writer.write("dispatch_signed(http_client, config, req)");
-            }
+            writer.write("dispatch_signed(http_client, config, req)");
             writer.dedent();
             writer.write("end");
             writer.write("");

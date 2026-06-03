@@ -16,6 +16,8 @@ import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.core.BeamSigV4Index;
+import io.smithy.beam.core.BeamSigV4Metadata;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
@@ -223,10 +225,25 @@ final class ErlangClientDirectedCodegen
                 writer.write("%% AWS service metadata from model:");
                 writer.write("%%   sdkId: $L", meta.sdkId());
                 writer.write("%%   endpointPrefix: $L", meta.endpointPrefix());
+                BeamSigV4Index sigv4Index = BeamSigV4Index.of(ctx.model(), service);
+                List<OperationShape> unsignedOps =
+                        sigv4Index.operationsWithUnsignedPayload(ctx.model(), service);
                 writer.write("default_config() ->");
                 writer.write("    #{region => <<\"us-east-1\">>,");
                 writer.write("      endpoint_prefix => <<\"$L\">>,", meta.endpointPrefix());
-                writer.write("      signing_name => <<\"$L\">>>}.", meta.signingName());
+                if (unsignedOps.isEmpty()) {
+                    writer.write("      signing_name => <<\"$L\">>>}.", meta.signingName());
+                } else {
+                    writer.write("      signing_name => <<\"$L\">>,", meta.signingName());
+                    for (int i = 0; i < unsignedOps.size(); i++) {
+                        Symbol opSym = directive.symbolProvider().toSymbol(unsignedOps.get(i));
+                        if (i == unsignedOps.size() - 1) {
+                            writer.write("      {unsigned_payload, $L} => true>>}.", opSym.getName());
+                        } else {
+                            writer.write("      {unsigned_payload, $L} => true,", opSym.getName());
+                        }
+                    }
+                }
                 writer.write("");
             });
             writer.popState();
@@ -260,6 +277,8 @@ final class ErlangClientDirectedCodegen
                                 ctx.protocolCodegen().protocolTraitId())
                         || BeamRestXmlProtocolCodegen.REST_XML.equals(
                                 ctx.protocolCodegen().protocolTraitId()));
+        boolean sigv4 = BeamSigV4Metadata.from(ctx.service()).isPresent();
+        String sigv4Module = layout.sigv4ModuleName();
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {
             ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
@@ -286,8 +305,19 @@ final class ErlangClientDirectedCodegen
                     writer.write("Req = $L:encode_$L_request(Input),",
                             codecModule, opSym.getName());
                 }
-                writer.write("case $L:dispatch(Config, Req) of",
-                        layout.runtimeHttpModuleName());
+                if (sigv4) {
+                    writer.write("SignedReq = case maps:get(credentials, Config, undefined) of");
+                    writer.indent();
+                    writer.write("undefined -> Req;");
+                    writer.write("_ -> $L:sign(Config, $L, Req)", sigv4Module, opSym.getName());
+                    writer.dedent();
+                    writer.write("end,");
+                    writer.write("case $L:dispatch(Config, SignedReq) of",
+                            layout.runtimeHttpModuleName());
+                } else {
+                    writer.write("case $L:dispatch(Config, Req) of",
+                            layout.runtimeHttpModuleName());
+                }
                 writer.indent();
                 writer.write("{ok, Resp} ->");
                 writer.indent();
