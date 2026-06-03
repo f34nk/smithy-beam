@@ -3,6 +3,7 @@ package io.smithy.beam.erlang;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
 import io.smithy.beam.core.BeamXmlBindingIndex;
@@ -55,6 +56,7 @@ public final class ErlangRestXmlEmitter {
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
         boolean encodeWithConfig = serviceHasHostLabelOperations(model, service);
+        boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
         List<String> exports = new ArrayList<>();
         for (OperationShape op : operations) {
             String name = sp.toSymbol(op).getName();
@@ -85,6 +87,9 @@ public final class ErlangRestXmlEmitter {
 
             emitXmlEncodeHelpers(writer);
             emitXmlDecodeHelpers(writer);
+            if (checksumBindings) {
+                ErlangHttpChecksumEmitter.emitChecksumHelpers(writer);
+            }
             if (encodeWithConfig) {
                 emitBuildHostHelpers(writer, model, service, sp);
             }
@@ -327,11 +332,19 @@ public final class ErlangRestXmlEmitter {
             }
         }
 
-        writer.write("{ok, #$L{", outputRecord);
+        StringBuilder success = new StringBuilder();
+        success.append("{ok, #").append(outputRecord).append("{");
         if (!recordFields.isEmpty()) {
-            writer.write(String.join(",\n", recordFields));
+            success.append("\n").append(String.join(",\n", recordFields)).append("\n");
         }
-        writer.write("}};");
+        success.append("}}");
+        if (BeamHttpChecksumIndex.of(model).responseChecksums(op).isEmpty()) {
+            writer.write("$L;", success.toString());
+        } else {
+            writer.write("Result = $L,", success.toString());
+            ErlangHttpChecksumEmitter.emitResponseChecksumGuard(writer, model, op, "Result");
+            writer.write(";");
+        }
         writer.dedent();
         writer.write("decode_$L_response(#http_response{status = Status, body = Body}) ->", opName);
         writer.indent();
@@ -829,6 +842,7 @@ public final class ErlangRestXmlEmitter {
         }
 
         emitRequestBody(writer, model, payloadMembers, method, sp);
+        ErlangHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp);
 
         if (hasHostLabels) {
             writer.write("Host = build_host(Input, Config),");

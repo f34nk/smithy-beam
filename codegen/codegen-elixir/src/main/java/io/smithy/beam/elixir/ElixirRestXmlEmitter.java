@@ -3,6 +3,7 @@ package io.smithy.beam.elixir;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
 import io.smithy.beam.core.BeamXmlBindingIndex;
@@ -50,6 +51,7 @@ public final class ElixirRestXmlEmitter {
         String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
         boolean encodeWithConfig = serviceHasHostLabelOperations(model, service);
+        boolean checksumBindings = ElixirHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
 
         ctx.writerDelegator().useFileWriter(codecFile, writer -> {
             writer.write("defmodule $L do", moduleName);
@@ -66,7 +68,7 @@ public final class ElixirRestXmlEmitter {
                 emitDecoder(writer, model, op, httpIndex, sp, typesMod);
             }
 
-            emitXmlHelpers(writer);
+            emitXmlHelpers(writer, checksumBindings);
 
             writer.dedent();
             writer.write("end");
@@ -85,6 +87,7 @@ public final class ElixirRestXmlEmitter {
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
         String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
+        boolean checksumBindings = ElixirHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
 
         ctx.writerDelegator().useFileWriter(
                 layout.serverCodecModuleName(BeamRestXmlProtocolCodegen.REST_XML) + ".ex", writer -> {
@@ -103,7 +106,7 @@ public final class ElixirRestXmlEmitter {
                 emitResponseEncoder(writer, model, op, httpIndex, sp, typesMod);
             }
 
-            emitXmlHelpers(writer);
+            emitXmlHelpers(writer, checksumBindings);
 
             writer.dedent();
             writer.write("end");
@@ -190,6 +193,7 @@ public final class ElixirRestXmlEmitter {
         }
 
         emitRequestBody(writer, model, payloadMembers, httpTrait.getMethod(), sp);
+        ElixirHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp);
 
         writer.write("%RuntimeTypes.HttpRequest{");
         writer.write("  method: \"$L\",", httpTrait.getMethod());
@@ -272,7 +276,7 @@ public final class ElixirRestXmlEmitter {
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
 
         writer.write("@spec decode_$L_response(map()) :: {:ok, $L} | {:error, term()}", opName, outputType);
-        writer.write("def decode_$L_response(%{status: $L, body: body} = _resp) do", opName, successCode);
+        writer.write("def decode_$L_response(%{status: $L, headers: headers, body: body}) do", opName, successCode);
         writer.indent();
 
         if (!respPayload.isEmpty()) {
@@ -281,7 +285,8 @@ public final class ElixirRestXmlEmitter {
             Shape target = model.expectShape(member.getTarget());
             String field = fieldName(sp, member);
             if (target instanceof BlobShape || target instanceof StringShape) {
-                writer.write("{:ok, %Types.$L{$L: body}}", structName(sp, output), field);
+                ElixirHttpChecksumEmitter.emitResponseChecksumGuard(
+                        writer, model, op, "{:ok, %Types." + structName(sp, output) + "{" + field + ": body}}");
             } else {
                 String rootElement = BeamXmlBindingIndex.payloadRootElementName(member, target);
                 writer.write("case parse_xml_root(body, \"$L\") do", rootElement);
@@ -429,7 +434,7 @@ public final class ElixirRestXmlEmitter {
         writer.write("");
     }
 
-    private static void emitXmlHelpers(ElixirWriter writer) {
+    private static void emitXmlHelpers(ElixirWriter writer, boolean checksumBindings) {
         writer.write("defp encode_xml(root_map, xml_ns) do");
         writer.indent();
         writer.write("[{root_name, content}] = Map.to_list(root_map)");
@@ -521,6 +526,9 @@ public final class ElixirRestXmlEmitter {
         writer.write("defp to_string(v) when is_atom(v), do: Atom.to_string(v)");
         writer.write("defp to_string(v), do: inspect(v)");
         writer.write("");
+        if (checksumBindings) {
+            ElixirHttpChecksumEmitter.emitChecksumHelpers(writer);
+        }
     }
 
     private static String buildStructureMap(

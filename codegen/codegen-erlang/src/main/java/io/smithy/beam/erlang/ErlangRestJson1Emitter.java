@@ -3,6 +3,7 @@ package io.smithy.beam.erlang;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -64,6 +65,7 @@ public final class ErlangRestJson1Emitter {
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
         boolean encodeWithConfig = serviceHasHostLabelOperations(model, service);
+        boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
         List<String> exports = new ArrayList<>();
         for (OperationShape op : operations) {
             String name = sp.toSymbol(op).getName();
@@ -94,7 +96,7 @@ public final class ErlangRestJson1Emitter {
 
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
-            emitHelpers(writer);
+            emitHelpers(writer, checksumBindings);
             if (encodeWithConfig) {
                 emitBuildHostHelpers(writer, model, service, sp);
             }
@@ -114,6 +116,7 @@ public final class ErlangRestJson1Emitter {
         SymbolProvider sp = ctx.symbolProvider();
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
+        boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
         List<String> exports = new ArrayList<>();
         Set<ShapeId> errorIds = new LinkedHashSet<>();
         for (OperationShape op : operations) {
@@ -145,7 +148,7 @@ public final class ErlangRestJson1Emitter {
             }
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
-            emitHelpers(writer);
+            emitHelpers(writer, checksumBindings);
         });
     }
 
@@ -287,6 +290,7 @@ public final class ErlangRestJson1Emitter {
 
         boolean streamingRequestPayload = hasStreamingRequestPayload(model, reqPayload, method);
         emitRequestBody(writer, model, httpIndex, reqPayload, docMembers, method, sp);
+        ErlangHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp);
         if (streamingRequestPayload) {
             HttpBinding payload = reqPayload.get(0);
             String fieldName = BeamNameUtils.toSnakeCase(payload.getMember().getMemberName());
@@ -752,16 +756,24 @@ public final class ErlangRestJson1Emitter {
             String fieldName = BeamNameUtils.toSnakeCase(rcb.getMember().getMemberName());
             recordFields.add("    " + fieldName + " = HttpStatus");
         }
-        writer.write("{ok, #$L{", outputRecord);
+        StringBuilder success = new StringBuilder();
+        success.append("{ok, #").append(outputRecord).append("{");
         if (!recordFields.isEmpty()) {
-            writer.write(String.join(",\n", recordFields));
+            success.append("\n").append(String.join(",\n", recordFields)).append("\n");
+        }
+        success.append("}}");
+        if (BeamHttpChecksumIndex.of(model).responseChecksums(op).isEmpty()) {
+            writer.write("$L", success.toString());
+        } else {
+            writer.write("Result = $L,", success.toString());
+            ErlangHttpChecksumEmitter.emitResponseChecksumGuard(writer, model, op, "Result");
         }
         if (needsContentTypeCheck) {
-            writer.write("}}");
+            writer.write(";");
             writer.dedent();
             writer.write("end;");
         } else {
-            writer.write("}};");
+            writer.write(";");
         }
 
         writer.dedent();
@@ -1018,13 +1030,14 @@ public final class ErlangRestJson1Emitter {
     /** Shared enum, union, and helper functions for REST JSON and AWS JSON emitters. */
     static void emitSharedCodecHelpers(
             ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
+        boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
         emitEnumHelpers(writer, model, service, sp);
         emitUnionHelpers(writer, model, service, sp);
-        emitHelpers(writer);
+        emitHelpers(writer, checksumBindings);
     }
 
     /** Emits private helper functions used across all codecs. */
-    private static void emitHelpers(ErlangWriter writer) {
+    private static void emitHelpers(ErlangWriter writer, boolean checksumBindings) {
         writer.write("%% -- Private helpers --");
         writer.write("");
         writer.write("to_binary(V) when is_binary(V) -> V;");
@@ -1162,6 +1175,9 @@ public final class ErlangRestJson1Emitter {
         writer.write("generate_uuid() ->");
         writer.write("    list_to_binary(uuid:to_string(uuid:v4())).");
         writer.write("");
+        if (checksumBindings) {
+            ErlangHttpChecksumEmitter.emitChecksumHelpers(writer);
+        }
     }
 
     private static void emitBuildHostHelpers(

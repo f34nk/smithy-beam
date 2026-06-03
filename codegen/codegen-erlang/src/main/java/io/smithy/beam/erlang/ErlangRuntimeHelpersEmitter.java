@@ -22,7 +22,8 @@ public final class ErlangRuntimeHelpersEmitter {
     public static void emitIfNeeded(ErlangContext ctx, ServiceShape service) {
         boolean awsMetadata = BeamAwsServiceMetadata.from(service).isPresent();
         boolean labelBindings = serviceHasLabelBindings(ctx.model(), service);
-        if (!awsMetadata && !labelBindings) {
+        boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(ctx.model(), service);
+        if (!awsMetadata && !labelBindings && !checksumBindings) {
             return;
         }
         BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), service.getId().getNamespace());
@@ -34,6 +35,12 @@ public final class ErlangRuntimeHelpersEmitter {
         }
         if (awsMetadata) {
             exports.add("resolve_base_url/1");
+        }
+        if (checksumBindings) {
+            exports.add("headers_set/3");
+            exports.add("base16_encode/1");
+            exports.add("sha256_hash/1");
+            exports.add("crc32_hash/1");
         }
 
         ctx.writerDelegator().useFileWriter(layout.runtimeHelpersModuleFile(), writer -> {
@@ -121,6 +128,11 @@ public final class ErlangRuntimeHelpersEmitter {
                 writer.indent();
                 writer.write("error.");
                 writer.dedent();
+            }
+
+            if (checksumBindings) {
+                writer.write("");
+                ErlangHttpChecksumEmitter.emitChecksumHelpers(writer);
             }
         });
     }

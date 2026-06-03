@@ -3,6 +3,7 @@ package io.smithy.beam.elixir;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -59,6 +60,7 @@ public final class ElixirRestJson1Emitter {
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
+        boolean checksumBindings = ElixirHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
 
         String serverCodecModule =
                 ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName(protocol));
@@ -82,7 +84,7 @@ public final class ElixirRestJson1Emitter {
 
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
-            emitHelpers(writer);
+            emitHelpers(writer, checksumBindings);
 
             writer.dedent();
             writer.write("end");
@@ -102,6 +104,7 @@ public final class ElixirRestJson1Emitter {
         String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
         boolean encodeWithConfig = serviceHasHostLabelOperations(model, service);
+        boolean checksumBindings = ElixirHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
 
         ctx.writerDelegator().useFileWriter(codecFile, writer -> {
             writer.write("defmodule $L do", moduleName);
@@ -124,7 +127,7 @@ public final class ElixirRestJson1Emitter {
 
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
-            emitHelpers(writer);
+            emitHelpers(writer, checksumBindings);
             if (encodeWithConfig) {
                 emitBuildHostHelpers(writer, model, service, sp);
             }
@@ -290,6 +293,8 @@ public final class ElixirRestJson1Emitter {
         } else {
             writer.write("body = \"\"");
         }
+
+        ElixirHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp);
 
         if (hasHostLabels) {
             writer.write("host = build_host(input, config)");
@@ -596,7 +601,7 @@ public final class ElixirRestJson1Emitter {
             writer.write("end");
         }
 
-        writer.write("{:ok, %Types.$L{", outputStruct);
+        writer.write("result = {:ok, %Types.$L{", outputStruct);
         for (HttpBinding hb : respHeaders) {
             String field = fieldName(sp, hb.getMember());
             writer.write("  $L: $L,", field, field);
@@ -638,9 +643,11 @@ public final class ElixirRestJson1Emitter {
         if (needsContentTypeCheck) {
             writer.write("}}");
             writer.dedent();
+            ElixirHttpChecksumEmitter.emitResponseChecksumGuard(writer, model, op, "result");
             writer.write("end");
         } else {
             writer.write("}}");
+            ElixirHttpChecksumEmitter.emitResponseChecksumGuard(writer, model, op, "result");
         }
 
         writer.dedent();
@@ -903,12 +910,13 @@ public final class ElixirRestJson1Emitter {
 
     static void emitSharedCodecHelpers(
             ElixirWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
+        boolean checksumBindings = ElixirHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
         emitEnumHelpers(writer, model, service, sp);
         emitUnionHelpers(writer, model, service, sp);
-        emitHelpers(writer);
+        emitHelpers(writer, checksumBindings);
     }
 
-    private static void emitHelpers(ElixirWriter writer) {
+    private static void emitHelpers(ElixirWriter writer, boolean checksumBindings) {
         writer.write("# -- Private helpers --");
         writer.write("");
         writer.write("defp uri_encode(value), do: URI.encode(to_string(value))");
@@ -994,6 +1002,9 @@ public final class ElixirRestJson1Emitter {
         writer.dedent();
         writer.write("end");
         writer.write("");
+        if (checksumBindings) {
+            ElixirHttpChecksumEmitter.emitChecksumHelpers(writer);
+        }
         emitDecodeJsonBodyHelper(writer);
     }
 
