@@ -59,7 +59,6 @@ public final class ErlangRestJson1Emitter {
                 ctx.settings(), service.getId().getNamespace(), service);
         String codecFile = layout.clientCodecModuleName(protocol) + ".erl";
         String codecModule = layout.clientCodecModuleName(protocol);
-        ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
 

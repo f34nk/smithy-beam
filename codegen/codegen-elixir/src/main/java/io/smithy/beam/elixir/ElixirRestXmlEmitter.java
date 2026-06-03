@@ -41,7 +41,6 @@ public final class ElixirRestXmlEmitter {
         Model model = ctx.model();
         BeamElixirLayout layout = new BeamElixirLayout(
                 ctx.settings(), service.getId().getNamespace(), service);
-        ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         String moduleName = ElixirSymbolProvider.toModuleName(

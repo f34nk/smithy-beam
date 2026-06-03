@@ -68,7 +68,6 @@ final class ErlangAwsJsonRpcEmitter {
                 ctx.settings(), service.getId().getNamespace(), service);
         String codecFile = layout.clientCodecModuleName(protocol) + ".erl";
         String codecModule = layout.clientCodecModuleName(protocol);
-        ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         String targetPrefix = service.getId().getName();

@@ -50,7 +50,6 @@ public final class ErlangRestXmlEmitter {
                 ctx.settings(), service.getId().getNamespace(), service);
         String codecFile = layout.clientCodecModuleName(BeamRestXmlProtocolCodegen.REST_XML) + ".erl";
         String codecModule = layout.clientCodecModuleName(BeamRestXmlProtocolCodegen.REST_XML);
-        ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
 

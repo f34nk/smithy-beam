@@ -220,7 +220,9 @@ class ErlangClientPluginTest {
         assertThat(codec).doesNotContain("#describe_item_input(){");
         assertThat(codec).contains("(V) when V =/= undefined");
         assertThat(codec).contains("uri_encode(");
-        assertThat(manifest.expectFileString("runtime_helpers.erl"))
+        String runtimeHelpers = manifest.expectFileString("runtime_helpers.erl");
+        assertThat(runtimeHelpers.split("-module\\(runtime_helpers\\)", -1)).hasSize(2);
+        assertThat(runtimeHelpers)
                 .contains("-module(runtime_helpers).")
                 .contains("parse_labels(Path, Template)");
         assertThat(codec).contains("decode_describe_item_request(");
