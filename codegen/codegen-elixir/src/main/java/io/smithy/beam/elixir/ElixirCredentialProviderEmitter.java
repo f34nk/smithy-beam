@@ -32,8 +32,8 @@ public final class ElixirCredentialProviderEmitter {
             writer.write("");
             writer.write("@type client_config :: map()");
             writer.write("@type aws_credentials :: %{");
-            writer.write("  access_key_id: String.t(),");
-            writer.write("  secret_access_key: String.t(),");
+            writer.write("  required(:access_key_id) => String.t(),");
+            writer.write("  required(:secret_access_key) => String.t(),");
             writer.write("  optional(:session_token) => String.t() | nil");
             writer.write("}");
             writer.write("");
@@ -62,7 +62,7 @@ public final class ElixirCredentialProviderEmitter {
 
     private static void writeResolveChain(ElixirWriter writer) {
         String providers = BeamCredentialProviders.defaultChain().stream()
-                .map(ElixirCredentialProviderEmitter::elixirProviderAtom)
+                .map(kind -> ":" + elixirProviderAtom(kind))
                 .collect(Collectors.joining(", "));
         writer.write("defp resolve_chain(config) do");
         writer.indent();
@@ -168,6 +168,7 @@ public final class ElixirCredentialProviderEmitter {
         writer.write("nil -> {:error, :not_found}");
         writer.write("uri -> fetch_json_credentials(uri)");
         writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.write("rel ->");
         writer.indent();
@@ -256,6 +257,7 @@ public final class ElixirCredentialProviderEmitter {
         writer.write("[key, value] -> read_profile_entries(rest, Map.put(acc, key, value))");
         writer.write("_ -> read_profile_entries(rest, acc)");
         writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.dedent();
         writer.write("end");
@@ -315,9 +317,10 @@ public final class ElixirCredentialProviderEmitter {
         writer.indent();
         writer.write("case :httpc.request(");
         writer.write("       :put,");
-        writer.write("       {'http://169.254.169.254/latest/api/token', [{~c\"X-aws-ec2-metadata-token-ttl-seconds\", ~c\"60\"}],");
+        writer.write("       {~c\"http://169.254.169.254/latest/api/token\",");
+        writer.write("        [{~c\"X-aws-ec2-metadata-token-ttl-seconds\", ~c\"60\"}]},");
         writer.write("       [],");
-        writer.write("       ''");
+        writer.write("       ~c\"\"");
         writer.write("     ) do");
         writer.indent();
         writer.write("{:ok, {{_, 200, _}, resp_headers, _}} ->");
@@ -327,6 +330,7 @@ public final class ElixirCredentialProviderEmitter {
         writer.write(":undefined -> []");
         writer.write("token -> [{~c\"X-aws-ec2-metadata-token\", token}]");
         writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.write("_ ->");
         writer.indent();
