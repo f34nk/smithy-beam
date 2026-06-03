@@ -1,0 +1,69 @@
+package io.smithy.beam.test;
+
+import io.smithy.beam.elixir.ElixirClientPlugin;
+import io.smithy.beam.erlang.ErlangClientPlugin;
+import org.junit.jupiter.api.Test;
+import software.amazon.smithy.build.MockManifest;
+import software.amazon.smithy.build.PluginContext;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.node.ObjectNode;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class WaiterEmissionTest {
+
+    private static final String SERVICE = "smithy.beam.test.waiters#WaitableService";
+
+    private Model waiterModel() {
+        return Model.assembler()
+                .addImport(getClass().getResource("/model/waiter_fixture.smithy"))
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    @Test
+    void erlangWaiterModulePollsWithAcceptors() {
+        MockManifest manifest = new MockManifest();
+        new ErlangClientPlugin().execute(PluginContext.builder()
+                .model(waiterModel())
+                .fileManifest(manifest)
+                .settings(ObjectNode.builder()
+                        .withMember("service", SERVICE)
+                        .withMember("edition", "2026")
+                        .build())
+                .build());
+
+        String waiters = manifest.getFileString("waitable_service_waiters.erl").orElse("");
+        assertThat(waiters).contains("-module(waitable_service_waiters).");
+        assertThat(waiters).contains("wait_bucket_exists/3");
+        assertThat(waiters).contains("wait_bucket_exists(Client, Input, Opts) ->");
+        assertThat(waiters).contains("waitable_service_client:head_bucket(Client, Input)");
+        assertThat(waiters).contains("state => success");
+        assertThat(waiters).contains("matcher => success, expected => true");
+        assertThat(waiters).contains("matcher => errorType, expected => #not_found{}");
+        assertThat(waiters).contains("timer:sleep(Delay)");
+    }
+
+    @Test
+    void elixirWaiterModulePollsWithAcceptors() {
+        MockManifest manifest = new MockManifest();
+        new ElixirClientPlugin().execute(PluginContext.builder()
+                .model(waiterModel())
+                .fileManifest(manifest)
+                .settings(ObjectNode.builder()
+                        .withMember("service", SERVICE)
+                        .withMember("edition", "2026")
+                        .build())
+                .build());
+
+        String waiters = manifest.getFileString("waitable_service_waiters.ex").orElse("");
+        assertThat(waiters).contains("defmodule WaitableServiceWaiters");
+        assertThat(waiters).contains("def wait_bucket_exists");
+        assertThat(waiters).contains("WaitableServiceClient.head_bucket(client, input)");
+        assertThat(waiters).contains("state: :success");
+        assertThat(waiters).contains("matcher: :success, expected: true");
+        assertThat(waiters).contains("matcher: :errorType, expected: %WaitableServiceTypes.NotFound{}");
+        assertThat(waiters).contains("Process.sleep(delay)");
+    }
+}

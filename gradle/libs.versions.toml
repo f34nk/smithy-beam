@@ -7,6 +7,7 @@ assertj = "3.26.3"
 smithy-aws-traits = { module = "software.amazon.smithy:smithy-aws-traits", version.ref = "smithy" }
 smithy-rules-engine = { module = "software.amazon.smithy:smithy-rules-engine", version.ref = "smithy" }
 smithy-aws-endpoints = { module = "software.amazon.smithy:smithy-aws-endpoints", version.ref = "smithy" }
+smithy-waiters = { module = "software.amazon.smithy:smithy-waiters", version.ref = "smithy" }
 smithy-model = { module = "software.amazon.smithy:smithy-model", version.ref = "smithy" }
 smithy-codegen-core = { module = "software.amazon.smithy:smithy-codegen-core", version.ref = "smithy" }
 smithy-build = { module = "software.amazon.smithy:smithy-build", version.ref = "smithy" }

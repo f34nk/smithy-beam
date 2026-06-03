@@ -118,6 +118,14 @@ public final class BeamElixirLayout {
         return serviceSnakeName() + "_retry";
     }
 
+    public String waitersModuleFile() {
+        return waitersModuleName() + ".ex";
+    }
+
+    public String waitersModuleName() {
+        return serviceSnakeName() + "_waiters";
+    }
+
     public String sigv4ModuleFile() {
         return sigv4ModuleName() + ".ex";
     }
