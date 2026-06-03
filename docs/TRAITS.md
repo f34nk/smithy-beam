@@ -13,6 +13,7 @@ A separate column is used for each language to indicate support status with a ch
 **Legend:**
 
 - ✅ Supported: the trait is read or implied by the model and changes generated output for that language.
+- ⚠️ Partial: the trait affects generated output only under opt-in settings or with known limitations.
 - ❌ Not supported: the trait has no effect on generated code for that language, or generation fails when the feature is required.
 - ➖ Not applicable: the trait does not apply to the current generators (for example build-only validation, or tooling-only metadata).
 
@@ -27,7 +28,7 @@ A separate column is used for each language to indicate support status with a ch
   and comment lines above documented preamble aliases. Service-level documentation
   replaces the generic types file header when present.
 - `@deprecated` removes shapes from generated output when the Smithy-Build `relativeDate` or `relativeVersion` setting is set. Without those settings, the trait has no effect on generated code.
-- `@streaming` blob payloads encode and decode on the wire in REST JSON 1 codecs. Event-stream framing and non-blob streaming are not implemented.
+- `@streaming` on blob shapes encodes and decodes payload bytes on the wire in REST JSON 1 codecs. `@streaming` on union shapes (event streams) generates Amazon Event Stream framing helpers in edition 2026 services; blob streaming and event-stream unions are handled separately.
 - Constraint traits (`length`, `range`, `pattern`, and similar) do not narrow generated Dialyzer or typespec surfaces.
 - Dedicated operation input shapes use `NullableIndex` CLIENT mode so `@clientOptional` and `@default` affect generated member optionality.
 - `@input` and `@output` are applied by the model transformer when dedicated operation shapes are synthesized.
@@ -121,7 +122,7 @@ AWS-specific protocol traits.
 | [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ✅ | ✅ |
 | [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ✅ | ✅ |
 | [`aws.protocols#awsQueryCompatible`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquerycompatible-trait) | ❌ | ❌ |
-| [`aws.protocols#httpChecksum`](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ❌ | ❌ |
+| [`aws.protocols#httpChecksum`](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ✅ | ✅ |
 | [`aws.protocols#awsQueryError`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsqueryerror-trait) | ➖ | ➖ |
 | [`aws.protocols#ec2QueryName`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2queryname-trait) | ✅ | ✅ |
 
@@ -136,7 +137,7 @@ AWS-specific authentication traits.
 | [`aws.auth#sigv4`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4-trait) | ✅ | ✅ |
 | [`aws.auth#cognitoUserPools`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-cognitouserpools-trait) | ❌ | ❌ |
 | [`aws.auth#sigv4a`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-sigv4a-trait) | ❌ | ❌ |
-| [`aws.auth#unsignedPayload`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-unsignedpayload-trait) | ❌ | ❌ |
+| [`aws.auth#unsignedPayload`](https://smithy.io/2.0/aws/aws-auth.html#aws-auth-unsignedpayload-trait) | ✅ | ✅ |
 
 ---
 
@@ -176,7 +177,7 @@ Traits that define operation behavior.
 | [`smithy.api#idempotencyToken`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotencytoken-trait) | ✅ | ✅ |
 | [`smithy.api#idempotent`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-idempotent-trait) | ❌ | ❌ |
 | [`smithy.api#readonly`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-readonly-trait) | ❌ | ❌ |
-| [`smithy.api#requestCompression`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-requestcompression-trait) | ❌ | ❌ |
+| [`smithy.api#requestCompression`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-requestcompression-trait) | ✅ | ✅ |
 | [`smithy.api#retryable`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-retryable-trait) | ✅ | ✅ |
 
 ---
@@ -223,8 +224,8 @@ Traits for streaming data.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
-| [`smithy.api#eventHeader`](https://smithy.io/2.0/spec/streaming.html#smithy-api-eventheader-trait) | ❌ | ❌ |
-| [`smithy.api#eventPayload`](https://smithy.io/2.0/spec/streaming.html#smithy-api-eventpayload-trait) | ❌ | ❌ |
+| [`smithy.api#eventHeader`](https://smithy.io/2.0/spec/streaming.html#smithy-api-eventheader-trait) | ✅ | ✅ |
+| [`smithy.api#eventPayload`](https://smithy.io/2.0/spec/streaming.html#smithy-api-eventpayload-trait) | ✅ | ✅ |
 | [`smithy.api#requiresLength`](https://smithy.io/2.0/spec/streaming.html#smithy-api-requireslength-trait) | ❌ | ❌ |
 | [`smithy.api#streaming`](https://smithy.io/2.0/spec/streaming.html#smithy-api-streaming-trait) | ✅ | ✅ |
 
@@ -371,29 +372,29 @@ Traits from additional Smithy specifications.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
-| [`smithy.rules#clientContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/parameters.html#smithy-rules-clientcontextparams-trait) | ➖ | ➖ |
+| [`smithy.rules#clientContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/parameters.html#smithy-rules-clientcontextparams-trait) | ✅ | ✅ |
 | [`smithy.rules#contextParam`](https://smithy.io/2.0/additional-specs/rules-engine/parameters.html#smithy-rules-contextparam-trait) | ➖ | ➖ |
 | [`smithy.rules#endpointBdd`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html#smithy-rules-endpointbdd-trait) | ➖ | ➖ |
-| [`smithy.rules#endpointRuleSet`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html#smithy-rules-endpointruleset-trait) | ➖ | ➖ |
+| [`smithy.rules#endpointRuleSet`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html#smithy-rules-endpointruleset-trait) | ✅ | ✅ |
 | [`smithy.rules#operationContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/parameters.html#smithy-rules-operationcontextparams-trait) | ➖ | ➖ |
 | [`smithy.rules#staticContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/parameters.html#smithy-rules-staticcontextparams-trait) | ➖ | ➖ |
 
 ### Test Traits (`smithy.test#*`)
 
-[HTTP protocol compliance tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) define expected wire requests and responses. The current repository does not emit test modules from these traits.
+[HTTP protocol compliance tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) define expected wire requests and responses. Test modules are emitted only when Smithy-Build `emitComplianceTests` is enabled.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
 | [`smithy.test#httpMalformedRequestTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httpmalformedrequesttests-trait) | ➖ | ➖ |
-| [`smithy.test#httpRequestTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httprequesttests-trait) | ❌ | ❌ |
-| [`smithy.test#httpResponseTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httpresponsetests-trait) | ❌ | ❌ |
+| [`smithy.test#httpRequestTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httprequesttests-trait) | ⚠️ | ⚠️ |
+| [`smithy.test#httpResponseTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httpresponsetests-trait) | ⚠️ | ⚠️ |
 | [`smithy.test#smokeTests`](https://smithy.io/2.0/additional-specs/smoke-tests.html#smithy-test-smoketests-trait) | ➖ | ➖ |
 
 ### Waiter Traits (`smithy.waiters#*`)
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
-| [`smithy.waiters#waitable`](https://smithy.io/2.0/additional-specs/waiters.html#smithy-waiters-waitable-trait) | ❌ | ❌ |
+| [`smithy.waiters#waitable`](https://smithy.io/2.0/additional-specs/waiters.html#smithy-waiters-waitable-trait) | ✅ | ✅ |
 
 ## Custom protocol traits (SPI)
 
