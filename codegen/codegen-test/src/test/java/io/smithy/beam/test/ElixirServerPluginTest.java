@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ElixirServerPluginTest {
 
-    private static final String TYPES_FILE = "basic_types.ex";
+    private static final String TYPES_FILE = "basic_service_types.ex";
     private static final String SERVER_FILE = "basic_service_server.ex";
 
     private static Model loadModel() {
@@ -71,14 +71,14 @@ class ElixirServerPluginTest {
     private static void assertServerStubHeaderOrder(String serverSource) {
         assertThat(serverSource).contains("defmodule BasicServiceServer do");
         assertThat(serverSource).contains("@moduledoc \"\"\"");
-        assertThat(serverSource).contains("alias BasicTypes");
+        assertThat(serverSource).contains("alias BasicServiceTypes");
         assertThat(serverSource)
-                .contains("@spec handle_get_type_closure(term(), BasicTypes.GetTypeClosureInput.t(), term())");
+                .contains("@spec handle_get_type_closure(term(), BasicServiceTypes.GetTypeClosureInput.t(), term())");
         assertThat(serverSource)
                 .contains("def handle_get_type_closure(_ctx, _input, _meta), do: {:error, :not_implemented}");
         int moduleIndex = serverSource.indexOf("defmodule BasicServiceServer do");
         int moduledocIndex = serverSource.indexOf("@moduledoc \"\"\"");
-        int aliasIndex = serverSource.indexOf("alias BasicTypes");
+        int aliasIndex = serverSource.indexOf("alias BasicServiceTypes");
         int specIndex = serverSource.indexOf("@spec handle_get_type_closure");
         assertThat(moduleIndex).isLessThan(moduledocIndex);
         assertThat(moduledocIndex).isLessThan(aliasIndex);
@@ -153,8 +153,8 @@ class ElixirServerPluginTest {
                 .fileManifest(extended)
                 .settings(extendedSettings)
                 .build());
-        assertThat(extended.expectFileString("dedicated_io_types.ex"))
-                .isEqualTo(baseline.expectFileString("dedicated_io_types.ex"));
+        assertThat(extended.expectFileString("dedicated_io_service_types.ex"))
+                .isEqualTo(baseline.expectFileString("dedicated_io_service_types.ex"));
         assertThat(extended.expectFileString("dedicated_io_service_server.ex"))
                 .isEqualTo(baseline.expectFileString("dedicated_io_service_server.ex"));
     }
