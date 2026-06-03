@@ -209,6 +209,7 @@ final class ErlangClientDirectedCodegen
         ErlangSigV4Emitter.emit(ctx, service);
         ErlangCredentialProviderEmitter.emit(ctx, service);
         ErlangPaginatorEmitter.emit(ctx, service);
+        ErlangRetryEmitter.emit(ctx, service);
         BeamResourceIndex resourceIndex = BeamResourceIndex.of(ctx.model());
         for (ResourceShape resource : resourceIndex.containedResourcesSorted(service)) {
             ErlangResourceEmitter.emitClient(ctx, resource);

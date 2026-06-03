@@ -119,6 +119,14 @@ public final class BeamErlangLayout {
         return serviceSnakeName() + "_paginators";
     }
 
+    public String retryModuleFile() {
+        return retryModuleName() + ".erl";
+    }
+
+    public String retryModuleName() {
+        return serviceSnakeName() + "_retry";
+    }
+
     public String sigv4ModuleFile() {
         return sigv4ModuleName() + ".erl";
     }
