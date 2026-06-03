@@ -58,9 +58,10 @@ final class ElixirDirectedCodegen
     @Override
     public SymbolProvider createSymbolProvider(
             CreateSymbolProviderDirective<BeamSettings> directive) {
-        String ns = directive.service().getId().getNamespace();
+        ServiceShape service = directive.service();
+        String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
-        BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
+        BeamElixirLayout layout = new BeamElixirLayout(settings, ns, service);
         String definitionFile = layout.typesModuleFile();
         String moduleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         return SymbolProvider.cache(
@@ -81,7 +82,7 @@ final class ElixirDirectedCodegen
         BeamProtocolCodegen protocolCodegen = null;
         String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
-        BeamElixirLayout layout = new BeamElixirLayout(settings, ns);
+        BeamElixirLayout layout = new BeamElixirLayout(settings, ns, service);
         String definitionFile = layout.typesModuleFile();
         String moduleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         return new ElixirContext(

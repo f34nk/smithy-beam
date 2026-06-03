@@ -83,7 +83,8 @@ class ErlangDirectedCodegenTest {
                 model.expectShape(ShapeId.from(SERVICE_ID), ServiceShape.class);
         BeamSettings settings = new BeamSettings();
         settings.edition("2026");
-        typesFile = new BeamErlangLayout(settings, service.getId().getNamespace()).typesHeaderFile();
+        typesFile = new BeamErlangLayout(settings, service.getId().getNamespace(), service)
+                .typesHeaderFile();
     }
 
     private static String generateTypes() {
@@ -247,7 +248,9 @@ class ErlangDirectedCodegenTest {
                         ShapeId.from("com.preambleaudit#PaStatus"),
                         ShapeId.from("com.preambleaudit#PreambleBundle"),
                         ShapeId.from("com.preambleaudit#GetPreambleBundle"),
-                        ShapeId.from("com.preambleaudit#PreambleAuditService"));
+                        ShapeId.from("com.preambleaudit#PreambleAuditService"),
+                        ShapeId.from("smithy.api#String"),
+                        ShapeId.from("smithy.api#Timestamp"));
     }
 
     @Test
@@ -305,7 +308,8 @@ class ErlangDirectedCodegenTest {
         BeamSettings settings = new BeamSettings();
         settings.edition("2026");
         String typesHeader =
-                new BeamErlangLayout(settings, service.getId().getNamespace()).typesHeaderFile();
+                new BeamErlangLayout(settings, service.getId().getNamespace(), service)
+                        .typesHeaderFile();
         SymbolProvider symbolProvider = new ErlangSymbolProvider(
                 settings, preambleModel, service, typesHeader, BeamCodegenKind.TYPES);
 

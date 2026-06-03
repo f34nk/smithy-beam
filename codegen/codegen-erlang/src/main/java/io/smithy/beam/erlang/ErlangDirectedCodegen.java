@@ -58,9 +58,10 @@ final class ErlangDirectedCodegen
     @Override
     public SymbolProvider createSymbolProvider(
             CreateSymbolProviderDirective<BeamSettings> directive) {
-        String ns = directive.service().getId().getNamespace();
+        ServiceShape service = directive.service();
+        String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
-        BeamErlangLayout layout = new BeamErlangLayout(settings, ns);
+        BeamErlangLayout layout = new BeamErlangLayout(settings, ns, service);
         String definitionFile = layout.typesHeaderFile();
         return SymbolProvider.cache(
                 new ErlangSymbolProvider(
@@ -79,9 +80,9 @@ final class ErlangDirectedCodegen
         BeamProtocolCodegen protocolCodegen = null;
         String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
-        BeamErlangLayout layout = new BeamErlangLayout(settings, ns);
+        BeamErlangLayout layout = new BeamErlangLayout(settings, ns, service);
         String definitionFile = layout.typesHeaderFile();
-        String moduleName = layout.modulePrefix();
+        String moduleName = layout.typesModuleName();
         return new ErlangContext(
                 directive.model(),
                 directive.settings(),
@@ -142,6 +143,10 @@ final class ErlangDirectedCodegen
         });
     }
 
+    private static boolean isPreludeShape(Shape shape) {
+        return shape.getId().getNamespace().equals("smithy.api");
+    }
+
     /**
      * Returns true when a closure shape receives its {@code -type} alias from the preamble pass
      * rather than a {@code generate*} callback (enums, unions, and structures are excluded).
@@ -167,12 +172,16 @@ final class ErlangDirectedCodegen
                 || shape instanceof MapShape;
     }
 
+    static boolean shouldEmitPreambleTypeAlias(Shape shape) {
+        return receivesPreambleTypeAlias(shape) && !isPreludeShape(shape);
+    }
+
     /**
      * Shape ids that must receive exactly one preamble {@code -type} alias for the given closure.
      */
     static Set<ShapeId> expectedPreambleAliasShapeIds(Set<Shape> closure) {
         return closure.stream()
-                .filter(ErlangDirectedCodegen::receivesPreambleTypeAlias)
+                .filter(ErlangDirectedCodegen::shouldEmitPreambleTypeAlias)
                 .map(Shape::getId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
@@ -237,7 +246,7 @@ final class ErlangDirectedCodegen
             Set<ShapeId> preambleAliasesEmitted) {
         shapes.stream()
                 .filter(closure::contains)
-                .filter(ErlangDirectedCodegen::receivesPreambleTypeAlias)
+                .filter(ErlangDirectedCodegen::shouldEmitPreambleTypeAlias)
                 .sorted(java.util.Comparator.comparing(s -> s.getId().getName()))
                 .forEach(s -> {
                     recordPreambleAlias(s, preambleAliasesEmitted);
