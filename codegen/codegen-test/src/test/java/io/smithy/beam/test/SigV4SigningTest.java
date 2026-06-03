@@ -52,6 +52,10 @@ class SigV4SigningTest {
         assertThat(sigv4).contains("-export([sign/3]).");
         assertThat(sigv4).contains("aws_sigv4:sign(Request, Credentials, Region, Service, #{unsigned_payload => Unsigned}).");
 
+        String presigner = manifest.expectFileString("sigv4test_service_presigner.erl");
+        assertThat(presigner).contains("-module(sigv4test_service_presigner).");
+        assertThat(presigner).contains("aws_sigv4:presign(Request, Credentials, Region, Service, Opts).");
+
         String client = manifest.expectFileString("sigv4test_service_client.erl");
         assertThat(client).contains("sigv4test_service_sigv4:sign(Config, ping, Req)");
     }
@@ -63,6 +67,9 @@ class SigV4SigningTest {
 
         assertThat(sigv4).contains("defmodule Sigv4testServiceSigv4 do");
         assertThat(sigv4).contains("AwsSignature.sign(request, credentials, region, service, %{unsigned_payload: unsigned})");
+
+        String presigner = manifest.expectFileString("sigv4test_service_presigner.ex");
+        assertThat(presigner).contains("AwsSignature.presign(request, credentials, region, service, opts)");
 
         String client = manifest.expectFileString("sigv4test_service_client.ex");
         assertThat(client).contains("Sigv4testServiceSigv4.sign(config, :ping, req)");

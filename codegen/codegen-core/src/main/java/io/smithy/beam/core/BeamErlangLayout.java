@@ -135,6 +135,14 @@ public final class BeamErlangLayout {
         return serviceSnakeName() + "_sigv4";
     }
 
+    public String presignerModuleFile() {
+        return presignerModuleName() + ".erl";
+    }
+
+    public String presignerModuleName() {
+        return serviceSnakeName() + "_presigner";
+    }
+
     public String credentialsModuleFile() {
         return credentialsModuleName() + ".erl";
     }

@@ -205,6 +205,7 @@ final class ElixirClientDirectedCodegen
         ElixirEndpointRulesEmitter.emit(ctx, service);
         ElixirHttpDispatchEmitter.emit(ctx, service);
         ElixirSigV4Emitter.emit(ctx, service);
+        ElixirPresignerEmitter.emit(ctx, service);
         ElixirCredentialProviderEmitter.emit(ctx, service);
         ElixirPaginatorEmitter.emit(ctx, service);
         ElixirRetryEmitter.emit(ctx, service);

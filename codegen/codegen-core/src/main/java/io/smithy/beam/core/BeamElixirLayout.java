@@ -130,6 +130,14 @@ public final class BeamElixirLayout {
         return serviceSnakeName() + "_sigv4";
     }
 
+    public String presignerModuleFile() {
+        return presignerModuleName() + ".ex";
+    }
+
+    public String presignerModuleName() {
+        return serviceSnakeName() + "_presigner";
+    }
+
     public String credentialsModuleFile() {
         return credentialsModuleName() + ".ex";
     }

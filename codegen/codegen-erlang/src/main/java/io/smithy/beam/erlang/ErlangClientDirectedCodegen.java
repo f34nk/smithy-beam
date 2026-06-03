@@ -209,6 +209,7 @@ final class ErlangClientDirectedCodegen
         ErlangEndpointRulesEmitter.emit(ctx, service);
         ErlangHttpDispatchEmitter.emit(ctx, service);
         ErlangSigV4Emitter.emit(ctx, service);
+        ErlangPresignerEmitter.emit(ctx, service);
         ErlangCredentialProviderEmitter.emit(ctx, service);
         ErlangPaginatorEmitter.emit(ctx, service);
         ErlangRetryEmitter.emit(ctx, service);
