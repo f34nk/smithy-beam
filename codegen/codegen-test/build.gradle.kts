@@ -6,6 +6,7 @@ dependencies {
     testImplementation(libs.smithy.codegen.core)
     testImplementation(libs.smithy.build)
     testImplementation(libs.smithy.aws.traits)
+    testImplementation(libs.smithy.rules.engine)
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.assertj.core)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
