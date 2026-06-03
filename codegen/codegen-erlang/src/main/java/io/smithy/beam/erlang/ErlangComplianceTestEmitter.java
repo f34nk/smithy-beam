@@ -29,10 +29,6 @@ public final class ErlangComplianceTestEmitter {
 
     public static void emit(ErlangContext ctx, ServiceShape service) {
         BeamSettings settings = ctx.settings();
-        if (!settings.emitComplianceTests()) {
-            return;
-        }
-
         Model model = ctx.model();
         ShapeId protocol = ctx.resolvedProtocolTraitId();
         if (protocol == null) {

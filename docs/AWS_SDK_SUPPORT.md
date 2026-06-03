@@ -101,7 +101,7 @@ Protocol selection reads the sole `@protocolDefinition` trait on the selected se
 | [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ✅ | EC2 Query name mapping and form encoding with XML response decoding. |
 | [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ✅ | HTTP-bound request and response encoding with XML payload members. Honors `@xmlName`, `@xmlAttribute`, `@xmlFlattened`, and `@xmlNamespace` in generated codecs. |
 | Custom protocols via `@protocolDefinition` | ⚠️ | Protocol traits are discovered and validated at codegen time. `BeamProtocolResolver` walks the service closure and fails with one aggregated diagnostic when shapes are unsupported for the selected protocol (for example event streams or `bigDecimal`). Additional protocols require a new `BeamProtocolCodegen` implementation. |
-| [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ⚠️ | Opt-in via Smithy-Build `emitComplianceTests`. When enabled, emits test modules from `@httpRequestTests` and `@httpResponseTests`. |
+| [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ⚠️ | Emits test modules from `@httpRequestTests` and `@httpResponseTests` when the model defines those traits for the configured service. |
 
 ---
 

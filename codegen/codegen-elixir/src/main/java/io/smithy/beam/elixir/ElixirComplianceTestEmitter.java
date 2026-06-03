@@ -29,10 +29,6 @@ public final class ElixirComplianceTestEmitter {
 
     public static void emit(ElixirContext ctx, ServiceShape service) {
         BeamSettings settings = ctx.settings();
-        if (!settings.emitComplianceTests()) {
-            return;
-        }
-
         Model model = ctx.model();
         ShapeId protocol = ctx.resolvedProtocolTraitId();
         if (protocol == null) {

@@ -381,7 +381,7 @@ Traits from additional Smithy specifications.
 
 ### Test Traits (`smithy.test#*`)
 
-[HTTP protocol compliance tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) define expected wire requests and responses. Test modules are emitted only when Smithy-Build `emitComplianceTests` is enabled.
+[HTTP protocol compliance tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) define expected wire requests and responses. Codegen emits `test/<service>_compliance_tests.*` when the model defines `@httpRequestTests` or `@httpResponseTests` for the configured service.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
