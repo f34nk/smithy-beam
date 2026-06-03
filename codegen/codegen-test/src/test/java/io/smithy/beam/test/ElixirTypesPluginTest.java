@@ -48,16 +48,16 @@ class ElixirTypesPluginTest {
     }
 
     @Test
-    void generatesExpectedTypesInBasicTypesModule() {
+    void generatesExpectedTypesInBasicServiceTypesModule() {
         Model model = loadModel();
         MockManifest manifest = new MockManifest();
         new ElixirTypesPlugin().execute(buildContext(model, manifest));
 
-        String content = manifest.expectFileString("basic_types.ex");
+        String content = manifest.expectFileString("basic_service_types.ex");
 
         assertThat(content)
-                .contains("defmodule BasicTypes do")
-                .contains("Type definitions for the Basic model.")
+                .contains("defmodule BasicServiceTypes do")
+                .contains("Type definitions for the BasicServiceTypes model.")
                 .contains("@type basic_string :: String.t()")
                 .contains("@type basic_integer :: integer()")
                 .contains("@type basic_long :: integer()")
@@ -81,13 +81,13 @@ class ElixirTypesPluginTest {
                 .contains("defmodule BasicPriority do")
                 .contains(":low | :medium | :high | {:unknown, integer()}")
                 .contains("@type basic_union ::")
-                .contains("{:text, BasicTypes.basic_string()}")
-                .contains("{:number, BasicTypes.basic_integer()}")
-                .contains("{:flag, BasicTypes.basic_boolean()}")
+                .contains("{:text, BasicServiceTypes.basic_string()}")
+                .contains("{:number, BasicServiceTypes.basic_integer()}")
+                .contains("{:flag, BasicServiceTypes.basic_boolean()}")
                 .contains("{:unknown, String.t()}")
                 .contains("defmodule BasicItem do")
-                .contains("name: BasicTypes.basic_string(),")
-                .contains("count: BasicTypes.basic_integer() | nil");
+                .contains("name: BasicServiceTypes.basic_string(),")
+                .contains("count: BasicServiceTypes.basic_integer() | nil");
     }
 
     private static PluginContext buildContext(Model model, MockManifest manifest) {
@@ -112,7 +112,7 @@ class ElixirTypesPluginTest {
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        assertThat(manifest.expectFileString("reserved_types.ex")).contains("@type");
+        assertThat(manifest.expectFileString("reserved_service_types.ex")).contains("@type");
         assertThat(manifest.getFileString("reserved_service_rest_json_1.ex")).isEmpty();
         assertThat(manifest.getFileString("reserved_service_router.ex")).isEmpty();
         assertThat(manifest.getFileString("runtime_http.ex")).isEmpty();
@@ -122,7 +122,7 @@ class ElixirTypesPluginTest {
     void reservedWordsEscapeAndDeconflictInElixirOutput() {
         MockManifest manifest = new MockManifest();
         new ElixirTypesPlugin().execute(buildReservedWordsContext(manifest));
-        String content = manifest.expectFileString("reserved_types.ex");
+        String content = manifest.expectFileString("reserved_service_types.ex");
         assertThat(content)
                 .contains("after_")
                 .contains("begin_")
@@ -174,7 +174,7 @@ class ElixirTypesPluginTest {
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("error_shapes_types.ex");
+        String content = manifest.expectFileString("error_shape_service_types.ex");
 
         assertThat(content)
                 .contains(
@@ -208,7 +208,7 @@ class ElixirTypesPluginTest {
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("sparse_collections_types.ex");
+        String content = manifest.expectFileString("sparse_collections_service_types.ex");
 
         assertThat(content)
                 .contains("@type sc_sparse_list :: [")
@@ -238,7 +238,7 @@ class ElixirTypesPluginTest {
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("recursive_tree_types.ex");
+        String content = manifest.expectFileString("recursive_tree_service_types.ex");
 
         assertThat(content)
                 .contains("@type rt_string :: String.t()")
@@ -281,7 +281,7 @@ class ElixirTypesPluginTest {
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("streaming_blob_types.ex");
+        String content = manifest.expectFileString("streaming_blob_service_types.ex");
 
         assertThat(content)
                 .contains("# Streaming payload; framing deferred to protocol layer.")
@@ -310,7 +310,7 @@ class ElixirTypesPluginTest {
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("nullable_members_types.ex");
+        String content = manifest.expectFileString("nullable_members_service_types.ex");
 
         assertThat(content)
                 .contains("@type nm_list :: [")
@@ -345,7 +345,7 @@ class ElixirTypesPluginTest {
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("member_order_types.ex");
+        String content = manifest.expectFileString("member_order_service_types.ex");
         int zebra = content.indexOf("zebra:");
         int alpha = content.indexOf("alpha:");
         int mike = content.indexOf("mike:");
@@ -376,7 +376,7 @@ class ElixirTypesPluginTest {
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("dedicated_io_types.ex");
+        String content = manifest.expectFileString("dedicated_io_service_types.ex");
 
         assertThat(content)
                 .contains("defmodule HealthCheckInput do")
@@ -396,7 +396,7 @@ class ElixirTypesPluginTest {
                 .settings(settings)
                 .build();
         new ElixirTypesPlugin().execute(context);
-        assertThat(manifest.expectFileString("basic_types.ex")).contains("basic_string");
+        assertThat(manifest.expectFileString("basic_service_types.ex")).contains("basic_string");
     }
 
     @Test
@@ -466,8 +466,8 @@ class ElixirTypesPluginTest {
                 .fileManifest(extended)
                 .settings(extendedSettings)
                 .build());
-        assertThat(extended.expectFileString("multi_types.ex"))
-                .isEqualTo(baseline.expectFileString("multi_types.ex"));
+        assertThat(extended.expectFileString("service_a_types.ex"))
+                .isEqualTo(baseline.expectFileString("service_a_types.ex"));
     }
 
     private static Model loadRelativeDeprecationModel() {
@@ -490,7 +490,7 @@ class ElixirTypesPluginTest {
                 .withMember("edition", "2026")
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
-        assertThat(baseline.expectFileString("relative_deprecation_types.ex"))
+        assertThat(baseline.expectFileString("relative_deprecation_service_types.ex"))
                 .contains("@type legacy_string :: String.t()");
 
         MockManifest filtered = new MockManifest();
@@ -500,7 +500,7 @@ class ElixirTypesPluginTest {
                 .withMember("relativeDate", "2026-01-01")
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, filtered, filteredSettings));
-        assertThat(filtered.expectFileString("relative_deprecation_types.ex"))
+        assertThat(filtered.expectFileString("relative_deprecation_service_types.ex"))
                 .doesNotContain("@type legacy_string :: String.t()");
     }
 
@@ -520,7 +520,7 @@ class ElixirTypesPluginTest {
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("documented_types_types.ex");
+        String content = manifest.expectFileString("documented_types_service_types.ex");
 
         assertThat(content).contains("@moduledoc \"\"\"");
         assertThat(content).contains("A documented structure with member docs.");
@@ -540,7 +540,7 @@ class ElixirTypesPluginTest {
                 .withMember("edition", "2026")
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
-        assertThat(baseline.expectFileString("relative_deprecation_types.ex"))
+        assertThat(baseline.expectFileString("relative_deprecation_service_types.ex"))
                 .contains("@type legacy_version_string :: String.t()");
 
         MockManifest filtered = new MockManifest();
@@ -550,7 +550,7 @@ class ElixirTypesPluginTest {
                 .withMember("relativeVersion", "1.0.0")
                 .build();
         new ElixirTypesPlugin().execute(pluginContext(model, filtered, filteredSettings));
-        assertThat(filtered.expectFileString("relative_deprecation_types.ex"))
+        assertThat(filtered.expectFileString("relative_deprecation_service_types.ex"))
                 .doesNotContain("@type legacy_version_string :: String.t()");
     }
 }
