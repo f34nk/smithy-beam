@@ -1,13 +1,10 @@
 package io.smithy.beam.core;
 
 import org.junit.jupiter.api.Test;
-import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class BeamProtocolResolverTest {
 
@@ -49,7 +46,7 @@ class BeamProtocolResolverTest {
     }
 
     @Test
-    void closureAuditCollectsEventStreamUnionsInOneException() {
+    void closureAuditAllowsEventStreamUnions() {
         Model model = Model.assembler()
                 .addUnparsedModel("test.smithy", """
                         $version: "2"
@@ -86,10 +83,6 @@ class BeamProtocolResolverTest {
         ServiceShape service = model.getServiceShapes().iterator().next();
         var protocol = software.amazon.smithy.model.shapes.ShapeId.from("aws.protocols#restJson1");
 
-        CodegenException ex = assertThrows(CodegenException.class, () ->
-                BeamProtocolResolver.assertClosureSupported(model, service, protocol));
-
-        assertThat(ex.getMessage()).contains("event-stream union");
-        assertThat(ex.getMessage()).contains("EventStream");
+        assertDoesNotThrow(() -> BeamProtocolResolver.assertClosureSupported(model, service, protocol));
     }
 }

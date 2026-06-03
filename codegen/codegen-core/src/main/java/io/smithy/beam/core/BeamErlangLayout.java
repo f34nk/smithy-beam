@@ -159,6 +159,14 @@ public final class BeamErlangLayout {
         return serviceSnakeName() + "_endpoints";
     }
 
+    public String eventStreamModuleFile() {
+        return eventStreamModuleName() + ".erl";
+    }
+
+    public String eventStreamModuleName() {
+        return serviceSnakeName() + "_event_stream";
+    }
+
     public String resourceClientModuleFile(String resourceSnakeName) {
         return resourceClientModuleName(resourceSnakeName) + ".erl";
     }

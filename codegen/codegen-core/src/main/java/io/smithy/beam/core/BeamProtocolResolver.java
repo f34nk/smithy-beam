@@ -8,9 +8,7 @@ import software.amazon.smithy.model.shapes.DocumentShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.ShapeId;
-import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.ProtocolDefinitionTrait;
-import software.amazon.smithy.model.traits.StreamingTrait;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,13 +60,6 @@ public final class BeamProtocolResolver {
                                 + ": bigDecimal is not supported by "
                                 + protocol
                                 + " without an explicit opt-in codec");
-            }
-            if (shape instanceof UnionShape && shape.hasTrait(StreamingTrait.class)) {
-                diagnostics.add(
-                        shape.getId()
-                                + ": event-stream union shapes are not supported by "
-                                + protocol
-                                + "; event streams are not implemented");
             }
             if (BeamRestXmlProtocolCodegen.REST_XML.equals(protocol) && shape instanceof DocumentShape) {
                 diagnostics.add(

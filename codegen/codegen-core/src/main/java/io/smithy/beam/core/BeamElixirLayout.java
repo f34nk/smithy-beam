@@ -150,6 +150,14 @@ public final class BeamElixirLayout {
         return serviceSnakeName() + "_endpoints";
     }
 
+    public String eventStreamModuleFile() {
+        return eventStreamModuleName() + ".ex";
+    }
+
+    public String eventStreamModuleName() {
+        return serviceSnakeName() + "_event_stream";
+    }
+
     public String resourceClientModuleFile(String resourceSnakeName) {
         return resourceClientModuleName(resourceSnakeName) + ".ex";
     }

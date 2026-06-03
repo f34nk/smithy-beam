@@ -7,10 +7,12 @@ import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
+import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 
 import java.util.ArrayList;
@@ -33,6 +35,7 @@ final class ErlangAwsJsonRpcEmitter {
         ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
+        String eventStreamModule = layout.eventStreamModuleName();
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
         List<String> exports = new ArrayList<>();
@@ -52,8 +55,8 @@ final class ErlangAwsJsonRpcEmitter {
             writer.write("");
 
             for (OperationShape op : operations) {
-                emitRequestDecoder(writer, model, op, httpIndex, sp);
-                emitResponseEncoder(writer, model, op, httpIndex, sp, contentType);
+                emitRequestDecoder(writer, model, op, httpIndex, sp, eventStreamModule);
+                emitResponseEncoder(writer, model, op, httpIndex, sp, contentType, eventStreamModule);
             }
 
             ErlangRestJson1Emitter.emitSharedCodecHelpers(writer, model, service, sp);
@@ -71,6 +74,7 @@ final class ErlangAwsJsonRpcEmitter {
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         String targetPrefix = service.getId().getName();
+        String eventStreamModule = layout.eventStreamModuleName();
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
         List<String> exports = new ArrayList<>();
@@ -90,8 +94,8 @@ final class ErlangAwsJsonRpcEmitter {
             writer.write("");
 
             for (OperationShape op : operations) {
-                emitEncoder(writer, model, op, httpIndex, sp, targetPrefix, contentType);
-                emitDecoder(writer, model, op, httpIndex, sp);
+                emitEncoder(writer, model, op, httpIndex, sp, targetPrefix, contentType, eventStreamModule);
+                emitDecoder(writer, model, op, httpIndex, sp, eventStreamModule);
             }
 
             for (OperationShape op : operations) {
@@ -107,24 +111,34 @@ final class ErlangAwsJsonRpcEmitter {
             Model model,
             OperationShape op,
             HttpBindingIndex httpIndex,
-            SymbolProvider sp) {
+            SymbolProvider sp,
+            String eventStreamModule) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
         String inputRecord = ErlangJsonCodecSupport.recordName(sp.toSymbol(input));
         String inputType = sp.toSymbol(input).getName();
-        List<software.amazon.smithy.model.shapes.MemberShape> members =
-                ErlangJsonCodecSupport.documentMembers(httpIndex, op, input, true);
+        List<MemberShape> members = ErlangJsonCodecSupport.documentMembers(httpIndex, op, input, true);
 
         writer.write("%% Decode AWS JSON request for $L.", op.getId());
         writer.write("-spec decode_$L_request(#http_request{}) -> $L.", opName, inputType);
         writer.write("decode_$L_request(#http_request{body = Body}) ->", opName);
         writer.indent();
-        ErlangJsonCodecSupport.emitDecodeJsonBody(writer);
-        writer.write("#$L{", inputRecord);
-        ErlangJsonCodecSupport.emitRecordFieldsFromDecoded(
-                writer, model, httpIndex, sp, members, HttpBinding.Location.DOCUMENT);
-        writer.write("}.");
+        if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
+            MemberShape member = members.get(0);
+            UnionShape union = model.expectShape(member.getTarget(), UnionShape.class);
+            String helper = ErlangEventStreamEmitter.helperName(sp, union);
+            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+            writer.write("#$L{", inputRecord);
+            writer.write("    $L = $L:decode_$L(Body)", fieldName, eventStreamModule, helper);
+            writer.write("}.");
+        } else {
+            ErlangJsonCodecSupport.emitDecodeJsonBody(writer);
+            writer.write("#$L{", inputRecord);
+            ErlangJsonCodecSupport.emitRecordFieldsFromDecoded(
+                    writer, model, httpIndex, sp, members, HttpBinding.Location.DOCUMENT, eventStreamModule);
+            writer.write("}.");
+        }
         writer.dedent();
         writer.write("");
     }
@@ -135,25 +149,34 @@ final class ErlangAwsJsonRpcEmitter {
             OperationShape op,
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
-            String contentType) {
+            String contentType,
+            String eventStreamModule) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
         String outputRecord = ErlangJsonCodecSupport.recordName(sp.toSymbol(output));
         String outputType = sp.toSymbol(output).getName();
         String pattern = ErlangJsonCodecSupport.inputPattern(output);
-        List<software.amazon.smithy.model.shapes.MemberShape> members =
-                ErlangJsonCodecSupport.documentMembers(httpIndex, op, output, false);
+        List<MemberShape> members = ErlangJsonCodecSupport.documentMembers(httpIndex, op, output, false);
 
         writer.write("%% Encode AWS JSON response for $L.", op.getId());
         writer.write("-spec encode_$L_response($L) -> #http_response{}.", opName, outputType);
         writer.write("encode_$L_response(#$L{$L}) ->", opName, outputRecord, pattern);
         writer.indent();
-        writer.write("BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
-        ErlangJsonCodecSupport.emitBodyMapEntries(
-                writer, model, httpIndex, sp, members, HttpBinding.Location.DOCUMENT);
-        writer.write("}),");
-        writer.write("Body = jsone:encode(BodyMap),");
+        if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
+            MemberShape member = members.get(0);
+            UnionShape union = model.expectShape(member.getTarget(), UnionShape.class);
+            String helper = ErlangEventStreamEmitter.helperName(sp, union);
+            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+            String bindingVar = ErlangJsonCodecSupport.toBindingVar(fieldName);
+            writer.write("Body = iolist_to_binary($L:encode_$L($L)),", eventStreamModule, helper, bindingVar);
+        } else {
+            writer.write("BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
+            ErlangJsonCodecSupport.emitBodyMapEntries(
+                    writer, model, httpIndex, sp, members, HttpBinding.Location.DOCUMENT, eventStreamModule);
+            writer.write("}),");
+            writer.write("Body = jsone:encode(BodyMap),");
+        }
         writer.write("#http_response{");
         writer.write("    status = 200,");
         writer.write("    headers = [{<<\"Content-Type\">>, <<\"$L\">>}],", contentType);
@@ -170,26 +193,35 @@ final class ErlangAwsJsonRpcEmitter {
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
             String targetPrefix,
-            String contentType) {
+            String contentType,
+            String eventStreamModule) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
         String inputRecord = ErlangJsonCodecSupport.recordName(sp.toSymbol(input));
         String inputType = sp.toSymbol(input).getName();
         String pattern = ErlangJsonCodecSupport.inputPattern(input);
-        List<software.amazon.smithy.model.shapes.MemberShape> members =
-                ErlangJsonCodecSupport.documentMembers(httpIndex, op, input, true);
+        List<MemberShape> members = ErlangJsonCodecSupport.documentMembers(httpIndex, op, input, true);
         String amzTarget = targetPrefix + "." + op.getId().getName();
 
         writer.write("%% Encode AWS JSON request for $L.", op.getId());
         writer.write("-spec encode_$L_request($L) -> #http_request{}.", opName, inputType);
         writer.write("encode_$L_request(Input = #$L{$L}) ->", opName, inputRecord, pattern);
         writer.indent();
-        writer.write("BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
-        ErlangJsonCodecSupport.emitBodyMapEntries(
-                writer, model, httpIndex, sp, members, HttpBinding.Location.DOCUMENT);
-        writer.write("}),");
-        writer.write("Body = jsone:encode(BodyMap),");
+        if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
+            MemberShape member = members.get(0);
+            UnionShape union = model.expectShape(member.getTarget(), UnionShape.class);
+            String helper = ErlangEventStreamEmitter.helperName(sp, union);
+            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+            String bindingVar = ErlangJsonCodecSupport.toBindingVar(fieldName);
+            writer.write("Body = iolist_to_binary($L:encode_$L($L)),", eventStreamModule, helper, bindingVar);
+        } else {
+            writer.write("BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
+            ErlangJsonCodecSupport.emitBodyMapEntries(
+                    writer, model, httpIndex, sp, members, HttpBinding.Location.DOCUMENT, eventStreamModule);
+            writer.write("}),");
+            writer.write("Body = jsone:encode(BodyMap),");
+        }
         writer.write("#http_request{");
         writer.write("    method = <<\"POST\">>,");
         writer.write("    path = <<\"/\">>,");
@@ -209,25 +241,35 @@ final class ErlangAwsJsonRpcEmitter {
             Model model,
             OperationShape op,
             HttpBindingIndex httpIndex,
-            SymbolProvider sp) {
+            SymbolProvider sp,
+            String eventStreamModule) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
         String outputRecord = ErlangJsonCodecSupport.recordName(sp.toSymbol(output));
         String outputType = sp.toSymbol(output).getName();
-        List<software.amazon.smithy.model.shapes.MemberShape> members =
-                ErlangJsonCodecSupport.documentMembers(httpIndex, op, output, false);
+        List<MemberShape> members = ErlangJsonCodecSupport.documentMembers(httpIndex, op, output, false);
 
         writer.write("%% Decode AWS JSON response for $L.", op.getId());
         writer.write("-spec decode_$L_response(#http_response{}) -> {'ok', $L} | {'error', term()}.",
                 opName, outputType);
         writer.write("decode_$L_response(#http_response{status = 200, body = Body}) ->", opName);
         writer.indent();
-        ErlangJsonCodecSupport.emitDecodeJsonBody(writer);
-        writer.write("{ok, #$L{", outputRecord);
-        ErlangJsonCodecSupport.emitRecordFieldsFromDecoded(
-                writer, model, httpIndex, sp, members, HttpBinding.Location.DOCUMENT);
-        writer.write("}};");
+        if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
+            MemberShape member = members.get(0);
+            UnionShape union = model.expectShape(member.getTarget(), UnionShape.class);
+            String helper = ErlangEventStreamEmitter.helperName(sp, union);
+            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+            writer.write("{ok, #$L{", outputRecord);
+            writer.write("    $L = $L:decode_$L(Body)", fieldName, eventStreamModule, helper);
+            writer.write("}};");
+        } else {
+            ErlangJsonCodecSupport.emitDecodeJsonBody(writer);
+            writer.write("{ok, #$L{", outputRecord);
+            ErlangJsonCodecSupport.emitRecordFieldsFromDecoded(
+                    writer, model, httpIndex, sp, members, HttpBinding.Location.DOCUMENT, eventStreamModule);
+            writer.write("}};");
+        }
         writer.dedent();
         writer.write(
                 "decode_$L_response(#http_response{status = Status, headers = RespHeaders, body = Body}) ->",
@@ -306,7 +348,7 @@ final class ErlangAwsJsonRpcEmitter {
 
     private static List<String> buildErrorFields(StructureShape errShape) {
         List<String> fields = new ArrayList<>();
-        for (software.amazon.smithy.model.shapes.MemberShape member : errShape.members()) {
+        for (MemberShape member : errShape.members()) {
             if (member.getMemberName().equals("__beam_error_kind")) {
                 continue;
             }

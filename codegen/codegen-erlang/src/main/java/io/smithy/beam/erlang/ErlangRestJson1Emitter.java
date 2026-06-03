@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
@@ -87,8 +88,8 @@ public final class ErlangRestJson1Emitter {
             writer.write("");
 
             for (OperationShape op : operations) {
-                emitEncoder(writer, model, service, op, httpIndex, sp, encodeWithConfig);
-                emitRequestDecoder(writer, model, op, httpIndex, sp);
+                emitEncoder(writer, model, service, op, httpIndex, sp, encodeWithConfig, layout.eventStreamModuleName());
+                emitRequestDecoder(writer, model, op, httpIndex, sp, layout.eventStreamModuleName());
                 emitDecoder(writer, model, service, op, httpIndex, sp, layout);
             }
 
@@ -144,7 +145,7 @@ public final class ErlangRestJson1Emitter {
 
             Set<ShapeId> emittedErrorEncoders = new LinkedHashSet<>();
             for (OperationShape op : operations) {
-                emitRequestDecoder(writer, model, op, httpIndex, sp);
+                emitRequestDecoder(writer, model, op, httpIndex, sp, layout.eventStreamModuleName());
                 emitResponseEncoder(writer, model, op, httpIndex, sp);
                 emitErrorResponseEncoders(writer, model, op, sp, emittedErrorEncoders);
             }
@@ -162,7 +163,8 @@ public final class ErlangRestJson1Emitter {
             OperationShape op,
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
-            boolean encodeWithConfig) {
+            boolean encodeWithConfig,
+            String eventStreamModule) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
@@ -291,7 +293,7 @@ public final class ErlangRestJson1Emitter {
         }
 
         boolean streamingRequestPayload = hasStreamingRequestPayload(model, reqPayload, method);
-        emitRequestBody(writer, model, httpIndex, reqPayload, docMembers, method, sp);
+        emitRequestBody(writer, model, httpIndex, reqPayload, docMembers, method, sp, eventStreamModule);
         ErlangHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp);
         emitRequestCompression(writer, op);
         if (streamingRequestPayload) {
@@ -332,7 +334,8 @@ public final class ErlangRestJson1Emitter {
             Model model,
             OperationShape op,
             HttpBindingIndex httpIndex,
-            SymbolProvider sp) {
+            SymbolProvider sp,
+            String eventStreamModule) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
@@ -444,6 +447,10 @@ public final class ErlangRestJson1Emitter {
             String fieldName = BeamNameUtils.toSnakeCase(pb.getMember().getMemberName());
             if (isStreamingBlob(model, pb.getMember())) {
                 recordFields.add("    " + fieldName + " = Stream");
+            } else if (BeamEventStreamIndex.of(model).isEventStreamMember(pb.getMember())) {
+                UnionShape union = model.expectShape(pb.getMember().getTarget(), UnionShape.class);
+                String helper = ErlangEventStreamEmitter.helperName(sp, union);
+                recordFields.add("    " + fieldName + " = " + eventStreamModule + ":decode_" + helper + "(Body)");
             } else {
                 recordFields.add("    " + fieldName + " = Body");
             }
@@ -650,6 +657,9 @@ public final class ErlangRestJson1Emitter {
         List<HttpBinding> respCode = httpIndex.getResponseBindings(op, HttpBinding.Location.RESPONSE_CODE);
         boolean streamingResponsePayload = !respPayload.isEmpty()
                 && isStreamingBlob(model, respPayload.get(0).getMember());
+        boolean eventStreamResponsePayload = !respPayload.isEmpty()
+                && BeamEventStreamIndex.of(model).isEventStreamMember(respPayload.get(0).getMember());
+        String eventStreamModule = layout.eventStreamModuleName();
 
         writer.write("%% Decode HTTP response for $L.", op.getId());
         writer.write("-spec decode_$L_response(#http_response{}) -> {'ok', $L} | {'error', term()}.",
@@ -690,7 +700,8 @@ public final class ErlangRestJson1Emitter {
             writer.indent();
         }
 
-        if (!respDoc.isEmpty() || (!respPayload.isEmpty() && !needsContentTypeCheck)) {
+        if (!respDoc.isEmpty()
+                || (!respPayload.isEmpty() && !needsContentTypeCheck && !eventStreamResponsePayload)) {
             writer.write("Decoded = case Body of");
             writer.indent();
             writer.write("<<>> -> #{};");
@@ -751,6 +762,10 @@ public final class ErlangRestJson1Emitter {
             String fieldName = BeamNameUtils.toSnakeCase(pb.getMember().getMemberName());
             if (isStreamingBlob(model, pb.getMember())) {
                 recordFields.add("    " + fieldName + " = Stream");
+            } else if (BeamEventStreamIndex.of(model).isEventStreamMember(pb.getMember())) {
+                UnionShape union = model.expectShape(pb.getMember().getTarget(), UnionShape.class);
+                String helper = ErlangEventStreamEmitter.helperName(sp, union);
+                recordFields.add("    " + fieldName + " = " + eventStreamModule + ":decode_" + helper + "(Body)");
             } else {
                 recordFields.add("    " + fieldName + " = Body");
             }
@@ -934,7 +949,7 @@ public final class ErlangRestJson1Emitter {
 
     private static void collectUnionTarget(Model model, MemberShape member, Set<ShapeId> out) {
         Shape target = model.expectShape(member.getTarget());
-        if (target instanceof UnionShape) {
+        if (target instanceof UnionShape && !BeamEventStreamIndex.of(model).isEventStreamUnion(target)) {
             out.add(target.getId());
         }
     }
@@ -1354,7 +1369,8 @@ public final class ErlangRestJson1Emitter {
             List<HttpBinding> reqPayload,
             List<HttpBinding> docMembers,
             String method,
-            SymbolProvider sp) {
+            SymbolProvider sp,
+            String eventStreamModule) {
 
         if (!reqPayload.isEmpty()
                 && !method.equals("GET")
@@ -1366,6 +1382,13 @@ public final class ErlangRestJson1Emitter {
             String bindingVar = toBindingVar(fieldName);
             if (isStreamingBlob(model, member)) {
                 writer.write("Body = <<>>,");
+                return;
+            }
+            if (BeamEventStreamIndex.of(model).isEventStreamMember(member)) {
+                UnionShape union = model.expectShape(member.getTarget(), UnionShape.class);
+                String helper = ErlangEventStreamEmitter.helperName(sp, union);
+                writer.write("Body = iolist_to_binary($L:encode_$L($L)),",
+                        eventStreamModule, helper, bindingVar);
                 return;
             }
             Shape target = model.expectShape(member.getTarget());

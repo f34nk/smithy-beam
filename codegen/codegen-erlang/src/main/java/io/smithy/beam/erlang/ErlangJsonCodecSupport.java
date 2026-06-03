@@ -9,6 +9,7 @@ import software.amazon.smithy.model.shapes.EnumShape;
 import software.amazon.smithy.model.shapes.IntEnumShape;
 import software.amazon.smithy.model.shapes.ListShape;
 import software.amazon.smithy.model.shapes.MapShape;
+import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -127,7 +128,8 @@ final class ErlangJsonCodecSupport {
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
             List<MemberShape> members,
-            HttpBinding.Location location) {
+            HttpBinding.Location location,
+            String eventStreamModule) {
         for (int i = 0; i < members.size(); i++) {
             MemberShape member = members.get(i);
             String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
@@ -138,10 +140,17 @@ final class ErlangJsonCodecSupport {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
                 writer.write("    <<\"$L\">> => encode_$L($L)$L",
                         wireKey, helperName, toBindingVar(fieldName), comma);
-            } else if (target instanceof UnionShape) {
+            } else if (target instanceof UnionShape
+                    && !BeamEventStreamIndex.of(model).isEventStreamUnion(target)) {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
                 writer.write("    <<\"$L\">> => encode_$L($L)$L",
                         wireKey, helperName, toBindingVar(fieldName), comma);
+            } else if (target instanceof UnionShape
+                    && BeamEventStreamIndex.of(model).isEventStreamUnion(target)) {
+                UnionShape union = (UnionShape) target;
+                String helper = ErlangEventStreamEmitter.helperName(sp, union);
+                writer.write("    <<\"$L\">> => $L:encode_$L($L)$L",
+                        wireKey, eventStreamModule, helper, toBindingVar(fieldName), comma);
             } else if (target instanceof TimestampShape) {
                 String encodeHelper = timestampEncodeHelper(httpIndex, member, location);
                 writer.write("    <<\"$L\">> => $L($L)$L",
@@ -159,7 +168,8 @@ final class ErlangJsonCodecSupport {
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
             List<MemberShape> members,
-            HttpBinding.Location location) {
+            HttpBinding.Location location,
+            String eventStreamModule) {
         List<String> recordFields = new ArrayList<>();
         for (MemberShape member : members) {
             String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
@@ -169,6 +179,11 @@ final class ErlangJsonCodecSupport {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
                 recordFields.add("    " + fieldName + " = decode_" + helperName
                         + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
+            } else if (target instanceof UnionShape
+                    && BeamEventStreamIndex.of(model).isEventStreamUnion(target)) {
+                UnionShape union = (UnionShape) target;
+                String helper = ErlangEventStreamEmitter.helperName(sp, union);
+                recordFields.add("    " + fieldName + " = " + eventStreamModule + ":decode_" + helper + "(Body)");
             } else if (target instanceof UnionShape) {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
                 recordFields.add("    " + fieldName + " = decode_" + helperName
@@ -201,5 +216,9 @@ final class ErlangJsonCodecSupport {
         writer.dedent();
         writer.dedent();
         writer.write("end,");
+    }
+
+    static boolean isEventStreamPayload(List<MemberShape> members, Model model) {
+        return members.size() == 1 && BeamEventStreamIndex.of(model).isEventStreamMember(members.get(0));
     }
 }
