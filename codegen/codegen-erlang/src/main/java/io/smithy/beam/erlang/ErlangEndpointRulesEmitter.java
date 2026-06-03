@@ -3,7 +3,6 @@ package io.smithy.beam.erlang;
 import io.smithy.beam.core.BeamContextParamsIndex;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
-import io.smithy.beam.core.BeamRuntimeDependency;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 import java.util.Map;
@@ -28,7 +27,6 @@ public final class ErlangEndpointRulesEmitter {
         Map<String, String> clientContextKeys = BeamContextParamsIndex.clientContextConfigKeys(service);
 
         ctx.writerDelegator().useFileWriter(layout.endpointsModuleFile(), writer -> {
-            writer.addDependency(BeamRuntimeDependency.AWS_ENDPOINT_RULES);
             writer.write("%% Generated endpoint rule resolver for $L.", service.getId());
             writer.write("-module($L).", endpointsModule);
             writer.write("-export([resolve/2, rule_set/0]).");

@@ -1,13 +1,9 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenTransforms;
-import io.smithy.beam.core.BeamDependencyManifestEmitter;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.codegen.core.directed.CodegenDirector;
-import software.amazon.smithy.model.shapes.ServiceShape;
-
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Runs Erlang type generation then client-specific DirectedCodegen on the same
@@ -24,10 +20,7 @@ public final class ErlangClientGeneration {
         CodegenDirector<ErlangWriter, ErlangIntegration, ErlangContext, BeamSettings> runner =
                 new CodegenDirector<>();
 
-        AtomicReference<ErlangContext> clientContext = new AtomicReference<>();
-        runner.directedCodegen(
-                BeamDependencyManifestEmitter.capturingContext(
-                        new ErlangClientDirectedCodegen(), clientContext));
+        runner.directedCodegen(new ErlangClientDirectedCodegen());
         runner.integrationClass(ErlangIntegration.class);
         runner.fileManifest(context.getFileManifest());
         runner.integrationSettings(context.getSettings());
@@ -41,13 +34,5 @@ public final class ErlangClientGeneration {
         BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
 
         runner.run();
-
-        ServiceShape service = context.getModel().expectShape(serviceId, ServiceShape.class);
-        BeamDependencyManifestEmitter.emit(
-                context.getFileManifest(),
-                clientContext.get().writerDelegator(),
-                settings,
-                context.getModel(),
-                service);
     }
 }
