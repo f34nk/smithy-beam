@@ -19,6 +19,7 @@ public final class ErlangPresignerEmitter {
         BeamErlangLayout layout = new BeamErlangLayout(
                 ctx.settings(), service.getId().getNamespace(), service);
         String presignerModule = layout.presignerModuleName();
+        String sigv4Module = layout.sigv4ModuleName();
 
         ctx.writerDelegator().useFileWriter(layout.presignerModuleFile(), writer -> {
             writer.write("%% Generated presigned URL helper for $L.", service.getId());
@@ -36,7 +37,11 @@ public final class ErlangPresignerEmitter {
             writer.write("Service = maps:get(signing_name, Config),");
             writer.write("Expires = maps:get(presign_expires, Config, 900),");
             writer.write("Unsigned = maps:get({unsigned_payload, Operation}, Config, false),");
-            writer.write("Opts = #{expires => Expires, unsigned_payload => Unsigned},");
+            writer.write("Opts = #{");
+            writer.write("    expires => Expires,");
+            writer.write("    unsigned_payload => Unsigned,");
+            writer.write("    endpoint_host => $L:endpoint_host_from_config(Config)", sigv4Module);
+            writer.write("},");
             writer.write("aws_sigv4:presign(Request, Credentials, Region, Service, Opts).");
             writer.dedent();
         });
