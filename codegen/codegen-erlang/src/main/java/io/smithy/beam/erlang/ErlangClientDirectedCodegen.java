@@ -205,6 +205,7 @@ final class ErlangClientDirectedCodegen
         }
 
         ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
+        ErlangS3EndpointEmitter.emit(ctx, service);
         ErlangEndpointRulesEmitter.emit(ctx, service);
         ErlangHttpDispatchEmitter.emit(ctx, service);
         ErlangSigV4Emitter.emit(ctx, service);
@@ -301,7 +302,7 @@ final class ErlangClientDirectedCodegen
                 writer.write("$L(Config, Input) ->", opSym.getName());
                 writer.indent();
                 if (ErlangRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())
-                        || ErlangRestXmlEmitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())) {
+                        || ErlangRestXmlEmitter.serviceEncodesWithConfig(ctx.model(), ctx.service())) {
                     writer.write("Req = $L:encode_$L_request(Config, Input),",
                             codecModule, opSym.getName());
                 } else {

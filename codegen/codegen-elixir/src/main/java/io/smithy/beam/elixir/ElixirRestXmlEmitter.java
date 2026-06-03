@@ -6,6 +6,7 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
+import io.smithy.beam.core.BeamS3CustomizationIndex;
 import io.smithy.beam.core.BeamXmlBindingIndex;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -50,7 +51,7 @@ public final class ElixirRestXmlEmitter {
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
         String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
-        boolean encodeWithConfig = serviceHasHostLabelOperations(model, service);
+        boolean encodeWithConfig = serviceEncodesWithConfig(model, service);
         boolean checksumBindings = ElixirHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
 
         ctx.writerDelegator().useFileWriter(codecFile, writer -> {
@@ -59,12 +60,15 @@ public final class ElixirRestXmlEmitter {
             writer.write("@moduledoc \"REST-XML codecs for $L (generated). Do not edit.\"", service.getId());
             writer.write("alias $L, as: RuntimeTypes", runtimeMod);
             writer.write("alias $L, as: Types", typesMod);
+            if (BeamS3CustomizationIndex.isS3Service(service)) {
+                writer.write("alias S3Endpoint");
+            }
             writer.write("");
 
             emitServiceXmlNamespace(writer, BeamXmlBindingIndex.xmlNamespaceUri(service));
 
             for (OperationShape op : operations) {
-                emitEncoder(writer, model, op, httpIndex, sp, typesMod, runtimeMod, encodeWithConfig);
+                emitEncoder(writer, model, service, op, httpIndex, sp, typesMod, runtimeMod, encodeWithConfig);
                 emitDecoder(writer, model, op, httpIndex, sp, typesMod);
             }
 
@@ -125,6 +129,7 @@ public final class ElixirRestXmlEmitter {
     private static void emitEncoder(
             ElixirWriter writer,
             Model model,
+            ServiceShape service,
             OperationShape op,
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
@@ -168,8 +173,27 @@ public final class ElixirRestXmlEmitter {
             }
         }
 
-        String pathExpr = buildPathExpression(httpTrait.getUri().toString(), labels, sp);
-        writer.write("path = $L", pathExpr);
+        BeamS3CustomizationIndex s3Index = BeamS3CustomizationIndex.of(model);
+        boolean s3BucketAddressing =
+                s3Index.isS3Service(service) && s3Index.bucketLabelBinding(op).isPresent();
+        boolean setHost = s3BucketAddressing;
+
+        if (s3BucketAddressing) {
+            String bucketField = fieldName(sp, s3Index.bucketLabelBinding(op).orElseThrow().getMember());
+            String keyExpr = s3Index.keyLabelBinding(op)
+                    .map(binding -> "to_string(input." + fieldName(sp, binding.getMember()) + ")")
+                    .orElse("\"\"");
+            if (encodeWithConfig) {
+                writer.write("{host, path} = S3Endpoint.resolve_bucket_url(config, to_string(input.$L), $L)",
+                        bucketField, keyExpr);
+            } else {
+                writer.write("{host, path} = S3Endpoint.resolve_bucket_url(%{}, to_string(input.$L), $L)",
+                        bucketField, keyExpr);
+            }
+        } else {
+            String pathExpr = buildPathExpression(httpTrait.getUri().toString(), labels, sp);
+            writer.write("path = $L", pathExpr);
+        }
 
         if (!queries.isEmpty()) {
             writer.write("query = %{");
@@ -201,6 +225,9 @@ public final class ElixirRestXmlEmitter {
         writer.write("  query: query,");
         writer.write("  headers: headers,");
         writer.write("  body: body");
+        if (setHost) {
+            writer.write("  ,host: host");
+        }
         writer.write("}");
 
         writer.dedent();
@@ -622,5 +649,10 @@ public final class ElixirRestXmlEmitter {
             }
         }
         return false;
+    }
+
+    public static boolean serviceEncodesWithConfig(Model model, ServiceShape service) {
+        return serviceHasHostLabelOperations(model, service)
+                || BeamS3CustomizationIndex.of(model).serviceUsesBucketAddressing(service);
     }
 }

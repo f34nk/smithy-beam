@@ -201,6 +201,7 @@ final class ElixirClientDirectedCodegen
         }
 
         ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
+        ElixirS3EndpointEmitter.emit(ctx, service);
         ElixirEndpointRulesEmitter.emit(ctx, service);
         ElixirHttpDispatchEmitter.emit(ctx, service);
         ElixirSigV4Emitter.emit(ctx, service);
@@ -309,7 +310,8 @@ final class ElixirClientDirectedCodegen
                         layout.runtimeHttpModuleName());
                 writer.write("def $L(config, input) do", opSym.getName());
                 writer.indent();
-                if (ElixirRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())) {
+                if (ElixirRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())
+                        || ElixirRestXmlEmitter.serviceEncodesWithConfig(ctx.model(), ctx.service())) {
                     writer.write("req = $L.encode_$L_request(config, input)", codecMod, opSym.getName());
                 } else {
                     writer.write("req = $L.encode_$L_request(input)", codecMod, opSym.getName());

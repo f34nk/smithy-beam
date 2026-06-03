@@ -6,6 +6,7 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
+import io.smithy.beam.core.BeamS3CustomizationIndex;
 import io.smithy.beam.core.BeamXmlBindingIndex;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -55,7 +56,7 @@ public final class ErlangRestXmlEmitter {
         SymbolProvider sp = ctx.symbolProvider();
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
-        boolean encodeWithConfig = serviceHasHostLabelOperations(model, service);
+        boolean encodeWithConfig = serviceEncodesWithConfig(model, service);
         boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
         List<String> exports = new ArrayList<>();
         for (OperationShape op : operations) {
@@ -778,9 +779,26 @@ public final class ErlangRestXmlEmitter {
         BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
         boolean hasHostLabels = !hostLabelIndex.hostLabelMembers(op).isEmpty()
                 && op.hasTrait(EndpointTrait.class);
+        BeamS3CustomizationIndex s3Index = BeamS3CustomizationIndex.of(model);
+        boolean s3BucketAddressing = s3Index.isS3Service(service)
+                && s3Index.bucketLabelBinding(op).isPresent();
 
-        String pathExpr = buildPathExpression(uriTemplate, labels);
-        writer.write("Path = $L,", pathExpr);
+        if (s3BucketAddressing) {
+            String bucketVar = toBindingVar(s3Index.bucketMemberSnakeCase(op));
+            String keyVar = s3Index.keyMemberSnakeCase(op)
+                    .map(ErlangRestXmlEmitter::toBindingVar)
+                    .orElse("<<>>");
+            if (encodeWithConfig) {
+                writer.write("{Host, Path} = s3_endpoint:resolve_bucket_url(Config, $L, $L),",
+                        bucketVar, keyVar);
+            } else {
+                writer.write("{Host, Path} = s3_endpoint:resolve_bucket_url(#{}, $L, $L),",
+                        bucketVar, keyVar);
+            }
+        } else {
+            String pathExpr = buildPathExpression(uriTemplate, labels);
+            writer.write("Path = $L,", pathExpr);
+        }
 
         if (queries.isEmpty()) {
             writer.write("Query = [],");
@@ -844,7 +862,7 @@ public final class ErlangRestXmlEmitter {
         emitRequestBody(writer, model, payloadMembers, method, sp);
         ErlangHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp);
 
-        if (hasHostLabels) {
+        if (hasHostLabels && !s3BucketAddressing) {
             writer.write("Host = build_host(Input, Config),");
         }
 
@@ -854,7 +872,7 @@ public final class ErlangRestXmlEmitter {
         writer.write("    query = maps:from_list(Query),");
         writer.write("    headers = Headers,");
         writer.write("    body = Body");
-        if (hasHostLabels) {
+        if (hasHostLabels || s3BucketAddressing) {
             writer.write("    ,host = Host");
         }
         writer.write("}.");
@@ -1047,6 +1065,11 @@ public final class ErlangRestXmlEmitter {
             }
         }
         return false;
+    }
+
+    public static boolean serviceEncodesWithConfig(Model model, ServiceShape service) {
+        return serviceHasHostLabelOperations(model, service)
+                || BeamS3CustomizationIndex.of(model).serviceUsesBucketAddressing(service);
     }
 
     private static String recordName(Symbol symbol) {
