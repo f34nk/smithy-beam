@@ -1,0 +1,26 @@
+{
+  "name": "get-vanilla",
+  "credentials": {
+    "accessKeyId": "AKIDEXAMPLE",
+    "secretAccessKey": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  },
+  "signing": {
+    "region": "us-east-1",
+    "service": "service",
+    "amzDate": "20150830T123600Z"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/",
+    "host": "example.amazonaws.com",
+    "headers": {},
+    "query": {},
+    "body": ""
+  },
+  "unsignedPayload": false,
+  "expected": {
+    "canonicalRequest": "GET\n/\n\nhost:example.amazonaws.com\nx-amz-content-sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\nx-amz-date:20150830T123600Z\n\nhost;x-amz-content-sha256;x-amz-date\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stringToSign": "AWS4-HMAC-SHA256\n20150830T123600Z\n20150830/us-east-1/service/aws4_request\nbd2af82b09d2569ab8594ef6bcc1638c8675cb753915d0f401b2f40ecde6f823",
+    "signature": "b0e9826b8e27230263689c913533611258ba50a1cf46f2c0ae5eea5c777359c2"
+  }
+}

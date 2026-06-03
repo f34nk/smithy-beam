@@ -1,0 +1,28 @@
+{
+  "name": "post-unsigned-payload",
+  "credentials": {
+    "accessKeyId": "AKIDEXAMPLE",
+    "secretAccessKey": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  },
+  "signing": {
+    "region": "us-west-2",
+    "service": "s3",
+    "amzDate": "20130524T000000Z"
+  },
+  "request": {
+    "method": "PUT",
+    "path": "/examplebucket/test.txt",
+    "host": "examplebucket.s3.amazonaws.com",
+    "headers": {
+      "content-type": "text/plain"
+    },
+    "query": {},
+    "body": "test payload"
+  },
+  "unsignedPayload": true,
+  "expected": {
+    "canonicalRequest": "PUT\n/examplebucket/test.txt\n\ncontent-type:text/plain\nhost:examplebucket.s3.amazonaws.com\nx-amz-content-sha256:UNSIGNED-PAYLOAD\nx-amz-date:20130524T000000Z\n\ncontent-type;host;x-amz-content-sha256;x-amz-date\nUNSIGNED-PAYLOAD",
+    "stringToSign": "AWS4-HMAC-SHA256\n20130524T000000Z\n20130524/us-west-2/s3/aws4_request\n9e1e2e41acb1e0ffbe48222e2ea927415a33a6eb2d7c274a6f64a4afb9502132",
+    "signature": "725900af08408c813daa2554016a3b722bd60b98db1080f5277b2dc79e583434"
+  }
+}
