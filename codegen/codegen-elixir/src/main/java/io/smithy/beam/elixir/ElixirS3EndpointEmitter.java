@@ -27,6 +27,7 @@ public final class ElixirS3EndpointEmitter {
             writer.write("{_scheme, authority} = split_base_url(base_url)");
             writer.write("authority");
             writer.dedent();
+            writer.write("end");
             writer.write("");
             writer.write("@spec resolve_bucket_url(map(), String.t(), String.t()) :: {String.t(), String.t()}");
             writer.write("def resolve_bucket_url(config, bucket, key) do");
@@ -51,6 +52,7 @@ public final class ElixirS3EndpointEmitter {
             writer.dedent();
             writer.write("end");
             writer.dedent();
+            writer.write("end");
             writer.write("");
             writer.write("defp key_path(\"\"), do: \"\"");
             writer.write("defp key_path(key), do: \"/#{key}\"");
@@ -68,11 +70,13 @@ public final class ElixirS3EndpointEmitter {
             writer.dedent();
             writer.write("end");
             writer.dedent();
+            writer.write("end");
             writer.write("");
             writer.write("defp s3_host_suffix(config) do");
             writer.indent();
             writer.write("if Map.get(config, :s3_use_dualstack, false), do: \".s3.dualstack.\", else: \".s3.\"");
             writer.dedent();
+            writer.write("end");
             writer.write("");
             writer.write("defp split_base_url(\"\"), do: {\"\", \"\"}");
             writer.write("defp split_base_url(base_url) do");
@@ -98,6 +102,8 @@ public final class ElixirS3EndpointEmitter {
             writer.dedent();
             writer.write("end");
             writer.dedent();
+            writer.dedent();
+            writer.write("end");
             writer.dedent();
             writer.write("end");
         });
