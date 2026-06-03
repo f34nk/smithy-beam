@@ -91,7 +91,7 @@ public final class ErlangS3EndpointEmitter {
             writer.dedent();
             writer.write("split_base_url(BaseUrl) ->");
             writer.indent();
-            writer.write("case uri_string:parse(BaseUrl) of");
+            writer.write("case uri_string:parse(binary_to_list(BaseUrl)) of");
             writer.indent();
             writer.write("#{scheme := Scheme, host := Host} = Parts ->");
             writer.indent();

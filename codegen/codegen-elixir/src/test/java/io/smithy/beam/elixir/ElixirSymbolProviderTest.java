@@ -442,7 +442,7 @@ class ElixirSymbolProviderTest {
         @Test
         void serviceShapeUsesTypesModuleNameAndClearsDefinitionFileForTypesPass() {
             Symbol sym = provider.toSymbol(service);
-            assertThat(sym.getName()).isEqualTo("ExampleTypes");
+            assertThat(sym.getName()).isEqualTo("TestServiceTypes");
             assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
             assertThat(sym.getDefinitionFile()).isEmpty();
         }

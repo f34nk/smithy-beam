@@ -103,7 +103,7 @@ class ElixirRestJson1CodecTest {
                 .getFileString("error_fixture_service_rest_json_1.ex")
                 .orElse("");
         assertThat(codec).contains("defp decode_get_item_response_error(404,");
-        assertThat(codec).contains("struct!(ErrorShapesTypes.NotFoundError");
+        assertThat(codec).contains("struct!(ErrorFixtureServiceTypes.NotFoundError");
         assertThat(codec).contains("__type");
         assertThat(codec).contains("unknown_error");
     }

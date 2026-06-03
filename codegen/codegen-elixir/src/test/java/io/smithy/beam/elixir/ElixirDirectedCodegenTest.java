@@ -83,7 +83,7 @@ class ElixirDirectedCodegenTest {
                 model.expectShape(ShapeId.from(SERVICE_ID), ServiceShape.class);
         BeamSettings settings = new BeamSettings();
         settings.edition("2026");
-        BeamElixirLayout layout = new BeamElixirLayout(settings, service.getId().getNamespace());
+        BeamElixirLayout layout = new BeamElixirLayout(settings, service.getId().getNamespace(), service);
         typesFile = layout.typesModuleFile();
     }
 
@@ -291,7 +291,7 @@ class ElixirDirectedCodegenTest {
                 ShapeId.from("com.preambleemit#PreambleEmitService"), ServiceShape.class);
         BeamSettings settings = new BeamSettings();
         settings.edition("2026");
-        BeamElixirLayout layout = new BeamElixirLayout(settings, service.getId().getNamespace());
+        BeamElixirLayout layout = new BeamElixirLayout(settings, service.getId().getNamespace(), service);
         String typesModule = layout.typesModuleFile();
         String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         SymbolProvider symbolProvider = new ElixirSymbolProvider(

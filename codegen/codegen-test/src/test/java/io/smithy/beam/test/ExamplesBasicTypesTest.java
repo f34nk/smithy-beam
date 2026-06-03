@@ -39,7 +39,7 @@ class ExamplesBasicTypesTest {
                 .fileManifest(manifest)
                 .settings(settings)
                 .build());
-    return manifest.expectFileString("basic_types.hrl");
+    return manifest.expectFileString("basic_service_types.hrl");
   }
 
   @Test

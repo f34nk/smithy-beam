@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DeprecatedShapeFilterTest {
 
     private static final String SERVICE = "smithy.beam.demo.relative_deprecation#RelativeDeprecationService";
-    private static final String TYPES_FILE = "relative_deprecation_types.hrl";
+    private static final String TYPES_FILE = "relative_deprecation_service_types.hrl";
 
     private static Model loadModel() {
         URL resource = DeprecatedShapeFilterTest.class.getResource("/model/relative_deprecation.smithy");

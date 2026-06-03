@@ -564,7 +564,7 @@ final class ErlangDirectedCodegen
         boolean isThrottling = retryInfo.throttling();
 
         ctx.writerDelegator().useFileWriter(
-                new BeamErlangLayout(ctx.settings(), ctx.service().getId().getNamespace())
+                new BeamErlangLayout(ctx.settings(), ctx.service().getId().getNamespace(), ctx.service())
                         .typesHeaderFile(),
                 writer -> {
                     writer.pushGeneratedDocumentationSection();

@@ -241,7 +241,7 @@ final class ErlangClientDirectedCodegen
                 writer.write("    #{region => <<\"us-east-1\">>,");
                 writer.write("      endpoint_prefix => <<\"$L\">>,", meta.endpointPrefix());
                 if (unsignedOps.isEmpty()) {
-                    writer.write("      signing_name => <<\"$L\">>>}.", meta.signingName());
+                    writer.write("      signing_name => <<\"$L\">>}.", meta.signingName());
                 } else {
                     writer.write("      signing_name => <<\"$L\">>,", meta.signingName());
                     for (int i = 0; i < unsignedOps.size(); i++) {

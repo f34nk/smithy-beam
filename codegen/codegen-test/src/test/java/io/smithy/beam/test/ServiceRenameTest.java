@@ -44,7 +44,7 @@ class ServiceRenameTest {
                 .model(model).fileManifest(manifest)
                 .settings(settings()).build());
 
-        String types = manifest.getFileString("rename_types.hrl").orElse("");
+        String types = manifest.getFileString("rename_service_types.hrl").orElse("");
         assertThat(types).contains("-record(renamed_widget,");
         assertThat(types).doesNotContain("-record(widget,");
     }
@@ -63,7 +63,7 @@ class ServiceRenameTest {
                 .settings(settings()).build());
 
         String types = typesManifest.getFileString(
-                "rename_types.hrl").orElse("");
+                "rename_service_types.hrl").orElse("");
         String codec = clientManifest.getFileString(
                 "rename_service_rest_json_1.erl").orElse("");
 

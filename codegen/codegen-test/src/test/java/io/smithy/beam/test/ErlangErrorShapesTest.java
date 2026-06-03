@@ -34,7 +34,7 @@ class ErlangErrorShapesTest {
                 .settings(settings)
                 .build());
 
-        String types = manifest.expectFileString("error_shapes_types.hrl");
+        String types = manifest.expectFileString("error_fixture_service_types.hrl");
         assertThat(types).contains("-record(not_found_error,");
         assertThat(types).contains("-record(validation_error,");
         assertThat(types).contains("-record(throttling_error,");

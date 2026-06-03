@@ -26,7 +26,7 @@ class ReservedWordParityTest {
             .withMember("edition", "2026")
             .build();
 
-    private static final String TYPES_FILE = "reserved_types.hrl";
+    private static final String TYPES_FILE = "reserved_service_types.hrl";
     private static final String CLIENT_CODEC_FILE = "reserved_service_rest_json_1.erl";
     private static final String SERVER_CODEC_FILE = "reserved_service_rest_json_1.erl";
 

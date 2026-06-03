@@ -585,7 +585,7 @@ public final class ElixirRestXmlEmitter {
             Shape target = model.expectShape(member.getTarget());
             if (target instanceof ListShape listShape) {
                 String element = BeamXmlBindingIndex.memberElementName(member);
-                String itemElement = BeamXmlBindingIndex.listItemElementName(listShape);
+                String itemElement = BeamXmlBindingIndex.listItemElementName(member, listShape, model);
                 fields.add(field + ": xml_child_list(" + xmlVar + ", \"" + element + "\", \"" + itemElement + "\")");
             } else {
                 fields.add(field + ": xml_child_text(" + xmlVar + ", \""

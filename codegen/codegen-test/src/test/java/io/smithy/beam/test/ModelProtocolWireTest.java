@@ -180,7 +180,7 @@ class ModelProtocolWireTest {
                 .fileManifest(erlangManifest)
                 .settings(pluginSettings)
                 .build());
-        assertThat(erlangManifest.getFileString("reserved_types.hrl")).isPresent();
+        assertThat(erlangManifest.getFileString("reserved_service_types.hrl")).isPresent();
         assertThat(erlangManifest.getFileString("reserved_service_rest_json_1.erl"))
                 .isEmpty();
         assertThat(erlangManifest.getFileString("reserved_service_router.erl")).isEmpty();
@@ -192,7 +192,7 @@ class ModelProtocolWireTest {
                 .fileManifest(elixirManifest)
                 .settings(pluginSettings)
                 .build());
-        assertThat(elixirManifest.getFileString("reserved_types.ex")).isPresent();
+        assertThat(elixirManifest.getFileString("reserved_service_types.ex")).isPresent();
         assertThat(elixirManifest.getFileString("reserved_service_rest_json_1.ex"))
                 .isEmpty();
         assertThat(elixirManifest.getFileString("reserved_service_router.ex")).isEmpty();

@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ElixirIntegrationSectionsTest {
 
-    private static final String TYPES_FILE = "basic_types.ex";
+    private static final String TYPES_FILE = "basic_service_types.ex";
 
     private static Model loadModel() {
         URL resource = ElixirIntegrationSectionsTest.class.getResource("/model/basic.smithy");
@@ -141,7 +141,7 @@ class ElixirIntegrationSectionsTest {
 
         runner.run();
 
-        String content = manifest.expectFileString("documented_types_types.ex");
+        String content = manifest.expectFileString("documented_types_service_types.ex");
         assertThat(content).contains("# recording-elixir-integration was here");
         assertThat(content).contains("A documented structure with member docs.");
     }

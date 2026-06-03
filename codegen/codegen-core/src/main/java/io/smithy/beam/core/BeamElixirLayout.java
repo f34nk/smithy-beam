@@ -35,7 +35,7 @@ public final class BeamElixirLayout {
     }
 
     public String typesModuleFile() {
-        return "lib/" + typesModuleName() + ".ex";
+        return typesModuleName() + ".ex";
     }
 
     public String clientModuleFile() {

@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ErlangIntegrationSectionsTest {
 
-    private static final String TYPES_FILE = "basic_types.hrl";
+    private static final String TYPES_FILE = "basic_service_types.hrl";
 
     private static Model loadModel() {
         URL resource = ErlangIntegrationSectionsTest.class.getResource("/model/basic.smithy");
@@ -141,7 +141,7 @@ class ErlangIntegrationSectionsTest {
 
         runner.run();
 
-        String content = manifest.expectFileString("documented_types_types.hrl");
+        String content = manifest.expectFileString("documented_types_service_types.hrl");
         assertThat(content).contains("recording-erlang-integration was here");
         assertThat(content).contains("A documented structure with member docs.");
     }

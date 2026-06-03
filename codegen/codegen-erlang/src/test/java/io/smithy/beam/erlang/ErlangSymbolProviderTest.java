@@ -464,9 +464,9 @@ class ErlangSymbolProviderTest {
     class NonTypeShapes {
 
         @Test
-        void serviceShapeUsesModulePrefixForTypesKind() {
+        void serviceShapeUsesTypesModuleNameForTypesKind() {
             Symbol sym = provider.toSymbol(service);
-            assertThat(sym.getName()).isEqualTo("example");
+            assertThat(sym.getName()).isEqualTo("test_service_types");
             assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
             assertThat(sym.getDefinitionFile()).isEmpty();
         }
