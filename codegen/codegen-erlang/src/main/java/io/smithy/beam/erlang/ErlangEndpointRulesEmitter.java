@@ -15,9 +15,7 @@ public final class ErlangEndpointRulesEmitter {
     private ErlangEndpointRulesEmitter() {}
 
     public static void emit(ErlangContext ctx, ServiceShape service) {
-        String ruleSetLiteral = BeamEndpointRuleSetEmitter.serializeRuleSetErlangMap(ctx.model(), service)
-                .orElse(null);
-        if (ruleSetLiteral == null) {
+        if (!BeamEndpointRuleSetEmitter.hasRuleSet(ctx.model(), service)) {
             return;
         }
 
@@ -29,22 +27,17 @@ public final class ErlangEndpointRulesEmitter {
         ctx.writerDelegator().useFileWriter(layout.endpointsModuleFile(), writer -> {
             writer.write("%% Generated endpoint rule resolver for $L.", service.getId());
             writer.write("-module($L).", endpointsModule);
-            writer.write("-export([resolve/2, rule_set/0]).");
+            writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
+            writer.write("-export([resolve/2]).");
             writer.write("");
             writer.write("-type client_config() :: #{binary() => term()}.");
             writer.write("-type endpoint_params() :: #{binary() => term()}.");
-            writer.write("");
-            writer.write("-spec rule_set() -> map().");
-            writer.write("rule_set() ->");
-            writer.indent();
-            writer.write("$L.", ruleSetLiteral);
-            writer.dedent();
             writer.write("");
             writer.write("-spec resolve(client_config(), endpoint_params()) ->");
             writer.write("    {ok, #{url := binary()}} | {error, term()}.");
             writer.write("resolve(Config, Params) ->");
             writer.indent();
-            writer.write("aws_endpoint_rules:evaluate(rule_set(), merge_params(Config, Params)).");
+            writer.write("aws_endpoint_rules:evaluate(?ENDPOINT_RULE_SET, merge_params(Config, Params)).");
             writer.dedent();
             writer.write("");
             writeMergeParams(writer, clientContextKeys);

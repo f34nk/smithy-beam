@@ -4,6 +4,7 @@ import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
@@ -127,7 +128,12 @@ final class ElixirClientDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(
                 layout.runtimeTypesModuleFile(),
-                w -> ElixirRuntimeTypesEmitter.writeBody(w, runtimeTypesModule));
+                w -> {
+                    Optional<String> ruleSet =
+                            BeamEndpointRuleSetEmitter.serializeRuleSetElixirMap(
+                                    directive.model(), service);
+                    ElixirRuntimeTypesEmitter.writeBody(w, runtimeTypesModule, ruleSet);
+                });
 
         ctx.writerDelegator().useFileWriter(layout.clientModuleFile(), writer -> {
             writer.pushModuleHeaderSection();

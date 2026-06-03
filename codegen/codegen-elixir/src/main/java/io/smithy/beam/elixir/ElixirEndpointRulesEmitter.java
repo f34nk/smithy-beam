@@ -15,15 +15,14 @@ public final class ElixirEndpointRulesEmitter {
     private ElixirEndpointRulesEmitter() {}
 
     public static void emit(ElixirContext ctx, ServiceShape service) {
-        String ruleSetLiteral = BeamEndpointRuleSetEmitter.serializeRuleSetElixirMap(ctx.model(), service)
-                .orElse(null);
-        if (ruleSetLiteral == null) {
+        if (!BeamEndpointRuleSetEmitter.hasRuleSet(ctx.model(), service)) {
             return;
         }
 
         BeamElixirLayout layout = new BeamElixirLayout(
                 ctx.settings(), service.getId().getNamespace(), service);
         String endpointsModule = ElixirSymbolProvider.toModuleName(layout.endpointsModuleName());
+        String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
         Map<String, String> clientContextKeys = BeamContextParamsIndex.clientContextConfigKeys(service);
 
         ctx.writerDelegator().useFileWriter(layout.endpointsModuleFile(), writer -> {
@@ -31,17 +30,13 @@ public final class ElixirEndpointRulesEmitter {
             writer.indent();
             writer.write("@moduledoc \"Generated endpoint rule resolver for Smithy service clients.\"");
             writer.write("");
-            writer.write("@spec rule_set() :: map()");
-            writer.write("def rule_set do");
-            writer.indent();
-            writer.write("$L", ruleSetLiteral);
-            writer.dedent();
-            writer.write("end");
+            writer.write("alias $L, as: RuntimeTypes", runtimeMod);
+            writer.write("@endpoint_rule_set Module.get_attribute(RuntimeTypes, :endpoint_rule_set)");
             writer.write("");
             writer.write("@spec resolve(map(), map()) :: {:ok, %{url: String.t()}} | {:error, term()}");
             writer.write("def resolve(config, params) do");
             writer.indent();
-            writer.write("AwsEndpointRules.evaluate(rule_set(), merge_params(config, params))");
+            writer.write("AwsEndpointRules.evaluate(@endpoint_rule_set, merge_params(config, params))");
             writer.dedent();
             writer.write("end");
             writer.write("");

@@ -121,7 +121,7 @@ final class ElixirServerDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(
                 layout.runtimeTypesModuleFile(),
-                w -> ElixirRuntimeTypesEmitter.writeBody(w, runtimeTypesModule));
+                w -> ElixirRuntimeTypesEmitter.writeBody(w, runtimeTypesModule, Optional.empty()));
 
         ctx.writerDelegator().useFileWriter(layout.serverModuleFile(), writer -> {
             writer.pushModuleHeaderSection();
