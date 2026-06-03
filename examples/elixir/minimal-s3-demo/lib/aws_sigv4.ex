@@ -1,4 +1,4 @@
-defmodule AwsSignature do
+defmodule AwsSigv4 do
   @moduledoc false
 
   alias RuntimeTypes.HttpRequest

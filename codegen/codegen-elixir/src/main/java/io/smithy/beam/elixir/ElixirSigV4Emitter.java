@@ -40,7 +40,7 @@ public final class ElixirSigV4Emitter {
             writer.write("  unsigned_payload: unsigned,");
             writer.write("  endpoint_host: endpoint_host_from_config(config)");
             writer.write("}");
-            writer.write("AwsSignature.sign(request, credentials, region, service, opts)");
+            writer.write("AwsSigv4.sign(request, credentials, region, service, opts)");
             writer.dedent();
             writer.write("end");
             writer.write("");
