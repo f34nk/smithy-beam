@@ -109,38 +109,6 @@ class BeamSettingsTest {
             .hasMessageContaining("edition");
     }
 
-    // ── resolveModule ────────────────────────────────────────────────────────
-
-    @Test
-    void resolveModule_returnsExplicitModule_whenSet() {
-        BeamSettings settings = new BeamSettings();
-        settings.module("custom_module");
-
-        assertThat(settings.resolveModule("com.example.ignored")).isEqualTo("custom_module");
-    }
-
-    @Test
-    void resolveModule_derivesLastNamespaceSegment_whenModuleIsNotSet() {
-        BeamSettings settings = new BeamSettings();
-
-        assertThat(settings.resolveModule("smithy.beam.demo.basic")).isEqualTo("basic");
-    }
-
-    @Test
-    void resolveModule_handlesSimpleNamespace() {
-        BeamSettings settings = new BeamSettings();
-
-        assertThat(settings.resolveModule("basic")).isEqualTo("basic");
-    }
-
-    @Test
-    void resolveModule_doesNotFallBackToNamespace_whenModuleIsEmptyString() {
-        BeamSettings settings = new BeamSettings();
-        settings.module("");
-
-        assertThat(settings.resolveModule("com.example.foo")).isEqualTo("foo");
-    }
-
     // ── accessors ────────────────────────────────────────────────────────────
 
     @Test
@@ -149,13 +117,11 @@ class BeamSettingsTest {
 
         BeamSettings settings = new BeamSettings();
         settings.service(serviceId);
-        settings.module("my_module");
         settings.edition("2026");
         settings.relativeDate("2026-01-01");
         settings.relativeVersion("1.0");
 
         assertThat(settings.service()).isEqualTo(serviceId);
-        assertThat(settings.module()).isEqualTo("my_module");
         assertThat(settings.edition()).isEqualTo("2026");
         assertThat(settings.relativeDate()).isEqualTo("2026-01-01");
         assertThat(settings.relativeVersion()).isEqualTo("1.0");
@@ -166,7 +132,6 @@ class BeamSettingsTest {
         BeamSettings settings = new BeamSettings();
 
         assertThat(settings.service()).isNull();
-        assertThat(settings.module()).isNull();
         assertThat(settings.edition()).isNull();
         assertThat(settings.relativeDate()).isNull();
         assertThat(settings.relativeVersion()).isNull();
