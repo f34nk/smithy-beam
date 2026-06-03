@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamMemberNullability;
+import io.smithy.beam.core.BeamRetryIndex;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamDocumentation.DocTarget;
@@ -17,7 +18,6 @@ import software.amazon.smithy.model.knowledge.NullableIndex;
 import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.*;
 import software.amazon.smithy.model.traits.ErrorTrait;
-import software.amazon.smithy.model.traits.RetryableTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
 
 import java.util.ArrayList;
@@ -651,7 +651,9 @@ final class ElixirDirectedCodegen
         StructureShape shape = directive.shape();
         String modName = ctx.symbolProvider().toSymbol(shape).getName();
         ErrorTrait errorTrait = shape.expectTrait(ErrorTrait.class);
-        boolean isRetryable = shape.hasTrait(RetryableTrait.class);
+        BeamRetryIndex.RetryInfo retryInfo = BeamRetryIndex.forError(shape).orElseThrow();
+        boolean isRetryable = retryInfo.retryable();
+        boolean isThrottling = retryInfo.throttling();
 
         String typesFile = new BeamElixirLayout(ctx.settings(),
                 ctx.service().getId().getNamespace()).typesModuleFile();
@@ -675,6 +677,9 @@ final class ElixirDirectedCodegen
             }
             writer.write("  __beam_error_kind: :$L", errorTrait.getValue());
             writer.write("]");
+            writer.write("");
+            writer.write("def retryable(%__MODULE__{}), do: $L", isRetryable);
+            writer.write("def throttling(%__MODULE__{}), do: $L", isThrottling);
             writer.write("@impl true");
             writer.write("def message(e), do: inspect(e)");
             writer.dedent();

@@ -7,6 +7,7 @@ import io.smithy.beam.core.BeamDocumentation.DocTarget;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
+import io.smithy.beam.core.BeamRetryIndex;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
@@ -21,14 +22,16 @@ import software.amazon.smithy.model.shapes.*;
 import software.amazon.smithy.model.knowledge.NullableIndex;
 import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.traits.ErrorTrait;
-import software.amazon.smithy.model.traits.RetryableTrait;
 import software.amazon.smithy.model.traits.SparseTrait;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.UnionShape;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -338,7 +341,48 @@ final class ErlangDirectedCodegen
     @Override
     public void customizeAfterIntegrations(
             CustomizeDirective<ErlangContext, BeamSettings> directive) {
-        // No action required for the types-only baseline.
+        ErlangContext ctx = directive.context();
+        Model model = directive.model();
+        SymbolProvider sp = directive.symbolProvider();
+        List<StructureShape> errors = new ArrayList<>();
+        for (Shape shape : new Walker(model).walkShapes(directive.service())) {
+            if (shape instanceof StructureShape structure
+                    && BeamRetryIndex.forError(structure).isPresent()) {
+                errors.add(structure);
+            }
+        }
+        if (errors.isEmpty()) {
+            return;
+        }
+        errors.sort(Comparator.comparing(s -> s.getId().toString()));
+
+        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+            writer.write("");
+            writer.write("%% Retry metadata helpers for modeled @error structures.");
+            writer.write("-spec retryable(term()) -> boolean().");
+            for (StructureShape error : errors) {
+                String recordName = recordName(sp.toSymbol(error));
+                Optional<BeamRetryIndex.RetryInfo> info = BeamRetryIndex.forError(error);
+                if (info.isPresent() && info.get().retryable()) {
+                    writer.write("retryable(#$L{}) -> true;", recordName);
+                }
+            }
+            writer.write("retryable(_) -> false.");
+            writer.write("");
+            writer.write("-spec throttling(term()) -> boolean().");
+            for (StructureShape error : errors) {
+                String recordName = recordName(sp.toSymbol(error));
+                Optional<BeamRetryIndex.RetryInfo> info = BeamRetryIndex.forError(error);
+                if (info.isPresent() && info.get().throttling()) {
+                    writer.write("throttling(#$L{}) -> true;", recordName);
+                }
+            }
+            writer.write("throttling(_) -> false.");
+        });
+    }
+
+    private static String recordName(Symbol symbol) {
+        return symbol.getName().replace("()", "");
     }
 
     // ── Service / Resource / Operation stubs ─────────────────────────────────
@@ -550,9 +594,9 @@ final class ErlangDirectedCodegen
         StructureShape shape = directive.shape();
         String recordName = ctx.symbolProvider().toSymbol(shape).getName().replace("()", "");
         ErrorTrait errorTrait = shape.expectTrait(ErrorTrait.class);
-        boolean isRetryable = shape.hasTrait(RetryableTrait.class);
-        boolean isThrottling = shape.hasTrait(RetryableTrait.class)
-                && shape.expectTrait(RetryableTrait.class).getThrottling();
+        BeamRetryIndex.RetryInfo retryInfo = BeamRetryIndex.forError(shape).orElseThrow();
+        boolean isRetryable = retryInfo.retryable();
+        boolean isThrottling = retryInfo.throttling();
 
         ctx.writerDelegator().useFileWriter(
                 new BeamErlangLayout(ctx.settings(), ctx.service().getId().getNamespace())
