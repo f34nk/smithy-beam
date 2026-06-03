@@ -6,6 +6,7 @@ import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSigV4Metadata;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -89,10 +90,13 @@ public final class ErlangCredentialProviderEmitter {
         writer.write("");
         writer.write("-spec resolve_provider(atom(), client_config()) ->");
         writer.write("    {ok, aws_credentials()} | {error, term()}.");
-        for (BeamCredentialProviderKind kind : BeamCredentialProviders.defaultChain()) {
+        List<BeamCredentialProviderKind> chain = BeamCredentialProviders.defaultChain();
+        for (int i = 0; i < chain.size(); i++) {
+            BeamCredentialProviderKind kind = chain.get(i);
+            String terminator = i == chain.size() - 1 ? "." : ";";
             writer.write("resolve_provider($L, Config) ->", erlangProviderAtom(kind));
             writer.indent();
-            writer.write("resolve_from_$L(Config);", erlangProviderSuffix(kind));
+            writer.write("resolve_from_$L(Config)$L", erlangProviderSuffix(kind), terminator);
             writer.dedent();
         }
         writer.write("");
@@ -152,6 +156,7 @@ public final class ErlangCredentialProviderEmitter {
         writer.write("false -> <<\"default\">>;");
         writer.write("Name -> list_to_binary(Name)");
         writer.dedent();
+        writer.write("end;");
         writer.dedent();
         writer.write("Name -> Name");
         writer.dedent();
@@ -172,6 +177,7 @@ public final class ErlangCredentialProviderEmitter {
         writer.dedent();
         writer.write("Path -> list_to_binary(Path)");
         writer.dedent();
+        writer.write("end;");
         writer.dedent();
         writer.write("Path -> Path");
         writer.dedent();
@@ -193,6 +199,7 @@ public final class ErlangCredentialProviderEmitter {
         writer.write("false -> {error, not_found};");
         writer.write("Uri -> fetch_json_credentials(list_to_binary(Uri))");
         writer.dedent();
+        writer.write("end;");
         writer.dedent();
         writer.write("Rel ->");
         writer.indent();
@@ -219,6 +226,7 @@ public final class ErlangCredentialProviderEmitter {
         writer.write("{ok, JsonBin} -> decode_json_credentials(JsonBin);");
         writer.write("{error, Reason} -> {error, Reason}");
         writer.dedent();
+        writer.write("end;");
         writer.dedent();
         writer.write("{error, Reason} ->");
         writer.indent();
@@ -251,25 +259,29 @@ public final class ErlangCredentialProviderEmitter {
         writer.dedent();
         writer.write("find_profile_section([Line | Rest], Profile, Acc) ->");
         writer.indent();
+        writer.write("ExpectedHeader = \"[\" ++ binary_to_list(Profile) ++ \"]\",");
         writer.write("Trimmed = string:trim(binary_to_list(Line)),");
         writer.write("case Trimmed of");
         writer.indent();
-        writer.write("\"[\" ++ ProfileName ++ \"]\" ->");
+        writer.write("ExpectedHeader ->");
         writer.indent();
-        writer.write("Expected = binary_to_list(Profile),");
-        writer.write("case ProfileName of");
-        writer.indent();
-        writer.write("Expected -> read_profile_entries(Rest, Acc);");
-        writer.write("_ -> find_profile_section(Rest, Profile, #{})");
+        writer.write("read_profile_entries(Rest, Acc);");
         writer.dedent();
-        writer.dedent();
-        writer.write("_ when map_size(Acc) > 0 ->");
+        writer.write("[$$[ | _] ->");
         writer.indent();
-        writer.write("maps_to_credentials(Acc);");
+        writer.write("find_profile_section(Rest, Profile, #{});");
         writer.dedent();
         writer.write("_ ->");
         writer.indent();
+        writer.write("if map_size(Acc) > 0 ->");
+        writer.indent();
+        writer.write("maps_to_credentials(Acc);");
+        writer.dedent();
+        writer.write("true ->");
+        writer.indent();
         writer.write("find_profile_section(Rest, Profile, Acc)");
+        writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.dedent();
         writer.write("end.");
@@ -281,7 +293,7 @@ public final class ErlangCredentialProviderEmitter {
         writer.write("Trimmed = string:trim(binary_to_list(Line)),");
         writer.write("case Trimmed of");
         writer.indent();
-        writer.write("\"[\" ++ _ -> maps_to_credentials(Acc);");
+        writer.write("[$$[ | _] -> maps_to_credentials(Acc);");
         writer.write("\"\" -> read_profile_entries(Rest, Acc);");
         writer.write("Entry ->");
         writer.indent();
@@ -293,6 +305,7 @@ public final class ErlangCredentialProviderEmitter {
         writer.dedent();
         writer.write("_ -> read_profile_entries(Rest, Acc)");
         writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.dedent();
         writer.write("end.");
@@ -367,6 +380,7 @@ public final class ErlangCredentialProviderEmitter {
         writer.write("undefined -> [];");
         writer.write("Token -> [{\"X-aws-ec2-metadata-token\", Token}]");
         writer.dedent();
+        writer.write("end;");
         writer.dedent();
         writer.write("_ ->");
         writer.indent();
