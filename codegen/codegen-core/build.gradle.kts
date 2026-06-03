@@ -2,6 +2,8 @@ dependencies {
     api(libs.smithy.model)
     api(libs.smithy.codegen.core)
     api(libs.smithy.aws.traits)
+    implementation(libs.smithy.rules.engine)
+    implementation(libs.smithy.aws.endpoints)
 
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.smithy.aws.traits)
