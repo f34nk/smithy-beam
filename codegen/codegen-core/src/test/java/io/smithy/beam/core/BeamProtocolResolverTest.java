@@ -42,7 +42,8 @@ class BeamProtocolResolverTest {
         ServiceShape service = model.getServiceShapes().iterator().next();
         var protocol = software.amazon.smithy.model.shapes.ShapeId.from("aws.protocols#restJson1");
 
-        assertDoesNotThrow(() -> BeamProtocolResolver.assertClosureSupported(model, service, protocol));
+        assertDoesNotThrow(() -> BeamProtocolResolver.assertClosureSupported(
+                model, service, protocol, BeamEdition.V2026));
     }
 
     @Test
@@ -83,6 +84,7 @@ class BeamProtocolResolverTest {
         ServiceShape service = model.getServiceShapes().iterator().next();
         var protocol = software.amazon.smithy.model.shapes.ShapeId.from("aws.protocols#restJson1");
 
-        assertDoesNotThrow(() -> BeamProtocolResolver.assertClosureSupported(model, service, protocol));
+        assertDoesNotThrow(() -> BeamProtocolResolver.assertClosureSupported(
+                model, service, protocol, BeamEdition.V2026));
     }
 }

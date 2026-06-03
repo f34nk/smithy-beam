@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamNameUtils;
@@ -26,6 +27,9 @@ public final class ErlangEventStreamEmitter {
     private ErlangEventStreamEmitter() {}
 
     public static void emit(ErlangContext ctx, ServiceShape service) {
+        if (!BeamEdition.fromSettings(ctx.settings()).supportsEventStreams()) {
+            return;
+        }
         BeamEventStreamIndex index = BeamEventStreamIndex.of(ctx.model());
         List<UnionShape> unions = index.eventStreamUnions(service);
         if (unions.isEmpty()) {

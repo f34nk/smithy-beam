@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamNameUtils;
@@ -25,6 +26,9 @@ public final class ElixirEventStreamEmitter {
     private ElixirEventStreamEmitter() {}
 
     public static void emit(ElixirContext ctx, ServiceShape service) {
+        if (!BeamEdition.fromSettings(ctx.settings()).supportsEventStreams()) {
+            return;
+        }
         BeamEventStreamIndex index = BeamEventStreamIndex.of(ctx.model());
         List<UnionShape> unions = index.eventStreamUnions(service);
         if (unions.isEmpty()) {

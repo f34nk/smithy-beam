@@ -48,7 +48,8 @@ public final class BeamProtocolResolver {
      * <p>When unsupported shapes are found, throws {@link CodegenException} with one message
      * listing every offending shape id.
      */
-    public static void assertClosureSupported(Model model, ServiceShape service, ShapeId protocol) {
+    public static void assertClosureSupported(
+            Model model, ServiceShape service, ShapeId protocol, BeamEdition edition) {
         Walker walker = new Walker(model);
         Set<Shape> closure = walker.walkShapes(service);
 
@@ -68,6 +69,15 @@ public final class BeamProtocolResolver {
                                 + protocol
                                 + "; restXml does not serialize document types");
             }
+        }
+
+        if (!edition.supportsEventStreams()) {
+            BeamEventStreamIndex index = BeamEventStreamIndex.of(model);
+            index.eventStreamUnions(service).forEach(union -> diagnostics.add(
+                    union.getId()
+                            + ": event streams require edition "
+                            + BeamEdition.V2026.label()
+                            + " or later"));
         }
 
         if (!diagnostics.isEmpty()) {

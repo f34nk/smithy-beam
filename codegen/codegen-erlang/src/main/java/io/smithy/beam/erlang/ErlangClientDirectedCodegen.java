@@ -14,6 +14,7 @@ import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
 import io.smithy.beam.core.BeamEc2QueryProtocolCodegen;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
+import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
@@ -110,11 +111,12 @@ final class ErlangClientDirectedCodegen
             CustomizeDirective<ErlangContext, BeamSettings> directive) {
         ErlangContext ctx = directive.context();
         ServiceShape service = ctx.service();
+        BeamEdition edition = BeamEdition.fromSettings(directive.settings());
         BeamProtocolResolver.resolveServiceProtocol(directive.model(), service)
                 .ifPresent(
                         protocol ->
                                 BeamProtocolResolver.assertClosureSupported(
-                                        directive.model(), service, protocol));
+                                        directive.model(), service, protocol, edition));
 
         String ns = service.getId().getNamespace();
         BeamErlangLayout layout = new BeamErlangLayout(

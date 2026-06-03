@@ -6,6 +6,7 @@ import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
+import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
@@ -106,11 +107,12 @@ final class ElixirServerDirectedCodegen
             CustomizeDirective<ElixirContext, BeamSettings> directive) {
         ElixirContext ctx = directive.context();
         ServiceShape service = ctx.service();
+        BeamEdition edition = BeamEdition.fromSettings(directive.settings());
         BeamProtocolResolver.resolveServiceProtocol(directive.model(), service)
                 .ifPresent(
                         protocol ->
                                 BeamProtocolResolver.assertClosureSupported(
-                                        directive.model(), service, protocol));
+                                        directive.model(), service, protocol, edition));
 
         String ns = service.getId().getNamespace();
         BeamElixirLayout layout =
