@@ -1,7 +1,7 @@
--module(basic_types_test).
+-module(basic_service_types_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("basic_types.hrl").
+-include("basic_service_types.hrl").
 
 %% ── basic_not_found error record ─────────────────────────────────────────────
 

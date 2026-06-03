@@ -1,7 +1,7 @@
 -module(user_service_rest_json_1_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("user_types.hrl").
+-include("user_service_types.hrl").
 -include("runtime_types.hrl").
 
 %% encode_get_user_request/1

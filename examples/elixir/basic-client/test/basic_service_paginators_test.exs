@@ -1,7 +1,7 @@
 defmodule BasicServicePaginatorsTest do
   use ExUnit.Case, async: true
 
-  alias BasicTypes.ListBasicItemsInput
+  alias BasicServiceTypes.ListBasicItemsInput
 
   describe "paginate_list_basic_items/2" do
     test "collects all pages through the generated client" do

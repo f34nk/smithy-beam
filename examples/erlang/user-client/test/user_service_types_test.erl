@@ -1,7 +1,7 @@
--module(user_types_test).
+-module(user_service_types_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("user_types.hrl").
+-include("user_service_types.hrl").
 
 %% -- user_data record ---------------------------------------------------------
 
@@ -32,8 +32,16 @@ user_data_update_test() ->
     ?assertEqual(<<"u-1">>, User1#user_data.user_id),
     ?assertEqual(<<"Alice">>, User1#user_data.display_name).
 
-%% -- get_user_input record ----------------------------------------------------
+%% -- create_user_input record -------------------------------------------------
 
-get_user_input_required_field_test() ->
-    Input = #get_user_input{user_id = <<"u-1">>},
-    ?assertEqual(<<"u-1">>, Input#get_user_input.user_id).
+create_user_input_all_fields_test() ->
+    Input = #create_user_input{
+        email = <<"bob@example.com">>,
+        display_name = <<"Bob">>
+    },
+    ?assertEqual(<<"bob@example.com">>, Input#create_user_input.email),
+    ?assertEqual(<<"Bob">>, Input#create_user_input.display_name).
+
+create_user_input_optional_display_name_test() ->
+    Input = #create_user_input{email = <<"bob@example.com">>},
+    ?assertEqual(undefined, Input#create_user_input.display_name).

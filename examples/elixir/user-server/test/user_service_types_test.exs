@@ -3,7 +3,7 @@ defmodule UserTypesTest do
 
   describe "UserData struct" do
     test "can be created with all fields" do
-      user = %UserTypes.UserData{
+      user = %UserServiceTypes.UserData{
         user_id: "u-1",
         email: "alice@example.com",
         display_name: "Alice"
@@ -15,28 +15,22 @@ defmodule UserTypesTest do
     end
 
     test "display_name defaults to nil when only required fields are set" do
-      user = %UserTypes.UserData{user_id: "u-1", email: "alice@example.com"}
+      user = %UserServiceTypes.UserData{user_id: "u-1", email: "alice@example.com"}
       assert user.display_name == nil
     end
 
     test "supports struct update syntax" do
-      user0 = %UserTypes.UserData{user_id: "u-1", email: "a@example.com", display_name: "A"}
+      user0 = %UserServiceTypes.UserData{user_id: "u-1", email: "a@example.com", display_name: "A"}
       user1 = %{user0 | display_name: "Alice"}
       assert user1.user_id == "u-1"
       assert user1.display_name == "Alice"
     end
   end
 
-  describe "CreateUserInput struct" do
-    test "can be created with all fields" do
-      input = %UserTypes.CreateUserInput{email: "bob@example.com", display_name: "Bob"}
-      assert input.email == "bob@example.com"
-      assert input.display_name == "Bob"
-    end
-
-    test "display_name defaults to nil" do
-      input = %UserTypes.CreateUserInput{email: "bob@example.com"}
-      assert input.display_name == nil
+  describe "GetUserInput struct" do
+    test "requires user_id" do
+      input = %UserServiceTypes.GetUserInput{user_id: "u-1"}
+      assert input.user_id == "u-1"
     end
   end
 end

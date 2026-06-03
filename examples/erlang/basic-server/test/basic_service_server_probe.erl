@@ -1,6 +1,6 @@
 -module(basic_service_server_probe).
 
--include("basic_types.hrl").
+-include("basic_service_types.hrl").
 
 -export([handle_get_type_closure/3]).
 

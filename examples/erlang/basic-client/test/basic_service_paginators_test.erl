@@ -1,7 +1,7 @@
 -module(basic_service_paginators_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("basic_types.hrl").
+-include("basic_service_types.hrl").
 
 paginate_list_basic_items_collects_all_pages_test() ->
     Config = #{base_url => <<"https://api.example">>, http_client => runtime_http_mock},

@@ -1,6 +1,6 @@
 -module(user_service_server_probe).
 
--include("user_types.hrl").
+-include("user_service_types.hrl").
 
 -export([handle_get_user/3]).
 

@@ -1,7 +1,7 @@
 -module(basic_service_router_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("basic_types.hrl").
+-include("basic_service_types.hrl").
 -include("runtime_types.hrl").
 
 %% Request flow: http_request -> basic_service_router:dispatch/2 -> codec decode -> Handler:handle_<op>/3.

@@ -1,7 +1,7 @@
 -module(user_service_router_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("user_types.hrl").
+-include("user_service_types.hrl").
 -include("runtime_types.hrl").
 
 %% Request flow: http_request -> user_service_router:dispatch/2 -> codec decode -> Handler:handle_<op>/3.

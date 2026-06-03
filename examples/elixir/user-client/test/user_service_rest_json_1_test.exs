@@ -1,7 +1,7 @@
 defmodule UserServiceRestJson1Test do
   use ExUnit.Case, async: true
 
-  alias UserTypes.{CreateUserInput, GetUserInput, ListUsersInput}
+  alias UserServiceTypes.{CreateUserInput, GetUserInput, ListUsersInput}
   alias RuntimeTypes.{HttpRequest, HttpResponse}
 
   describe "encode_get_user_request/1" do

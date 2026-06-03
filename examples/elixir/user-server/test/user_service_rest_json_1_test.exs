@@ -1,7 +1,7 @@
 defmodule UserServiceRestJson1Test do
   use ExUnit.Case, async: true
 
-  alias UserTypes.{DeleteUserOutput, GetUserOutput}
+  alias UserServiceTypes.{DeleteUserOutput, GetUserOutput}
   alias RuntimeTypes.HttpRequest
 
   describe "decode_get_user_request/2" do

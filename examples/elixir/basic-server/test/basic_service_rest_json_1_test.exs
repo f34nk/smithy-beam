@@ -1,7 +1,7 @@
 defmodule BasicServiceRestJson1Test do
   use ExUnit.Case, async: true
 
-  alias BasicTypes.GetTypeClosureOutput
+  alias BasicServiceTypes.GetTypeClosureOutput
   alias RuntimeTypes.HttpRequest
 
   describe "decode_get_type_closure_request/2" do
