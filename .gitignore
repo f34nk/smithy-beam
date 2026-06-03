@@ -8,6 +8,9 @@ deps/
 *.log
 *.lock
 *.dump
+*.lock.hcl
+*.tfstate
+.terraform/
 generated/
 
 # temporary
