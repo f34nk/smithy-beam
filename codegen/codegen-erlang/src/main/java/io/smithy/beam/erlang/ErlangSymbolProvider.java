@@ -200,7 +200,7 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
                 new BeamErlangLayout(settings, shape.getId().getNamespace(), service);
         String module =
                 switch (kind) {
-                    case TYPES -> layout.modulePrefix();
+                    case TYPES -> layout.typesModuleName();
                     case CLIENT -> layout.clientModuleName();
                     case SERVER -> layout.serverModuleName();
                 };
