@@ -9,6 +9,8 @@ import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
+import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
+import io.smithy.beam.core.BeamEc2QueryProtocolCodegen;
 import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
 import io.smithy.beam.core.BeamResourceIndex;
@@ -189,6 +191,14 @@ final class ErlangServerDirectedCodegen
                 && BeamRestXmlProtocolCodegen.REST_XML.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ErlangRestXmlEmitter.emitServerCodecModule(ctx, service);
+        } else if (ctx.protocolCodegen() != null
+                && BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ErlangAwsQueryEmitter.emitServerCodecModule(ctx, service);
+        } else if (ctx.protocolCodegen() != null
+                && BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(
+                        ctx.protocolCodegen().protocolTraitId())) {
+            ErlangEc2QueryEmitter.emitServerCodecModule(ctx, service);
         }
 
         ErlangRouterEmitter.emit(ctx, service);

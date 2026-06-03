@@ -13,4 +13,8 @@ public final class ErlangEc2QueryEmitter {
     static void emitCodecModule(ErlangContext ctx, ServiceShape service) {
         ErlangAwsQueryEmitter.emitCodecModule(ctx, service, BeamEc2QueryProtocolCodegen.EC2_QUERY);
     }
+
+    static void emitServerCodecModule(ErlangContext ctx, ServiceShape service) {
+        ErlangAwsQueryEmitter.emitServerCodecModule(ctx, service, BeamEc2QueryProtocolCodegen.EC2_QUERY);
+    }
 }
