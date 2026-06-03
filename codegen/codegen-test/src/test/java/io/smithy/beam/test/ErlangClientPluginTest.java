@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ErlangClientPluginTest {
 
-    private static final String TYPES_FILE = "basic_types.hrl";
+    private static final String TYPES_FILE = "basic_service_types.hrl";
     private static final String CLIENT_FILE = "basic_service_client.erl";
 
     private static Model loadModel() {
@@ -70,10 +70,10 @@ class ErlangClientPluginTest {
 
     private static void assertClientStubHeaderOrder(String clientSource) {
         assertThat(clientSource).contains("-module(basic_service_client).");
-        assertThat(clientSource).contains("-include(\"basic_types.hrl\").");
+        assertThat(clientSource).contains("-include(\"basic_service_types.hrl\").");
         assertThat(clientSource).contains("-export([get_type_closure/2]).");
         int moduleIndex = clientSource.indexOf("-module(basic_service_client).");
-        int includeIndex = clientSource.indexOf("-include(\"basic_types.hrl\").");
+        int includeIndex = clientSource.indexOf("-include(\"basic_service_types.hrl\").");
         int exportIndex = clientSource.indexOf("-export([get_type_closure/2]).");
         assertThat(moduleIndex).isLessThan(includeIndex);
         assertThat(includeIndex).isLessThan(exportIndex);
@@ -147,8 +147,8 @@ class ErlangClientPluginTest {
                 .fileManifest(extended)
                 .settings(extendedSettings)
                 .build());
-        assertThat(extended.expectFileString("dedicated_io_types.hrl"))
-                .isEqualTo(baseline.expectFileString("dedicated_io_types.hrl"));
+        assertThat(extended.expectFileString("dedicated_io_service_types.hrl"))
+                .isEqualTo(baseline.expectFileString("dedicated_io_service_types.hrl"));
         assertThat(extended.expectFileString("dedicated_io_service_client.erl"))
                 .isEqualTo(baseline.expectFileString("dedicated_io_service_client.erl"));
     }
