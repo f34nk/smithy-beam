@@ -31,12 +31,12 @@ public final class BeamErlangLayout {
         this(settings, namespace, BeamServiceNaming.effectiveServiceName(service));
     }
 
-    public String modulePrefix() {
-        return settings.resolveModule(namespace);
+    public String typesModuleName() {
+        return serviceSnakeName() + "_types";
     }
 
     public String typesHeaderFile() {
-        return modulePrefix() + "_types.hrl";
+        return typesModuleName() + ".hrl";
     }
 
     public String clientModuleFile() {

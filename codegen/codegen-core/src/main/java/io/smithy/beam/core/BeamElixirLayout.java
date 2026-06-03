@@ -30,16 +30,12 @@ public final class BeamElixirLayout {
         this(settings, namespace, BeamServiceNaming.effectiveServiceName(service));
     }
 
-    public String modulePrefix() {
-        return settings.resolveModule(namespace);
+    public String typesModuleName() {
+        return serviceSnakeName() + "_types";
     }
 
     public String typesModuleFile() {
-        return typesModuleName() + ".ex";
-    }
-
-    public String typesModuleName() {
-        return modulePrefix() + "_types";
+        return "lib/" + typesModuleName() + ".ex";
     }
 
     public String clientModuleFile() {
