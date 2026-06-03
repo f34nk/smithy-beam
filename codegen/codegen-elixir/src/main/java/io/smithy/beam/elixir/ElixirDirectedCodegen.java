@@ -129,8 +129,12 @@ final class ElixirDirectedCodegen
                     doc -> BeamDocumentation.writeElixirModuledoc(writer, doc),
                     () -> {
                         BeamElixirLayout layout =
-                                new BeamElixirLayout(ctx.settings(), ctx.service().getId().getNamespace());
-                        String modelName = ElixirSymbolProvider.toModuleName(layout.modulePrefix());
+                                new BeamElixirLayout(
+                                        ctx.settings(),
+                                        ctx.service().getId().getNamespace(),
+                                        ctx.service());
+                        String modelName =
+                                ElixirSymbolProvider.toModuleName(layout.typesModuleName());
                         writer.openBlock("@moduledoc \"\"\"");
                         writer.write("Type definitions for the $L model.", modelName);
                         writer.write("");
@@ -657,7 +661,7 @@ final class ElixirDirectedCodegen
         boolean isThrottling = retryInfo.throttling();
 
         String typesFile = new BeamElixirLayout(ctx.settings(),
-                ctx.service().getId().getNamespace()).typesModuleFile();
+                ctx.service().getId().getNamespace(), ctx.service()).typesModuleFile();
 
         ctx.writerDelegator().useFileWriter(typesFile, writer -> {
             writer.write("");
