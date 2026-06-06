@@ -4,6 +4,7 @@ import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpPathPatterns;
+import io.smithy.beam.core.BeamProtocolSupport;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
@@ -25,7 +26,8 @@ public final class ErlangRouterEmitter {
     private ErlangRouterEmitter() {}
 
     public static void emit(ErlangContext ctx, ServiceShape service) {
-        if (ctx.protocolCodegen() == null) {
+        if (!BeamProtocolSupport.hasWireCodegen(
+                ctx.resolvedProtocolTraitId(), ctx.protocolCodegen(), ctx.integrations())) {
             return;
         }
         Model model = ctx.model();

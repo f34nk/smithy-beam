@@ -8,6 +8,7 @@ import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamProtocolResolver;
+import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
@@ -70,13 +71,14 @@ final class ErlangServerDirectedCodegen
             CreateContextDirective<BeamSettings, ErlangIntegration> directive) {
         ServiceShape service = directive.service();
         BeamHttpBindings httpBindings = BeamHttpBindings.from(directive.model());
+        Optional<ShapeId> resolved =
+                BeamProtocolResolver.resolve(directive.model(), service, directive.settings());
+        ShapeId resolvedProtocolTraitId = resolved.orElse(null);
         BeamProtocolCodegen protocolCodegen = null;
-        Optional<ShapeId> serviceProtocol =
-                BeamProtocolResolver.resolveServiceProtocol(directive.model(), service);
-        ShapeId resolvedProtocolTraitId = serviceProtocol.orElse(null);
-        if (serviceProtocol.isPresent()) {
+        if (resolved.isPresent()) {
             protocolCodegen =
-                    BeamProtocolCodegenFactory.create(directive.model(), serviceProtocol.get());
+                    BeamProtocolCodegenFactory.create(
+                            directive.model(), resolved.get(), directive.integrations());
         }
         String ns = service.getId().getNamespace();
         BeamSettings settings = directive.settings();
