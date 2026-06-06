@@ -720,6 +720,34 @@ class ErlangSymbolProviderTest {
         }
 
         @Test
+        void toFieldNameEscapesErlangKeywords() {
+            String idl = """
+                    $version: "2"
+                    namespace com.keyword
+
+                    service KeywordSvc {
+                        operations: []
+                    }
+
+                    structure Window {
+                        end: String
+                    }
+                    """;
+            Model keywordModel = Model.assembler()
+                    .addUnparsedModel("keyword.smithy", idl)
+                    .assemble()
+                    .unwrap();
+            ServiceShape svc = keywordModel.expectShape(
+                    ShapeId.from("com.keyword#KeywordSvc"), ServiceShape.class);
+            ErlangSymbolProvider keywordProvider = new ErlangSymbolProvider(
+                    testSettings(), keywordModel, svc, "types.hrl", BeamCodegenKind.TYPES);
+            StructureShape window = keywordModel.expectShape(
+                    ShapeId.from("com.keyword#Window"), StructureShape.class);
+            MemberShape endMember = window.getMember("end").orElseThrow();
+            assertThat(keywordProvider.toFieldName(endMember)).isEqualTo("end_");
+        }
+
+        @Test
         void toUnionTagNameProducesSnakeCaseTag() {
             UnionShape union = model.expectShape(
                     ShapeId.from("com.example#TestUnion"), UnionShape.class);
