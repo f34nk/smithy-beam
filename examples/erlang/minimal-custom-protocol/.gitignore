@@ -1,0 +1,6 @@
+/_build/
+/build/
+*.dump
+*.lock
+*.log
+/src/generated/

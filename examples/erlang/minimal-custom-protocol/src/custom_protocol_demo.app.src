@@ -1,0 +1,7 @@
+{application, custom_protocol_demo,
+ [{description, "Minimal custom protocol Erlang example"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications, [kernel, stdlib]},
+  {env, []},
+  {modules, []}]}.
