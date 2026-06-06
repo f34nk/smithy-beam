@@ -2,11 +2,7 @@ X:=$(shell find examples/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \;)
 EXAMPLES:=$(foreach x,$(X),$(x)/)
 EXAMPLES_COUNT:=$(words $(EXAMPLES))
 
-Y:=$(shell find baseline/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \;)
-BASELINE:=$(foreach x,$(Y),$(x)/)
-BASELINE_COUNT:=$(words $(BASELINE))
-
-PARALLEL_JOBS:=10
+PARALLEL_JOBS=10
 
 .PHONY: all
 all: clean build test
@@ -117,7 +113,6 @@ clean:
 	rm -rf build bin codegen/build codegen/codegen-*/build codegen/codegen-*/bin *.log
 	rm -rf ~/.m2/repository/io/smithy/beam
 
-# Usage: make baseline/clean
 # Usage: make examples/clean
 .PHONY: %/clean
 %/clean:
@@ -125,9 +120,7 @@ clean:
 	# Clean $@
 	#
 	target="$$(dirname $@)"; \
-	if [ "$$target" = "baseline" ]; then \
-		files="$(BASELINE)"; \
-	elif [ "$$target" = "examples" ]; then \
+	if [ "$$target" = "examples" ]; then \
 		files="$(EXAMPLES)"; \
 	else \
 		echo "Unknown target: $$target" ; \
@@ -145,9 +138,9 @@ clean:
 		cd - >/dev/null; \
 	done
 
-# Usage: TARGET=baseline make run
-.PHONY: run
-run:
+# Usage: TARGET=examples make _run
+.PHONY: _run
+_run:
 	mkdir -p build
 	rm -rf build/*.log
 	touch build/$(TARGET).log
@@ -157,20 +150,8 @@ run:
 	find $(TARGET)/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \; |\
 	xargs -S1024 -P $(PARALLEL_JOBS) -I {} sh -c ' \
 		target="{}"; \
-		name="$$(basename $$target)"; \
-		lang="$$(echo $$target | cut -d/ -f2)"; \
-		logfile="build/$(TARGET)-$$lang-$$name.log"; \
 		sleep 1; \
-		echo "Running: $$target" ; \
-		make $$target > $$logfile 2>&1; \
-		if grep -q "make.*Error" $$logfile; then \
-			printf "F";\
-			echo "$$logfile ...failed" >> build/$(TARGET).log; \
-			exit 1 ; \
-		else \
-			printf ".";\
-			echo "$$logfile ...ok" >> build/$(TARGET).log; \
-		fi; \
+		make $$target; \
 	'; \
 	STATUS=$$?; \
 	echo; \
@@ -178,28 +159,33 @@ run:
 	echo; \
 	exit $$STATUS; \
 
+.PHONY: _demo
+_demo:
+	#
+	# Build $(DEMO)
+	#
+	cd $(DEMO) && make clean && time make demo
+	
 # Usage: make examples
 .PHONY: examples
 examples:
-	TARGET=examples make run
+	TARGET=examples make _run
 
 # Usage: make examples/erlang/weather-service
+.SILENT:
 .PHONY: $(EXAMPLES)
 examples/%: $(EXAMPLES)
-	#
-	# Build $@
-	#
-	cd $@ && make clean && time make demo
-
-# Usage: make baseline
-.PHONY: baseline
-baseline:
-	TARGET=baseline make run
-
-# Usage: make baseline/erlang/weather-service
-.PHONY: $(BASELINE)
-baseline/%: $(BASELINE)
-	#
-	# Build $@
-	#
-	cd $@ && make clean && time make test
+	target="$@"; \
+	name="$$(echo $$target|cut -d/ -f3)"; \
+	lang="$$(echo $$target|cut -d/ -f2)"; \
+	build_log=build/examples.log; \
+	logfile="build/examples-$$lang-$$name.log"; \
+	echo "Running $$target > $$logfile"; \
+	DEMO=$$target make _demo > $$logfile 2>&1; \
+	if grep -q "make.*Error" $$logfile; then \
+		echo "$$logfile ...failed" >> $$build_log; \
+		exit 1 ; \
+	else \
+		printf ".";\
+		echo "$$logfile ...ok" >> $$build_log; \
+	fi; \
