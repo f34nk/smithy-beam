@@ -16,6 +16,7 @@ import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
 import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamProtocolResolver;
+import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.core.BeamSigV4Index;
@@ -74,13 +75,14 @@ final class ErlangClientDirectedCodegen
             CreateContextDirective<BeamSettings, ErlangIntegration> directive) {
         ServiceShape service = directive.service();
         BeamHttpBindings httpBindings = BeamHttpBindings.from(directive.model());
+        Optional<ShapeId> resolved =
+                BeamProtocolResolver.resolve(directive.model(), service, directive.settings());
+        ShapeId resolvedProtocolTraitId = resolved.orElse(null);
         BeamProtocolCodegen protocolCodegen = null;
-        Optional<ShapeId> serviceProtocol =
-                BeamProtocolResolver.resolveServiceProtocol(directive.model(), service);
-        ShapeId resolvedProtocolTraitId = serviceProtocol.orElse(null);
-        if (serviceProtocol.isPresent()) {
+        if (resolved.isPresent()) {
             protocolCodegen =
-                    BeamProtocolCodegenFactory.create(directive.model(), serviceProtocol.get());
+                    BeamProtocolCodegenFactory.create(
+                            directive.model(), resolved.get(), directive.integrations());
         }
         String ns = service.getId().getNamespace();
         String serviceName = service.getId().getName();
@@ -279,18 +281,8 @@ final class ErlangClientDirectedCodegen
 
         BeamErlangLayout layout = new BeamErlangLayout(
                 ctx.settings(), ctx.service().getId().getNamespace(), ctx.service().getId().getName());
-        boolean hasProtocol = ctx.protocolCodegen() != null
-                && (BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(ctx.protocolCodegen().protocolTraitId())
-                        || BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(
-                                ctx.protocolCodegen().protocolTraitId())
-                        || BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(
-                                ctx.protocolCodegen().protocolTraitId())
-                        || BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(
-                                ctx.protocolCodegen().protocolTraitId())
-                        || BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(
-                                ctx.protocolCodegen().protocolTraitId())
-                        || BeamRestXmlProtocolCodegen.REST_XML.equals(
-                                ctx.protocolCodegen().protocolTraitId()));
+        boolean hasProtocol = BeamProtocolSupport.hasWireCodegen(
+                ctx.resolvedProtocolTraitId(), ctx.protocolCodegen(), ctx.integrations());
         boolean sigv4 = BeamSigV4Metadata.from(ctx.service()).isPresent();
         String sigv4Module = layout.sigv4ModuleName();
 
@@ -308,7 +300,9 @@ final class ErlangClientDirectedCodegen
                     "-spec $L(client_config(), $L) -> {'ok', $L} | {'error', term()}.",
                     opSym.getName(), inSym.getName(), outSym.getName());
             if (hasProtocol) {
-                String codecModule = layout.clientCodecModuleName(ctx.resolvedProtocolTraitId());
+                String codecModule =
+                        layout.clientCodecModuleName(
+                                ctx.resolvedProtocolTraitId(), ctx.integrations());
                 writer.write("$L(Config, Input) ->", opSym.getName());
                 writer.indent();
                 if (ErlangRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())
