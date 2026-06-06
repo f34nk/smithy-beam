@@ -6,6 +6,7 @@ import io.smithy.beam.elixir.ElixirTypesPlugin;
 import io.smithy.beam.erlang.ErlangClientPlugin;
 import io.smithy.beam.erlang.ErlangServerPlugin;
 import io.smithy.beam.erlang.ErlangTypesPlugin;
+import io.smithy.beam.test.support.TestCustomProtocolIntegration;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.build.PluginContext;
@@ -32,10 +33,16 @@ class ModelProtocolWireTest {
     }
 
     private static ObjectNode settings(String service) {
-        return ObjectNode.builder()
-                .withMember("service", service)
-                .withMember("edition", "2026")
-                .build();
+        return settings(service, null);
+    }
+
+    private static ObjectNode settings(String service, String protocol) {
+        ObjectNode.Builder builder =
+                ObjectNode.builder().withMember("service", service).withMember("edition", "2026");
+        if (protocol != null) {
+            builder.withMember("protocol", protocol);
+        }
+        return builder.build();
     }
 
     private enum ClientServerPlugin {
@@ -166,6 +173,52 @@ class ModelProtocolWireTest {
                     .isInstanceOf(CodegenException.class)
                     .hasMessageContaining("declares multiple protocol traits");
         }
+    }
+
+    @Test
+    void explicitProtocolSettingOverridesMissingModelTrait() {
+        Model model = loadModel("/model/dedicated_operation_io.smithy");
+        ObjectNode pluginSettings =
+                settings(
+                        "smithy.beam.demo.dedicated_io#DedicatedIoService",
+                        TestCustomProtocolIntegration.TEST_CUSTOM_PROTOCOL.toString());
+
+        MockManifest manifest = new MockManifest();
+        ClientServerPlugin.ERLANG_CLIENT.execute(
+                PluginContext.builder()
+                        .model(model)
+                        .fileManifest(manifest)
+                        .pluginClassLoader(ModelProtocolWireTest.class.getClassLoader())
+                        .settings(pluginSettings)
+                        .build());
+
+        assertThat(manifest.getFileString("dedicated_io_service_test_custom_protocol.erl"))
+                .isPresent();
+        assertThat(manifest.expectFileString("dedicated_io_service_client.erl"))
+                .doesNotContain("not_implemented");
+    }
+
+    @Test
+    void explicitProtocolSettingSelectsOneOfMultipleModelTraits() {
+        Model model = loadModel("/model/multi_protocol.smithy");
+        ObjectNode pluginSettings =
+                settings(
+                        "smithy.beam.demo.multi_protocol#DualProtocolService",
+                        TestCustomProtocolIntegration.TEST_CUSTOM_PROTOCOL.toString());
+
+        MockManifest manifest = new MockManifest();
+        ClientServerPlugin.ERLANG_CLIENT.execute(
+                PluginContext.builder()
+                        .model(model)
+                        .fileManifest(manifest)
+                        .pluginClassLoader(ModelProtocolWireTest.class.getClassLoader())
+                        .settings(pluginSettings)
+                        .build());
+
+        assertThat(manifest.getFileString("dual_protocol_service_test_custom_protocol.erl"))
+                .isPresent();
+        assertThat(manifest.expectFileString("dual_protocol_service_client.erl"))
+                .doesNotContain("not_implemented");
     }
 
     @Test
