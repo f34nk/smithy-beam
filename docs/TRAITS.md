@@ -411,7 +411,9 @@ service GreetingService { ... }
 
 (The service body would list `version`, `operations`, and the usual operation and shape definitions.)
 
-**Integration:** Java resolves the active protocol `ShapeId` on a service and looks up a matching analyzer or writer implementation via **`ServiceLoader`** (JARs register implementations under `META-INF/services/`). Third-party JARs can ship additional protocols without modifying the core repositories. If no implementation is registered, generation may emit stubs or fail with a clear diagnostic.
+**Integration:** Java resolves the active protocol `ShapeId` from the service trait or from the optional `protocol` smithy-build setting on client and server plugins. Built-in AWS protocols are registered in codegen-core. Custom protocols register a `BeamProtocolCodegen` implementation by implementing `createProtocolCodegen` on `ErlangIntegration` or `ElixirIntegration` and listing the class under `META-INF/services/` for that integration type. There is no separate `ServiceLoader` entry for `BeamProtocolCodegen` today. If no implementation is registered, generation may emit stubs or fail with a clear diagnostic.
+
+Attaching `@protocolDefinition` on the trait **definition** is recommended so tooling discovers the protocol. Applying the protocol trait to the service is optional when the `protocol` smithy-build setting selects the same trait id explicitly.
 
 Arbitrary **non-protocol** custom traits do not drive codegen unless explicit extension points are added later.
 

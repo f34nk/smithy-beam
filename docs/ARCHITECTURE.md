@@ -31,7 +31,7 @@ The `codegen-core` Gradle submodule contains shared Java code used by all six pl
 
 Shared components that live in `codegen-core`:
 
-- **`BeamSettings`** — parses and validates the [smithy-build.json](https://smithy.io/2.0/guides/smithy-build-json.html) plugin configuration block that is common to all plugins (namespace, package version, edition, etc.).
+- **`BeamSettings`** — parses and validates the [smithy-build.json](https://smithy.io/2.0/guides/smithy-build-json.html) plugin configuration block that is common to all plugins (namespace, package version, edition, optional `protocol` on client and server plugins, etc.).
 - **`BeamModelTransforms`** — applies pre-generation model transforms that are identical across all plugins (e.g. flattening mixins, applying protocol traits).
 - **`BeamPreludeIntegration`** — the base [SmithyIntegration](https://smithy.io/2.0/guides/building-codegen/making-codegen-pluggable.html#creating-a-smithyintegrations) that registers shared interceptors; each language plugin extends this rather than re-implementing it.
 - **`Mode`** — a sealed type (`CLIENT` / `SERVER`) used throughout the client/server generation pipeline to branch between client and server concerns without duplicating the surrounding logic. The types plugins do not use `Mode`; they call the language-specific type-generation entry class directly.
@@ -165,7 +165,7 @@ Code generation passes through three phases, following the Smithy guide:
    - [DirectedCodegen](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html#directedcodegen) methods are called per shape type.
    - [SymbolProvider](https://smithy.io/2.0/guides/building-codegen/mapping-shapes-to-languages.html) maps each Smithy shape to a target-language symbol.
    - [SymbolWriter](https://smithy.io/2.0/guides/building-codegen/decoupling-codegen-with-symbols.html) renders source files from the symbol graph.
-   - [SmithyIntegration](https://smithy.io/2.0/guides/building-codegen/making-codegen-pluggable.html#creating-a-smithyintegrations) hooks allow protocol-specific interceptors to modify the output.
+   - [SmithyIntegration](https://smithy.io/2.0/guides/building-codegen/making-codegen-pluggable.html#creating-a-smithyintegrations) hooks allow protocol-specific interceptors to modify the output. Language integrations may implement `createProtocolCodegen` to register custom `BeamProtocolCodegen` implementations for protocol traits.
    - Output: generated `.erl`/`.hrl` or `.ex` source files, plus `rebar.config` or `mix.exs`.
 
 2. **Compile-time** ([rebar3](https://rebar3.org) or [Mix](https://hexdocs.pm/mix/Mix.html) on the developer's machine)

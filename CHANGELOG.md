@@ -4,7 +4,9 @@ All notable changes to this project will be documented here.
 ## [Unreleased]
 
 ### Changed
-- Client and server plugins derive the wire protocol from protocol traits on the service in the Smithy model. The `"protocol"` smithy-build setting is no longer used. The types plugin never emits wire modules. Services without a protocol trait continue to produce stub-only client and server output.
+- Restored optional "protocol" smithy-build setting for client and server plugins.
+- When unset, protocol derivation from model traits is unchanged.
+- Custom protocol JARs register "BeamProtocolCodegen" via "ErlangIntegration" / "ElixirIntegration".
 
 ### Docs
 - Trait support and AWS SDK support references refreshed for REST JSON codec bindings, closure validation, reserved-word escaping, and service rename behavior.

@@ -7,6 +7,17 @@ import software.amazon.smithy.build.SmithyBuildPlugin;
  * Smithy-Build plugin entry point for Erlang server generation.
  *
  * Plugin name in smithy-build.json: "erlang-server-codegen"
+ *
+ * Minimal smithy-build.json configuration:
+ * {
+ * "plugins": {
+ * "erlang-server-codegen": {
+ * "service": "smithy.beam.demo.basic#BasicService",
+ * "edition": "2026",
+ * "protocol": "aws.protocols#restJson1"
+ * }
+ * }
+ * }
  */
 public final class ErlangServerPlugin implements SmithyBuildPlugin {
 

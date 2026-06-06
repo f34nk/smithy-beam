@@ -90,7 +90,7 @@ Output from `erlang-server-codegen` and `elixir-server-codegen`.
 
 ## AWS Protocols
 
-Protocol selection reads the sole `@protocolDefinition` trait on the selected service. `BeamProtocolResolver.resolveServiceProtocol` returns that trait id, or empty when the service declares none. `BeamProtocolCodegenFactory` registers built-in implementations for REST JSON 1, AWS JSON 1.0, AWS JSON 1.1, AWS Query, EC2 Query, and REST-XML.
+Protocol selection reads the sole `@protocolDefinition` trait on the selected service by default. `BeamProtocolResolver.resolveServiceProtocol` returns that trait id, or empty when the service declares none. Client and server plugins may instead set the optional `protocol` smithy-build key to a protocol trait shape id; when present, that id is used for wire emission without requiring the trait on the service. Custom protocols register a `BeamProtocolCodegen` implementation through `ErlangIntegration` or `ElixirIntegration` on the Smithy classpath (or the codegen-core SPI for built-in AWS protocols). `BeamProtocolCodegenFactory` registers built-in implementations for REST JSON 1, AWS JSON 1.0, AWS JSON 1.1, AWS Query, EC2 Query, and REST-XML.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -100,7 +100,7 @@ Protocol selection reads the sole `@protocolDefinition` trait on the selected se
 | [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ✅ | Form-urlencoded request encoding and XML response decoding for Erlang and Elixir clients and servers. |
 | [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ✅ | EC2 Query name mapping and form encoding with XML response decoding. |
 | [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ✅ | HTTP-bound request and response encoding with XML payload members. Honors `@xmlName`, `@xmlAttribute`, `@xmlFlattened`, and `@xmlNamespace` in generated codecs. |
-| Custom protocols via `@protocolDefinition` | ⚠️ | Protocol traits are discovered and validated at codegen time. `BeamProtocolResolver` walks the service closure and fails with one aggregated diagnostic when shapes are unsupported for the selected protocol (for example event streams or `bigDecimal`). Additional protocols require a new `BeamProtocolCodegen` implementation. |
+| Custom protocols via `@protocolDefinition` | ⚠️ | Protocol traits are discovered and validated at codegen time. `BeamProtocolResolver` walks the service closure and fails with one aggregated diagnostic when shapes are unsupported for the selected protocol (for example event streams or `bigDecimal`). Additional protocols register via ErlangIntegration/ElixirIntegration or codegen-core SPI. |
 | [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ⚠️ | Emits test modules from `@httpRequestTests` and `@httpResponseTests` when the model defines those traits for the configured service. |
 
 ---

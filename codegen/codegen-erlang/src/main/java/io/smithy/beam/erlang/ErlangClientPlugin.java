@@ -13,7 +13,8 @@ import software.amazon.smithy.build.SmithyBuildPlugin;
  * "plugins": {
  * "erlang-client-codegen": {
  * "service": "smithy.beam.demo.basic#BasicService",
- * "edition": "2026"
+ * "edition": "2026",
+ * "protocol": "aws.protocols#restJson1"
  * }
  * }
  * }
