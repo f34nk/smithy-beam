@@ -19,6 +19,10 @@ import java.util.List;
  *   "relativeVersion" -- optional SemVer value forwarded to
  *                     {@link software.amazon.smithy.codegen.core.directed.CodegenDirector#removeShapesDeprecatedBeforeVersion}.
  *   "packageVersion" -- optional SemVer for the generated package, recorded in dependency metadata.
+ *   "protocol" -- optional protocol trait shape id. When set, client and server plugins
+ *                 use this id for wire emission instead of deriving it from the service.
+ *                 When unset, plugins derive the protocol from the sole @protocolDefinition
+ *                 trait on the service, or emit stub-only output when none is present.
  */
 public final class BeamSettings {
 
@@ -27,6 +31,7 @@ public final class BeamSettings {
     private String relativeDate;
     private String relativeVersion;
     private String packageVersion;
+    private ShapeId protocol;
 
     public BeamSettings() {}
 
@@ -68,6 +73,14 @@ public final class BeamSettings {
 
     public String packageVersion() {
         return packageVersion;
+    }
+
+    public void protocol(ShapeId protocol) {
+        this.protocol = protocol;
+    }
+
+    public ShapeId protocol() {
+        return protocol;
     }
 
     public ShapeId resolveService(Model model) {
