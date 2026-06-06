@@ -23,8 +23,24 @@ public final class BeamProtocolResolver {
     private BeamProtocolResolver() {}
 
     /**
+     * Resolves the protocol trait id for client/server codegen.
+     *
+     * <p>When {@link BeamSettings#protocol()} is set, returns that id regardless of
+     * protocol traits on the service. An explicit setting wins over a conflicting sole
+     * model trait and does not throw when the service carries multiple protocol traits.
+     * Otherwise delegates to {@link #resolveServiceProtocol}.
+     */
+    public static Optional<ShapeId> resolve(
+            Model model, ServiceShape service, BeamSettings settings) {
+        if (settings.protocol() != null) {
+            return Optional.of(settings.protocol());
+        }
+        return resolveServiceProtocol(model, service);
+    }
+
+    /**
      * Returns the sole protocol trait on the service, or empty when the service
-     * declares none. Used by client and server plugins to decide wire emission.
+     * declares none. Ignores {@link BeamSettings#protocol()}.
      */
     public static Optional<ShapeId> resolveServiceProtocol(Model model, ServiceShape service) {
         List<ShapeId> traits = findProtocolTraitIds(model, service);

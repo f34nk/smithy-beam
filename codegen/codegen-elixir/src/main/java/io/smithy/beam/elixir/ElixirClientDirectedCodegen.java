@@ -115,7 +115,7 @@ final class ElixirClientDirectedCodegen
         ElixirContext ctx = directive.context();
         ServiceShape service = ctx.service();
         BeamEdition edition = BeamEdition.fromSettings(directive.settings());
-        BeamProtocolResolver.resolveServiceProtocol(directive.model(), service)
+        BeamProtocolResolver.resolve(directive.model(), service, directive.settings())
                 .ifPresent(
                         protocol ->
                                 BeamProtocolResolver.assertClosureSupported(
