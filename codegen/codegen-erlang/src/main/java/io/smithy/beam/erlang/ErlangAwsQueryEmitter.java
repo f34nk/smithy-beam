@@ -76,8 +76,16 @@ public final class ErlangAwsQueryEmitter {
                 emitDecoder(writer, model, service, op, sp, ec2Query);
             }
 
-            for (StructureShape input : inputShapes) {
-                emitFlattenInputClause(writer, model, httpIndex, sp, input, ec2Query);
+            List<StructureShape> flattenInputs = new ArrayList<>(inputShapes);
+            for (int i = 0; i < flattenInputs.size(); i++) {
+                emitFlattenInputClause(
+                        writer,
+                        model,
+                        httpIndex,
+                        sp,
+                        flattenInputs.get(i),
+                        ec2Query,
+                        i == flattenInputs.size() - 1);
             }
 
             emitQueryHelpers(writer, ec2Query);
@@ -172,7 +180,7 @@ public final class ErlangAwsQueryEmitter {
         StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
         String outputRecord = recordName(sp.toSymbol(output));
         String outputType = sp.toSymbol(output).getName();
-        String pattern = inputPattern(output);
+        String pattern = inputPattern(sp, output);
         String resultElement = ec2Query
                 ? BeamXmlDecoder.ec2QueryResultElementName(op, service)
                 : BeamXmlDecoder.queryResultElementName(op, service);
@@ -215,7 +223,7 @@ public final class ErlangAwsQueryEmitter {
         writer.write("#$L{", inputRecord);
         for (int i = 0; i < members.size(); i++) {
             MemberShape member = members.get(i);
-            String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+            String field = memberFieldName(sp, member);
             String wireKey = queryFormKey(member, ec2Query);
             Shape target = model.expectShape(member.getTarget());
             String valueExpr;
@@ -246,7 +254,7 @@ public final class ErlangAwsQueryEmitter {
         List<MemberShape> members = new ArrayList<>(output.members());
         for (int i = 0; i < members.size(); i++) {
             MemberShape member = members.get(i);
-            String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+            String field = memberFieldName(sp, member);
             String element = BeamXmlDecoder.memberElementName(member);
             if (i < members.size() - 1) {
                 writer.write("    <<\"$L\">> => $L,", element, toBindingVar(field));
@@ -387,7 +395,7 @@ public final class ErlangAwsQueryEmitter {
         String inputType = sp.toSymbol(input).getName();
         String action = BeamAwsQueryFormEncoder.operationAction(op, service);
         String version = BeamAwsQueryFormEncoder.serviceVersion(service);
-        String pattern = inputPattern(input);
+        String pattern = inputPattern(sp, input);
 
         writer.write("%% Encode AWS Query request for $L.", op.getId());
         writer.write("-spec encode_$L_request($L) -> #http_request{}.", opName, inputType);
@@ -416,7 +424,8 @@ public final class ErlangAwsQueryEmitter {
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
             StructureShape input,
-            boolean ec2Query) {
+            boolean ec2Query,
+            boolean lastClause) {
 
         String inputRecord = recordName(sp.toSymbol(input));
         List<MemberShape> members = documentMembers(httpIndex, input);
@@ -424,7 +433,7 @@ public final class ErlangAwsQueryEmitter {
         writer.write("flatten_query_input(#$L{", inputRecord);
         for (int i = 0; i < members.size(); i++) {
             MemberShape member = members.get(i);
-            String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+            String field = memberFieldName(sp, member);
             if (i < members.size() - 1) {
                 writer.write("    $L = $L,", field, toBindingVar(field));
             } else {
@@ -433,13 +442,14 @@ public final class ErlangAwsQueryEmitter {
         }
         writer.write("}) ->");
         writer.indent();
+        String clauseTerminator = lastClause ? "." : ";";
         if (members.isEmpty()) {
-            writer.write("[].");
+            writer.write("[]$L", clauseTerminator);
         } else {
             writer.write("lists:append([");
             for (int i = 0; i < members.size(); i++) {
                 MemberShape member = members.get(i);
-                String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+                String field = memberFieldName(sp, member);
                 String wireKey = queryFormKey(member, ec2Query);
                 if (i < members.size() - 1) {
                     writer.write("    flatten_member(<<\"$L\">>, $L),", wireKey, toBindingVar(field));
@@ -447,7 +457,7 @@ public final class ErlangAwsQueryEmitter {
                     writer.write("    flatten_member(<<\"$L\">>, $L)", wireKey, toBindingVar(field));
                 }
             }
-            writer.write("]).");
+            writer.write("])$L", clauseTerminator);
         }
         writer.dedent();
         writer.write("");
@@ -479,7 +489,7 @@ public final class ErlangAwsQueryEmitter {
         writer.write("{ok, Result} ->");
         writer.indent();
         writer.write("{ok, #$L{", outputRecord);
-        emitOutputFields(writer, model, sp, output, "Result");
+        emitOutputFields(writer, model, sp, output, "Result", ec2Query);
         writer.write("}};");
         writer.dedent();
         writer.write("{error, Reason} ->");
@@ -501,24 +511,80 @@ public final class ErlangAwsQueryEmitter {
             Model model,
             SymbolProvider sp,
             StructureShape output,
-            String resultVar) {
+            String resultVar,
+            boolean ec2Query) {
 
         List<String> fields = new ArrayList<>();
         for (MemberShape member : output.members()) {
-            String field = BeamNameUtils.toSnakeCase(member.getMemberName());
-            String element = BeamXmlDecoder.memberElementName(member);
+            String field = memberFieldName(sp, member);
             Shape target = model.expectShape(member.getTarget());
             if (target instanceof ListShape listShape) {
-                String itemElement = BeamXmlDecoder.listItemElementName(listShape);
-                fields.add("    " + field + " = xml_child_list(" + resultVar
-                        + ", <<\"" + element + "\">, <<\"" + itemElement + "\">>)");
+                fields.add("    " + field + " = "
+                        + decodeListFieldFromXml(model, member, listShape, resultVar, sp, ec2Query));
+            } else if (target instanceof StructureShape nested) {
+                String element = BeamXmlDecoder.memberElementName(member);
+                fields.add("    " + field + " = (case find_element(<<\"" + element + "\">>, element_content("
+                        + resultVar + ")) of undefined -> undefined; Nested -> "
+                        + decodeStructureFromXml(model, nested, "Nested", sp, ec2Query) + " end)");
             } else {
-                fields.add("    " + field + " = xml_child_text(" + resultVar + ", <<\"" + element + "\">>)");
+                fields.add("    " + field + " = xml_child_text(" + resultVar + ", <<\""
+                        + BeamXmlDecoder.memberElementName(member) + "\">>)");
             }
         }
         if (!fields.isEmpty()) {
             writer.write(String.join(",\n", fields));
         }
+    }
+
+    private static String decodeStructureFromXml(
+            Model model,
+            StructureShape structure,
+            String xmlVar,
+            SymbolProvider sp,
+            boolean ec2Query) {
+        List<String> fields = new ArrayList<>();
+        String recordTag = recordName(sp.toSymbol(structure));
+        for (MemberShape member : structure.members()) {
+            String field = memberFieldName(sp, member);
+            Shape target = model.expectShape(member.getTarget());
+            if (target instanceof ListShape listShape) {
+                fields.add(field + " = "
+                        + decodeListFieldFromXml(model, member, listShape, xmlVar, sp, ec2Query));
+            } else if (target instanceof StructureShape nested) {
+                String element = BeamXmlDecoder.memberElementName(member);
+                fields.add(field + " = (case find_element(<<\"" + element + "\">>, element_content(" + xmlVar
+                        + ")) of undefined -> undefined; Nested -> "
+                        + decodeStructureFromXml(model, nested, "Nested", sp, ec2Query) + " end)");
+            } else {
+                fields.add(field + " = xml_child_text(" + xmlVar + ", <<\""
+                        + BeamXmlDecoder.memberElementName(member) + "\">>)");
+            }
+        }
+        if (fields.isEmpty()) {
+            return "#" + recordTag + "{}";
+        }
+        return "#" + recordTag + "{" + String.join(", ", fields) + "}";
+    }
+
+    private static String decodeListFieldFromXml(
+            Model model,
+            MemberShape member,
+            ListShape listShape,
+            String xmlVar,
+            SymbolProvider sp,
+            boolean ec2Query) {
+        String element = BeamXmlDecoder.memberElementName(member);
+        String itemElement = listShape.getMember().hasTrait(software.amazon.smithy.model.traits.XmlNameTrait.class)
+                ? BeamXmlDecoder.memberElementName(listShape.getMember())
+                : BeamXmlBindingIndex.listItemElementName(member, listShape, model);
+        String listNameExpr = "<<\"" + element + "\">>";
+        Shape listMember = model.expectShape(listShape.getMember().getTarget());
+        if (listMember instanceof StructureShape nested) {
+            String itemRecord = decodeStructureFromXml(model, nested, "Item", sp, ec2Query);
+            return "xml_child_struct_list(" + xmlVar + ", " + listNameExpr + ", <<\""
+                    + itemElement + "\">>, fun(Item) -> " + itemRecord + " end)";
+        }
+        return "xml_child_list(" + xmlVar + ", " + listNameExpr + ", <<\"" + itemElement + "\">>)";
     }
 
     private static void emitXmlHelpers(ErlangWriter writer, boolean ec2Query) {
@@ -527,7 +593,8 @@ public final class ErlangAwsQueryEmitter {
         writer.write("try");
         writer.indent();
         writer.write("{Xml, _} = xmerl_scan:string(binary_to_list(Body)),");
-        writer.write("case find_element(ResultName, element_content(Xml)) of");
+        writer.write("Root = normalize_xml_element(Xml),");
+        writer.write("case query_result_element(Root, ResultName) of");
         writer.indent();
         writer.write("undefined -> {error, {missing_result, ResultName}};");
         writer.write("Result -> {ok, Result}");
@@ -541,7 +608,27 @@ public final class ErlangAwsQueryEmitter {
         writer.write("end.");
         writer.dedent();
         writer.write("");
-        writer.write("element_content({_, _, Content, _, _, _}) -> Content;");
+        writer.write("normalize_xml_element([H | _]) ->");
+        writer.indent();
+        writer.write("normalize_xml_element(H);");
+        writer.dedent();
+        writer.write("normalize_xml_element(Element) ->");
+        writer.indent();
+        writer.write("Element.");
+        writer.dedent();
+        writer.write("");
+        writer.write("query_result_element(Element, ResultName) ->");
+        writer.indent();
+        writer.write("case is_element(Element) andalso element_name(Element) =:= ResultName of");
+        writer.indent();
+        writer.write("true -> Element;");
+        writer.write("false -> find_element(ResultName, element_content(Element))");
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
+        writer.write("");
+        writer.write("element_content({xmlElement, _, _, _, _, _, _, _, Content, _, _, _}) -> Content;");
+        writer.write("element_content({_, _, Content, _, _, _}) when is_list(Content) -> Content;");
         writer.write("element_content([H | _]) -> element_content(H);");
         writer.write("element_content(_) -> [].");
         writer.write("");
@@ -555,9 +642,19 @@ public final class ErlangAwsQueryEmitter {
         writer.write("end.");
         writer.dedent();
         writer.write("");
-        writer.write("is_element({_, _, _, _, _, _}) -> true;");
+        writer.write("is_element({xmlElement, _, _, _, _, _, _, _, _, _, _, _}) -> true;");
+        writer.write("is_element({_, _, Content, _, _, _}) when is_list(Content) -> true;");
         writer.write("is_element(_) -> false.");
         writer.write("");
+        writer.write("element_name({xmlElement, Name, _, _, _, _, _, _, _, _, _, _}) when is_atom(Name) ->");
+        writer.indent();
+        writer.write("list_to_binary(atom_to_list(Name));");
+        writer.dedent();
+        writer.write("element_name({xmlElement, Name, _, _, _, _, _, _, _, _, _, _}) when is_list(Name) ->");
+        writer.indent();
+        writer.write("list_to_binary(Name);");
+        writer.dedent();
+        writer.write("element_name({xmlElement, Name, _, _, _, _, _, _, _, _, _, _}) when is_binary(Name) -> Name;");
         writer.write("element_name({Name, _, _, _, _, _}) when is_atom(Name) -> list_to_binary(atom_to_list(Name));");
         writer.write("element_name({Name, _, _, _, _, _}) when is_list(Name) -> list_to_binary(Name);");
         writer.write("element_name({Name, _, _, _, _, _}) when is_binary(Name) -> Name.");
@@ -580,22 +677,53 @@ public final class ErlangAwsQueryEmitter {
         writer.write("end.");
         writer.dedent();
         writer.write("");
-        writer.write("element_text({_, _, Content, _, _, _}) ->");
+        writer.write("element_text({xmlElement, _, _, _, _, _, _, _, Content, _, _, _}) ->");
+        writer.indent();
+        writer.write("xml_text_values(Content);");
+        writer.dedent();
+        writer.write("element_text({_, _, Content, _, _, _}) when is_list(Content) ->");
         writer.indent();
         writer.write("[T || T <- Content, is_list(T), not is_element_string(T)];");
         writer.dedent();
         writer.write("element_text(_) -> [].");
         writer.write("");
+        writer.write("xml_text_values(Content) ->");
+        writer.indent();
+        writer.write("lists:flatten([case C of");
+        writer.indent();
+        writer.write("{xmlText, _, _, _, V, _} when is_list(V) -> V;");
+        writer.write("{xmlText, _, _, _, V, _} when is_binary(V) -> binary_to_list(V);");
+        writer.write("_ -> []");
+        writer.dedent();
+        writer.write("end || C <- Content]).");
+        writer.dedent();
+        writer.write("");
         writer.write("is_element_string(T) when is_list(T) ->");
         writer.indent();
         writer.write("case T of");
         writer.indent();
+        writer.write("{xmlElement, _, _, _, _, _, _, _, _, _, _, _} -> true;");
         writer.write("{_, _, _, _, _, _} -> true;");
         writer.write("_ -> false");
         writer.dedent();
         writer.write("end;");
         writer.dedent();
         writer.write("is_element_string(_) -> false.");
+        writer.write("");
+        writer.write("xml_child_struct_list(Parent, ListName, ItemName, DecodeFun) ->");
+        writer.indent();
+        writer.write("case find_element(ListName, element_content(Parent)) of");
+        writer.indent();
+        writer.write("undefined -> undefined;");
+        writer.write("ListElement ->");
+        writer.indent();
+        writer.write("[DecodeFun(Item) || Item <- element_content(ListElement),");
+        writer.write("                    is_element(Item),");
+        writer.write("                    element_name(Item) =:= ItemName]");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
         writer.write("");
         writer.write("xml_child_list(Parent, ListName, ItemName) ->");
         writer.indent();
@@ -703,7 +831,7 @@ public final class ErlangAwsQueryEmitter {
     private static void emitQueryHelpers(ErlangWriter writer, boolean ec2Query) {
         writer.write("flatten_member(_Key, undefined) ->");
         writer.indent();
-        writer.write("[].");
+        writer.write("[];");
         writer.dedent();
         if (ec2Query) {
             writer.write("flatten_member(Key, Value) when is_list(Value) ->");
@@ -714,7 +842,7 @@ public final class ErlangAwsQueryEmitter {
             writer.write("        V");
             writer.write("    )");
             writer.write("    || {I, V} <- lists:enumerate(Value), V =/= undefined");
-            writer.write("]).");
+            writer.write("]);");
             writer.dedent();
         } else {
             writer.write("flatten_member(Key, Value) when is_list(Value) ->");
@@ -725,7 +853,7 @@ public final class ErlangAwsQueryEmitter {
             writer.write("        V");
             writer.write("    )");
             writer.write("    || {I, V} <- lists:enumerate(Value), V =/= undefined");
-            writer.write("]).");
+            writer.write("]);");
             writer.dedent();
         }
         writer.write("flatten_member(Key, Value) when is_map(Value) ->");
@@ -735,7 +863,7 @@ public final class ErlangAwsQueryEmitter {
         writer.write("    ++ flatten_member(<<Key/binary, \".entry.\", (integer_to_binary(I))/binary, \".value\">>, V)");
         writer.write("    || {I, {K, V}} <- lists:enumerate(maps:to_list(Value)),");
         writer.write("       K =/= undefined, V =/= undefined");
-        writer.write("]).");
+        writer.write("]);");
         writer.dedent();
         writer.write("flatten_member(Key, Value) when is_tuple(Value) ->");
         writer.indent();
@@ -748,7 +876,7 @@ public final class ErlangAwsQueryEmitter {
         writer.write("");
         writer.write("flatten_structure(_Key, undefined) ->");
         writer.indent();
-        writer.write("[].");
+        writer.write("[];");
         writer.dedent();
         writer.write("flatten_structure(_Key, _Value) ->");
         writer.indent();
@@ -796,10 +924,14 @@ public final class ErlangAwsQueryEmitter {
         return BeamNameUtils.toCamelCaseVariable(snakeField);
     }
 
-    private static String inputPattern(StructureShape input) {
+    private static String memberFieldName(SymbolProvider sp, MemberShape member) {
+        return sp.toSymbol(member).getProperty("fieldName", String.class).orElseThrow();
+    }
+
+    private static String inputPattern(SymbolProvider sp, StructureShape input) {
         List<String> parts = new ArrayList<>();
         for (MemberShape member : input.members()) {
-            String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+            String field = memberFieldName(sp, member);
             parts.add(field + " = " + toBindingVar(field));
         }
         return parts.isEmpty() ? "" : "\n    " + String.join(",\n    ", parts) + "\n";
