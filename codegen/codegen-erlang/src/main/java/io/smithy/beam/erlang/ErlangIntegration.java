@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamProtocolIntegration;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.codegen.core.SmithyIntegration;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -17,7 +18,8 @@ import software.amazon.smithy.model.shapes.OperationShape;
  * {@link #configure}.</p>
  */
 public interface ErlangIntegration
-        extends SmithyIntegration<BeamSettings, ErlangWriter, ErlangContext> {
+        extends SmithyIntegration<BeamSettings, ErlangWriter, ErlangContext>,
+                BeamProtocolIntegration {
 
     /**
      * Runs after the selected {@link io.smithy.beam.core.BeamProtocolCodegen} built-ins.

@@ -4,13 +4,22 @@ import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ShapeId;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 public final class BeamProtocolCodegenFactory {
 
     private BeamProtocolCodegenFactory() {}
 
     public static BeamProtocolCodegen create(Model model, ShapeId resolvedProtocolTraitId) {
+        return create(model, resolvedProtocolTraitId, List.of());
+    }
+
+    public static BeamProtocolCodegen create(
+            Model model,
+            ShapeId resolvedProtocolTraitId,
+            List<? extends BeamProtocolIntegration> integrations) {
         Objects.requireNonNull(resolvedProtocolTraitId, "resolvedProtocolTraitId");
         BeamHttpBindings bindings = BeamHttpBindings.from(model);
         if (BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(resolvedProtocolTraitId)) {
@@ -31,7 +40,15 @@ public final class BeamProtocolCodegenFactory {
         if (BeamRestXmlProtocolCodegen.REST_XML.equals(resolvedProtocolTraitId)) {
             return new BeamRestXmlProtocolCodegen(bindings);
         }
+        for (BeamProtocolIntegration integration : integrations) {
+            Optional<BeamProtocolCodegen> custom =
+                    integration.createProtocolCodegen(model, resolvedProtocolTraitId);
+            if (custom.isPresent()) {
+                return custom.get();
+            }
+        }
         throw new CodegenException(
-                "No BeamProtocolCodegen registered for protocol trait " + resolvedProtocolTraitId);
+                "No BeamProtocolCodegen registered for protocol trait "
+                        + resolvedProtocolTraitId);
     }
 }
