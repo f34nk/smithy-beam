@@ -112,9 +112,17 @@ class Ec2QueryCodecTest {
         assertThat(codec).contains("<<\"InstanceId\">>");
         assertThat(codec).contains("application/x-www-form-urlencoded");
         assertThat(codec).contains("unwrap_query_result(");
+        assertThat(codec).contains("query_result_element(");
+        assertThat(codec).contains("xml_child_struct_list(");
         assertThat(codec).contains("<<\"DescribeInstancesResponse\">>");
+        assertThat(codec).contains("xml_child_list(Result, <<\"InstanceIds\">>, <<\"member\">>)");
+        assertThat(codec).doesNotContain("xml_child_list(Result, <<\"InstanceIds\">, <<");
         assertThat(codec).contains("Key/binary, \".\", (integer_to_binary(I))/binary");
         assertThat(codec).doesNotContain(".member.");
+        assertThat(codec).contains("flatten_member(_Key, undefined) ->\n    [];");
+        assertThat(codec).doesNotContain("flatten_member(_Key, undefined) ->\n    [].\nflatten_member(Key, Value)");
+        assertThat(codec).contains("end_ = xml_child_text(");
+        assertThat(codec).doesNotContain("end = xml_child_text(");
     }
 
     @Test

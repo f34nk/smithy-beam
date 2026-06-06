@@ -28,4 +28,15 @@ structure DescribeInstancesInput {
 
 structure DescribeInstancesOutput {
     count: Integer
+    instanceIds: InstanceIdList
+    reservationWindow: ReservationWindow
+}
+
+structure ReservationWindow {
+    start: String
+    end: String
+}
+
+list InstanceIdList {
+    member: String
 }
