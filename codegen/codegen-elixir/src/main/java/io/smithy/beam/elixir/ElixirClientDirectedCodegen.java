@@ -10,6 +10,7 @@ import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamProtocolResolver;
+import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
 import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
@@ -77,13 +78,14 @@ final class ElixirClientDirectedCodegen
             CreateContextDirective<BeamSettings, ElixirIntegration> directive) {
         ServiceShape service = directive.service();
         BeamHttpBindings httpBindings = BeamHttpBindings.from(directive.model());
+        Optional<ShapeId> resolved =
+                BeamProtocolResolver.resolve(directive.model(), service, directive.settings());
+        ShapeId resolvedProtocolTraitId = resolved.orElse(null);
         BeamProtocolCodegen protocolCodegen = null;
-        Optional<ShapeId> serviceProtocol =
-                BeamProtocolResolver.resolveServiceProtocol(directive.model(), service);
-        ShapeId resolvedProtocolTraitId = serviceProtocol.orElse(null);
-        if (serviceProtocol.isPresent()) {
+        if (resolved.isPresent()) {
             protocolCodegen =
-                    BeamProtocolCodegenFactory.create(directive.model(), serviceProtocol.get());
+                    BeamProtocolCodegenFactory.create(
+                            directive.model(), resolved.get(), directive.integrations());
         }
         String ns = service.getId().getNamespace();
         String serviceName = service.getId().getName();
@@ -285,18 +287,8 @@ final class ElixirClientDirectedCodegen
         String inType = ElixirTopDown.structureSpecType(typesModuleName, inSym);
         String outType = ElixirTopDown.structureSpecType(typesModuleName, outSym);
 
-        boolean hasProtocol = ctx.protocolCodegen() != null
-                && (BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(ctx.protocolCodegen().protocolTraitId())
-                        || BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(
-                                ctx.protocolCodegen().protocolTraitId())
-                        || BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(
-                                ctx.protocolCodegen().protocolTraitId())
-                        || BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(
-                                ctx.protocolCodegen().protocolTraitId())
-                        || BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(
-                                ctx.protocolCodegen().protocolTraitId())
-                        || BeamRestXmlProtocolCodegen.REST_XML.equals(
-                                ctx.protocolCodegen().protocolTraitId()));
+        boolean hasProtocol = BeamProtocolSupport.hasWireCodegen(
+                ctx.resolvedProtocolTraitId(), ctx.protocolCodegen(), ctx.integrations());
         boolean sigv4 = BeamSigV4Metadata.from(ctx.service()).isPresent();
         String sigv4Module = ElixirSymbolProvider.toModuleName(layout.sigv4ModuleName());
 
@@ -317,7 +309,8 @@ final class ElixirClientDirectedCodegen
                     outType);
             if (hasProtocol) {
                 String codecMod = ElixirSymbolProvider.toModuleName(
-                        layout.clientCodecModuleName(ctx.resolvedProtocolTraitId()));
+                        layout.clientCodecModuleName(
+                                ctx.resolvedProtocolTraitId(), ctx.integrations()));
                 String httpMod = ElixirSymbolProvider.toModuleName(
                         layout.runtimeHttpModuleName());
                 writer.write("def $L(config, input) do", opSym.getName());
