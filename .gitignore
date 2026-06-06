@@ -8,6 +8,7 @@ deps/
 *.log
 *.lock
 *.dump
+*.crashdump
 *.lock.hcl
 *.tfstate
 .terraform/
