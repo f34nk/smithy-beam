@@ -37,6 +37,24 @@ class BeamEndpointRuleSetEmitterTest {
         assertThat(erlangMap).startsWith("#{");
         assertThat(erlangMap).contains("<<\"Region\">>");
         assertThat(erlangMap).contains("s3.{Region}.amazonaws.com");
+        assertThat(erlangMap).contains("<<\"argv\">> => [");
+        assertThat(erlangMap).contains("<<\"rules\">> => [");
+        assertThat(countChar(erlangMap, '[')).isEqualTo(countChar(erlangMap, ']'));
+
+        String elixirMap = RuleSetSerializer.toElixirMap(trait);
+        assertThat(elixirMap).contains("argv => [");
+        assertThat(elixirMap).contains("rules => [");
+        assertThat(countChar(elixirMap, '[')).isEqualTo(countChar(elixirMap, ']'));
+    }
+
+    private static int countChar(String value, char ch) {
+        int count = 0;
+        for (int i = 0; i < value.length(); i++) {
+            if (value.charAt(i) == ch) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private static Model loadModel() {

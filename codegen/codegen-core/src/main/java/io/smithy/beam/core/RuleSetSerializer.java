@@ -64,7 +64,7 @@ public final class RuleSetSerializer {
             if (arrayNode.getElements().isEmpty()) {
                 return "[]";
             }
-            StringBuilder out = new StringBuilder('[');
+            StringBuilder out = new StringBuilder("[");
             boolean first = true;
             for (Node element : arrayNode.getElements()) {
                 if (!first) {
@@ -127,7 +127,7 @@ public final class RuleSetSerializer {
             if (arrayNode.getElements().isEmpty()) {
                 return "[]";
             }
-            StringBuilder out = new StringBuilder('[');
+            StringBuilder out = new StringBuilder("[");
             boolean first = true;
             for (Node element : arrayNode.getElements()) {
                 if (!first) {
