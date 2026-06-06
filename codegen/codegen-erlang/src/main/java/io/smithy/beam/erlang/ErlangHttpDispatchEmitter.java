@@ -73,7 +73,7 @@ public final class ErlangHttpDispatchEmitter {
                 writer.indent();
                 writer.write("case $L:resolve($L, #{}) of", endpointsMod, configVar);
                 writer.indent();
-                writer.write("{ok, #{url := Url}} -> Url;");
+                writer.write("{ok, #{url := ResolvedUrl}} -> ResolvedUrl;");
                 writer.write("_ -> $L:resolve_base_url($L)", helpersMod, configVar);
                 writer.dedent();
                 writer.write("end");
@@ -100,13 +100,13 @@ public final class ErlangHttpDispatchEmitter {
             writer.write("end,");
             writer.write("{Scheme, DefaultAuthority} = split_base_url(BaseUrl),");
             writer.write("Authority = case Host of undefined -> DefaultAuthority; _ -> Host end,");
-            writer.write("Url = <<Scheme/binary, Authority/binary, Path/binary, QueryStr/binary>>,");
+            writer.write("ReqUrl = <<Scheme/binary, Authority/binary, Path/binary, QueryStr/binary>>,");
             writer.write("HttpcHeaders = [{binary_to_list(K), binary_to_list(V)}");
             writer.write("    || {K, V} <- Headers],");
             writer.write("Req = case Body of");
             writer.indent();
-            writer.write("<<>> -> {binary_to_list(Url), HttpcHeaders};");
-            writer.write("_ -> {binary_to_list(Url), HttpcHeaders, mime(Headers), Body}");
+            writer.write("<<>> -> {binary_to_list(ReqUrl), HttpcHeaders};");
+            writer.write("_ -> {binary_to_list(ReqUrl), HttpcHeaders, mime(Headers), Body}");
             writer.dedent();
             writer.write("end,");
             writer.write("case HttpClient:request(binary_to_atom(string:lowercase(Method), utf8),");
