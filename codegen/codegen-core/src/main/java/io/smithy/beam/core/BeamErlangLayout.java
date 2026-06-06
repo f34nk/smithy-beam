@@ -3,6 +3,8 @@ package io.smithy.beam.core;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
+import java.util.List;
+
 /**
  * Single place for Erlang output filenames derived from {@link BeamSettings} and namespace.
  * Call from every {@code createSymbolProvider} and from writers that open the same paths.
@@ -76,7 +78,14 @@ public final class BeamErlangLayout {
     }
 
     public String clientCodecModuleName(ShapeId protocolTraitId) {
-        return serviceSnakeName() + "_" + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId);
+        return clientCodecModuleName(protocolTraitId, List.of());
+    }
+
+    public String clientCodecModuleName(
+            ShapeId protocolTraitId, List<? extends BeamProtocolIntegration> integrations) {
+        return serviceSnakeName()
+                + "_"
+                + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId, integrations);
     }
 
     public String serverCodecModuleFile() {
@@ -88,7 +97,14 @@ public final class BeamErlangLayout {
     }
 
     public String serverCodecModuleName(ShapeId protocolTraitId) {
-        return serviceSnakeName() + "_" + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId);
+        return serverCodecModuleName(protocolTraitId, List.of());
+    }
+
+    public String serverCodecModuleName(
+            ShapeId protocolTraitId, List<? extends BeamProtocolIntegration> integrations) {
+        return serviceSnakeName()
+                + "_"
+                + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId, integrations);
     }
 
     public String runtimeTypesHeaderFile() {

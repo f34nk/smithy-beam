@@ -3,6 +3,8 @@ package io.smithy.beam.core;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
+import java.util.List;
+
 /**
  * Single place for Elixir artifact paths derived from {@link BeamSettings} and namespace.
  */
@@ -75,7 +77,14 @@ public final class BeamElixirLayout {
     }
 
     public String clientCodecModuleName(ShapeId protocolTraitId) {
-        return serviceSnakeName() + "_" + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId);
+        return clientCodecModuleName(protocolTraitId, List.of());
+    }
+
+    public String clientCodecModuleName(
+            ShapeId protocolTraitId, List<? extends BeamProtocolIntegration> integrations) {
+        return serviceSnakeName()
+                + "_"
+                + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId, integrations);
     }
 
     public String runtimeTypesModuleFile() {
@@ -199,7 +208,14 @@ public final class BeamElixirLayout {
     }
 
     public String serverCodecModuleName(ShapeId protocolTraitId) {
-        return serviceSnakeName() + "_" + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId);
+        return serverCodecModuleName(protocolTraitId, List.of());
+    }
+
+    public String serverCodecModuleName(
+            ShapeId protocolTraitId, List<? extends BeamProtocolIntegration> integrations) {
+        return serviceSnakeName()
+                + "_"
+                + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId, integrations);
     }
 
     private String serviceSnakeName() {

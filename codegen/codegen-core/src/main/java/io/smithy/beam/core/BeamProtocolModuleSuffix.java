@@ -1,13 +1,20 @@
 package io.smithy.beam.core;
 
-import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.model.shapes.ShapeId;
+
+import java.util.List;
+import java.util.Optional;
 
 public final class BeamProtocolModuleSuffix {
 
     private BeamProtocolModuleSuffix() {}
 
     public static String codecSuffix(ShapeId protocolTraitId) {
+        return codecSuffix(protocolTraitId, List.of());
+    }
+
+    public static String codecSuffix(
+            ShapeId protocolTraitId, List<? extends BeamProtocolIntegration> integrations) {
         if (BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(protocolTraitId)) {
             return "rest_json_1";
         }
@@ -26,6 +33,12 @@ public final class BeamProtocolModuleSuffix {
         if (BeamRestXmlProtocolCodegen.REST_XML.equals(protocolTraitId)) {
             return "rest_xml";
         }
-        throw new CodegenException("No codec module suffix for protocol " + protocolTraitId);
+        for (BeamProtocolIntegration integration : integrations) {
+            Optional<String> suffix = integration.codecModuleSuffix(protocolTraitId);
+            if (suffix.isPresent()) {
+                return suffix.get();
+            }
+        }
+        return BeamNameUtils.toSnakeCase(protocolTraitId.getName());
     }
 }
