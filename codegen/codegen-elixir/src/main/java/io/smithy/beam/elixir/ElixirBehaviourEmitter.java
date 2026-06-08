@@ -30,6 +30,8 @@ final class ElixirBehaviourEmitter {
             writer.write("defmodule $L do", behaviourMod);
             writer.popState();
 
+            writer.indent();
+
             writer.pushGeneratedDocumentationSection();
             writer.openBlock("@moduledoc \"\"\"");
             writer.write("Generated Elixir server behaviour for $L.", service.getId());
@@ -99,6 +101,8 @@ final class ElixirBehaviourEmitter {
             writer.write("end");
             writer.write("");
             writer.popState();
+
+            writer.dedent();
 
             writer.pushModuleHeaderSection();
             writer.write("end");
