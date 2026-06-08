@@ -1,4 +1,4 @@
-X:=$(shell find examples/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \;)
+X:=$(shell find examples baseline -maxdepth 3 -name Makefile -type f -exec dirname {} \;)
 EXAMPLES:=$(foreach x,$(X),$(x)/)
 EXAMPLES_COUNT:=$(words $(EXAMPLES))
 
@@ -120,29 +120,18 @@ clean:
 	# Clean $@
 	#
 	target="$$(dirname $@)"; \
-	if [ "$$target" = "examples" ]; then \
-		files="$(EXAMPLES)"; \
-	else \
-		echo "Unknown target: $$target" ; \
-		exit 1 ; \
-	fi; \
-	if [ -z "$$files" ]; then \
-		echo "No files to clean for target: $$target" ; \
-		exit 1 ; \
-	fi; \
-	for x in $$files; do \
-		echo ; \
-		echo "Cleaning: $$x" ; \
-		cd $$x ; \
-		make clean ; \
-		cd - >/dev/null; \
-	done
+	find $$target/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \; |\
+	xargs -S1024 -P $(PARALLEL_JOBS) -I {} sh -c ' \
+		target="{}"; \
+		echo "Clean $$target"; \
+		cd $$target && make clean; \
+	'; \
 
 # Usage: TARGET=examples make _run
 .PHONY: _run
 _run:
 	mkdir -p build
-	rm -rf build/*.log
+	rm -rf build/$(TARGET)*.log
 	touch build/$(TARGET).log
 	#
 	# Run $(TARGET) in parallel ($(PARALLEL_JOBS) jobs)
@@ -171,15 +160,21 @@ _demo:
 examples:
 	TARGET=examples make _run
 
+# Usage: make examples
+.PHONY: baseline
+baseline:
+	TARGET=baseline make _run
+
 # Usage: make examples/erlang/weather-service
 .SILENT:
 .PHONY: $(EXAMPLES)
-examples/%: $(EXAMPLES)
+examples/% baseline/%: $(EXAMPLES)
 	target="$@"; \
-	name="$$(echo $$target|cut -d/ -f3)"; \
+	dirname="$$(echo $$target|cut -d/ -f1)"; \
 	lang="$$(echo $$target|cut -d/ -f2)"; \
-	build_log=build/examples.log; \
-	logfile="build/examples-$$lang-$$name.log"; \
+	name="$$(echo $$target|cut -d/ -f3)"; \
+	build_log=build/$$dirname.log; \
+	logfile="build/$$dirname-$$lang-$$name.log"; \
 	echo "Running $$target > $$logfile"; \
 	DEMO=$$target make _demo > $$logfile 2>&1; \
 	if grep -q "make.*Error" $$logfile; then \
