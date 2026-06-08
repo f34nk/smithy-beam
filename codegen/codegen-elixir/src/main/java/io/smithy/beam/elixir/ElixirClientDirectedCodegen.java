@@ -134,7 +134,7 @@ final class ElixirClientDirectedCodegen
                 layout.runtimeTypesModuleFile(),
                 w -> {
                     Optional<String> ruleSet =
-                            BeamEndpointRuleSetEmitter.serializeRuleSetElixirMap(
+                            BeamEndpointRuleSetEmitter.serializeRuleSetJson(
                                     directive.model(), service);
                     ElixirRuntimeTypesEmitter.writeBody(w, runtimeTypesModule, ruleSet);
                 });
@@ -215,6 +215,7 @@ final class ElixirClientDirectedCodegen
 
         ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         ElixirS3EndpointEmitter.emit(ctx, service);
+        ElixirAwsEndpointRulesEmitter.emitIfNeeded(ctx, service);
         ElixirEndpointRulesEmitter.emit(ctx, service);
         ElixirHttpDispatchEmitter.emit(ctx, service);
         ElixirSigV4Emitter.emit(ctx, service);
