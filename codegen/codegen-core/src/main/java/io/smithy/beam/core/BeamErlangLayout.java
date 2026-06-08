@@ -57,6 +57,18 @@ public final class BeamErlangLayout {
         return serviceSnakeName() + "_server";
     }
 
+    public String behaviourModuleFile() {
+        return behaviourModuleName() + ".erl";
+    }
+
+    public String behaviourModuleName() {
+        return serviceSnakeName() + "_behaviour";
+    }
+
+    public String implModuleName() {
+        return serviceSnakeName() + "_impl";
+    }
+
     public String routerModuleFile() {
         return routerModuleName() + ".erl";
     }
