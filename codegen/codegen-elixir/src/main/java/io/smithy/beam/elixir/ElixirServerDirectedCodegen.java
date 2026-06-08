@@ -1,7 +1,6 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenKind;
-import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
@@ -35,8 +34,8 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
-import software.amazon.smithy.model.shapes.StructureShape;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -119,8 +118,12 @@ final class ElixirServerDirectedCodegen
         BeamElixirLayout layout =
                 new BeamElixirLayout(ctx.settings(), ns, service);
         String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+        String behaviourMod = ElixirSymbolProvider.toModuleName(layout.behaviourModuleName());
         String runtimeTypesModule =
                 ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
+
+        List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(ctx.model(), service);
+        ElixirBehaviourEmitter.beginService(ctx, service, operations);
 
         ctx.writerDelegator().useFileWriter(
                 layout.runtimeTypesModuleFile(),
@@ -135,14 +138,23 @@ final class ElixirServerDirectedCodegen
 
             writer.pushGeneratedDocumentationSection();
             writer.openBlock("@moduledoc \"\"\"");
-            writer.write("Generated Elixir server stub for $L.", service.getId());
+            writer.write("Generated Elixir server dispatcher for $L.", service.getId());
             writer.write("");
-            writer.write("Handlers are model-agnostic at runtime; names follow Smithy operations.");
+            writer.write("Discovers impl callbacks at startup via init_handlers/0.");
             writer.closeBlock("\"\"\"");
+            writer.popState();
+
+            writer.pushModuleHeaderSection();
+            writer.write("@behaviour $L", behaviourMod);
             writer.popState();
 
             writer.pushDependenciesSection();
             writer.write("alias $L", typesModuleName);
+            writer.write("alias $L", behaviourMod);
+            writer.popState();
+
+            writer.pushProtocolHookSection();
+            writer.write("# Handler discovery and dispatch helpers.");
             writer.popState();
         });
     }
@@ -204,12 +216,20 @@ final class ElixirServerDirectedCodegen
             ElixirResourceEmitter.emitServer(ctx, resource);
         }
 
+        BeamElixirLayout layout =
+                new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
+        List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(ctx.model(), service);
+        ElixirBehaviourEmitter.finishService(ctx, operations, directive.symbolProvider());
+        ElixirHandlerDiscoveryEmitter.emitDiscoveryHelpers(ctx, layout);
+
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
             writer.write(
-                    "# Dispatch and routing modules should map wire metadata to $L below.",
+                    "# Call $L.init_handlers/0 during application start before dispatch.",
                     ctx.moduleName());
-            writer.write("# No Smithy shapes are referenced at runtime in this baseline.");
+            writer.write(
+                    "# Default impl module: $L.",
+                    ElixirSymbolProvider.toModuleName(layout.implModuleName()));
             writer.write("");
             writer.popState();
         });
@@ -224,38 +244,13 @@ final class ElixirServerDirectedCodegen
         Symbol opSym = sp.toSymbol(op);
         String handler = "handle_" + opSym.getName();
 
-        String ns = ctx.service().getId().getNamespace();
-        BeamElixirLayout layout =
-                new BeamElixirLayout(ctx.settings(), ns, ctx.service());
-        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-
-        StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
-        StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
-        Symbol inSym = sp.toSymbol(input);
-        Symbol outSym = sp.toSymbol(output);
-        String inType = ElixirTopDown.structureSpecType(typesModuleName, inSym);
-        String outType = ElixirTopDown.structureSpecType(typesModuleName, outSym);
-
-        BeamDocumentation.forShape(op).ifPresent(doc -> {
-            ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
-                writer.pushOperationBodySection();
-                BeamDocumentation.writeElixirDoc(writer, doc);
-                writer.popState();
-            });
-        });
-
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
-            writer.write(
-                    "@spec $L(term(), $L, term()) :: {:ok, $L} | {:error, term()}",
-                    handler,
-                    inType,
-                    outType);
-            writer.write(
-                    "def $L(_ctx, _input, _meta), do: {:error, :not_implemented}", handler);
-            writer.write("");
+            ElixirHandlerDiscoveryEmitter.emitOperationDispatch(writer, handler);
             writer.popState();
         });
+
+        ElixirBehaviourEmitter.emitOperationCallback(ctx, op, sp);
     }
 
     @Override
