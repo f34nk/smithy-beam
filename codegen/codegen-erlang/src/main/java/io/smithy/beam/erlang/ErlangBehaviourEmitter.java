@@ -1,0 +1,105 @@
+package io.smithy.beam.erlang;
+
+import io.smithy.beam.core.BeamDocumentation;
+import io.smithy.beam.core.BeamErlangLayout;
+import software.amazon.smithy.codegen.core.Symbol;
+import software.amazon.smithy.codegen.core.SymbolProvider;
+import software.amazon.smithy.model.shapes.OperationShape;
+import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.StructureShape;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Generates {@code {service}_behaviour.erl} with one {@code -callback} per operation
+ * and {@code behaviour_info/1} listing expected handler callbacks.
+ */
+final class ErlangBehaviourEmitter {
+
+    private ErlangBehaviourEmitter() {}
+
+    static void beginService(
+            ErlangContext ctx, ServiceShape service, List<OperationShape> operations) {
+        String ns = service.getId().getNamespace();
+        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns, service);
+        ctx.writerDelegator().useFileWriter(layout.behaviourModuleFile(), writer -> {
+            writer.pushGeneratedDocumentationSection();
+            writer.write("%% Generated Erlang server behaviour for $L.", service.getId());
+            writer.popState();
+
+            writer.pushModuleHeaderSection();
+            writer.write("-module($L).", layout.behaviourModuleName());
+            writer.popState();
+
+            writer.pushDependenciesSection();
+            ((ErlangImports) writer.getImportContainer()).addIncludeRelative(layout.typesHeaderFile());
+            writer.write(ErlangImports.relativeIncludeLine(layout.typesHeaderFile()));
+            writer.popState();
+
+            writer.pushModuleHeaderSection();
+            writer.write("-export([behaviour_info/1]).");
+            writer.write("");
+            writer.popState();
+        });
+    }
+
+    static void emitOperationCallback(
+            ErlangContext ctx, OperationShape op, SymbolProvider sp) {
+        Symbol opSym = sp.toSymbol(op);
+        StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
+        StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
+        Symbol inSym = sp.toSymbol(input);
+        Symbol outSym = sp.toSymbol(output);
+        String handler = "handle_" + opSym.getName();
+
+        ctx.writerDelegator().useFileWriter(
+                new BeamErlangLayout(ctx.settings(), ctx.service().getId().getNamespace(), ctx.service())
+                        .behaviourModuleFile(),
+                writer -> {
+                    writer.pushOperationBodySection();
+                    BeamDocumentation.forShape(op).ifPresent(doc -> BeamDocumentation.writeErlangDoc(writer, doc));
+                    writer.write("-callback $L(", handler);
+                    writer.indent();
+                    writer.write("Ctx :: term(),");
+                    writer.write("Input :: $L,", inSym.getName());
+                    writer.write("Meta :: term()");
+                    writer.dedent();
+                    writer.write(") -> {ok, $L} | {error, term()}.", outSym.getName());
+                    writer.write("");
+                    writer.popState();
+                });
+    }
+
+    static void finishService(
+            ErlangContext ctx,
+            List<OperationShape> operations,
+            SymbolProvider sp) {
+        String ns = ctx.service().getId().getNamespace();
+        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns, ctx.service());
+        List<String> callbackEntries = new ArrayList<>();
+        for (OperationShape op : operations) {
+            String handler = "handle_" + sp.toSymbol(op).getName();
+            callbackEntries.add("        {" + handler + ", 3}");
+        }
+        String callbackList = String.join(",\n", callbackEntries);
+
+        ctx.writerDelegator().useFileWriter(layout.behaviourModuleFile(), writer -> {
+            writer.pushOperationBodySection();
+            writer.write("behaviour_info(callbacks) ->");
+            writer.indent();
+            if (callbackEntries.isEmpty()) {
+                writer.write("[];");
+            } else {
+                writer.write("[");
+                writer.write(callbackList);
+                writer.write("];");
+            }
+            writer.dedent();
+            writer.write("behaviour_info(_) ->");
+            writer.indent();
+            writer.write("undefined.");
+            writer.popState();
+        });
+    }
+}
