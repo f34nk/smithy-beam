@@ -55,6 +55,7 @@ final class ElixirHttpChecksumEmitter {
                 emitChecksumBranch(writer, binding, "headers", "body");
                 writer.dedent();
             }
+            writer.write("");
             writer.write("other -> raise ArgumentError, {:unsupported_checksum_algorithm, other}");
             writer.dedent();
             writer.write("end");
@@ -89,6 +90,7 @@ final class ElixirHttpChecksumEmitter {
         writer.write("case validate_response_checksum(body, headers, [$L]) do", String.join(", ", headerNames));
         writer.indent();
         writer.write(":ok -> $L", successExpression);
+        writer.write("");
         writer.write("{:error, reason} -> {:error, {:checksum_validation_failed, reason}}");
         writer.dedent();
         writer.write("end");
@@ -120,17 +122,20 @@ final class ElixirHttpChecksumEmitter {
         writer.write("defp validate_response_checksum(_body, _headers, []), do: :ok");
         writer.write("defp validate_response_checksum(body, headers, [header_name | rest]) do");
         writer.indent();
-        writer.write("case List.keyfind(headers, header_name, 0) do");
-        writer.indent();
-        writer.write("{_, expected} ->");
+        ElixirFormat.writePipeCase(
+                writer,
+                "List.keyfind(headers, header_name, 0)",
+                List.of(
+                        new String[] {"{_, expected}", "validate_checksum_match(body, header_name, expected)"},
+                        new String[] {"nil", "validate_response_checksum(body, headers, rest)"}));
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+        writer.write("defp validate_checksum_match(body, header_name, expected) do");
         writer.indent();
         writer.write("algorithm = checksum_algorithm_from_header(header_name),");
         writer.write("computed = base16_encode(checksum_digest(body, algorithm)),");
         writer.write("if computed == expected, do: :ok, else: {:error, {:checksum_mismatch, header_name}}");
-        writer.dedent();
-        writer.write("nil -> validate_response_checksum(body, headers, rest)");
-        writer.dedent();
-        writer.write("end");
         writer.dedent();
         writer.write("end");
         writer.write("");

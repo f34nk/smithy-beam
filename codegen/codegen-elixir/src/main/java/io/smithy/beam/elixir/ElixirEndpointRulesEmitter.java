@@ -33,7 +33,12 @@ public final class ElixirEndpointRulesEmitter {
             writer.write("alias $L, as: RuntimeTypes", runtimeMod);
             writer.write("@endpoint_rule_set Module.get_attribute(RuntimeTypes, :endpoint_rule_set)");
             writer.write("");
-            writer.write("@spec resolve(map(), map()) :: {:ok, %{url: String.t()}} | {:error, term()}");
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
+                    "resolve",
+                    "map(), map()",
+                    "{:ok, %{url: String.t()}} | {:error, term()}");
             writer.write("def resolve(config, params) do");
             writer.indent();
             writer.write("AwsEndpointRules.evaluate(@endpoint_rule_set, merge_params(config, params))");
@@ -60,6 +65,7 @@ public final class ElixirEndpointRulesEmitter {
         writer.write("case Map.get(config, :region) do");
         writer.indent();
         writer.write("nil -> %{}");
+        writer.write("");
         writer.write("value -> %{\"Region\" => value}");
         writer.dedent();
         writer.write("end");
@@ -71,6 +77,7 @@ public final class ElixirEndpointRulesEmitter {
         if (clientContextKeys.isEmpty()) {
             writer.write("%{}");
         } else {
+            ElixirFormat.beginPipelineBinding(writer, "params");
             writer.write("[");
             boolean first = true;
             for (Map.Entry<String, String> entry : clientContextKeys.entrySet()) {
@@ -81,7 +88,8 @@ public final class ElixirEndpointRulesEmitter {
                 writer.write("optional_param(config, :$L, \"$L\")", entry.getValue(), entry.getKey());
             }
             writer.write("]");
-            writer.write("|> Enum.reduce(%{}, fn map, acc -> Map.merge(acc, map) end)");
+            ElixirFormat.writePipelineStep(writer, "Enum.reduce(%{}, fn map, acc -> Map.merge(acc, map) end)");
+            ElixirFormat.endPipelineBinding(writer);
         }
         writer.dedent();
         writer.write("end");
@@ -91,6 +99,7 @@ public final class ElixirEndpointRulesEmitter {
         writer.write("case Map.get(config, key) do");
         writer.indent();
         writer.write("nil -> %{}");
+        writer.write("");
         writer.write("value -> %{rule_key => value}");
         writer.dedent();
         writer.write("end");

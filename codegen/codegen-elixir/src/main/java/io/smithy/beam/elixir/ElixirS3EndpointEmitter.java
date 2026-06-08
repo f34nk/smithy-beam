@@ -20,7 +20,7 @@ public final class ElixirS3EndpointEmitter {
             writer.indent();
             writer.write("@moduledoc false");
             writer.write("");
-            writer.write("@spec region_host(map()) :: String.t()");
+            ElixirFormat.writeSpec(writer, "@spec", "region_host", "map()", "String.t()");
             writer.write("def region_host(config) do");
             writer.indent();
             writer.write("base_url = Map.get(config, :base_url, \"\")");
@@ -29,7 +29,12 @@ public final class ElixirS3EndpointEmitter {
             writer.dedent();
             writer.write("end");
             writer.write("");
-            writer.write("@spec resolve_bucket_url(map(), String.t(), String.t()) :: {String.t(), String.t()}");
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
+                    "resolve_bucket_url",
+                    "map(), String.t(), String.t()",
+                    "{String.t(), String.t()}");
             writer.write("def resolve_bucket_url(config, bucket, key) do");
             writer.indent();
             writer.write("style = Map.get(config, :s3_addressing_style, :virtual_host)");
@@ -41,10 +46,12 @@ public final class ElixirS3EndpointEmitter {
             writer.indent();
             writer.write("{virtual_host(config, bucket, region_host), key_path}");
             writer.dedent();
+            writer.write("");
             writer.write(":path_style ->");
             writer.indent();
             writer.write("{region_host, \"/#{bucket}#{key_path}\"}");
             writer.dedent();
+            writer.write("");
             writer.write("_ ->");
             writer.indent();
             writer.write("{virtual_host(config, bucket, region_host), key_path}");
@@ -90,11 +97,13 @@ public final class ElixirS3EndpointEmitter {
             writer.write("case port do");
             writer.indent();
             writer.write("nil -> \"\";");
+            writer.write("");
             writer.write("p -> \":#{p}\"");
             writer.dedent();
             writer.write("end");
             writer.write("{\"#{scheme}://\", \"#{host}#{port_suffix}\"}");
             writer.dedent();
+            writer.write("");
             writer.write("_ ->");
             writer.indent();
             writer.write("{\"\", base_url}");

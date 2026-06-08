@@ -30,7 +30,12 @@ public final class ElixirSigV4Emitter {
             writer.write("alias $L, as: RuntimeTypes", runtimeMod);
             writer.write("alias RuntimeTypes.HttpRequest");
             writer.write("");
-            writer.write("@spec sign(map(), atom(), RuntimeTypes.HttpRequest.t()) :: RuntimeTypes.HttpRequest.t()");
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
+                    "sign",
+                    "map(), atom(), RuntimeTypes.HttpRequest.t()",
+                    "RuntimeTypes.HttpRequest.t()");
             writer.write("def sign(config, operation, request) do");
             writer.indent();
             writer.write("credentials = Map.fetch!(config, :credentials)");
@@ -45,8 +50,10 @@ public final class ElixirSigV4Emitter {
             writer.dedent();
             writer.write("end");
             writer.write("");
-            writer.write("@spec presign(HttpRequest.t(), map(), String.t(), String.t(), map()) ::");
-            writer.write("        {:ok, String.t()} | {:error, term()}");
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
+                    "presign(HttpRequest.t(), map(), String.t(), String.t(), map()) :: {:ok, String.t()} | {:error, term()}");
             writer.write("def presign(%HttpRequest{} = request, credentials, region, service, opts) do");
             writer.indent();
             writer.write("access_key_id = Map.fetch!(credentials, :access_key_id)");
@@ -128,10 +135,12 @@ public final class ElixirSigV4Emitter {
             writer.write("case {Map.get(config, :endpoint_prefix), Map.get(config, :region, \"us-east-1\")} do");
             writer.indent();
             writer.write("{nil, _} -> nil");
+            writer.write("");
             writer.write("{prefix, region} -> \"#{prefix}.#{region}.amazonaws.com\"");
             writer.dedent();
             writer.write("end");
             writer.dedent();
+            writer.write("");
             writer.write("base_url ->");
             writer.indent();
             writer.write("{_scheme, authority} = split_base_url(base_url)");
@@ -176,6 +185,7 @@ public final class ElixirSigV4Emitter {
             writer.write("case header_host(headers) do");
             writer.indent();
             writer.write("nil -> [{\"host\", host} | headers]");
+            writer.write("");
             writer.write("_ -> headers");
             writer.dedent();
             writer.write("end");
@@ -187,7 +197,9 @@ public final class ElixirSigV4Emitter {
             writer.write("Enum.find_value(headers, fn");
             writer.indent();
             writer.write("{\"host\", value} -> value");
+            writer.write("");
             writer.write("{\"Host\", value} -> value");
+            writer.write("");
             writer.write("_ -> nil");
             writer.dedent();
             writer.write("end)");

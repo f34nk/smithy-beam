@@ -39,6 +39,40 @@ public final class ElixirRestXmlEmitter {
 
     private ElixirRestXmlEmitter() {}
 
+    private static void emitRejectNilMapPipeline(
+            ElixirWriter writer, String varName, Runnable emitMapEntries) {
+        ElixirFormat.beginPipelineBinding(writer, varName);
+        writer.write("%{");
+        writer.indent();
+        emitMapEntries.run();
+        writer.dedent();
+        writer.write("}");
+        ElixirFormat.writePipelineStep(writer, "Enum.reject(fn {_, v} -> is_nil(v) end)");
+        ElixirFormat.writePipelineStep(writer, "Map.new()");
+        ElixirFormat.endPipelineBinding(writer);
+    }
+
+    private static void emitExtraHeadersPipeline(
+            ElixirWriter writer,
+            SymbolProvider sp,
+            String recordVar,
+            List<HttpBinding> headers) {
+        ElixirFormat.beginPipelineBinding(writer, "extra_headers");
+        writer.write("[");
+        writer.indent();
+        for (HttpBinding hb : headers) {
+            String field = fieldName(sp, hb.getMember());
+            ElixirFormat.writeIfInList(
+                    writer,
+                    recordVar + "." + field + " != nil",
+                    "{\"" + hb.getLocationName() + "\", to_string(" + recordVar + "." + field + ")}");
+        }
+        writer.dedent();
+        writer.write("]");
+        ElixirFormat.writePipelineStep(writer, "Enum.reject(&is_nil/1)");
+        ElixirFormat.endPipelineBinding(writer);
+    }
+
     public static void emitCodecModule(ElixirContext ctx, ServiceShape service) {
         Model model = ctx.model();
         BeamElixirLayout layout = new BeamElixirLayout(
@@ -149,10 +183,11 @@ public final class ElixirRestXmlEmitter {
         List<HttpBinding> payloadMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.PAYLOAD);
 
         if (encodeWithConfig) {
-            writer.write("@spec encode_$L_request(map(), $L) :: $L", opName, inputType, httpRequestType);
+            ElixirFormat.writeSpec(
+                    writer, "@spec", "encode_" + opName + "_request", "map(), " + inputType, httpRequestType);
             writer.write("def encode_$L_request(config, input) do", opName);
         } else {
-            writer.write("@spec encode_$L_request($L) :: $L", opName, inputType, httpRequestType);
+            ElixirFormat.writeSpec(writer, "@spec", "encode_" + opName + "_request", inputType, httpRequestType);
             writer.write("def encode_$L_request(input) do", opName);
         }
         writer.indent();
@@ -196,11 +231,11 @@ public final class ElixirRestXmlEmitter {
         }
 
         if (!queries.isEmpty()) {
-            writer.write("query = %{");
-            for (HttpBinding qb : queries) {
-                writer.write("  \"$L\" => input.$L,", qb.getLocationName(), fieldName(sp, qb.getMember()));
-            }
-            writer.write("}");
+            emitRejectNilMapPipeline(writer, "query", () -> {
+                for (HttpBinding qb : queries) {
+                    writer.write("\"$L\" => input.$L,", qb.getLocationName(), fieldName(sp, qb.getMember()));
+                }
+            });
         } else {
             writer.write("query = %{}");
         }
@@ -208,11 +243,7 @@ public final class ElixirRestXmlEmitter {
         if (headers.isEmpty()) {
             writer.write("headers = [{\"Content-Type\", \"application/xml\"}]");
         } else {
-            writer.write("extra_headers = [");
-            for (HttpBinding hb : headers) {
-                writer.write("  {\"$L\", to_string(input.$L)},", hb.getLocationName(), fieldName(sp, hb.getMember()));
-            }
-            writer.write("]");
+            emitExtraHeadersPipeline(writer, sp, "input", headers);
             writer.write("headers = [{\"Content-Type\", \"application/xml\"} | extra_headers]");
         }
 
@@ -261,6 +292,7 @@ public final class ElixirRestXmlEmitter {
             writer.write("case input.$L do", field);
             writer.indent();
             writer.write("nil -> \"\"");
+            writer.write("");
             writer.write("value -> value");
             writer.dedent();
             writer.write("end");
@@ -302,7 +334,12 @@ public final class ElixirRestXmlEmitter {
         int successCode = httpIndex.getResponseCode(op);
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
 
-        writer.write("@spec decode_$L_response(map()) :: {:ok, $L} | {:error, term()}", opName, outputType);
+        ElixirFormat.writeSpec(
+                writer,
+                "@spec",
+                "decode_" + opName + "_response",
+                "map()",
+                "{:ok, " + outputType + "} | {:error, term()}");
         writer.write("def decode_$L_response(%{status: $L, headers: headers, body: body}) do", opName, successCode);
         writer.indent();
 
@@ -320,6 +357,7 @@ public final class ElixirRestXmlEmitter {
                 writer.indent();
                 writer.write("{:ok, root} -> {:ok, %Types.$L{$L: $L}}",
                         structName(sp, output), field, decodeStructure(model, (StructureShape) target, "root", sp));
+                writer.write("");
                 writer.write("{:error, reason} -> {:error, reason}");
                 writer.dedent();
                 writer.write("end");
@@ -329,6 +367,7 @@ public final class ElixirRestXmlEmitter {
             writer.write("case parse_xml_root(body, \"$L\") do", rootElement);
             writer.indent();
             writer.write("{:ok, root} -> {:ok, $L}", decodeOutputStruct(model, output, "root", sp));
+            writer.write("");
             writer.write("{:error, reason} -> {:error, reason}");
             writer.dedent();
             writer.write("end");
@@ -362,10 +401,20 @@ public final class ElixirRestXmlEmitter {
         List<HttpBinding> payloadMembers = httpIndex.getRequestBindings(op, HttpBinding.Location.PAYLOAD);
 
         if (labels.isEmpty()) {
-            writer.write("@spec decode_$L_request(map()) :: {:ok, $L} | {:error, term()}", opName, inputType);
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
+                    "decode_" + opName + "_request",
+                    "map()",
+                    "{:ok, " + inputType + "} | {:error, term()}");
             writer.write("def decode_$L_request(%{body: body} = req) do", opName);
         } else {
-            writer.write("@spec decode_$L_request(map(), map()) :: {:ok, $L} | {:error, term()}", opName, inputType);
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
+                    "decode_" + opName + "_request",
+                    "map(), map()",
+                    "{:ok, " + inputType + "} | {:error, term()}");
             writer.write("def decode_$L_request(labels, %{body: body} = _req) do", opName);
         }
         writer.indent();
@@ -409,7 +458,7 @@ public final class ElixirRestXmlEmitter {
         int successCode = httpIndex.getResponseCode(op);
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
 
-        writer.write("@spec encode_$L_response($L) :: map()", opName, outputType);
+        ElixirFormat.writeSpec(writer, "@spec", "encode_" + opName + "_response", outputType, "map()");
         writer.write("def encode_$L_response(output) do", opName);
         writer.indent();
         writer.write("headers = [{\"Content-Type\", \"application/xml\"}]");
@@ -509,6 +558,7 @@ public final class ElixirRestXmlEmitter {
         writer.write("case find_element(root_name, element_content(xml)) do");
         writer.indent();
         writer.write("nil -> {:error, {:missing_root, root_name}}");
+        writer.write("");
         writer.write("root -> {:ok, root}");
         writer.dedent();
         writer.write("end");

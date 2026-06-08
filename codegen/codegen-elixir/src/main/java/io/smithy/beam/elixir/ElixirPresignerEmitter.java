@@ -29,8 +29,12 @@ public final class ElixirPresignerEmitter {
             writer.write("alias $L, as: RuntimeTypes", runtimeMod);
             writer.write("alias $L, as: ServiceSigv4", sigv4Module);
             writer.write("");
-            writer.write("@spec presign_url(map(), atom(), RuntimeTypes.HttpRequest.t()) ::");
-            writer.write("        {:ok, String.t()} | {:error, term()}");
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
+                    "presign_url",
+                    "map(), atom(), RuntimeTypes.HttpRequest.t()",
+                    "{:ok, String.t()} | {:error, term()}");
             writer.write("def presign_url(config, operation, request) do");
             writer.indent();
             writer.write("credentials = Map.fetch!(config, :credentials)");

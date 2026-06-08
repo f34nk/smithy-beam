@@ -32,6 +32,19 @@ final class ElixirAwsJsonRpcEmitter {
 
     private ElixirAwsJsonRpcEmitter() {}
 
+    private static void emitRejectNilMapPipeline(
+            ElixirWriter writer, Runnable emitMapEntries) {
+        ElixirFormat.beginPipelineBinding(writer, "body_map");
+        writer.write("%{");
+        writer.indent();
+        emitMapEntries.run();
+        writer.dedent();
+        writer.write("}");
+        ElixirFormat.writePipelineStep(writer, "Enum.reject(fn {_, v} -> is_nil(v) end)");
+        ElixirFormat.writePipelineStep(writer, "Map.new()");
+        ElixirFormat.endPipelineBinding(writer);
+    }
+
     static void emitServerCodecModule(
             ElixirContext ctx,
             ServiceShape service,
@@ -128,7 +141,7 @@ final class ElixirAwsJsonRpcEmitter {
         String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
         List<MemberShape> members = documentMembers(httpIndex, op, input, true);
 
-        writer.write("@spec decode_$L_request(map()) :: $L", opName, inputType);
+        ElixirFormat.writeSpec(writer, "@spec", "decode_" + opName + "_request", "map()", inputType);
         writer.write("def decode_$L_request(%RuntimeTypes.HttpRequest{body: body}) do", opName);
         writer.indent();
         writer.write("decoded = decode_json_body(body)");
@@ -156,14 +169,10 @@ final class ElixirAwsJsonRpcEmitter {
         String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
         List<MemberShape> members = documentMembers(httpIndex, op, output, false);
 
-        writer.write("@spec encode_$L_response($L) :: map()", opName, outputType);
+        ElixirFormat.writeSpec(writer, "@spec", "encode_" + opName + "_response", outputType, "map()");
         writer.write("def encode_$L_response(%Types.$L{} = output) do", opName, outputStruct);
         writer.indent();
-        writer.write("body_map = %{");
-        emitBodyMapEntries(writer, model, httpIndex, sp, members);
-        writer.write("}");
-        writer.write("|> Enum.reject(fn {_, v} -> is_nil(v) end)");
-        writer.write("|> Map.new()");
+        emitRejectNilMapPipeline(writer, () -> emitBodyMapEntriesFromOutput(writer, model, httpIndex, sp, members));
         writer.write("body = Jason.encode!(body_map)");
         writer.write("headers = [{\"Content-Type\", \"$L\"}]", contentType);
         writer.write("%{status: 200, headers: headers, body: body}");
@@ -191,14 +200,10 @@ final class ElixirAwsJsonRpcEmitter {
         List<MemberShape> members = documentMembers(httpIndex, op, input, true);
         String amzTarget = targetPrefix + "." + op.getId().getName();
 
-        writer.write("@spec encode_$L_request($L) :: $L", opName, inputType, httpRequestType);
+        ElixirFormat.writeSpec(writer, "@spec", "encode_" + opName + "_request", inputType, httpRequestType);
         writer.write("def encode_$L_request(%Types.$L{} = input) do", opName, inputStruct);
         writer.indent();
-        writer.write("body_map = %{");
-        emitBodyMapEntries(writer, model, httpIndex, sp, members);
-        writer.write("}");
-        writer.write("|> Enum.reject(fn {_, v} -> is_nil(v) end)");
-        writer.write("|> Map.new()");
+        emitRejectNilMapPipeline(writer, () -> emitBodyMapEntries(writer, model, httpIndex, sp, members));
         writer.write("body = Jason.encode!(body_map)");
         writer.write("%RuntimeTypes.HttpRequest{");
         writer.write("  method: \"POST\",");
@@ -229,7 +234,12 @@ final class ElixirAwsJsonRpcEmitter {
         String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
         List<MemberShape> members = documentMembers(httpIndex, op, output, false);
 
-        writer.write("@spec decode_$L_response(map()) :: {:ok, $L} | {:error, term()}", opName, outputType);
+        ElixirFormat.writeSpec(
+                writer,
+                "@spec",
+                "decode_" + opName + "_response",
+                "map()",
+                "{:ok, " + outputType + "} | {:error, term()}");
         writer.write(
                 "def decode_$L_response(%RuntimeTypes.HttpResponse{status: 200, body: body}) do", opName);
         writer.indent();
@@ -299,9 +309,13 @@ final class ElixirAwsJsonRpcEmitter {
                 String modName = sp.toSymbol(errShape).getName();
                 String localName = errorId.getName();
                 List<String> fields = buildErrorFields(errShape);
-                writer.write("\"$L\" -> {:error, struct!($L.$L, %{$L})}", localName, typesMod, modName,
+                writer.write("\"$L\" ->", localName);
+                writer.indent();
+                writer.write("{:error, struct!($L.$L, %{$L})}", typesMod, modName,
                         String.join(", ", fields));
+                writer.dedent();
             }
+            writer.write("");
             writer.write("_ -> {:error, {:unknown_error, status, body}}");
             writer.dedent();
             writer.write("end");
@@ -347,6 +361,31 @@ final class ElixirAwsJsonRpcEmitter {
             return bindings.stream().map(HttpBinding::getMember).collect(Collectors.toList());
         }
         return new ArrayList<>(structure.members());
+    }
+
+    private static void emitBodyMapEntriesFromOutput(
+            ElixirWriter writer,
+            Model model,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            List<MemberShape> members) {
+        for (MemberShape member : members) {
+            String field = fieldName(sp, member);
+            String wireKey = jsonKey(member);
+            Shape target = model.expectShape(member.getTarget());
+            if (target instanceof EnumShape || target instanceof IntEnumShape) {
+                String helperName = enumHelperName(target);
+                writer.write("  \"$L\" => encode_$L(output.$L),", wireKey, helperName, field);
+            } else if (target instanceof UnionShape) {
+                String helperName = unionHelperName(target);
+                writer.write("  \"$L\" => encode_$L(output.$L),", wireKey, helperName, field);
+            } else if (target instanceof TimestampShape) {
+                String encodeHelper = timestampEncodeHelper(httpIndex, member, HttpBinding.Location.DOCUMENT);
+                writer.write("  \"$L\" => $L(output.$L),", wireKey, encodeHelper, field);
+            } else {
+                writer.write("  \"$L\" => output.$L,", wireKey, field);
+            }
+        }
     }
 
     private static void emitBodyMapEntries(

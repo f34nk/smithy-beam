@@ -37,12 +37,18 @@ public final class ElixirCredentialProviderEmitter {
             writer.write("  optional(:session_token) => String.t() | nil");
             writer.write("}");
             writer.write("");
-            writer.write("@spec resolve(client_config()) :: {:ok, aws_credentials()} | {:error, term()}");
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
+                    "resolve",
+                    "client_config()",
+                    "{:ok, aws_credentials()} | {:error, term()}");
             writer.write("def resolve(config) do");
             writer.indent();
             writer.write("case Map.get(config, :credentials) do");
             writer.indent();
             writer.write("nil -> resolve_chain(config)");
+            writer.write("");
             writer.write("creds -> {:ok, creds}");
             writer.dedent();
             writer.write("end");
@@ -76,6 +82,7 @@ public final class ElixirCredentialProviderEmitter {
         writer.write("case resolve_provider(provider, config) do");
         writer.indent();
         writer.write("{:ok, creds} -> {:ok, creds}");
+        writer.write("");
         writer.write("_ -> resolve_chain(config, rest)");
         writer.dedent();
         writer.write("end");
@@ -214,8 +221,8 @@ public final class ElixirCredentialProviderEmitter {
         writer.write("defp parse_profile_credentials(contents, profile) do");
         writer.indent();
         writer.write("contents");
-        writer.write("|> String.split(\"\\n\")");
-        writer.write("|> find_profile_section(profile, %{})");
+        ElixirFormat.writePipelineStep(writer, "String.split(\"\\n\")");
+        ElixirFormat.writePipelineStep(writer, "find_profile_section(profile, %{})");
         writer.dedent();
         writer.write("end");
         writer.write("");
@@ -284,6 +291,7 @@ public final class ElixirCredentialProviderEmitter {
         writer.write("case http_get(url, []) do");
         writer.indent();
         writer.write("{:ok, body} -> decode_json_credentials(body)");
+        writer.write("");
         writer.write("{:error, reason} -> {:error, reason}");
         writer.dedent();
         writer.write("end");
@@ -302,6 +310,7 @@ public final class ElixirCredentialProviderEmitter {
         writer.write("  session_token: Map.get(doc, \"Token\")");
         writer.write("}}");
         writer.dedent();
+        writer.write("");
         writer.write("_ ->");
         writer.indent();
         writer.write("{:error, :invalid_credentials}");
@@ -328,10 +337,12 @@ public final class ElixirCredentialProviderEmitter {
         writer.write("case :proplists.get_value(~c\"x-aws-ec2-metadata-token\", resp_headers) do");
         writer.indent();
         writer.write(":undefined -> []");
+        writer.write("");
         writer.write("token -> [{~c\"X-aws-ec2-metadata-token\", token}]");
         writer.dedent();
         writer.write("end");
         writer.dedent();
+        writer.write("");
         writer.write("_ ->");
         writer.indent();
         writer.write("[]");
@@ -349,7 +360,9 @@ public final class ElixirCredentialProviderEmitter {
         writer.write("case :httpc.request(:get, {url, extra_headers}, [], [{:body_format, :binary}]) do");
         writer.indent();
         writer.write("{:ok, {{_, 200, _}, _resp_headers, body}} -> {:ok, body}");
+        writer.write("");
         writer.write("{:ok, {{_, _, _}, _, _}} -> {:error, :http_error}");
+        writer.write("");
         writer.write("{:error, reason} -> {:error, reason}");
         writer.dedent();
         writer.write("end");

@@ -154,12 +154,12 @@ public final class ElixirAwsQueryEmitter {
         String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
         String inputRecord = recordName(sp.toSymbol(input));
 
-        writer.write("@spec decode_$L_request(map()) :: $L", opName, inputType);
+        ElixirFormat.writeSpec(writer, "@spec", "decode_" + opName + "_request", "map()", inputType);
         writer.write("def decode_$L_request(%RuntimeTypes.HttpRequest{body: body}) do", opName);
         writer.indent();
         writer.write("body");
-        writer.write("|> parse_query_params()");
-        writer.write("|> parse_$L_input()", inputRecord);
+        ElixirFormat.writePipelineStep(writer, "parse_query_params()");
+        ElixirFormat.writePipelineStep(writer, "parse_" + inputRecord + "_input()");
         writer.dedent();
         writer.write("end");
         writer.write("");
@@ -186,16 +186,15 @@ public final class ElixirAwsQueryEmitter {
                 : BeamXmlDecoder.queryResultElementName(op, service);
         String responseElement = operationWireName(op, service) + "Response";
 
-        writer.write("@spec encode_$L_response($L) :: $L", opName, outputType, httpResponseType);
+        ElixirFormat.writeSpec(writer, "@spec", "encode_" + opName + "_response", outputType, httpResponseType);
         writer.write("def encode_$L_response(%Types.$L{} = output) do", opName, outputStruct);
         writer.indent();
-        writer.write("result_content =");
-        writer.indent();
+        ElixirFormat.beginPipelineBinding(writer, "result_content");
         writer.write("output");
-        writer.write("|> $L_to_result_map()", outputRecord);
-        writer.write("|> Enum.reject(fn {_, v} -> is_nil(v) end)");
-        writer.write("|> Map.new()");
-        writer.dedent();
+        ElixirFormat.writePipelineStep(writer, outputRecord + "_to_result_map()");
+        ElixirFormat.writePipelineStep(writer, "Enum.reject(fn {_, v} -> is_nil(v) end)");
+        ElixirFormat.writePipelineStep(writer, "Map.new()");
+        ElixirFormat.endPipelineBinding(writer);
         if (ec2Query) {
             writer.write("body = encode_xml(%{\"$L\" => result_content}, xml_namespace())", resultElement);
         } else {
@@ -295,8 +294,8 @@ public final class ElixirAwsQueryEmitter {
         writer.write("defp parse_query_params(body) do");
         writer.indent();
         writer.write("body");
-        writer.write("|> URI.decode_query()");
-        writer.write("|> Map.new()");
+        ElixirFormat.writePipelineStep(writer, "URI.decode_query()");
+        ElixirFormat.writePipelineStep(writer, "Map.new()");
         writer.dedent();
         writer.write("end");
         writer.write("");
@@ -322,12 +321,14 @@ public final class ElixirAwsQueryEmitter {
         writer.write("defp indexed_form_values(params, prefix) do");
         writer.indent();
         writer.write("params");
-        writer.write("|> Enum.filter(fn {k, _} -> String.starts_with?(k, prefix) end)");
-        writer.write("|> Enum.sort_by(fn {k, _} -> k |> String.replace_prefix(prefix, \"\") |> String.to_integer() end)");
-        writer.write("|> Enum.map(fn {_, v} -> v end)");
+        ElixirFormat.writePipelineStep(writer, "Enum.filter(fn {k, _} -> String.starts_with?(k, prefix) end)");
+        ElixirFormat.writePipelineStep(
+                writer, "Enum.sort_by(fn {k, _} -> k |> String.replace_prefix(prefix, \"\") |> String.to_integer() end)");
+        ElixirFormat.writePipelineStep(writer, "Enum.map(fn {_, v} -> v end)");
         writer.write("|> case do");
         writer.indent();
         writer.write("[] -> nil");
+        writer.write("");
         writer.write("values -> values");
         writer.dedent();
         writer.write("end");
@@ -349,22 +350,21 @@ public final class ElixirAwsQueryEmitter {
         writer.indent();
         writer.write("[{root_name, content}] = Map.to_list(root_map)");
         writer.write("root_name");
-        writer.write("|> build_xml_element(content, xml_ns)");
-        writer.write("|> List.wrap()");
-        writer.write("|> :xmerl.export_simple(:xmerl_xmlns, [], prolog: false)");
-        writer.write("|> :erlang.iolist_to_binary()");
+        ElixirFormat.writePipelineStep(writer, "build_xml_element(content, xml_ns)");
+        ElixirFormat.writePipelineStep(writer, "List.wrap()");
+        ElixirFormat.writePipelineStep(writer, ":xmerl.export_simple(:xmerl_xmlns, [], prolog: false)");
+        ElixirFormat.writePipelineStep(writer, ":erlang.iolist_to_binary()");
         writer.dedent();
         writer.write("end");
         writer.write("");
         writer.write("defp build_xml_element(name, content, xml_ns) when is_map(content) do");
         writer.indent();
         writer.write("attrs = xml_namespace_attrs(xml_ns)");
-        writer.write("children =");
-        writer.indent();
+        ElixirFormat.beginPipelineBinding(writer, "children");
         writer.write("content");
-        writer.write("|> Enum.reject(fn {_, v} -> is_nil(v) end)");
-        writer.write("|> Enum.map(fn {k, v} -> build_xml_child(k, v) end)");
-        writer.dedent();
+        ElixirFormat.writePipelineStep(writer, "Enum.reject(fn {_, v} -> is_nil(v) end)");
+        ElixirFormat.writePipelineStep(writer, "Enum.map(fn {k, v} -> build_xml_child(k, v) end)");
+        ElixirFormat.endPipelineBinding(writer);
         writer.write("{name, attrs, children}");
         writer.dedent();
         writer.write("end");
@@ -380,8 +380,8 @@ public final class ElixirAwsQueryEmitter {
         writer.write("{name, [],");
         writer.indent();
         writer.write("value");
-        writer.write("|> Enum.reject(fn {_, v} -> is_nil(v) end)");
-        writer.write("|> Enum.map(fn {k, v} -> build_xml_element(k, v, %{}) end)}");
+        ElixirFormat.writePipelineStep(writer, "Enum.reject(fn {_, v} -> is_nil(v) end)");
+        ElixirFormat.writePipelineStep(writer, "Enum.map(fn {k, v} -> build_xml_element(k, v, %{}) end)}");
         writer.dedent();
         writer.dedent();
         writer.write("end");
@@ -438,7 +438,7 @@ public final class ElixirAwsQueryEmitter {
         String action = BeamAwsQueryFormEncoder.operationAction(op, service);
         String version = BeamAwsQueryFormEncoder.serviceVersion(service);
 
-        writer.write("@spec encode_$L_request($L) :: $L", opName, inputType, httpRequestType);
+        ElixirFormat.writeSpec(writer, "@spec", "encode_" + opName + "_request", inputType, httpRequestType);
         writer.write("def encode_$L_request(%Types.$L{} = input) do", opName, inputStruct);
         writer.indent();
         writer.write("pairs = [");
@@ -446,13 +446,12 @@ public final class ElixirAwsQueryEmitter {
         writer.write("  {\"Version\", \"$L\"}", version);
         writer.write("  | flatten_query_input(input)");
         writer.write("]");
-        writer.write("body =");
-        writer.indent();
+        ElixirFormat.beginPipelineBinding(writer, "body");
         writer.write("pairs");
-        writer.write("|> Enum.reject(fn {_, v} -> is_nil(v) end)");
-        writer.write("|> Enum.map(fn {k, v} -> {k, enc(v)} end)");
-        writer.write("|> URI.encode_query()");
-        writer.dedent();
+        ElixirFormat.writePipelineStep(writer, "Enum.reject(fn {_, v} -> is_nil(v) end)");
+        ElixirFormat.writePipelineStep(writer, "Enum.map(fn {k, v} -> {k, enc(v)} end)");
+        ElixirFormat.writePipelineStep(writer, "URI.encode_query()");
+        ElixirFormat.endPipelineBinding(writer);
         writer.write("%RuntimeTypes.HttpRequest{");
         writer.write("  method: \"POST\",");
         writer.write("  path: \"/\",");
@@ -482,7 +481,12 @@ public final class ElixirAwsQueryEmitter {
                 ? BeamXmlDecoder.ec2QueryResultElementName(op, service)
                 : BeamXmlDecoder.queryResultElementName(op, service);
 
-        writer.write("@spec decode_$L_response(map()) :: {:ok, $L} | {:error, term()}", opName, outputType);
+        ElixirFormat.writeSpec(
+                writer,
+                "@spec",
+                "decode_" + opName + "_response",
+                "map()",
+                "{:ok, " + outputType + "} | {:error, term()}");
         writer.write("def decode_$L_response(%RuntimeTypes.HttpResponse{status: 200, body: body}) do", opName);
         writer.indent();
         writer.write("case unwrap_query_result(body, \"$L\") do", resultElement);
@@ -493,6 +497,7 @@ public final class ElixirAwsQueryEmitter {
         emitOutputFields(writer, model, sp, output);
         writer.write("}}");
         writer.dedent();
+        writer.write("");
         writer.write("{:error, reason} ->");
         writer.indent();
         writer.write("{:error, reason}");
@@ -575,7 +580,7 @@ public final class ElixirAwsQueryEmitter {
                 }
             }
             writer.write("]");
-            writer.write("|> List.flatten()");
+            ElixirFormat.writePipelineStep(writer, "List.flatten()");
         }
         writer.dedent();
         writer.write("end");
@@ -588,8 +593,8 @@ public final class ElixirAwsQueryEmitter {
             writer.write("defp flatten_member(key, value) when is_list(value) do");
             writer.indent();
             writer.write("value");
-            writer.write("|> Enum.with_index(1)");
-            writer.write("|> Enum.flat_map(fn {v, i} ->");
+            ElixirFormat.writePipelineStep(writer, "Enum.with_index(1)");
+            ElixirFormat.writePipelineStep(writer, "Enum.flat_map(fn {v, i} ->");
             writer.indent();
             writer.write("if is_nil(v), do: [], else: flatten_member(\"#{key}.#{i}\", v)");
             writer.dedent();
@@ -600,8 +605,8 @@ public final class ElixirAwsQueryEmitter {
             writer.write("defp flatten_member(key, value) when is_list(value) do");
             writer.indent();
             writer.write("value");
-            writer.write("|> Enum.with_index(1)");
-            writer.write("|> Enum.flat_map(fn {v, i} ->");
+            ElixirFormat.writePipelineStep(writer, "Enum.with_index(1)");
+            ElixirFormat.writePipelineStep(writer, "Enum.flat_map(fn {v, i} ->");
             writer.indent();
             writer.write("if is_nil(v), do: [], else: flatten_member(\"#{key}.member.#{i}\", v)");
             writer.dedent();
@@ -612,9 +617,9 @@ public final class ElixirAwsQueryEmitter {
         writer.write("defp flatten_member(key, value) when is_map(value) do");
         writer.indent();
         writer.write("value");
-        writer.write("|> Map.to_list()");
-        writer.write("|> Enum.with_index(1)");
-        writer.write("|> Enum.flat_map(fn {{k, v}, i} ->");
+        ElixirFormat.writePipelineStep(writer, "Map.to_list()");
+        ElixirFormat.writePipelineStep(writer, "Enum.with_index(1)");
+        ElixirFormat.writePipelineStep(writer, "Enum.flat_map(fn {{k, v}, i} ->");
         writer.indent();
         writer.write("if is_nil(k) or is_nil(v), do: [],");
         writer.write("else: flatten_member(\"#{key}.entry.#{i}.key\", k) ++ flatten_member(\"#{key}.entry.#{i}.value\", v)");
@@ -663,7 +668,7 @@ public final class ElixirAwsQueryEmitter {
         writer.write("defp find_element(name, content) do");
         writer.indent();
         writer.write("content");
-        writer.write("|> Enum.find(fn");
+        ElixirFormat.writePipelineStep(writer, "Enum.find(fn");
         writer.indent();
         writer.write("item -> is_element(item) and element_name(item) == name");
         writer.dedent();
@@ -692,11 +697,13 @@ public final class ElixirAwsQueryEmitter {
         writer.write("case find_element(name, element_content(parent)) do");
         writer.indent();
         writer.write("nil -> nil");
+        writer.write("");
         writer.write("element ->");
         writer.indent();
         writer.write("case element_text(element) do");
         writer.indent();
         writer.write("[] -> nil");
+        writer.write("");
         writer.write("text -> List.to_string(text)");
         writer.dedent();
         writer.write("end");
@@ -721,21 +728,24 @@ public final class ElixirAwsQueryEmitter {
         writer.write("case find_element(list_name, element_content(parent)) do");
         writer.indent();
         writer.write("nil -> nil");
+        writer.write("");
         writer.write("list_element ->");
         writer.indent();
         writer.write("element_content(list_element)");
-        writer.write("|> Enum.filter(fn item -> is_element(item) and element_name(item) == item_name end)");
-        writer.write("|> Enum.map(fn item ->");
+        ElixirFormat.writePipelineStep(
+                writer, "Enum.filter(fn item -> is_element(item) and element_name(item) == item_name end)");
+        ElixirFormat.writePipelineStep(writer, "Enum.map(fn item ->");
         writer.indent();
         writer.write("case element_text(item) do");
         writer.indent();
         writer.write("[] -> nil");
+        writer.write("");
         writer.write("text -> List.to_string(text)");
         writer.dedent();
         writer.write("end");
         writer.dedent();
         writer.write("end)");
-        writer.write("|> Enum.reject(&is_nil/1)");
+        ElixirFormat.writePipelineStep(writer, "Enum.reject(&is_nil/1)");
         writer.dedent();
         writer.dedent();
         writer.write("end");

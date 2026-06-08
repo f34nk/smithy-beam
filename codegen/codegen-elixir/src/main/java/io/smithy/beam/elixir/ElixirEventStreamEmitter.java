@@ -93,8 +93,8 @@ public final class ElixirEventStreamEmitter {
         writer.write("def decode_$L(body) when is_binary(body) do", helper);
         writer.indent();
         writer.write("body");
-        writer.write("|> AwsEventStream.decode_frames()");
-        writer.write("|> Enum.map(&decode_$L_event/1)", helper);
+        ElixirFormat.writePipelineStep(writer, "AwsEventStream.decode_frames()");
+        ElixirFormat.writePipelineStep(writer, "Enum.map(&decode_" + helper + "_event/1)");
         writer.dedent();
         writer.write("end");
         writer.write("");

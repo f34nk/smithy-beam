@@ -136,11 +136,12 @@ public final class ElixirResourceEmitter {
         BeamDocumentation.forShape(op).ifPresent(
                 doc -> BeamDocumentation.writeElixirDoc(writer, doc));
 
-        writer.write(
-                "@spec $L($L) :: {:ok, $L} | {:error, term()}",
+        ElixirFormat.writeSpec(
+                writer,
+                "@spec",
                 helper,
                 String.join(", ", specParams),
-                outType);
+                "{:ok, " + outType + "} | {:error, term()}");
         writer.write("def $L($L) do", helper, paramList(plan, server));
         writer.indent();
         writer.write("$L.$L($L)", delegateMod, opHandler, callArgs(plan, typesMod, server));

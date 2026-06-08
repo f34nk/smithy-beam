@@ -154,8 +154,11 @@ public final class ElixirWaiterEmitter {
         writer.write("case classify(acceptors, result) do");
         writer.indent();
         writer.write(":success -> {:ok, result}");
+        writer.write("");
         writer.write(":failure -> {:error, result}");
+        writer.write("");
         writer.write(":retry when attempts <= 1 -> {:error, :max_attempts_exceeded}");
+        writer.write("");
         writer.write(":retry ->");
         writer.indent();
         writer.write("Process.sleep(delay)");
@@ -186,21 +189,25 @@ public final class ElixirWaiterEmitter {
         writer.write("defp matches_acceptor?(%{matcher: :success, expected: true}, {:ok, _}), do: true");
         writer.write("defp matches_acceptor?(%{matcher: :success, expected: false}, {:error, _}), do: true");
         writer.write("defp matches_acceptor?(%{matcher: :errorType, expected: expected}, {:error, expected}), do: true");
-        writer.write("defp matches_acceptor?(%{matcher: :errorType, expected: expected}, {:error, _}) when is_binary(expected), do: true");
-        writer.write("defp matches_acceptor?(");
-        writer.indent();
-        writer.write("%{matcher: :output, path: path, comparator: :stringEquals, expected: expected},");
-        writer.write("{:ok, output}");
-        writer.dedent();
-        writer.write("),");
+        writer.write(
+                "defp matches_acceptor?(%{matcher: :errorType, expected: expected}, {:error, _}) when is_binary(expected), do: true");
+        writer.write("");
+        ElixirFormat.breakFunctionHead(
+                writer,
+                "defp",
+                "matches_acceptor?",
+                List.of(
+                        "%{matcher: :output, path: path, comparator: :stringEquals, expected: expected}",
+                        "{:ok, output}"));
         writer.write("do: path_string_equals?(path, expected, output)");
         writer.write("");
-        writer.write("defp matches_acceptor?(");
-        writer.indent();
-        writer.write("%{matcher: :inputOutput, path: path, comparator: :stringEquals, expected: expected},");
-        writer.write("{:ok, output}");
-        writer.dedent();
-        writer.write("),");
+        ElixirFormat.breakFunctionHead(
+                writer,
+                "defp",
+                "matches_acceptor?",
+                List.of(
+                        "%{matcher: :inputOutput, path: path, comparator: :stringEquals, expected: expected}",
+                        "{:ok, output}"));
         writer.write("do: path_string_equals?(path, expected, output)");
         writer.write("");
         writer.write("defp matches_acceptor?(_, _), do: false");
