@@ -18,6 +18,7 @@ class ElixirServerPluginTest {
 
     private static final String TYPES_FILE = "basic_service_types.ex";
     private static final String SERVER_FILE = "basic_service_server.ex";
+    private static final String BEHAVIOUR_FILE = "basic_service_behaviour.ex";
 
     private static Model loadModel() {
         URL resource = ElixirServerPluginTest.class.getResource("/model/basic.smithy");
@@ -49,7 +50,8 @@ class ElixirServerPluginTest {
         new ElixirServerPlugin().execute(buildContext(model, manifest));
 
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("basic_string");
-        assertServerStubHeaderOrder(manifest.expectFileString(SERVER_FILE));
+        assertBehaviourModule(manifest.expectFileString(BEHAVIOUR_FILE));
+        assertServerDispatcher(manifest.expectFileString(SERVER_FILE));
         assertThat(manifest.getFileString("basic_service_rest_json_1.ex")).isEmpty();
         assertThat(manifest.getFileString("basic_service_router.ex")).isEmpty();
     }
@@ -65,25 +67,41 @@ class ElixirServerPluginTest {
                 .build();
         new ElixirServerPlugin().execute(context);
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("basic_string");
-        assertServerStubHeaderOrder(manifest.expectFileString(SERVER_FILE));
+        assertBehaviourModule(manifest.expectFileString(BEHAVIOUR_FILE));
+        assertServerDispatcher(manifest.expectFileString(SERVER_FILE));
     }
 
-    private static void assertServerStubHeaderOrder(String serverSource) {
-        assertThat(serverSource).contains("defmodule BasicServiceServer do");
-        assertThat(serverSource).contains("@moduledoc \"\"\"");
-        assertThat(serverSource).contains("alias BasicServiceTypes");
-        assertThat(serverSource)
-                .contains("@spec handle_get_type_closure(term(), BasicServiceTypes.GetTypeClosureInput.t(), term())");
-        assertThat(serverSource)
-                .contains("def handle_get_type_closure(_ctx, _input, _meta), do: {:error, :not_implemented}");
-        int moduleIndex = serverSource.indexOf("defmodule BasicServiceServer do");
-        int moduledocIndex = serverSource.indexOf("@moduledoc \"\"\"");
-        int aliasIndex = serverSource.indexOf("alias BasicServiceTypes");
-        int specIndex = serverSource.indexOf("@spec handle_get_type_closure");
+    private static void assertBehaviourModule(String source) {
+        assertThat(source).contains("defmodule BasicServiceBehaviour do");
+        assertThat(source).contains("alias BasicServiceTypes");
+        assertThat(source).contains("@callback handle_get_type_closure(");
+        assertThat(source).contains("BasicServiceTypes.GetTypeClosureInput.t()");
+        assertThat(source).contains("{:handle_get_type_closure, 3}");
+        assertThat(source).contains("def callbacks do");
+    }
+
+    private static void assertServerDispatcher(String source) {
+        assertThat(source).contains("defmodule BasicServiceServer do");
+        assertThat(source).contains("@behaviour BasicServiceBehaviour");
+        assertThat(source).contains("alias BasicServiceBehaviour");
+        assertThat(source).contains("@default_impl BasicServiceImpl");
+        assertThat(source).contains("@handlers_key {BasicServiceServer, :handlers}");
+        assertThat(source).contains("defp resolve_impl(impl) do");
+        assertThat(source).contains("BasicServiceBehaviour.callbacks()");
+        assertThat(source).contains("function_exported?(impl, fun, 3)");
+        assertThat(source).contains("Function.capture(impl, fun, 3)");
+        assertThat(source).contains("def init_handlers do");
+        assertThat(source).contains(":persistent_term.put(@handlers_key, handlers)");
+        assertThat(source).contains("defp dispatch_handler(fun, ctx, input, meta) do");
+        assertThat(source).contains("dispatch_handler(:handle_get_type_closure, ctx, input, meta)");
+        assertThat(source).doesNotContain("def handle_get_type_closure(_ctx, _input, _meta), do: {:error, :not_implemented}");
+        int moduleIndex = source.indexOf("defmodule BasicServiceServer do");
+        int moduledocIndex = source.indexOf("@moduledoc \"\"\"");
+        int behaviourIndex = source.indexOf("@behaviour BasicServiceBehaviour");
+        int aliasIndex = source.indexOf("alias BasicServiceTypes");
         assertThat(moduleIndex).isLessThan(moduledocIndex);
-        assertThat(moduledocIndex).isLessThan(aliasIndex);
-        assertThat(aliasIndex).isLessThan(specIndex);
-        assertThat(serverSource.stripLeading()).startsWith("defmodule");
+        assertThat(moduledocIndex).isLessThan(behaviourIndex);
+        assertThat(behaviourIndex).isLessThan(aliasIndex);
     }
 
     @Test
@@ -157,6 +175,8 @@ class ElixirServerPluginTest {
                 .isEqualTo(baseline.expectFileString("dedicated_io_service_types.ex"));
         assertThat(extended.expectFileString("dedicated_io_service_server.ex"))
                 .isEqualTo(baseline.expectFileString("dedicated_io_service_server.ex"));
+        assertThat(extended.expectFileString("dedicated_io_service_behaviour.ex"))
+                .isEqualTo(baseline.expectFileString("dedicated_io_service_behaviour.ex"));
     }
 
     @Test
