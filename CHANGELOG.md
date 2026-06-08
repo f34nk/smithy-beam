@@ -3,14 +3,96 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-06-08
+
+### Added
+- Per-service behaviour modules and startup handler discovery for Erlang and Elixir server generation, with routers dispatching operations through behaviour callbacks after init_handlers/0.
+- Basic and user server examples now include impl modules and test helpers that wire handler discovery at startup.
+
+### Fixed
+- Erlang server behaviour discovery relies on compiler-generated behaviour_info from -callback attributes, with corrected discovery helper layout.
+
 ### Changed
-- Restored optional "protocol" smithy-build setting for client and server plugins.
-- When unset, protocol derivation from model traits is unchanged.
-- Custom protocol JARs register "BeamProtocolCodegen" via "ErlangIntegration" / "ElixirIntegration".
+- Java and Python examples moved into the baseline layout; the Makefile can run and clean baseline demos.
+
+## 2026-06-06
+
+### Added
+- Restored optional protocol smithy-build setting for client and server plugins; when unset, protocol derivation from model traits is unchanged.
+- Custom protocol registration through BeamProtocolIntegration, with wire-capability helpers and extensible codec module suffixes for non-built-in protocols.
+- Minimal custom protocol Erlang example and an EC2 Query LocalStack example.
+
+### Fixed
+- Url variable shadowing in generated HTTP dispatch and unbalanced brackets in endpoint rule array literals.
 
 ### Docs
-- Trait support and AWS SDK support references refreshed for REST JSON codec bindings, closure validation, reserved-word escaping, and service rename behavior.
-- Shape mapping and trait docs describe model-driven wire emission and types-never-wire per-plugin behavior.
+- Protocol setting and custom protocol registration documented; trait and AWS SDK support references refreshed for model-driven wire emission and types-never-wire per-plugin behavior.
+
+## 2026-06-03
+
+### Added
+- AWS SDK runtime helpers for rules-based endpoint resolution, credential provider chains, presigned URLs, retry metadata from @retryable errors, and waiters from @waitable trait definitions.
+- Inline SigV4 signing in generated service modules, gzip request compression, HTTP checksum headers for REST JSON 1 and REST-XML, and opt-in HTTP compliance test emission from model traits.
+- AWS Query and EC2 Query server codecs for Erlang and Elixir; Amazon Event Stream framing in generated codecs.
+- Service-scoped types header naming derived from the Smithy service name; endpoint rule sets serialized for BEAM runtime evaluation.
+- Edition enum to gate breaking generator behavior; minimal S3 demos for Erlang and Elixir.
+
+### Fixed
+- Generated syntax and emission fixes across AWS query error decoders, credential providers, S3 endpoint helpers, Elixir REST-XML decode, flattened XML lists, empty-body httpc requests, and runtime helper deduplication per client.
+
+### Changed
+- Endpoint rule sets emit only when @endpointRuleSet is present; endpoint rules resolve from the runtime_types macro.
+- Removed unused module smithy-build setting and the beam_dependencies.json manifest emission.
+
+## 2026-06-02
+
+### Added
+- Elixir AWS JSON 1.0 and 1.1 server codec generation and a static regional endpoint URL builder from aws.api#service metadata.
+- Service closure pruning before codegen so shapes outside the selected service are dropped early.
+
+### Fixed
+- Url variable clash in Erlang HTTP dispatch and trait definition retention when pruning the service closure.
+
+### Changed
+- Erlang codec binding variables centralized on BeamNameUtils.
+
+### Docs
+- Clarified that the types plugin generateService hook is intentionally empty; refreshed AWS and trait support matrices.
+
+## 2026-06-01
+
+### Added
+- Optional packageVersion smithy-build setting for generated package metadata.
+
+### Docs
+- clientOptional and default traits on dedicated operation inputs marked as supported.
+
+## 2026-05-31
+
+### Added
+- AWS JSON 1.0, AWS JSON 1.1, AWS Query, EC2 Query, and REST-XML protocol codec generation for Erlang and Elixir, including server-side AWS JSON 1.0 dispatch and XML trait support.
+- Generated SigV4 signing hooks, aws.api#service and aws.auth#sigv4 metadata in client config, and endpoint metadata seeding.
+- @idempotencyToken auto-fill, @mediaType negotiation, and @streaming blob wire handling in REST JSON 1 codecs.
+- -spec annotations on exported Erlang REST JSON 1 codec functions and an Inaka-style CamelCase variable naming helper.
+
+### Fixed
+- Inaka-compliant CamelCase variables in Erlang REST JSON codecs, default port omission in Elixir split_base_url generation, and safer header binding variables in Erlang response decoders.
+
+### Docs
+- @httpPrefixHeaders marked supported; Erlang shared types header and variable naming conventions documented.
+
+## 2026-05-30
+
+### Added
+- @hostLabel and @httpPrefixHeaders support in REST JSON 1 codecs for Erlang and Elixir.
+- Service-scoped effective naming in layout helpers so rename-aware module and file names flow through client, server, and codec output.
+- Dedicated operation input members treated as optional in Erlang and Elixir type generation.
+
+### Fixed
+- Server and codec filenames use rename-aware service names.
+
+### Changed
+- Codec module suffixes and layout filenames derive from the resolved protocol trait.
 
 ## 2026-05-29
 
