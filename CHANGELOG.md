@@ -8,12 +8,15 @@ All notable changes to this project will be documented here.
 ### Added
 - Per-service behaviour modules and startup handler discovery for Erlang and Elixir server generation, with routers dispatching operations through behaviour callbacks after init_handlers/0.
 - Basic and user server examples now include impl modules and test helpers that wire handler discovery at startup.
+- Shared Elixir formatting helpers in codegen for mix-format-style layout conventions such as spec line breaks and pipeline spacing.
 
 ### Fixed
 - Erlang server behaviour discovery relies on compiler-generated behaviour_info from -callback attributes, with corrected discovery helper layout.
+- Elixir HTTP dispatch and server handler discovery generation no longer emit invalid case and end nesting; behaviour module body indentation, runtime types template layout, and REST JSON error response tuple formatting were corrected.
 
 ### Changed
 - Java and Python examples moved into the baseline layout; the Makefile can run and clean baseline demos.
+- Elixir client and server generation now uses two-space indentation and updated emitter layout so basic service output aligns closely with mix format style.
 
 ## 2026-06-06
 
