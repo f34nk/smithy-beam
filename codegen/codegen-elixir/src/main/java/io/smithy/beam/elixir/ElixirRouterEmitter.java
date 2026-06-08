@@ -62,6 +62,10 @@ public final class ElixirRouterEmitter {
             writer.indent();
             writer.write("@moduledoc \"Generated HTTP router for $L.\"", service.getId());
             writer.write("");
+            writer.write(
+                    "# Handler must export handle_<operation>/3; typically $L after init_handlers/0.",
+                    ElixirSymbolProvider.toModuleName(layout.serverModuleName()));
+            writer.write("");
             writer.write("@spec dispatch(module(), map()) :: term()");
             writer.write("def dispatch(handler, request) do");
             writer.indent();
@@ -102,6 +106,10 @@ public final class ElixirRouterEmitter {
             writer.write("defmodule $L do", routerMod);
             writer.indent();
             writer.write("@moduledoc \"Generated AWS JSON router for $L.\"", service.getId());
+            writer.write("");
+            writer.write(
+                    "# Handler must export handle_<operation>/3; typically $L after init_handlers/0.",
+                    ElixirSymbolProvider.toModuleName(layout.serverModuleName()));
             writer.write("");
             writer.write("@spec dispatch(module(), map()) :: term()");
             writer.write("def dispatch(handler, request) do");
