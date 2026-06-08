@@ -56,6 +56,18 @@ public final class BeamElixirLayout {
         return serviceSnakeName() + "_server";
     }
 
+    public String behaviourModuleFile() {
+        return behaviourModuleName() + ".ex";
+    }
+
+    public String behaviourModuleName() {
+        return serviceSnakeName() + "_behaviour";
+    }
+
+    public String implModuleName() {
+        return serviceSnakeName() + "_impl";
+    }
+
     public String routerModuleFile() {
         return routerModuleName() + ".ex";
     }
