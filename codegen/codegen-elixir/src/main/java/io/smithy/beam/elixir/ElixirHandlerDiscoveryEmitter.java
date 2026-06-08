@@ -44,6 +44,7 @@ final class ElixirHandlerDiscoveryEmitter {
             writer.indent();
             writer.write("{:error, {:impl_not_loaded, impl}}");
             writer.dedent();
+            writer.dedent();
             writer.write("end");
             writer.dedent();
             writer.write("end");
@@ -64,6 +65,7 @@ final class ElixirHandlerDiscoveryEmitter {
             writer.write(":persistent_term.put(@handlers_key, %{})");
             writer.write("{:error, reason}");
             writer.dedent();
+            writer.dedent();
             writer.write("end");
             writer.dedent();
             writer.write("end");
@@ -82,6 +84,7 @@ final class ElixirHandlerDiscoveryEmitter {
             writer.write("_ ->");
             writer.indent();
             writer.write("{:error, :not_implemented}");
+            writer.dedent();
             writer.dedent();
             writer.write("end");
             writer.dedent();
