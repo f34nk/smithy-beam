@@ -66,7 +66,9 @@ public final class ErlangRouterEmitter {
             writer.write("-export([dispatch/2]).");
             writer.write("");
             writer.write("%% @doc Routes an incoming HTTP request to the appropriate server handler.");
-            writer.write("%% Handler is the module implementing the generated server behaviour.");
+            writer.write(
+                    "%% Handler must export handle_<operation>/3; typically $L after init_handlers/0.",
+                    layout.serverModuleName());
             writer.write("dispatch(Handler, #http_request{method = Method, path = Path} = Req) ->");
             writer.indent();
             writer.write("route(Method, Path, Handler, Req).");
