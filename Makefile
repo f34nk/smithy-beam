@@ -1,4 +1,4 @@
-X:=$(shell find examples baseline -maxdepth 3 -name Makefile -type f -exec dirname {} \;)
+X:=$(shell find aws-examples examples baseline -maxdepth 3 -name Makefile -type f -exec dirname {} \;)
 EXAMPLES:=$(foreach x,$(X),$(x)/)
 EXAMPLES_COUNT:=$(words $(EXAMPLES))
 
@@ -169,7 +169,12 @@ _demo:
 	# Build $(DEMO)
 	#
 	cd $(DEMO) && make clean && time make demo
-	
+
+# Usage: make aws-examples
+.PHONY: aws-examples
+aws-examples:
+	TARGET=aws-examples make _run
+
 # Usage: make examples
 .PHONY: examples
 examples:
@@ -183,7 +188,7 @@ baseline:
 # Usage: make examples/erlang/weather-service
 .SILENT:
 .PHONY: $(EXAMPLES)
-examples/% baseline/%: $(EXAMPLES)
+aws-examples/% examples/% baseline/%: $(EXAMPLES)
 	target="$@"; \
 	dirname="$$(echo $$target|cut -d/ -f1)"; \
 	lang="$$(echo $$target|cut -d/ -f2)"; \
