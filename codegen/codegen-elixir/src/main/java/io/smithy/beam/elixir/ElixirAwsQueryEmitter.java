@@ -600,6 +600,7 @@ public final class ElixirAwsQueryEmitter {
             writer.dedent();
             writer.write("end)");
             writer.dedent();
+            writer.write("end");
             writer.write("");
         } else {
             writer.write("defp flatten_member(key, value) when is_list(value) do");
@@ -612,6 +613,7 @@ public final class ElixirAwsQueryEmitter {
             writer.dedent();
             writer.write("end)");
             writer.dedent();
+            writer.write("end");
             writer.write("");
         }
         writer.write("defp flatten_member(key, value) when is_map(value) do");
@@ -626,6 +628,7 @@ public final class ElixirAwsQueryEmitter {
         writer.dedent();
         writer.write("end)");
         writer.dedent();
+        writer.write("end");
         writer.write("");
         writer.write("defp flatten_member(key, value), do: [{key, value}]");
         writer.write("");
@@ -642,7 +645,7 @@ public final class ElixirAwsQueryEmitter {
         writer.indent();
         writer.write("case :xmerl_scan.string(:erlang.binary_to_list(body)) do");
         writer.indent();
-        writer.write("{:xmlElement, _, _, _, _, _, _, _, content, _, _, _} = xml, _} ->");
+        writer.write("{{:xmlElement, _, _, _, _, _, _, _, _, _, _, _} = xml, _} ->");
         writer.indent();
         writer.write("case find_element(result_name, element_content(xml)) do");
         writer.indent();
@@ -775,21 +778,24 @@ public final class ElixirAwsQueryEmitter {
         writer.dedent();
         writer.write("case find_element(\"$L\", element_content(xml)) do", BeamXmlDecoder.ERROR_RESPONSE_ELEMENT);
         writer.indent();
-        writer.write("nil -> {:error, {:unknown_error, status, body}}");
+        writer.write("nil ->");
+        writer.indent();
+        writer.write("{:error, {:unknown_error, status, body}}");
+        writer.dedent();
         writer.write("error_response ->");
         writer.indent();
         writer.write("case find_element(\"$L\", element_content(error_response)) do", BeamXmlDecoder.ERROR_ELEMENT);
         writer.indent();
         writer.write("nil -> {:error, {:unknown_error, status, body}}");
-        writer.write("error ->");
-        writer.indent();
-        writer.write("{:error, {");
+        writer.write("error -> {:error, {");
         writer.write("  xml_child_text(error, \"$L\"),", BeamXmlDecoder.ERROR_CODE_ELEMENT);
         writer.write("  xml_child_text(error, \"$L\")", BeamXmlDecoder.ERROR_MESSAGE_ELEMENT);
         writer.write("}}");
         writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.write("rescue");
         writer.indent();
@@ -826,15 +832,17 @@ public final class ElixirAwsQueryEmitter {
         writer.write("case find_element(\"$L\", element_content(errors)) do", BeamXmlDecoder.ERROR_ELEMENT);
         writer.indent();
         writer.write("nil -> {:error, {:unknown_error, status, body}}");
-        writer.write("error ->");
-        writer.indent();
-        writer.write("{:error, {");
+        writer.write("error -> {:error, {");
         writer.write("  xml_child_text(error, \"$L\"),", BeamXmlDecoder.ERROR_CODE_ELEMENT);
         writer.write("  xml_child_text(error, \"$L\")", BeamXmlDecoder.ERROR_MESSAGE_ELEMENT);
         writer.write("}}");
         writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.dedent();
         writer.write("rescue");
