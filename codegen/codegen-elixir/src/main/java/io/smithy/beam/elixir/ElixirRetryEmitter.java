@@ -49,6 +49,7 @@ public final class ElixirRetryEmitter {
             writer.write("end");
             writer.write("");
             writer.write("defp with_retry(fun, 0, _base, _n), do: fun.()");
+            writer.write("");
             writer.write("defp with_retry(fun, attempts, base, n) do");
             writer.indent();
             writer.write("case fun.() do");
@@ -57,6 +58,7 @@ public final class ElixirRetryEmitter {
             writer.indent();
             writer.write("ok");
             writer.dedent();
+            writer.write("");
             writer.write("{:error, _} = err ->");
             writer.indent();
             writer.write("if should_retry?(err) and attempts > 1 do");

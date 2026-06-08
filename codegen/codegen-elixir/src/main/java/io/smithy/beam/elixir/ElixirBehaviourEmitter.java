@@ -62,16 +62,12 @@ final class ElixirBehaviourEmitter {
         ctx.writerDelegator().useFileWriter(layout.behaviourModuleFile(), writer -> {
             writer.pushOperationBodySection();
             BeamDocumentation.forShape(op).ifPresent(doc -> BeamDocumentation.writeElixirDoc(writer, doc));
-            writer.write("@callback $L(", handler);
-            writer.indent();
-            writer.write("term(),");
-            writer.write("$L,", inType);
-            writer.write("term()");
-            writer.dedent();
-            writer.write(") ::");
-            writer.indent();
-            writer.write("{:ok, $L} | {:error, term()}", outType);
-            writer.dedent();
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@callback",
+                    handler,
+                    "term(), " + inType + ", term()",
+                    "{:ok, " + outType + "} | {:error, term()}");
             writer.write("");
             writer.popState();
         });
@@ -86,7 +82,7 @@ final class ElixirBehaviourEmitter {
 
         ctx.writerDelegator().useFileWriter(layout.behaviourModuleFile(), writer -> {
             writer.pushOperationBodySection();
-            writer.write("@spec callbacks() :: [{atom(), non_neg_integer()}]");
+            ElixirFormat.writeSpec(writer, "@spec", "callbacks() :: [{atom(), non_neg_integer()}]");
             writer.write("def callbacks do");
             writer.indent();
             writer.write("[");

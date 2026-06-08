@@ -700,18 +700,16 @@ final class ElixirDirectedCodegen
             StructureShape shape,
             List<MemberShape> members) {
 
-        writer.openBlock("@type t :: %__MODULE__{");
-        for (int i = 0; i < members.size(); i++) {
-            MemberShape member = members.get(i);
+        List<String> fieldLines = new ArrayList<>();
+        for (MemberShape member : members) {
             Symbol memberSym = sp.toSymbol(member);
             String fieldName = memberSym.getProperty("fieldName", String.class).orElseThrow();
             String fullType = renderElixirType(ctx, memberSym);
             boolean nullable = BeamMemberNullability.isMemberNullable(nullableIndex, shape, member);
             String typeExpr = nullable ? fullType + " | nil" : fullType;
-            String comma = (i < members.size() - 1) ? "," : "";
-            writer.write("$L: $L$L", fieldName, typeExpr, comma);
+            fieldLines.add(fieldName + ": " + typeExpr);
         }
-        writer.closeBlock("}");
+        ElixirFormat.writeStructureType(writer, fieldLines);
         writer.write("");
 
         String fields = members.stream()

@@ -48,7 +48,7 @@ final class ElixirHandlerDiscoveryEmitter {
             writer.dedent();
             writer.write("end");
             writer.write("");
-            writer.write("@spec init_handlers() :: :ok | {:error, term()}");
+            ElixirFormat.writeSpec(writer, "@spec", "init_handlers() :: :ok | {:error, term()}");
             writer.write("def init_handlers do");
             writer.indent();
             writer.write("case resolve_impl(@default_impl) do");

@@ -302,11 +302,12 @@ final class ElixirClientDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
-            writer.write(
-                    "@spec $L(client_config(), $L) :: {:ok, $L} | {:error, term()}",
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
                     opSym.getName(),
-                    inType,
-                    outType);
+                    "client_config(), " + inType,
+                    "{:ok, " + outType + "} | {:error, term()}");
             if (hasProtocol) {
                 String codecMod = ElixirSymbolProvider.toModuleName(
                         layout.clientCodecModuleName(
@@ -331,8 +332,10 @@ final class ElixirClientDirectedCodegen
                     writer.dedent();
                     writer.write("end");
                     writer.dedent();
+                    writer.write("");
                     writer.write("case $L.dispatch(config, signed_req) do", httpMod);
                 } else {
+                    writer.write("");
                     writer.write("case $L.dispatch(config, req) do", httpMod);
                 }
                 writer.indent();

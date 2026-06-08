@@ -35,7 +35,12 @@ public final class ElixirRuntimeHelpersEmitter {
             writer.write("");
 
             if (awsMetadata) {
-                writer.write("@spec resolve_base_url(map()) :: String.t()");
+                ElixirFormat.writeSpec(
+                        writer,
+                        "@spec",
+                        "resolve_base_url",
+                        "map()",
+                        "String.t()");
                 writer.write("def resolve_base_url(config) do");
                 writer.indent();
                 writer.write("prefix = Map.fetch!(config, :endpoint_prefix)");
@@ -47,8 +52,12 @@ public final class ElixirRuntimeHelpersEmitter {
             }
 
             if (labelBindings) {
-                writer.write("@spec parse_labels(String.t(), String.t()) ::");
-                writer.write("        {:ok, map()} | {:error, :path_mismatch}");
+                ElixirFormat.writeSpec(
+                        writer,
+                        "@spec",
+                        "parse_labels",
+                        "String.t(), String.t()",
+                        "{:ok, map()} | {:error, :path_mismatch}");
                 writer.write("def parse_labels(path, template) do");
                 writer.indent();
                 writer.write("case match_segments(segments(path), segments(template), %{}) do");

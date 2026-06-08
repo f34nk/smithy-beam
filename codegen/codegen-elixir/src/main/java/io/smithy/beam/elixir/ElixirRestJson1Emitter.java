@@ -50,7 +50,64 @@ import java.util.Set;
  */
 public final class ElixirRestJson1Emitter {
 
+    private static final List<String[]> HEADER_CASE_BRANCHES = List.of(
+            new String[] {"{_, v}", "v"},
+            new String[] {"nil", "nil"});
+
     private ElixirRestJson1Emitter() {}
+
+    private static void breakDecodeFunctionHead(
+            ElixirWriter writer, String name, List<String> args, String whenClause) {
+        if (whenClause == null) {
+            ElixirFormat.breakFunctionHead(writer, "def", name, args);
+            return;
+        }
+        writer.write("def $L(", name);
+        writer.indent();
+        for (int i = 0; i < args.size(); i++) {
+            if (i < args.size() - 1) {
+                writer.write("$L,", args.get(i));
+            } else {
+                writer.write("$L", args.get(i));
+            }
+        }
+        writer.dedent();
+        writer.write(") $L do", whenClause);
+    }
+
+    private static void emitRejectNilMapPipeline(
+            ElixirWriter writer, String varName, Runnable emitMapEntries) {
+        ElixirFormat.beginPipelineBinding(writer, varName);
+        writer.write("%{");
+        writer.indent();
+        emitMapEntries.run();
+        writer.dedent();
+        writer.write("}");
+        ElixirFormat.writePipelineStep(writer, "Enum.reject(fn {_, v} -> is_nil(v) end)");
+        ElixirFormat.writePipelineStep(writer, "Map.new()");
+        ElixirFormat.endPipelineBinding(writer);
+    }
+
+    private static void emitExtraHeadersPipeline(
+            ElixirWriter writer,
+            SymbolProvider sp,
+            String recordVar,
+            List<HttpBinding> headers) {
+        ElixirFormat.beginPipelineBinding(writer, "extra_headers");
+        writer.write("[");
+        writer.indent();
+        for (HttpBinding hb : headers) {
+            String field = fieldName(sp, hb.getMember());
+            ElixirFormat.writeIfInList(
+                    writer,
+                    recordVar + "." + field + " != nil",
+                    "{\"" + hb.getLocationName() + "\", to_string(" + recordVar + "." + field + ")}");
+        }
+        writer.dedent();
+        writer.write("]");
+        ElixirFormat.writePipelineStep(writer, "Enum.reject(&is_nil/1)");
+        ElixirFormat.endPipelineBinding(writer);
+    }
 
     public static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
         Model model = ctx.model();
@@ -175,10 +232,11 @@ public final class ElixirRestJson1Emitter {
         String httpRequestType = "%" + runtimeMod + ".HttpRequest{}";
 
         if (encodeWithConfig) {
-            writer.write("@spec encode_$L_request(map(), $L) :: $L", opName, inputType, httpRequestType);
+            ElixirFormat.writeSpec(
+                    writer, "@spec", "encode_" + opName + "_request", "map(), " + inputType, httpRequestType);
             writer.write("def encode_$L_request(config, input) do", opName);
         } else {
-            writer.write("@spec encode_$L_request($L) :: $L", opName, inputType, httpRequestType);
+            ElixirFormat.writeSpec(writer, "@spec", "encode_" + opName + "_request", inputType, httpRequestType);
             writer.write("def encode_$L_request(input) do", opName);
         }
         writer.indent();
@@ -201,16 +259,20 @@ public final class ElixirRestJson1Emitter {
 
         String pathExpr = buildElixirPathExpression(uriTemplate, labels, sp);
         writer.write("path = $L", pathExpr);
+        writer.write("");
 
         if (!queries.isEmpty()) {
-            writer.write("query = %{");
-            for (HttpBinding qb : queries) {
-                String field = fieldName(sp, qb.getMember());
-                writer.write("  \"$L\" => input.$L,", qb.getLocationName(), field);
-            }
-            writer.write("}");
-            writer.write("|> Enum.reject(fn {_, v} -> is_nil(v) end)");
-            writer.write("|> Map.new()");
+            emitRejectNilMapPipeline(writer, "query", () -> {
+                for (int i = 0; i < queries.size(); i++) {
+                    HttpBinding qb = queries.get(i);
+                    String field = fieldName(sp, qb.getMember());
+                    if (i < queries.size() - 1) {
+                        writer.write("\"$L\" => input.$L,", qb.getLocationName(), field);
+                    } else {
+                        writer.write("\"$L\" => input.$L", qb.getLocationName(), field);
+                    }
+                }
+            });
         } else {
             writer.write("query = %{}");
         }
@@ -228,24 +290,18 @@ public final class ElixirRestJson1Emitter {
                 writer.write("end");
                 writer.dedent();
                 writer.write("");
-                writer.write("query =");
-                writer.indent();
+                ElixirFormat.beginPipelineBinding(writer, "query");
                 writer.write("query");
-                writer.write("|> Map.to_list()");
-                writer.write("|> Enum.concat(query_extra)");
-                writer.write("|> Map.new()");
-                writer.dedent();
+                ElixirFormat.writePipelineStep(writer, "Map.to_list()");
+                ElixirFormat.writePipelineStep(writer, "Enum.concat(query_extra)");
+                ElixirFormat.writePipelineStep(writer, "Map.new()");
+                ElixirFormat.endPipelineBinding(writer);
+                writer.write("");
             }
         }
 
         if (!headers.isEmpty()) {
-            writer.write("extra_headers = [");
-            for (HttpBinding hb : headers) {
-                String field = fieldName(sp, hb.getMember());
-                writer.write("  (if input.$L != nil, do: {\"$L\", to_string(input.$L)}, else: nil),",
-                        field, hb.getLocationName(), field);
-            }
-            writer.write("] |> Enum.reject(&is_nil/1)");
+            emitExtraHeadersPipeline(writer, sp, "input", headers);
             writer.write("headers = [{\"Content-Type\", \"$L\"} | extra_headers]", requestContentType);
         } else {
             writer.write("headers = [{\"Content-Type\", \"$L\"}]", requestContentType);
@@ -270,28 +326,34 @@ public final class ElixirRestJson1Emitter {
             String field = fieldName(sp, payload.getMember());
             writer.write("body = input.$L || \"\"", field);
         } else if (hasBody) {
-            writer.write("body_map = %{");
-            for (HttpBinding db : docMembers) {
-                String field = fieldName(sp, db.getMember());
-                String wireKey = jsonKey(db.getMember());
-                Shape target = model.expectShape(db.getMember().getTarget());
-                if (target instanceof EnumShape || target instanceof IntEnumShape) {
-                    String helperName = enumHelperName(target);
-                    writer.write("  \"$L\" => encode_$L(input.$L),", wireKey, helperName, field);
-                } else if (target instanceof UnionShape) {
-                    String helperName = unionHelperName(target);
-                    writer.write("  \"$L\" => encode_$L(input.$L),", wireKey, helperName, field);
-                } else if (target instanceof TimestampShape) {
-                    String encodeHelper = timestampEncodeHelper(
-                            httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
-                    writer.write("  \"$L\" => $L(input.$L),", wireKey, encodeHelper, field);
-                } else {
-                    writer.write("  \"$L\" => input.$L,", wireKey, field);
+            emitRejectNilMapPipeline(writer, "body_map", () -> {
+                for (int i = 0; i < docMembers.size(); i++) {
+                    HttpBinding db = docMembers.get(i);
+                    String field = fieldName(sp, db.getMember());
+                    String wireKey = jsonKey(db.getMember());
+                    Shape target = model.expectShape(db.getMember().getTarget());
+                    String entry;
+                    if (target instanceof EnumShape || target instanceof IntEnumShape) {
+                        String helperName = enumHelperName(target);
+                        entry = "\"" + wireKey + "\" => encode_" + helperName + "(input." + field + ")";
+                    } else if (target instanceof UnionShape) {
+                        String helperName = unionHelperName(target);
+                        entry = "\"" + wireKey + "\" => encode_" + helperName + "(input." + field + ")";
+                    } else if (target instanceof TimestampShape) {
+                        String encodeHelper = timestampEncodeHelper(
+                                httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
+                        entry = "\"" + wireKey + "\" => " + encodeHelper + "(input." + field + ")";
+                    } else {
+                        entry = "\"" + wireKey + "\" => input." + field;
+                    }
+                    if (i < docMembers.size() - 1) {
+                        writer.write("$L,", entry);
+                    } else {
+                        writer.write("$L", entry);
+                    }
                 }
-            }
-            writer.write("}");
-            writer.write("|> Enum.reject(fn {_, v} -> is_nil(v) end)");
-            writer.write("|> Map.new()");
+            });
+            writer.write("");
             writer.write("body = Jason.encode!(body_map)");
         } else {
             writer.write("body = \"\"");
@@ -304,6 +366,7 @@ public final class ElixirRestJson1Emitter {
             writer.write("host = build_host(input, config)");
         }
 
+        writer.write("");
         writer.write("%RuntimeTypes.HttpRequest{");
         writer.write("  method: \"$L\",", method);
         writer.write("  path: path,");
@@ -345,7 +408,7 @@ public final class ElixirRestJson1Emitter {
         String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
 
         writer.write("@doc \"Encode response for $L.\"", op.getId());
-        writer.write("@spec encode_$L_response($L) :: map()", opName, outputType);
+        ElixirFormat.writeSpec(writer, "@spec", "encode_" + opName + "_response", outputType, "map()");
         writer.write("def encode_$L_response(%Types.$L{} = output) do", opName, outputStruct);
         writer.indent();
 
@@ -359,41 +422,41 @@ public final class ElixirRestJson1Emitter {
                 writer.write("body = output.$L", field);
             }
         } else if (!respDoc.isEmpty()) {
-            writer.write("body_map = %{");
-            for (HttpBinding db : respDoc) {
-                String field = fieldName(sp, db.getMember());
-                String wireKey = jsonKey(db.getMember());
-                Shape target = model.expectShape(db.getMember().getTarget());
-                if (target instanceof EnumShape || target instanceof IntEnumShape) {
-                    String helperName = enumHelperName(target);
-                    writer.write("  \"$L\" => encode_$L(output.$L),", wireKey, helperName, field);
-                } else if (target instanceof UnionShape) {
-                    String helperName = unionHelperName(target);
-                    writer.write("  \"$L\" => encode_$L(output.$L),", wireKey, helperName, field);
-                } else if (target instanceof TimestampShape) {
-                    String encodeHelper = timestampEncodeHelper(
-                            httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
-                    writer.write("  \"$L\" => $L(output.$L),", wireKey, encodeHelper, field);
-                } else {
-                    writer.write("  \"$L\" => output.$L,", wireKey, field);
+            emitRejectNilMapPipeline(writer, "body_map", () -> {
+                for (int i = 0; i < respDoc.size(); i++) {
+                    HttpBinding db = respDoc.get(i);
+                    String field = fieldName(sp, db.getMember());
+                    String wireKey = jsonKey(db.getMember());
+                    Shape target = model.expectShape(db.getMember().getTarget());
+                    String entry;
+                    if (target instanceof EnumShape || target instanceof IntEnumShape) {
+                        String helperName = enumHelperName(target);
+                        entry = "\"" + wireKey + "\" => encode_" + helperName + "(output." + field + ")";
+                    } else if (target instanceof UnionShape) {
+                        String helperName = unionHelperName(target);
+                        entry = "\"" + wireKey + "\" => encode_" + helperName + "(output." + field + ")";
+                    } else if (target instanceof TimestampShape) {
+                        String encodeHelper = timestampEncodeHelper(
+                                httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
+                        entry = "\"" + wireKey + "\" => " + encodeHelper + "(output." + field + ")";
+                    } else {
+                        entry = "\"" + wireKey + "\" => output." + field;
+                    }
+                    if (i < respDoc.size() - 1) {
+                        writer.write("$L,", entry);
+                    } else {
+                        writer.write("$L", entry);
+                    }
                 }
-            }
-            writer.write("}");
-            writer.write("|> Enum.reject(fn {_, v} -> is_nil(v) end)");
-            writer.write("|> Map.new()");
+            });
+            writer.write("");
             writer.write("body = Jason.encode!(body_map)");
         } else {
             writer.write("body = \"\"");
         }
 
         if (!respHeaders.isEmpty()) {
-            writer.write("extra_headers = [");
-            for (HttpBinding hb : respHeaders) {
-                String field = fieldName(sp, hb.getMember());
-                writer.write("  (if output.$L != nil, do: {\"$L\", to_string(output.$L)}, else: nil),",
-                        field, hb.getLocationName(), field);
-            }
-            writer.write("] |> Enum.reject(&is_nil/1)");
+            emitExtraHeadersPipeline(writer, sp, "output", respHeaders);
             writer.write("headers = [{\"Content-Type\", \"$L\"} | extra_headers]", responseContentType);
         } else {
             writer.write("headers = [{\"Content-Type\", \"$L\"}]", responseContentType);
@@ -436,26 +499,14 @@ public final class ElixirRestJson1Emitter {
         List<HttpBinding> reqPayload = httpIndex.getRequestBindings(op, HttpBinding.Location.PAYLOAD);
         boolean streamingRequestPayload = hasStreamingRequestPayload(model, reqPayload, null);
 
+        String requestPattern = streamingRequestPayload
+                ? "%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body, stream: stream}"
+                : "%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}";
+        String decodeName = "decode_" + opName + "_request";
         if (labels.isEmpty()) {
-            if (streamingRequestPayload) {
-                writer.write(
-                        "def decode_$L_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body, stream: stream}) do",
-                        opName);
-            } else {
-                writer.write(
-                        "def decode_$L_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}) do",
-                        opName);
-            }
+            breakDecodeFunctionHead(writer, decodeName, List.of(requestPattern), null);
         } else {
-            if (streamingRequestPayload) {
-                writer.write(
-                        "def decode_$L_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body, stream: stream}, label_map) do",
-                        opName);
-            } else {
-                writer.write(
-                        "def decode_$L_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}, label_map) do",
-                        opName);
-            }
+            breakDecodeFunctionHead(writer, decodeName, List.of(requestPattern, "label_map"), null);
         }
         writer.indent();
         emitRequestDecoderStruct(
@@ -482,61 +533,84 @@ public final class ElixirRestJson1Emitter {
 
         if (!docMembers.isEmpty()) {
             writer.write("decoded = if body == \"\" or is_nil(body), do: %{}, else: Jason.decode!(body)");
+            writer.write("");
         }
 
+        int totalFields = labels.size() + queries.size() + queryParams.size() + headers.size()
+                + prefixHeaders.size() + docMembers.size() + reqPayload.size();
+        int fieldIndex = 0;
+
         writer.write("%Types.$L{", inputStruct);
+        writer.indent();
         for (HttpBinding lb : labels) {
+            fieldIndex++;
             String field = fieldName(sp, lb.getMember());
             String memberName = lb.getMember().getMemberName();
-            writer.write("  $L: uri_decode(Map.get(label_map, \"$L\")),", field, memberName);
+            writer.write("$L: uri_decode(Map.get(label_map, \"$L\"))$L",
+                    field, memberName, fieldIndex < totalFields ? "," : "");
         }
         for (HttpBinding qb : queries) {
+            fieldIndex++;
             String field = fieldName(sp, qb.getMember());
-            writer.write("  $L: decode_query_param(Map.get(query, \"$L\")),", field, qb.getLocationName());
+            writer.write("$L: decode_query_param(Map.get(query, \"$L\"))$L",
+                    field, qb.getLocationName(), fieldIndex < totalFields ? "," : "");
         }
         for (HttpBinding qp : queryParams) {
+            fieldIndex++;
             String field = fieldName(sp, qp.getMember());
-            writer.write("  $L: query,", field);
+            writer.write("$L: query$L", field, fieldIndex < totalFields ? "," : "");
         }
         for (HttpBinding hb : headers) {
+            fieldIndex++;
             String field = fieldName(sp, hb.getMember());
-            writer.write("  $L: List.keyfind(headers, \"$L\", 0) |> case do", field, hb.getLocationName());
-            writer.indent();
-            writer.write("{_, v} -> v");
-            writer.write("nil -> nil");
-            writer.dedent();
-            writer.write("end,");
+            ElixirFormat.writePipeCaseField(
+                    writer,
+                    field,
+                    "List.keyfind(headers, \"" + hb.getLocationName() + "\", 0)",
+                    HEADER_CASE_BRANCHES);
+            if (fieldIndex < totalFields) {
+                writer.write(",");
+            }
         }
         for (HttpBinding ph : prefixHeaders) {
+            fieldIndex++;
             String field = fieldName(sp, ph.getMember());
-            writer.write("  $L: prefix_headers_from_list(headers, \"$L\"),", field, ph.getLocationName());
+            writer.write("$L: prefix_headers_from_list(headers, \"$L\")$L",
+                    field, ph.getLocationName(), fieldIndex < totalFields ? "," : "");
         }
         for (HttpBinding db : docMembers) {
+            fieldIndex++;
             String field = fieldName(sp, db.getMember());
             String wireKey = jsonKey(db.getMember());
             Shape target = model.expectShape(db.getMember().getTarget());
+            String suffix = fieldIndex < totalFields ? "," : "";
             if (target instanceof EnumShape || target instanceof IntEnumShape) {
                 String helperName = enumHelperName(target);
-                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, wireKey);
+                writer.write("$L: decode_$L(Map.get(decoded, \"$L\"))$L",
+                        field, helperName, wireKey, suffix);
             } else if (target instanceof UnionShape) {
                 String helperName = unionHelperName(target);
-                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, wireKey);
+                writer.write("$L: decode_$L(Map.get(decoded, \"$L\"))$L",
+                        field, helperName, wireKey, suffix);
             } else if (target instanceof TimestampShape) {
                 String decodeHelper = timestampDecodeHelper(
                         httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
-                writer.write("  $L: $L(Map.get(decoded, \"$L\")),", field, decodeHelper, wireKey);
+                writer.write("$L: $L(Map.get(decoded, \"$L\"))$L", field, decodeHelper, wireKey, suffix);
             } else {
-                writer.write("  $L: $L,", field, documentDecodeExpr(wireKey, target));
+                writer.write("$L: $L$L", field, documentDecodeExpr(wireKey, target), suffix);
             }
         }
         for (HttpBinding pb : reqPayload) {
+            fieldIndex++;
             String field = fieldName(sp, pb.getMember());
+            String suffix = fieldIndex < totalFields ? "," : "";
             if (isStreamingBlob(model, pb.getMember())) {
-                writer.write("  $L: stream,", field);
+                writer.write("$L: stream$L", field, suffix);
             } else {
-                writer.write("  $L: body,", field);
+                writer.write("$L: body$L", field, suffix);
             }
         }
+        writer.dedent();
         writer.write("}");
     }
 
@@ -561,26 +635,30 @@ public final class ElixirRestJson1Emitter {
         boolean streamingResponsePayload = !respPayload.isEmpty()
                 && isStreamingBlob(model, respPayload.get(0).getMember());
 
+        String decodeName = "decode_" + opName + "_response";
         if (!respCode.isEmpty()) {
-            if (streamingResponsePayload) {
-                writer.write(
-                        "def decode_$L_response(%RuntimeTypes.HttpResponse{status: http_status, headers: headers,"
-                                + " body: body, stream: stream}) when http_status >= 200 and http_status < 300 do",
-                        opName);
-            } else {
-                writer.write(
-                        "def decode_$L_response(%RuntimeTypes.HttpResponse{status: http_status, headers: headers,"
-                                + " body: body}) when http_status >= 200 and http_status < 300 do",
-                        opName);
-            }
+            String responsePattern = streamingResponsePayload
+                    ? "%RuntimeTypes.HttpResponse{status: http_status, headers: headers, body: body, stream: stream}"
+                    : "%RuntimeTypes.HttpResponse{status: http_status, headers: headers, body: body}";
+            breakDecodeFunctionHead(
+                    writer,
+                    decodeName,
+                    List.of(responsePattern),
+                    "when http_status >= 200 and http_status < 300");
         } else if (streamingResponsePayload) {
-            writer.write(
-                    "def decode_$L_response(%RuntimeTypes.HttpResponse{status: $L, headers: headers, body: body, stream: stream}) do",
-                    opName, successCode);
+            breakDecodeFunctionHead(
+                    writer,
+                    decodeName,
+                    List.of("%RuntimeTypes.HttpResponse{status: "
+                            + successCode + ", headers: headers, body: body, stream: stream}"),
+                    null);
         } else {
-            writer.write(
-                    "def decode_$L_response(%RuntimeTypes.HttpResponse{status: $L, headers: headers, body: body}) do",
-                    opName, successCode);
+            breakDecodeFunctionHead(
+                    writer,
+                    decodeName,
+                    List.of("%RuntimeTypes.HttpResponse{status: "
+                            + successCode + ", headers: headers, body: body}"),
+                    null);
         }
         writer.indent();
 
@@ -593,73 +671,98 @@ public final class ElixirRestJson1Emitter {
 
         if (!respDoc.isEmpty()) {
             writer.write("decoded = if body == \"\" or is_nil(body), do: %{}, else: Jason.decode!(body)");
+            writer.write("");
         }
 
         for (HttpBinding hb : respHeaders) {
             String field = fieldName(sp, hb.getMember());
-            writer.write("$L = List.keyfind(headers, \"$L\", 0) |> case do", field, hb.getLocationName());
-            writer.indent();
-            writer.write("{_, v} -> v");
-            writer.write("nil -> nil");
-            writer.dedent();
-            writer.write("end");
+            ElixirFormat.beginPipelineBinding(writer, field);
+            ElixirFormat.writePipeCase(
+                    writer,
+                    "List.keyfind(headers, \"" + hb.getLocationName() + "\", 0)",
+                    HEADER_CASE_BRANCHES);
+            ElixirFormat.endPipelineBinding(writer);
+            writer.write("");
         }
 
-        writer.write("result = {:ok, %Types.$L{", outputStruct);
+        int totalFields = respHeaders.size() + respPrefixHeaders.size() + respDoc.size()
+                + respPayload.size() + respCode.size();
+        int fieldIndex = 0;
+
+        writer.write("result =");
+        writer.indent();
+        writer.write("{:ok,");
+        writer.indent();
+        writer.write("%Types.$L{", outputStruct);
+        writer.indent();
         for (HttpBinding hb : respHeaders) {
+            fieldIndex++;
             String field = fieldName(sp, hb.getMember());
-            writer.write("  $L: $L,", field, field);
+            writer.write("$L: $L$L", field, field, fieldIndex < totalFields ? "," : "");
         }
         for (HttpBinding ph : respPrefixHeaders) {
+            fieldIndex++;
             String field = fieldName(sp, ph.getMember());
-            writer.write("  $L: prefix_headers_from_list(headers, \"$L\"),", field, ph.getLocationName());
+            writer.write("$L: prefix_headers_from_list(headers, \"$L\")$L",
+                    field, ph.getLocationName(), fieldIndex < totalFields ? "," : "");
         }
         for (HttpBinding db : respDoc) {
+            fieldIndex++;
             String field = fieldName(sp, db.getMember());
             String wireKey = jsonKey(db.getMember());
             Shape target = model.expectShape(db.getMember().getTarget());
+            String suffix = fieldIndex < totalFields ? "," : "";
             if (target instanceof EnumShape || target instanceof IntEnumShape) {
                 String helperName = enumHelperName(target);
-                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, wireKey);
+                writer.write("$L: decode_$L(Map.get(decoded, \"$L\"))$L",
+                        field, helperName, wireKey, suffix);
             } else if (target instanceof UnionShape) {
                 String helperName = unionHelperName(target);
-                writer.write("  $L: decode_$L(Map.get(decoded, \"$L\")),", field, helperName, wireKey);
+                writer.write("$L: decode_$L(Map.get(decoded, \"$L\"))$L",
+                        field, helperName, wireKey, suffix);
             } else if (target instanceof TimestampShape) {
                 String decodeHelper = timestampDecodeHelper(
                         httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
-                writer.write("  $L: $L(Map.get(decoded, \"$L\")),", field, decodeHelper, wireKey);
+                writer.write("$L: $L(Map.get(decoded, \"$L\"))$L", field, decodeHelper, wireKey, suffix);
             } else {
-                writer.write("  $L: $L,", field, documentDecodeExpr(wireKey, target));
+                writer.write("$L: $L$L", field, documentDecodeExpr(wireKey, target), suffix);
             }
         }
         for (HttpBinding pb : respPayload) {
+            fieldIndex++;
             String field = fieldName(sp, pb.getMember());
+            String suffix = fieldIndex < totalFields ? "," : "";
             if (isStreamingBlob(model, pb.getMember())) {
-                writer.write("  $L: stream,", field);
+                writer.write("$L: stream$L", field, suffix);
             } else {
-                writer.write("  $L: body,", field);
+                writer.write("$L: body$L", field, suffix);
             }
         }
         for (HttpBinding rcb : respCode) {
+            fieldIndex++;
             String field = fieldName(sp, rcb.getMember());
-            writer.write("  $L: http_status,", field);
+            writer.write("$L: http_status$L", field, fieldIndex < totalFields ? "," : "");
         }
+        writer.dedent();
+        writer.write("}}");
+        writer.dedent();
+        writer.dedent();
+        writer.write("");
         if (needsContentTypeCheck) {
-            writer.write("}}");
-            writer.dedent();
             ElixirHttpChecksumEmitter.emitResponseChecksumGuard(writer, model, op, "result");
             writer.write("end");
         } else {
-            writer.write("}}");
             ElixirHttpChecksumEmitter.emitResponseChecksumGuard(writer, model, op, "result");
         }
 
         writer.dedent();
         writer.write("end");
         writer.write("");
-        writer.write(
-                "def decode_$L_response(%RuntimeTypes.HttpResponse{status: status, headers: headers, body: body}) do",
-                opName);
+        breakDecodeFunctionHead(
+                writer,
+                decodeName,
+                List.of("%RuntimeTypes.HttpResponse{status: status, headers: headers, body: body}"),
+                null);
         writer.indent();
         writer.write("decode_$L_response_error(status, headers, body)", opName);
         writer.dedent();

@@ -32,8 +32,12 @@ public final class ElixirHttpDispatchEmitter {
             writer.write("alias $L, as: RuntimeTypes", runtimeMod);
             writer.write("alias $L, as: RuntimeHelpers", helpersModule);
             writer.write("");
-            writer.write("@spec dispatch(map(), RuntimeTypes.HttpRequest.t()) ::");
-            writer.write("        {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}");
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
+                    "dispatch",
+                    "map(), RuntimeTypes.HttpRequest.t()",
+                    "{:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}");
             writer.write("def dispatch(config, req) do");
             writer.indent();
             writer.write("http_client = Map.get(config, :http_client, __MODULE__.ReqClient)");
@@ -41,16 +45,24 @@ public final class ElixirHttpDispatchEmitter {
             writer.dedent();
             writer.write("end");
             writer.write("");
-            writer.write("@spec dispatch(module(), map(), RuntimeTypes.HttpRequest.t()) ::");
-            writer.write("        {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}");
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
+                    "dispatch",
+                    "module(), map(), RuntimeTypes.HttpRequest.t()",
+                    "{:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}");
             writer.write("def dispatch(http_client, config, %RuntimeTypes.HttpRequest{} = req) do");
             writer.indent();
             writer.write("dispatch_signed(http_client, config, req)");
             writer.dedent();
             writer.write("end");
             writer.write("");
-            writer.write("@spec dispatch_signed(module(), map(), RuntimeTypes.HttpRequest.t()) ::");
-            writer.write("        {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}");
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
+                    "dispatch_signed",
+                    "module(), map(), RuntimeTypes.HttpRequest.t()",
+                    "{:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}");
             writer.write("defp dispatch_signed(http_client, config, %RuntimeTypes.HttpRequest{} = req) do");
             writer.indent();
             if (sigv4) {
@@ -96,11 +108,13 @@ public final class ElixirHttpDispatchEmitter {
             }
             writer.dedent();
             writer.write("end");
-            writer.dedent();
+            writer.write("");
             writer.write("url -> url");
             writer.dedent();
             writer.write("end");
+            writer.write("");
             writer.write("{scheme, default_authority} = split_base_url(base_url)");
+            writer.write("");
             writer.write("authority =");
             writer.indent();
             writer.write("case req.host do");
@@ -109,6 +123,7 @@ public final class ElixirHttpDispatchEmitter {
             writer.write("host -> host");
             writer.dedent();
             writer.write("end");
+            writer.write("");
             writer.write("url = scheme <> authority <> req.path");
             writer.write("req_opts = [");
             writer.write("  method: String.downcase(req.method) |> String.to_atom(),");
@@ -121,12 +136,14 @@ public final class ElixirHttpDispatchEmitter {
             writer.indent();
             writer.write("{:ok, %{status: status, headers: headers, body: body}} ->");
             writer.indent();
-            writer.write("{:ok, %RuntimeTypes.HttpResponse{");
+            writer.write("{:ok,");
+            writer.write("%RuntimeTypes.HttpResponse{");
             writer.write("  status: status,");
             writer.write("  headers: Enum.map(headers, fn {k, v} -> {k, v} end),");
             writer.write("  body: body");
             writer.write("}}");
             writer.dedent();
+            writer.write("");
             writer.write("{:error, reason} ->");
             writer.indent();
             writer.write("{:error, reason}");
@@ -156,6 +173,7 @@ public final class ElixirHttpDispatchEmitter {
             writer.dedent();
             writer.write("{scheme <> \"://\", host <> port_suffix}");
             writer.dedent();
+            writer.write("");
             writer.write("_ ->");
             writer.indent();
             writer.write("{\"\", base_url}");
@@ -169,7 +187,12 @@ public final class ElixirHttpDispatchEmitter {
             writer.indent();
             writer.write("@moduledoc false");
             writer.write("");
-            writer.write("@spec request(keyword()) :: {:ok, map()} | {:error, term()}");
+            ElixirFormat.writeSpec(
+                    writer,
+                    "@spec",
+                    "request",
+                    "keyword()",
+                    "{:ok, map()} | {:error, term()}");
             writer.write("def request(req_opts) do");
             writer.indent();
             writer.write("case Req.request(req_opts) do");
@@ -178,6 +201,7 @@ public final class ElixirHttpDispatchEmitter {
             writer.indent();
             writer.write("{:ok, %{status: status, headers: headers, body: body}}");
             writer.dedent();
+            writer.write("");
             writer.write("{:error, reason} ->");
             writer.indent();
             writer.write("{:error, reason}");

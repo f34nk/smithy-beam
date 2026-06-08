@@ -63,13 +63,21 @@ public final class ElixirPaginatorEmitter {
                 } else {
                     writer.write("new_acc = [output | acc]");
                 }
+                writer.write("");
                 writer.write("case $L do", outputTokenExpr);
                 writer.indent();
                 if (items != null) {
-                    writer.write("nil -> {:ok, new_acc}");
+                    writer.write("nil ->");
+                    writer.indent();
+                    writer.write("{:ok, new_acc}");
+                    writer.dedent();
                 } else {
-                    writer.write("nil -> {:ok, Enum.reverse(new_acc)}");
+                    writer.write("nil ->");
+                    writer.indent();
+                    writer.write("{:ok, Enum.reverse(new_acc)}");
+                    writer.dedent();
                 }
+                writer.write("");
                 writer.write("next_token ->");
                 writer.indent();
                 writer.write("paginate_$L(config, Map.put(input, :$L, next_token), new_acc)",
@@ -78,7 +86,11 @@ public final class ElixirPaginatorEmitter {
                 writer.dedent();
                 writer.write("end");
                 writer.dedent();
-                writer.write("{:error, reason} -> {:error, reason}");
+                writer.write("");
+                writer.write("{:error, reason} ->");
+                writer.indent();
+                writer.write("{:error, reason}");
+                writer.dedent();
                 writer.dedent();
                 writer.write("end");
                 writer.dedent();

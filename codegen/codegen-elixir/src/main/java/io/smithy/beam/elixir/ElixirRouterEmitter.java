@@ -66,7 +66,7 @@ public final class ElixirRouterEmitter {
                     "# Handler must export handle_<operation>/3; typically $L after init_handlers/0.",
                     ElixirSymbolProvider.toModuleName(layout.serverModuleName()));
             writer.write("");
-            writer.write("@spec dispatch(module(), map()) :: term()");
+            ElixirFormat.writeSpec(writer, "@spec", "dispatch", "module(), map()", "term()");
             writer.write("def dispatch(handler, request) do");
             writer.indent();
             writer.write("route(request.method, request.path, handler, request)");
@@ -111,7 +111,7 @@ public final class ElixirRouterEmitter {
                     "# Handler must export handle_<operation>/3; typically $L after init_handlers/0.",
                     ElixirSymbolProvider.toModuleName(layout.serverModuleName()));
             writer.write("");
-            writer.write("@spec dispatch(module(), map()) :: term()");
+            ElixirFormat.writeSpec(writer, "@spec", "dispatch", "module(), map()", "term()");
             writer.write("def dispatch(handler, request) do");
             writer.indent();
             writer.write("route(request.method, request.path, request.headers, handler, request)");
@@ -200,6 +200,7 @@ public final class ElixirRouterEmitter {
         writer.write("input = $L.decode_$L_request(request, label_map)", codecMod, opName);
         writer.write("handler.handle_$L(%{}, input, %{})", opName);
         writer.dedent();
+        writer.write("");
         writer.write("{:error, :path_mismatch} ->");
         writer.indent();
         writer.write("{:error, {:not_found, \"$L\", path}}", method);
