@@ -31,7 +31,6 @@ public final class ElixirEndpointRulesEmitter {
             writer.write("@moduledoc \"Generated endpoint rule resolver for Smithy service clients.\"");
             writer.write("");
             writer.write("alias $L, as: RuntimeTypes", runtimeMod);
-            writer.write("@endpoint_rule_set Module.get_attribute(RuntimeTypes, :endpoint_rule_set)");
             writer.write("");
             ElixirFormat.writeSpec(
                     writer,
@@ -41,7 +40,8 @@ public final class ElixirEndpointRulesEmitter {
                     "{:ok, %{url: String.t()}} | {:error, term()}");
             writer.write("def resolve(config, params) do");
             writer.indent();
-            writer.write("AwsEndpointRules.evaluate(@endpoint_rule_set, merge_params(config, params))");
+            writer.write(
+                    "AwsEndpointRules.evaluate(RuntimeTypes.endpoint_rule_set(), merge_params(config, params))");
             writer.dedent();
             writer.write("end");
             writer.write("");
