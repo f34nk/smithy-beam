@@ -58,21 +58,7 @@ public final class ElixirRestJson1Emitter {
 
     private static void breakDecodeFunctionHead(
             ElixirWriter writer, String name, List<String> args, String whenClause) {
-        if (whenClause == null) {
-            ElixirFormat.breakFunctionHead(writer, "def", name, args);
-            return;
-        }
-        writer.write("def $L(", name);
-        writer.indent();
-        for (int i = 0; i < args.size(); i++) {
-            if (i < args.size() - 1) {
-                writer.write("$L,", args.get(i));
-            } else {
-                writer.write("$L", args.get(i));
-            }
-        }
-        writer.dedent();
-        writer.write(") $L do", whenClause);
+        ElixirFormat.breakFunctionHead(writer, "def", name, args, whenClause);
     }
 
     private static void emitRejectNilMapPipeline(
@@ -86,6 +72,7 @@ public final class ElixirRestJson1Emitter {
         ElixirFormat.writePipelineStep(writer, "Enum.reject(fn {_, v} -> is_nil(v) end)");
         ElixirFormat.writePipelineStep(writer, "Map.new()");
         ElixirFormat.endPipelineBinding(writer);
+        writer.write("");
     }
 
     private static void emitExtraHeadersPipeline(
@@ -107,6 +94,7 @@ public final class ElixirRestJson1Emitter {
         writer.write("]");
         ElixirFormat.writePipelineStep(writer, "Enum.reject(&is_nil/1)");
         ElixirFormat.endPipelineBinding(writer);
+        writer.write("");
     }
 
     public static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
@@ -692,7 +680,6 @@ public final class ElixirRestJson1Emitter {
         writer.write("result =");
         writer.indent();
         writer.write("{:ok,");
-        writer.indent();
         writer.write("%Types.$L{", outputStruct);
         writer.indent();
         for (HttpBinding hb : respHeaders) {
@@ -745,7 +732,6 @@ public final class ElixirRestJson1Emitter {
         }
         writer.dedent();
         writer.write("}}");
-        writer.dedent();
         writer.dedent();
         writer.write("");
         if (needsContentTypeCheck) {
@@ -821,11 +807,17 @@ public final class ElixirRestJson1Emitter {
                 List<String> fields = buildErrorFields(model, errShape, sp);
                 writer.write("\"$L\" ->", localName);
                 writer.indent();
-                writer.write("{:error, struct!($L.$L, %{$L})}", typesMod, modName,
-                        String.join(", ", fields));
+                writer.write("{:error,");
+                writer.indent();
+                writer.write("struct!($L.$L, %{$L})", typesMod, modName, String.join(", ", fields));
                 writer.dedent();
+                writer.dedent();
+                writer.write("");
             }
-            writer.write("_ -> {:error, {:unknown_error, status, body}}");
+            writer.write("_ ->");
+            writer.indent();
+            writer.write("{:error, {:unknown_error, status, body}}");
+            writer.dedent();
             writer.dedent();
             writer.write("end");
             writer.dedent();
@@ -1103,7 +1095,15 @@ public final class ElixirRestJson1Emitter {
         writer.write("");
         writer.write("defp decode_sparse_list(nil), do: nil");
         writer.write("defp decode_sparse_list(list) when is_list(list),");
-        writer.write("    do: Enum.map(list, fn nil -> nil; v -> v end)");
+        writer.write("  do:");
+        writer.indent();
+        writer.write("Enum.map(list, fn");
+        writer.indent();
+        writer.write("nil -> nil");
+        writer.write("v -> v");
+        writer.dedent();
+        writer.write("end)");
+        writer.dedent();
         writer.write("");
         writer.write("defp decode_list(nil), do: nil");
         writer.write("defp decode_list(list) when is_list(list),");
@@ -1111,7 +1111,15 @@ public final class ElixirRestJson1Emitter {
         writer.write("");
         writer.write("defp decode_sparse_map(nil), do: nil");
         writer.write("defp decode_sparse_map(map) when is_map(map),");
-        writer.write("    do: Map.new(map, fn {k, nil} -> {k, nil}; {k, v} -> {k, v} end)");
+        writer.write("  do:");
+        writer.indent();
+        writer.write("Map.new(map, fn");
+        writer.indent();
+        writer.write("{k, nil} -> {k, nil}");
+        writer.write("{k, v} -> {k, v}");
+        writer.dedent();
+        writer.write("end)");
+        writer.dedent();
         writer.write("");
         writer.write("defp encode_timestamp_epoch_seconds(nil), do: nil");
         writer.write("defp encode_timestamp_epoch_seconds(%DateTime{} = dt),");

@@ -126,7 +126,7 @@ final class ElixirDirectedCodegen
 
             writer.pushGeneratedDocumentationSection();
             BeamDocumentation.forShape(directive.service()).ifPresentOrElse(
-                    doc -> BeamDocumentation.writeElixirModuledoc(writer, doc),
+                    doc -> ElixirFormat.writeDocAttribute(writer, "@moduledoc", doc),
                     () -> {
                         BeamElixirLayout layout =
                                 new BeamElixirLayout(
@@ -136,9 +136,12 @@ final class ElixirDirectedCodegen
                         String modelName =
                                 ElixirSymbolProvider.toModuleName(layout.typesModuleName());
                         writer.openBlock("@moduledoc \"\"\"");
-                        writer.write("Type definitions for the $L model.", modelName);
-                        writer.write("");
-                        writer.write("Named after the model namespace per the baseline spec.");
+                        ElixirFormat.writeHeredocBody(
+                                writer,
+                                List.of(
+                                        "Type definitions for the " + modelName + " model.",
+                                        "",
+                                        "Named after the model namespace per the baseline spec."));
                         writer.closeBlock("\"\"\"");
                     });
             writer.popState();
@@ -586,17 +589,7 @@ final class ElixirDirectedCodegen
                     .collect(Collectors.toList());
             variants.add("{:unknown, String.t()}");
 
-            if (variants.size() <= 2) {
-                writer.write("@type $L :: $L", symbol.getName(), String.join(" | ", variants));
-            } else {
-                writer.write("@type $L ::", symbol.getName());
-                writer.indent();
-                for (int i = 0; i < variants.size(); i++) {
-                    String pipe = (i == 0) ? "  " : "| ";
-                    writer.write("$L$L", pipe, variants.get(i));
-                }
-                writer.dedent();
-            }
+            ElixirFormat.writeUnionType(writer, symbol.getName(), variants);
         });
     }
 
@@ -628,7 +621,7 @@ final class ElixirDirectedCodegen
             writer.openBlock("defmodule $L do", symbol.getName());
             writer.pushGeneratedDocumentationSection();
             BeamDocumentation.elixirStructureModuledoc(shape).ifPresentOrElse(
-                    doc -> BeamDocumentation.writeElixirModuledoc(writer, doc),
+                    doc -> ElixirFormat.writeDocAttribute(writer, "@moduledoc", doc),
                     () -> writer.write("@moduledoc \"structure $L\"", shape.getId().getName()));
             writer.write("");
             writer.popState();
@@ -676,12 +669,12 @@ final class ElixirDirectedCodegen
             }
             writer.write("");
             writer.popState();
-            writer.write("defexception [");
+            List<String> exceptionFields = new ArrayList<>();
             for (MemberShape member : shape.members()) {
-                writer.write("  $L: nil,", member.getMemberName());
+                exceptionFields.add(member.getMemberName() + ": nil");
             }
-            writer.write("  __beam_error_kind: :$L", errorTrait.getValue());
-            writer.write("]");
+            exceptionFields.add("__beam_error_kind: :" + errorTrait.getValue());
+            ElixirFormat.writeDefexception(writer, exceptionFields);
             writer.write("");
             writer.write("def retryable(%__MODULE__{}), do: $L", isRetryable);
             writer.write("def throttling(%__MODULE__{}), do: $L", isThrottling);
@@ -712,9 +705,9 @@ final class ElixirDirectedCodegen
         ElixirFormat.writeStructureType(writer, fieldLines);
         writer.write("");
 
-        String fields = members.stream()
+        List<String> fields = members.stream()
                 .map(m -> ":" + sp.toSymbol(m).getProperty("fieldName", String.class).orElseThrow())
-                .collect(Collectors.joining(", "));
-        writer.write("defstruct [$L]", fields);
+                .collect(Collectors.toList());
+        ElixirFormat.writeDefstruct(writer, fields);
     }
 }

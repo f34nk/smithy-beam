@@ -148,9 +148,12 @@ final class ElixirClientDirectedCodegen
 
             writer.pushGeneratedDocumentationSection();
             writer.openBlock("@moduledoc \"\"\"");
-            writer.write("Generated Elixir client for $L.", service.getId());
-            writer.write("");
-            writer.write("Operation stubs accept config and input. Transport and protocol are not generated here.");
+            ElixirFormat.writeHeredocBody(
+                    writer,
+                    List.of(
+                            "Generated Elixir client for " + service.getId() + ".",
+                            "",
+                            "Operation stubs accept config and input. Transport and protocol are not generated here."));
             writer.closeBlock("\"\"\"");
             writer.popState();
 
@@ -295,7 +298,7 @@ final class ElixirClientDirectedCodegen
         BeamDocumentation.forShape(op).ifPresent(doc -> {
             ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
                 writer.pushOperationBodySection();
-                BeamDocumentation.writeElixirDoc(writer, doc);
+                ElixirFormat.writeDocAttribute(writer, "@doc", doc);
                 writer.popState();
             });
         });

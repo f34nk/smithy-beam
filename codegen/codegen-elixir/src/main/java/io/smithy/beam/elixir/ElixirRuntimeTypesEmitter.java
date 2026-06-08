@@ -14,7 +14,8 @@ public final class ElixirRuntimeTypesEmitter {
         writer.write("defmodule $L do", moduleName);
         writer.indent();
         writer.openBlock("@moduledoc \"\"\"");
-        writer.write("Generated HTTP and client runtime types for Smithy service clients.");
+        ElixirFormat.writeHeredocBody(
+                writer, java.util.List.of("Generated HTTP and client runtime types for Smithy service clients."));
         writer.closeBlock("\"\"\"");
         for (String line : loadResource("runtime_types.ex").split("\n", -1)) {
             writer.write(line);
@@ -25,8 +26,7 @@ public final class ElixirRuntimeTypesEmitter {
             writer.write("Module.register_attribute(__MODULE__, :endpoint_rule_set, persist: true)");
             writer.write("@endpoint_rule_set $L", map);
         });
-        writer.dedent();
-        writer.write("end");
+        ElixirFormat.writeModuleEnd(writer);
     }
 
     private static String loadResource(String name) {

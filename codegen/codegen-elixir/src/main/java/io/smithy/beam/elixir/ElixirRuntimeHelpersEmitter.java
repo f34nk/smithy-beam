@@ -63,6 +63,7 @@ public final class ElixirRuntimeHelpersEmitter {
                 writer.write("case match_segments(segments(path), segments(template), %{}) do");
                 writer.indent();
                 writer.write("{:ok, labels} -> {:ok, labels}");
+                writer.write("");
                 writer.write("_ -> {:error, :path_mismatch}");
                 writer.dedent();
                 writer.write("end");
@@ -87,10 +88,12 @@ public final class ElixirRuntimeHelpersEmitter {
                 writer.write("val = URI.decode(seg)");
                 writer.write("match_segments(rest_path, rest_tpl, Map.put(acc, key, val))");
                 writer.dedent();
+                writer.write("");
                 writer.write("_ when seg == tpl_seg ->");
                 writer.indent();
                 writer.write("match_segments(rest_path, rest_tpl, acc)");
                 writer.dedent();
+                writer.write("");
                 writer.write("_ ->");
                 writer.indent();
                 writer.write(":error");
@@ -115,8 +118,7 @@ public final class ElixirRuntimeHelpersEmitter {
                 writer.write("");
                 writer.write("defp label_name(_), do: :error");
             }
-            writer.dedent();
-            writer.write("end");
+            ElixirFormat.writeModuleEnd(writer);
         });
     }
 

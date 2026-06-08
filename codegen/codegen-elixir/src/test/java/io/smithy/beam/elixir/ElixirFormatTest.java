@@ -144,8 +144,8 @@ class ElixirFormatTest {
         });
 
         assertThat(out).contains("@moduledoc \"\"\"");
-        assertThat(out).contains("      Generated Elixir client for smithy.beam.demo.basic#BasicService.");
-        assertThat(out).contains("      Operation stubs accept config and input.");
+        assertThat(out).contains("    Generated Elixir client for smithy.beam.demo.basic#BasicService.");
+        assertThat(out).contains("    Operation stubs accept config and input.");
     }
 
     @Test

@@ -34,7 +34,8 @@ final class ElixirBehaviourEmitter {
 
             writer.pushGeneratedDocumentationSection();
             writer.openBlock("@moduledoc \"\"\"");
-            writer.write("Generated Elixir server behaviour for $L.", service.getId());
+            ElixirFormat.writeHeredocBody(
+                    writer, List.of("Generated Elixir server behaviour for " + service.getId() + "."));
             writer.closeBlock("\"\"\"");
             writer.popState();
 
@@ -61,12 +62,11 @@ final class ElixirBehaviourEmitter {
 
         ctx.writerDelegator().useFileWriter(layout.behaviourModuleFile(), writer -> {
             writer.pushOperationBodySection();
-            BeamDocumentation.forShape(op).ifPresent(doc -> BeamDocumentation.writeElixirDoc(writer, doc));
-            ElixirFormat.writeSpec(
+            BeamDocumentation.forShape(op).ifPresent(doc -> ElixirFormat.writeDocAttribute(writer, "@doc", doc));
+            ElixirFormat.writeCallbackSpec(
                     writer,
-                    "@callback",
                     handler,
-                    "term(), " + inType + ", term()",
+                    List.of("term()", inType, "term()"),
                     "{:ok, " + outType + "} | {:error, term()}");
             writer.write("");
             writer.popState();
@@ -87,19 +87,21 @@ final class ElixirBehaviourEmitter {
             writer.indent();
             writer.write("[");
             writer.indent();
-            for (OperationShape op : operations) {
-                Symbol opSym = sp.toSymbol(op);
-                writer.write("{:handle_$L, 3},", opSym.getName());
+            for (int i = 0; i < operations.size(); i++) {
+                Symbol opSym = sp.toSymbol(operations.get(i));
+                if (i < operations.size() - 1) {
+                    writer.write("{:handle_$L, 3},", opSym.getName());
+                } else {
+                    writer.write("{:handle_$L, 3}", opSym.getName());
+                }
             }
             writer.dedent();
             writer.write("]");
             writer.dedent();
             writer.write("end");
-            writer.write("");
             writer.popState();
 
             writer.dedent();
-
             writer.pushModuleHeaderSection();
             writer.write("end");
             writer.popState();

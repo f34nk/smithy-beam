@@ -98,8 +98,7 @@ public final class ElixirPaginatorEmitter {
                 writer.write("");
             }
 
-            writer.dedent();
-            writer.write("end");
+            ElixirFormat.writeModuleEnd(writer);
         });
     }
 

@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 final class ElixirFormat {
 
     static final int SPEC_LINE_LIMIT = 98;
-    static final int HEREDOC_BODY_INDENT_LEVELS = 2;
+    static final int HEREDOC_BODY_INDENT_LEVELS = 1;
     static final int DEFSTRUCT_MULTILINE_THRESHOLD = 4;
     static final int IF_IN_LIST_SINGLE_LINE_LIMIT = 72;
     private static final Pattern STRUCT_PATTERN = Pattern.compile("(%[^{]+)\\{([^}]+)\\}");
