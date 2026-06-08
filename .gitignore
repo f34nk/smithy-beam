@@ -13,6 +13,3 @@ deps/
 *.tfstate
 .terraform/
 generated/
-
-# temporary
-baseline/

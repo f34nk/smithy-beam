@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "sources": [
+    "../../model/basic.smithy"
+  ],
+  "maven": {
+    "dependencies": [
+      "software.amazon.smithy:smithy-model:[1.54.0,2.0)",
+      "software.amazon.smithy:smithy-aws-traits:[1.54.0,2.0)",
+      "software.amazon.smithy.python.codegen.plugins:types:0.3.0"
+    ]
+  },
+  "projections": {
+    "type": {
+      "plugins": {
+        "python-type-codegen": {
+          "service": "smithy.beam.demo.basic#BasicService",
+          "module": "basic",
+          "moduleVersion": "0.0.1"
+        }
+      }
+    }
+  }
+}
