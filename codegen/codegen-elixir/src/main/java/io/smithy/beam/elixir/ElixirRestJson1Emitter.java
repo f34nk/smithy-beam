@@ -811,6 +811,7 @@ public final class ElixirRestJson1Emitter {
                 writer.indent();
                 writer.write("struct!($L.$L, %{$L})", typesMod, modName, String.join(", ", fields));
                 writer.dedent();
+                writer.write("}");
                 writer.dedent();
                 writer.write("");
             }
