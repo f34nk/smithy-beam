@@ -80,13 +80,17 @@ class EndpointRulesEmissionTest {
 
         String runtimeTypes = manifest.expectFileString("runtime_types.ex");
         assertThat(runtimeTypes).contains("@type endpoint_rule_set :: map()");
-        assertThat(runtimeTypes).contains("@endpoint_rule_set");
+        assertThat(runtimeTypes).contains("@endpoint_rule_set_json");
+        assertThat(runtimeTypes).contains("@endpoint_rule_set Jason.decode!(@endpoint_rule_set_json)");
         assertThat(runtimeTypes).contains("s3.{Region}.amazonaws.com");
 
         String endpoints = manifest.expectFileString("endpoint_rules_service_endpoints.ex");
         assertThat(endpoints).contains("defmodule EndpointRulesServiceEndpoints do");
         assertThat(endpoints).contains("def resolve(config, params) do");
-        assertThat(endpoints).contains("AwsEndpointRules.evaluate(@endpoint_rule_set, merge_params(config, params))");
+        assertThat(endpoints)
+                .contains(
+                        "AwsEndpointRules.evaluate(RuntimeTypes.endpoint_rule_set(), merge_params(config, params))");
+        assertThat(manifest.expectFileString("aws_endpoint_rules.ex")).contains("defmodule AwsEndpointRules do");
         assertThat(endpoints).doesNotContain("def rule_set");
 
         String http = manifest.expectFileString("runtime_http.ex");
