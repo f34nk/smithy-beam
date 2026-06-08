@@ -64,10 +64,7 @@ public final class ElixirWaiterEmitter {
         writer.write("acceptors = [");
         writer.indent();
         for (int i = 0; i < acceptors.size(); i++) {
-            emitAcceptorMap(writer, acceptors.get(i), typesMod, sp);
-            if (i < acceptors.size() - 1) {
-                writer.write(",");
-            }
+            emitAcceptorMap(writer, acceptors.get(i), typesMod, sp, i < acceptors.size() - 1);
         }
         writer.dedent();
         writer.write("]");
@@ -101,7 +98,8 @@ public final class ElixirWaiterEmitter {
             ElixirWriter writer,
             BeamWaiterIndex.AcceptorInfo acceptor,
             String typesMod,
-            SymbolProvider sp) {
+            SymbolProvider sp,
+            boolean more) {
         writer.write("%{");
         writer.indent();
         writer.write("state: :$L,", acceptor.state());
@@ -125,7 +123,7 @@ public final class ElixirWaiterEmitter {
                                 pathMatcher -> emitPathMatcher(writer, acceptor.matcherKind(), pathMatcher),
                                 () -> writer.write("matcher: :$L", acceptor.matcherKind()))));
         writer.dedent();
-        writer.write("}");
+        writer.write(more ? "}," : "}");
     }
 
     private static void emitPathMatcher(
@@ -199,7 +197,10 @@ public final class ElixirWaiterEmitter {
                 List.of(
                         "%{matcher: :output, path: path, comparator: :stringEquals, expected: expected}",
                         "{:ok, output}"));
-        writer.write("do: path_string_equals?(path, expected, output)");
+        writer.indent();
+        writer.write("path_string_equals?(path, expected, output)");
+        writer.dedent();
+        writer.write("end");
         writer.write("");
         ElixirFormat.breakFunctionHead(
                 writer,
@@ -208,7 +209,10 @@ public final class ElixirWaiterEmitter {
                 List.of(
                         "%{matcher: :inputOutput, path: path, comparator: :stringEquals, expected: expected}",
                         "{:ok, output}"));
-        writer.write("do: path_string_equals?(path, expected, output)");
+        writer.indent();
+        writer.write("path_string_equals?(path, expected, output)");
+        writer.dedent();
+        writer.write("end");
         writer.write("");
         writer.write("defp matches_acceptor?(_, _), do: false");
         writer.write("");
