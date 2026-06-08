@@ -108,10 +108,15 @@ public final class ElixirHttpDispatchEmitter {
             }
             writer.dedent();
             writer.write("end");
+            writer.dedent();
             writer.write("");
-            writer.write("url -> url");
+            writer.write("url ->");
+            writer.indent();
+            writer.write("url");
+            writer.dedent();
             writer.dedent();
             writer.write("end");
+            writer.dedent();
             writer.write("");
             writer.write("{scheme, default_authority} = split_base_url(base_url)");
             writer.write("");
@@ -123,6 +128,7 @@ public final class ElixirHttpDispatchEmitter {
             writer.write("host -> host");
             writer.dedent();
             writer.write("end");
+            writer.dedent();
             writer.write("");
             writer.write("url = scheme <> authority <> req.path");
             writer.write("req_opts = [");
