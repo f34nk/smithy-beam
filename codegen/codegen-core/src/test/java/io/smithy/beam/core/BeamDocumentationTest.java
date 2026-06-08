@@ -64,6 +64,17 @@ class BeamDocumentationTest {
     }
 
     @Test
+    void forShape_replacesUnicodeLineSeparators() {
+        OperationShape op = OperationShape.builder()
+                .id(ShapeId.from("demo.basic#Get"))
+                .addTrait(new DocumentationTrait("Amazon Web Services\u2028 Region."))
+                .build();
+
+        assertThat(BeamDocumentation.forShape(op).orElseThrow())
+                .isEqualTo("Amazon Web Services Region.");
+    }
+
+    @Test
     void dedent_stripsCommonLeadingWhitespace() {
         String raw = "    Line one.\n\n        Indented code line.\n";
 

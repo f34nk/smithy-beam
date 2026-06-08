@@ -135,7 +135,11 @@ public final class BeamDocumentation {
     }
 
     static String normalizeLineEndings(String doc) {
-        return doc.replace("\r\n", "\n").replace('\r', '\n');
+        return doc.replace("\r\n", "\n")
+                .replace('\r', '\n')
+                .replace("\u2028 ", " ")
+                .replace('\u2028', ' ')
+                .replace('\u2029', '\n');
     }
 
     static String dedent(String doc) {
