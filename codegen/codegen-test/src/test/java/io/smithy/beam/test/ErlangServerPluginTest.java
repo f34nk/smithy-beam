@@ -18,6 +18,7 @@ class ErlangServerPluginTest {
 
     private static final String TYPES_FILE = "basic_service_types.hrl";
     private static final String SERVER_FILE = "basic_service_server.erl";
+    private static final String BEHAVIOUR_FILE = "basic_service_behaviour.erl";
 
     private static Model loadModel() {
         URL resource = ErlangServerPluginTest.class.getResource("/model/basic.smithy");
@@ -49,7 +50,8 @@ class ErlangServerPluginTest {
         new ErlangServerPlugin().execute(buildContext(model, manifest));
 
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("-type basic_string()");
-        assertServerStubHeaderOrder(manifest.expectFileString(SERVER_FILE));
+        assertBehaviourModule(manifest.expectFileString(BEHAVIOUR_FILE));
+        assertServerDispatcher(manifest.expectFileString(SERVER_FILE));
         assertThat(manifest.getFileString("basic_service_rest_json_1.erl")).isEmpty();
         assertThat(manifest.getFileString("basic_service_router.erl")).isEmpty();
     }
@@ -65,19 +67,41 @@ class ErlangServerPluginTest {
                 .build();
         new ErlangServerPlugin().execute(context);
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("-type basic_string()");
-        assertServerStubHeaderOrder(manifest.expectFileString(SERVER_FILE));
+        assertBehaviourModule(manifest.expectFileString(BEHAVIOUR_FILE));
+        assertServerDispatcher(manifest.expectFileString(SERVER_FILE));
     }
 
-    private static void assertServerStubHeaderOrder(String serverSource) {
-        assertThat(serverSource).contains("-module(basic_service_server).");
-        assertThat(serverSource).contains("-include(\"basic_service_types.hrl\").");
-        assertThat(serverSource).contains("-export([handle_get_type_closure/3]).");
-        int moduleIndex = serverSource.indexOf("-module(basic_service_server).");
-        int includeIndex = serverSource.indexOf("-include(\"basic_service_types.hrl\").");
-        int exportIndex = serverSource.indexOf("-export([handle_get_type_closure/3]).");
-        assertThat(moduleIndex).isLessThan(includeIndex);
-        assertThat(includeIndex).isLessThan(exportIndex);
-        assertThat(serverSource.stripLeading()).doesNotStartWith("-include");
+    private static void assertBehaviourModule(String source) {
+        assertThat(source).contains("-module(basic_service_behaviour).");
+        assertThat(source).contains("-include(\"basic_service_types.hrl\").");
+        assertThat(source).contains("-callback handle_get_type_closure(");
+        assertThat(source).contains("Input :: get_type_closure_input()");
+        assertThat(source).contains("{handle_get_type_closure, 3}");
+        assertThat(source).contains("behaviour_info(callbacks) ->");
+    }
+
+    private static void assertServerDispatcher(String source) {
+        assertThat(source).contains("-module(basic_service_server).");
+        assertThat(source).contains("-behaviour(basic_service_behaviour).");
+        assertThat(source).contains("-export([init_handlers/0");
+        assertThat(source).contains("-define(DEFAULT_IMPL, basic_service_impl).");
+        assertThat(source).contains("-define(HANDLERS_KEY, {basic_service_server, handlers}).");
+        assertThat(source).contains("resolve_impl(Impl) ->");
+        assertThat(source).contains("basic_service_behaviour:behaviour_info(callbacks)");
+        assertThat(source).contains("erlang:function_exported(Impl, Fun, 3)");
+        assertThat(source).contains("init_handlers() ->");
+        assertThat(source).contains("persistent_term:put(?HANDLERS_KEY, Handlers)");
+        assertThat(source).contains("dispatch_handler(Fun, Ctx, Input, Meta) ->");
+        assertThat(source).contains("dispatch_handler(handle_get_type_closure, Ctx, Input, Meta)");
+        assertThat(source).doesNotContain("Impl = maps:get(impl, Ctx");
+        assertThat(source).doesNotContain("{error, not_implemented}.");
+        int moduleIndex = source.indexOf("-module(basic_service_server).");
+        int behaviourIndex = source.indexOf("-behaviour(basic_service_behaviour).");
+        int exportIndex = source.indexOf("-export([init_handlers/0");
+        int includeIndex = source.indexOf("-include(\"basic_service_types.hrl\").");
+        assertThat(moduleIndex).isLessThan(behaviourIndex);
+        assertThat(behaviourIndex).isLessThan(exportIndex);
+        assertThat(exportIndex).isLessThan(includeIndex);
     }
 
     @Test
@@ -151,6 +175,8 @@ class ErlangServerPluginTest {
                 .isEqualTo(baseline.expectFileString("dedicated_io_service_types.hrl"));
         assertThat(extended.expectFileString("dedicated_io_service_server.erl"))
                 .isEqualTo(baseline.expectFileString("dedicated_io_service_server.erl"));
+        assertThat(extended.expectFileString("dedicated_io_service_behaviour.erl"))
+                .isEqualTo(baseline.expectFileString("dedicated_io_service_behaviour.erl"));
     }
 
     @Test
