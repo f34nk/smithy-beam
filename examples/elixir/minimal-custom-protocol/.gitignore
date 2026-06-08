@@ -1,0 +1,7 @@
+/_build/
+/build/
+/deps/
+/.hex/
+*.lock
+*.log
+/lib/generated/
