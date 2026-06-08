@@ -182,7 +182,7 @@ class ElixirTypesPluginTest {
                 .contains("defmodule ServiceUnavailable do")
                 .contains(
                         "Error from smithy.beam.demo.error_shapes#ServiceUnavailable (fault: server, retryable: true).")
-                .contains("defexception [")
+                .contains("defexception message: nil,")
                 .contains("message: nil,")
                 .contains("__beam_error_kind: :server")
                 .contains("def message(e), do: inspect(e)");

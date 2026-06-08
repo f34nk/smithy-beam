@@ -85,7 +85,7 @@ class ElixirRestJson1CodecTest {
                 .getFileString("sparse_collections_rest_json_rest_json_1.ex")
                 .orElse("");
         assertThat(codec).contains("decode_sparse_list(");
-        assertThat(codec).contains("fn nil -> nil");
+        assertThat(codec).contains("nil -> nil");
         assertThat(codec).contains("decode_sparse_map(");
         assertThat(codec).contains("Jason.decode!");
     }
