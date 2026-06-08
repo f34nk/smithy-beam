@@ -1,7 +1,6 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenKind;
-import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
@@ -36,7 +35,6 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
-import software.amazon.smithy.model.shapes.StructureShape;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -128,7 +126,12 @@ final class ErlangServerDirectedCodegen
                 });
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
+        ErlangBehaviourEmitter.beginService(ctx, service, operations);
+
+        String behaviourMod = layout.behaviourModuleName();
+
         List<String> exports = new ArrayList<>();
+        exports.add("init_handlers/0");
         for (OperationShape op : operations) {
             Symbol sym = directive.symbolProvider().toSymbol(op);
             exports.add("handle_" + sym.getName() + "/3");
@@ -137,12 +140,14 @@ final class ErlangServerDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(layout.serverModuleFile(), writer -> {
             writer.pushGeneratedDocumentationSection();
-            writer.write("%% Generated Erlang server stub for $L.", service.getId());
-            writer.write("%% Handlers are model-agnostic at runtime; names follow Smithy operations.");
+            writer.write("%% Generated Erlang server dispatcher for $L.", service.getId());
+            writer.write("%% Discovers impl callbacks at startup via init_handlers/0.");
             writer.popState();
 
             writer.pushModuleHeaderSection();
             writer.write("-module($L).", layout.serverModuleName());
+            writer.write("-behaviour($L).", behaviourMod);
+            writer.write("-export([$L]).", exportList);
             writer.popState();
 
             writer.pushDependenciesSection();
@@ -151,12 +156,10 @@ final class ErlangServerDirectedCodegen
             writer.popState();
 
             writer.pushModuleHeaderSection();
-            if (exportList.isEmpty()) {
-                writer.write("-export([]).");
-            } else {
-                writer.write("-export([$L]).", exportList);
-            }
             writer.write("");
+            writer.popState();
+
+            writer.pushProtocolHookSection();
             writer.popState();
         });
     }
@@ -212,12 +215,20 @@ final class ErlangServerDirectedCodegen
             ErlangResourceEmitter.emitServer(ctx, resource);
         }
 
+        BeamErlangLayout layout =
+                new BeamErlangLayout(ctx.settings(), service.getId().getNamespace(), service);
+        List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
+        ErlangBehaviourEmitter.finishService(ctx, operations, directive.symbolProvider());
+        ErlangHandlerDiscoveryEmitter.emitDiscoveryHelpers(ctx, layout);
+
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
             writer.write(
-                    "%% Dispatch and routing modules should map wire metadata to $L below.",
+                    "%% Call $L:init_handlers/0 during application start before dispatch.",
                     ctx.moduleName());
-            writer.write("%% No Smithy shapes are referenced at runtime in this baseline.");
+            writer.write(
+                    "%% Default impl module: $L.",
+                    layout.implModuleName());
             writer.write("");
             writer.popState();
         });
@@ -230,32 +241,15 @@ final class ErlangServerDirectedCodegen
         OperationShape op = directive.shape();
         SymbolProvider sp = directive.symbolProvider();
         Symbol opSym = sp.toSymbol(op);
-
-        StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
-        StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
-        Symbol inSym = sp.toSymbol(input);
-        Symbol outSym = sp.toSymbol(output);
         String handler = "handle_" + opSym.getName();
-
-        BeamDocumentation.forShape(op).ifPresent(doc -> {
-            ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
-                writer.pushOperationBodySection();
-                BeamDocumentation.writeErlangDoc(writer, doc);
-                writer.popState();
-            });
-        });
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
-            writer.write(
-                    "-spec $L(term(), $L, term()) -> {'ok', $L} | {'error', term()}.",
-                    handler,
-                    inSym.getName(),
-                    outSym.getName());
-            writer.write("$L(_Ctx, _Input, _Meta) -> {error, not_implemented}.", handler);
-            writer.write("");
+            ErlangHandlerDiscoveryEmitter.emitOperationDispatch(writer, handler);
             writer.popState();
         });
+
+        ErlangBehaviourEmitter.emitOperationCallback(ctx, op, sp);
     }
 
     @Override
