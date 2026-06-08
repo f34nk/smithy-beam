@@ -159,14 +159,21 @@ public final class RuleSetSerializer {
     }
 
     private static String elixirKey(String key) {
-        if (key.matches("[A-Za-z_][A-Za-z0-9_]*")) {
+        if (key.matches("[a-z_][a-z0-9_]*")) {
             return key;
+        }
+        if (key.matches("[A-Za-z_][A-Za-z0-9_]*")) {
+            return ":" + elixirString(key);
         }
         return elixirString(key);
     }
 
     private static String elixirString(String value) {
-        String escaped = value.replace("\\", "\\\\").replace("\"", "\\\"");
+        String escaped = value
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("{", "\\{")
+                .replace("}", "\\}");
         return "\"" + escaped + "\"";
     }
 }
