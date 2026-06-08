@@ -160,6 +160,7 @@ final class ErlangServerDirectedCodegen
             writer.popState();
 
             writer.pushProtocolHookSection();
+            writer.write("");
             writer.popState();
         });
     }
