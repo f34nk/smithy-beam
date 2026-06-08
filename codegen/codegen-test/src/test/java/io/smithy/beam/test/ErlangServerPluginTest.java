@@ -76,7 +76,6 @@ class ErlangServerPluginTest {
         assertThat(source).contains("-include(\"basic_service_types.hrl\").");
         assertThat(source).contains("-callback handle_get_type_closure(");
         assertThat(source).contains("Input :: get_type_closure_input()");
-        assertThat(source).contains("-export([behaviour_info/1])");
     }
 
     private static void assertServerDispatcher(String source) {

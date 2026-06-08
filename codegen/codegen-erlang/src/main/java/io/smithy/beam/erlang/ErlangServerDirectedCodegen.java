@@ -160,7 +160,7 @@ final class ErlangServerDirectedCodegen
             writer.popState();
 
             writer.pushProtocolHookSection();
-            writer.write("");
+            writer.write("%% Handler discovery and dispatch helpers.");
             writer.popState();
         });
     }

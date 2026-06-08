@@ -37,7 +37,6 @@ final class ErlangBehaviourEmitter {
             writer.popState();
 
             writer.pushModuleHeaderSection();
-            writer.write("-export([behaviour_info/1]).");
             writer.write("");
             writer.popState();
         });
