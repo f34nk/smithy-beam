@@ -129,4 +129,124 @@ class ElixirFormatTest {
         assertThat(out).contains("count: BasicServiceTypes.basic_integer() | nil");
         assertThat(out).contains("    }");
     }
+
+    @Test
+    void writeHeredocBodyUsesFourSpaceRelativeIndent() {
+        String out = emit(w -> {
+            w.openBlock("@moduledoc \"\"\"");
+            ElixirFormat.writeHeredocBody(
+                    w,
+                    List.of(
+                            "Generated Elixir client for smithy.beam.demo.basic#BasicService.",
+                            "",
+                            "Operation stubs accept config and input."));
+            w.closeBlock("\"\"\"");
+        });
+
+        assertThat(out).contains("@moduledoc \"\"\"");
+        assertThat(out).contains("      Generated Elixir client for smithy.beam.demo.basic#BasicService.");
+        assertThat(out).contains("      Operation stubs accept config and input.");
+    }
+
+    @Test
+    void writeDefstructExpandsLargeStructures() {
+        String out = emit(w -> ElixirFormat.writeDefstruct(
+                w,
+                List.of(":etag", ":basic_string", ":basic_integer", ":basic_long", ":basic_boolean")));
+
+        assertThat(out).contains("defstruct [");
+        assertThat(out).contains("  :etag,");
+        assertThat(out).contains("  :basic_boolean");
+        assertThat(out).contains("]");
+        assertThat(out).doesNotContain("defstruct [:etag, :basic_string");
+    }
+
+    @Test
+    void writeDefstructKeepsSmallStructuresOnOneLine() {
+        String out = emit(w -> ElixirFormat.writeDefstruct(w, List.of(":name", ":count")));
+
+        assertThat(out).contains("  defstruct [:name, :count]");
+    }
+
+    @Test
+    void writeDefexceptionUsesKeywordLayout() {
+        String out = emit(w -> ElixirFormat.writeDefexception(
+                w, List.of("message: nil", "__beam_error_kind: :client")));
+
+        assertThat(out).contains("defexception message: nil,");
+        assertThat(out).contains("             __beam_error_kind: :client");
+        assertThat(out).doesNotContain("defexception [");
+    }
+
+    @Test
+    void writeUnionTypeAlignsVariantMembers() {
+        String out = emit(w -> ElixirFormat.writeUnionType(
+                w,
+                "basic_union",
+                List.of(
+                        "{:text, BasicServiceTypes.basic_string()}",
+                        "{:number, BasicServiceTypes.basic_integer()}",
+                        "{:flag, BasicServiceTypes.basic_boolean()}",
+                        "{:unknown, String.t()}")));
+
+        assertThat(out).contains("@type basic_union ::");
+        assertThat(out).contains("          {:text, BasicServiceTypes.basic_string()}");
+        assertThat(out).contains("| {:unknown, String.t()}");
+    }
+
+    @Test
+    void writeModuleEndOmitsTrailingBlankLine() {
+        ElixirWriter writer = new ElixirWriter("test.ex", "Test");
+        writer.write("defmodule Test do");
+        writer.indent();
+        writer.write("def callbacks do");
+        writer.indent();
+        writer.write("[{:handle_get_type_closure, 3}]");
+        writer.dedent();
+        writer.write("end");
+        ElixirFormat.writeModuleEnd(writer);
+
+        String out = writer.toString();
+        assertThat(out).doesNotContain("  end\n\nend");
+        assertThat(out.trim()).endsWith("end");
+    }
+
+    @Test
+    void breakFunctionHeadSplitsStructPatternArgument() {
+        String out = emit(w -> ElixirFormat.breakFunctionHead(
+                w,
+                "def",
+                "decode_get_type_closure_response",
+                List.of("%RuntimeTypes.HttpResponse{status: 200, headers: headers, body: body}")));
+
+        assertThat(out).contains("def decode_get_type_closure_response(%RuntimeTypes.HttpResponse{");
+        assertThat(out).contains("  status: 200,");
+        assertThat(out).contains("  body: body");
+        assertThat(out).contains("}) do");
+    }
+
+    @Test
+    void writeCallbackSpecBreaksParametersAcrossLines() {
+        String out = emit(w -> ElixirFormat.writeCallbackSpec(
+                w,
+                "handle_get_type_closure",
+                List.of(
+                        "term()",
+                        "BasicServiceTypes.GetTypeClosureInput.t()",
+                        "term()"),
+                "{:ok, BasicServiceTypes.GetTypeClosureOutput.t()} | {:error, term()}"));
+
+        assertThat(out).contains("@callback handle_get_type_closure(");
+        assertThat(out).contains("              term(),");
+        assertThat(out).contains("            ) ::");
+        assertThat(out).contains("              {:ok, BasicServiceTypes.GetTypeClosureOutput.t()} | {:error, term()}");
+    }
+
+    @Test
+    void writeIfInListUsesSingleLineForShortExpressions() {
+        String out = emit(w -> ElixirFormat.writeIfInList(w, "flag", "true", true));
+
+        assertThat(out).contains("  if(flag, do: true, else: nil)");
+        assertThat(out).doesNotContain("do:\n");
+    }
 }
