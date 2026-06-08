@@ -15,6 +15,7 @@ public final class ElixirWriter extends SymbolWriter<ElixirWriter, ElixirImports
 
     public ElixirWriter(String filename, String namespace) {
         super(new ElixirImports());
+        setIndentText("  ");
         setRelativizeSymbols(namespace);
         trimBlankLines();
         trimTrailingSpaces();
