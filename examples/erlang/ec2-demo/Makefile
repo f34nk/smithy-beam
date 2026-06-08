@@ -11,7 +11,7 @@ YELLOW=\033[1;33m
 NC=\033[0m
 
 .PHONY: all
-all: clean copy build compile analyze test
+all: clean build compile analyze test
 
 .PHONY: copy
 copy:
@@ -23,7 +23,7 @@ copy:
 	mv ec2-2016-11-15.json model/
 
 .PHONY: build
-build:
+build: copy
 	# 
 	# Build $(CONTAINER_NAME)
 	#
@@ -60,7 +60,7 @@ test/unit:
 	rebar3 eunit
 
 .PHONY: demo
-demo: copy build compile
+demo: build compile
 	make docker/start && make docker/wait && make terraform && make run && make docker/stop
 
 .PHONY: run

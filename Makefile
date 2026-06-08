@@ -127,6 +127,21 @@ clean:
 		cd $$target && make clean; \
 	'; \
 
+# Usage: make examples/build
+.PHONY: %/build
+%/build:
+	#
+	# Build $@
+	#
+	target="$$(dirname $@)"; \
+	find $$target/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \; |\
+	xargs -S1024 -P $(PARALLEL_JOBS) -I {} sh -c ' \
+		target="{}"; \
+		sleep 1; \
+		echo "Build $$target"; \
+		cd $$target && make clean && make build; \
+	'; \
+
 # Usage: TARGET=examples make _run
 .PHONY: _run
 _run:
