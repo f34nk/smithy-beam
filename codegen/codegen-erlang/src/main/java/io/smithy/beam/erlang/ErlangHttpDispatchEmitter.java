@@ -171,6 +171,7 @@ public final class ErlangHttpDispatchEmitter {
             writer.dedent();
             writer.write("end.");
             writer.dedent();
+            writer.dedent();
             writer.write("");
             writer.write("split_base_url(<<>>) ->");
             writer.indent();
