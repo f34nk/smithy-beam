@@ -198,7 +198,6 @@ public final class ErlangRouterEmitter {
         writer.dedent();
         writer.dedent();
         writer.write("end;");
-        writer.dedent();
     }
 
     private static String buildErlangPathMatchPattern(String uriTemplate, List<HttpBinding> labels) {

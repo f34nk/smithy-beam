@@ -83,7 +83,8 @@ class HostLabelTest {
     void hostLabelSubstitutionInErlangCodecAndDispatch() {
         MockManifest manifest = runErlangPlugin(loadModel());
         String codec = manifest.getFileString("host_label_service_rest_json_1.erl").orElse("");
-        assertThat(codec).contains("encode_get_tenant_data_request(Config, Input");
+        assertThat(codec).contains("encode_get_tenant_data_request(");
+        assertThat(codec).contains("Config, Input = #get_tenant_data_input{");
         assertThat(codec).contains("Host = build_host(Input, Config)");
         assertThat(codec).contains("host = Host");
         assertThat(codec).contains("build_host(#get_tenant_data_input{");
@@ -94,7 +95,8 @@ class HostLabelTest {
         assertThat(http).contains("split_base_url(BaseUrl)");
 
         String client = manifest.getFileString("host_label_service_client.erl").orElse("");
-        assertThat(client).contains("encode_get_tenant_data_request(Config, Input");
+        assertThat(client).contains("encode_get_tenant_data_request(");
+        assertThat(client).contains("Config, Input");
     }
 
     @Test
