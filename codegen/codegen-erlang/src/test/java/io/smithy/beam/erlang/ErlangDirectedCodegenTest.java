@@ -163,6 +163,10 @@ class ErlangDirectedCodegenTest {
         String line = lastLineOfTypeDeclaration(generateTypes(), "wide_union");
         assertThat(line.strip()).endsWith("{unknown, binary()}.");
         String content = generateTypes();
+        assertThat(content).contains("-type wide_union() ::");
+        assertThat(content).contains("    {a, order_string()}");
+        assertThat(content).contains("    | {b, order_integer()}");
+        assertThat(content).doesNotContain("{a, order_string()}  |");
         int wideStart = content.indexOf("-type wide_union() ::");
         int unknownPos = content.indexOf("{unknown, binary()}", wideStart);
         int aPos = content.indexOf("{a,", wideStart);

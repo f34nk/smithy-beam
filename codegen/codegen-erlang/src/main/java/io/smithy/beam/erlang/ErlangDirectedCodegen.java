@@ -484,17 +484,7 @@ final class ErlangDirectedCodegen
                     .collect(Collectors.toList());
             variants.add("{unknown, binary()}");
 
-            if (variants.size() <= 2) {
-                // Single-line form
-                writer.write("-type $L :: $L.", symbol.getName(), String.join(" | ", variants));
-            } else {
-                // Multi-line form matching Erlang convention
-                writer.write("-type $L ::", symbol.getName());
-                for (int i = 0; i < variants.size(); i++) {
-                    String sep = (i < variants.size() - 1) ? "  |" : ".";
-                    writer.write("    $L$L", variants.get(i), sep);
-                }
-            }
+            ErlangFormat.writeUnionType(writer, symbol.getName(), variants);
             writer.popState();
         });
     }
