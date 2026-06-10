@@ -40,8 +40,8 @@ final class ErlangHandlerDiscoveryEmitter {
             writer.indent();
             writer.write("{error, {impl_not_loaded, Impl}}");
             writer.dedent();
-            writer.write("end.");
             writer.dedent();
+            writer.write("end.");
             writer.dedent();
             writer.write("");
             writer.write("make_handler(Impl, Fun) ->");
@@ -64,8 +64,8 @@ final class ErlangHandlerDiscoveryEmitter {
             writer.write("persistent_term:put(?HANDLERS_KEY, #{}),");
             writer.write("{error, Reason}");
             writer.dedent();
-            writer.write("end.");
             writer.dedent();
+            writer.write("end.");
             writer.dedent();
             writer.write("");
             writer.write("dispatch_handler(Fun, Ctx, Input, Meta) ->");
@@ -81,8 +81,8 @@ final class ErlangHandlerDiscoveryEmitter {
             writer.indent();
             writer.write("{error, not_implemented}");
             writer.dedent();
-            writer.write("end.");
             writer.dedent();
+            writer.write("end.");
             writer.dedent();
             writer.write("");
             writer.popState();

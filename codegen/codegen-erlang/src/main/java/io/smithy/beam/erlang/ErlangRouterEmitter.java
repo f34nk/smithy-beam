@@ -196,6 +196,7 @@ public final class ErlangRouterEmitter {
         writer.indent();
         writer.write("{error, {not_found, <<\"$L\">>, Path}}", method);
         writer.dedent();
+        writer.dedent();
         writer.write("end;");
         writer.dedent();
     }
