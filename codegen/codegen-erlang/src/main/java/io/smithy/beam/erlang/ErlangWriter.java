@@ -14,6 +14,7 @@ public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImports
 
     public ErlangWriter(String filename) {
         super(new ErlangImports());
+        setIndentText("    ");
         trimBlankLines();
         trimTrailingSpaces();
     }
