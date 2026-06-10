@@ -26,14 +26,14 @@ class ErlangFormatTest {
                         + " -> {'ok', get_type_closure_output()} | {'error', term()}"));
 
         assertThat(out).contains("-spec get_type_closure(client_config(), get_type_closure_input()) ->");
-        assertThat(out).contains("    {'ok', get_type_closure_output()} | {'error', term()}");
+        assertThat(out).contains("    {'ok', get_type_closure_output()} | {'error', term()}.");
     }
 
     @Test
     void writeSpecKeepsShortSignatureOnOneLine() {
         String out = emit(w -> ErlangFormat.writeSpec(w, "callbacks() -> [{atom(), non_neg_integer()}]"));
 
-        assertThat(out).contains("    -spec callbacks() -> [{atom(), non_neg_integer()}]");
+        assertThat(out).contains("    -spec callbacks() -> [{atom(), non_neg_integer()}].");
         assertThat(out).doesNotContain("->\n        ");
     }
 

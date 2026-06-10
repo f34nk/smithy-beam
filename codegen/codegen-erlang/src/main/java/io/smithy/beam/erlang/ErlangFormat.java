@@ -24,16 +24,17 @@ final class ErlangFormat {
     }
 
     private static void writeTypedAnnotation(ErlangWriter writer, String annotation, String signature) {
-        String line = annotation + " " + signature;
-        int split = signature.indexOf(" -> ");
+        String body = signature.endsWith(".") ? signature.substring(0, signature.length() - 1) : signature;
+        String line = annotation + " " + body;
+        int split = body.indexOf(" -> ");
         if (split < 0 || line.length() <= SPEC_LINE_LIMIT) {
-            writer.write("$L $L", annotation, signature);
+            writer.write("$L $L.", annotation, body);
             return;
         }
-        String head = signature.substring(0, split);
-        String tail = signature.substring(split + 4);
+        String head = body.substring(0, split);
+        String tail = body.substring(split + 4);
         writer.write("$L $L ->", annotation, head);
-        writer.write("    $L", tail);
+        writer.write("    $L.", tail);
     }
 
     static void writeExport(ErlangWriter writer, List<String> exports) {
