@@ -108,8 +108,8 @@ public final class ErlangRuntimeHelpersEmitter {
                 writer.dedent();
                 writer.write("end");
                 writer.dedent();
-                writer.write("end;");
                 writer.dedent();
+                writer.write("end;");
                 writer.dedent();
                 writer.write("match_segments(_, _, _) ->");
                 writer.indent();
