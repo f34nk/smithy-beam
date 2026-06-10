@@ -122,6 +122,19 @@ final class ErlangFormat {
         writer.write(") ->");
     }
 
+    static String formatRecordField(String fieldName, String expression) {
+        String full = "    " + fieldName + " = " + expression;
+        if (full.length() <= SPEC_LINE_LIMIT) {
+            return full;
+        }
+        int open = expression.indexOf('(');
+        if (open < 0) {
+            return full;
+        }
+        return "    " + fieldName + " = " + expression.substring(0, open + 1)
+                + "\n        " + expression.substring(open + 1);
+    }
+
     static void writeListComprehension(
             ErlangWriter writer,
             String varName,

@@ -5,6 +5,8 @@ import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamSigV4Metadata;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
+import java.util.List;
+
 /**
  * Emits {@code runtime_http.erl} with an httpc-based HTTP dispatcher for generated clients.
  * The wrapper is thin: it converts http_request() to httpc args and wraps the response.
@@ -42,8 +44,15 @@ public final class ErlangHttpDispatchEmitter {
             writer.write("    dispatch_signed(HttpClient, Config, Request).");
             writer.write("");
             writer.write("dispatch_signed(HttpClient, Config, #http_request{");
-            writer.write("        method = Method, path = Path,");
-            writer.write("        query = Query, headers = Headers, body = Body, host = Host}) ->");
+            writer.indent();
+            writer.write("method = Method,");
+            writer.write("path = Path,");
+            writer.write("query = Query,");
+            writer.write("headers = Headers,");
+            writer.write("body = Body,");
+            writer.write("host = Host");
+            writer.dedent();
+            writer.write("}) ->");
             writer.indent();
             if (sigv4) {
                 writer.write("Config1 = case maps:get(credentials, Config, undefined) of");
@@ -61,7 +70,8 @@ public final class ErlangHttpDispatchEmitter {
                 writer.dedent();
                 writer.write("end,");
             }
-            writer.write("BaseUrl = case maps:get(base_url, $L, undefined) of", configVar);
+            ErlangFormat.beginBinding(writer, "BaseUrl");
+            writer.write("case maps:get(base_url, $L, undefined) of", configVar);
             writer.indent();
             writer.write("undefined ->");
             writer.indent();
@@ -84,38 +94,71 @@ public final class ErlangHttpDispatchEmitter {
             writer.dedent();
             writer.write("end;");
             writer.dedent();
-            writer.write("GivenUrl -> GivenUrl");
+            writer.write("GivenUrl ->");
+            writer.indent();
+            writer.write("GivenUrl");
+            writer.dedent();
             writer.dedent();
             writer.write("end,");
-            writer.write("QueryStr = case maps:to_list(Query) of");
+            ErlangFormat.endBinding(writer);
+            ErlangFormat.beginBinding(writer, "QueryStr");
+            writer.write("case maps:to_list(Query) of");
             writer.indent();
-            writer.write("[] -> <<>>;");
+            writer.write("[] ->");
+            writer.indent();
+            writer.write("<<>>;");
+            writer.dedent();
             writer.write("Pairs ->");
             writer.indent();
             writer.write("Encoded = uri_string:compose_query(");
-            writer.write("    [{K, V} || {K, V} <- Pairs]),");
+            writer.write("    [{K, V} || {K, V} <- Pairs]");
+            writer.write("),");
             writer.write("<<\"?\", Encoded/binary>>");
             writer.dedent();
             writer.dedent();
             writer.write("end,");
+            ErlangFormat.endBinding(writer);
             writer.write("{Scheme, DefaultAuthority} = split_base_url(BaseUrl),");
-            writer.write("Authority = case Host of undefined -> DefaultAuthority; _ -> Host end,");
+            ErlangFormat.beginBinding(writer, "Authority");
+            writer.write("case Host of");
+            writer.indent();
+            writer.write("undefined -> DefaultAuthority;");
+            writer.write("_ -> Host");
+            writer.dedent();
+            writer.write("end,");
+            ErlangFormat.endBinding(writer);
             writer.write("ReqUrl = <<Scheme/binary, Authority/binary, Path/binary, QueryStr/binary>>,");
-            writer.write("HttpcHeaders = [{binary_to_list(K), binary_to_list(V)}");
-            writer.write("    || {K, V} <- Headers],");
-            writer.write("Req = case Body of");
+            ErlangFormat.writeListComprehension(
+                    writer,
+                    "HttpcHeaders",
+                    "{binary_to_list(K), binary_to_list(V)}",
+                    List.of("{K, V} <- Headers"),
+                    List.of());
+            ErlangFormat.beginBinding(writer, "Req");
+            writer.write("case Body of");
             writer.indent();
             writer.write("<<>> -> {binary_to_list(ReqUrl), HttpcHeaders};");
             writer.write("_ -> {binary_to_list(ReqUrl), HttpcHeaders, mime(Headers), Body}");
             writer.dedent();
             writer.write("end,");
-            writer.write("case HttpClient:request(binary_to_atom(string:lowercase(Method), utf8),");
-            writer.write("        Req, [], [{body_format, binary}]) of");
+            ErlangFormat.endBinding(writer);
+            writer.write("case");
+            writer.indent();
+            writer.write("HttpClient:request(");
+            writer.indent();
+            writer.write("binary_to_atom(string:lowercase(Method), utf8),");
+            writer.write("Req, [], [{body_format, binary}]");
+            writer.dedent();
+            writer.write(") of");
             writer.indent();
             writer.write("{ok, {{_, Status, _}, RespHeaders, RespBody}} ->");
             writer.indent();
-            writer.write("BinHeaders = [{list_to_binary(K), list_to_binary(V)}");
-            writer.write("    || {K, V} <- RespHeaders],");
+            ErlangFormat.writeListComprehension(
+                    writer,
+                    "BinHeaders",
+                    "{list_to_binary(K), list_to_binary(V)}",
+                    List.of("{K, V} <- RespHeaders"),
+                    List.of());
             writer.write("{ok, #http_response{");
             writer.write("    status = Status,");
             writer.write("    headers = BinHeaders,");

@@ -84,7 +84,7 @@ public final class ErlangRestJson1Emitter {
             writer.write("-module($L).", codecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             for (OperationShape op : operations) {
@@ -140,7 +140,7 @@ public final class ErlangRestJson1Emitter {
             writer.write("-module($L).", serverCodecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             Set<ShapeId> emittedErrorEncoders = new LinkedHashSet<>();
@@ -186,16 +186,17 @@ public final class ErlangRestJson1Emitter {
 
         List<String> patternParts = buildPatternParts(
                 labels, queries, queryParams, headers, prefixHeaders, docMembers, reqPayload, sp, model);
-        String pattern = patternParts.isEmpty() ? "" : "\n    " + String.join(",\n    ", patternParts) + "\n";
 
         writer.write("%% Encode HTTP request for $L.", op.getId());
         if (encodeWithConfig) {
-            writer.write("-spec encode_$L_request(client_config(), $L) -> #http_request{}.",
-                    opName, inputType);
-            writer.write("encode_$L_request(Config, Input = #$L{$L}) ->", opName, inputRecord, pattern);
+            ErlangFormat.writeSpec(
+                    writer, "encode_" + opName + "_request(client_config(), " + inputType + ") -> #http_request{}");
+            ErlangFormat.writeRecordFunctionHead(
+                    writer, "encode_" + opName + "_request", "Config, Input", inputRecord, patternParts);
         } else {
-            writer.write("-spec encode_$L_request($L) -> #http_request{}.", opName, inputType);
-            writer.write("encode_$L_request(Input = #$L{$L}) ->", opName, inputRecord, pattern);
+            ErlangFormat.writeSpec(writer, "encode_" + opName + "_request(" + inputType + ") -> #http_request{}");
+            ErlangFormat.writeRecordFunctionHead(
+                    writer, "encode_" + opName + "_request", "Input", inputRecord, patternParts);
         }
         writer.indent();
 
@@ -234,19 +235,19 @@ public final class ErlangRestJson1Emitter {
         if (queries.isEmpty()) {
             writer.write("Query = [],");
         } else {
-            writer.write("Query = lists:filtermap(fun");
+            List<String> queryClauses = new ArrayList<>();
             for (HttpBinding qb : queries) {
-                String fieldName = BeamNameUtils.toSnakeCase(qb.getMember().getMemberName());
                 String paramName = qb.getLocationName();
-                writer.write("    (V) when V =/= undefined -> {true, {<<\"$L\">>, encode_query_value(V)}};",
-                        paramName);
+                queryClauses.add(
+                        "(V) when V =/= undefined -> {true, {<<\"" + paramName + "\">>, encode_query_value(V)}};");
             }
-            writer.write("    (_) -> false");
-            writer.write("end, [$L]),",
-                    queries.stream()
-                            .map(qb -> toBindingVar(
-                                    BeamNameUtils.toSnakeCase(qb.getMember().getMemberName())))
-                            .collect(Collectors.joining(", ")));
+            queryClauses.add("(_) -> false");
+            String queryArgs = queries.stream()
+                    .map(qb -> toBindingVar(BeamNameUtils.toSnakeCase(qb.getMember().getMemberName())))
+                    .collect(Collectors.joining(", "));
+            writer.write("Query = ");
+            ErlangFormat.writeFiltermap(writer, queryClauses, queryArgs);
+            writer.write(",");
         }
 
         if (!queryParams.isEmpty()) {
@@ -269,19 +270,19 @@ public final class ErlangRestJson1Emitter {
         if (headers.isEmpty()) {
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>}],", requestContentType);
         } else {
-            writer.write("Headers0 = lists:filtermap(fun");
+            List<String> headerClauses = new ArrayList<>();
             for (HttpBinding hb : headers) {
-                String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
                 String headerName = hb.getLocationName();
-                writer.write("    (V) when V =/= undefined -> {true, {<<\"$L\">>, to_binary(V)}};",
-                        headerName);
+                headerClauses.add(
+                        "(V) when V =/= undefined -> {true, {<<\"" + headerName + "\">>, to_binary(V)}};");
             }
-            writer.write("    (_) -> false");
-            writer.write("end, [$L]),",
-                    headers.stream()
-                            .map(hb -> toBindingVar(
-                                    BeamNameUtils.toSnakeCase(hb.getMember().getMemberName())))
-                            .collect(Collectors.joining(", ")));
+            headerClauses.add("(_) -> false");
+            String headerArgs = headers.stream()
+                    .map(hb -> toBindingVar(BeamNameUtils.toSnakeCase(hb.getMember().getMemberName())))
+                    .collect(Collectors.joining(", "));
+            writer.write("Headers0 = ");
+            ErlangFormat.writeFiltermap(writer, headerClauses, headerArgs);
+            writer.write(",");
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>} | Headers0],", requestContentType);
         }
 
@@ -353,26 +354,35 @@ public final class ErlangRestJson1Emitter {
 
         writer.write("%% Decode HTTP request for $L.", op.getId());
         if (labels.isEmpty()) {
-            writer.write("-spec decode_$L_request(#http_request{}) -> $L.", opName, inputType);
+            ErlangFormat.writeSpec(writer, "decode_" + opName + "_request(#http_request{}) -> " + inputType);
             if (streamingRequestPayload) {
-                writer.write(
-                        "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body, stream = Stream}) ->",
-                        opName);
+                ErlangFormat.breakFunctionHead(
+                        writer,
+                        "decode_" + opName + "_request",
+                        List.of("#http_request{query = Query, headers = Headers, body = Body, stream = Stream}"));
             } else {
-                writer.write(
-                        "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body}) ->",
-                        opName);
+                ErlangFormat.breakFunctionHead(
+                        writer,
+                        "decode_" + opName + "_request",
+                        List.of("#http_request{query = Query, headers = Headers, body = Body}"));
             }
         } else {
-            writer.write("-spec decode_$L_request(#http_request{}, map()) -> $L.", opName, inputType);
+            ErlangFormat.writeSpec(
+                    writer, "decode_" + opName + "_request(#http_request{}, map()) -> " + inputType);
             if (streamingRequestPayload) {
-                writer.write(
-                        "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body, stream = Stream}, LabelMap) ->",
-                        opName);
+                ErlangFormat.breakFunctionHead(
+                        writer,
+                        "decode_" + opName + "_request",
+                        List.of(
+                                "#http_request{query = Query, headers = Headers, body = Body, stream = Stream}",
+                                "LabelMap"));
             } else {
-                writer.write(
-                        "decode_$L_request(#http_request{query = Query, headers = Headers, body = Body}, LabelMap) ->",
-                        opName);
+                ErlangFormat.breakFunctionHead(
+                        writer,
+                        "decode_" + opName + "_request",
+                        List.of(
+                                "#http_request{query = Query, headers = Headers, body = Body}",
+                                "LabelMap"));
             }
         }
         writer.indent();
@@ -495,25 +505,26 @@ public final class ErlangRestJson1Emitter {
                 ? "" : "\n    " + String.join(",\n    ", patternParts) + "\n";
 
         writer.write("%% Encode HTTP response for $L.", op.getId());
-        writer.write("-spec encode_$L_response($L) -> #http_response{}.", opName, outputType);
+        ErlangFormat.writeSpec(writer, "encode_" + opName + "_response(" + outputType + ") -> #http_response{}");
         writer.write("encode_$L_response(#$L{$L}) ->", opName, outputRecord, pattern);
         writer.indent();
 
         if (respHeaders.isEmpty()) {
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>}],", responseContentType);
         } else {
-            writer.write("ExtraHeaders = lists:filtermap(fun");
+            List<String> headerClauses = new ArrayList<>();
             for (HttpBinding hb : respHeaders) {
                 String headerName = hb.getLocationName();
-                writer.write("    (V) when V =/= undefined -> {true, {<<\"$L\">>, to_binary(V)}};",
-                        headerName);
+                headerClauses.add(
+                        "(V) when V =/= undefined -> {true, {<<\"" + headerName + "\">>, to_binary(V)}};");
             }
-            writer.write("    (_) -> false");
-            writer.write("end, [$L]),",
-                    respHeaders.stream()
-                            .map(hb -> toBindingVar(
-                                    BeamNameUtils.toSnakeCase(hb.getMember().getMemberName())))
-                            .collect(Collectors.joining(", ")));
+            headerClauses.add("(_) -> false");
+            String headerArgs = respHeaders.stream()
+                    .map(hb -> toBindingVar(BeamNameUtils.toSnakeCase(hb.getMember().getMemberName())))
+                    .collect(Collectors.joining(", "));
+            writer.write("ExtraHeaders = ");
+            ErlangFormat.writeFiltermap(writer, headerClauses, headerArgs);
+            writer.write(",");
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>} | ExtraHeaders],", responseContentType);
         }
 
@@ -662,8 +673,9 @@ public final class ErlangRestJson1Emitter {
         String eventStreamModule = layout.eventStreamModuleName();
 
         writer.write("%% Decode HTTP response for $L.", op.getId());
-        writer.write("-spec decode_$L_response(#http_response{}) -> {'ok', $L} | {'error', term()}.",
-                opName, outputType);
+        ErlangFormat.writeSpec(
+                writer,
+                "decode_" + opName + "_response(#http_response{}) -> {'ok', " + outputType + "} | {'error', term()}");
         if (!respCode.isEmpty()) {
             if (streamingResponsePayload) {
                 writer.write(
@@ -702,9 +714,13 @@ public final class ErlangRestJson1Emitter {
 
         if (!respDoc.isEmpty()
                 || (!respPayload.isEmpty() && !needsContentTypeCheck && !eventStreamResponsePayload)) {
-            writer.write("Decoded = case Body of");
+            ErlangFormat.beginBinding(writer, "Decoded");
+            writer.write("case Body of");
             writer.indent();
-            writer.write("<<>> -> #{};");
+            writer.write("<<>> ->");
+            writer.indent();
+            writer.write("#{};");
+            writer.dedent();
             writer.write("_ ->");
             writer.indent();
             writer.write("case jsone:try_decode(Body) of");
@@ -716,6 +732,7 @@ public final class ErlangRestJson1Emitter {
             writer.dedent();
             writer.dedent();
             writer.write("end,");
+            ErlangFormat.endBinding(writer);
         }
 
         for (HttpBinding hb : respHeaders) {
@@ -743,19 +760,23 @@ public final class ErlangRestJson1Emitter {
             Shape target = model.expectShape(db.getMember().getTarget());
             if (target instanceof EnumShape || target instanceof IntEnumShape) {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
-                recordFields.add("    " + fieldName + " = decode_" + helperName
-                        + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
+                recordFields.add(ErlangFormat.formatRecordField(
+                        fieldName,
+                        "decode_" + helperName + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))"));
             } else if (target instanceof UnionShape) {
                 String helperName = sp.toSymbol(target).getName().replace("()", "");
-                recordFields.add("    " + fieldName + " = decode_" + helperName
-                        + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
+                recordFields.add(ErlangFormat.formatRecordField(
+                        fieldName,
+                        "decode_" + helperName + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))"));
             } else if (target instanceof TimestampShape) {
                 String decodeHelper = timestampDecodeHelper(
                         httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
-                recordFields.add("    " + fieldName + " = " + decodeHelper
-                        + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
+                recordFields.add(ErlangFormat.formatRecordField(
+                        fieldName,
+                        decodeHelper + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))"));
             } else {
-                recordFields.add("    " + documentDecodeAssignment(fieldName, wireKey, target));
+                recordFields.add(ErlangFormat.formatRecordField(
+                        fieldName, documentDecodeExpression(fieldName, wireKey, target)));
             }
         }
         for (HttpBinding pb : respPayload) {
@@ -779,19 +800,16 @@ public final class ErlangRestJson1Emitter {
         if (!recordFields.isEmpty()) {
             success.append("\n").append(String.join(",\n", recordFields)).append("\n");
         }
-        success.append("}}");
+        success.append("}};");
         if (BeamHttpChecksumIndex.of(model).responseChecksums(op).isEmpty()) {
             writer.write("$L", success.toString());
         } else {
-            writer.write("Result = $L,", success.toString());
+            writer.write("Result = $L", success.toString());
             ErlangHttpChecksumEmitter.emitResponseChecksumGuard(writer, model, op, "Result");
         }
         if (needsContentTypeCheck) {
-            writer.write(";");
             writer.dedent();
             writer.write("end;");
-        } else {
-            writer.write(";");
         }
 
         writer.dedent();
@@ -856,7 +874,7 @@ public final class ErlangRestJson1Emitter {
                 writer.write("<<\"$L\">> ->", localName);
                 writer.indent();
                 writer.write("{error, #$L{$L}};", recName,
-                        fields.isEmpty() ? "" : "\n        " + String.join(",\n        ", fields) + "\n    ");
+                        fields.isEmpty() ? "" : "\n    " + String.join(",\n    ", fields) + "\n    ");
                 writer.dedent();
             }
             writer.write("_ ->");
@@ -1139,16 +1157,17 @@ public final class ErlangRestJson1Emitter {
         writer.write("prefix_headers_from_list(Headers, Prefix) ->");
         writer.write("    Map = maps:from_list([");
         writer.write("        {binary:part(Name, byte_size(Prefix)), Val}");
-        writer.write("        || {Name, Val} <- Headers,");
-        writer.write("           byte_size(Name) > byte_size(Prefix),");
-        writer.write("           binary:part(Name, 0, byte_size(Prefix)) =:= Prefix");
+        writer.write("     || {Name, Val} <- Headers,");
+        writer.write("        byte_size(Name) > byte_size(Prefix),");
+        writer.write("        binary:part(Name, 0, byte_size(Prefix)) =:= Prefix");
         writer.write("    ]),");
         writer.write("    case maps:size(Map) of");
         writer.write("        0 -> undefined;");
         writer.write("        _ -> Map");
         writer.write("    end.");
         writer.write("");
-        writer.write("decode_json_body(<<>>) -> #{};");
+        writer.write("decode_json_body(<<>>) ->");
+        writer.write("    #{};");
         writer.write("decode_json_body(Body) ->");
         writer.write("    case jsone:try_decode(Body) of");
         writer.write("        {ok, V, _} when is_map(V) -> V;");
@@ -1158,8 +1177,7 @@ public final class ErlangRestJson1Emitter {
         writer.write("content_type_matches(Headers, Expected) ->");
         writer.write("    case proplists:get_value(<<\"Content-Type\">>, Headers, undefined) of");
         writer.write("        Expected -> true;");
-        writer.write("        <<_/binary>> = CT ->");
-        writer.write("            ct_base(CT) =:= ct_base(Expected);");
+        writer.write("        <<_/binary>> = CT -> ct_base(CT) =:= ct_base(Expected);");
         writer.write("        _ -> false");
         writer.write("    end.");
         writer.write("");
@@ -1169,17 +1187,32 @@ public final class ErlangRestJson1Emitter {
         writer.write("        _ -> CT");
         writer.write("    end.");
         writer.write("");
-        writer.write("decode_sparse_list(undefined) -> undefined;");
+        writer.write("decode_sparse_list(undefined) ->");
+        writer.write("    undefined;");
         writer.write("decode_sparse_list(List) when is_list(List) ->");
-        writer.write("    [case V of null -> undefined; _ -> V end || V <- List].");
+        writer.write("    [");
+        writer.write("        case V of");
+        writer.write("            null -> undefined;");
+        writer.write("            _ -> V");
+        writer.write("        end");
+        writer.write("     || V <- List");
+        writer.write("    ].");
         writer.write("");
-        writer.write("decode_list(undefined) -> undefined;");
+        writer.write("decode_list(undefined) ->");
+        writer.write("    undefined;");
         writer.write("decode_list(List) when is_list(List) ->");
         writer.write("    [V || V <- List, V =/= null].");
         writer.write("");
-        writer.write("decode_sparse_map(undefined) -> undefined;");
+        writer.write("decode_sparse_map(undefined) ->");
+        writer.write("    undefined;");
         writer.write("decode_sparse_map(Map) when is_map(Map) ->");
-        writer.write("    maps:map(fun(_K, null) -> undefined; (_K, V) -> V end, Map).");
+        writer.write("    maps:map(");
+        writer.write("        fun");
+        writer.write("            (_K, null) -> undefined;");
+        writer.write("            (_K, V) -> V");
+        writer.write("        end,");
+        writer.write("        Map");
+        writer.write("    ).");
         writer.write("");
         writer.write("encode_sparse_list(undefined) -> null;");
         writer.write("encode_sparse_list(List) when is_list(List) ->");
@@ -1187,7 +1220,13 @@ public final class ErlangRestJson1Emitter {
         writer.write("");
         writer.write("encode_sparse_map(undefined) -> null;");
         writer.write("encode_sparse_map(Map) when is_map(Map) ->");
-        writer.write("    maps:map(fun(_K, undefined) -> null; (_K, V) -> V end, Map).");
+        writer.write("    maps:map(");
+        writer.write("        fun");
+        writer.write("            (_K, undefined) -> null;");
+        writer.write("            (_K, V) -> V");
+        writer.write("        end,");
+        writer.write("        Map");
+        writer.write("    ).");
         writer.write("");
         writer.write("%% Timestamp helpers");
         writer.write("%% Erlang timestamp() is {MegaSecs, Secs, MicroSecs}.");
@@ -1456,6 +1495,12 @@ public final class ErlangRestJson1Emitter {
     /** Erlang variable for a snake_case record field (Inaka CamelCase, no underscores). */
     private static String toBindingVar(String snakeField) {
         return BeamNameUtils.toCamelCaseVariable(snakeField);
+    }
+
+    private static String documentDecodeExpression(String fieldName, String jsonKey, Shape target) {
+        String assignment = documentDecodeAssignment(fieldName, jsonKey, target);
+        int eq = assignment.indexOf(" = ");
+        return eq >= 0 ? assignment.substring(eq + 3) : assignment;
     }
 
     private static String documentDecodeAssignment(String fieldName, String jsonKey, Shape target) {

@@ -48,11 +48,11 @@ public final class ErlangRuntimeHelpersEmitter {
             writer.write("%% Do not edit.");
             writer.write("-module($L).", helpersMod);
             writer.write("");
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             if (awsMetadata) {
-                writer.write("-spec resolve_base_url(map()) -> binary().");
+                ErlangFormat.writeSpec(writer, "resolve_base_url(map()) -> binary()");
                 writer.write("resolve_base_url(Config) ->");
                 writer.indent();
                 writer.write("Prefix = maps:get(endpoint_prefix, Config),");

@@ -296,9 +296,14 @@ final class ErlangClientDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
-            writer.write(
-                    "-spec $L(client_config(), $L) -> {'ok', $L} | {'error', term()}.",
-                    opSym.getName(), inSym.getName(), outSym.getName());
+            ErlangFormat.writeSpec(
+                    writer,
+                    opSym.getName()
+                            + "(client_config(), "
+                            + inSym.getName()
+                            + ") -> {'ok', "
+                            + outSym.getName()
+                            + "} | {'error', term()}");
             if (hasProtocol) {
                 String codecModule =
                         layout.clientCodecModuleName(

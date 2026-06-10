@@ -50,7 +50,7 @@ public final class ErlangPaginatorEmitter {
             writer.write("%% Generated paginators for $L.", service.getId());
             writer.write("-module($L).", paginatorMod);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             for (OperationShape op : paginated) {
@@ -88,7 +88,10 @@ public final class ErlangPaginatorEmitter {
                 writer.write("case $L of", outputTokenExpr);
                 writer.indent();
                 if (items != null) {
-                    writer.write("undefined -> {ok, NewAcc};");
+                    writer.write("undefined ->");
+                    writer.indent();
+                    writer.write("{ok, NewAcc};");
+                    writer.dedent();
                 } else {
                     writer.write("undefined -> {ok, lists:reverse(NewAcc)};");
                 }

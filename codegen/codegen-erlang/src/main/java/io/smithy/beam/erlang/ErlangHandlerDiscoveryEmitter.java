@@ -30,8 +30,8 @@ final class ErlangHandlerDiscoveryEmitter {
             writer.write("Handlers = maps:from_list([");
             writer.indent();
             writer.write("{Fun, make_handler(Impl, Fun)}");
-            writer.write("|| {Fun, 3} <- Callbacks,");
-            writer.write("   erlang:function_exported(Impl, Fun, 3)");
+            writer.write(" || {Fun, 3} <- Callbacks,");
+            writer.write("    erlang:function_exported(Impl, Fun, 3)");
             writer.dedent();
             writer.write("]),");
             writer.write("{ok, Handlers};");
