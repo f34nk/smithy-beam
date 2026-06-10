@@ -150,7 +150,7 @@ final class ElixirDirectedCodegen
             writeListAliases(writer, model, closure, sp, ctx, preambleAliasesEmitted);
             writeMapAliases(writer, model, closure, sp, ctx, preambleAliasesEmitted);
 
-            assertPreambleAliasCoverage(closure, preambleAliasesEmitted);
+            assertPreambleAliasCoverage(closure, sp, preambleAliasesEmitted);
         });
     }
 
@@ -189,12 +189,19 @@ final class ElixirDirectedCodegen
 
     /**
      * Shape ids that must receive exactly one preamble {@code @type} alias for the given closure.
+     * Scalars whose alias name equals the underlying built-in type are excluded.
      */
-    static Set<ShapeId> expectedPreambleAliasShapeIds(Set<Shape> closure) {
+    static Set<ShapeId> expectedPreambleAliasShapeIds(
+            Set<Shape> closure, SymbolProvider symbolProvider) {
         return closure.stream()
                 .filter(ElixirDirectedCodegen::shouldEmitPreambleTypeAlias)
+                .filter(shape -> !isBuiltinTypeSymbol(symbolProvider.toSymbol(shape)))
                 .map(Shape::getId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private static boolean isBuiltinTypeSymbol(Symbol symbol) {
+        return symbol.getProperty("builtIn", Boolean.class).orElse(false);
     }
 
     private static void recordPreambleAlias(Shape shape, Set<ShapeId> emitted) {
@@ -203,8 +210,9 @@ final class ElixirDirectedCodegen
         }
     }
 
-    private static void assertPreambleAliasCoverage(Set<Shape> closure, Set<ShapeId> emitted) {
-        Set<ShapeId> expected = expectedPreambleAliasShapeIds(closure);
+    private static void assertPreambleAliasCoverage(
+            Set<Shape> closure, SymbolProvider symbolProvider, Set<ShapeId> emitted) {
+        Set<ShapeId> expected = expectedPreambleAliasShapeIds(closure, symbolProvider);
         for (ShapeId id : expected) {
             assert emitted.contains(id) : "missing preamble alias for " + id;
         }
@@ -258,8 +266,11 @@ final class ElixirDirectedCodegen
                 .filter(ElixirDirectedCodegen::shouldEmitPreambleTypeAlias)
                 .sorted(Comparator.comparing(s -> s.getId().getName()))
                 .forEach(s -> {
-                    recordPreambleAlias(s, preambleAliasesEmitted);
                     Symbol sym = sp.toSymbol(s);
+                    if (isBuiltinTypeSymbol(sym)) {
+                        return;
+                    }
+                    recordPreambleAlias(s, preambleAliasesEmitted);
                     String baseType = sym.getProperty("baseType", String.class).orElse("any()");
                     if (s instanceof BlobShape
                             && sym.getProperty("streamingBlob", Boolean.class).orElse(false)) {

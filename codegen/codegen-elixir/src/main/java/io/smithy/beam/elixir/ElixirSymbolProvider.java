@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamScalarTypeAliases;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamSettings;
@@ -258,6 +259,9 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
     private Symbol namedScalar(Shape shape, String baseType) {
         String name = toTypeName(shape);
+        if (BeamScalarTypeAliases.isRedundant(name, baseType)) {
+            return builtin(baseType);
+        }
         Symbol.Builder builder =
                 Symbol.builder()
                         .name(name)

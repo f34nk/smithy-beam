@@ -330,6 +330,66 @@ class ErlangSymbolProviderTest {
     }
 
     @Nested
+    class RedundantPrimitiveScalars {
+
+        static Model model;
+        static ErlangSymbolProvider provider;
+
+        @BeforeAll
+        static void setup() {
+            String idl = """
+                    $version: "2"
+                    namespace com.awsprimitive
+
+                    service AwsPrimitiveService {
+                        operations: [GetScalars]
+                    }
+
+                    @readonly
+                    operation GetScalars {
+                        output: ScalarBundle
+                    }
+
+                    structure ScalarBundle {
+                        f: Float
+                    }
+
+                    float Float
+                    integer Integer
+                    boolean Boolean
+                    """;
+            model = Model.assembler().addUnparsedModel("aws_primitive.smithy", idl).assemble().unwrap();
+            ServiceShape service =
+                    model.expectShape(ShapeId.from("com.awsprimitive#AwsPrimitiveService"), ServiceShape.class);
+            provider = new ErlangSymbolProvider(
+                    testSettings(), model, service, DEF_FILE, BeamCodegenKind.TYPES);
+        }
+
+        @Test
+        void floatShapeResolvesToBuiltinFloat() {
+            Symbol sym = provider.toSymbol(model.expectShape(ShapeId.from("com.awsprimitive#Float")));
+            assertThat(sym.getName()).isEqualTo("float()");
+            assertThat(sym.getDefinitionFile()).isEmpty();
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(true);
+            assertThat(sym.getProperty("baseType")).isEmpty();
+        }
+
+        @Test
+        void integerShapeResolvesToBuiltinInteger() {
+            Symbol sym = provider.toSymbol(model.expectShape(ShapeId.from("com.awsprimitive#Integer")));
+            assertThat(sym.getName()).isEqualTo("integer()");
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(true);
+        }
+
+        @Test
+        void booleanShapeResolvesToBuiltinBoolean() {
+            Symbol sym = provider.toSymbol(model.expectShape(ShapeId.from("com.awsprimitive#Boolean")));
+            assertThat(sym.getName()).isEqualTo("boolean()");
+            assertThat(sym.getProperty("builtIn", Boolean.class)).contains(true);
+        }
+    }
+
+    @Nested
     class ClosureBuiltinRegression {
 
         @Test

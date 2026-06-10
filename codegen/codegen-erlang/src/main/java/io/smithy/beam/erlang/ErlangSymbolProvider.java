@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamScalarTypeAliases;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamSettings;
@@ -256,9 +257,13 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
      */
     private Symbol namedScalar(Shape shape, String baseType) {
         String name = toTypeName(shape);
+        String typeName = name + "()";
+        if (BeamScalarTypeAliases.isRedundant(typeName, baseType)) {
+            return builtin(baseType);
+        }
         Symbol.Builder builder =
                 Symbol.builder()
-                        .name(name + "()")
+                        .name(typeName)
                         .definitionFile(definitionFile)
                         .putProperty("builtIn", false)
                         .putProperty("typeKind", "alias")

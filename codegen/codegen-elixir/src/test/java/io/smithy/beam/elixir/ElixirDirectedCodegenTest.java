@@ -218,8 +218,21 @@ class ElixirDirectedCodegenTest {
 
         ServiceShape service = preambleModel.expectShape(
                 ShapeId.from("com.preambleaudit#PreambleAuditService"), ServiceShape.class);
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        BeamElixirLayout layout = new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+        String typesModule = layout.typesModuleFile();
+        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+        SymbolProvider symbolProvider = new ElixirSymbolProvider(
+                settings,
+                preambleModel,
+                service,
+                typesModule,
+                typesModuleName,
+                BeamCodegenKind.TYPES);
         Set<Shape> closure = new Walker(preambleModel).walkShapes(service);
-        Set<ShapeId> expected = ElixirDirectedCodegen.expectedPreambleAliasShapeIds(closure);
+        Set<ShapeId> expected =
+                ElixirDirectedCodegen.expectedPreambleAliasShapeIds(closure, symbolProvider);
 
         assertThat(expected)
                 .contains(
@@ -316,7 +329,8 @@ class ElixirDirectedCodegenTest {
 
         String content = manifest.expectFileString(typesModule);
         Set<Shape> closure = new Walker(preambleModel).walkShapes(service);
-        Set<ShapeId> expected = ElixirDirectedCodegen.expectedPreambleAliasShapeIds(closure);
+        Set<ShapeId> expected =
+                ElixirDirectedCodegen.expectedPreambleAliasShapeIds(closure, symbolProvider);
 
         for (ShapeId shapeId : expected) {
             Shape shape = preambleModel.expectShape(shapeId, Shape.class);
@@ -337,6 +351,86 @@ class ElixirDirectedCodegenTest {
                 .contains("@type pe_string_map :: %{")
                 .contains(".pe_string() => ")
                 .contains(".pe_string()}");
+    }
+
+    @Test
+    void omitsRedundantPrimitiveNamedScalarAliases() {
+        Model primitiveModel = Model.assembler()
+                .addUnparsedModel(
+                        "primitive_aliases.smithy",
+                        """
+                        $version: "2"
+                        namespace com.primitivealiases
+
+                        service PrimitiveAliasService {
+                            operations: [GetPrimitiveBundle]
+                        }
+
+                        @readonly
+                        operation GetPrimitiveBundle {
+                            output: PrimitiveBundle
+                        }
+
+                        structure PrimitiveBundle {
+                            f: Float
+                            i: Integer
+                            b: Boolean
+                            d: Double
+                            s: String
+                        }
+
+                        float Float
+                        integer Integer
+                        boolean Boolean
+                        double Double
+                        string String
+                        """)
+                .assemble()
+                .unwrap();
+
+        ServiceShape service = primitiveModel.expectShape(
+                ShapeId.from("com.primitivealiases#PrimitiveAliasService"), ServiceShape.class);
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        BeamElixirLayout layout = new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+        String typesModule = layout.typesModuleFile();
+        String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+        SymbolProvider symbolProvider = new ElixirSymbolProvider(
+                settings,
+                primitiveModel,
+                service,
+                typesModule,
+                typesModuleName,
+                BeamCodegenKind.TYPES);
+
+        assertThat(symbolProvider.toSymbol(
+                        primitiveModel.expectShape(ShapeId.from("com.primitivealiases#Float"))))
+                .satisfies(sym -> {
+                    assertThat(sym.getName()).isEqualTo("float()");
+                    assertThat(sym.getProperty("builtIn", Boolean.class)).contains(true);
+                });
+
+        MockManifest manifest = new MockManifest();
+        ObjectNode pluginSettings = ObjectNode.builder()
+                .withMember("service", "com.primitivealiases#PrimitiveAliasService")
+                .withMember("edition", "2026")
+                .build();
+        new ElixirTypeGeneration()
+                .generate(PluginContext.builder()
+                        .model(primitiveModel)
+                        .fileManifest(manifest)
+                        .settings(pluginSettings)
+                        .build());
+
+        String content = manifest.expectFileString(typesModule);
+        assertThat(content).doesNotContain("@type float ::");
+        assertThat(content).doesNotContain("@type integer ::");
+        assertThat(content).doesNotContain("@type boolean ::");
+        assertThat(content).contains("@type double :: float()");
+        assertThat(content).contains("@type string :: String.t()");
+        assertThat(content).contains("f: float()");
+        assertThat(content).contains("i: integer()");
+        assertThat(content).contains("b: boolean()");
     }
 
     private static int countOccurrences(String haystack, String needle) {
