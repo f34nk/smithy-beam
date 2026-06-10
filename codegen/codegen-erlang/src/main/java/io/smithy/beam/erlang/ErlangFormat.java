@@ -16,15 +16,23 @@ final class ErlangFormat {
     private ErlangFormat() {}
 
     static void writeSpec(ErlangWriter writer, String signature) {
-        String line = "-spec " + signature;
+        writeTypedAnnotation(writer, "-spec", signature);
+    }
+
+    static void writeCallback(ErlangWriter writer, String signature) {
+        writeTypedAnnotation(writer, "-callback", signature);
+    }
+
+    private static void writeTypedAnnotation(ErlangWriter writer, String annotation, String signature) {
+        String line = annotation + " " + signature;
         int split = signature.indexOf(" -> ");
         if (split < 0 || line.length() <= SPEC_LINE_LIMIT) {
-            writer.write("-spec $L", signature);
+            writer.write("$L $L", annotation, signature);
             return;
         }
         String head = signature.substring(0, split);
         String tail = signature.substring(split + 4);
-        writer.write("-spec $L ->", head);
+        writer.write("$L $L ->", annotation, head);
         writer.write("    $L", tail);
     }
 

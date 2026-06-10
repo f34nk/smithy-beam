@@ -75,7 +75,7 @@ public final class ErlangRestXmlEmitter {
             writer.write("-module($L).", codecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             emitServiceXmlNamespace(writer, serviceNamespace);
@@ -130,7 +130,7 @@ public final class ErlangRestXmlEmitter {
             writer.write("-module($L).", serverCodecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             emitServiceXmlNamespace(writer, serviceNamespace);
@@ -275,8 +275,9 @@ public final class ErlangRestXmlEmitter {
         List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
 
         writer.write("%% Decode REST-XML response for $L.", op.getId());
-        writer.write("-spec decode_$L_response(#http_response{}) -> {'ok', $L} | {'error', term()}.",
-                opName, outputType);
+        ErlangFormat.writeSpec(
+                writer,
+                "decode_" + opName + "_response(#http_response{}) -> {'ok', " + outputType + "} | {'error', term()}");
         writer.write("decode_$L_response(#http_response{status = $L, headers = Headers, body = Body}) ->",
                 opName, successCode);
         writer.indent();
@@ -387,7 +388,7 @@ public final class ErlangRestXmlEmitter {
         String pattern = patternParts.isEmpty() ? "" : "\n    " + String.join(",\n    ", patternParts) + "\n";
 
         writer.write("%% Encode REST-XML response for $L.", op.getId());
-        writer.write("-spec encode_$L_response($L) -> #http_response{}.", opName, outputType);
+        ErlangFormat.writeSpec(writer, "encode_" + opName + "_response(" + outputType + ") -> #http_response{}");
         writer.write("encode_$L_response(#$L{$L}) ->", opName, outputRecord, pattern);
         writer.indent();
 
@@ -826,11 +827,12 @@ public final class ErlangRestXmlEmitter {
 
         writer.write("%% Encode REST-XML request for $L.", op.getId());
         if (encodeWithConfig) {
-            writer.write("-spec encode_$L_request(client_config(), $L) -> #http_request{}.",
-                    opName, inputType);
+            ErlangFormat.writeSpec(
+                    writer,
+                    "encode_" + opName + "_request(client_config(), " + inputType + ") -> #http_request{}");
             writer.write("encode_$L_request(Config, Input = #$L{$L}) ->", opName, inputRecord, pattern);
         } else {
-            writer.write("-spec encode_$L_request($L) -> #http_request{}.", opName, inputType);
+            ErlangFormat.writeSpec(writer, "encode_" + opName + "_request(" + inputType + ") -> #http_request{}");
             writer.write("encode_$L_request(Input = #$L{$L}) ->", opName, inputRecord, pattern);
         }
         writer.indent();

@@ -33,8 +33,9 @@ public final class ErlangEndpointRulesEmitter {
             writer.write("-type client_config() :: #{binary() => term()}.");
             writer.write("-type endpoint_params() :: #{binary() => term()}.");
             writer.write("");
-            writer.write("-spec resolve(client_config(), endpoint_params()) ->");
-            writer.write("    {ok, #{url := binary()}} | {error, term()}.");
+            ErlangFormat.writeSpec(
+                    writer,
+                    "resolve(client_config(), endpoint_params()) -> {ok, #{url := binary()}} | {error, term()}");
             writer.write("resolve(Config, Params) ->");
             writer.indent();
             writer.write("aws_endpoint_rules:evaluate(?ENDPOINT_RULE_SET, merge_params(Config, Params)).");

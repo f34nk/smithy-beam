@@ -147,7 +147,7 @@ final class ErlangServerDirectedCodegen
             writer.pushModuleHeaderSection();
             writer.write("-module($L).", layout.serverModuleName());
             writer.write("-behaviour($L).", behaviourMod);
-            writer.write("-export([$L]).", exportList);
+            ErlangFormat.writeExport(writer, exports);
             writer.popState();
 
             writer.pushDependenciesSection();

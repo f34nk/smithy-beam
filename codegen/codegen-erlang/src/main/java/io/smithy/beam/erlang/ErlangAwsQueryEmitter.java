@@ -68,7 +68,7 @@ public final class ErlangAwsQueryEmitter {
             writer.write("-module($L).", codecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             for (OperationShape op : operations) {
@@ -127,7 +127,7 @@ public final class ErlangAwsQueryEmitter {
             writer.write("-module($L).", serverCodecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             emitServiceXmlNamespace(writer, serviceNamespace);
@@ -159,7 +159,7 @@ public final class ErlangAwsQueryEmitter {
         String inputType = sp.toSymbol(input).getName();
 
         writer.write("%% Decode AWS Query server request for $L.", op.getId());
-        writer.write("-spec decode_$L_request(#http_request{}) -> $L.", opName, inputType);
+        ErlangFormat.writeSpec(writer, "decode_" + opName + "_request(#http_request{}) -> " + inputType);
         writer.write("decode_$L_request(#http_request{body = Body}) ->", opName);
         writer.indent();
         writer.write("Params = parse_query_params(Body),");
@@ -187,7 +187,7 @@ public final class ErlangAwsQueryEmitter {
         String responseElement = operationWireName(op, service) + "Response";
 
         writer.write("%% Encode AWS Query server response for $L.", op.getId());
-        writer.write("-spec encode_$L_response($L) -> #http_response{}.", opName, outputType);
+        ErlangFormat.writeSpec(writer, "encode_" + opName + "_response(" + outputType + ") -> #http_response{}");
         writer.write("encode_$L_response(#$L{$L}) ->", opName, outputRecord, pattern);
         writer.indent();
         writer.write("ResultContent = maps:filter(fun(_, V) -> V =/= undefined end, #{");
@@ -395,11 +395,15 @@ public final class ErlangAwsQueryEmitter {
         String inputType = sp.toSymbol(input).getName();
         String action = BeamAwsQueryFormEncoder.operationAction(op, service);
         String version = BeamAwsQueryFormEncoder.serviceVersion(service);
-        String pattern = inputPattern(sp, input);
 
         writer.write("%% Encode AWS Query request for $L.", op.getId());
-        writer.write("-spec encode_$L_request($L) -> #http_request{}.", opName, inputType);
-        writer.write("encode_$L_request(Input = #$L{$L}) ->", opName, inputRecord, pattern);
+        ErlangFormat.writeSpec(writer, "encode_" + opName + "_request(" + inputType + ") -> #http_request{}");
+        ErlangFormat.writeRecordFunctionHead(
+                writer,
+                "encode_" + opName + "_request",
+                "Input",
+                inputRecord,
+                inputPatternParts(sp, input));
         writer.indent();
         writer.write("Pairs = [");
         writer.write("    {<<\"Action\">>, <<\"$L\">>},", action);
@@ -480,8 +484,9 @@ public final class ErlangAwsQueryEmitter {
                 : BeamXmlDecoder.queryResultElementName(op, service);
 
         writer.write("%% Decode AWS Query response for $L.", op.getId());
-        writer.write("-spec decode_$L_response(#http_response{}) -> {'ok', $L} | {'error', term()}.",
-                opName, outputType);
+        ErlangFormat.writeSpec(
+                writer,
+                "decode_" + opName + "_response(#http_response{}) -> {'ok', " + outputType + "} | {'error', term()}");
         writer.write("decode_$L_response(#http_response{status = 200, body = Body}) ->", opName);
         writer.indent();
         writer.write("case unwrap_query_result(Body, <<\"$L\">>) of", resultElement);
@@ -928,12 +933,17 @@ public final class ErlangAwsQueryEmitter {
         return sp.toSymbol(member).getProperty("fieldName", String.class).orElseThrow();
     }
 
-    private static String inputPattern(SymbolProvider sp, StructureShape input) {
+    private static List<String> inputPatternParts(SymbolProvider sp, StructureShape input) {
         List<String> parts = new ArrayList<>();
         for (MemberShape member : input.members()) {
             String field = memberFieldName(sp, member);
             parts.add(field + " = " + toBindingVar(field));
         }
+        return parts;
+    }
+
+    private static String inputPattern(SymbolProvider sp, StructureShape input) {
+        List<String> parts = inputPatternParts(sp, input);
         return parts.isEmpty() ? "" : "\n    " + String.join(",\n    ", parts) + "\n";
     }
 }

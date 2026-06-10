@@ -53,7 +53,7 @@ public final class ErlangEventStreamEmitter {
             writer.write("%% Generated Amazon Event Stream helpers for $L.", service.getId());
             writer.write("-module($L).", moduleName);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             for (UnionShape union : unions) {

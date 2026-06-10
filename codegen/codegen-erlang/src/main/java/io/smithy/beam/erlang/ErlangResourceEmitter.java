@@ -75,7 +75,7 @@ public final class ErlangResourceEmitter {
             if (!server) {
                 writer.write("-type client_config() :: #{binary() => term()}.");
             }
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             for (HelperBinding binding : bindings) {
@@ -148,11 +148,14 @@ public final class ErlangResourceEmitter {
         BeamDocumentation.forShape(op).ifPresent(
                 doc -> BeamDocumentation.writeErlangDoc(writer, doc));
 
-        writer.write(
-                "-spec $L($L) -> {'ok', $L} | {'error', term()}.",
-                helper,
-                String.join(", ", specParams),
-                outSym.getName());
+        ErlangFormat.writeSpec(
+                writer,
+                helper
+                        + "("
+                        + String.join(", ", specParams)
+                        + ") -> {'ok', "
+                        + outSym.getName()
+                        + "} | {'error', term()}");
         writer.write("$L($L) ->", helper, paramList(plan, server));
         writer.indent();
         writer.write("$L:$L($L).",

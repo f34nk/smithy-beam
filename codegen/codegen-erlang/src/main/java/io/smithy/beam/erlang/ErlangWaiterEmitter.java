@@ -38,7 +38,7 @@ public final class ErlangWaiterEmitter {
         ctx.writerDelegator().useFileWriter(layout.waitersModuleFile(), writer -> {
             writer.write("%% Generated waiters for $L.", service.getId());
             writer.write("-module($L).", waitersMod);
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             for (BeamWaiterIndex.WaiterBinding binding : index.bindings()) {

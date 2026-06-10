@@ -51,7 +51,7 @@ final class ErlangAwsJsonRpcEmitter {
             writer.write("-module($L).", serverCodecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             for (OperationShape op : operations) {
@@ -90,7 +90,7 @@ final class ErlangAwsJsonRpcEmitter {
             writer.write("-module($L).", codecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            writer.write("-export([$L]).", String.join(", ", exports));
+            ErlangFormat.writeExport(writer, exports);
             writer.write("");
 
             for (OperationShape op : operations) {
@@ -121,7 +121,7 @@ final class ErlangAwsJsonRpcEmitter {
         List<MemberShape> members = ErlangJsonCodecSupport.documentMembers(httpIndex, op, input, true);
 
         writer.write("%% Decode AWS JSON request for $L.", op.getId());
-        writer.write("-spec decode_$L_request(#http_request{}) -> $L.", opName, inputType);
+        ErlangFormat.writeSpec(writer, "decode_" + opName + "_request(#http_request{}) -> " + inputType);
         writer.write("decode_$L_request(#http_request{body = Body}) ->", opName);
         writer.indent();
         if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
@@ -160,7 +160,7 @@ final class ErlangAwsJsonRpcEmitter {
         List<MemberShape> members = ErlangJsonCodecSupport.documentMembers(httpIndex, op, output, false);
 
         writer.write("%% Encode AWS JSON response for $L.", op.getId());
-        writer.write("-spec encode_$L_response($L) -> #http_response{}.", opName, outputType);
+        ErlangFormat.writeSpec(writer, "encode_" + opName + "_response(" + outputType + ") -> #http_response{}");
         writer.write("encode_$L_response(#$L{$L}) ->", opName, outputRecord, pattern);
         writer.indent();
         if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
@@ -200,13 +200,17 @@ final class ErlangAwsJsonRpcEmitter {
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
         String inputRecord = ErlangJsonCodecSupport.recordName(sp.toSymbol(input));
         String inputType = sp.toSymbol(input).getName();
-        String pattern = ErlangJsonCodecSupport.inputPattern(input);
         List<MemberShape> members = ErlangJsonCodecSupport.documentMembers(httpIndex, op, input, true);
         String amzTarget = targetPrefix + "." + op.getId().getName();
 
         writer.write("%% Encode AWS JSON request for $L.", op.getId());
-        writer.write("-spec encode_$L_request($L) -> #http_request{}.", opName, inputType);
-        writer.write("encode_$L_request(Input = #$L{$L}) ->", opName, inputRecord, pattern);
+        ErlangFormat.writeSpec(writer, "encode_" + opName + "_request(" + inputType + ") -> #http_request{}");
+        ErlangFormat.writeRecordFunctionHead(
+                writer,
+                "encode_" + opName + "_request",
+                "Input",
+                inputRecord,
+                ErlangJsonCodecSupport.inputPatternParts(input));
         writer.indent();
         if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
             MemberShape member = members.get(0);
@@ -251,8 +255,9 @@ final class ErlangAwsJsonRpcEmitter {
         List<MemberShape> members = ErlangJsonCodecSupport.documentMembers(httpIndex, op, output, false);
 
         writer.write("%% Decode AWS JSON response for $L.", op.getId());
-        writer.write("-spec decode_$L_response(#http_response{}) -> {'ok', $L} | {'error', term()}.",
-                opName, outputType);
+        ErlangFormat.writeSpec(
+                writer,
+                "decode_" + opName + "_response(#http_response{}) -> {'ok', " + outputType + "} | {'error', term()}");
         writer.write("decode_$L_response(#http_response{status = 200, body = Body}) ->", opName);
         writer.indent();
         if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
@@ -326,7 +331,7 @@ final class ErlangAwsJsonRpcEmitter {
                 writer.write("<<\"$L\">> ->", localName);
                 writer.indent();
                 writer.write("{error, #$L{$L}};", recName,
-                        fields.isEmpty() ? "" : "\n        " + String.join(",\n        ", fields) + "\n    ");
+                        fields.isEmpty() ? "" : "\n    " + String.join(",\n    ", fields) + "\n    ");
                 writer.dedent();
             }
             writer.write("_ ->");

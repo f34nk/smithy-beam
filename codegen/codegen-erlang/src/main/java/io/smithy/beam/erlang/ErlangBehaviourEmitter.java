@@ -57,13 +57,14 @@ final class ErlangBehaviourEmitter {
                 writer -> {
                     writer.pushOperationBodySection();
                     BeamDocumentation.forShape(op).ifPresent(doc -> BeamDocumentation.writeErlangDoc(writer, doc));
-                    writer.write("-callback $L(", handler);
-                    writer.indent();
-                    writer.write("Ctx :: term(),");
-                    writer.write("Input :: $L,", inSym.getName());
-                    writer.write("Meta :: term()");
-                    writer.dedent();
-                    writer.write(") -> {ok, $L} | {error, term()}.", outSym.getName());
+                    ErlangFormat.writeCallback(
+                            writer,
+                            handler
+                                    + "(Ctx :: term(), Input :: "
+                                    + inSym.getName()
+                                    + ", Meta :: term()) -> {ok, "
+                                    + outSym.getName()
+                                    + "} | {error, term()}");
                     writer.write("");
                     writer.popState();
                 });

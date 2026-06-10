@@ -161,7 +161,7 @@ final class ErlangClientDirectedCodegen
             if (exportList.isEmpty()) {
                 writer.write("-export([]).");
             } else {
-                writer.write("-export([$L]).", exportList);
+                ErlangFormat.writeExport(writer, exports);
             }
             writer.write("");
             writer.popState();

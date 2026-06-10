@@ -31,8 +31,8 @@ public final class ErlangS3EndpointEmitter {
             writer.write("Authority.");
             writer.dedent();
             writer.write("");
-            writer.write("-spec resolve_bucket_url(client_config(), binary(), binary()) ->");
-            writer.write("    {binary(), binary()}.");
+            ErlangFormat.writeSpec(
+                    writer, "resolve_bucket_url(client_config(), binary(), binary()) -> {binary(), binary()}");
             writer.write("resolve_bucket_url(Config, Bucket, Key) ->");
             writer.indent();
             writer.write("Style = maps:get(s3_addressing_style, Config, virtual_host),");
