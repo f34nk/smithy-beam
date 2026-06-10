@@ -78,8 +78,8 @@ public final class ErlangRetryEmitter {
             writer.dedent();
             writer.write("end");
             writer.dedent();
-            writer.write("end.");
             writer.dedent();
+            writer.write("end.");
             writer.dedent();
             writer.write("");
             writer.write("-spec retryable(term()) -> boolean().");
