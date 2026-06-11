@@ -17,12 +17,12 @@ build:
 	#
 	smithy build
 	tree build/
-	mkdir -p src/generated
+	mkdir -p generated
 	#
 	# Copy the generated files to the src/generated directory
 	#
-	cp -r build/smithy/client/java-codegen/* src/generated/
-	tree src/generated
+	cp -r build/smithy/client/java-codegen/* generated/
+	tree generated
 
 .PHONY: demo
 demo: copy build
