@@ -8,16 +8,16 @@ build:
 	#
 	smithy build
 	tree build/
-	mkdir -p src/generated
+	mkdir -p generated
 	#
 	# Copy the generated files to the src/generated directory
 	#
-	cp -r build/smithy/client/python-*-codegen/* src/generated/
-	tree src/generated
+	cp -r build/smithy/client/python-*-codegen/* generated
+	tree generated
 
 .PHONY: demo
 demo: build
 
 .PHONY: clean
 clean:
-	rm -rf build src/generated
+	rm -rf build generated
