@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "sources": [
-    "../../model/ec2-2016-11-15.json"
+    "model"
   ],
   "maven": {
     "dependencies": [
