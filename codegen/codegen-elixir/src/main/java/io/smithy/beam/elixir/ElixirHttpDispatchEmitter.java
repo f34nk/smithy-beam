@@ -136,7 +136,8 @@ public final class ElixirHttpDispatchEmitter {
             writer.write("  url: url,");
             writer.write("  params: req.query,");
             writer.write("  headers: req.headers,");
-            writer.write("  body: req.body");
+            writer.write("  body: req.body,");
+            writer.write("  decode_body: false");
             writer.write("]");
             writer.write("case http_client.request(req_opts) do");
             writer.indent();
