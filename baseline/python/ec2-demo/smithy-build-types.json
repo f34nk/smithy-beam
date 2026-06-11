@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "sources": [
+    "../../model/ec2-2016-11-15.json"
+  ],
+  "maven": {
+    "dependencies": [
+      "software.amazon.smithy:smithy-aws-traits:1.64.0",
+      "software.amazon.smithy:smithy-aws-endpoints:1.64.0",
+      "software.amazon.smithy:smithy-aws-smoke-test-model:1.64.0",
+      "software.amazon.smithy:smithy-aws-iam-traits:1.64.0",
+      "software.amazon.smithy:smithy-waiters:1.64.0",
+      "software.amazon.smithy:smithy-aws-traits:1.54.0",
+      "software.amazon.smithy.python.codegen.plugins:types:0.3.0"
+    ]
+  },
+  "projections": {
+    "type": {
+      "plugins": {
+        "python-type-codegen": {
+          "service": "com.amazonaws.ec2#AmazonEC2",
+          "module": "amazon_ec2",
+          "moduleVersion": "0.0.1"
+        }
+      }
+    }
+  }
+}
