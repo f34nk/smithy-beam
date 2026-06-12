@@ -1,5 +1,8 @@
 package io.smithy.beam.test;
 
+import io.smithy.beam.elixir.ElixirClientPlugin;
+import io.smithy.beam.elixir.ElixirServerPlugin;
+import io.smithy.beam.elixir.ElixirTypesPlugin;
 import io.smithy.beam.erlang.ErlangClientPlugin;
 import io.smithy.beam.erlang.ErlangServerPlugin;
 import io.smithy.beam.erlang.ErlangTypesPlugin;
@@ -29,6 +32,8 @@ class ReservedWordParityTest {
     private static final String TYPES_FILE = "reserved_service_types.hrl";
     private static final String CLIENT_CODEC_FILE = "reserved_service_rest_json_1.erl";
     private static final String SERVER_CODEC_FILE = "reserved_service_rest_json_1.erl";
+    private static final String ELIXIR_TYPES_FILE = "reserved_service_types.ex";
+    private static final String ELIXIR_CODEC_FILE = "reserved_service_rest_json_1.ex";
 
     private static Model loadReservedWordsModel() {
         URL resource = ReservedWordParityTest.class
@@ -95,6 +100,66 @@ class ReservedWordParityTest {
             if (serverCodec.contains("#" + recName) || serverCodec.contains(recName + "{")) {
                 assertThat(serverCodec).contains(recName);
                 matched = true;
+            }
+        }
+        assertThat(matched).isTrue();
+    }
+
+    @Test
+    void elixirClientCodecUsesEscapedNamesFromTypesSymbolProvider() {
+        Model model = loadReservedWordsModel();
+
+        MockManifest typesManifest = new MockManifest();
+        new ElixirTypesPlugin().execute(PluginContext.builder()
+                .model(model).fileManifest(typesManifest)
+                .settings(SETTINGS).build());
+
+        MockManifest clientManifest = new MockManifest();
+        new ElixirClientPlugin().execute(PluginContext.builder()
+                .model(model).fileManifest(clientManifest)
+                .settings(SETTINGS).build());
+
+        String types = typesManifest.getFileString(ELIXIR_TYPES_FILE).orElse("");
+        String codec = clientManifest.getFileString(ELIXIR_CODEC_FILE).orElse("");
+        assertThat(codec).isNotEmpty();
+        assertElixirCodecUsesEscapedNamesFromTypes(types, codec);
+    }
+
+    @Test
+    void elixirServerCodecUsesEscapedNamesFromTypesSymbolProvider() {
+        Model model = loadReservedWordsModel();
+
+        MockManifest typesManifest = new MockManifest();
+        new ElixirTypesPlugin().execute(PluginContext.builder()
+                .model(model).fileManifest(typesManifest)
+                .settings(SETTINGS).build());
+
+        MockManifest serverManifest = new MockManifest();
+        new ElixirServerPlugin().execute(PluginContext.builder()
+                .model(model).fileManifest(serverManifest)
+                .settings(SETTINGS).build());
+
+        String types = typesManifest.getFileString(ELIXIR_TYPES_FILE).orElse("");
+        String serverCodec = serverManifest.getFileString(ELIXIR_CODEC_FILE).orElse("");
+        assertThat(serverCodec).isNotEmpty();
+        assertElixirCodecUsesEscapedNamesFromTypes(types, serverCodec);
+    }
+
+    private static void assertElixirCodecUsesEscapedNamesFromTypes(String types, String codec) {
+        Pattern defstructPat = Pattern.compile("defstruct\\s*\\[([^\\]]+)\\]");
+        Matcher m = defstructPat.matcher(types);
+        boolean matched = false;
+        while (m.find()) {
+            String fields = m.group(1);
+            for (String field : fields.split(",")) {
+                String atom = field.trim();
+                if (atom.startsWith(":")) {
+                    atom = atom.substring(1);
+                }
+                if (codec.contains(":" + atom) || codec.contains("." + atom)) {
+                    assertThat(codec).contains(atom);
+                    matched = true;
+                }
             }
         }
         assertThat(matched).isTrue();
