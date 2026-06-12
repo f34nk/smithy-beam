@@ -1,6 +1,7 @@
 package io.smithy.beam.test;
 
 import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.elixir.ElixirClientPlugin;
 import io.smithy.beam.erlang.ErlangClientPlugin;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -92,7 +93,7 @@ class TimestampBindingFormatTest {
                 .discoverModels()
                 .assemble()
                 .unwrap();
-        MockManifest manifest = runCodec(
+        MockManifest manifest = runErlangCodec(
                 model, "smithy.beam.demo.timestamps#DateTimeTimestampService");
         String codec = manifest.getFileString("date_time_timestamp_service_rest_json_1.erl").orElse("");
         assertThat(codec).contains("decode_timestamp_date_time(");
@@ -106,15 +107,55 @@ class TimestampBindingFormatTest {
                 .discoverModels()
                 .assemble()
                 .unwrap();
-        MockManifest manifest = runCodec(
+        MockManifest manifest = runErlangCodec(
                 model, "smithy.beam.demo.timestamps#EpochTimestampService");
         String codec = manifest.getFileString("epoch_timestamp_service_rest_json_1.erl").orElse("");
         assertThat(codec).contains("encode_timestamp_epoch_seconds(");
     }
 
-    private static MockManifest runCodec(Model model, String serviceId) {
+    @Test
+    void elixirDateTimeTimestampMemberUsesDateTimeHelper() {
+        Model model = Model.assembler()
+                .addUnparsedModel("timestamp_date_time.smithy", DATE_TIME_MODEL)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = runElixirCodec(
+                model, "smithy.beam.demo.timestamps#DateTimeTimestampService");
+        String codec = manifest.getFileString("date_time_timestamp_service_rest_json_1.ex").orElse("");
+        assertThat(codec).contains("decode_timestamp_date_time(");
+        assertThat(codec).contains("encode_timestamp_date_time(");
+    }
+
+    @Test
+    void elixirEpochSecondsTimestampMemberUsesEpochHelper() {
+        Model model = Model.assembler()
+                .addUnparsedModel("timestamp_epoch_seconds.smithy", EPOCH_SECONDS_MODEL)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = runElixirCodec(
+                model, "smithy.beam.demo.timestamps#EpochTimestampService");
+        String codec = manifest.getFileString("epoch_timestamp_service_rest_json_1.ex").orElse("");
+        assertThat(codec).contains("encode_timestamp_epoch_seconds(");
+    }
+
+    private static MockManifest runErlangCodec(Model model, String serviceId) {
         MockManifest manifest = new MockManifest();
         new ErlangClientPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(ObjectNode.builder()
+                        .withMember("service", serviceId)
+                        .withMember("edition", "2026")
+                        .build())
+                .build());
+        return manifest;
+    }
+
+    private static MockManifest runElixirCodec(Model model, String serviceId) {
+        MockManifest manifest = new MockManifest();
+        new ElixirClientPlugin().execute(PluginContext.builder()
                 .model(model)
                 .fileManifest(manifest)
                 .settings(ObjectNode.builder()
