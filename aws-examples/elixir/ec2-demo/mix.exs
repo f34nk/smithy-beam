@@ -1,9 +1,9 @@
-defmodule AwsDemo.MixProject do
+defmodule Demo.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :aws_demo,
+      app: :demo,
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,

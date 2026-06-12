@@ -1,4 +1,4 @@
--module(aws_demo_app).
+-module(demo_app).
 -export([run/0]).
 
 -include("amazon_ec2_types.hrl").

@@ -59,7 +59,7 @@ run:
 	#
 	# Run $(CONTAINER_NAME)
 	#
-	mix run -e "AwsDemo.run()"
+	mix run -e "Demo.run()"
 
 .PHONY: clean
 clean: docker/stop

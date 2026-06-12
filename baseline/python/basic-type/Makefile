@@ -20,4 +20,4 @@ demo: build
 
 .PHONY: clean
 clean:
-	rm -rf build src/generated
+	rm -rf build generated

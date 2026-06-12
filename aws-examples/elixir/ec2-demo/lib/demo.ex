@@ -1,4 +1,4 @@
-defmodule AwsDemo do
+defmodule Demo do
   @moduledoc """
   EC2 demo covering DescribeVpcs, DescribeSecurityGroups, RunInstances,
   DescribeInstances, and TerminateInstances via the generated AmazonEc2Client.
