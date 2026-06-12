@@ -1,5 +1,8 @@
 package io.smithy.beam.test;
 
+import io.smithy.beam.elixir.ElixirClientPlugin;
+import io.smithy.beam.elixir.ElixirServerPlugin;
+import io.smithy.beam.elixir.ElixirTypesPlugin;
 import io.smithy.beam.erlang.ErlangClientPlugin;
 import io.smithy.beam.erlang.ErlangServerPlugin;
 import io.smithy.beam.erlang.ErlangTypesPlugin;
@@ -94,5 +97,64 @@ class ServiceRenameTest {
         assertThat(manifest.getFileString("original_name_server.erl")).isEmpty();
         assertThat(manifest.getFileString("renamed_service_router.erl")).isPresent();
         assertThat(manifest.getFileString("renamed_service_rest_json_1.erl")).isPresent();
+    }
+
+    @Test
+    void elixirRenamedShapeUsesRenameTargetInTypesModule() {
+        Model model = loadModel();
+        MockManifest manifest = new MockManifest();
+        new ElixirTypesPlugin().execute(PluginContext.builder()
+                .model(model).fileManifest(manifest)
+                .settings(settings()).build());
+
+        String types = manifest.getFileString("rename_service_types.ex").orElse("");
+        assertThat(types).contains("defmodule RenamedWidget");
+        assertThat(types).doesNotContain("defmodule Widget do");
+    }
+
+    @Test
+    void elixirRenamedShapeIdentifierMatchesBetweenTypesAndClient() {
+        Model model = loadModel();
+        MockManifest typesManifest = new MockManifest();
+        new ElixirTypesPlugin().execute(PluginContext.builder()
+                .model(model).fileManifest(typesManifest)
+                .settings(settings()).build());
+
+        MockManifest clientManifest = new MockManifest();
+        new ElixirClientPlugin().execute(PluginContext.builder()
+                .model(model).fileManifest(clientManifest)
+                .settings(settings()).build());
+
+        String types = typesManifest.getFileString("rename_service_types.ex").orElse("");
+        String codec = clientManifest.getFileString("rename_service_rest_json_1.ex").orElse("");
+
+        assertThat(types).containsAnyOf("renamed_widget", "RenamedWidget");
+        assertThat(codec).isNotEmpty();
+        assertThat(codec).contains("GetWidgetOutput");
+        assertThat(codec).contains("decode_get_widget_response");
+        assertThat(codec).doesNotContain("%Widget{");
+    }
+
+    @Test
+    void elixirSelfRenamedServiceProducesRenamedServerModuleFile() {
+        Model model = Model.assembler()
+                .addImport(getClass().getResource("/model/service_self_rename.smithy"))
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        MockManifest manifest = new MockManifest();
+        new ElixirServerPlugin().execute(PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(ObjectNode.builder()
+                        .withMember("service", "smithy.beam.test#OriginalName")
+                        .withMember("edition", "2026")
+                        .build())
+                .build());
+
+        assertThat(manifest.getFileString("renamed_service_server.ex")).isPresent();
+        assertThat(manifest.getFileString("original_name_server.ex")).isEmpty();
+        assertThat(manifest.getFileString("renamed_service_router.ex")).isPresent();
+        assertThat(manifest.getFileString("renamed_service_rest_json_1.ex")).isPresent();
     }
 }
