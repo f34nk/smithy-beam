@@ -87,4 +87,20 @@ class EventStreamEmissionTest {
         assertThat(eventStream).contains("AwsEventStream.frame(headers, payload)");
         assertThat(eventStream).contains("AwsEventStream.decode_frames()");
     }
+
+    @Test
+    void elixirAwsJsonCodecUsesEventStreamFraming() {
+        MockManifest manifest = new MockManifest();
+        new ElixirClientPlugin().execute(PluginContext.builder()
+                .model(eventStreamFixtureModel())
+                .fileManifest(manifest)
+                .settings(ObjectNode.builder()
+                        .withMember("service", AWS_JSON_SERVICE)
+                        .withMember("edition", "2026")
+                        .build())
+                .build());
+
+        String codec = manifest.getFileString("event_stream_aws_json_service_aws_json_1_1.ex").orElse("");
+        assertThat(codec).contains("EventStreamAwsJsonServiceEventStream.decode_event_stream");
+    }
 }

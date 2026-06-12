@@ -2,6 +2,7 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -97,6 +98,7 @@ final class ElixirAwsJsonRpcEmitter {
         String codecFile = layout.clientCodecModuleName(protocol) + ".ex";
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
         String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+        String eventStreamMod = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
         String targetPrefix = service.getId().getName();
 
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
@@ -112,7 +114,7 @@ final class ElixirAwsJsonRpcEmitter {
 
             for (OperationShape op : operations) {
                 emitEncoder(writer, model, op, httpIndex, sp, typesMod, runtimeMod, targetPrefix, contentType);
-                emitDecoder(writer, model, op, httpIndex, sp, typesMod);
+                emitDecoder(writer, model, op, httpIndex, sp, typesMod, eventStreamMod);
             }
 
             for (OperationShape op : operations) {
@@ -226,7 +228,8 @@ final class ElixirAwsJsonRpcEmitter {
             OperationShape op,
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
-            String typesMod) {
+            String typesMod,
+            String eventStreamMod) {
 
         String opName = sp.toSymbol(op).getName();
         StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
@@ -243,10 +246,20 @@ final class ElixirAwsJsonRpcEmitter {
         writer.write(
                 "def decode_$L_response(%RuntimeTypes.HttpResponse{status: 200, body: body}) do", opName);
         writer.indent();
-        writer.write("decoded = if body == \"\" or is_nil(body), do: %{}, else: Jason.decode!(body)");
-        writer.write("{:ok, %Types.$L{", outputStruct);
-        emitStructFieldsFromDecoded(writer, model, httpIndex, sp, members);
-        writer.write("}}");
+        if (isEventStreamPayload(members, model)) {
+            MemberShape member = members.get(0);
+            UnionShape union = model.expectShape(member.getTarget(), UnionShape.class);
+            String helper = ElixirEventStreamEmitter.helperName(sp, union);
+            String field = fieldName(sp, member);
+            writer.write("{:ok, %Types.$L{", outputStruct);
+            writer.write("  $L: $L.decode_$L(body)", field, eventStreamMod, helper);
+            writer.write("}}");
+        } else {
+            writer.write("decoded = if body == \"\" or is_nil(body), do: %{}, else: Jason.decode!(body)");
+            writer.write("{:ok, %Types.$L{", outputStruct);
+            emitStructFieldsFromDecoded(writer, model, httpIndex, sp, members);
+            writer.write("}}");
+        }
         writer.dedent();
         writer.write("end");
         writer.write("");
@@ -474,5 +487,10 @@ final class ElixirAwsJsonRpcEmitter {
         return fmt == software.amazon.smithy.model.traits.TimestampFormatTrait.Format.EPOCH_SECONDS
                 ? "decode_timestamp_epoch_seconds"
                 : "decode_timestamp_date_time";
+    }
+
+    private static boolean isEventStreamPayload(List<MemberShape> members, Model model) {
+        return members.size() == 1
+                && BeamEventStreamIndex.of(model).isEventStreamMember(members.get(0));
     }
 }
