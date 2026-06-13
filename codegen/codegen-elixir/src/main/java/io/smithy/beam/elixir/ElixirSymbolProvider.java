@@ -462,6 +462,8 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
                 .put("rescue", "rescue_")
                 .put("try", "try_")
                 .put("when", "when_")
+                .put("and", "and_")
+                .put("or", "or_")
                 .build();
     }
 

@@ -423,6 +423,8 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
             .put("receive", "receive_")
             .put("try", "try_")
             .put("when", "when_")
+            .put("and", "and_")
+            .put("or", "or_")
             .build();
     }
 

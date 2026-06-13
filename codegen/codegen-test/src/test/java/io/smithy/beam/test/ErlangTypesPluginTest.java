@@ -134,6 +134,7 @@ class ErlangTypesPluginTest {
                 .contains("receive_ ::")
                 .contains("after_ ::")
                 .contains("my_type_2");
+        assertThat(content).contains("and_").contains("or_");
     }
 
     private static Model loadErrorShapesModel() {

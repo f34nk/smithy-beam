@@ -649,6 +649,9 @@ class ErlangSymbolProviderTest {
                         .as("keyword '%s' must be escaped", keyword)
                         .isEqualTo(keyword + "_");
             }
+            for (String keyword : List.of("and", "or")) {
+                assertThat(provider.toFunctionName(keyword)).isEqualTo(keyword + "_");
+            }
         }
 
         @Test

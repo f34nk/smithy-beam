@@ -14,6 +14,11 @@ enum RwKwEnum {
     RECEIVE
 }
 
+enum RwLogicalEnum {
+    AND
+    OR
+}
+
 intEnum RwKwIntEnum {
     CASE = 1
     AFTER = 2
@@ -50,6 +55,7 @@ structure ReservedClosureOutput {
     kwIntEnum: RwKwIntEnum
     kwUnion: RwKwUnion
     kwStruct: RwKwStruct
+    logicalEnum: RwLogicalEnum
     myTypeA: MyType
     myTypeB: My_Type
 }
