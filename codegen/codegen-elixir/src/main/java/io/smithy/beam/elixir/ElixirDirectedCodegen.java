@@ -452,6 +452,32 @@ final class ElixirDirectedCodegen
         String valuesFunction = symbol.expectProperty("valuesFunction", String.class);
         List<Map.Entry<String, String>> members = new ArrayList<>(shape.getEnumValues().entrySet());
 
+        if (atoms.isEmpty()) {
+            ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+                writer.write("");
+                writer.openBlock("defmodule $L do", symbol.getName());
+                writer.pushGeneratedDocumentationSection();
+                BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ELIXIR_MODuledoc);
+                if (BeamDocumentation.forShape(shape).isEmpty()) {
+                    writer.write("@moduledoc \"String enum. Unknown values are represented as {:unknown, String.t()}.\"");
+                }
+                writer.write("");
+                writer.popState();
+                writer.write("@type t :: {:unknown, String.t()}");
+                writer.write("");
+                writer.write("@spec $L(String.t()) :: t()", fromFunction);
+                writer.write("def $L(v), do: {:unknown, v}", fromFunction);
+                writer.write("");
+                writer.write("@spec $L(t()) :: String.t()", toFunction);
+                writer.write("def $L({:unknown, v}), do: v", toFunction);
+                writer.write("");
+                writer.write("@spec values() :: [t()]");
+                writer.write("def $L, do: []", valuesFunction);
+                writer.closeBlock("end");
+            });
+            return;
+        }
+
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.write("");
             writer.openBlock("defmodule $L do", symbol.getName());
@@ -515,6 +541,32 @@ final class ElixirDirectedCodegen
         String toFunction = symbol.expectProperty("toValueFunction", String.class);
         String valuesFunction = symbol.expectProperty("valuesFunction", String.class);
         List<Map.Entry<String, Integer>> members = new ArrayList<>(shape.getEnumValues().entrySet());
+
+        if (atoms.isEmpty()) {
+            ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
+                writer.write("");
+                writer.openBlock("defmodule $L do", symbol.getName());
+                writer.pushGeneratedDocumentationSection();
+                BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ELIXIR_MODuledoc);
+                if (BeamDocumentation.forShape(shape).isEmpty()) {
+                    writer.write("@moduledoc \"Integer enum. Unknown values are represented as {:unknown, integer()}.\"");
+                }
+                writer.write("");
+                writer.popState();
+                writer.write("@type t :: {:unknown, integer()}");
+                writer.write("");
+                writer.write("@spec $L(integer()) :: t()", fromFunction);
+                writer.write("def $L(v), do: {:unknown, v}", fromFunction);
+                writer.write("");
+                writer.write("@spec $L(t()) :: integer()", toFunction);
+                writer.write("def $L({:unknown, v}), do: v", toFunction);
+                writer.write("");
+                writer.write("@spec values() :: [t()]");
+                writer.write("def $L, do: []", valuesFunction);
+                writer.closeBlock("end");
+            });
+            return;
+        }
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.write("");

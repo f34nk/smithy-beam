@@ -406,6 +406,16 @@ final class ErlangDirectedCodegen
         @SuppressWarnings("unchecked")
         Map<String, String> atomByMember = symbol.getProperty("enumAtomByMember", Map.class).orElseThrow();
 
+        if (atoms.isEmpty()) {
+            ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
+                writer.pushGeneratedDocumentationSection();
+                BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
+                writer.write("-type $L :: {unknown, binary()}.", symbol.getName());
+                writer.popState();
+            });
+            return;
+        }
+
         ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
             writer.pushGeneratedDocumentationSection();
             BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
@@ -440,6 +450,16 @@ final class ErlangDirectedCodegen
         String definitionFile = symbol.getDefinitionFile();
 
         List<String> atoms = symbol.getProperty("enumAtoms", List.class).orElseThrow();
+
+        if (atoms.isEmpty()) {
+            ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
+                writer.pushGeneratedDocumentationSection();
+                BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
+                writer.write("-type $L :: {unknown, integer()}.", symbol.getName());
+                writer.popState();
+            });
+            return;
+        }
 
         ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
             writer.pushGeneratedDocumentationSection();
