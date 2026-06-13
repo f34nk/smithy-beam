@@ -9,6 +9,7 @@ import io.smithy.beam.core.BeamRequestCompressionIndex;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.BlobShape;
@@ -851,25 +852,15 @@ public final class ElixirRestJson1Emitter {
             ElixirWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
 
         Set<ShapeId> emitted = new LinkedHashSet<>();
-        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-
-        for (OperationShape op : ElixirTopDown.containedOperationsSorted(model, service)) {
-            for (HttpBinding.Location loc : HttpBinding.Location.values()) {
-                for (HttpBinding b : httpIndex.getRequestBindings(op, loc)) {
-                    collectEnumTarget(model, b.getMember(), emitted);
+        for (Shape shape : new Walker(model).walkShapes(service)) {
+            if (shape instanceof EnumShape enumShape) {
+                if (emitted.add(enumShape.getId())) {
+                    emitElixirEnumHelpers(writer, enumShape, sp);
                 }
-                for (HttpBinding b : httpIndex.getResponseBindings(op, loc)) {
-                    collectEnumTarget(model, b.getMember(), emitted);
+            } else if (shape instanceof IntEnumShape intEnumShape) {
+                if (emitted.add(intEnumShape.getId())) {
+                    emitElixirIntEnumHelpers(writer, intEnumShape, sp);
                 }
-            }
-        }
-
-        for (ShapeId enumId : emitted) {
-            Shape enumShape = model.expectShape(enumId);
-            if (enumShape instanceof EnumShape) {
-                emitElixirEnumHelpers(writer, (EnumShape) enumShape, sp);
-            } else if (enumShape instanceof IntEnumShape) {
-                emitElixirIntEnumHelpers(writer, (IntEnumShape) enumShape, sp);
             }
         }
     }

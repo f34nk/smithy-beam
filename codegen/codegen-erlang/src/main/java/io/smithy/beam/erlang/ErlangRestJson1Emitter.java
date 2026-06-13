@@ -10,6 +10,7 @@ import io.smithy.beam.core.BeamRequestCompressionIndex;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.BlobShape;
@@ -912,25 +913,15 @@ public final class ErlangRestJson1Emitter {
             ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
 
         Set<ShapeId> emitted = new LinkedHashSet<>();
-        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-
-        for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
-            for (HttpBinding.Location loc : HttpBinding.Location.values()) {
-                for (HttpBinding b : httpIndex.getRequestBindings(op, loc)) {
-                    collectEnumTarget(model, b.getMember(), emitted);
+        for (Shape shape : new Walker(model).walkShapes(service)) {
+            if (shape instanceof EnumShape enumShape) {
+                if (emitted.add(enumShape.getId())) {
+                    emitEnumDecodeEncode(writer, enumShape, sp);
                 }
-                for (HttpBinding b : httpIndex.getResponseBindings(op, loc)) {
-                    collectEnumTarget(model, b.getMember(), emitted);
+            } else if (shape instanceof IntEnumShape intEnumShape) {
+                if (emitted.add(intEnumShape.getId())) {
+                    emitIntEnumDecodeEncode(writer, intEnumShape, sp);
                 }
-            }
-        }
-
-        for (ShapeId enumId : emitted) {
-            Shape enumShape = model.expectShape(enumId);
-            if (enumShape instanceof EnumShape) {
-                emitEnumDecodeEncode(writer, (EnumShape) enumShape, sp);
-            } else if (enumShape instanceof IntEnumShape) {
-                emitIntEnumDecodeEncode(writer, (IntEnumShape) enumShape, sp);
             }
         }
     }
