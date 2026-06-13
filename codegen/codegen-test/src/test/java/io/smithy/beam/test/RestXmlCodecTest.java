@@ -99,6 +99,22 @@ class RestXmlCodecTest {
         assertThat(codec).contains("http://restxmltest.example/doc/2020-01-01/");
     }
 
+    @Test
+    void erlangClientCodecDecodesUnionPayload() {
+        MockManifest manifest = runErlangClient(loadModel());
+        String codec = manifest.expectFileString(findRestXmlErlangCodec(manifest));
+        assertThat(codec).contains("find_element(<<\"LocationConstraint\">>, element_content(Root))");
+        assertThat(codec).contains("{location_constraint,");
+    }
+
+    @Test
+    void elixirClientCodecDecodesUnionPayload() {
+        MockManifest manifest = runElixirClient(loadModel());
+        String codec = manifest.expectFileString(findRestXmlElixirCodec(manifest));
+        assertThat(codec).contains("{:location_constraint, v}");
+        assertThat(codec).contains("\"CreateBucketConfiguration\" => %{\"LocationConstraint\"");
+    }
+
     private static String findRestXmlErlangCodec(MockManifest manifest) {
         return manifest.getFiles().stream()
                 .map(Path::getFileName)

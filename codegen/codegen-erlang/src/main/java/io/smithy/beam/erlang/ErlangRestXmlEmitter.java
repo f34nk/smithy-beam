@@ -21,6 +21,7 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StringShape;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.EndpointTrait;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
@@ -247,8 +248,16 @@ public final class ErlangRestXmlEmitter {
         writer.indent();
         writer.write("case parse_xml_root(Body, <<\"$L\">>) of", rootElement);
         writer.indent();
-        writer.write("{ok, Root} -> $L;",
-                decodeStructureFromXml(model, (StructureShape) target, "Root", sp));
+        writer.write("{ok, Root} ->");
+        writer.indent();
+        if (target instanceof StructureShape structure) {
+            writer.write("$L;", decodeStructureFromXml(model, structure, "Root", sp));
+        } else if (target instanceof UnionShape union) {
+            writer.write("$L;", decodeUnionFromXml(model, union, "Root", sp));
+        } else {
+            writer.write("xml_child_text(Root, <<\"\">>);");
+        }
+        writer.dedent();
         writer.write("{error, _} -> undefined");
         writer.dedent();
         writer.write("end");
@@ -305,8 +314,16 @@ public final class ErlangRestXmlEmitter {
                 writer.write("$L = case parse_xml_root(Body, <<\"$L\">>) of",
                         toBindingVar(fieldName), rootElement);
                 writer.indent();
-                writer.write("{ok, Root} -> $L;",
-                        decodeStructureFromXml(model, (StructureShape) target, "Root", sp));
+                writer.write("{ok, Root} ->");
+                writer.indent();
+                if (target instanceof StructureShape structure) {
+                    writer.write("$L;", decodeStructureFromXml(model, structure, "Root", sp));
+                } else if (target instanceof UnionShape union) {
+                    writer.write("$L;", decodeUnionFromXml(model, union, "Root", sp));
+                } else {
+                    writer.write("xml_child_text(Root, <<\"\">>);");
+                }
+                writer.dedent();
                 writer.write("{error, _} -> undefined");
                 writer.dedent();
                 writer.write("end,");
@@ -469,6 +486,8 @@ public final class ErlangRestXmlEmitter {
             writer.write("MemberMap = $L,",
                     buildStructureXmlMap(model, structure, "PayloadValue", recordName(sp.toSymbol(structure))));
             writer.write("encode_xml(#{<<\"$L\">> => MemberMap}, XmlNs)", rootElement);
+        } else if (target instanceof UnionShape union) {
+            emitUnionPayloadEncode(writer, model, union, rootElement, "PayloadValue", sp);
         } else {
             writer.write("encode_xml(#{<<\"$L\">> => PayloadValue}, XmlNs)", rootElement);
         }
@@ -509,6 +528,84 @@ public final class ErlangRestXmlEmitter {
             writer.dedent();
             writer.write("");
         }
+    }
+
+    private static String decodeUnionFromXml(
+            Model model, UnionShape union, String xmlVar, SymbolProvider sp) {
+        return buildUnionDecodeCase(model, union, xmlVar, sp, 0);
+    }
+
+    private static String buildUnionDecodeCase(
+            Model model, UnionShape union, String xmlVar, SymbolProvider sp, int memberIndex) {
+        List<MemberShape> members = new ArrayList<>(union.members());
+        if (memberIndex >= members.size()) {
+            return "undefined";
+        }
+        MemberShape member = members.get(memberIndex);
+        String element = BeamXmlBindingIndex.memberElementName(member);
+        String tag = unionTagForMember(sp, member);
+        String valueExpr = decodeUnionMemberValue(model, member, "Element", sp);
+        String nextArm = buildUnionDecodeCase(model, union, xmlVar, sp, memberIndex + 1);
+        return "case find_element(<<\"" + element + "\">>, element_content(" + xmlVar + ")) of "
+                + "undefined -> " + nextArm + "; "
+                + "Element -> {" + tag + ", " + valueExpr + "} "
+                + "end";
+    }
+
+    private static String decodeUnionMemberValue(
+            Model model, MemberShape member, String elementVar, SymbolProvider sp) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof StructureShape structure) {
+            return decodeStructureFromXml(model, structure, elementVar, sp);
+        }
+        if (target instanceof ListShape listShape) {
+            String itemElement = BeamXmlBindingIndex.listItemElementName(member, listShape, model);
+            Shape listMember = model.expectShape(listShape.getMember().getTarget());
+            if (listMember instanceof StructureShape nested) {
+                String itemRecord = decodeStructureFromXml(model, nested, "Item", sp);
+                return "xml_child_struct_list(" + elementVar + ", undefined, <<\""
+                        + itemElement + "\">>, fun(Item) -> " + itemRecord + " end)";
+            }
+            return "xml_child_list(" + elementVar + ", undefined, <<\"" + itemElement + "\">>)";
+        }
+        return "case element_text(" + elementVar + ") of [] -> undefined; Text -> list_to_binary(Text) end";
+    }
+
+    private static void emitUnionPayloadEncode(
+            ErlangWriter writer,
+            Model model,
+            UnionShape union,
+            String rootElement,
+            String valueVar,
+            SymbolProvider sp) {
+        writer.write("case $L of", valueVar);
+        writer.indent();
+        for (MemberShape member : union.members()) {
+            String element = BeamXmlBindingIndex.memberElementName(member);
+            String tag = unionTagForMember(sp, member);
+            Shape memberTarget = model.expectShape(member.getTarget());
+            writer.write("{$L, V} ->", tag);
+            writer.indent();
+            String innerValue;
+            if (memberTarget instanceof StructureShape structure) {
+                writer.write("InnerMap = $L,",
+                        buildStructureXmlMap(
+                                model, structure, "V", recordName(sp.toSymbol(structure))));
+                innerValue = "InnerMap";
+            } else {
+                innerValue = "V";
+            }
+            writer.write("encode_xml(#{<<\"$L\">> => #{<<\"$L\">> => $L}}, XmlNs);",
+                    rootElement, element, innerValue);
+            writer.dedent();
+        }
+        writer.write("undefined -> <<>>");
+        writer.dedent();
+        writer.write("end");
+    }
+
+    private static String unionTagForMember(SymbolProvider sp, MemberShape member) {
+        return sp.toSymbol(member).getProperty("unionTag", String.class).orElseThrow();
     }
 
     private static String decodeStructureFromXml(
@@ -1007,6 +1104,12 @@ public final class ErlangRestXmlEmitter {
             writer.write("MemberMap = $L,",
                     buildStructureXmlMap(model, structure, "PayloadValue", recordName(sp.toSymbol(structure))));
             writer.write("Payload = encode_xml(#{<<\"$L\">> => MemberMap}, XmlNs),", rootElement);
+        } else if (target instanceof UnionShape union) {
+            writer.write("Payload =");
+            writer.indent();
+            emitUnionPayloadEncode(writer, model, union, rootElement, "PayloadValue", sp);
+            writer.write(",");
+            writer.dedent();
         } else {
             writer.write("Payload = encode_xml(#{<<\"$L\">> => PayloadValue}, XmlNs),", rootElement);
         }

@@ -33,7 +33,7 @@ structure CreateBucketInput {
     configuration: CreateBucketConfiguration
 }
 
-structure CreateBucketConfiguration {
+union CreateBucketConfiguration {
     locationConstraint: String
 }
 
