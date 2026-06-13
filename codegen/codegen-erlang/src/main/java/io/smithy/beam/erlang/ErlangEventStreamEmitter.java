@@ -92,8 +92,9 @@ public final class ErlangEventStreamEmitter {
         writer.dedent();
         writer.write("");
 
-        for (MemberShape member : union.members()) {
-            emitEncodeEventClause(writer, model, helper, member, sp);
+        List<MemberShape> members = new ArrayList<>(union.members());
+        for (int i = 0; i < members.size(); i++) {
+            emitEncodeEventClause(writer, model, helper, members.get(i), sp, ";");
         }
         writer.write("encode_$L_event({unknown, _}) ->", helper);
         writer.indent();
@@ -108,8 +109,8 @@ public final class ErlangEventStreamEmitter {
         writer.dedent();
         writer.write("");
 
-        for (MemberShape member : union.members()) {
-            emitDecodeEventTypeClause(writer, model, helper, member, sp);
+        for (int i = 0; i < members.size(); i++) {
+            emitDecodeEventTypeClause(writer, model, helper, members.get(i), sp, ";");
         }
         writer.write("decode_$L_event_type(EventType, _Payload) ->", helper);
         writer.indent();
@@ -119,7 +120,12 @@ public final class ErlangEventStreamEmitter {
     }
 
     private static void emitEncodeEventClause(
-            ErlangWriter writer, Model model, String helper, MemberShape member, SymbolProvider sp) {
+            ErlangWriter writer,
+            Model model,
+            String helper,
+            MemberShape member,
+            SymbolProvider sp,
+            String clauseEnd) {
         String tag = unionTagForMember(sp, member);
         String eventType = member.getMemberName();
         Shape target = model.expectShape(member.getTarget());
@@ -127,18 +133,23 @@ public final class ErlangEventStreamEmitter {
         writer.indent();
         writer.write("Payload = $L,", encodeMemberPayload(model, target, "Value", sp));
         writer.write("Headers = encode_event_headers(<<\"$L\">>),", eventType);
-        writer.write("aws_event_stream:frame(Headers, Payload).");
+        writer.write("aws_event_stream:frame(Headers, Payload)$L", clauseEnd);
         writer.dedent();
     }
 
     private static void emitDecodeEventTypeClause(
-            ErlangWriter writer, Model model, String helper, MemberShape member, SymbolProvider sp) {
+            ErlangWriter writer,
+            Model model,
+            String helper,
+            MemberShape member,
+            SymbolProvider sp,
+            String clauseEnd) {
         String tag = unionTagForMember(sp, member);
         String eventType = member.getMemberName();
         Shape target = model.expectShape(member.getTarget());
         writer.write("decode_$L_event_type(<<\"$L\">>, Payload) ->", helper, eventType);
         writer.indent();
-        writer.write("{$L, $L}.", tag, decodeMemberPayload(model, target, "Payload", sp));
+        writer.write("{$L, $L}$L", tag, decodeMemberPayload(model, target, "Payload", sp), clauseEnd);
         writer.dedent();
     }
 

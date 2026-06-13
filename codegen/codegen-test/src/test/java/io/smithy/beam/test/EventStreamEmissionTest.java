@@ -46,6 +46,8 @@ class EventStreamEmissionTest {
         assertThat(eventStream).contains("encode_event_stream(");
         assertThat(eventStream).contains("decode_event_stream(");
         assertThat(eventStream).contains("aws_event_stream:frame(Headers, Payload)");
+        assertThat(eventStream).contains("aws_event_stream:frame(Headers, Payload);");
+        assertThat(eventStream).doesNotContain("aws_event_stream:frame(Headers, Payload).\nencode_");
         assertThat(eventStream).contains("aws_event_stream:decode_frames(Body)");
 
         String codec = manifest.getFileString("event_stream_rest_json_service_rest_json_1.erl").orElse("");
