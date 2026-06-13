@@ -396,7 +396,8 @@ final class ElixirAwsJsonRpcEmitter {
                 String encodeHelper = timestampEncodeHelper(httpIndex, member, HttpBinding.Location.DOCUMENT);
                 writer.write("  \"$L\" => $L(output.$L),", wireKey, encodeHelper, field);
             } else {
-                writer.write("  \"$L\" => output.$L,", wireKey, field);
+                writer.write("  $L,", ElixirRestJson1Emitter.encodeDocumentEntry(
+                        model, sp, httpIndex, member, "output." + field, wireKey));
             }
         }
     }
@@ -421,7 +422,8 @@ final class ElixirAwsJsonRpcEmitter {
                 String encodeHelper = timestampEncodeHelper(httpIndex, member, HttpBinding.Location.DOCUMENT);
                 writer.write("  \"$L\" => $L(input.$L),", wireKey, encodeHelper, field);
             } else {
-                writer.write("  \"$L\" => input.$L,", wireKey, field);
+                writer.write("  $L,", ElixirRestJson1Emitter.encodeDocumentEntry(
+                        model, sp, httpIndex, member, "input." + field, wireKey));
             }
         }
     }
@@ -446,7 +448,8 @@ final class ElixirAwsJsonRpcEmitter {
                 String decodeHelper = timestampDecodeHelper(httpIndex, member, HttpBinding.Location.DOCUMENT);
                 writer.write("  $L: $L(Map.get(decoded, \"$L\")),", field, decodeHelper, wireKey);
             } else {
-                writer.write("  $L: Map.get(decoded, \"$L\"),", field, wireKey);
+                writer.write("  $L: $L,", field, ElixirRestJson1Emitter.decodeDocumentValue(
+                        model, sp, httpIndex, member, wireKey));
             }
         }
     }

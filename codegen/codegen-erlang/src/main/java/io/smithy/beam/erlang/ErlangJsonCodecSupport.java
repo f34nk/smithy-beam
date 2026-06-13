@@ -45,30 +45,127 @@ final class ErlangJsonCodecSupport {
                 .orElse(member.getMemberName());
     }
 
-    static String documentDecodeAssignment(String fieldName, String jsonKey, Shape target) {
-        String raw = "maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined)";
-        if (target instanceof ListShape) {
+    static String documentDecodeAssignment(
+            Model model,
+            SymbolProvider sp,
+            HttpBindingIndex httpIndex,
+            String fieldName,
+            MemberShape member) {
+        String wireKey = jsonKey(member);
+        String raw = "maps:get(<<\"" + wireKey + "\">>, Decoded, undefined)";
+        return fieldName + " = " + decodeJsonValue(model, sp, httpIndex, member, raw);
+    }
+
+    static String encodeDocumentValue(
+            Model model,
+            SymbolProvider sp,
+            HttpBindingIndex httpIndex,
+            MemberShape member,
+            String fieldName) {
+        return encodeJsonValue(model, sp, httpIndex, member, toBindingVar(fieldName));
+    }
+
+    static String structureHelperName(SymbolProvider sp, Shape shape) {
+        return sp.toSymbol(shape).getName().replace("()", "");
+    }
+
+    static String decodeJsonValue(
+            Model model,
+            SymbolProvider sp,
+            HttpBindingIndex httpIndex,
+            MemberShape member,
+            String raw) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof EnumShape || target instanceof IntEnumShape) {
+            String helperName = structureHelperName(sp, target);
+            return "decode_" + helperName + "(" + raw + ")";
+        }
+        if (target instanceof UnionShape union
+                && !BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
+            String helperName = structureHelperName(sp, target);
+            return "decode_" + helperName + "(" + raw + ")";
+        }
+        if (target instanceof StructureShape) {
+            String helperName = structureHelperName(sp, target);
+            return "decode_" + helperName + "(" + raw + ")";
+        }
+        if (target instanceof TimestampShape) {
+            String decodeHelper = timestampDecodeHelper(httpIndex, member, HttpBinding.Location.DOCUMENT);
+            return decodeHelper + "(" + raw + ")";
+        }
+        if (target instanceof ListShape listShape) {
+            Shape element = model.expectShape(listShape.getMember().getTarget());
+            if (element instanceof StructureShape) {
+                String helperName = structureHelperName(sp, element);
+                return "decode_" + helperName + "_list(" + raw + ")";
+            }
             String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
-            return fieldName + " = " + helper + "(" + raw + ")";
+            return helper + "(" + raw + ")";
         }
         if (target instanceof MapShape) {
             if (target.hasTrait(SparseTrait.class)) {
-                return fieldName + " = decode_sparse_map(" + raw + ")";
+                return "decode_sparse_map(" + raw + ")";
             }
-            return fieldName + " = " + raw;
+            return raw;
         }
-        return fieldName + " = " + raw;
+        return raw;
     }
 
-    static String encodeDocumentValue(Shape target, String fieldName) {
-        String binding = toBindingVar(fieldName);
-        if (target instanceof ListShape && target.hasTrait(SparseTrait.class)) {
-            return "encode_sparse_list(" + binding + ")";
+    static String encodeJsonValue(
+            Model model,
+            SymbolProvider sp,
+            HttpBindingIndex httpIndex,
+            MemberShape member,
+            String binding) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof EnumShape || target instanceof IntEnumShape) {
+            String helperName = structureHelperName(sp, target);
+            return "encode_" + helperName + "(" + binding + ")";
         }
-        if (target instanceof MapShape && target.hasTrait(SparseTrait.class)) {
-            return "encode_sparse_map(" + binding + ")";
+        if (target instanceof UnionShape union
+                && !BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
+            String helperName = structureHelperName(sp, target);
+            return "encode_" + helperName + "(" + binding + ")";
+        }
+        if (target instanceof StructureShape) {
+            String helperName = structureHelperName(sp, target);
+            return "encode_" + helperName + "(" + binding + ")";
+        }
+        if (target instanceof TimestampShape) {
+            String encodeHelper = timestampEncodeHelper(httpIndex, member, HttpBinding.Location.DOCUMENT);
+            return encodeHelper + "(" + binding + ")";
+        }
+        if (target instanceof ListShape listShape) {
+            Shape element = model.expectShape(listShape.getMember().getTarget());
+            if (element instanceof StructureShape) {
+                String helperName = structureHelperName(sp, element);
+                return "encode_" + helperName + "_list(" + binding + ")";
+            }
+            if (target.hasTrait(SparseTrait.class)) {
+                return "encode_sparse_list(" + binding + ")";
+            }
+            return binding;
+        }
+        if (target instanceof MapShape) {
+            if (target.hasTrait(SparseTrait.class)) {
+                return "encode_sparse_map(" + binding + ")";
+            }
+            return binding;
         }
         return binding;
+    }
+
+    static String encodeJsonValueFromRecord(
+            Model model,
+            SymbolProvider sp,
+            HttpBindingIndex httpIndex,
+            StructureShape parent,
+            MemberShape member,
+            String recordVar) {
+        String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+        String recordName = structureHelperName(sp, parent);
+        return encodeJsonValue(
+                model, sp, httpIndex, member, recordVar + "#" + recordName + "." + fieldName);
     }
 
     static String timestampEncodeHelper(
@@ -136,28 +233,15 @@ final class ErlangJsonCodecSupport {
             String wireKey = jsonKey(member);
             String comma = i < members.size() - 1 ? "," : "";
             Shape target = model.expectShape(member.getTarget());
-            if (target instanceof EnumShape || target instanceof IntEnumShape) {
-                String helperName = sp.toSymbol(target).getName().replace("()", "");
-                writer.write("    <<\"$L\">> => encode_$L($L)$L",
-                        wireKey, helperName, toBindingVar(fieldName), comma);
-            } else if (target instanceof UnionShape
-                    && !BeamEventStreamIndex.of(model).isEventStreamUnion(target)) {
-                String helperName = sp.toSymbol(target).getName().replace("()", "");
-                writer.write("    <<\"$L\">> => encode_$L($L)$L",
-                        wireKey, helperName, toBindingVar(fieldName), comma);
-            } else if (target instanceof UnionShape
+            if (target instanceof UnionShape
                     && BeamEventStreamIndex.of(model).isEventStreamUnion(target)) {
                 UnionShape union = (UnionShape) target;
                 String helper = ErlangEventStreamEmitter.helperName(sp, union);
                 writer.write("    <<\"$L\">> => $L:encode_$L($L)$L",
                         wireKey, eventStreamModule, helper, toBindingVar(fieldName), comma);
-            } else if (target instanceof TimestampShape) {
-                String encodeHelper = timestampEncodeHelper(httpIndex, member, location);
-                writer.write("    <<\"$L\">> => $L($L)$L",
-                        wireKey, encodeHelper, toBindingVar(fieldName), comma);
             } else {
                 writer.write("    <<\"$L\">> => $L$L",
-                        wireKey, encodeDocumentValue(target, fieldName), comma);
+                        wireKey, encodeDocumentValue(model, sp, httpIndex, member, fieldName), comma);
             }
         }
     }
@@ -175,25 +259,13 @@ final class ErlangJsonCodecSupport {
             String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
             String wireKey = jsonKey(member);
             Shape target = model.expectShape(member.getTarget());
-            if (target instanceof EnumShape || target instanceof IntEnumShape) {
-                String helperName = sp.toSymbol(target).getName().replace("()", "");
-                recordFields.add("    " + fieldName + " = decode_" + helperName
-                        + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
-            } else if (target instanceof UnionShape
+            if (target instanceof UnionShape
                     && BeamEventStreamIndex.of(model).isEventStreamUnion(target)) {
                 UnionShape union = (UnionShape) target;
                 String helper = ErlangEventStreamEmitter.helperName(sp, union);
                 recordFields.add("    " + fieldName + " = " + eventStreamModule + ":decode_" + helper + "(Body)");
-            } else if (target instanceof UnionShape) {
-                String helperName = sp.toSymbol(target).getName().replace("()", "");
-                recordFields.add("    " + fieldName + " = decode_" + helperName
-                        + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
-            } else if (target instanceof TimestampShape) {
-                String decodeHelper = timestampDecodeHelper(httpIndex, member, location);
-                recordFields.add("    " + fieldName + " = " + decodeHelper
-                        + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
             } else {
-                recordFields.add("    " + documentDecodeAssignment(fieldName, wireKey, target));
+                recordFields.add("    " + documentDecodeAssignment(model, sp, httpIndex, fieldName, member));
             }
         }
         if (!recordFields.isEmpty()) {

@@ -98,6 +98,7 @@ public final class ErlangRestJson1Emitter {
                 emitErrorDispatch(writer, model, service, op, httpIndex, sp);
             }
 
+            emitStructureHelpers(writer, model, service, sp);
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
             emitHelpers(writer, checksumBindings, compressionBindings);
@@ -150,6 +151,7 @@ public final class ErlangRestJson1Emitter {
                 emitResponseEncoder(writer, model, op, httpIndex, sp);
                 emitErrorResponseEncoders(writer, model, op, sp, emittedErrorEncoders);
             }
+            emitStructureHelpers(writer, model, service, sp);
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
             emitHelpers(writer, checksumBindings, false);
@@ -451,7 +453,8 @@ public final class ErlangRestJson1Emitter {
                 recordFields.add("    " + fieldName + " = " + decodeHelper
                         + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))");
             } else {
-                recordFields.add("    " + documentDecodeAssignment(fieldName, wireKey, target));
+                recordFields.add("    " + ErlangJsonCodecSupport.documentDecodeAssignment(
+                        model, sp, httpIndex, fieldName, db.getMember()));
             }
         }
         for (HttpBinding pb : reqPayload) {
@@ -572,7 +575,11 @@ public final class ErlangRestJson1Emitter {
                     writer.write("    <<\"$L\">> => $L($L)$L",
                             wireKey, encodeHelper, toBindingVar(fieldName), comma);
                 } else {
-                    writer.write("    <<\"$L\">> => $L$L", wireKey, toBindingVar(fieldName), comma);
+                    writer.write("    <<\"$L\">> => $L$L",
+                            wireKey,
+                            ErlangJsonCodecSupport.encodeDocumentValue(
+                                    model, sp, httpIndex, db.getMember(), fieldName),
+                            comma);
                 }
             }
             writer.write("}),");
@@ -777,7 +784,13 @@ public final class ErlangRestJson1Emitter {
                         decodeHelper + "(maps:get(<<\"" + wireKey + "\">>, Decoded, undefined))"));
             } else {
                 recordFields.add(ErlangFormat.formatRecordField(
-                        fieldName, documentDecodeExpression(fieldName, wireKey, target)));
+                        fieldName,
+                        ErlangJsonCodecSupport.decodeJsonValue(
+                                model,
+                                sp,
+                                httpIndex,
+                                db.getMember(),
+                                "maps:get(<<\"" + wireKey + "\">>, Decoded, undefined)")));
             }
         }
         for (HttpBinding pb : respPayload) {
@@ -933,6 +946,127 @@ public final class ErlangRestJson1Emitter {
         }
     }
 
+    private static void emitStructureHelpers(
+            ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
+
+        Set<ShapeId> emitted = new LinkedHashSet<>();
+        Set<ShapeId> listElementStructures = new LinkedHashSet<>();
+        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+
+        for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
+            StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
+            for (MemberShape member : ErlangJsonCodecSupport.documentMembers(httpIndex, op, input, true)) {
+                collectStructureTargets(model, member, emitted, listElementStructures);
+            }
+            StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
+            for (MemberShape member : ErlangJsonCodecSupport.documentMembers(httpIndex, op, output, false)) {
+                collectStructureTargets(model, member, emitted, listElementStructures);
+            }
+            for (HttpBinding.Location loc : HttpBinding.Location.values()) {
+                for (HttpBinding b : httpIndex.getRequestBindings(op, loc)) {
+                    collectStructureTargets(model, b.getMember(), emitted, listElementStructures);
+                }
+                for (HttpBinding b : httpIndex.getResponseBindings(op, loc)) {
+                    collectStructureTargets(model, b.getMember(), emitted, listElementStructures);
+                }
+            }
+        }
+
+        for (ShapeId structureId : emitted) {
+            StructureShape structure = model.expectShape(structureId, StructureShape.class);
+            emitStructureDecodeEncode(writer, model, httpIndex, structure, sp);
+            if (listElementStructures.contains(structureId)) {
+                emitStructureListDecodeEncode(writer, structure, sp);
+            }
+        }
+    }
+
+    private static void collectStructureTargets(
+            Model model, MemberShape member, Set<ShapeId> out, Set<ShapeId> listElements) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof StructureShape structure) {
+            if (out.add(structure.getId())) {
+                for (MemberShape nested : structure.members()) {
+                    collectStructureTargets(model, nested, out, listElements);
+                }
+            }
+        } else if (target instanceof ListShape list) {
+            Shape element = model.expectShape(list.getMember().getTarget());
+            if (element instanceof StructureShape structure) {
+                listElements.add(structure.getId());
+            }
+            collectStructureTargets(model, list.getMember(), out, listElements);
+        } else if (target instanceof MapShape map) {
+            collectStructureTargets(model, map.getValue(), out, listElements);
+        }
+    }
+
+    private static void emitStructureDecodeEncode(
+            ErlangWriter writer,
+            Model model,
+            HttpBindingIndex httpIndex,
+            StructureShape structure,
+            SymbolProvider sp) {
+        String helperName = ErlangJsonCodecSupport.structureHelperName(sp, structure);
+        writer.write("%% Structure helpers for $L", structure.getId());
+        writer.write("decode_$L(undefined) -> undefined;", helperName);
+        writer.write("decode_$L(null) -> undefined;", helperName);
+        writer.write("decode_$L(Map) when is_map(Map) ->", helperName);
+        writer.indent();
+        writer.write("#$L{", helperName);
+        List<String> fields = new ArrayList<>();
+        for (MemberShape member : structure.members()) {
+            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+            String wireKey = jsonKey(member);
+            String raw = "maps:get(<<\"" + wireKey + "\">>, Map, undefined)";
+            fields.add("        " + fieldName + " = "
+                    + ErlangJsonCodecSupport.decodeJsonValue(model, sp, httpIndex, member, raw));
+        }
+        if (!fields.isEmpty()) {
+            writer.write(String.join(",\n", fields));
+        }
+        writer.write("}.");
+        writer.dedent();
+        writer.write("");
+
+        writer.write("encode_$L(undefined) -> undefined;", helperName);
+        writer.write("encode_$L(Record) ->", helperName);
+        writer.indent();
+        writer.write("maps:filter(fun(_, V) -> V =/= undefined end, #{");
+        List<MemberShape> members = new ArrayList<>(structure.members());
+        for (int i = 0; i < members.size(); i++) {
+            MemberShape member = members.get(i);
+            String wireKey = jsonKey(member);
+            String comma = i < members.size() - 1 ? "," : "";
+            writer.write("    <<\"$L\">> => $L$L",
+                    wireKey,
+                    ErlangJsonCodecSupport.encodeJsonValueFromRecord(
+                            model, sp, httpIndex, structure, member, "Record"),
+                    comma);
+        }
+        writer.write("}).");
+        writer.dedent();
+        writer.write("");
+    }
+
+    private static void emitStructureListDecodeEncode(
+            ErlangWriter writer, StructureShape structure, SymbolProvider sp) {
+        String helperName = ErlangJsonCodecSupport.structureHelperName(sp, structure);
+        writer.write("decode_$L_list(undefined) -> undefined;", helperName);
+        writer.write("decode_$L_list(null) -> undefined;", helperName);
+        writer.write("decode_$L_list(List) when is_list(List) ->", helperName);
+        writer.indent();
+        writer.write("[decode_$L(V) || V <- List, V =/= null].", helperName);
+        writer.dedent();
+        writer.write("");
+        writer.write("encode_$L_list(undefined) -> undefined;", helperName);
+        writer.write("encode_$L_list(List) when is_list(List) ->", helperName);
+        writer.indent();
+        writer.write("[encode_$L(V) || V <- List, V =/= undefined].", helperName);
+        writer.dedent();
+        writer.write("");
+    }
+
     private static void emitUnionHelpers(
             ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
 
@@ -1059,6 +1193,7 @@ public final class ErlangRestJson1Emitter {
             ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
         boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
         boolean compressionBindings = serviceHasCompressionOperations(model, service);
+        emitStructureHelpers(writer, model, service, sp);
         emitEnumHelpers(writer, model, service, sp);
         emitUnionHelpers(writer, model, service, sp);
         emitHelpers(writer, checksumBindings, compressionBindings);
@@ -1458,7 +1593,10 @@ public final class ErlangRestJson1Emitter {
                             wireKey, encodeHelper, toBindingVar(fieldName), comma);
                 } else {
                     writer.write("    <<\"$L\">> => $L$L",
-                            wireKey, encodeDocumentValue(target, fieldName), comma);
+                            wireKey,
+                            ErlangJsonCodecSupport.encodeDocumentValue(
+                                    model, sp, httpIndex, db.getMember(), fieldName),
+                            comma);
                 }
             }
             writer.write("}),");
@@ -1488,27 +1626,6 @@ public final class ErlangRestJson1Emitter {
         return BeamNameUtils.toCamelCaseVariable(snakeField);
     }
 
-    private static String documentDecodeExpression(String fieldName, String jsonKey, Shape target) {
-        String assignment = documentDecodeAssignment(fieldName, jsonKey, target);
-        int eq = assignment.indexOf(" = ");
-        return eq >= 0 ? assignment.substring(eq + 3) : assignment;
-    }
-
-    private static String documentDecodeAssignment(String fieldName, String jsonKey, Shape target) {
-        String raw = "maps:get(<<\"" + jsonKey + "\">>, Decoded, undefined)";
-        if (target instanceof ListShape) {
-            String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
-            return fieldName + " = " + helper + "(" + raw + ")";
-        }
-        if (target instanceof MapShape) {
-            if (target.hasTrait(SparseTrait.class)) {
-                return fieldName + " = decode_sparse_map(" + raw + ")";
-            }
-            return fieldName + " = " + raw;
-        }
-        return fieldName + " = " + raw;
-    }
-
     private static String jsonKey(MemberShape member) {
         return member.getTrait(JsonNameTrait.class)
                 .map(JsonNameTrait::getValue)
@@ -1531,17 +1648,6 @@ public final class ErlangRestJson1Emitter {
         return fmt == TimestampFormatTrait.Format.EPOCH_SECONDS
                 ? "decode_timestamp_epoch_seconds"
                 : "decode_timestamp_date_time";
-    }
-
-    private static String encodeDocumentValue(Shape target, String fieldName) {
-        String binding = toBindingVar(fieldName);
-        if (target instanceof ListShape && target.hasTrait(SparseTrait.class)) {
-            return "encode_sparse_list(" + binding + ")";
-        }
-        if (target instanceof MapShape && target.hasTrait(SparseTrait.class)) {
-            return "encode_sparse_map(" + binding + ")";
-        }
-        return binding;
     }
 
     @SafeVarargs

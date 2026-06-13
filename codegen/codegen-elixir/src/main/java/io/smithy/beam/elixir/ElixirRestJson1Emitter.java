@@ -44,6 +44,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * REST JSON 1 codec emitter for Elixir. Generates encode_request and decode_response
@@ -130,6 +131,7 @@ public final class ElixirRestJson1Emitter {
                 emitResponseEncoder(writer, model, op, httpIndex, sp, typesMod);
             }
 
+            emitStructureHelpers(writer, model, service, sp);
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
             emitHelpers(writer, checksumBindings, false);
@@ -174,6 +176,7 @@ public final class ElixirRestJson1Emitter {
                 emitErrorDispatch(writer, model, op, sp, typesMod);
             }
 
+            emitStructureHelpers(writer, model, service, sp);
             emitEnumHelpers(writer, model, service, sp);
             emitUnionHelpers(writer, model, service, sp);
             emitHelpers(writer, checksumBindings, compressionBindings);
@@ -333,7 +336,7 @@ public final class ElixirRestJson1Emitter {
                                 httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
                         entry = "\"" + wireKey + "\" => " + encodeHelper + "(input." + field + ")";
                     } else {
-                        entry = "\"" + wireKey + "\" => input." + field;
+                        entry = encodeDocumentEntry(model, sp, httpIndex, db.getMember(), "input." + field, wireKey);
                     }
                     if (i < docMembers.size() - 1) {
                         writer.write("$L,", entry);
@@ -429,7 +432,7 @@ public final class ElixirRestJson1Emitter {
                                 httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
                         entry = "\"" + wireKey + "\" => " + encodeHelper + "(output." + field + ")";
                     } else {
-                        entry = "\"" + wireKey + "\" => output." + field;
+                        entry = encodeDocumentEntry(model, sp, httpIndex, db.getMember(), "output." + field, wireKey);
                     }
                     if (i < respDoc.size() - 1) {
                         writer.write("$L,", entry);
@@ -586,7 +589,10 @@ public final class ElixirRestJson1Emitter {
                         httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
                 writer.write("$L: $L(Map.get(decoded, \"$L\"))$L", field, decodeHelper, wireKey, suffix);
             } else {
-                writer.write("$L: $L$L", field, documentDecodeExpr(wireKey, target), suffix);
+                writer.write("$L: $L$L",
+                        field,
+                        documentDecodeExpr(model, sp, httpIndex, db.getMember(), wireKey),
+                        suffix);
             }
         }
         for (HttpBinding pb : reqPayload) {
@@ -713,7 +719,10 @@ public final class ElixirRestJson1Emitter {
                         httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
                 writer.write("$L: $L(Map.get(decoded, \"$L\"))$L", field, decodeHelper, wireKey, suffix);
             } else {
-                writer.write("$L: $L$L", field, documentDecodeExpr(wireKey, target), suffix);
+                writer.write("$L: $L$L",
+                        field,
+                        documentDecodeExpr(model, sp, httpIndex, db.getMember(), wireKey),
+                        suffix);
             }
         }
         for (HttpBinding pb : respPayload) {
@@ -872,6 +881,244 @@ public final class ElixirRestJson1Emitter {
         }
     }
 
+    static List<MemberShape> documentMembers(
+            HttpBindingIndex httpIndex,
+            OperationShape op,
+            StructureShape structure,
+            boolean request) {
+        List<HttpBinding> bindings = request
+                ? httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT)
+                : httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
+        if (bindings.isEmpty() && request) {
+            bindings = httpIndex.getRequestBindings(op, HttpBinding.Location.PAYLOAD);
+        } else if (bindings.isEmpty()) {
+            bindings = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
+        }
+        if (!bindings.isEmpty()) {
+            return bindings.stream().map(HttpBinding::getMember).collect(Collectors.toList());
+        }
+        return new ArrayList<>(structure.members());
+    }
+
+    private static void emitStructureHelpers(
+            ElixirWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
+
+        Set<ShapeId> emitted = new LinkedHashSet<>();
+        Set<ShapeId> listElementStructures = new LinkedHashSet<>();
+        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+
+        for (OperationShape op : ElixirTopDown.containedOperationsSorted(model, service)) {
+            StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
+            for (MemberShape member : documentMembers(httpIndex, op, input, true)) {
+                collectStructureTargets(model, member, emitted, listElementStructures);
+            }
+            StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
+            for (MemberShape member : documentMembers(httpIndex, op, output, false)) {
+                collectStructureTargets(model, member, emitted, listElementStructures);
+            }
+            for (HttpBinding.Location loc : HttpBinding.Location.values()) {
+                for (HttpBinding b : httpIndex.getRequestBindings(op, loc)) {
+                    collectStructureTargets(model, b.getMember(), emitted, listElementStructures);
+                }
+                for (HttpBinding b : httpIndex.getResponseBindings(op, loc)) {
+                    collectStructureTargets(model, b.getMember(), emitted, listElementStructures);
+                }
+            }
+        }
+
+        for (ShapeId structureId : emitted) {
+            StructureShape structure = model.expectShape(structureId, StructureShape.class);
+            emitStructureDecodeEncode(writer, model, httpIndex, structure, sp);
+            if (listElementStructures.contains(structureId)) {
+                emitStructureListDecodeEncode(writer, structure, sp);
+            }
+        }
+    }
+
+    private static void collectStructureTargets(
+            Model model, MemberShape member, Set<ShapeId> out, Set<ShapeId> listElements) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof StructureShape structure) {
+            if (out.add(structure.getId())) {
+                for (MemberShape nested : structure.members()) {
+                    collectStructureTargets(model, nested, out, listElements);
+                }
+            }
+        } else if (target instanceof ListShape list) {
+            Shape element = model.expectShape(list.getMember().getTarget());
+            if (element instanceof StructureShape structure) {
+                listElements.add(structure.getId());
+            }
+            collectStructureTargets(model, list.getMember(), out, listElements);
+        } else if (target instanceof MapShape map) {
+            collectStructureTargets(model, map.getValue(), out, listElements);
+        }
+    }
+
+    private static void emitStructureDecodeEncode(
+            ElixirWriter writer,
+            Model model,
+            HttpBindingIndex httpIndex,
+            StructureShape structure,
+            SymbolProvider sp) {
+        String helperName = structureHelperName(structure);
+        String structName = sp.toSymbol(structure).getName();
+        writer.write("# Structure helpers for $L", structure.getId());
+        writer.write("defp decode_$L(nil), do: nil", helperName);
+        writer.write("defp decode_$L(map) when is_map(map) do", helperName);
+        writer.indent();
+        writer.write("%Types.$L{", structName);
+        int totalFields = structure.members().size();
+        int fieldIndex = 0;
+        for (MemberShape member : structure.members()) {
+            fieldIndex++;
+            String field = fieldName(sp, member);
+            String wireKey = jsonKey(member);
+            String suffix = fieldIndex < totalFields ? "," : "";
+            writer.write("  $L: $L$L",
+                    field,
+                    decodeJsonValue(model, sp, httpIndex, member, "Map.get(map, \"" + wireKey + "\")"),
+                    suffix);
+        }
+        writer.write("}");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+
+        writer.write("defp encode_$L(nil), do: nil", helperName);
+        writer.write("defp encode_$L(%Types.$L{} = record) do", helperName, structName);
+        writer.indent();
+        writer.write("%{");
+        fieldIndex = 0;
+        for (MemberShape member : structure.members()) {
+            fieldIndex++;
+            String field = fieldName(sp, member);
+            String wireKey = jsonKey(member);
+            String suffix = fieldIndex < totalFields ? "," : "";
+            writer.write("  \"$L\" => $L$L",
+                    wireKey,
+                    encodeJsonValue(model, sp, httpIndex, member, "record." + field),
+                    suffix);
+        }
+        writer.write("}");
+        writer.write("|> Enum.reject(fn {_k, v} -> is_nil(v) end)");
+        writer.write("|> Map.new()");
+        writer.dedent();
+        writer.write("end");
+        writer.write("");
+    }
+
+    private static void emitStructureListDecodeEncode(
+            ElixirWriter writer, StructureShape structure, SymbolProvider sp) {
+        String helperName = structureHelperName(structure);
+        writer.write("defp decode_$L_list(nil), do: nil", helperName);
+        writer.write("defp decode_$L_list(list) when is_list(list),", helperName);
+        writer.write("  do: Enum.map(list, fn v -> decode_$L(v) end)", helperName);
+        writer.write("");
+        writer.write("defp encode_$L_list(nil), do: nil", helperName);
+        writer.write("defp encode_$L_list(list) when is_list(list),", helperName);
+        writer.write("  do: Enum.map(list, fn v -> encode_$L(v) end)", helperName);
+        writer.write("");
+    }
+
+    private static String structureHelperName(Shape shape) {
+        return BeamNameUtils.toSnakeCase(shape.getId().getName());
+    }
+
+    static String decodeDocumentValue(
+            Model model,
+            SymbolProvider sp,
+            HttpBindingIndex httpIndex,
+            MemberShape member,
+            String jsonKey) {
+        return decodeJsonValue(
+                model, sp, httpIndex, member, "Map.get(decoded, \"" + jsonKey + "\")");
+    }
+
+    private static String decodeJsonValue(
+            Model model,
+            SymbolProvider sp,
+            HttpBindingIndex httpIndex,
+            MemberShape member,
+            String raw) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof EnumShape || target instanceof IntEnumShape) {
+            return "decode_" + enumHelperName(target) + "(" + raw + ")";
+        }
+        if (target instanceof UnionShape) {
+            return "decode_" + unionHelperName(target) + "(" + raw + ")";
+        }
+        if (target instanceof StructureShape) {
+            return "decode_" + structureHelperName(target) + "(" + raw + ")";
+        }
+        if (target instanceof TimestampShape) {
+            return timestampDecodeHelper(httpIndex, member, HttpBinding.Location.DOCUMENT) + "(" + raw + ")";
+        }
+        if (target instanceof ListShape listShape) {
+            Shape element = model.expectShape(listShape.getMember().getTarget());
+            if (element instanceof StructureShape) {
+                return "decode_" + structureHelperName(element) + "_list(" + raw + ")";
+            }
+            String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
+            return helper + "(" + raw + ")";
+        }
+        if (target instanceof MapShape) {
+            if (target.hasTrait(SparseTrait.class)) {
+                return "decode_sparse_map(" + raw + ")";
+            }
+            return raw;
+        }
+        return raw;
+    }
+
+    static String encodeJsonValue(
+            Model model,
+            SymbolProvider sp,
+            HttpBindingIndex httpIndex,
+            MemberShape member,
+            String binding) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof EnumShape || target instanceof IntEnumShape) {
+            return "encode_" + enumHelperName(target) + "(" + binding + ")";
+        }
+        if (target instanceof UnionShape) {
+            return "encode_" + unionHelperName(target) + "(" + binding + ")";
+        }
+        if (target instanceof StructureShape) {
+            return "encode_" + structureHelperName(target) + "(" + binding + ")";
+        }
+        if (target instanceof TimestampShape) {
+            return timestampEncodeHelper(httpIndex, member, HttpBinding.Location.DOCUMENT) + "(" + binding + ")";
+        }
+        if (target instanceof ListShape listShape) {
+            Shape element = model.expectShape(listShape.getMember().getTarget());
+            if (element instanceof StructureShape) {
+                return "encode_" + structureHelperName(element) + "_list(" + binding + ")";
+            }
+            if (target.hasTrait(SparseTrait.class)) {
+                return "encode_sparse_list(" + binding + ")";
+            }
+            return binding;
+        }
+        if (target instanceof MapShape) {
+            if (target.hasTrait(SparseTrait.class)) {
+                return "encode_sparse_map(" + binding + ")";
+            }
+            return binding;
+        }
+        return binding;
+    }
+
+    static String encodeDocumentEntry(
+            Model model,
+            SymbolProvider sp,
+            HttpBindingIndex httpIndex,
+            MemberShape member,
+            String binding,
+            String wireKey) {
+        return "\"" + wireKey + "\" => " + encodeJsonValue(model, sp, httpIndex, member, binding);
+    }
+
     private static void emitUnionHelpers(
             ElixirWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
 
@@ -1003,6 +1250,7 @@ public final class ElixirRestJson1Emitter {
             ElixirWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
         boolean checksumBindings = ElixirHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
         boolean compressionBindings = serviceHasCompressionOperations(model, service);
+        emitStructureHelpers(writer, model, service, sp);
         emitEnumHelpers(writer, model, service, sp);
         emitUnionHelpers(writer, model, service, sp);
         emitHelpers(writer, checksumBindings, compressionBindings);
@@ -1258,19 +1506,14 @@ public final class ElixirRestJson1Emitter {
                 : "decode_timestamp_date_time";
     }
 
-    private static String documentDecodeExpr(String jsonKey, Shape target) {
-        String raw = "Map.get(decoded, \"" + jsonKey + "\")";
-        if (target instanceof ListShape) {
-            String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
-            return helper + "(" + raw + ")";
-        }
-        if (target instanceof MapShape) {
-            if (target.hasTrait(SparseTrait.class)) {
-                return "decode_sparse_map(" + raw + ")";
-            }
-            return raw;
-        }
-        return raw;
+    private static String documentDecodeExpr(
+            Model model,
+            SymbolProvider sp,
+            HttpBindingIndex httpIndex,
+            MemberShape member,
+            String jsonKey) {
+        return decodeJsonValue(
+                model, sp, httpIndex, member, "Map.get(decoded, \"" + jsonKey + "\")");
     }
 
     private static String fieldName(SymbolProvider sp, MemberShape member) {
