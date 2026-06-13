@@ -64,6 +64,11 @@ class EndpointRulesEmissionTest {
         assertThat(endpoints)
                 .contains("aws_endpoint_rules:evaluate(?ENDPOINT_RULE_SET, merge_params(Config, Params)).");
 
+        String evaluator = manifest.expectFileString("aws_endpoint_rules.erl");
+        assertThat(evaluator).contains("-module(aws_endpoint_rules).");
+        assertThat(evaluator).contains("Temporary stub endpoint rules evaluator");
+        assertThat(evaluator).contains("evaluate(_RuleSet, Params)");
+
         String http = manifest.expectFileString("runtime_http.erl");
         assertThat(http).contains("endpoint_rules_service_endpoints:resolve(Config, #{})");
         assertThat(http).contains("{ok, #{url := ResolvedUrl}} -> ResolvedUrl");
@@ -91,6 +96,9 @@ class EndpointRulesEmissionTest {
                 .contains(
                         "AwsEndpointRules.evaluate(RuntimeTypes.endpoint_rule_set(), merge_params(config, params))");
         assertThat(manifest.expectFileString("aws_endpoint_rules.ex")).contains("defmodule AwsEndpointRules do");
+        assertThat(manifest.expectFileString("aws_endpoint_rules.ex"))
+                .contains("Temporary stub endpoint rules evaluator");
+        assertThat(manifest.expectFileString("aws_endpoint_rules.ex")).contains("def evaluate(_rule_set, params)");
         assertThat(endpoints).doesNotContain("def rule_set");
 
         String http = manifest.expectFileString("runtime_http.ex");
