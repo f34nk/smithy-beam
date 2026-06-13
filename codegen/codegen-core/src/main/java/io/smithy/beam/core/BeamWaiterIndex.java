@@ -6,6 +6,7 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.traits.ErrorTrait;
 import software.amazon.smithy.waiters.Acceptor;
 import software.amazon.smithy.waiters.Matcher;
 import software.amazon.smithy.waiters.PathMatcher;
@@ -14,9 +15,11 @@ import software.amazon.smithy.waiters.Waiter;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Collects {@code smithy.waiters#waitable} definitions from operations in a service closure.
@@ -55,7 +58,7 @@ public final class BeamWaiterIndex {
                     Waiter waiter = entry.getValue();
                     List<AcceptorInfo> acceptors = new ArrayList<>();
                     for (Acceptor acceptor : waiter.getAcceptors()) {
-                        acceptors.add(toAcceptorInfo(model, operation, acceptor));
+                        acceptors.add(toAcceptorInfo(model, service, operation, acceptor));
                     }
                     bindings.add(new WaiterBinding(
                             entry.getKey(),
@@ -82,12 +85,26 @@ public final class BeamWaiterIndex {
         return binding.acceptors();
     }
 
-    private static AcceptorInfo toAcceptorInfo(Model model, OperationShape operation, Acceptor acceptor) {
+    /**
+     * Error structure ids referenced by {@code errorType} waiter acceptors for the service.
+     */
+    public static Set<ShapeId> referencedErrorShapeIds(Model model, ServiceShape service) {
+        Set<ShapeId> ids = new LinkedHashSet<>();
+        for (WaiterBinding binding : of(model, service).bindings()) {
+            for (AcceptorInfo acceptor : binding.acceptors()) {
+                acceptor.resolvedError().ifPresent(err -> ids.add(err.getId()));
+            }
+        }
+        return ids;
+    }
+
+    private static AcceptorInfo toAcceptorInfo(
+            Model model, ServiceShape service, OperationShape operation, Acceptor acceptor) {
         Matcher<?> matcher = acceptor.getMatcher();
         Optional<Boolean> successExpected = successMatcher(matcher);
         Optional<String> errorTypeName = errorTypeName(matcher);
         Optional<StructureShape> resolvedError =
-                errorTypeName.flatMap(name -> resolveErrorType(model, operation, name));
+                errorTypeName.flatMap(name -> resolveErrorType(model, service, operation, name));
         Optional<PathMatcherInfo> pathMatcher = pathMatcher(matcher).map(pm -> new PathMatcherInfo(
                 pm.getPath(), pm.getExpected(), pm.getComparator().toString()));
         return new AcceptorInfo(
@@ -187,16 +204,34 @@ public final class BeamWaiterIndex {
     }
 
     public static Optional<StructureShape> resolveErrorType(
-            Model model, OperationShape operation, String errorType) {
+            Model model, ServiceShape service, OperationShape operation, String errorType) {
         if (errorType.contains("#")) {
             ShapeId id = ShapeId.from(errorType);
-            if (model.getShape(id).filter(StructureShape.class::isInstance).isPresent()) {
-                return Optional.of(model.expectShape(id, StructureShape.class));
-            }
+            return model.getShape(id)
+                    .filter(StructureShape.class::isInstance)
+                    .map(s -> (StructureShape) s);
         }
         for (ShapeId errorId : operation.getErrors()) {
             if (errorId.getName().equals(errorType)) {
                 return Optional.of(model.expectShape(errorId, StructureShape.class));
+            }
+        }
+        for (ShapeId errorId : service.getErrors()) {
+            if (errorId.getName().equals(errorType)) {
+                return Optional.of(model.expectShape(errorId, StructureShape.class));
+            }
+        }
+        TopDownIndex topDown = TopDownIndex.of(model);
+        for (OperationShape op : topDown.getContainedOperations(service)) {
+            for (ShapeId errorId : op.getErrors()) {
+                if (errorId.getName().equals(errorType)) {
+                    return Optional.of(model.expectShape(errorId, StructureShape.class));
+                }
+            }
+        }
+        for (StructureShape err : model.getStructureShapesWithTrait(ErrorTrait.class)) {
+            if (err.getId().getName().equals(errorType)) {
+                return Optional.of(err);
             }
         }
         return Optional.empty();

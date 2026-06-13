@@ -167,6 +167,29 @@ class BeamCodegenTransformsTest {
         assertThat(transforms).isNotEmpty();
     }
 
+    @Test
+    void pruneModelToServiceClosure_retainsWaiterReferencedErrorShapes() {
+        URL resource = BeamCodegenTransformsTest.class
+                .getResource("/model/waiter_external_error_fixture.smithy");
+        assertThat(resource).isNotNull();
+        Model model = Model.assembler()
+                .addImport(resource)
+                .addImport(BeamCodegenTransformsTest.class
+                        .getResource("/model/waiter_external_error_external.smithy"))
+                .discoverModels()
+                .assemble()
+                .unwrap();
+        ShapeId serviceId = ShapeId.from("smithy.beam.test.waiter_errors#WaiterExternalErrorService");
+        ShapeId errorId = ShapeId.from("smithy.beam.test.waiter_errors.external#ExternalNotFound");
+        ServiceShape service = model.expectShape(serviceId, ServiceShape.class);
+
+        Model pruned = BeamCodegenTransforms.pruneModelToServiceClosure(model, service);
+
+        assertThat(pruned.getShape(errorId)).isPresent();
+        assertThat(BeamWaiterIndex.referencedErrorShapeIds(pruned, pruned.expectShape(serviceId, ServiceShape.class)))
+                .contains(errorId);
+    }
+
     @SuppressWarnings("rawtypes")
     private static CodegenDirector runnerWithService() {
         CodegenDirector runner = Mockito.spy(new CodegenDirector<>());

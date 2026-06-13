@@ -130,6 +130,7 @@ public final class BeamCodegenTransforms {
             keepIds.add(shape.getId());
             shape.getAllTraits().keySet().forEach(keepIds::add);
         }
+        keepIds.addAll(BeamWaiterIndex.referencedErrorShapeIds(model, service));
         return keepIds;
     }
 
