@@ -21,8 +21,14 @@ build:
 	cp -r build/smithy/*/python-*-codegen/* generated/
 	tree generated
 
+# .PHONY: demo
+# demo: build
+
 .PHONY: demo
-demo: build
+demo:
+	#
+	# TODO: temporarily disabled - python generation is very slow
+	#
 
 .PHONY: clean
 clean:
