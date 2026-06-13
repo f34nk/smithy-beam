@@ -36,6 +36,7 @@ class WaiterEmissionTest {
 
         String waiters = manifest.getFileString("waitable_service_waiters.erl").orElse("");
         assertThat(waiters).contains("-module(waitable_service_waiters).");
+        assertThat(waiters).contains("-include(\"waitable_service_types.hrl\")");
         assertThat(waiters).contains("wait_bucket_exists/3");
         assertThat(waiters).contains("wait_bucket_exists(Client, Input, Opts) ->");
         assertThat(waiters).contains("waitable_service_client:head_bucket(Client, Input)");

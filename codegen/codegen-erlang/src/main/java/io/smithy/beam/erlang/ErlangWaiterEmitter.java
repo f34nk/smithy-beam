@@ -24,8 +24,7 @@ public final class ErlangWaiterEmitter {
             return;
         }
 
-        BeamErlangLayout layout = new BeamErlangLayout(
-                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
+        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), service.getId().getNamespace(), service);
         String waitersMod = layout.waitersModuleName();
         String clientMod = layout.clientModuleName();
         SymbolProvider sp = ctx.symbolProvider();
@@ -38,6 +37,7 @@ public final class ErlangWaiterEmitter {
         ctx.writerDelegator().useFileWriter(layout.waitersModuleFile(), writer -> {
             writer.write("%% Generated waiters for $L.", service.getId());
             writer.write("-module($L).", waitersMod);
+            writer.write("-include(\"$L\").", layout.typesHeaderFile());
             ErlangFormat.writeExport(writer, exports);
             writer.write("");
 

@@ -23,8 +23,7 @@ public final class ElixirWaiterEmitter {
             return;
         }
 
-        BeamElixirLayout layout = new BeamElixirLayout(
-                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
+        BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
         String waitersMod = ElixirSymbolProvider.toModuleName(layout.waitersModuleName());
         String clientMod = ElixirSymbolProvider.toModuleName(layout.clientModuleName());
         String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
