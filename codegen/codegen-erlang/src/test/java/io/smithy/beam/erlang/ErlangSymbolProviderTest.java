@@ -6,7 +6,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.codegen.core.Symbol;
-import software.amazon.smithy.codegen.core.SymbolDependency;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.*;
 
@@ -403,7 +402,7 @@ class ErlangSymbolProviderTest {
         }
 
         @Test
-        void customDocumentShapeUsesTermSurfaceAndDeclaresRuntimeDependencies() {
+        void customDocumentShapeUsesTermSurface() {
             DocumentShape myDoc =
                     model.expectShape(ShapeId.from("com.example#MyDoc"), DocumentShape.class);
             Symbol sym = provider.toSymbol(myDoc);
@@ -411,13 +410,6 @@ class ErlangSymbolProviderTest {
             assertThat(sym.getProperty("baseType", String.class)).contains("term()");
             assertThat(sym.getProperty("builtIn", Boolean.class)).contains(false);
             assertThat(sym.getDefinitionFile()).isEqualTo(DEF_FILE);
-            assertThat(sym.getDependencies())
-                    .anySatisfy(
-                            (SymbolDependency dep) -> {
-                                assertThat(dep.getDependencyType()).isEqualTo("deps");
-                                assertThat(dep.getPackageName()).isEqualTo("jsx");
-                                assertThat(dep.getVersion()).isEqualTo("3.1.0");
-                            });
         }
     }
 

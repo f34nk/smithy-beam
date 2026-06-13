@@ -5,7 +5,6 @@ import io.smithy.beam.core.BeamScalarTypeAliases;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.core.BeamSymbolRuntimeDeps;
 import software.amazon.smithy.codegen.core.ReservedWords;
 import software.amazon.smithy.codegen.core.ReservedWordsBuilder;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -205,13 +204,11 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
                     case CLIENT -> layout.clientModuleName();
                     case SERVER -> layout.serverModuleName();
                 };
-        Symbol.Builder builder =
-                Symbol.builder()
+        return Symbol.builder()
                         .name(module)
                         .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
-                        .putProperty("builtIn", false);
-        BeamSymbolRuntimeDeps.applyService(model, service, builder);
-        return builder.build();
+                        .putProperty("builtIn", false)
+                .build();
     }
 
     @Override
@@ -261,39 +258,33 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
         if (BeamScalarTypeAliases.isRedundant(typeName, baseType)) {
             return builtin(baseType);
         }
-        Symbol.Builder builder =
-                Symbol.builder()
+        return Symbol.builder()
                         .name(typeName)
                         .definitionFile(definitionFile)
                         .putProperty("builtIn", false)
                         .putProperty("typeKind", "alias")
-                        .putProperty("baseType", baseType);
-        BeamSymbolRuntimeDeps.apply(shape, builder);
-        return builder.build();
+                        .putProperty("baseType", baseType)
+                .build();
     }
 
     private Symbol namedAlias(Shape shape) {
         String name = toTypeName(shape);
-        Symbol.Builder builder =
-                Symbol.builder()
+        return Symbol.builder()
                         .name(name + "()")
                         .definitionFile(definitionFile)
                         .putProperty("builtIn", false)
-                        .putProperty("typeKind", "alias");
-        BeamSymbolRuntimeDeps.apply(shape, builder);
-        return builder.build();
+                        .putProperty("typeKind", "alias")
+                .build();
     }
 
     private Symbol namedModule(Shape shape) {
         String name = toTypeName(shape);
-        Symbol.Builder builder =
-                Symbol.builder()
+        return Symbol.builder()
                         .name(name + "()")
                         .definitionFile(definitionFile)
                         .putProperty("builtIn", false)
-                        .putProperty("typeKind", "module");
-        BeamSymbolRuntimeDeps.apply(shape, builder);
-        return builder.build();
+                        .putProperty("typeKind", "module")
+                .build();
     }
 
     private boolean isPrelude(Shape shape) {
