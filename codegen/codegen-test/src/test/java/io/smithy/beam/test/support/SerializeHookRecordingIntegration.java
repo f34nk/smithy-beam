@@ -41,6 +41,14 @@ public final class SerializeHookRecordingIntegration {
             writer.write("%% serialize-hook-recording-integration");
             writer.popState();
         }
+
+        @Override
+        public void customizeProtocolDeserialize(
+                ErlangContext context, OperationShape operation, ErlangWriter writer) {
+            writer.pushOperationBodySection();
+            writer.write("%% deserialize-hook-recording-integration");
+            writer.popState();
+        }
     }
 
     public static final class Elixir implements ElixirIntegration {
@@ -64,6 +72,14 @@ public final class SerializeHookRecordingIntegration {
                 ElixirContext context, OperationShape operation, ElixirWriter writer) {
             writer.pushOperationBodySection();
             writer.write("# serialize-hook-recording-integration");
+            writer.popState();
+        }
+
+        @Override
+        public void customizeProtocolDeserialize(
+                ElixirContext context, OperationShape operation, ElixirWriter writer) {
+            writer.pushOperationBodySection();
+            writer.write("# deserialize-hook-recording-integration");
             writer.popState();
         }
     }

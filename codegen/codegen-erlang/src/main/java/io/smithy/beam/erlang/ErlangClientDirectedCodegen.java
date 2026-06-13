@@ -368,6 +368,9 @@ final class ErlangClientDirectedCodegen
                 for (ErlangIntegration integration : ctx.integrations()) {
                     integration.customizeProtocolSerialize(ctx, op, writer);
                 }
+                for (ErlangIntegration integration : ctx.integrations()) {
+                    integration.customizeProtocolDeserialize(ctx, op, writer);
+                }
             });
         }
     }

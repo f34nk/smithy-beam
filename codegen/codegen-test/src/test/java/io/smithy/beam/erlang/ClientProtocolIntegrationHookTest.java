@@ -15,12 +15,12 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ClientProtocolSerializeHookTest {
+class ClientProtocolIntegrationHookTest {
 
     private static final String SERVICE = "smithy.beam.demo.protocoljson#DemoRestJson";
 
     private static Model loadModel() {
-        URL resource = ClientProtocolSerializeHookTest.class.getResource(
+        URL resource = ClientProtocolIntegrationHookTest.class.getResource(
                 "/model/protocol_rest_json_fixture.smithy");
         assertThat(resource).isNotNull();
         return Model.assembler()
@@ -72,5 +72,17 @@ class ClientProtocolSerializeHookTest {
 
         assertThat(manifest.expectFileString("demo_rest_json_client.erl"))
                 .contains("%% serialize-hook-recording-integration");
+    }
+
+    @Test
+    void erlangCustomizeProtocolDeserializeRunsForRestJsonClient() {
+        Model model = loadModel();
+        MockManifest manifest = new MockManifest();
+        PluginContext context = buildContext(model, manifest);
+
+        runClientDirectedCodegen(context);
+
+        assertThat(manifest.expectFileString("demo_rest_json_client.erl"))
+                .contains("%% deserialize-hook-recording-integration");
     }
 }

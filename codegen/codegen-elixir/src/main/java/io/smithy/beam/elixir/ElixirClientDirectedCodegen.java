@@ -372,6 +372,9 @@ final class ElixirClientDirectedCodegen
                 for (ElixirIntegration integration : ctx.integrations()) {
                     integration.customizeProtocolSerialize(ctx, op, writer);
                 }
+                for (ElixirIntegration integration : ctx.integrations()) {
+                    integration.customizeProtocolDeserialize(ctx, op, writer);
+                }
             });
         }
     }
