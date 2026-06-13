@@ -212,7 +212,7 @@ public final class ErlangRestJson1Emitter {
             for (MemberShape member : idempotencyMembers) {
                 String field = BeamNameUtils.toSnakeCase(member.getMemberName());
                 String nextInput = "Input" + step;
-                writer.write("$L = case $L#$L of", nextInput, currentInput, field);
+                writer.write("$L = case $L#$L.$L of", nextInput, currentInput, inputRecord, field);
                 writer.indent();
                 writer.write("undefined -> $L#$L{ $L = generate_uuid() };", currentInput, inputRecord, field);
                 writer.write("_ -> $L", currentInput);
@@ -223,8 +223,8 @@ public final class ErlangRestJson1Emitter {
             }
             for (MemberShape member : idempotencyMembers) {
                 String field = BeamNameUtils.toSnakeCase(member.getMemberName());
-                writer.write("$L = $L#$L,",
-                        toBindingVar(field), currentInput, field);
+                writer.write("$L = $L#$L.$L,",
+                        toBindingVar(field), currentInput, inputRecord, field);
             }
         }
 

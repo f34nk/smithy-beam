@@ -49,7 +49,13 @@ operation ListBuckets {
 structure ListBucketsInput {}
 
 structure ListBucketsOutput {
+    owner: Owner
     buckets: BucketList
+}
+
+structure Owner {
+    displayName: String
+    id: String
 }
 
 list BucketList {

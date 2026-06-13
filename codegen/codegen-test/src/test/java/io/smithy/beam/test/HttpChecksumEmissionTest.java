@@ -49,6 +49,11 @@ class HttpChecksumEmissionTest {
         assertThat(codec).contains("validate_response_checksum(Body, Headers,");
         assertThat(codec).contains("case Computed =:= Expected of");
         assertThat(codec).containsPattern("end\\s+end\\.");
+        assertThat(codec).contains("Headers = case ChecksumAlgorithm of");
+        assertThat(codec).containsPattern("undefined ->\\s+Checksum = crc32c_hash\\(Body\\)");
+        assertThat(codec).contains("crc32c ->");
+        assertThat(codec).contains("sha256 ->");
+        assertThat(codec).contains("Other -> error({unsupported_checksum_algorithm, Other})");
     }
 
     @Test

@@ -78,6 +78,10 @@ public final class ErlangRestXmlEmitter {
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
             ErlangFormat.writeExport(writer, exports);
             writer.write("");
+            if (encodeWithConfig) {
+                writer.write("-type client_config() :: #{binary() => term()}.");
+                writer.write("");
+            }
 
             emitServiceXmlNamespace(writer, serviceNamespace);
 
@@ -89,6 +93,8 @@ public final class ErlangRestXmlEmitter {
 
             emitXmlEncodeHelpers(writer);
             emitXmlDecodeHelpers(writer);
+            emitPrefixHeaderHelpers(writer);
+            emitIdempotencyHelpers(writer);
             if (checksumBindings) {
                 ErlangHttpChecksumEmitter.emitChecksumHelpers(writer);
             }
@@ -339,15 +345,20 @@ public final class ErlangRestXmlEmitter {
             emitStructureFieldsFromXml(writer, model, output, "Parsed", sp, "    ");
         }
 
+        Set<String> boundFields = new LinkedHashSet<>();
         List<String> recordFields = new ArrayList<>();
         for (HttpBinding hb : concat(respHeaders, respPrefixHeaders, respPayload)) {
             String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
-            recordFields.add("    " + fieldName + " = " + toBindingVar(fieldName));
+            if (boundFields.add(fieldName)) {
+                recordFields.add("    " + fieldName + " = " + toBindingVar(fieldName));
+            }
         }
         if (respPayload.isEmpty() && !output.members().isEmpty()) {
             for (MemberShape member : output.members()) {
                 String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
-                recordFields.add("    " + fieldName + " = " + toBindingVar(fieldName));
+                if (boundFields.add(fieldName)) {
+                    recordFields.add("    " + fieldName + " = " + toBindingVar(fieldName));
+                }
             }
         }
 
@@ -670,17 +681,45 @@ public final class ErlangRestXmlEmitter {
                         decodeListFieldFromXml(model, member, listShape, xmlVar, sp));
             } else if (target instanceof StructureShape nested) {
                 String element = BeamXmlBindingIndex.memberElementName(member);
+                String nestedVar = toBindingVar(field) + "_xml";
                 writer.write(indent + "$L = case find_element(<<\"$L\">>, element_content($L)) of",
                         toBindingVar(field), element, xmlVar);
                 writer.indent();
                 writer.write("undefined -> undefined;");
-                writer.write("Nested -> $L", decodeStructureFromXml(model, nested, "Nested", sp));
+                writer.write("$L -> $L", nestedVar, decodeStructureFromXml(model, nested, nestedVar, sp));
                 writer.dedent();
+                writer.write("end,");
             } else {
                 writer.write(indent + "$L = xml_child_text($L, <<\"$L\">>),",
                         toBindingVar(field), xmlVar, BeamXmlBindingIndex.memberElementName(member));
             }
         }
+    }
+
+    private static void emitPrefixHeaderHelpers(ErlangWriter writer) {
+        writer.write("prefix_headers_to_list(_Prefix, undefined) ->");
+        writer.write("    [];");
+        writer.write("prefix_headers_to_list(Prefix, Map) when is_map(Map) ->");
+        writer.write("    [{<<Prefix/binary, H/binary>>, to_binary(V)} || {H, V} <- maps:to_list(Map)].");
+        writer.write("");
+        writer.write("prefix_headers_from_list(Headers, Prefix) ->");
+        writer.write("    Map = maps:from_list([");
+        writer.write("        {binary:part(Name, byte_size(Prefix)), Val}");
+        writer.write("     || {Name, Val} <- Headers,");
+        writer.write("        byte_size(Name) > byte_size(Prefix),");
+        writer.write("        binary:part(Name, 0, byte_size(Prefix)) =:= Prefix");
+        writer.write("    ]),");
+        writer.write("    case maps:size(Map) of");
+        writer.write("        0 -> undefined;");
+        writer.write("        _ -> Map");
+        writer.write("    end.");
+        writer.write("");
+    }
+
+    private static void emitIdempotencyHelpers(ErlangWriter writer) {
+        writer.write("generate_uuid() ->");
+        writer.write("    list_to_binary(uuid:to_string(uuid:v4())).");
+        writer.write("");
     }
 
     private static void emitXmlDecodeHelpers(ErlangWriter writer) {
@@ -943,7 +982,7 @@ public final class ErlangRestXmlEmitter {
             for (MemberShape member : idempotencyMembers) {
                 String field = BeamNameUtils.toSnakeCase(member.getMemberName());
                 String nextInput = "Input" + step;
-                writer.write("$L = case $L#$L of", nextInput, currentInput, field);
+                writer.write("$L = case $L#$L.$L of", nextInput, currentInput, inputRecord, field);
                 writer.indent();
                 writer.write("undefined -> $L#$L{ $L = generate_uuid() };", currentInput, inputRecord, field);
                 writer.write("_ -> $L", currentInput);
@@ -954,7 +993,7 @@ public final class ErlangRestXmlEmitter {
             }
             for (MemberShape member : idempotencyMembers) {
                 String field = BeamNameUtils.toSnakeCase(member.getMemberName());
-                writer.write("$L = $L#$L,", toBindingVar(field), currentInput, field);
+                writer.write("$L = $L#$L.$L,", toBindingVar(field), currentInput, inputRecord, field);
             }
         }
 

@@ -257,7 +257,7 @@ final class ErlangClientDirectedCodegen
                     for (int i = 0; i < unsignedOps.size(); i++) {
                         Symbol opSym = directive.symbolProvider().toSymbol(unsignedOps.get(i));
                         if (i == unsignedOps.size() - 1) {
-                            writer.write("      {unsigned_payload, $L} => true>>}.", opSym.getName());
+                            writer.write("      {unsigned_payload, $L} => true}.", opSym.getName());
                         } else {
                             writer.write("      {unsigned_payload, $L} => true,", opSym.getName());
                         }

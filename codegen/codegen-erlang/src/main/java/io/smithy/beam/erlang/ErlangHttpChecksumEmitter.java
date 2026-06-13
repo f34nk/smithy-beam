@@ -117,6 +117,18 @@ final class ErlangHttpChecksumEmitter {
         writer.write("crc32c_hash(Body) ->");
         writer.write("    crypto:hash(crc32c, Body).");
         writer.write("");
+        writer.write("crc64nvme_hash(_Body) ->");
+        writer.write("    error({unsupported_checksum_algorithm, crc64nvme}).");
+        writer.write("");
+        writer.write("xxhash64_hash(_Body) ->");
+        writer.write("    error({unsupported_checksum_algorithm, xxhash64}).");
+        writer.write("");
+        writer.write("xxhash3_hash(_Body) ->");
+        writer.write("    error({unsupported_checksum_algorithm, xxhash3}).");
+        writer.write("");
+        writer.write("xxhash128_hash(_Body) ->");
+        writer.write("    error({unsupported_checksum_algorithm, xxhash128}).");
+        writer.write("");
         writer.write("checksum_digest(Body, <<\"MD5\">>) -> md5_hash(Body);");
         writer.write("checksum_digest(Body, <<\"SHA256\">>) -> sha256_hash(Body);");
         writer.write("checksum_digest(Body, <<\"CRC32\">>) -> crc32_hash(Body);");
@@ -152,8 +164,8 @@ final class ErlangHttpChecksumEmitter {
             String headersVar) {
         String checksumVar = "Checksum";
         emitChecksumComputation(writer, cb, checksumVar);
-        writer.write("$L = headers_set(<<\"$L\">>, base16_encode($L), $L),",
-                headersVar, cb.headerName(), checksumVar, headersVar);
+        writer.write("headers_set(<<\"$L\">>, base16_encode($L), $L);",
+                cb.headerName(), checksumVar, headersVar);
     }
 
     private static void emitChecksumComputation(
