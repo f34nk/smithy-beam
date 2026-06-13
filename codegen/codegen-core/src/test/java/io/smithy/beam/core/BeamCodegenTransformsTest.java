@@ -10,6 +10,7 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.shapes.EnumShape;
 
 import java.lang.reflect.Field;
 import java.net.URL;
@@ -124,6 +125,22 @@ class BeamCodegenTransformsTest {
     }
 
     @Test
+    void pruneModelToServiceClosure_doesNotThrow_onLargeAwsLikeClosure() {
+        Model model = modelWithEnumInServiceClosure();
+        ServiceShape service = model.expectShape(SERVICE_ID, ServiceShape.class);
+        ShapeId enumId = ShapeId.from("example.com#OrderStatus");
+
+        assertThatCode(() -> BeamCodegenTransforms.pruneModelToServiceClosure(model, service))
+                .doesNotThrowAnyException();
+
+        Model pruned = BeamCodegenTransforms.pruneModelToServiceClosure(model, service);
+        assertThat(pruned.getShape(SERVICE_ID)).isPresent();
+        assertThat(pruned.getShape(enumId)).isPresent();
+        EnumShape status = pruned.expectShape(enumId, EnumShape.class);
+        assertThat(status.getEnumValues()).isNotEmpty();
+    }
+
+    @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
     void applySharedCodegenTransforms_prunesUnreachableShapesViaReflectionWithoutThrowing()
             throws Exception {
@@ -156,6 +173,43 @@ class BeamCodegenTransformsTest {
         runner.model(modelWithOrphanShape());
         runner.service(SERVICE_ID);
         return runner;
+    }
+
+    private static Model modelWithEnumInServiceClosure() {
+        ShapeId enumId = ShapeId.from("example.com#OrderStatus");
+        ShapeId orphanEnumId = ShapeId.from("example.com#OrphanStatus");
+        ShapeId bundleId = ShapeId.from("example.com#OrderBundle");
+        ShapeId opId = ShapeId.from("example.com#GetOrder");
+        ServiceShape service = ServiceShape.builder()
+                .id(SERVICE_ID)
+                .version("1")
+                .addOperation(opId)
+                .build();
+        OperationShape operation = OperationShape.builder()
+                .id(opId)
+                .output(bundleId)
+                .build();
+        EnumShape status = EnumShape.builder()
+                .id(enumId)
+                .addMember("ACTIVE", "ACTIVE")
+                .addMember("INACTIVE", "INACTIVE")
+                .build();
+        EnumShape orphanStatus = EnumShape.builder()
+                .id(orphanEnumId)
+                .addMember("A", "A")
+                .build();
+        StructureShape bundle = StructureShape.builder()
+                .id(bundleId)
+                .addMember("status", enumId)
+                .build();
+        return Model.assembler()
+                .addShape(service)
+                .addShape(operation)
+                .addShape(status)
+                .addShape(orphanStatus)
+                .addShape(bundle)
+                .assemble()
+                .unwrap();
     }
 
     private static Model modelWithOrphanShape() {

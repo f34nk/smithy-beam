@@ -110,8 +110,13 @@ public final class BeamCodegenTransforms {
 
     static Model pruneModelToServiceClosure(Model model, ServiceShape service) {
         Set<ShapeId> keepIds = closureAndTraitDefinitionIds(model, service);
-        ModelTransformer transformer = ModelTransformer.create();
-        return transformer.removeShapesIf(model, shape -> !keepIds.contains(shape.getId()));
+        Model.Builder builder = Model.builder();
+        for (ShapeId shapeId : model.getShapeIds()) {
+            if (keepIds.contains(shapeId)) {
+                builder.addShape(model.expectShape(shapeId));
+            }
+        }
+        return builder.build();
     }
 
     /**
