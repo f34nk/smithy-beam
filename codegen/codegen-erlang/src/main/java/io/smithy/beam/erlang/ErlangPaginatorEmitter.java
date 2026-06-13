@@ -63,9 +63,11 @@ public final class ErlangPaginatorEmitter {
                 String inputToken = fieldName(sp, pi.getInputTokenMember());
                 String outputTokenExpr = recordAccess(
                         "Output", output, pi.getOutputTokenMemberPath(), ctx.model(), sp);
-                String items = pi.getItemsMember()
-                        .map(member -> fieldName(sp, member))
-                        .orElse(null);
+                List<MemberShape> itemsPath = pi.getItemsMemberPath();
+                boolean hasItems = !itemsPath.isEmpty();
+                String itemsExpr = hasItems
+                        ? recordAccess("Output", output, itemsPath, ctx.model(), sp)
+                        : null;
 
                 writer.write("%% @doc Paginates over all pages of $L.", op.getId());
                 writer.write("%%      Returns all accumulated items or {error, Reason}.");
@@ -80,14 +82,14 @@ public final class ErlangPaginatorEmitter {
                 writer.indent();
                 writer.write("{ok, Output} ->");
                 writer.indent();
-                if (items != null) {
-                    writer.write("NewAcc = Acc ++ element(#$L.$L, Output),", outputRecord, items);
+                if (hasItems) {
+                    writer.write("NewAcc = Acc ++ $L,", itemsExpr);
                 } else {
                     writer.write("NewAcc = [Output | Acc],");
                 }
                 writer.write("case $L of", outputTokenExpr);
                 writer.indent();
-                if (items != null) {
+                if (hasItems) {
                     writer.write("undefined ->");
                     writer.indent();
                     writer.write("{ok, NewAcc};");

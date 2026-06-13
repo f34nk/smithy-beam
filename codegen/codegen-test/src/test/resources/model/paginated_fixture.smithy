@@ -7,7 +7,7 @@ use smithy.api#httpQuery
 @restJson1
 service PaginatedService {
     version: "2026"
-    operations: [ListWidgets]
+    operations: [ListWidgets, ListNestedWidgets]
 }
 
 @readonly
@@ -48,4 +48,26 @@ structure Widget {
 @error("client")
 structure WidgetError {
     message: String
+}
+
+@readonly
+@http(method: "GET", uri: "/nested-widgets")
+@paginated(inputToken: "nextToken", outputToken: "nextToken", items: "result.items")
+operation ListNestedWidgets {
+    input: ListNestedWidgetsInput
+    output: ListNestedWidgetsOutput
+}
+
+structure ListNestedWidgetsInput {
+    @httpQuery("nextToken")
+    nextToken: String
+}
+
+structure ListNestedWidgetsOutput {
+    nextToken: String
+    result: NestedWidgetResult
+}
+
+structure NestedWidgetResult {
+    items: WidgetList
 }

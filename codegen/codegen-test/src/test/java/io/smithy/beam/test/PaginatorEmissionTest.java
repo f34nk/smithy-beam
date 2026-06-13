@@ -38,6 +38,7 @@ class PaginatorEmissionTest {
         assertThat(paginators).contains("paginate_list_widgets/2");
         assertThat(paginators).contains("next_token");
         assertThat(paginators).contains("widgets");
+        assertThat(paginators).contains("element(#nested_widget_result.items");
     }
 
     @Test

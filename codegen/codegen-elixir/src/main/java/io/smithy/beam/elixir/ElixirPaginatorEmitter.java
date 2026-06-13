@@ -47,9 +47,9 @@ public final class ElixirPaginatorEmitter {
                 Symbol opSym = sp.toSymbol(op);
                 String inputToken = fieldName(sp, pi.getInputTokenMember());
                 String outputTokenExpr = mapAccess("output", pi.getOutputTokenMemberPath(), sp);
-                String items = pi.getItemsMember()
-                        .map(member -> fieldName(sp, member))
-                        .orElse(null);
+                List<MemberShape> itemsPath = pi.getItemsMemberPath();
+                boolean hasItems = !itemsPath.isEmpty();
+                String itemsExpr = hasItems ? mapAccess("output", itemsPath, sp) : null;
 
                 writer.write("@doc \"Paginates over all pages of $L.\"", op.getId());
                 writer.write("def paginate_$L(config, input, acc \\\\ []) do", opSym.getName());
@@ -58,15 +58,15 @@ public final class ElixirPaginatorEmitter {
                 writer.indent();
                 writer.write("{:ok, output} ->");
                 writer.indent();
-                if (items != null) {
-                    writer.write("new_acc = acc ++ Map.get(output, :$L, [])", items);
+                if (hasItems) {
+                    writer.write("new_acc = acc ++ $L", itemsExpr);
                 } else {
                     writer.write("new_acc = [output | acc]");
                 }
                 writer.write("");
                 writer.write("case $L do", outputTokenExpr);
                 writer.indent();
-                if (items != null) {
+                if (hasItems) {
                     writer.write("nil ->");
                     writer.indent();
                     writer.write("{:ok, new_acc}");
