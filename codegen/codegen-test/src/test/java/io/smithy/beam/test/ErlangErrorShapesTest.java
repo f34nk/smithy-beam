@@ -37,6 +37,8 @@ class ErlangErrorShapesTest {
         String types = manifest.expectFileString("error_fixture_service_types.hrl");
         assertThat(types).contains("-record(not_found_error,");
         assertThat(types).contains("-record(validation_error,");
+        assertThat(types).contains("field_name :: binary()");
+        assertThat(types).contains("-type validation_error() :: #validation_error{}.");
         assertThat(types).contains("-record(throttling_error,");
         assertThat(types).contains("'__beam_error_kind'");
         assertThat(types).contains("client");

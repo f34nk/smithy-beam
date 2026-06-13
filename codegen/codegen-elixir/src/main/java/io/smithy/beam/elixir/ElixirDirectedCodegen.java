@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamMemberNullability;
+import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamRetryIndex;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
@@ -734,7 +735,10 @@ final class ElixirDirectedCodegen
             writer.popState();
             List<String> exceptionFields = new ArrayList<>();
             for (MemberShape member : shape.members()) {
-                exceptionFields.add(member.getMemberName() + ": nil");
+                Symbol memberSym = ctx.symbolProvider().toSymbol(member);
+                String fieldName = memberSym.getProperty("fieldName", String.class)
+                        .orElse(BeamNameUtils.toSnakeCase(member.getMemberName()));
+                exceptionFields.add(fieldName + ": nil");
             }
             exceptionFields.add("__beam_error_kind: :" + errorTrait.getValue());
             ElixirFormat.writeDefexception(writer, exceptionFields);

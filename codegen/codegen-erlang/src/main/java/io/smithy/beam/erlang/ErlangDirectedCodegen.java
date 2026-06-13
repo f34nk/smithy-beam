@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamMemberNullability;
+import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamDocumentation.DocTarget;
@@ -598,11 +599,13 @@ final class ErlangDirectedCodegen
                     NullableIndex ni = NullableIndex.of(ctx.model());
                     for (MemberShape member : shape.members()) {
                         Symbol memberSym = ctx.symbolProvider().toSymbol(member);
+                        String fieldName = memberSym.getProperty("fieldName", String.class)
+                                .orElse(BeamNameUtils.toSnakeCase(member.getMemberName()));
                         String typeStr = memberSym.getName();
                         if (ni.isMemberNullable(member, NullableIndex.CheckMode.CLIENT)) {
-                            writer.write("    $L :: $L | undefined,", member.getMemberName(), typeStr);
+                            writer.write("    $L :: $L | undefined,", fieldName, typeStr);
                         } else {
-                            writer.write("    $L :: $L,", member.getMemberName(), typeStr);
+                            writer.write("    $L :: $L,", fieldName, typeStr);
                         }
                     }
                     writer.write("    %% fault: $L | retryable: $L | throttling: $L",
