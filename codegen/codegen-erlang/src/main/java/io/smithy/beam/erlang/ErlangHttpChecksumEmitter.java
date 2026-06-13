@@ -137,7 +137,7 @@ final class ErlangHttpChecksumEmitter {
         writer.write("true -> ok;");
         writer.write("false -> {error, {checksum_mismatch, HeaderName}}");
         writer.dedent();
-        writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.write("end.");
         writer.dedent();
