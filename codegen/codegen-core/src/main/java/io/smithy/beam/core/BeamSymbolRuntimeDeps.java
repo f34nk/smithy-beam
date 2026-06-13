@@ -26,9 +26,6 @@ public final class BeamSymbolRuntimeDeps {
         if (service.hasTrait(SigV4Trait.class)) {
             builder.addDependency(BeamRuntimeDependency.AWS_SIGNATURE);
         }
-        if (BeamEndpointRuleSetEmitter.hasRuleSet(model, service)) {
-            builder.addDependency(BeamRuntimeDependency.AWS_ENDPOINT_RULES);
-        }
         return builder;
     }
 
@@ -42,9 +39,6 @@ public final class BeamSymbolRuntimeDeps {
     public static Symbol.Builder applyElixirService(Model model, ServiceShape service, Symbol.Builder builder) {
         if (service.hasTrait(SigV4Trait.class)) {
             builder.addDependency("hex", "aws_signature", "0.3.2");
-        }
-        if (BeamEndpointRuleSetEmitter.hasRuleSet(model, service)) {
-            builder.addDependency(BeamRuntimeDependency.AWS_ENDPOINT_RULES);
         }
         return builder;
     }

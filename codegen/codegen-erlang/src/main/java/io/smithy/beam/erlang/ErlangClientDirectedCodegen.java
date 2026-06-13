@@ -215,6 +215,7 @@ final class ErlangClientDirectedCodegen
         }
 
         ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
+        ErlangAwsEndpointRulesEmitter.emitIfNeeded(ctx, service);
         ErlangS3EndpointEmitter.emit(ctx, service);
         ErlangEndpointRulesEmitter.emit(ctx, service);
         ErlangHttpDispatchEmitter.emit(ctx, service);

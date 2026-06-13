@@ -1,5 +1,10 @@
 defmodule AwsEndpointRules do
-  @moduledoc false
+  @moduledoc """
+  Temporary stub endpoint rules evaluator emitted by smithy-beam codegen.
+
+  The rule set argument is ignored for now. Endpoint resolution uses a minimal placeholder
+  until a full AWS rules engine runtime is available.
+  """
 
   @spec evaluate(map(), map()) :: {:ok, %{url: String.t(), headers: map()}} | {:error, term()}
   def evaluate(_rule_set, params) do
