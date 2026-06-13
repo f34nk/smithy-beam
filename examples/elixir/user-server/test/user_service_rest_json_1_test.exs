@@ -1,7 +1,7 @@
 defmodule UserServiceRestJson1Test do
   use ExUnit.Case, async: true
 
-  alias UserServiceTypes.{DeleteUserOutput, GetUserOutput}
+  alias UserServiceTypes.{DeleteUserOutput, GetUserOutput, UserData}
   alias RuntimeTypes.HttpRequest
 
   describe "decode_get_user_request/2" do
@@ -37,10 +37,10 @@ defmodule UserServiceRestJson1Test do
   describe "encode_get_user_response/1" do
     test "success with JSON body" do
       out = %GetUserOutput{
-        user: %{
-          "userId" => "u-1",
-          "email" => "alice@example.com",
-          "displayName" => "Alice"
+        user: %UserServiceTypes.UserData{
+          user_id: "u-1",
+          email: "alice@example.com",
+          display_name: "Alice"
         }
       }
 

@@ -58,9 +58,9 @@ decode_success_json_body_test() ->
     }),
     Resp = #http_response{status = 200, headers = [], body = Body},
     {ok, Out} = user_service_rest_json_1:decode_get_user_response(Resp),
-    ?assertMatch(#{<<"userId">> := <<"u-1">>}, Out#get_user_output.user),
-    ?assertEqual(<<"alice@example.com">>, maps:get(<<"email">>, Out#get_user_output.user)),
-    ?assertEqual(<<"Alice">>, maps:get(<<"displayName">>, Out#get_user_output.user)).
+    ?assertEqual(<<"u-1">>, Out#get_user_output.user#user_data.user_id),
+    ?assertEqual(<<"alice@example.com">>, Out#get_user_output.user#user_data.email),
+    ?assertEqual(<<"Alice">>, Out#get_user_output.user#user_data.display_name).
 
 decode_success_empty_body_test() ->
     Resp = #http_response{status = 200, headers = [], body = <<>>},
@@ -98,7 +98,7 @@ decode_create_user_response_test() ->
     }),
     Resp = #http_response{status = 201, headers = [], body = Body},
     {ok, Out} = user_service_rest_json_1:decode_create_user_response(Resp),
-    ?assertMatch(#{<<"userId">> := <<"u-2">>}, Out#create_user_output.user).
+    ?assertEqual(<<"u-2">>, Out#create_user_output.user#user_data.user_id).
 
 %% encode_list_users_request/1
 

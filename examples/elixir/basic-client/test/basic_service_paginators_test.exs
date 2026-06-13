@@ -10,8 +10,8 @@ defmodule BasicServicePaginatorsTest do
 
       assert {:ok, items} = BasicServicePaginators.paginate_list_basic_items(config, input)
       assert length(items) == 2
-      assert Enum.at(items, 0) == %{"name" => "alpha", "count" => 1}
-      assert Enum.at(items, 1) == %{"name" => "beta", "count" => 2}
+      assert Enum.at(items, 0) == %BasicServiceTypes.BasicItem{name: "alpha", count: 1}
+      assert Enum.at(items, 1) == %BasicServiceTypes.BasicItem{name: "beta", count: 2}
     end
   end
 

@@ -68,9 +68,9 @@ defmodule UserServiceRestJson1Test do
       resp = %HttpResponse{status: 200, headers: [], body: body}
 
       assert {:ok, out} = UserServiceRestJson1.decode_get_user_response(resp)
-      assert out.user["userId"] == "u-1"
-      assert out.user["email"] == "alice@example.com"
-      assert out.user["displayName"] == "Alice"
+      assert out.user.user_id == "u-1"
+      assert out.user.email == "alice@example.com"
+      assert out.user.display_name == "Alice"
     end
 
     test "success with empty body" do
@@ -109,7 +109,7 @@ defmodule UserServiceRestJson1Test do
       resp = %HttpResponse{status: 201, headers: [], body: body}
 
       assert {:ok, out} = UserServiceRestJson1.decode_create_user_response(resp)
-      assert out.user["userId"] == "u-2"
+      assert out.user.user_id == "u-2"
     end
   end
 

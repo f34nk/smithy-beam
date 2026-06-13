@@ -33,16 +33,22 @@ decode_uri_decodes_path_label_test() ->
 %% encode_get_user_response/1
 
 encode_get_user_response_test() ->
-    User = #{
-        <<"userId">> => <<"u-1">>,
-        <<"email">> => <<"alice@example.com">>,
-        <<"displayName">> => <<"Alice">>
+    User = #user_data{
+        user_id = <<"u-1">>,
+        email = <<"alice@example.com">>,
+        display_name = <<"Alice">>
     },
     Out = #get_user_output{user = User},
     Resp = user_service_rest_json_1:encode_get_user_response(Out),
     ?assertEqual(200, Resp#http_response.status),
     ?assertEqual(
-        jsone:encode(#{<<"user">> => User}),
+        jsone:encode(#{
+            <<"user">> => #{
+                <<"userId">> => <<"u-1">>,
+                <<"email">> => <<"alice@example.com">>,
+                <<"displayName">> => <<"Alice">>
+            }
+        }),
         Resp#http_response.body
     ).
 

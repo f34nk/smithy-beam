@@ -8,8 +8,8 @@ paginate_list_basic_items_collects_all_pages_test() ->
     Input = #list_basic_items_input{},
     ?assertEqual(
         {ok, [
-            #{<<"name">> => <<"alpha">>, <<"count">> => 1},
-            #{<<"name">> => <<"beta">>, <<"count">> => 2}
+            #basic_item{name = <<"alpha">>, count = 1},
+            #basic_item{name = <<"beta">>, count = 2}
         ]},
         basic_service_paginators:paginate_list_basic_items(Config, Input)
     ).
