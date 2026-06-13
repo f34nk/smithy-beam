@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "sources": [
+    "model"
+  ],
+  "maven": {
+    "dependencies": [
+      "software.amazon.smithy:smithy-aws-traits:1.64.0",
+      "software.amazon.smithy:smithy-aws-endpoints:1.64.0",
+      "software.amazon.smithy:smithy-aws-smoke-test-model:1.64.0",
+      "software.amazon.smithy:smithy-aws-iam-traits:1.64.0",
+      "software.amazon.smithy:smithy-waiters:1.64.0",
+      "software.amazon.smithy:smithy-aws-traits:1.54.0",
+      "software.amazon.smithy.java:codegen-plugin:1.1.0",
+      "software.amazon.smithy.java:client-core:1.1.0",
+      "software.amazon.smithy.java:client-http:1.1.0",
+      "software.amazon.smithy.java:client-rulesengine:1.1.0",
+      "software.amazon.smithy.java:client-waiters:1.1.0",
+      "software.amazon.smithy.java:aws-client-rulesengine:1.1.0",
+      "software.amazon.smithy.java:aws-sigv4:1.1.0",
+      "software.amazon.smithy.java:aws-client-awsquery:1.1.0"
+    ]
+  },
+  "projections": {
+    "client": {
+      "plugins": {
+        "java-codegen": {
+          "service": "com.amazonaws.dynamodb#DynamoDB_20120810",
+          "namespace": "com.amazonaws.dynamodb",
+          "modes": [
+            "client"
+          ]
+        }
+      }
+    }
+  }
+}
