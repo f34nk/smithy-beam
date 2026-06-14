@@ -1,0 +1,16 @@
+{application, demo, [
+    {description, "AWS Demo - Generated Smithy Client Example"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib,
+        inets,
+        ssl,
+        jsone
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]},
+    {links, []}
+]}.

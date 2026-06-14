@@ -1,0 +1,18 @@
+# Generated code
+generated/
+
+# Smithy build output (intermediate JSON AST)
+build/
+
+# Erlang build
+_build/
+.rebar3/
+*.beam
+*.dump
+
+terraform/.terraform
+terraform/.terraform.lock*
+terraform/terraform.tfstate*
+
+# ignore copied files
+model/*.json
