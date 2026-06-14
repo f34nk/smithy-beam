@@ -44,10 +44,7 @@ final class ElixirHttpChecksumEmitter {
             String field = BeamNameUtils.toSnakeCase(algorithmMember.get());
             writer.write("headers = case input.$L do", field);
             writer.indent();
-            writer.write("nil ->");
-            writer.indent();
-            emitChecksumBranch(writer, bindings.get(0), "headers", "body");
-            writer.dedent();
+            writer.write("nil -> headers");
             for (BeamHttpChecksumIndex.ChecksumBinding binding : bindings) {
                 String enumAtom = enumAtomForAlgorithm(model, op, sp, checksumIndex, binding.algorithm());
                 writer.write(":$L ->", enumAtom);
@@ -66,7 +63,7 @@ final class ElixirHttpChecksumEmitter {
             BeamHttpChecksumIndex.ChecksumBinding cb = bindings.get(i);
             String checksumVar = "checksum" + i;
             emitChecksumComputation(writer, cb, checksumVar, "body");
-            writer.write("headers = headers_set(\"$L\", base16_encode($L), headers)",
+            writer.write("headers = headers_set(\"$L\", checksum_header_encode($L), headers)",
                     cb.headerName(), checksumVar);
         }
     }
@@ -103,11 +100,7 @@ final class ElixirHttpChecksumEmitter {
         writer.dedent();
         writer.write("end");
         writer.write("");
-        writer.write("defp base16_encode(data) when is_binary(data) do");
-        writer.indent();
-        writer.write("Base.encode16(data, case: :lower)");
-        writer.dedent();
-        writer.write("end");
+        writer.write("defp checksum_header_encode(data) when is_binary(data), do: Base.encode64(data)");
         writer.write("");
         writer.write("defp md5_hash(body), do: :crypto.hash(:md5, body)");
         writer.write("defp sha256_hash(body), do: :crypto.hash(:sha256, body)");
@@ -134,7 +127,7 @@ final class ElixirHttpChecksumEmitter {
         writer.write("defp validate_checksum_match(body, header_name, expected) do");
         writer.indent();
         writer.write("algorithm = checksum_algorithm_from_header(header_name),");
-        writer.write("computed = base16_encode(checksum_digest(body, algorithm)),");
+        writer.write("computed = checksum_header_encode(checksum_digest(body, algorithm)),");
         writer.write("if computed == expected, do: :ok, else: {:error, {:checksum_mismatch, header_name}}");
         writer.dedent();
         writer.write("end");
@@ -150,7 +143,7 @@ final class ElixirHttpChecksumEmitter {
             String bodyVar) {
         String checksumVar = "checksum";
         emitChecksumComputation(writer, cb, checksumVar, bodyVar);
-        writer.write("$L = headers_set(\"$L\", base16_encode($L), $L)",
+        writer.write("$L = headers_set(\"$L\", checksum_header_encode($L), $L)",
                 headersVar, cb.headerName(), checksumVar, headersVar);
     }
 

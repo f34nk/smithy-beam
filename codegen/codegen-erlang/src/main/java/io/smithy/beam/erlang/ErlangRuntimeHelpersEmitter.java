@@ -38,7 +38,7 @@ public final class ErlangRuntimeHelpersEmitter {
         }
         if (checksumBindings) {
             exports.add("headers_set/3");
-            exports.add("base16_encode/1");
+            exports.add("checksum_header_encode/1");
             exports.add("sha256_hash/1");
             exports.add("crc32_hash/1");
         }

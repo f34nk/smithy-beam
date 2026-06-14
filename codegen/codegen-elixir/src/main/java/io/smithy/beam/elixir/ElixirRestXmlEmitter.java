@@ -879,7 +879,9 @@ public final class ElixirRestXmlEmitter {
             SymbolProvider sp) {
         String element = BeamXmlBindingIndex.memberElementName(member);
         String itemElement = BeamXmlBindingIndex.listItemElementName(member, listShape, model);
-        String listNameArg = element == null ? "nil" : "\"" + element + "\"";
+        String listNameArg = BeamXmlBindingIndex.isContainerMemberFlattened(member)
+                ? "nil"
+                : "\"" + element + "\"";
         Shape listMember = model.expectShape(listShape.getMember().getTarget());
         if (listMember instanceof StructureShape nested) {
             String itemStruct = decodeStructure(model, nested, "item", sp);

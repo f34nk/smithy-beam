@@ -43,8 +43,9 @@ public final class BeamXmlDecoder {
     }
 
     public static String listItemElementName(ListShape listShape) {
-        if (isXmlFlattened(listShape)) {
-            return memberElementName(listShape.getMember());
+        MemberShape member = listShape.getMember();
+        if (isXmlFlattened(listShape) || member.hasTrait(XmlNameTrait.class)) {
+            return memberElementName(member);
         }
         return LIST_MEMBER_ELEMENT;
     }

@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -238,19 +239,27 @@ public final class ErlangRestJson1Emitter {
         if (queries.isEmpty()) {
             writer.write("Query = [],");
         } else {
-            List<String> queryClauses = new ArrayList<>();
+            List<String> queryParts = new ArrayList<>();
             for (HttpBinding qb : queries) {
                 String paramName = qb.getLocationName();
-                queryClauses.add(
-                        "(V) when V =/= undefined -> {true, {<<\"" + paramName + "\">>, encode_query_value(V)}};");
+                String bindingVar = toBindingVar(BeamNameUtils.toSnakeCase(qb.getMember().getMemberName()));
+                Shape target = model.expectShape(qb.getMember().getTarget());
+                String clause =
+                        "(V) when V =/= undefined -> {true, {<<\"" + paramName + "\">>, encode_query_value(V)}};"
+                                + "(_) -> false";
+                if (target instanceof ListShape) {
+                    queryParts.add(
+                            "lists:filtermap(fun " + clause + " end, case " + bindingVar + " of undefined -> []; V -> V end)");
+                } else {
+                    queryParts.add(
+                            "lists:filtermap(fun " + clause + " end, [" + bindingVar + "])");
+                }
             }
-            queryClauses.add("(_) -> false");
-            String queryArgs = queries.stream()
-                    .map(qb -> toBindingVar(BeamNameUtils.toSnakeCase(qb.getMember().getMemberName())))
-                    .collect(Collectors.joining(", "));
-            writer.write("Query = ");
-            ErlangFormat.writeFiltermap(writer, queryClauses, queryArgs);
-            writer.write(",");
+            if (queryParts.size() == 1) {
+                writer.write("Query = $L,", queryParts.get(0));
+            } else {
+                writer.write("Query = $L,", String.join(" ++ ", queryParts));
+            }
         }
 
         if (!queryParams.isEmpty()) {
@@ -298,7 +307,9 @@ public final class ErlangRestJson1Emitter {
 
         boolean streamingRequestPayload = hasStreamingRequestPayload(model, reqPayload, method);
         emitRequestBody(writer, model, httpIndex, reqPayload, docMembers, method, sp, eventStreamModule);
-        ErlangHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp);
+        Optional<String> headersWithChecksum =
+                ErlangHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp, "Headers");
+        String requestHeaders = headersWithChecksum.orElse("Headers");
         emitRequestCompression(writer, op);
         if (streamingRequestPayload) {
             HttpBinding payload = reqPayload.get(0);
@@ -319,7 +330,7 @@ public final class ErlangRestJson1Emitter {
         writer.write("    method = <<\"$L\">>,", method);
         writer.write("    path = Path,");
         writer.write("    query = maps:from_list(Query),");
-        writer.write("    headers = Headers,");
+        writer.write("    headers = $L,", requestHeaders);
         writer.write("    body = Body");
         if (streamingRequestPayload) {
             writer.write("    ,stream = Stream");
@@ -1070,30 +1081,14 @@ public final class ErlangRestJson1Emitter {
     private static void emitUnionHelpers(
             ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
 
+        BeamEventStreamIndex eventStreamIndex = BeamEventStreamIndex.of(model);
         Set<ShapeId> emitted = new LinkedHashSet<>();
-        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-
-        for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
-            for (HttpBinding.Location loc : HttpBinding.Location.values()) {
-                for (HttpBinding b : httpIndex.getRequestBindings(op, loc)) {
-                    collectUnionTarget(model, b.getMember(), emitted);
-                }
-                for (HttpBinding b : httpIndex.getResponseBindings(op, loc)) {
-                    collectUnionTarget(model, b.getMember(), emitted);
-                }
+        for (Shape shape : new Walker(model).walkShapes(service)) {
+            if (shape instanceof UnionShape union
+                    && !eventStreamIndex.isEventStreamUnion(union)
+                    && emitted.add(union.getId())) {
+                emitUnionDecodeEncode(writer, union, sp);
             }
-        }
-
-        for (ShapeId unionId : emitted) {
-            UnionShape union = model.expectShape(unionId, UnionShape.class);
-            emitUnionDecodeEncode(writer, union, sp);
-        }
-    }
-
-    private static void collectUnionTarget(Model model, MemberShape member, Set<ShapeId> out) {
-        Shape target = model.expectShape(member.getTarget());
-        if (target instanceof UnionShape && !BeamEventStreamIndex.of(model).isEventStreamUnion(target)) {
-            out.add(target.getId());
         }
     }
 

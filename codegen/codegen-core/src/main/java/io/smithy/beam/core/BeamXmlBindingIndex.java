@@ -61,8 +61,9 @@ public final class BeamXmlBindingIndex {
     }
 
     public static String listItemElementName(ListShape listShape) {
-        if (isXmlFlattened(listShape)) {
-            return memberElementName(listShape.getMember());
+        MemberShape member = listShape.getMember();
+        if (isXmlFlattened(listShape) || member.hasTrait(XmlNameTrait.class)) {
+            return memberElementName(member);
         }
         return LIST_MEMBER_ELEMENT;
     }
@@ -73,10 +74,13 @@ public final class BeamXmlBindingIndex {
      */
     public static String listItemElementName(MemberShape containerMember, ListShape listShape, Model model) {
         if (containerMember != null && containerMember.hasTrait(XmlFlattenedTrait.class)) {
-            Shape itemShape = model.expectShape(listShape.getMember().getTarget());
-            return shapeElementName(itemShape);
+            return memberElementName(containerMember);
         }
         return listItemElementName(listShape);
+    }
+
+    public static boolean isContainerMemberFlattened(MemberShape containerMember) {
+        return containerMember != null && containerMember.hasTrait(XmlFlattenedTrait.class);
     }
 
     private static String capitalizeFirst(String name) {

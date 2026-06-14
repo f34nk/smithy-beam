@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
@@ -1122,30 +1123,14 @@ public final class ElixirRestJson1Emitter {
     private static void emitUnionHelpers(
             ElixirWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
 
+        BeamEventStreamIndex eventStreamIndex = BeamEventStreamIndex.of(model);
         Set<ShapeId> emitted = new LinkedHashSet<>();
-        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-
-        for (OperationShape op : ElixirTopDown.containedOperationsSorted(model, service)) {
-            for (HttpBinding.Location loc : HttpBinding.Location.values()) {
-                for (HttpBinding b : httpIndex.getRequestBindings(op, loc)) {
-                    collectUnionTarget(model, b.getMember(), emitted);
-                }
-                for (HttpBinding b : httpIndex.getResponseBindings(op, loc)) {
-                    collectUnionTarget(model, b.getMember(), emitted);
-                }
+        for (Shape shape : new Walker(model).walkShapes(service)) {
+            if (shape instanceof UnionShape union
+                    && !eventStreamIndex.isEventStreamUnion(union)
+                    && emitted.add(union.getId())) {
+                emitElixirUnionHelpers(writer, union, sp);
             }
-        }
-
-        for (ShapeId unionId : emitted) {
-            UnionShape union = model.expectShape(unionId, UnionShape.class);
-            emitElixirUnionHelpers(writer, union, sp);
-        }
-    }
-
-    private static void collectUnionTarget(Model model, MemberShape member, Set<ShapeId> out) {
-        Shape target = model.expectShape(member.getTarget());
-        if (target instanceof UnionShape) {
-            out.add(target.getId());
         }
     }
 

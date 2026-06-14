@@ -31,47 +31,50 @@ final class ErlangHttpChecksumEmitter {
                 .anyMatch(index::hasChecksumBehavior);
     }
 
-    static void emitRequestChecksumHeaders(
+    static Optional<String> emitRequestChecksumHeaders(
             ErlangWriter writer,
             Model model,
             OperationShape op,
-            SymbolProvider sp) {
+            SymbolProvider sp,
+            String headersIn) {
         BeamHttpChecksumIndex checksumIndex = BeamHttpChecksumIndex.of(model);
         List<BeamHttpChecksumIndex.ChecksumBinding> bindings = checksumIndex.requestChecksums(op);
         if (bindings.isEmpty()) {
-            return;
+            return Optional.empty();
         }
 
+        String headersOut = headersIn + "WithChecksum";
         Optional<String> algorithmMember = checksumIndex.requestAlgorithmMemberName(op);
         if (algorithmMember.isPresent()) {
             String bindingVar = ErlangJsonCodecSupport.toBindingVar(
                     BeamNameUtils.toSnakeCase(algorithmMember.get()));
-            writer.write("Headers = case $L of", bindingVar);
+            writer.write("$L = case $L of", headersOut, bindingVar);
             writer.indent();
-            writer.write("undefined ->");
-            writer.indent();
-            emitChecksumBranch(writer, bindings.get(0), "Headers");
-            writer.dedent();
+            writer.write("undefined -> $L;", headersIn);
             for (BeamHttpChecksumIndex.ChecksumBinding binding : bindings) {
                 String enumAtom = enumAtomForAlgorithm(model, op, sp, checksumIndex, binding.algorithm());
                 writer.write("$L ->", enumAtom);
                 writer.indent();
-                emitChecksumBranch(writer, binding, "Headers");
+                emitChecksumBranch(writer, binding, headersIn);
                 writer.dedent();
             }
             writer.write("Other -> error({unsupported_checksum_algorithm, Other})");
             writer.dedent();
             writer.write("end,");
-            return;
+            return Optional.of(headersOut);
         }
 
+        String current = headersIn;
         for (int i = 0; i < bindings.size(); i++) {
             BeamHttpChecksumIndex.ChecksumBinding cb = bindings.get(i);
             String checksumVar = "Checksum" + i;
+            String next = i == bindings.size() - 1 ? headersOut : headersIn + "Checksum" + i;
             emitChecksumComputation(writer, cb, checksumVar);
-            writer.write("Headers = headers_set(<<\"$L\">>, base16_encode($L), Headers),",
-                    cb.headerName(), checksumVar);
+            writer.write("$L = headers_set(<<\"$L\">>, checksum_header_encode($L), $L),",
+                    next, cb.headerName(), checksumVar, current);
+            current = next;
         }
+        return Optional.of(headersOut);
     }
 
     static void emitResponseChecksumGuard(
@@ -102,8 +105,8 @@ final class ErlangHttpChecksumEmitter {
         writer.write("headers_set(Name, Value, Headers) ->");
         writer.write("    lists:keystore(Name, 1, Headers, {Name, Value}).");
         writer.write("");
-        writer.write("base16_encode(Data) when is_binary(Data) ->");
-        writer.write("    lists:flatten([io_lib:format(\"~2.16.0b0\", [B]) || <<B>> <= Data]).");
+        writer.write("checksum_header_encode(Data) when is_binary(Data) ->");
+        writer.write("    base64:encode(Data).");
         writer.write("");
         writer.write("md5_hash(Body) ->");
         writer.write("    crypto:hash(md5, Body).");
@@ -143,7 +146,7 @@ final class ErlangHttpChecksumEmitter {
         writer.write("Expected ->");
         writer.indent();
         writer.write("Algorithm = checksum_algorithm_from_header(HeaderName),");
-        writer.write("Computed = base16_encode(checksum_digest(Body, Algorithm)),");
+        writer.write("Computed = checksum_header_encode(checksum_digest(Body, Algorithm)),");
         writer.write("case Computed =:= Expected of");
         writer.indent();
         writer.write("true -> ok;");
@@ -164,7 +167,7 @@ final class ErlangHttpChecksumEmitter {
             String headersVar) {
         String checksumVar = "Checksum";
         emitChecksumComputation(writer, cb, checksumVar);
-        writer.write("headers_set(<<\"$L\">>, base16_encode($L), $L);",
+        writer.write("headers_set(<<\"$L\">>, checksum_header_encode($L), $L);",
                 cb.headerName(), checksumVar, headersVar);
     }
 
