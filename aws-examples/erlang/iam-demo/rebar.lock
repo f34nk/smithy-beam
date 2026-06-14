@@ -1,0 +1,11 @@
+{"1.2.0",
+[{<<"aws_signature">>,{pkg,<<"aws_signature">>,<<"0.3.2">>},0},
+ {<<"jsx">>,{pkg,<<"jsx">>,<<"3.1.0">>},0}]}.
+[
+{pkg_hash,[
+ {<<"aws_signature">>, <<"ADF33BC4AF00B2089B7708BF20E3246F09C639A905A619B3689F0A0A22C3EF8F">>},
+ {<<"jsx">>, <<"D12516BAA0BB23A59BB35DCCAF02A1BD08243FCBB9EFE24F2D9D056CCFF71268">>}]},
+{pkg_hash_ext,[
+ {<<"aws_signature">>, <<"B0DAF61FEB4250A8AB0ADEA60DB3E336AF732FF71DD3FB22E45AE3DCBD071E44">>},
+ {<<"jsx">>, <<"0C5CC8FDC11B53CC25CF65AC6705AD39E54ECC56D1C22E4ADB8F5A53FB9427F3">>}]}
+].
