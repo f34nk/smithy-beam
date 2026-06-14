@@ -6,7 +6,6 @@ use aws.api#service
 use aws.auth#sigv4
 use smithy.api#readonly
 use smithy.api#xmlName
-use smithy.api#xmlFlattened
 
 @restXml
 @sigv4(name: "s3")
@@ -27,13 +26,15 @@ structure ListBucketsInput {}
 
 @xmlName("ListAllMyBucketsResult")
 structure ListBucketsOutput {
-    @xmlFlattened
     buckets: BucketList
 }
 
 list BucketList {
     member: Bucket
 }
+
+// @xmlName("Bucket") on BucketList$member, so items are <Bucket>, not <member>
+apply BucketList$member @xmlName("Bucket")
 
 structure Bucket {
     name: String
