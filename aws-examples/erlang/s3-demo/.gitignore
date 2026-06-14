@@ -1,0 +1,14 @@
+# Generated code
+generated/
+
+# Smithy build output (intermediate JSON AST)
+build/
+
+# Erlang build
+_build/
+.rebar3/
+*.beam
+*.dump
+
+# ignore copied files
+model/*.json

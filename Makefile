@@ -221,6 +221,7 @@ docker/start:
 		-p 4577:4566 \
 		-p 4578:4566 \
 		-p 4579:4566 \
+		-p 4580:4566 \
 		-e SERVICES=s3,sqs,dynamodb,firehose,kinesis,lambda,apigateway,cloudformation,cloudwatch,ec2,iam,logs,redshift,route53,events,sns,sts,sm,es,elasticache,secretsmanager,stepfunctions,s3control \
 		localstack/localstack
 	make docker/wait
