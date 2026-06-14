@@ -489,20 +489,30 @@ public final class ErlangAwsQueryEmitter {
                 "decode_" + opName + "_response(#http_response{}) -> {'ok', " + outputType + "} | {'error', term()}");
         writer.write("decode_$L_response(#http_response{status = 200, body = Body}) ->", opName);
         writer.indent();
-        writer.write("case unwrap_query_result(Body, <<\"$L\">>) of", resultElement);
-        writer.indent();
-        writer.write("{ok, Result} ->");
-        writer.indent();
-        writer.write("{ok, #$L{", outputRecord);
-        emitOutputFields(writer, model, sp, output, "Result", ec2Query);
-        writer.write("}};");
-        writer.dedent();
-        writer.write("{error, Reason} ->");
-        writer.indent();
-        writer.write("{error, Reason}");
-        writer.dedent();
-        writer.dedent();
-        writer.write("end;");
+        if (output.members().isEmpty()) {
+            writer.write("case unwrap_query_result(Body, <<\"$L\">>) of", resultElement);
+            writer.indent();
+            writer.write("{ok, _Result} -> {ok, #$L{}};", outputRecord);
+            writer.write("{error, {missing_result, _}} -> {ok, #$L{}};", outputRecord);
+            writer.write("{error, Reason} -> {error, Reason}");
+            writer.dedent();
+            writer.write("end;");
+        } else {
+            writer.write("case unwrap_query_result(Body, <<\"$L\">>) of", resultElement);
+            writer.indent();
+            writer.write("{ok, Result} ->");
+            writer.indent();
+            writer.write("{ok, #$L{", outputRecord);
+            emitOutputFields(writer, model, sp, output, "Result", ec2Query);
+            writer.write("}};");
+            writer.dedent();
+            writer.write("{error, Reason} ->");
+            writer.indent();
+            writer.write("{error, Reason}");
+            writer.dedent();
+            writer.dedent();
+            writer.write("end;");
+        }
         writer.dedent();
         writer.write("decode_$L_response(#http_response{status = Status, body = Body}) ->", opName);
         writer.indent();
@@ -763,7 +773,8 @@ public final class ErlangAwsQueryEmitter {
         writer.write("try");
         writer.indent();
         writer.write("{Xml, _} = xmerl_scan:string(binary_to_list(Body)),");
-        writer.write("case find_element(<<\"$L\">>, element_content(Xml)) of",
+        writer.write("Root = normalize_xml_element(Xml),");
+        writer.write("case query_result_element(Root, <<\"$L\">>) of",
                 BeamXmlDecoder.ERROR_RESPONSE_ELEMENT);
         writer.indent();
         writer.write("undefined -> {error, {unknown_error, Status, Body}};");
@@ -798,7 +809,8 @@ public final class ErlangAwsQueryEmitter {
         writer.write("try");
         writer.indent();
         writer.write("{Xml, _} = xmerl_scan:string(binary_to_list(Body)),");
-        writer.write("case find_element(<<\"$L\">>, element_content(Xml)) of",
+        writer.write("Root = normalize_xml_element(Xml),");
+        writer.write("case query_result_element(Root, <<\"$L\">>) of",
                 BeamXmlDecoder.EC2_RESPONSE_ELEMENT);
         writer.indent();
         writer.write("undefined -> {error, {unknown_error, Status, Body}};");

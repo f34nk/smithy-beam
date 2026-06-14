@@ -34,10 +34,20 @@ class AwsQueryCodecTest {
                 .unwrap();
     }
 
+    private static Model loadVoidOutputModel() {
+        URL resource = AwsQueryCodecTest.class.getResource("/model/aws_query_void_output_fixture.smithy");
+        assertThat(resource).isNotNull();
+        return Model.assembler()
+                .addImport(resource)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
     private static MockManifest runErlangClient(Model model) {
         MockManifest manifest = new MockManifest();
         ObjectNode settings = ObjectNode.builder()
-                .withMember("service", SERVICE)
+                .withMember("service", serviceFor(model))
                 .withMember("edition", "2026")
                 .build();
         new ErlangClientPlugin().execute(PluginContext.builder()
@@ -51,7 +61,7 @@ class AwsQueryCodecTest {
     private static MockManifest runElixirClient(Model model) {
         MockManifest manifest = new MockManifest();
         ObjectNode settings = ObjectNode.builder()
-                .withMember("service", SERVICE)
+                .withMember("service", serviceFor(model))
                 .withMember("edition", "2026")
                 .build();
         new ElixirClientPlugin().execute(PluginContext.builder()
@@ -130,6 +140,36 @@ class AwsQueryCodecTest {
     }
 
     @Test
+    void erlangClientCodecAcceptsMissingResultForVoidOutput() {
+        MockManifest manifest = runErlangClient(loadVoidOutputModel());
+        String codec = manifest.expectFileString(findAwsQueryErlangCodec(manifest));
+        assertThat(codec).contains("decode_delete_user_response(");
+        assertThat(codec).contains("{error, {missing_result, _}} -> {ok, #delete_user_output{}}");
+    }
+
+    @Test
+    void elixirClientCodecAcceptsMissingResultForVoidOutput() {
+        MockManifest manifest = runElixirClient(loadVoidOutputModel());
+        String codec = manifest.expectFileString(findAwsQueryElixirCodec(manifest));
+        assertThat(codec).contains("def decode_delete_user_response(");
+        assertThat(codec).contains("{:error, {:missing_result, _}} -> {:ok, %Types.DeleteUserOutput{}}");
+    }
+
+    @Test
+    void erlangClientCodecDecodesRootLevelQueryErrors() {
+        MockManifest manifest = runErlangClient(loadModel());
+        String codec = manifest.expectFileString(findAwsQueryErlangCodec(manifest));
+        assertThat(codec).contains("query_result_element(Root, <<\"ErrorResponse\">>)");
+    }
+
+    @Test
+    void elixirClientCodecDecodesRootLevelQueryErrors() {
+        MockManifest manifest = runElixirClient(loadModel());
+        String codec = manifest.expectFileString(findAwsQueryElixirCodec(manifest));
+        assertThat(codec).contains("query_result_element(xml, \"ErrorResponse\")");
+    }
+
+    @Test
     void erlangServerCodecEmitsDecodeAndEncodeFunctions() {
         MockManifest manifest = runErlangServer(loadModel());
         String codec = manifest.expectFileString(findAwsQueryErlangCodec(manifest));
@@ -168,6 +208,13 @@ class AwsQueryCodecTest {
                 .map(Path::toString)
                 .filter(name -> name.endsWith("aws_query.ex"))
                 .findFirst()
+                .orElseThrow();
+    }
+
+    private static String serviceFor(Model model) {
+        return model.getServiceShapes().stream()
+                .findFirst()
+                .map(shape -> shape.getId().toString())
                 .orElseThrow();
     }
 }
