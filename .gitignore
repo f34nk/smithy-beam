@@ -10,6 +10,6 @@ deps/
 *.dump
 *.crashdump
 *.lock.hcl
-*.tfstate
+*.tfstate*
 .terraform/
 generated/
