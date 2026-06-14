@@ -1359,6 +1359,8 @@ public final class ElixirRestJson1Emitter {
         writer.write("    do: DateTime.from_unix!(trunc(v))");
         writer.write("");
         writer.write("defp decode_timestamp_date_time(nil), do: nil");
+        writer.write("defp decode_timestamp_date_time(v) when is_number(v),");
+        writer.write("    do: DateTime.from_unix!(trunc(v))");
         writer.write("defp decode_timestamp_date_time(v) when is_binary(v) do");
         writer.indent();
         writer.write("case DateTime.from_iso8601(v) do");

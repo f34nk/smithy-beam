@@ -1373,6 +1373,10 @@ public final class ErlangRestJson1Emitter {
         writer.write("");
         writer.write("decode_timestamp_date_time(null) -> undefined;");
         writer.write("decode_timestamp_date_time(undefined) -> undefined;");
+        writer.write("decode_timestamp_date_time(V) when is_number(V) ->");
+        writer.write("    EpochSecs = trunc(V),");
+        writer.write("    Mega = EpochSecs div 1000000,");
+        writer.write("    {Mega, EpochSecs rem 1000000, 0};");
         writer.write("decode_timestamp_date_time(V) when is_binary(V) ->");
         writer.write("    %% Minimal ISO 8601 parse: YYYY-MM-DDTHH:MM:SSZ");
         writer.write("    try");
