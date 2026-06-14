@@ -1,7 +1,0 @@
-{application, aws_s3,
- [{description, "Smithy beam S3 Erlang example"},
-  {vsn, "0.1.0"},
-  {registered, []},
-  {applications, [kernel, stdlib, jsx, inets, ssl]},
-  {env, []},
-  {modules, []}]}.
