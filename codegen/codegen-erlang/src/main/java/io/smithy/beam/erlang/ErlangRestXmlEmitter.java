@@ -13,7 +13,10 @@ import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
+import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.BlobShape;
+import software.amazon.smithy.model.shapes.EnumShape;
+import software.amazon.smithy.model.shapes.IntEnumShape;
 import software.amazon.smithy.model.shapes.ListShape;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -23,6 +26,7 @@ import software.amazon.smithy.model.shapes.StringShape;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.EndpointTrait;
+import software.amazon.smithy.model.traits.EnumValueTrait;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
@@ -30,6 +34,7 @@ import software.amazon.smithy.model.traits.IdempotencyTokenTrait;
 import software.amazon.smithy.model.traits.MediaTypeTrait;
 import software.amazon.smithy.model.pattern.SmithyPattern;
 
+import java.util.Map;
 import java.util.LinkedHashSet;
 import java.util.ArrayList;
 import java.util.List;
@@ -91,6 +96,7 @@ public final class ErlangRestXmlEmitter {
                 emitDecoder(writer, model, op, httpIndex, sp);
             }
 
+            emitEnumHelpers(writer, model, service, sp);
             emitXmlEncodeHelpers(writer);
             emitXmlDecodeHelpers(writer);
             emitPrefixHeaderHelpers(writer);
@@ -149,6 +155,7 @@ public final class ErlangRestXmlEmitter {
                 emitErrorResponseEncoders(writer, model, op, sp, emittedErrorEncoders);
             }
 
+            emitEnumHelpers(writer, model, service, sp);
             emitXmlEncodeHelpers(writer);
             emitXmlDecodeHelpers(writer);
         });
@@ -198,9 +205,7 @@ public final class ErlangRestXmlEmitter {
                     toBindingVar(fieldName), qb.getLocationName());
         }
         for (HttpBinding hb : headers) {
-            String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
-            writer.write("$L = proplists:get_value(<<\"$L\">>, Headers, undefined),",
-                    toBindingVar(fieldName), hb.getLocationName());
+            emitHeaderBindingDecode(writer, model, sp, hb);
         }
         for (HttpBinding ph : prefixHeaders) {
             String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
@@ -305,9 +310,7 @@ public final class ErlangRestXmlEmitter {
         writer.indent();
 
         for (HttpBinding hb : respHeaders) {
-            String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
-            writer.write("$L = proplists:get_value(<<\"$L\">>, Headers, undefined),",
-                    toBindingVar(fieldName), hb.getLocationName());
+            emitHeaderBindingDecode(writer, model, sp, hb);
         }
         for (HttpBinding ph : respPrefixHeaders) {
             String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
@@ -431,7 +434,7 @@ public final class ErlangRestXmlEmitter {
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"application/xml\">>}],");
         } else {
             writer.write("ExtraHeaders = ");
-            emitFlattenBindingCases(writer, respHeaders, false);
+            emitFlattenBindingCases(writer, model, sp, respHeaders, false);
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"application/xml\">>} | ExtraHeaders],");
         }
 
@@ -1062,7 +1065,7 @@ public final class ErlangRestXmlEmitter {
             writer.write("Query = [],");
         } else {
             writer.write("Query = ");
-            emitFlattenBindingCases(writer, queries, true);
+            emitFlattenBindingCases(writer, model, sp, queries, true);
         }
 
         if (!queryParams.isEmpty()) {
@@ -1086,7 +1089,7 @@ public final class ErlangRestXmlEmitter {
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>}],", requestContentType);
         } else {
             writer.write("Headers0 = ");
-            emitFlattenBindingCases(writer, headers, false);
+            emitFlattenBindingCases(writer, model, sp, headers, false);
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>} | Headers0],", requestContentType);
         }
 
@@ -1403,23 +1406,130 @@ public final class ErlangRestXmlEmitter {
     }
 
     private static void emitFlattenBindingCases(
-            ErlangWriter writer, List<HttpBinding> bindings, boolean queryValues) {
+            ErlangWriter writer,
+            Model model,
+            SymbolProvider sp,
+            List<HttpBinding> bindings,
+            boolean queryValues) {
         writer.write("lists:flatten([");
         for (int i = 0; i < bindings.size(); i++) {
             HttpBinding binding = bindings.get(i);
             String fieldVar = toBindingVar(
                     BeamNameUtils.toSnakeCase(binding.getMember().getMemberName()));
             String valueVar = fieldVar + "Val";
+            String encodedValue = encodeBindingWireValue(model, sp, binding.getMember(), valueVar, queryValues);
             String suffix = i < bindings.size() - 1 ? "," : "";
-            if (queryValues) {
-                writer.write("  case $L of undefined -> []; $L -> [{<<\"$L\">>, encode_query_value($L)}] end$L",
-                        fieldVar, valueVar, binding.getLocationName(), valueVar, suffix);
-            } else {
-                writer.write("  case $L of undefined -> []; $L -> [{<<\"$L\">>, to_binary($L)}] end$L",
-                        fieldVar, valueVar, binding.getLocationName(), valueVar, suffix);
-            }
+            writer.write("  case $L of undefined -> []; $L -> [{<<\"$L\">>, $L}] end$L",
+                    fieldVar, valueVar, binding.getLocationName(), encodedValue, suffix);
         }
         writer.write("]),");
+    }
+
+    private static void emitHeaderBindingDecode(
+            ErlangWriter writer,
+            Model model,
+            SymbolProvider sp,
+            HttpBinding binding) {
+        String fieldName = BeamNameUtils.toSnakeCase(binding.getMember().getMemberName());
+        String bindingVar = toBindingVar(fieldName);
+        String headerLookup = "proplists:get_value(<<\"" + binding.getLocationName() + "\">>, Headers, undefined)";
+        Shape target = model.expectShape(binding.getMember().getTarget());
+        if (target instanceof EnumShape || target instanceof IntEnumShape) {
+            String helperName = sp.toSymbol(target).getName().replace("()", "");
+            writer.write("$L = decode_$L($L),", bindingVar, helperName, headerLookup);
+        } else {
+            writer.write("$L = $L,", bindingVar, headerLookup);
+        }
+    }
+
+    private static String encodeBindingWireValue(
+            Model model,
+            SymbolProvider sp,
+            MemberShape member,
+            String valueVar,
+            boolean queryValues) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof EnumShape || target instanceof IntEnumShape) {
+            String helperName = sp.toSymbol(target).getName().replace("()", "");
+            return "encode_" + helperName + "(" + valueVar + ")";
+        }
+        if (queryValues) {
+            return "encode_query_value(" + valueVar + ")";
+        }
+        return "to_binary(" + valueVar + ")";
+    }
+
+    private static void emitEnumHelpers(
+            ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
+
+        Set<ShapeId> emitted = new LinkedHashSet<>();
+        for (Shape shape : new Walker(model).walkShapes(service)) {
+            if (shape instanceof EnumShape enumShape) {
+                if (emitted.add(enumShape.getId())) {
+                    emitEnumDecodeEncode(writer, enumShape, sp);
+                }
+            } else if (shape instanceof IntEnumShape intEnumShape) {
+                if (emitted.add(intEnumShape.getId())) {
+                    emitIntEnumDecodeEncode(writer, intEnumShape, sp);
+                }
+            }
+        }
+    }
+
+    private static void emitEnumDecodeEncode(ErlangWriter writer, EnumShape shape, SymbolProvider sp) {
+        String helperName = sp.toSymbol(shape).getName().replace("()", "");
+        writer.write("%% Enum helpers for $L", shape.getId());
+        for (MemberShape m : shape.members()) {
+            String wireValue = m.getTrait(EnumValueTrait.class)
+                    .flatMap(EnumValueTrait::getStringValue)
+                    .orElse(m.getMemberName());
+            String atom = enumAtomForMember(sp, shape, m.getMemberName());
+            writer.write("decode_$L(<<\"$L\">>) -> $L;", helperName, wireValue, atom);
+        }
+        writer.write("decode_$L(V) when is_binary(V) -> {unknown, V};", helperName);
+        writer.write("decode_$L(null) -> undefined;", helperName);
+        writer.write("decode_$L(undefined) -> undefined.", helperName);
+        writer.write("");
+        for (MemberShape m : shape.members()) {
+            String wireValue = m.getTrait(EnumValueTrait.class)
+                    .flatMap(EnumValueTrait::getStringValue)
+                    .orElse(m.getMemberName());
+            String atom = enumAtomForMember(sp, shape, m.getMemberName());
+            writer.write("encode_$L($L) -> <<\"$L\">>;", helperName, atom, wireValue);
+        }
+        writer.write("encode_$L({unknown, V}) when is_binary(V) -> V;", helperName);
+        writer.write("encode_$L(undefined) -> undefined.", helperName);
+        writer.write("");
+    }
+
+    private static void emitIntEnumDecodeEncode(ErlangWriter writer, IntEnumShape shape, SymbolProvider sp) {
+        String helperName = sp.toSymbol(shape).getName().replace("()", "");
+        writer.write("%% IntEnum helpers for $L", shape.getId());
+        for (MemberShape m : shape.members()) {
+            int wireValue = m.expectTrait(EnumValueTrait.class).expectIntValue();
+            String atom = enumAtomForMember(sp, shape, m.getMemberName());
+            writer.write("decode_$L($L) -> $L;", helperName, wireValue, atom);
+        }
+        writer.write("decode_$L(V) when is_integer(V) -> {unknown, V};", helperName);
+        writer.write("decode_$L(null) -> undefined;", helperName);
+        writer.write("decode_$L(undefined) -> undefined.", helperName);
+        writer.write("");
+        for (MemberShape m : shape.members()) {
+            int wireValue = m.expectTrait(EnumValueTrait.class).expectIntValue();
+            String atom = enumAtomForMember(sp, shape, m.getMemberName());
+            writer.write("encode_$L($L) -> $L;", helperName, atom, wireValue);
+        }
+        writer.write("encode_$L({unknown, V}) when is_integer(V) -> V;", helperName);
+        writer.write("encode_$L(undefined) -> undefined.", helperName);
+        writer.write("");
+    }
+
+    private static String enumAtomForMember(SymbolProvider sp, Shape enumShape, String memberName) {
+        @SuppressWarnings("unchecked")
+        Map<String, String> byMember = sp.toSymbol(enumShape)
+                .getProperty("enumAtomByMember", Map.class)
+                .orElseThrow();
+        return byMember.get(memberName);
     }
 
     private static String resolvedRequestContentType(
