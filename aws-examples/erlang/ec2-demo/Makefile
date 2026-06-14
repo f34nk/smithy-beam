@@ -58,7 +58,7 @@ test/unit:
 	rebar3 eunit
 
 .PHONY: demo
-demo: build compile terraform run
+demo: build compile run
 
 .PHONY: run
 run:
@@ -76,12 +76,3 @@ run:
 clean:
 	rm -rf build _build src/generated *.crashdump *.dump test/*.beam
 	rm -rf model/*.json
-	rm -rf terraform/.terraform* terraform/terraform.*
-
-.PHONY: terraform
-terraform:
-	#
-	# Create infrastructure
-	#
-	@echo "AWS_DEFAULT_REGION is $$AWS_DEFAULT_REGION"
-	cd terraform && terraform init && terraform apply -auto-approve

@@ -528,9 +528,10 @@ public final class ErlangAwsQueryEmitter {
                         + decodeListFieldFromXml(model, member, listShape, resultVar, sp, ec2Query));
             } else if (target instanceof StructureShape nested) {
                 String element = BeamXmlDecoder.memberElementName(member);
+                String nestedVar = xmlVarForElement(element);
                 fields.add("    " + field + " = (case find_element(<<\"" + element + "\">>, element_content("
-                        + resultVar + ")) of undefined -> undefined; Nested -> "
-                        + decodeStructureFromXml(model, nested, "Nested", sp, ec2Query) + " end)");
+                        + resultVar + ")) of undefined -> undefined; " + nestedVar + " -> "
+                        + decodeStructureFromXml(model, nested, nestedVar, sp, ec2Query) + " end)");
             } else {
                 fields.add("    " + field + " = xml_child_text(" + resultVar + ", <<\""
                         + BeamXmlDecoder.memberElementName(member) + "\">>)");
@@ -557,9 +558,10 @@ public final class ErlangAwsQueryEmitter {
                         + decodeListFieldFromXml(model, member, listShape, xmlVar, sp, ec2Query));
             } else if (target instanceof StructureShape nested) {
                 String element = BeamXmlDecoder.memberElementName(member);
+                String nestedVar = xmlVarForElement(element);
                 fields.add(field + " = (case find_element(<<\"" + element + "\">>, element_content(" + xmlVar
-                        + ")) of undefined -> undefined; Nested -> "
-                        + decodeStructureFromXml(model, nested, "Nested", sp, ec2Query) + " end)");
+                        + ")) of undefined -> undefined; " + nestedVar + " -> "
+                        + decodeStructureFromXml(model, nested, nestedVar, sp, ec2Query) + " end)");
             } else {
                 fields.add(field + " = xml_child_text(" + xmlVar + ", <<\""
                         + BeamXmlDecoder.memberElementName(member) + "\">>)");
@@ -945,5 +947,12 @@ public final class ErlangAwsQueryEmitter {
     private static String inputPattern(SymbolProvider sp, StructureShape input) {
         List<String> parts = inputPatternParts(sp, input);
         return parts.isEmpty() ? "" : "\n    " + String.join(",\n    ", parts) + "\n";
+    }
+
+    private static String xmlVarForElement(String element) {
+        if (element.isEmpty()) {
+            return "NestedXml";
+        }
+        return Character.toUpperCase(element.charAt(0)) + element.substring(1) + "Xml";
     }
 }

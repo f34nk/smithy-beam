@@ -123,6 +123,7 @@ class Ec2QueryCodecTest {
         assertThat(codec).doesNotContain("flatten_member(_Key, undefined) ->\n    [].\nflatten_member(Key, Value)");
         assertThat(codec).contains("end_ = xml_child_text(");
         assertThat(codec).doesNotContain("end = xml_child_text(");
+        assertThat(codec).doesNotContain("undefined; Nested ->");
     }
 
     @Test

@@ -5,7 +5,3 @@ src/generated/
 erl_crash.dump
 rebar3.crashdump
 rebar.lock
-terraform/.terraform/
-terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
-terraform/.terraform.lock.hcl
