@@ -1,7 +1,7 @@
 .PHONY: clean
 clean:
 	rebar3 clean
-	rm -rf _build build *.dump *.lock *.log src/generated/*
+	rm -rf _build build *.dump *.log src/generated/*
 	
 .PHONY: build
 build:
