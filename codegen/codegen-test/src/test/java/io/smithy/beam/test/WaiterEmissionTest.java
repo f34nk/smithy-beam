@@ -43,7 +43,27 @@ class WaiterEmissionTest {
         assertThat(waiters).contains("state => success");
         assertThat(waiters).contains("matcher => success, expected => true");
         assertThat(waiters).contains("matcher => errorType, expected => #not_found{}");
+        assertThat(waiters).contains("error_types_match(Expected, Got)");
         assertThat(waiters).contains("timer:sleep(Delay)");
+    }
+
+    @Test
+    void erlangWaiterPathMatcherUsesSnakeCaseSegments() {
+        MockManifest manifest = new MockManifest();
+        new ErlangClientPlugin().execute(PluginContext.builder()
+                .model(waiterModel())
+                .fileManifest(manifest)
+                .settings(ObjectNode.builder()
+                        .withMember("service", SERVICE)
+                        .withMember("edition", "2026")
+                        .build())
+                .build());
+
+        String waiters = manifest.getFileString("waitable_service_waiters.erl").orElse("");
+        assertThat(waiters).contains("path => [table, table_status]");
+        assertThat(waiters).contains("record_fields(table_description)");
+        assertThat(waiters).contains("record_field(");
+        assertThat(waiters).contains("string_equals(");
     }
 
     @Test
@@ -65,6 +85,7 @@ class WaiterEmissionTest {
         assertThat(waiters).contains("state: :success");
         assertThat(waiters).contains("matcher: :success, expected: true");
         assertThat(waiters).contains("matcher: :errorType, expected: %WaitableServiceTypes.NotFound{}");
+        assertThat(waiters).contains("error_types_match?(expected, got)");
         assertThat(waiters).contains("Process.sleep(delay)");
     }
 }

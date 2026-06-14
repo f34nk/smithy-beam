@@ -3,6 +3,7 @@ package io.smithy.beam.elixir;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamWaiterIndex;
+import io.smithy.beam.core.BeamWaiterPaths;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -128,7 +129,7 @@ public final class ElixirWaiterEmitter {
     private static void emitPathMatcher(
             ElixirWriter writer, String memberName, BeamWaiterIndex.PathMatcherInfo pathMatcher) {
         writer.write("matcher: :$L,", memberName);
-        writer.write("path: \"$L\",", escapeString(pathMatcher.path()));
+        writer.write("path: $L,", BeamWaiterPaths.emitElixirPath(pathMatcher.path()));
         writer.write("comparator: :$L,", pathMatcher.comparator());
         writer.write("expected: \"$L\"", escapeString(pathMatcher.expected()));
     }
@@ -185,9 +186,13 @@ public final class ElixirWaiterEmitter {
         writer.write("");
         writer.write("defp matches_acceptor?(%{matcher: :success, expected: true}, {:ok, _}), do: true");
         writer.write("defp matches_acceptor?(%{matcher: :success, expected: false}, {:error, _}), do: true");
-        writer.write("defp matches_acceptor?(%{matcher: :errorType, expected: expected}, {:error, expected}), do: true");
         writer.write(
-                "defp matches_acceptor?(%{matcher: :errorType, expected: expected}, {:error, _}) when is_binary(expected), do: true");
+                "defp matches_acceptor?(%{matcher: :errorType, expected: expected}, {:error, got}), do: error_types_match?(expected, got)");
+        writer.write("");
+        writer.write("defp error_types_match?(expected, _got) when is_binary(expected), do: true");
+        writer.write(
+                "defp error_types_match?(%{__struct__: struct}, %{__struct__: struct}), do: true");
+        writer.write("defp error_types_match?(expected, got), do: expected == got");
         writer.write("");
         ElixirFormat.breakFunctionHead(
                 writer,
@@ -215,19 +220,52 @@ public final class ElixirWaiterEmitter {
         writer.write("");
         writer.write("defp matches_acceptor?(_, _), do: false");
         writer.write("");
-        writer.write("defp path_string_equals?(path, expected, output) when is_map(output) do");
+        writer.write("defp path_string_equals?(path, expected, output) do");
         writer.indent();
-        writer.write("key = String.to_existing_atom(path)");
-        writer.write("Map.get(output, key) == expected");
+        writer.write("case path_value(path, output) do");
+        writer.indent();
+        writer.write("nil -> false");
+        writer.write("value -> string_equals?(value, expected)");
+        writer.dedent();
+        writer.write("end");
         writer.dedent();
         writer.write("end");
         writer.write("");
-        writer.write("defp path_string_equals?(path, expected, output) do");
+        writer.write("defp path_value(path, _value) when is_binary(path), do: nil");
+        writer.write("defp path_value([], value), do: value");
+        writer.write("defp path_value([key | rest], value) when is_map(value) do");
         writer.indent();
-        writer.write("key = String.to_existing_atom(path)");
-        writer.write("match?({^key, ^expected}, output)");
+        writer.write("case Map.get(value, key) do");
+        writer.indent();
+        writer.write("nil -> nil");
+        writer.write("next -> path_value(rest, next)");
         writer.dedent();
         writer.write("end");
+        writer.dedent();
+        writer.write("end");
+        writer.write("defp path_value([key | rest], value) when is_struct(value) do");
+        writer.indent();
+        writer.write("case Map.get(Map.from_struct(value), key) do");
+        writer.indent();
+        writer.write("nil -> nil");
+        writer.write("next -> path_value(rest, next)");
+        writer.dedent();
+        writer.write("end");
+        writer.dedent();
+        writer.write("end");
+        writer.write("defp path_value(_path, _value), do: nil");
+        writer.write("");
+        writer.write("defp string_equals?(left, right) when is_atom(left) and is_binary(right) do");
+        writer.indent();
+        writer.write("String.upcase(Atom.to_string(left)) == String.upcase(right)");
+        writer.dedent();
+        writer.write("end");
+        writer.write("defp string_equals?(left, right) when is_binary(left) and is_binary(right) do");
+        writer.indent();
+        writer.write("String.upcase(left) == String.upcase(right)");
+        writer.dedent();
+        writer.write("end");
+        writer.write("defp string_equals?(left, right), do: left == right");
     }
 
     private static String waitFunctionName(String waiterName) {

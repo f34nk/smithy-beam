@@ -3,13 +3,21 @@ package io.smithy.beam.erlang;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamWaiterIndex;
+import io.smithy.beam.core.BeamWaiterPaths;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
+import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.Shape;
+import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.neighbor.Walker;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Generates a {@code <service>_waiters.erl} helper for {@code @waitable} operations.
@@ -45,7 +53,7 @@ public final class ErlangWaiterEmitter {
                 emitWaiterFunction(writer, index, binding, clientMod, sp);
             }
 
-            emitWaitUntilHelper(writer);
+            emitWaitUntilHelper(writer, ctx.model(), service, sp);
         });
     }
 
@@ -121,12 +129,13 @@ public final class ErlangWaiterEmitter {
     private static void emitPathMatcher(
             ErlangWriter writer, String memberName, BeamWaiterIndex.PathMatcherInfo pathMatcher) {
         writer.write("matcher => $L,", memberName);
-        writer.write("path => <<\"$L\">>,", escapeBinary(pathMatcher.path()));
+        writer.write("path => $L,", BeamWaiterPaths.emitErlangPath(pathMatcher.path()));
         writer.write("comparator => $L,", pathMatcher.comparator());
         writer.write("expected => <<\"$L\">>", escapeBinary(pathMatcher.expected()));
     }
 
-    private static void emitWaitUntilHelper(ErlangWriter writer) {
+    private static void emitWaitUntilHelper(
+            ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
         writer.write("wait_until(Fun, Acceptors, Opts) ->");
         writer.indent();
         writer.write("MaxAttempts = maps:get(max_attempts, Opts, 25),");
@@ -170,10 +179,9 @@ public final class ErlangWaiterEmitter {
         writer.write("");
         writer.write("matches_acceptor(#{matcher := success, expected := true}, {ok, _}) -> true;");
         writer.write("matches_acceptor(#{matcher := success, expected := false}, {error, _}) -> true;");
-        writer.write("matches_acceptor(#{matcher := errorType, expected := Expected}, {error, Expected}) -> true;");
-        writer.write("matches_acceptor(#{matcher := errorType, expected := Expected}, {error, _}) ->");
+        writer.write("matches_acceptor(#{matcher := errorType, expected := Expected}, {error, Got}) ->");
         writer.indent();
-        writer.write("is_binary(Expected);");
+        writer.write("error_types_match(Expected, Got);");
         writer.dedent();
         writer.write("matches_acceptor(");
         writer.indent();
@@ -193,19 +201,113 @@ public final class ErlangWaiterEmitter {
         writer.dedent();
         writer.write("matches_acceptor(_, _) -> false.");
         writer.write("");
-        writer.write("path_string_equals(Path, Expected, Output) when is_map(Output) ->");
+        writer.write("error_types_match(Expected, _Got) when is_binary(Expected) -> true;");
+        writer.write("error_types_match(Expected, Got) when is_tuple(Expected), is_tuple(Got) ->");
         writer.indent();
-        writer.write("Key = binary_to_existing_atom(Path, utf8),");
-        writer.write("maps:get(Key, Output, undefined) =:= Expected;");
+        writer.write("element(1, Expected) =:= element(1, Got);");
         writer.dedent();
+        writer.write("error_types_match(Expected, Got) ->");
+        writer.indent();
+        writer.write("Expected =:= Got.");
+        writer.dedent();
+        writer.write("");
         writer.write("path_string_equals(Path, Expected, Output) ->");
         writer.indent();
-        writer.write("Key = binary_to_existing_atom(Path, utf8),");
-        writer.write("RecordTag = element(1, Output),");
-        writer.write("RecordTag =:= Key,");
-        writer.write("Value = element(2, Output),");
-        writer.write("Value =:= Expected.");
+        writer.write("case path_value(Path, Output) of");
+        writer.indent();
+        writer.write("undefined -> false;");
+        writer.write("Value -> string_equals(Value, Expected)");
         writer.dedent();
+        writer.write("end.");
+        writer.dedent();
+        writer.write("");
+        writer.write("path_value(Path, _Value) when is_binary(Path) ->");
+        writer.indent();
+        writer.write("undefined;");
+        writer.dedent();
+        writer.write("path_value([], Value) ->");
+        writer.indent();
+        writer.write("Value;");
+        writer.dedent();
+        writer.write("path_value([Key | Rest], Value) when is_map(Value) ->");
+        writer.indent();
+        writer.write("case maps:get(Key, Value, undefined) of");
+        writer.indent();
+        writer.write("undefined -> undefined;");
+        writer.write("Next -> path_value(Rest, Next)");
+        writer.dedent();
+        writer.write("end;");
+        writer.dedent();
+        writer.write("path_value([Key | Rest], Value) when is_tuple(Value), tuple_size(Value) >= 1 ->");
+        writer.indent();
+        writer.write("case record_field(Value, Key) of");
+        writer.indent();
+        writer.write("undefined -> undefined;");
+        writer.write("Next -> path_value(Rest, Next)");
+        writer.dedent();
+        writer.write("end;");
+        writer.dedent();
+        writer.write("path_value(_Path, _Value) ->");
+        writer.indent();
+        writer.write("undefined.");
+        writer.dedent();
+        writer.write("");
+        emitRecordFieldsHelper(writer, model, service, sp);
+        writer.write("record_field(Record, Field) when is_tuple(Record), tuple_size(Record) >= 1 ->");
+        writer.indent();
+        writer.write("Tag = element(1, Record),");
+        writer.write("case record_fields(Tag) of");
+        writer.indent();
+        writer.write("Fields when is_list(Fields) ->");
+        writer.indent();
+        writer.write("Values = tl(tuple_to_list(Record)),");
+        writer.write("case lists:keyfind(Field, 1, lists:zip(Fields, Values)) of");
+        writer.indent();
+        writer.write("{Field, V} -> V;");
+        writer.write("false -> undefined");
+        writer.dedent();
+        writer.write("end;");
+        writer.dedent();
+        writer.write("undefined -> undefined");
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
+        writer.write("");
+        writer.write("string_equals(V, Expected) when is_atom(V), is_binary(Expected) ->");
+        writer.indent();
+        writer.write("string:uppercase(atom_to_binary(V, utf8)) =:= string:uppercase(Expected);");
+        writer.dedent();
+        writer.write("string_equals(V, Expected) when is_binary(V), is_binary(Expected) ->");
+        writer.indent();
+        writer.write("string:uppercase(V) =:= string:uppercase(Expected);");
+        writer.dedent();
+        writer.write("string_equals(V, Expected) ->");
+        writer.indent();
+        writer.write("V =:= Expected.");
+        writer.dedent();
+    }
+
+    private static void emitRecordFieldsHelper(
+            ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
+        Set<Shape> closure = new Walker(model).walkShapes(service);
+        List<StructureShape> structures = closure.stream()
+                .filter(shape -> shape instanceof StructureShape)
+                .map(shape -> (StructureShape) shape)
+                .filter(shape -> !shape.getId().getNamespace().equals("smithy.api"))
+                .sorted(Comparator.comparing(s -> s.getId().toString()))
+                .collect(Collectors.toList());
+        for (StructureShape structure : structures) {
+            String record = recordName(sp.toSymbol(structure));
+            writer.write("record_fields($L) ->", record);
+            writer.indent();
+            writer.write("record_info(fields, $L);", record);
+            writer.dedent();
+        }
+        writer.write("record_fields(_) ->");
+        writer.indent();
+        writer.write("undefined.");
+        writer.dedent();
+        writer.write("");
     }
 
     private static String waitFunctionName(String waiterName) {

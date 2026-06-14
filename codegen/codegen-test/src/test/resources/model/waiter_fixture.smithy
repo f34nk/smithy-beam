@@ -7,7 +7,7 @@ use smithy.waiters#waitable
 @restJson1
 service WaitableService {
     version: "2026"
-    operations: [HeadBucket]
+    operations: [HeadBucket, DescribeTable]
 }
 
 @waitable(
@@ -44,6 +44,43 @@ structure HeadBucketInput {
 }
 
 structure HeadBucketOutput {}
+
+@waitable(
+    TableExists: {
+        acceptors: [
+            {
+                state: "success"
+                matcher: {
+                    output: {
+                        path: "Table.TableStatus"
+                        expected: "ACTIVE"
+                        comparator: "stringEquals"
+                    }
+                }
+            }
+        ]
+    }
+)
+@readonly
+@http(method: "GET", uri: "/tables/{TableName}")
+operation DescribeTable {
+    input: DescribeTableInput
+    output: DescribeTableOutput
+}
+
+structure DescribeTableInput {
+    @httpLabel
+    @required
+    TableName: String
+}
+
+structure DescribeTableOutput {
+    Table: TableDescription
+}
+
+structure TableDescription {
+    TableStatus: String
+}
 
 @error("client")
 structure NotFound {
