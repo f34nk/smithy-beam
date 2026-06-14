@@ -3,6 +3,63 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-06-14
+
+### Added
+- AWS service demos now provision and tear down resources programmatically for LocalStack and live AWS runs.
+- LocalStack is started in Docker when running aws-examples.
+
+### Changed
+- Removed Docker-specific makefile targets from aws-examples and dropped the standalone minimal Erlang S3 demo.
+- Each aws-example binds LocalStack to a distinct host port so several can run without port clashes.
+
+### Fixed
+- Codegen and model fixes for REST-XML header decoding, REST JSON timestamp decoding, S3 XML output shape modeling, and waiter matching on nested paths and error types.
+- Broader codegen corrections for REST-XML payloads, HTTP checksum validation, union decoding, and AWS Query list encoding.
+
+## 2026-06-13
+
+### Added
+- DynamoDB baseline demo for cross-language comparison.
+- Vendored aws_endpoint_rules stub emitted for Erlang and Elixir clients.
+- customizeProtocolDeserialize integration hook wired on Erlang and Elixir client decode paths.
+
+### Fixed
+- Codegen fixes for waiters, error records, empty enums, service closure pruning, paginators, event streams, REST-XML unions, checksum validation, and nested JSON document helpers.
+- Syntax error in generated HTTP checksum and REST-XML decoding output.
+
+### Changed
+- Removed redundant BeamRuntimeDependency from codegen-core.
+- Default baseline build skips Elixir and Python EC2 demos.
+
+## 2026-06-12
+
+### Added
+- Erlang client protocol serialize integration hooks wired through the protocol codec emission path.
+
+### Changed
+- Renamed aws-example demo application modules for clearer service alignment.
+
+## 2026-06-11
+
+### Added
+- Java and Python EC2 baseline demos for generated-client comparison against BEAM output.
+
+### Fixed
+- Elixir smithy-build no longer enables automatic Req response body decoding, which interfered with generated codec handling.
+- Removed unused dependencies from example projects.
+
+### Changed
+- Baseline example Makefiles simplified.
+
+## 2026-06-10
+
+### Added
+- Shared Erlang formatting helpers in codegen for consistent four-space layout across emitters.
+
+### Fixed
+- Erlang emitter indentation, module structure, union type layout, HTTP dispatch helper placement, retry module formatting, and redundant scalar type alias omission when the alias name matches the built-in Smithy type.
+
 ## 2026-06-08
 
 ### Added
