@@ -3,7 +3,7 @@ defmodule S3Test do
 
   alias AmazonS3Types.ListBucketsInput
 
-  @bucket_name "us-east-1-nonprod-configs"
+  @bucket_name "smithy-beam-minimal-s3-elixir"
 
   test "list_buckets against LocalStack" do
     endpoint = System.get_env("AWS_ENDPOINT")

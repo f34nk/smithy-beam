@@ -26,5 +26,5 @@ variable "endpoint" {
 }
 
 resource "aws_s3_bucket" "config_bucket" {
-  bucket = "us-east-1-nonprod-configs"
+  bucket = "smithy-beam-minimal-s3-elixir"
 }
