@@ -1,8 +1,9 @@
-X:=$(shell find aws-examples examples baseline -maxdepth 3 -name Makefile -type f -exec dirname {} \;)
-EXAMPLES:=$(foreach x,$(X),$(x)/)
-EXAMPLES_COUNT:=$(words $(EXAMPLES))
+X := $(shell find aws-examples examples baseline -maxdepth 3 -name Makefile -type f -exec dirname {} \;)
+EXAMPLES := $(foreach x,$(X),$(x)/)
+EXAMPLES_COUNT := $(words $(EXAMPLES))
 
-PARALLEL_JOBS=10
+PARALLEL_JOBS := 10
+CONTAINER_NAME = examples-stack
 
 .PHONY: all
 all: clean build test
@@ -170,10 +171,13 @@ _demo:
 	#
 	cd $(DEMO) && make clean && time make demo
 
+.PHONY: _aws-examples
+_aws-examples:
+	TARGET=aws-examples make _run
+
 # Usage: make aws-examples
 .PHONY: aws-examples
-aws-examples:
-	TARGET=aws-examples make _run
+aws-examples: docker/stop docker/start _aws-examples docker/stop
 
 # Usage: make examples
 .PHONY: examples
@@ -204,3 +208,39 @@ aws-examples/% examples/% baseline/%: $(EXAMPLES)
 		printf ".";\
 		echo "$$logfile ...ok" >> $$build_log; \
 	fi; \
+
+.PHONY: docker/start
+docker/start:
+	#
+	# Run LocalStack
+	#
+	docker run --rm -d \
+		--name $(CONTAINER_NAME) \
+		-p 4566:4566 \
+		-p 4576:4566 \
+		-p 4577:4566 \
+		-p 4578:4566 \
+		-e SERVICES=s3,sqs,dynamodb,firehose,kinesis,lambda,apigateway,cloudformation,cloudwatch,ec2,iam,logs,redshift,route53,events,sns,sts,sm,es,elasticache,secretsmanager,stepfunctions,s3control \
+		localstack/localstack
+	make docker/wait
+	
+.PHONY: docker/stop
+docker/stop:
+	#
+	# Stop LocalStack
+	#
+	docker stop $(CONTAINER_NAME) &> /dev/null || true
+	docker rm $(CONTAINER_NAME) &> /dev/null || true
+
+.PHONY: docker/wait
+docker/wait:
+	@echo "Waiting for LocalStack on port 4566..."
+	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do \
+		if curl -sf "http://localhost:4566/_localstack/health" >/dev/null 2>&1; then \
+			echo "LocalStack is ready"; \
+			exit 0; \
+		fi; \
+		sleep 1; \
+	done; \
+	echo "LocalStack did not become ready in time"; \
+	exit 1
