@@ -171,11 +171,9 @@ list BasicItemList {
 
     ## How to call
 
-    ```
-    config = #{base_url => "http://localhost:8080", http_client => MyHttpMock},
-    input = #{page_size => 10},
+    Erlang:
+
     {ok, Items} = basic_service_client:list_basic_items(Config, Input).
-    ```
 
     Elixir:
 

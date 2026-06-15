@@ -480,11 +480,14 @@ final class ErlangClientDirectedCodegen
             writer.write("$L:decode_$L_response(Resp);",
                     codecModule, opSym.getName());
         } else if (paginated && wrapWithRetry) {
-            writer.write("{ok, $L:decode_$L_response(Resp)};",
+            writer.write("$L:decode_$L_response(Resp);",
                     codecModule, opSym.getName());
         } else {
-            writer.write("Output = $L:decode_$L_response(Resp),",
+            writer.write("case $L:decode_$L_response(Resp) of",
                     codecModule, opSym.getName());
+            writer.indent();
+            writer.write("{ok, Output} ->");
+            writer.indent();
             PaginationInfo pi = BeamClientPaginationSupport.requirePaginationInfo(
                     ctx.model(), ctx.service(), op);
             StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
@@ -507,6 +510,13 @@ final class ErlangClientDirectedCodegen
                     outputTokenExpr,
                     inputRecord,
                     inputToken);
+            writer.dedent();
+            writer.write("{error, Reason} ->");
+            writer.indent();
+            writer.write("{error, Reason}");
+            writer.dedent();
+            writer.dedent();
+            writer.write("end;");
         }
         writer.dedent();
         writer.write("{error, Reason} ->");

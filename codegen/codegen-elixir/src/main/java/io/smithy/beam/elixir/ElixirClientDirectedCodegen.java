@@ -487,11 +487,14 @@ final class ElixirClientDirectedCodegen
         if (mode == DispatchBodyMode.SINGLE_PAGE) {
             writer.write("{:ok, resp} -> $L.decode_$L_response(resp)", codecMod, opSym.getName());
         } else if (paginated && wrapWithRetry) {
-            writer.write("{:ok, resp} -> {:ok, $L.decode_$L_response(resp)}", codecMod, opSym.getName());
+            writer.write("{:ok, resp} -> $L.decode_$L_response(resp)", codecMod, opSym.getName());
         } else {
             writer.write("{:ok, resp} ->");
             writer.indent();
-            writer.write("output = $L.decode_$L_response(resp)", codecMod, opSym.getName());
+            writer.write("case $L.decode_$L_response(resp) do", codecMod, opSym.getName());
+            writer.indent();
+            writer.write("{:ok, output} ->");
+            writer.indent();
             PaginationInfo pi = BeamClientPaginationSupport.requirePaginationInfo(
                     ctx.model(), ctx.service(), op);
             String inputToken = ElixirClientPaginationEmitter.fieldName(sp, pi.getInputTokenMember());
@@ -509,6 +512,14 @@ final class ElixirClientDirectedCodegen
                     itemsExpr,
                     outputTokenExpr,
                     inputToken);
+            writer.dedent();
+            writer.write("");
+            writer.write("{:error, reason} ->");
+            writer.indent();
+            writer.write("{:error, reason}");
+            writer.dedent();
+            writer.dedent();
+            writer.write("end");
             writer.dedent();
         }
         writer.write("{:error, reason} -> {:error, reason}");

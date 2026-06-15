@@ -45,11 +45,9 @@ get_type_closure(Config, Input) ->
 %%
 %% ## How to call
 %%
-%% ```
-%% config = #{base_url => "http://localhost:8080", http_client => MyHttpMock},
-%% input = #{page_size => 10},
+%% Erlang:
+%%
 %% {ok, Items} = basic_service_client:list_basic_items(Config, Input).
-%% ```
 %%
 %% Elixir:
 %%
@@ -68,14 +66,18 @@ list_basic_items(Config, Input, Acc) ->
     Req = basic_service_rest_json_1:encode_list_basic_items_request(Input),
     case runtime_http:dispatch(Config, Req) of
         {ok, Resp} ->
-            Output = basic_service_rest_json_1:decode_list_basic_items_response(Resp),
-            NewAcc = Acc ++ element(#list_basic_items_output.items, Output),
-            case element(#list_basic_items_output.next_token, Output) of
-                undefined ->
-                    {ok, NewAcc};
-                NextToken ->
-                    NextInput = Input#list_basic_items_input{next_token = NextToken},
-                    list_basic_items(Config, NextInput, NewAcc)
+            case basic_service_rest_json_1:decode_list_basic_items_response(Resp) of
+                {ok, Output} ->
+                    NewAcc = Acc ++ element(#list_basic_items_output.items, Output),
+                    case element(#list_basic_items_output.next_token, Output) of
+                        undefined ->
+                            {ok, NewAcc};
+                        NextToken ->
+                            NextInput = Input#list_basic_items_input{next_token = NextToken},
+                            list_basic_items(Config, NextInput, NewAcc)
+                    end;
+                {error, Reason} ->
+                    {error, Reason}
             end;
         {error, Reason} ->
             {error, Reason}
