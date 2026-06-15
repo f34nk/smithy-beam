@@ -1,5 +1,6 @@
 package io.smithy.beam.test;
 
+import io.smithy.beam.elixir.ElixirClientPlugin;
 import io.smithy.beam.erlang.ErlangClientPlugin;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -70,5 +71,23 @@ class RetryWiringTest {
         assertThat(client).contains("basic_service_retry:with_retry(fun() ->");
         assertThat(client).contains("get_type_closure(Config, Input) ->");
         assertThat(client).doesNotContain("list_basic_items(Config, Input) ->\n    RetryOpts");
+    }
+
+    @Test
+    void elixirClientWrapsOperationsWithRetryableErrors() {
+        MockManifest manifest = new MockManifest();
+        new ElixirClientPlugin().execute(PluginContext.builder()
+                .model(errorFixtureModel())
+                .fileManifest(manifest)
+                .settings(ObjectNode.builder()
+                        .withMember("service", SERVICE)
+                        .withMember("edition", "2026")
+                        .build())
+                .build());
+
+        String client = manifest.expectFileString("error_fixture_service_client.ex");
+        assertThat(client).contains("retry_opts = Map.get(config, :retry, [])");
+        assertThat(client).contains("ErrorFixtureServiceRetry.with_retry(fn ->");
+        assertThat(client).contains("def get_item(config, input) do");
     }
 }
