@@ -51,7 +51,7 @@ class ElixirClientPluginTest {
 
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("basic_string");
         assertClientStubHeaderOrder(manifest.expectFileString(CLIENT_FILE));
-        assertThat(manifest.getFileString("basic_service_rest_json_1.ex")).isEmpty();
+        assertThat(manifest.getFileString("basic_service_rest_json_1.ex")).isPresent();
     }
 
     @Test
@@ -73,7 +73,8 @@ class ElixirClientPluginTest {
         assertThat(clientSource).contains("@moduledoc \"\"\"");
         assertThat(clientSource).contains("alias BasicServiceTypes");
         assertThat(clientSource).contains("@spec get_type_closure(client_config(), BasicServiceTypes.GetTypeClosureInput.t())");
-        assertThat(clientSource).contains("def get_type_closure(_config, _input), do: {:error, :not_implemented}");
+        assertThat(clientSource).contains("def get_type_closure(config, input) do");
+        assertThat(clientSource).contains("RuntimeHttp.dispatch");
         assertThat(clientSource).contains("@type client_config :: map()");
         int moduleIndex = clientSource.indexOf("defmodule BasicServiceClient do");
         int moduledocIndex = clientSource.indexOf("@moduledoc \"\"\"");
