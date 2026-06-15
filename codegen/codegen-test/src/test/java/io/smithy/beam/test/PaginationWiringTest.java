@@ -1,6 +1,5 @@
 package io.smithy.beam.test;
 
-import io.smithy.beam.elixir.ElixirClientPlugin;
 import io.smithy.beam.erlang.ErlangClientPlugin;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -10,7 +9,7 @@ import software.amazon.smithy.model.node.ObjectNode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class PaginatorEmissionTest {
+class PaginationWiringTest {
 
     private static final String SERVICE = "smithy.beam.test.paginated#PaginatedService";
 
@@ -23,7 +22,7 @@ class PaginatorEmissionTest {
     }
 
     @Test
-    void erlangPaginatorModuleWiresTokenAndAccumulate() {
+    void erlangClientEmitsPaginationLoopForPaginatedOperations() {
         MockManifest manifest = new MockManifest();
         new ErlangClientPlugin().execute(PluginContext.builder()
                 .model(paginatedModel())
@@ -33,29 +32,35 @@ class PaginatorEmissionTest {
                         .withMember("edition", "2026")
                         .build())
                 .build());
-        String paginators = manifest.getFileString("paginated_service_paginators.erl").orElse("");
-        assertThat(paginators).contains("-module(paginated_service_paginators).");
-        assertThat(paginators).contains("paginate_list_widgets/2");
-        assertThat(paginators).contains("next_token");
-        assertThat(paginators).contains("widgets");
-        assertThat(paginators).contains("element(#nested_widget_result.items");
+
+        String client = manifest.expectFileString("paginated_service_client.erl");
+        assertThat(client).contains("list_widgets(Config, Input) ->");
+        assertThat(client).contains("list_widgets(Config, Input, [])");
+        assertThat(client).contains("encode_list_widgets_request(Input)");
+        assertThat(client).contains("next_token");
+        assertThat(client).contains("widgets");
+        assertThat(client).contains("element(#nested_widget_result.items");
     }
 
     @Test
-    void elixirPaginatorModuleWiresTokenAndAccumulate() {
+    void erlangBasicClientPaginatesListBasicItemsOnly() {
         MockManifest manifest = new MockManifest();
-        new ElixirClientPlugin().execute(PluginContext.builder()
-                .model(paginatedModel())
+        new ErlangClientPlugin().execute(PluginContext.builder()
+                .model(Model.assembler()
+                        .addImport(getClass().getResource("/model/basic.smithy"))
+                        .discoverModels()
+                        .assemble()
+                        .unwrap())
                 .fileManifest(manifest)
                 .settings(ObjectNode.builder()
-                        .withMember("service", SERVICE)
+                        .withMember("service", "smithy.beam.demo.basic#BasicService")
                         .withMember("edition", "2026")
                         .build())
                 .build());
-        String paginators = manifest.getFileString("paginated_service_paginators.ex").orElse("");
-        assertThat(paginators).contains("defmodule PaginatedServicePaginators");
-        assertThat(paginators).contains("def paginate_list_widgets");
-        assertThat(paginators).contains("next_token");
-        assertThat(paginators).contains("widgets");
+
+        String client = manifest.expectFileString("basic_service_client.erl");
+        assertThat(client).contains("list_basic_items(Config, Input, [])");
+        assertThat(client).contains("encode_list_basic_items_request(Input)");
+        assertThat(client).doesNotContain("get_type_closure(Config, Input, [])");
     }
 }
