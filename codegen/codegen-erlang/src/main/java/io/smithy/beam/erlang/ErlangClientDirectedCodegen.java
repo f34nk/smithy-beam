@@ -354,6 +354,7 @@ final class ErlangClientDirectedCodegen
                 writer.dedent();
                 writer.dedent();
                 if (wrapWithRetry) {
+                    writer.write("end");
                     writer.dedent();
                     writer.write("end, RetryOpts).");
                 } else {
