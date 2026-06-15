@@ -495,12 +495,12 @@ final class ElixirClientDirectedCodegen
             PaginationInfo pi = BeamClientPaginationSupport.requirePaginationInfo(
                     ctx.model(), ctx.service(), op);
             String inputToken = ElixirClientPaginationEmitter.fieldName(sp, pi.getInputTokenMember());
-            String outputTokenExpr = ElixirClientPaginationEmitter.mapAccess(
+            String outputTokenExpr = ElixirClientPaginationEmitter.tokenAccess(
                     "output", pi.getOutputTokenMemberPath(), sp);
             List<MemberShape> itemsPath = pi.getItemsMemberPath();
             boolean hasItems = BeamClientPaginationSupport.hasItemsMember(pi);
             String itemsExpr = hasItems
-                    ? ElixirClientPaginationEmitter.mapAccess("output", itemsPath, sp)
+                    ? ElixirClientPaginationEmitter.itemsAccess("output", itemsPath, sp)
                     : null;
             ElixirClientPaginationEmitter.emitAccumulationAndRecursion(
                     writer,

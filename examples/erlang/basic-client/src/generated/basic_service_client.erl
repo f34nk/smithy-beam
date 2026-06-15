@@ -41,33 +41,42 @@ get_type_closure(Config, Input) ->
 %%   verbose @ QUERY
 
 %% @doc
-%% Returns a page of basic items. Pass `nextToken` from a prior response to fetch the next page.
+%% Returns basic items across all pages.
 %%
 %% ## How to call
 %%
-%% Use the generated paginator to walk every page:
+%% ```
+%% config = #{base_url => "http://localhost:8080", http_client => MyHttpMock},
+%% input = #{page_size => 10},
+%% {ok, Items} = basic_service_client:list_basic_items(Config, Input).
+%% ```
+%%
+%% Elixir:
 %%
 %% ```
 %% config = %{base_url: "http://localhost:8080", http_client: MyHttpMock}
-%% input  = %{page_size: 10}
-%% {:ok, items} = BasicServicePaginators.paginate_list_basic_items(config, input)
-%% ```
-%%
-%% Or call the client operation directly for a single page:
-%%
-%% ```
-%% {:ok, output} = BasicServiceClient.list_basic_items(config, input)
-%% items = Map.get(output, :items, [])
-%% next_token = Map.get(output, :next_token)
+%% input = %{page_size: 10}
+%% {:ok, items} = BasicServiceClient.list_basic_items(config, input)
 %% ```
 
 -spec list_basic_items(client_config(), list_basic_items_input()) ->
-    {'ok', list_basic_items_output()} | {'error', term()}.
+    {'ok', [basic_item()]} | {'error', term()}.
 list_basic_items(Config, Input) ->
+    list_basic_items(Config, Input, []).
+
+list_basic_items(Config, Input, Acc) ->
     Req = basic_service_rest_json_1:encode_list_basic_items_request(Input),
     case runtime_http:dispatch(Config, Req) of
         {ok, Resp} ->
-            basic_service_rest_json_1:decode_list_basic_items_response(Resp);
+            Output = basic_service_rest_json_1:decode_list_basic_items_response(Resp),
+            NewAcc = Acc ++ element(#list_basic_items_output.items, Output),
+            case element(#list_basic_items_output.next_token, Output) of
+                undefined ->
+                    {ok, NewAcc};
+                NextToken ->
+                    NextInput = Input#list_basic_items_input{next_token = NextToken},
+                    list_basic_items(Config, NextInput, NewAcc)
+            end;
         {error, Reason} ->
             {error, Reason}
     end.

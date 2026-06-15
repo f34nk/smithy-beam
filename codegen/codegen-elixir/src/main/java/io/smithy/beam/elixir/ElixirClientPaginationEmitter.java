@@ -30,10 +30,10 @@ public final class ElixirClientPaginationEmitter {
         SymbolProvider sp = ctx.symbolProvider();
         Symbol opSym = sp.toSymbol(op);
         String inputToken = fieldName(sp, pi.getInputTokenMember());
-        String outputTokenExpr = mapAccess("output", pi.getOutputTokenMemberPath(), sp);
+        String outputTokenExpr = tokenAccess("output", pi.getOutputTokenMemberPath(), sp);
         List<MemberShape> itemsPath = pi.getItemsMemberPath();
         boolean hasItems = BeamClientPaginationSupport.hasItemsMember(pi);
-        String itemsExpr = hasItems ? mapAccess("output", itemsPath, sp) : null;
+        String itemsExpr = hasItems ? itemsAccess("output", itemsPath, sp) : null;
 
         writer.write("def $L(config, input) do", opSym.getName());
         writer.indent();
@@ -112,7 +112,17 @@ public final class ElixirClientPaginationEmitter {
         return sp.toSymbol(member).getProperty("fieldName", String.class).orElseThrow();
     }
 
-    static String mapAccess(String rootVar, List<MemberShape> path, SymbolProvider sp) {
+    static String tokenAccess(String rootVar, List<MemberShape> path, SymbolProvider sp) {
+        if (path.size() == 1) {
+            return "Map.get(" + rootVar + ", :" + fieldName(sp, path.get(0)) + ")";
+        }
+        String keys = path.stream()
+                .map(member -> ":" + fieldName(sp, member))
+                .collect(Collectors.joining(", "));
+        return "get_in(" + rootVar + ", [" + keys + "])";
+    }
+
+    static String itemsAccess(String rootVar, List<MemberShape> path, SymbolProvider sp) {
         if (path.size() == 1) {
             return "Map.get(" + rootVar + ", :" + fieldName(sp, path.get(0)) + ", [])";
         }
