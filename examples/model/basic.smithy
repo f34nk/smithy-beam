@@ -164,27 +164,23 @@ list BasicItemList {
     member: BasicItem
 }
 
-// Paginated list operation for exercising generated paginator helpers.
+// Paginated list operation.
 
 @documentation("""
-    Returns a page of basic items. Pass `nextToken` from a prior response to fetch the next page.
+    Returns basic items across all pages.
 
     ## How to call
 
-    Use the generated paginator to walk every page:
+    Erlang:
+
+    {ok, Items} = basic_service_client:list_basic_items(Config, Input).
+
+    Elixir:
 
     ```
     config = %{base_url: "http://localhost:8080", http_client: MyHttpMock}
-    input  = %{page_size: 10}
-    {:ok, items} = BasicServicePaginators.paginate_list_basic_items(config, input)
-    ```
-
-    Or call the client operation directly for a single page:
-
-    ```
-    {:ok, output} = BasicServiceClient.list_basic_items(config, input)
-    items = Map.get(output, :items, [])
-    next_token = Map.get(output, :next_token)
+    input = %{page_size: 10}
+    {:ok, items} = BasicServiceClient.list_basic_items(config, input)
     ```
     """)
 @readonly

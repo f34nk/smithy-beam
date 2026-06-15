@@ -2,7 +2,7 @@
 
 This document lists AWS-oriented features from the [Smithy AWS integrations](https://smithy.io/2.0/aws/index.html) specification and how they relate to **generated** Erlang and Elixir code in smithy-beam today.
 
-smithy-beam is a Smithy DirectedCodegen project for the BEAM. AWS service clients are a long-term goal; the current baseline implements REST JSON 1, AWS JSON 1.0 and 1.1, AWS Query, EC2 Query, and REST-XML protocol stacks with generated codecs, dispatch, routers, paginator helpers, retry wrappers, waiters, and optional HTTP compliance tests. Generated SigV4 clients emit signing hooks, a default credential resolution chain, endpoint resolution (rules engine when an endpoint rule set is present, static regional fallback otherwise), and S3 bucket addressing helpers when the model requires them.
+smithy-beam is a Smithy DirectedCodegen project for the BEAM. AWS service clients are a long-term goal; the current baseline implements REST JSON 1, AWS JSON 1.0 and 1.1, AWS Query, EC2 Query, and REST-XML protocol stacks with generated codecs, dispatch, routers, wired client pagination for `@paginated` operations, retry wrappers, waiters, and optional HTTP compliance tests. Generated SigV4 clients emit signing hooks, a default credential resolution chain, endpoint resolution (rules engine when an endpoint rule set is present, static regional fallback otherwise), and S3 bucket addressing helpers when the model requires them.
 
 For trait-level detail across all Smithy specs, see [TRAITS.md](TRAITS.md).
 
@@ -46,7 +46,7 @@ Output from `erlang-client-codegen` and `elixir-client-codegen`.
 | REST JSON 1 response decoding | ✅ | Codec decodes JSON document, header, and payload bindings into typed output records or structs. |
 | HTTP dispatch | ✅ | Erlang uses OTP `httpc` via a generated `<prefix>_http` module. Elixir uses `Req`. Both honor a configurable HTTP client module in client config for tests. |
 | Default endpoint in generated config | ✅ | Generated clients emit `default_config/0` and endpoint resolution helpers. HTTP dispatch merges a resolved base URL when `base_url` is unset: rules engine evaluation when `@endpointRuleSet` is present, static regional fallback from `endpointPrefix` and region otherwise. |
-| Pagination helpers | ✅ | `@paginated` operations get a generated paginator module that walks output tokens and accumulates item lists. |
+| Pagination | ✅ | `@paginated` operations emit a page loop in the generated client operation that walks output tokens and returns accumulated items. |
 | Operation documentation | ✅ | `@documentation` on operations is emitted into generated client function docs. |
 | Type and shape documentation | ✅ | Types plugins emit shape and member docs into generated type files alongside operation docs on client stubs. |
 | Error shape types | ✅ | `@error` structures become typed records (Erlang) or `defexception` modules (Elixir) with fault kind metadata. |
@@ -94,7 +94,7 @@ Protocol selection reads the sole `@protocolDefinition` trait on the selected se
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ✅ | Request encoding, client response decoding, server request decoding, server response encoding, routing, and paginators for Erlang and Elixir when the service carries `@restJson1`. Codecs honor `@jsonName`, `@httpQueryParams`, `@httpPrefixHeaders`, `@httpResponseCode`, `@httpError`, `@timestampFormat`, `@mediaType`, `@hostLabel`, `@idempotencyToken`, sparse collection nulls, and `@streaming` blob payloads. |
+| [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ✅ | Request encoding, client response decoding, server request decoding, server response encoding, routing, and wired client pagination for Erlang and Elixir when the service carries `@restJson1`. Codecs honor `@jsonName`, `@httpQueryParams`, `@httpPrefixHeaders`, `@httpResponseCode`, `@httpError`, `@timestampFormat`, `@mediaType`, `@hostLabel`, `@idempotencyToken`, sparse collection nulls, and `@streaming` blob payloads. |
 | [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ✅ | Client and server codecs plus router dispatch for POST / with X-Amz-Target and content type application/x-amz-json-1.0 (Erlang and Elixir). |
 | [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ✅ | Client and server codecs plus router dispatch for POST / with X-Amz-Target and content type application/x-amz-json-1.1 (Erlang and Elixir). Same wire rules as JSON 1.0. |
 | [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ✅ | Form-urlencoded request encoding and XML response decoding for Erlang and Elixir clients and servers. |

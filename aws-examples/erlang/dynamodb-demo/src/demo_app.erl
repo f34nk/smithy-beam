@@ -18,7 +18,7 @@ run() ->
     %% 1. List tables to verify connection
     io:format("--- ListTables ---~n"),
     case dynamo_db_20120810_client:list_tables(Config, #list_tables_input{}) of
-        {ok, #list_tables_output{table_names = TableNames}} when is_list(TableNames), TableNames =/= [] ->
+        {ok, TableNames} when is_list(TableNames), TableNames =/= [] ->
             io:format("SUCCESS: Found ~p table(s)~n", [length(TableNames)]),
             case lists:member(?TABLE_NAME, TableNames) of
                 true  -> io:format("SUCCESS: Table '~s' found~n", [?TABLE_NAME]);
@@ -109,7 +109,8 @@ run() ->
         table_name = ?TABLE_NAME
     },
     case dynamo_db_20120810_client:scan(Config, ScanInput) of
-        {ok, #scan_output{count = Count, items = Items}} when is_list(Items) ->
+        {ok, Items} when is_list(Items) ->
+            Count = length(Items),
             io:format("SUCCESS: Scanned ~p item(s)~n", [Count]),
             case Count =:= 2 of
                 true  -> io:format("SUCCESS: Scan count == 2 as expected~n");

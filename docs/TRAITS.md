@@ -4,7 +4,7 @@ This document lists Smithy 2.0 traits and their implementation status in **gener
 
 The **types** plugins generate scalar aliases, lists, maps, enums, intEnums, unions, structures, and error shapes for the selected service closure.
 
-The **client** and **server** plugins run after types generation. For services using a supported AWS protocol trait, they emit HTTP dispatch, protocol codecs, paginator helpers, and server routers with request decoders. Supported protocols are REST JSON 1, AWS JSON 1.0, AWS JSON 1.1, AWS Query, EC2 Query, and REST-XML.
+The **client** and **server** plugins run after types generation. For services using a supported AWS protocol trait, they emit HTTP dispatch, protocol codecs, client pagination loops for `@paginated` operations, and server routers with request decoders. Supported protocols are REST JSON 1, AWS JSON 1.0, AWS JSON 1.1, AWS Query, EC2 Query, and REST-XML.
 
 Trait filtering via the `@deprecated` trait is applied when the Smithy-Build `relativeDate` or `relativeVersion` plugin settings are configured.
 
@@ -179,6 +179,8 @@ Traits that define operation behavior.
 | [`smithy.api#readonly`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-readonly-trait) | ❌ | ❌ |
 | [`smithy.api#requestCompression`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-requestcompression-trait) | ✅ | ✅ |
 | [`smithy.api#retryable`](https://smithy.io/2.0/spec/behavior-traits.html#smithy-api-retryable-trait) | ✅ | ✅ |
+
+For `@paginated` operations, generated client functions emit a page loop that accumulates items across output tokens.
 
 ---
 

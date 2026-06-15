@@ -185,7 +185,7 @@ describe_vpcs(Config, ExpectedVpcId) ->
     io:format("--- DescribeVpcs ---~n"),
     Input = #describe_vpcs_input{},
     case amazon_ec2_client:describe_vpcs(Config, Input) of
-        {ok, #describe_vpcs_output{vpcs = Vpcs}} when is_list(Vpcs) ->
+        {ok, Vpcs} when is_list(Vpcs) ->
             case lists:keyfind(ExpectedVpcId, #vpc.vpc_id, Vpcs) of
                 #vpc{vpc_id = VpcId, cidr_block = CidrBlock} ->
                     io:format("SUCCESS: Found expected VPC ~s (~s)~n",
@@ -205,8 +205,7 @@ describe_security_groups(Config, ExpectedSgId) ->
     io:format("--- DescribeSecurityGroups ---~n"),
     Input = #describe_security_groups_input{},
     case amazon_ec2_client:describe_security_groups(Config, Input) of
-        {ok, #describe_security_groups_output{security_groups = Sgs}}
-            when is_list(Sgs) ->
+        {ok, Sgs} when is_list(Sgs) ->
             case lists:keyfind(ExpectedSgId, #security_group.group_id, Sgs) of
                 #security_group{group_id = GroupId, group_name = GroupName} ->
                     io:format("SUCCESS: Found expected security group ~s (~s)~n",
@@ -253,7 +252,7 @@ describe_instance(Config, InstanceId) ->
     io:format("--- DescribeInstances ---~n"),
     Input = #describe_instances_input{instance_ids = [InstanceId]},
     case amazon_ec2_client:describe_instances(Config, Input) of
-        {ok, #describe_instances_output{reservations = Reservations}} ->
+        {ok, Reservations} when is_list(Reservations) ->
             Instances = instances_from_reservations(Reservations),
             InstanceIds = [Id || #instance{instance_id = Id} <- Instances, is_binary(Id)],
             case lists:member(InstanceId, InstanceIds) of

@@ -47,7 +47,7 @@ run() ->
     %% ---------------------------------------------------------------
     io:format("--- 2. ListFunctions ---~n"),
     case aws_gir_api_service_client:list_functions(Config, #list_functions_input{}) of
-        {ok, #list_functions_output{functions = Fns}} when is_list(Fns), Fns =/= [] ->
+        {ok, Fns} when is_list(Fns), Fns =/= [] ->
             io:format("  SUCCESS: Found ~p function(s)~n", [length(Fns)]),
             FnNames = [F#function_configuration.function_name || F <- Fns, F =/= undefined],
             case lists:member(?LAMBDA_FUNCTION_NAME, FnNames) of
@@ -166,7 +166,7 @@ run() ->
     io:format("--- 7. ListVersionsByFunction ---~n"),
     ListVerIn = #list_versions_by_function_input{function_name = ?LAMBDA_FUNCTION_NAME},
     case aws_gir_api_service_client:list_versions_by_function(Config, ListVerIn) of
-        {ok, #list_versions_by_function_output{versions = Versions}} when is_list(Versions) ->
+        {ok, Versions} when is_list(Versions) ->
             io:format("  Found ~p version(s):~n", [length(Versions)]),
             case length(Versions) >= 2 of
                 true  -> io:format("  SUCCESS: >= 2 versions (original + published)~n");
@@ -210,7 +210,7 @@ run() ->
     io:format("--- 9. ListAliases ---~n"),
     ListAliasIn = #list_aliases_input{function_name = ?LAMBDA_FUNCTION_NAME},
     case aws_gir_api_service_client:list_aliases(Config, ListAliasIn) of
-        {ok, #list_aliases_output{aliases = Aliases}} when is_list(Aliases), Aliases =/= [] ->
+        {ok, Aliases} when is_list(Aliases), Aliases =/= [] ->
             io:format("  SUCCESS: Found ~p alias(es)~n", [length(Aliases)]),
             AliasNames = [A#alias_configuration.name || A <- Aliases, A =/= undefined],
             case lists:member(?ALIAS_NAME, AliasNames) of

@@ -66,7 +66,7 @@ with the following BEAM-specific exceptions called out explicitly.
   Wire protocol selection for client and server plugins follows one of two
   paths. By default, plugins read the sole `@protocolDefinition` trait on the
   selected service (for example `@restJson1`) and emit codecs, HTTP dispatch or
-  router modules, and paginator helpers when a supported protocol is declared.
+  router modules, and wired client pagination loops for `@paginated` operations when a supported protocol is declared.
   Alternatively, the optional `protocol` smithy-build setting (a protocol trait
   shape id string) overrides model attachment and selects the wire protocol
   directly. Services with neither a service protocol trait nor an explicit

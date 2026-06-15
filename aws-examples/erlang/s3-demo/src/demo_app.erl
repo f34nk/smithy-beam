@@ -117,7 +117,7 @@ list_buckets(Config) ->
     io:format("--- ListBuckets ---~n"),
     Input = #list_buckets_input{},
     case amazon_s3_client:list_buckets(Config, Input) of
-        {ok, #list_buckets_output{buckets = Buckets}} when is_list(Buckets), Buckets =/= [] ->
+        {ok, Buckets} when is_list(Buckets), Buckets =/= [] ->
             io:format("SUCCESS: Found ~p bucket(s)~n", [length(Buckets)]),
             BucketNames = [Name || #bucket{name = Name} <- Buckets, Name =/= undefined],
             case lists:member(?BUCKET_NAME, BucketNames) of
@@ -161,21 +161,25 @@ list_objects(Config) ->
         max_keys = 100
     },
     case amazon_s3_client:list_objects(Config, Input) of
-        {ok, #list_objects_output{contents = Contents}} when is_list(Contents), Contents =/= [] ->
-            io:format("SUCCESS: Found ~p object(s)~n", [length(Contents)]),
-            ObjectKeys = [Key || #object{key = Key} <- Contents, Key =/= undefined],
-            case lists:member(?OBJECT_KEY, ObjectKeys) of
-                true  -> io:format("SUCCESS: Object '~s' found~n", [?OBJECT_KEY]);
-                false -> erlang:error({assertion_failed, {object_not_found, ?OBJECT_KEY}, {in, ObjectKeys}})
-            end,
-            lists:foreach(
-                fun(#object{key = Key}) ->
-                    io:format("  - ~s~n", [format_binary(Key)])
-                end,
-                Contents
-            );
-        {ok, _} ->
-            erlang:error({assertion_failed, empty_object_list});
+        {ok, Result} ->
+            Contents = contents_from_list_objects(Result),
+            case Contents of
+                [] ->
+                    erlang:error({assertion_failed, empty_object_list});
+                _ ->
+                    io:format("SUCCESS: Found ~p object(s)~n", [length(Contents)]),
+                    ObjectKeys = [Key || #object{key = Key} <- Contents, Key =/= undefined],
+                    case lists:member(?OBJECT_KEY, ObjectKeys) of
+                        true  -> io:format("SUCCESS: Object '~s' found~n", [?OBJECT_KEY]);
+                        false -> erlang:error({assertion_failed, {object_not_found, ?OBJECT_KEY}, {in, ObjectKeys}})
+                    end,
+                    lists:foreach(
+                        fun(#object{key = Key}) ->
+                            io:format("  - ~s~n", [format_binary(Key)])
+                        end,
+                        Contents
+                    )
+            end;
         {error, Reason} ->
             erlang:error({list_objects_failed, Reason})
     end,
@@ -201,3 +205,25 @@ get_object(Config) ->
 
 format_binary(undefined) -> <<"unknown">>;
 format_binary(B) when is_binary(B) -> B.
+
+contents_from_list_objects(#list_objects_output{contents = Contents}) ->
+    objects_from_contents(Contents);
+contents_from_list_objects(Pages) when is_list(Pages) ->
+    case Pages of
+        [#list_objects_output{} | _] ->
+            lists:flatmap(
+                fun(#list_objects_output{contents = PageContents}) ->
+                    objects_from_contents(PageContents)
+                end,
+                Pages
+            );
+        Objects ->
+            Objects
+    end.
+
+objects_from_contents(undefined) ->
+    [];
+objects_from_contents(Contents) when is_list(Contents) ->
+    Contents;
+objects_from_contents(_) ->
+    [].

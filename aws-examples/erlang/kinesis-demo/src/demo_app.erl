@@ -21,7 +21,8 @@ run() ->
     %% 1. List streams and verify the demo stream
     io:format("--- ListStreams ---~n"),
     case kinesis_20131202_client:list_streams(Config, #list_streams_input{}) of
-        {ok, #list_streams_output{stream_names = StreamNames}} ->
+        {ok, Pages} when is_list(Pages) ->
+            StreamNames = stream_names_from_list_streams_pages(Pages),
             case StreamNames of
                 [] -> erlang:error({assertion_failed, empty_stream_list});
                 _  -> io:format("SUCCESS: Found ~p stream(s)~n", [length(StreamNames)])
@@ -247,3 +248,16 @@ client_config() ->
             secret_access_key => <<"dummy">>
         }
     }.
+
+stream_names_from_list_streams_pages(Pages) ->
+    lists:flatmap(
+        fun
+            (#list_streams_output{stream_names = undefined}) ->
+                [];
+            (#list_streams_output{stream_names = Names}) when is_list(Names) ->
+                Names;
+            (_) ->
+                []
+        end,
+        Pages
+    ).

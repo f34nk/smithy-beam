@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamAwsServiceMetadata;
+import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamClientRetrySupport;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
@@ -38,6 +39,8 @@ import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
 import software.amazon.smithy.model.knowledge.HttpBinding;
+import software.amazon.smithy.model.knowledge.PaginationInfo;
+import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -222,7 +225,6 @@ final class ElixirClientDirectedCodegen
         ElixirSigV4Emitter.emit(ctx, service);
         ElixirPresignerEmitter.emit(ctx, service);
         ElixirCredentialProviderEmitter.emit(ctx, service);
-        ElixirPaginatorEmitter.emit(ctx, service);
         ElixirRetryEmitter.emit(ctx, service);
         ElixirWaiterEmitter.emit(ctx, service);
         ElixirComplianceTestEmitter.emit(ctx, service);
@@ -294,10 +296,13 @@ final class ElixirClientDirectedCodegen
 
         boolean hasProtocol = BeamProtocolSupport.hasWireCodegen(
                 ctx.resolvedProtocolTraitId(), ctx.protocolCodegen(), ctx.integrations());
-        boolean sigv4 = BeamSigV4Metadata.from(ctx.service()).isPresent();
-        String sigv4Module = ElixirSymbolProvider.toModuleName(layout.sigv4ModuleName());
         boolean wrapWithRetry = BeamClientRetrySupport.operationHasRetryableErrors(ctx.model(), op);
         String retryModule = ElixirSymbolProvider.toModuleName(layout.retryModuleName());
+        boolean paginated = BeamClientPaginationSupport.isPaginated(
+                ctx.model(), ctx.service(), op);
+        PaginationInfo paginationInfo = paginated
+                ? BeamClientPaginationSupport.requirePaginationInfo(ctx.model(), ctx.service(), op)
+                : null;
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {
             ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
@@ -309,59 +314,58 @@ final class ElixirClientDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
+            String successReturnType;
+            if (paginated && BeamClientPaginationSupport.hasItemsMember(paginationInfo)) {
+                String itemType = ElixirTopDown.structureSpecType(
+                        typesModuleName,
+                        BeamClientPaginationSupport.itemsElementSymbol(
+                                        ctx.model(), sp, paginationInfo)
+                                .orElseThrow());
+                successReturnType = "[" + itemType + "]";
+            } else if (paginated) {
+                successReturnType = "[" + outType + "]";
+            } else {
+                successReturnType = outType;
+            }
             ElixirFormat.writeSpec(
                     writer,
                     "@spec",
                     opSym.getName(),
                     "client_config(), " + inType,
-                    "{:ok, " + outType + "} | {:error, term()}");
+                    "{:ok, " + successReturnType + "} | {:error, term()}");
             if (hasProtocol) {
-                String codecMod = ElixirSymbolProvider.toModuleName(
-                        layout.clientCodecModuleName(
-                                ctx.resolvedProtocolTraitId(), ctx.integrations()));
-                String httpMod = ElixirSymbolProvider.toModuleName(
-                        layout.runtimeHttpModuleName());
-                writer.write("def $L(config, input) do", opSym.getName());
-                writer.indent();
-                if (wrapWithRetry) {
-                    writer.write("retry_opts = Map.get(config, :retry, [])");
-                    writer.write("");
-                    writer.write("$L.with_retry(fn ->", retryModule);
-                    writer.indent();
-                }
-                if (ElixirRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())
-                        || ElixirRestXmlEmitter.serviceEncodesWithConfig(ctx.model(), ctx.service())) {
-                    writer.write("req = $L.encode_$L_request(config, input)", codecMod, opSym.getName());
+                if (paginated) {
+                    ElixirClientPaginationEmitter.emitPaginatedOperation(
+                            ctx,
+                            ctx.service(),
+                            op,
+                            wrapWithRetry,
+                            retryModule,
+                            () -> emitDispatchBody(
+                                    ctx,
+                                    op,
+                                    layout,
+                                    wrapWithRetry,
+                                    retryModule,
+                                    paginated,
+                                    writer,
+                                    DispatchBodyMode.PAGINATED_PAGE),
+                            writer);
                 } else {
-                    writer.write("req = $L.encode_$L_request(input)", codecMod, opSym.getName());
-                }
-                if (sigv4) {
-                    writer.write("signed_req =");
+                    writer.write("def $L(config, input) do", opSym.getName());
                     writer.indent();
-                    writer.write("case Map.get(config, :credentials) do");
-                    writer.indent();
-                    writer.write("nil -> req");
-                    writer.write("_ -> $L.sign(config, :$L, req)", sigv4Module, opSym.getName());
+                    emitDispatchBody(
+                            ctx,
+                            op,
+                            layout,
+                            wrapWithRetry,
+                            retryModule,
+                            paginated,
+                            writer,
+                            DispatchBodyMode.SINGLE_PAGE);
                     writer.dedent();
                     writer.write("end");
-                    writer.dedent();
-                    writer.write("");
-                    writer.write("case $L.dispatch(config, signed_req) do", httpMod);
-                } else {
-                    writer.write("");
-                    writer.write("case $L.dispatch(config, req) do", httpMod);
                 }
-                writer.indent();
-                writer.write("{:ok, resp} -> $L.decode_$L_response(resp)", codecMod, opSym.getName());
-                writer.write("{:error, reason} -> {:error, reason}");
-                writer.dedent();
-                writer.write("end");
-                if (wrapWithRetry) {
-                    writer.dedent();
-                    writer.write("end, retry_opts)");
-                }
-                writer.dedent();
-                writer.write("end");
             } else {
                 writer.write("def $L(_config, _input), do: {:error, :not_implemented}",
                         opSym.getName());
@@ -426,5 +430,105 @@ final class ElixirClientDirectedCodegen
     public void generateError(
             GenerateErrorDirective<ElixirContext, BeamSettings> directive) {
         // Handled by ElixirTypeGeneration.
+    }
+
+    private enum DispatchBodyMode {
+        SINGLE_PAGE,
+        PAGINATED_PAGE
+    }
+
+    private static void emitDispatchBody(
+            ElixirContext ctx,
+            OperationShape op,
+            BeamElixirLayout layout,
+            boolean wrapWithRetry,
+            String retryModule,
+            boolean paginated,
+            ElixirWriter writer,
+            DispatchBodyMode mode) {
+        SymbolProvider sp = ctx.symbolProvider();
+        Symbol opSym = sp.toSymbol(op);
+        boolean sigv4 = BeamSigV4Metadata.from(ctx.service()).isPresent();
+        String sigv4Module = ElixirSymbolProvider.toModuleName(layout.sigv4ModuleName());
+        String codecMod = ElixirSymbolProvider.toModuleName(
+                layout.clientCodecModuleName(ctx.resolvedProtocolTraitId(), ctx.integrations()));
+        String httpMod = ElixirSymbolProvider.toModuleName(layout.runtimeHttpModuleName());
+
+        if (mode == DispatchBodyMode.SINGLE_PAGE && wrapWithRetry) {
+            writer.write("retry_opts = Map.get(config, :retry, [])");
+            writer.write("");
+            writer.write("$L.with_retry(fn ->", retryModule);
+            writer.indent();
+        }
+
+        if (ElixirRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())
+                || ElixirRestXmlEmitter.serviceEncodesWithConfig(ctx.model(), ctx.service())) {
+            writer.write("req = $L.encode_$L_request(config, input)", codecMod, opSym.getName());
+        } else {
+            writer.write("req = $L.encode_$L_request(input)", codecMod, opSym.getName());
+        }
+        if (sigv4) {
+            writer.write("signed_req =");
+            writer.indent();
+            writer.write("case Map.get(config, :credentials) do");
+            writer.indent();
+            writer.write("nil -> req");
+            writer.write("_ -> $L.sign(config, :$L, req)", sigv4Module, opSym.getName());
+            writer.dedent();
+            writer.write("end");
+            writer.dedent();
+            writer.write("");
+            writer.write("case $L.dispatch(config, signed_req) do", httpMod);
+        } else {
+            writer.write("");
+            writer.write("case $L.dispatch(config, req) do", httpMod);
+        }
+        writer.indent();
+        if (mode == DispatchBodyMode.SINGLE_PAGE) {
+            writer.write("{:ok, resp} -> $L.decode_$L_response(resp)", codecMod, opSym.getName());
+        } else if (paginated && wrapWithRetry) {
+            writer.write("{:ok, resp} -> $L.decode_$L_response(resp)", codecMod, opSym.getName());
+        } else {
+            writer.write("{:ok, resp} ->");
+            writer.indent();
+            writer.write("case $L.decode_$L_response(resp) do", codecMod, opSym.getName());
+            writer.indent();
+            writer.write("{:ok, output} ->");
+            writer.indent();
+            PaginationInfo pi = BeamClientPaginationSupport.requirePaginationInfo(
+                    ctx.model(), ctx.service(), op);
+            String inputToken = ElixirClientPaginationEmitter.fieldName(sp, pi.getInputTokenMember());
+            String outputTokenExpr = ElixirClientPaginationEmitter.tokenAccess(
+                    "output", pi.getOutputTokenMemberPath(), sp);
+            List<MemberShape> itemsPath = pi.getItemsMemberPath();
+            boolean hasItems = BeamClientPaginationSupport.hasItemsMember(pi);
+            String itemsExpr = hasItems
+                    ? ElixirClientPaginationEmitter.itemsAccess("output", itemsPath, sp)
+                    : null;
+            ElixirClientPaginationEmitter.emitAccumulationAndRecursion(
+                    writer,
+                    opSym,
+                    hasItems,
+                    itemsExpr,
+                    outputTokenExpr,
+                    inputToken);
+            writer.dedent();
+            writer.write("");
+            writer.write("{:error, reason} ->");
+            writer.indent();
+            writer.write("{:error, reason}");
+            writer.dedent();
+            writer.dedent();
+            writer.write("end");
+            writer.dedent();
+        }
+        writer.write("{:error, reason} -> {:error, reason}");
+        writer.dedent();
+        writer.write("end");
+
+        if (mode == DispatchBodyMode.SINGLE_PAGE && wrapWithRetry) {
+            writer.dedent();
+            writer.write("end, retry_opts)");
+        }
     }
 }
