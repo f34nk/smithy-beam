@@ -19,7 +19,7 @@ run() ->
     %% 1. List users
     io:format("--- ListUsers ---~n"),
     CountBefore = case aws_identity_management_v20100508_client:list_users(Config, #list_users_input{}) of
-        {ok, #list_users_output{users = Users}} ->
+        {ok, Users} when is_list(Users) ->
             case Users of
                 [] -> erlang:error({assertion_failed, empty_user_list});
                 _  -> io:format("SUCCESS: Found ~p user(s)~n", [length(Users)])
@@ -59,7 +59,7 @@ run() ->
     %% 3. List groups
     io:format("--- ListGroups ---~n"),
     case aws_identity_management_v20100508_client:list_groups(Config, #list_groups_input{}) of
-        {ok, #list_groups_output{groups = Groups}} ->
+        {ok, Groups} when is_list(Groups) ->
             case Groups of
                 [] -> erlang:error({assertion_failed, empty_group_list});
                 _  -> io:format("SUCCESS: Found ~p group(s)~n", [length(Groups)])
@@ -79,7 +79,7 @@ run() ->
     io:format("--- ListGroupsForUser ---~n"),
     ListGroupsForUserInput = #list_groups_for_user_input{user_name = ?USER_NAME},
     case aws_identity_management_v20100508_client:list_groups_for_user(Config, ListGroupsForUserInput) of
-        {ok, #list_groups_for_user_output{groups = UserGroups}} ->
+        {ok, UserGroups} when is_list(UserGroups) ->
             io:format("SUCCESS: User '~s' is in ~p group(s)~n", [?USER_NAME, length(UserGroups)]),
             lists:foreach(
                 fun(#group{group_name = GroupName}) ->
@@ -114,7 +114,7 @@ run() ->
     %% 6. List users again to verify user count grew and new user is present
     io:format("--- ListUsers (verify) ---~n"),
     case aws_identity_management_v20100508_client:list_users(Config, #list_users_input{}) of
-        {ok, #list_users_output{users = Users2}} ->
+        {ok, Users2} when is_list(Users2) ->
             CountAfter = length(Users2),
             io:format("SUCCESS: Found ~p user(s)~n", [CountAfter]),
             case CountAfter > CountBefore of
@@ -154,7 +154,7 @@ run() ->
     io:format("--- ListGroupsForUser (new user) ---~n"),
     ListGroupsForNewUserInput = #list_groups_for_user_input{user_name = ?NEW_USER_NAME},
     case aws_identity_management_v20100508_client:list_groups_for_user(Config, ListGroupsForNewUserInput) of
-        {ok, #list_groups_for_user_output{groups = NewUserGroups}} ->
+        {ok, NewUserGroups} when is_list(NewUserGroups) ->
             case NewUserGroups of
                 [] -> erlang:error({assertion_failed, {new_user_not_in_any_group, ?NEW_USER_NAME}});
                 _  -> io:format("SUCCESS: User '~s' is in ~p group(s)~n", [?NEW_USER_NAME, length(NewUserGroups)])

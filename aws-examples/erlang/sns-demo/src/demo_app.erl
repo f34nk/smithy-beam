@@ -15,8 +15,7 @@ run() ->
     %% 1. List topics to see what was created by Terraform
     io:format("--- ListTopics ---~n"),
     case amazon_simple_notification_service_client:list_topics(Config, #list_topics_input{}) of
-        {ok, #list_topics_output{topics = Topics}} ->
-            TopicList = ensure_list(Topics),
+        {ok, TopicList} when is_list(TopicList) ->
             case TopicList of
                 [] -> erlang:error({assertion_failed, empty_topic_list});
                 _  -> io:format("SUCCESS: Found ~p topic(s)~n", [length(TopicList)])
@@ -106,8 +105,7 @@ run() ->
     io:format("--- ListSubscriptionsByTopic ---~n"),
     ListSubsInput = #list_subscriptions_by_topic_input{topic_arn = TestTopicArn},
     case amazon_simple_notification_service_client:list_subscriptions_by_topic(Config, ListSubsInput) of
-        {ok, #list_subscriptions_by_topic_output{subscriptions = Subscriptions}} ->
-            SubList = ensure_list(Subscriptions),
+        {ok, SubList} when is_list(SubList) ->
             case SubList of
                 [] -> erlang:error({assertion_failed, empty_subscription_list});
                 _  -> io:format("SUCCESS: Found ~p subscription(s):~n", [length(SubList)])
@@ -206,8 +204,7 @@ run() ->
     %% 11. Verify topic was deleted by listing again
     io:format("--- ListTopics (verify deletion) ---~n"),
     case amazon_simple_notification_service_client:list_topics(Config, #list_topics_input{}) of
-        {ok, #list_topics_output{topics = VerifyTopics}} ->
-            VerifyTopicList = ensure_list(VerifyTopics),
+        {ok, VerifyTopicList} when is_list(VerifyTopicList) ->
             TestTopicExists = lists:any(
                 fun(#topic{topic_arn = Arn2}) ->
                     binary:match(format_binary(Arn2), ?TEST_TOPIC_NAME) =/= nomatch
