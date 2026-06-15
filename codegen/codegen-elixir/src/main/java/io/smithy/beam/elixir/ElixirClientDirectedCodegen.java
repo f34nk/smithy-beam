@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamAwsServiceMetadata;
+import io.smithy.beam.core.BeamClientRetrySupport;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamElixirLayout;
@@ -295,6 +296,8 @@ final class ElixirClientDirectedCodegen
                 ctx.resolvedProtocolTraitId(), ctx.protocolCodegen(), ctx.integrations());
         boolean sigv4 = BeamSigV4Metadata.from(ctx.service()).isPresent();
         String sigv4Module = ElixirSymbolProvider.toModuleName(layout.sigv4ModuleName());
+        boolean wrapWithRetry = BeamClientRetrySupport.operationHasRetryableErrors(ctx.model(), op);
+        String retryModule = ElixirSymbolProvider.toModuleName(layout.retryModuleName());
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {
             ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
@@ -320,6 +323,12 @@ final class ElixirClientDirectedCodegen
                         layout.runtimeHttpModuleName());
                 writer.write("def $L(config, input) do", opSym.getName());
                 writer.indent();
+                if (wrapWithRetry) {
+                    writer.write("retry_opts = Map.get(config, :retry, [])");
+                    writer.write("");
+                    writer.write("$L.with_retry(fn ->", retryModule);
+                    writer.indent();
+                }
                 if (ElixirRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())
                         || ElixirRestXmlEmitter.serviceEncodesWithConfig(ctx.model(), ctx.service())) {
                     writer.write("req = $L.encode_$L_request(config, input)", codecMod, opSym.getName());
@@ -347,6 +356,10 @@ final class ElixirClientDirectedCodegen
                 writer.write("{:error, reason} -> {:error, reason}");
                 writer.dedent();
                 writer.write("end");
+                if (wrapWithRetry) {
+                    writer.dedent();
+                    writer.write("end, retry_opts)");
+                }
                 writer.dedent();
                 writer.write("end");
             } else {
