@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamAwsServiceMetadata;
+import io.smithy.beam.core.BeamClientRetrySupport;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamErlangLayout;
@@ -288,6 +289,8 @@ final class ErlangClientDirectedCodegen
                 ctx.resolvedProtocolTraitId(), ctx.protocolCodegen(), ctx.integrations());
         boolean sigv4 = BeamSigV4Metadata.from(ctx.service()).isPresent();
         String sigv4Module = layout.sigv4ModuleName();
+        boolean wrapWithRetry = BeamClientRetrySupport.operationHasRetryableErrors(ctx.model(), op);
+        String retryModule = layout.retryModuleName();
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {
             ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
@@ -313,6 +316,11 @@ final class ErlangClientDirectedCodegen
                                 ctx.resolvedProtocolTraitId(), ctx.integrations());
                 writer.write("$L(Config, Input) ->", opSym.getName());
                 writer.indent();
+                if (wrapWithRetry) {
+                    writer.write("RetryOpts = maps:get(retry, Config, #{}),");
+                    writer.write("$L:with_retry(fun() ->", retryModule);
+                    writer.indent();
+                }
                 if (ErlangRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())
                         || ErlangRestXmlEmitter.serviceEncodesWithConfig(ctx.model(), ctx.service())) {
                     writer.write("Req = $L:encode_$L_request(Config, Input),",
@@ -345,7 +353,12 @@ final class ErlangClientDirectedCodegen
                 writer.write("{error, Reason}");
                 writer.dedent();
                 writer.dedent();
-                writer.write("end.");
+                if (wrapWithRetry) {
+                    writer.dedent();
+                    writer.write("end, RetryOpts).");
+                } else {
+                    writer.write("end.");
+                }
                 writer.dedent();
             } else {
                 writer.write("$L(_Config, _Input) -> {error, not_implemented}.", opSym.getName());
