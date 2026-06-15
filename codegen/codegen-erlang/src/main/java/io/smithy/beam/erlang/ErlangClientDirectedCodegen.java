@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamAwsServiceMetadata;
+import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamClientRetrySupport;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
@@ -38,6 +39,8 @@ import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
 import software.amazon.smithy.model.knowledge.HttpBinding;
+import software.amazon.smithy.model.knowledge.PaginationInfo;
+import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -223,7 +226,6 @@ final class ErlangClientDirectedCodegen
         ErlangSigV4Emitter.emit(ctx, service);
         ErlangPresignerEmitter.emit(ctx, service);
         ErlangCredentialProviderEmitter.emit(ctx, service);
-        ErlangPaginatorEmitter.emit(ctx, service);
         ErlangRetryEmitter.emit(ctx, service);
         ErlangWaiterEmitter.emit(ctx, service);
         ErlangComplianceTestEmitter.emit(ctx, service);
@@ -287,10 +289,13 @@ final class ErlangClientDirectedCodegen
                 ctx.settings(), ctx.service().getId().getNamespace(), ctx.service().getId().getName());
         boolean hasProtocol = BeamProtocolSupport.hasWireCodegen(
                 ctx.resolvedProtocolTraitId(), ctx.protocolCodegen(), ctx.integrations());
-        boolean sigv4 = BeamSigV4Metadata.from(ctx.service()).isPresent();
-        String sigv4Module = layout.sigv4ModuleName();
         boolean wrapWithRetry = BeamClientRetrySupport.operationHasRetryableErrors(ctx.model(), op);
         String retryModule = layout.retryModuleName();
+        boolean paginated = BeamClientPaginationSupport.isPaginated(
+                ctx.model(), ctx.service(), op);
+        PaginationInfo paginationInfo = paginated
+                ? BeamClientPaginationSupport.requirePaginationInfo(ctx.model(), ctx.service(), op)
+                : null;
 
         BeamDocumentation.forShape(op).ifPresent(doc -> {
             ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
@@ -302,65 +307,59 @@ final class ErlangClientDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
             writer.pushOperationBodySection();
+            String successReturnType;
+            if (paginated && BeamClientPaginationSupport.hasItemsMember(paginationInfo)) {
+                successReturnType = "["
+                        + BeamClientPaginationSupport.itemsElementSymbol(
+                                        ctx.model(), sp, paginationInfo)
+                                .orElseThrow()
+                                .getName()
+                        + "]";
+            } else if (paginated) {
+                successReturnType = "[" + outSym.getName() + "]";
+            } else {
+                successReturnType = outSym.getName();
+            }
             ErlangFormat.writeSpec(
                     writer,
                     opSym.getName()
                             + "(client_config(), "
                             + inSym.getName()
                             + ") -> {'ok', "
-                            + outSym.getName()
+                            + successReturnType
                             + "} | {'error', term()}");
             if (hasProtocol) {
-                String codecModule =
-                        layout.clientCodecModuleName(
-                                ctx.resolvedProtocolTraitId(), ctx.integrations());
-                writer.write("$L(Config, Input) ->", opSym.getName());
-                writer.indent();
-                if (wrapWithRetry) {
-                    writer.write("RetryOpts = maps:get(retry, Config, #{}),");
-                    writer.write("$L:with_retry(fun() ->", retryModule);
+                if (paginated) {
+                    ErlangClientPaginationEmitter.emitPaginatedOperation(
+                            ctx,
+                            ctx.service(),
+                            op,
+                            wrapWithRetry,
+                            retryModule,
+                            () -> emitDispatchBody(
+                                    ctx,
+                                    op,
+                                    layout,
+                                    wrapWithRetry,
+                                    retryModule,
+                                    paginated,
+                                    writer,
+                                    DispatchBodyMode.PAGINATED_PAGE),
+                            writer);
+                } else {
+                    writer.write("$L(Config, Input) ->", opSym.getName());
                     writer.indent();
-                }
-                if (ErlangRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())
-                        || ErlangRestXmlEmitter.serviceEncodesWithConfig(ctx.model(), ctx.service())) {
-                    writer.write("Req = $L:encode_$L_request(Config, Input),",
-                            codecModule, opSym.getName());
-                } else {
-                    writer.write("Req = $L:encode_$L_request(Input),",
-                            codecModule, opSym.getName());
-                }
-                if (sigv4) {
-                    writer.write("SignedReq = case maps:get(credentials, Config, undefined) of");
-                    writer.indent();
-                    writer.write("undefined -> Req;");
-                    writer.write("_ -> $L:sign(Config, $L, Req)", sigv4Module, opSym.getName());
+                    emitDispatchBody(
+                            ctx,
+                            op,
+                            layout,
+                            wrapWithRetry,
+                            retryModule,
+                            paginated,
+                            writer,
+                            DispatchBodyMode.SINGLE_PAGE);
                     writer.dedent();
-                    writer.write("end,");
-                    writer.write("case $L:dispatch(Config, SignedReq) of",
-                            layout.runtimeHttpModuleName());
-                } else {
-                    writer.write("case $L:dispatch(Config, Req) of",
-                            layout.runtimeHttpModuleName());
                 }
-                writer.indent();
-                writer.write("{ok, Resp} ->");
-                writer.indent();
-                writer.write("$L:decode_$L_response(Resp);",
-                        codecModule, opSym.getName());
-                writer.dedent();
-                writer.write("{error, Reason} ->");
-                writer.indent();
-                writer.write("{error, Reason}");
-                writer.dedent();
-                writer.dedent();
-                if (wrapWithRetry) {
-                    writer.write("end");
-                    writer.dedent();
-                    writer.write("end, RetryOpts).");
-                } else {
-                    writer.write("end.");
-                }
-                writer.dedent();
             } else {
                 writer.write("$L(_Config, _Input) -> {error, not_implemented}.", opSym.getName());
             }
@@ -424,5 +423,108 @@ final class ErlangClientDirectedCodegen
     public void generateError(
             GenerateErrorDirective<ErlangContext, BeamSettings> directive) {
         // Handled by ErlangTypeGeneration.
+    }
+
+    private enum DispatchBodyMode {
+        SINGLE_PAGE,
+        PAGINATED_PAGE
+    }
+
+    private static void emitDispatchBody(
+            ErlangContext ctx,
+            OperationShape op,
+            BeamErlangLayout layout,
+            boolean wrapWithRetry,
+            String retryModule,
+            boolean paginated,
+            ErlangWriter writer,
+            DispatchBodyMode mode) {
+        SymbolProvider sp = ctx.symbolProvider();
+        Symbol opSym = sp.toSymbol(op);
+        boolean sigv4 = BeamSigV4Metadata.from(ctx.service()).isPresent();
+        String sigv4Module = layout.sigv4ModuleName();
+        String codecModule =
+                layout.clientCodecModuleName(ctx.resolvedProtocolTraitId(), ctx.integrations());
+
+        if (mode == DispatchBodyMode.SINGLE_PAGE && wrapWithRetry) {
+            writer.write("RetryOpts = maps:get(retry, Config, #{}),");
+            writer.write("$L:with_retry(fun() ->", retryModule);
+            writer.indent();
+        }
+
+        if (ErlangRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())
+                || ErlangRestXmlEmitter.serviceEncodesWithConfig(ctx.model(), ctx.service())) {
+            writer.write("Req = $L:encode_$L_request(Config, Input),",
+                    codecModule, opSym.getName());
+        } else {
+            writer.write("Req = $L:encode_$L_request(Input),",
+                    codecModule, opSym.getName());
+        }
+        if (sigv4) {
+            writer.write("SignedReq = case maps:get(credentials, Config, undefined) of");
+            writer.indent();
+            writer.write("undefined -> Req;");
+            writer.write("_ -> $L:sign(Config, $L, Req)", sigv4Module, opSym.getName());
+            writer.dedent();
+            writer.write("end,");
+            writer.write("case $L:dispatch(Config, SignedReq) of",
+                    layout.runtimeHttpModuleName());
+        } else {
+            writer.write("case $L:dispatch(Config, Req) of",
+                    layout.runtimeHttpModuleName());
+        }
+        writer.indent();
+        writer.write("{ok, Resp} ->");
+        writer.indent();
+        if (mode == DispatchBodyMode.SINGLE_PAGE) {
+            writer.write("$L:decode_$L_response(Resp);",
+                    codecModule, opSym.getName());
+        } else if (paginated && wrapWithRetry) {
+            writer.write("{ok, $L:decode_$L_response(Resp)};",
+                    codecModule, opSym.getName());
+        } else {
+            writer.write("Output = $L:decode_$L_response(Resp),",
+                    codecModule, opSym.getName());
+            PaginationInfo pi = BeamClientPaginationSupport.requirePaginationInfo(
+                    ctx.model(), ctx.service(), op);
+            StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
+            StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
+            String inputRecord = ErlangClientPaginationEmitter.recordName(sp.toSymbol(input));
+            String inputToken = ErlangClientPaginationEmitter.fieldName(sp, pi.getInputTokenMember());
+            String outputTokenExpr = ErlangClientPaginationEmitter.recordAccess(
+                    "Output", output, pi.getOutputTokenMemberPath(), ctx.model(), sp);
+            List<MemberShape> itemsPath = pi.getItemsMemberPath();
+            boolean hasItems = BeamClientPaginationSupport.hasItemsMember(pi);
+            String itemsExpr = hasItems
+                    ? ErlangClientPaginationEmitter.recordAccess(
+                            "Output", output, itemsPath, ctx.model(), sp)
+                    : null;
+            ErlangClientPaginationEmitter.emitAccumulationAndRecursion(
+                    writer,
+                    opSym,
+                    hasItems,
+                    itemsExpr,
+                    outputTokenExpr,
+                    inputRecord,
+                    inputToken);
+        }
+        writer.dedent();
+        writer.write("{error, Reason} ->");
+        writer.indent();
+        writer.write("{error, Reason}");
+        writer.dedent();
+        writer.dedent();
+
+        if (mode == DispatchBodyMode.SINGLE_PAGE) {
+            if (wrapWithRetry) {
+                writer.write("end");
+                writer.dedent();
+                writer.write("end, RetryOpts).");
+            } else {
+                writer.write("end.");
+            }
+        } else if (!paginated || !wrapWithRetry) {
+            writer.write("end.");
+        }
     }
 }
