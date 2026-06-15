@@ -1,5 +1,6 @@
 package io.smithy.beam.test;
 
+import io.smithy.beam.elixir.ElixirClientPlugin;
 import io.smithy.beam.erlang.ErlangClientPlugin;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -62,5 +63,23 @@ class PaginationWiringTest {
         assertThat(client).contains("list_basic_items(Config, Input, [])");
         assertThat(client).contains("encode_list_basic_items_request(Input)");
         assertThat(client).doesNotContain("get_type_closure(Config, Input, [])");
+    }
+
+    @Test
+    void elixirClientEmitsPaginationLoopForPaginatedOperations() {
+        MockManifest manifest = new MockManifest();
+        new ElixirClientPlugin().execute(PluginContext.builder()
+                .model(paginatedModel())
+                .fileManifest(manifest)
+                .settings(ObjectNode.builder()
+                        .withMember("service", SERVICE)
+                        .withMember("edition", "2026")
+                        .build())
+                .build());
+
+        String client = manifest.expectFileString("paginated_service_client.ex");
+        assertThat(client).contains("def list_widgets(config, input) do");
+        assertThat(client).contains("list_widgets(config, input, [])");
+        assertThat(client).contains("encode_list_widgets_request(input)");
     }
 }
