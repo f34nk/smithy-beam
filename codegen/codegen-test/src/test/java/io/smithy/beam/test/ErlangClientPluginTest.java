@@ -51,7 +51,7 @@ class ErlangClientPluginTest {
 
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("-type basic_string()");
         assertClientStubHeaderOrder(manifest.expectFileString(CLIENT_FILE));
-        assertThat(manifest.getFileString("basic_service_rest_json_1.erl")).isEmpty();
+        assertThat(manifest.getFileString("basic_service_rest_json_1.erl")).isPresent();
     }
 
     @Test
@@ -71,10 +71,11 @@ class ErlangClientPluginTest {
     private static void assertClientStubHeaderOrder(String clientSource) {
         assertThat(clientSource).contains("-module(basic_service_client).");
         assertThat(clientSource).contains("-include(\"basic_service_types.hrl\").");
-        assertThat(clientSource).contains("-export([get_type_closure/2]).");
+        assertThat(clientSource).contains("get_type_closure/2");
+        assertThat(clientSource).contains("list_basic_items/2");
         int moduleIndex = clientSource.indexOf("-module(basic_service_client).");
         int includeIndex = clientSource.indexOf("-include(\"basic_service_types.hrl\").");
-        int exportIndex = clientSource.indexOf("-export([get_type_closure/2]).");
+        int exportIndex = clientSource.indexOf("-export([");
         assertThat(moduleIndex).isLessThan(includeIndex);
         assertThat(includeIndex).isLessThan(exportIndex);
         assertThat(clientSource.stripLeading()).doesNotStartWith("-include");
