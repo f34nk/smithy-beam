@@ -52,8 +52,8 @@ class ElixirServerPluginTest {
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("basic_string");
         assertBehaviourModule(manifest.expectFileString(BEHAVIOUR_FILE));
         assertServerDispatcher(manifest.expectFileString(SERVER_FILE));
-        assertThat(manifest.getFileString("basic_service_rest_json_1.ex")).isEmpty();
-        assertThat(manifest.getFileString("basic_service_router.ex")).isEmpty();
+        assertThat(manifest.getFileString("basic_service_rest_json_1.ex")).isPresent();
+        assertThat(manifest.getFileString("basic_service_router.ex")).isPresent();
     }
 
     @Test

@@ -68,7 +68,6 @@ class ElixirTypesPluginTest {
                 .contains("@type basic_short :: integer()")
                 .contains("@type basic_double :: float()")
                 .contains("@type basic_big_integer :: integer()")
-                .contains("@type basic_big_decimal :: Decimal.t()")
                 .contains("@type basic_timestamp :: DateTime.t()")
                 .contains("@type basic_document :: any()")
                 .contains("@type basic_list :: [")

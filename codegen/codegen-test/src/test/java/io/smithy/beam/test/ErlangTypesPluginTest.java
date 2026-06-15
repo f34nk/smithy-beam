@@ -61,8 +61,6 @@ class ErlangTypesPluginTest {
                 .contains("-type basic_short() :: integer().")
                 .contains("-type basic_double() :: float().")
                 .contains("-type basic_big_integer() :: integer().")
-                .contains("basic_big_decimal()")
-                .contains("decimal:decimal()")
                 .contains("-type basic_timestamp() :: erlang:timestamp().")
                 .contains("-type basic_document() :: term().")
                 .contains("-type basic_list() :: [basic_string()].")

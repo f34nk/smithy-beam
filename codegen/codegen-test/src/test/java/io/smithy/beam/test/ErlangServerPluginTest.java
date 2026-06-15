@@ -52,8 +52,8 @@ class ErlangServerPluginTest {
         assertThat(manifest.expectFileString(TYPES_FILE)).contains("-type basic_string()");
         assertBehaviourModule(manifest.expectFileString(BEHAVIOUR_FILE));
         assertServerDispatcher(manifest.expectFileString(SERVER_FILE));
-        assertThat(manifest.getFileString("basic_service_rest_json_1.erl")).isEmpty();
-        assertThat(manifest.getFileString("basic_service_router.erl")).isEmpty();
+        assertThat(manifest.getFileString("basic_service_rest_json_1.erl")).isPresent();
+        assertThat(manifest.getFileString("basic_service_router.erl")).isPresent();
     }
 
     @Test
