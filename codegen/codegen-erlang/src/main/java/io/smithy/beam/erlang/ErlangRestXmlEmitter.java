@@ -5,7 +5,7 @@ import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
 import io.smithy.beam.core.BeamXmlBindingIndex;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -56,8 +56,8 @@ public final class ErlangRestXmlEmitter {
         Model model = ctx.model();
         BeamErlangLayout layout = new BeamErlangLayout(
                 ctx.settings(), service.getId().getNamespace(), service);
-        String codecFile = layout.clientCodecModuleName(BeamRestXmlProtocolCodegen.REST_XML) + ".erl";
-        String codecModule = layout.clientCodecModuleName(BeamRestXmlProtocolCodegen.REST_XML);
+        String codecFile = layout.clientCodecModuleName(BeamProtocolIds.REST_XML) + ".erl";
+        String codecModule = layout.clientCodecModuleName(BeamProtocolIds.REST_XML);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
 
@@ -114,8 +114,8 @@ public final class ErlangRestXmlEmitter {
         Model model = ctx.model();
         BeamErlangLayout layout = new BeamErlangLayout(
                 ctx.settings(), service.getId().getNamespace(), service);
-        String serverCodecFile = layout.serverCodecModuleName(BeamRestXmlProtocolCodegen.REST_XML) + ".erl";
-        String serverCodecModule = layout.serverCodecModuleName(BeamRestXmlProtocolCodegen.REST_XML);
+        String serverCodecFile = layout.serverCodecModuleName(BeamProtocolIds.REST_XML) + ".erl";
+        String serverCodecModule = layout.serverCodecModuleName(BeamProtocolIds.REST_XML);
         ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();

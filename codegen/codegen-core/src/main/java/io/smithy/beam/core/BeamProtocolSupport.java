@@ -9,12 +9,12 @@ public final class BeamProtocolSupport {
     private BeamProtocolSupport() {}
 
     public static boolean isBuiltinProtocol(ShapeId id) {
-        return BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(id)
-                || BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(id)
-                || BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(id)
-                || BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(id)
-                || BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(id)
-                || BeamRestXmlProtocolCodegen.REST_XML.equals(id);
+        return BeamProtocolIds.REST_JSON_1.equals(id)
+                || BeamProtocolIds.AWS_JSON_1_0.equals(id)
+                || BeamProtocolIds.AWS_JSON_1_1.equals(id)
+                || BeamProtocolIds.AWS_QUERY.equals(id)
+                || BeamProtocolIds.EC2_QUERY.equals(id)
+                || BeamProtocolIds.REST_XML.equals(id);
     }
 
     public static boolean hasWireCodegen(

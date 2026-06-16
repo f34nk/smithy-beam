@@ -1,9 +1,8 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamAwsQueryFormEncoder;
-import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
-import io.smithy.beam.core.BeamEc2QueryProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamXmlBindingIndex;
@@ -36,11 +35,11 @@ public final class ElixirAwsQueryEmitter {
     private ElixirAwsQueryEmitter() {}
 
     static void emitCodecModule(ElixirContext ctx, ServiceShape service) {
-        emitCodecModule(ctx, service, BeamAwsQueryProtocolCodegen.AWS_QUERY);
+        emitCodecModule(ctx, service, BeamProtocolIds.AWS_QUERY);
     }
 
     static void emitCodecModule(ElixirContext ctx, ServiceShape service, ShapeId protocolTraitId) {
-        boolean ec2Query = BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(protocolTraitId);
+        boolean ec2Query = BeamProtocolIds.EC2_QUERY.equals(protocolTraitId);
         BeamAwsServiceMetadata.from(service).orElseThrow();
         Model model = ctx.model();
         BeamElixirLayout layout = new BeamElixirLayout(
@@ -84,11 +83,11 @@ public final class ElixirAwsQueryEmitter {
     }
 
     static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
-        emitServerCodecModule(ctx, service, BeamAwsQueryProtocolCodegen.AWS_QUERY);
+        emitServerCodecModule(ctx, service, BeamProtocolIds.AWS_QUERY);
     }
 
     static void emitServerCodecModule(ElixirContext ctx, ServiceShape service, ShapeId protocolTraitId) {
-        boolean ec2Query = BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(protocolTraitId);
+        boolean ec2Query = BeamProtocolIds.EC2_QUERY.equals(protocolTraitId);
         Model model = ctx.model();
         BeamElixirLayout layout = new BeamElixirLayout(
                 ctx.settings(), service.getId().getNamespace(), service);

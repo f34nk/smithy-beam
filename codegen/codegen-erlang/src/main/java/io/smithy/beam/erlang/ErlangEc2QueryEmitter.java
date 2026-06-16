@@ -1,6 +1,6 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.core.BeamEc2QueryProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolIds;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
@@ -11,10 +11,10 @@ public final class ErlangEc2QueryEmitter {
     private ErlangEc2QueryEmitter() {}
 
     static void emitCodecModule(ErlangContext ctx, ServiceShape service) {
-        ErlangAwsQueryEmitter.emitCodecModule(ctx, service, BeamEc2QueryProtocolCodegen.EC2_QUERY);
+        ErlangAwsQueryEmitter.emitCodecModule(ctx, service, BeamProtocolIds.EC2_QUERY);
     }
 
     static void emitServerCodecModule(ErlangContext ctx, ServiceShape service) {
-        ErlangAwsQueryEmitter.emitServerCodecModule(ctx, service, BeamEc2QueryProtocolCodegen.EC2_QUERY);
+        ErlangAwsQueryEmitter.emitServerCodecModule(ctx, service, BeamProtocolIds.EC2_QUERY);
     }
 }

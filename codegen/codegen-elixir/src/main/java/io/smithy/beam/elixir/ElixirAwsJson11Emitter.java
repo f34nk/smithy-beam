@@ -1,6 +1,6 @@
 package io.smithy.beam.elixir;
 
-import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolIds;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
@@ -14,11 +14,11 @@ public final class ElixirAwsJson11Emitter {
 
     public static void emitCodecModule(ElixirContext ctx, ServiceShape service) {
         ElixirAwsJsonRpcEmitter.emitCodecModule(
-                ctx, service, BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1, CONTENT_TYPE, "1.1");
+                ctx, service, BeamProtocolIds.AWS_JSON_1_1, CONTENT_TYPE, "1.1");
     }
 
     public static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
         ElixirAwsJsonRpcEmitter.emitServerCodecModule(
-                ctx, service, BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1, CONTENT_TYPE, "1.1");
+                ctx, service, BeamProtocolIds.AWS_JSON_1_1, CONTENT_TYPE, "1.1");
     }
 }

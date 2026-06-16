@@ -10,12 +10,7 @@ import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
-import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
-import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
-import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
-import io.smithy.beam.core.BeamEc2QueryProtocolCodegen;
-import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
-import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamProtocolSupport;
@@ -193,27 +188,27 @@ final class ErlangClientDirectedCodegen
         ServiceShape service = directive.shape();
 
         if (ctx.protocolCodegen() != null
-                && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
+                && BeamProtocolIds.REST_JSON_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ErlangRestJson1Emitter.emitCodecModule(ctx, directive.shape());
         } else if (ctx.protocolCodegen() != null
-                && BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(
+                && BeamProtocolIds.AWS_JSON_1_0.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ErlangAwsJson10Emitter.emitCodecModule(ctx, directive.shape());
         } else if (ctx.protocolCodegen() != null
-                && BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(
+                && BeamProtocolIds.AWS_JSON_1_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ErlangAwsJson11Emitter.emitCodecModule(ctx, directive.shape());
         } else if (ctx.protocolCodegen() != null
-                && BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(
+                && BeamProtocolIds.AWS_QUERY.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ErlangAwsQueryEmitter.emitCodecModule(ctx, directive.shape());
         } else if (ctx.protocolCodegen() != null
-                && BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(
+                && BeamProtocolIds.EC2_QUERY.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ErlangEc2QueryEmitter.emitCodecModule(ctx, directive.shape());
         } else if (ctx.protocolCodegen() != null
-                && BeamRestXmlProtocolCodegen.REST_XML.equals(
+                && BeamProtocolIds.REST_XML.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ErlangRestXmlEmitter.emitCodecModule(ctx, directive.shape());
         }

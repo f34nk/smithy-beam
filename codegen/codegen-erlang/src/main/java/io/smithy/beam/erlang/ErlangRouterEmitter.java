@@ -1,7 +1,6 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
-import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpPathPatterns;
 import io.smithy.beam.core.BeamProtocolSupport;
@@ -41,8 +40,8 @@ public final class ErlangRouterEmitter {
         String routerMod = layout.routerModuleName();
         String helpersMod = layout.runtimeHelpersModuleName();
 
-        if (BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(protocol)
-                || BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(protocol)) {
+        if (BeamProtocolIds.AWS_JSON_1_0.equals(protocol)
+                || BeamProtocolIds.AWS_JSON_1_1.equals(protocol)) {
             emitAwsJsonRouter(ctx, service, layout, codecMod, routerMod, operations, sp);
             return;
         }

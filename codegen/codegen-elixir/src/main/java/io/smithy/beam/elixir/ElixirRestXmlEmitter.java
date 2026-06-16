@@ -5,7 +5,7 @@ import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
 import io.smithy.beam.core.BeamXmlBindingIndex;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -81,8 +81,8 @@ public final class ElixirRestXmlEmitter {
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         String moduleName = ElixirSymbolProvider.toModuleName(
-                layout.clientCodecModuleName(BeamRestXmlProtocolCodegen.REST_XML));
-        String codecFile = layout.clientCodecModuleName(BeamRestXmlProtocolCodegen.REST_XML) + ".ex";
+                layout.clientCodecModuleName(BeamProtocolIds.REST_XML));
+        String codecFile = layout.clientCodecModuleName(BeamProtocolIds.REST_XML) + ".ex";
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
         String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
@@ -122,14 +122,14 @@ public final class ElixirRestXmlEmitter {
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         SymbolProvider sp = ctx.symbolProvider();
         String serverCodecModule = ElixirSymbolProvider.toModuleName(
-                layout.serverCodecModuleName(BeamRestXmlProtocolCodegen.REST_XML));
+                layout.serverCodecModuleName(BeamProtocolIds.REST_XML));
         String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
         String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
         boolean checksumBindings = ElixirHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
 
         ctx.writerDelegator().useFileWriter(
-                layout.serverCodecModuleName(BeamRestXmlProtocolCodegen.REST_XML) + ".ex", writer -> {
+                layout.serverCodecModuleName(BeamProtocolIds.REST_XML) + ".ex", writer -> {
             writer.write("defmodule $L do", serverCodecModule);
             writer.indent();
             writer.write("@moduledoc \"Server REST-XML codecs for $L (generated). Do not edit.\"",

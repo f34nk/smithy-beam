@@ -85,7 +85,7 @@ public final class BeamElixirLayout {
     }
 
     public String clientCodecModuleName() {
-        return clientCodecModuleName(BeamRestJson1ProtocolCodegen.REST_JSON_1);
+        return clientCodecModuleName(BeamProtocolIds.REST_JSON_1);
     }
 
     public String clientCodecModuleName(ShapeId protocolTraitId) {
@@ -216,7 +216,7 @@ public final class BeamElixirLayout {
     }
 
     public String serverCodecModuleName() {
-        return serverCodecModuleName(BeamRestJson1ProtocolCodegen.REST_JSON_1);
+        return serverCodecModuleName(BeamProtocolIds.REST_JSON_1);
     }
 
     public String serverCodecModuleName(ShapeId protocolTraitId) {

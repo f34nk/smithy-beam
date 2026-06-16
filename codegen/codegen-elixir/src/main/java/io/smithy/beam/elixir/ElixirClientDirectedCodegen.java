@@ -13,12 +13,7 @@ import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamProtocolSupport;
-import io.smithy.beam.core.BeamAwsJson10ProtocolCodegen;
-import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
-import io.smithy.beam.core.BeamAwsQueryProtocolCodegen;
-import io.smithy.beam.core.BeamEc2QueryProtocolCodegen;
-import io.smithy.beam.core.BeamRestJson1ProtocolCodegen;
-import io.smithy.beam.core.BeamRestXmlProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.core.BeamSigV4Index;
@@ -192,27 +187,27 @@ final class ElixirClientDirectedCodegen
         ServiceShape service = directive.shape();
 
         if (ctx.protocolCodegen() != null
-                && BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(
+                && BeamProtocolIds.REST_JSON_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ElixirRestJson1Emitter.emitCodecModule(ctx, directive.shape());
         } else if (ctx.protocolCodegen() != null
-                && BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(
+                && BeamProtocolIds.AWS_JSON_1_0.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ElixirAwsJson10Emitter.emitCodecModule(ctx, directive.shape());
         } else if (ctx.protocolCodegen() != null
-                && BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(
+                && BeamProtocolIds.AWS_JSON_1_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ElixirAwsJson11Emitter.emitCodecModule(ctx, directive.shape());
         } else if (ctx.protocolCodegen() != null
-                && BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(
+                && BeamProtocolIds.AWS_QUERY.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ElixirAwsQueryEmitter.emitCodecModule(ctx, directive.shape());
         } else if (ctx.protocolCodegen() != null
-                && BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(
+                && BeamProtocolIds.EC2_QUERY.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ElixirEc2QueryEmitter.emitCodecModule(ctx, directive.shape());
         } else if (ctx.protocolCodegen() != null
-                && BeamRestXmlProtocolCodegen.REST_XML.equals(
+                && BeamProtocolIds.REST_XML.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
             ElixirRestXmlEmitter.emitCodecModule(ctx, directive.shape());
         }

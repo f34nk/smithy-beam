@@ -15,22 +15,22 @@ public final class BeamProtocolModuleSuffix {
 
     public static String codecSuffix(
             ShapeId protocolTraitId, List<? extends BeamProtocolIntegration> integrations) {
-        if (BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(protocolTraitId)) {
+        if (BeamProtocolIds.REST_JSON_1.equals(protocolTraitId)) {
             return "rest_json_1";
         }
-        if (BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(protocolTraitId)) {
+        if (BeamProtocolIds.AWS_JSON_1_0.equals(protocolTraitId)) {
             return "aws_json_1_0";
         }
-        if (BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(protocolTraitId)) {
+        if (BeamProtocolIds.AWS_JSON_1_1.equals(protocolTraitId)) {
             return "aws_json_1_1";
         }
-        if (BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(protocolTraitId)) {
+        if (BeamProtocolIds.AWS_QUERY.equals(protocolTraitId)) {
             return "aws_query";
         }
-        if (BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(protocolTraitId)) {
+        if (BeamProtocolIds.EC2_QUERY.equals(protocolTraitId)) {
             return "ec2_query";
         }
-        if (BeamRestXmlProtocolCodegen.REST_XML.equals(protocolTraitId)) {
+        if (BeamProtocolIds.REST_XML.equals(protocolTraitId)) {
             return "rest_xml";
         }
         for (BeamProtocolIntegration integration : integrations) {

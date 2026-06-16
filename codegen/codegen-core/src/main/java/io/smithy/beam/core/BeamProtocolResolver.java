@@ -78,7 +78,7 @@ public final class BeamProtocolResolver {
                                 + protocol
                                 + " without an explicit opt-in codec");
             }
-            if (BeamRestXmlProtocolCodegen.REST_XML.equals(protocol) && shape instanceof DocumentShape) {
+            if (BeamProtocolIds.REST_XML.equals(protocol) && shape instanceof DocumentShape) {
                 diagnostics.add(
                         shape.getId()
                                 + ": document is not supported by "

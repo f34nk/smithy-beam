@@ -7,8 +7,17 @@ import software.amazon.smithy.model.shapes.ShapeId;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 public final class BeamProtocolCodegenFactory {
+
+    private static final Set<ShapeId> BUILTIN_PROTOCOLS = Set.of(
+            BeamProtocolIds.REST_JSON_1,
+            BeamProtocolIds.REST_XML,
+            BeamProtocolIds.AWS_JSON_1_0,
+            BeamProtocolIds.AWS_JSON_1_1,
+            BeamProtocolIds.AWS_QUERY,
+            BeamProtocolIds.EC2_QUERY);
 
     private BeamProtocolCodegenFactory() {}
 
@@ -21,24 +30,8 @@ public final class BeamProtocolCodegenFactory {
             ShapeId resolvedProtocolTraitId,
             List<? extends BeamProtocolIntegration> integrations) {
         Objects.requireNonNull(resolvedProtocolTraitId, "resolvedProtocolTraitId");
-        BeamHttpBindings bindings = BeamHttpBindings.from(model);
-        if (BeamRestJson1ProtocolCodegen.REST_JSON_1.equals(resolvedProtocolTraitId)) {
-            return new BeamRestJson1ProtocolCodegen(bindings);
-        }
-        if (BeamAwsJson10ProtocolCodegen.AWS_JSON_1_0.equals(resolvedProtocolTraitId)) {
-            return new BeamAwsJson10ProtocolCodegen();
-        }
-        if (BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1.equals(resolvedProtocolTraitId)) {
-            return new BeamAwsJson11ProtocolCodegen();
-        }
-        if (BeamAwsQueryProtocolCodegen.AWS_QUERY.equals(resolvedProtocolTraitId)) {
-            return new BeamAwsQueryProtocolCodegen();
-        }
-        if (BeamEc2QueryProtocolCodegen.EC2_QUERY.equals(resolvedProtocolTraitId)) {
-            return new BeamEc2QueryProtocolCodegen();
-        }
-        if (BeamRestXmlProtocolCodegen.REST_XML.equals(resolvedProtocolTraitId)) {
-            return new BeamRestXmlProtocolCodegen(bindings);
+        if (BUILTIN_PROTOCOLS.contains(resolvedProtocolTraitId)) {
+            return new BeamNoOpProtocolCodegen(resolvedProtocolTraitId);
         }
         for (BeamProtocolIntegration integration : integrations) {
             Optional<BeamProtocolCodegen> custom =

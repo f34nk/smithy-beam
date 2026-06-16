@@ -1,6 +1,6 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.core.BeamAwsJson11ProtocolCodegen;
+import io.smithy.beam.core.BeamProtocolIds;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
@@ -14,11 +14,11 @@ public final class ErlangAwsJson11Emitter {
 
     public static void emitServerCodecModule(ErlangContext ctx, ServiceShape service) {
         ErlangAwsJsonRpcEmitter.emitServerCodecModule(
-                ctx, service, BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1, CONTENT_TYPE, "1.1");
+                ctx, service, BeamProtocolIds.AWS_JSON_1_1, CONTENT_TYPE, "1.1");
     }
 
     public static void emitCodecModule(ErlangContext ctx, ServiceShape service) {
         ErlangAwsJsonRpcEmitter.emitCodecModule(
-                ctx, service, BeamAwsJson11ProtocolCodegen.AWS_JSON_1_1, CONTENT_TYPE, "1.1");
+                ctx, service, BeamProtocolIds.AWS_JSON_1_1, CONTENT_TYPE, "1.1");
     }
 }
