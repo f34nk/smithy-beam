@@ -8,6 +8,8 @@ use smithy.api#readonly
 use smithy.api#xmlName
 use smithy.api#httpLabel
 use smithy.api#error
+use smithy.api#httpError
+use smithy.api#retryable
 use smithy.waiters#waitable
 
 @restXml
@@ -95,6 +97,8 @@ structure HeadBucketInput {
 structure HeadBucketOutput {}
 
 @error("client")
+@httpError(404)
+@retryable
 structure NotFound {
     message: String
 }

@@ -64,7 +64,8 @@ defmodule S3WaitersTest do
       signing_name: "s3",
       s3_addressing_style: :path_style,
       http_client: HeadBucketHttpMock,
-      credentials: nil
+      credentials: nil,
+      retry: [max_attempts: 1, base_delay_ms: 0]
     }
   end
 

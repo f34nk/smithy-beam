@@ -386,11 +386,73 @@ public final class ErlangRestXmlEmitter {
             writer.write(";");
         }
         writer.dedent();
-        writer.write("decode_$L_response(#http_response{status = Status, body = Body}) ->", opName);
+        if (op.getErrors().isEmpty()) {
+            writer.write("decode_$L_response(#http_response{status = Status, body = Body}) ->", opName);
+            writer.indent();
+            writer.write("decode_rest_xml_error(Status, Body).");
+            writer.dedent();
+            writer.write("");
+        } else {
+            writer.write("decode_$L_response(#http_response{status = Status, body = Body}) ->", opName);
+            writer.indent();
+            writer.write("decode_$L_response_error(Status, Body).", opName);
+            writer.dedent();
+            writer.write("");
+            emitErrorDispatch(writer, model, op, sp);
+        }
+    }
+
+    private static void emitErrorDispatch(
+            ErlangWriter writer,
+            Model model,
+            OperationShape op,
+            SymbolProvider sp) {
+
+        String opName = sp.toSymbol(op).getName();
+        List<ShapeId> errors = new ArrayList<>(op.getErrors());
+        if (errors.isEmpty()) {
+            return;
+        }
+
+        writer.write("%% Error dispatch for $L.", op.getId());
+        for (ShapeId errorId : errors) {
+            StructureShape errShape = model.expectShape(errorId, StructureShape.class);
+            String recName = recordName(sp.toSymbol(errShape));
+            int httpStatus = errShape.hasTrait(HttpErrorTrait.class)
+                    ? errShape.expectTrait(HttpErrorTrait.class).getCode()
+                    : -1;
+            if (httpStatus <= 0) {
+                continue;
+            }
+            writer.write("decode_$L_response_error($L, _Body) ->", opName, httpStatus);
+            writer.indent();
+            List<String> fields = buildRestXmlErrorFields(errShape);
+            if (fields.isEmpty()) {
+                writer.write("{error, #$L{}};", recName);
+            } else {
+                writer.write("{error, #$L{", recName);
+                writer.write("    " + String.join(",\n    ", fields));
+                writer.write("}};");
+            }
+            writer.dedent();
+        }
+
+        writer.write("decode_$L_response_error(Status, Body) ->", opName);
         writer.indent();
         writer.write("decode_rest_xml_error(Status, Body).");
         writer.dedent();
         writer.write("");
+    }
+
+    private static List<String> buildRestXmlErrorFields(StructureShape errShape) {
+        List<String> fields = new ArrayList<>();
+        for (MemberShape member : errShape.members()) {
+            if (member.getMemberName().equals("__beam_error_kind")) {
+                continue;
+            }
+            fields.add(BeamNameUtils.toSnakeCase(member.getMemberName()) + " = undefined");
+        }
+        return fields;
     }
 
     private static void emitResponseEncoder(

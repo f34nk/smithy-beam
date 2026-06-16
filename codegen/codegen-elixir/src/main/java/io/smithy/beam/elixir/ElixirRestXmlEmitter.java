@@ -18,10 +18,12 @@ import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StringShape;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.EndpointTrait;
+import software.amazon.smithy.model.traits.HttpErrorTrait;
 import software.amazon.smithy.model.traits.HttpTrait;
 import software.amazon.smithy.model.traits.IdempotencyTokenTrait;
 import software.amazon.smithy.model.traits.MediaTypeTrait;
@@ -382,12 +384,74 @@ public final class ElixirRestXmlEmitter {
         writer.dedent();
         writer.write("end");
         writer.write("");
-        writer.write("def decode_$L_response(%{status: status, body: body}) do", opName);
+        if (op.getErrors().isEmpty()) {
+            writer.write("def decode_$L_response(%{status: status, body: body}) do", opName);
+            writer.indent();
+            writer.write("{:error, {:unknown_error, status, body}}");
+            writer.dedent();
+            writer.write("end");
+            writer.write("");
+        } else {
+            writer.write("def decode_$L_response(%{status: status, headers: headers, body: body}) do", opName);
+            writer.indent();
+            writer.write("decode_$L_response_error(status, headers, body)", opName);
+            writer.dedent();
+            writer.write("end");
+            writer.write("");
+            emitErrorDispatch(writer, model, op, sp, typesMod);
+        }
+    }
+
+    private static void emitErrorDispatch(
+            ElixirWriter writer,
+            Model model,
+            OperationShape op,
+            SymbolProvider sp,
+            String typesMod) {
+
+        String opName = sp.toSymbol(op).getName();
+        List<ShapeId> errors = new ArrayList<>(op.getErrors());
+        if (errors.isEmpty()) {
+            return;
+        }
+
+        writer.write("# Error dispatch for $L", op.getId());
+        for (ShapeId errorId : errors) {
+            StructureShape errShape = model.expectShape(errorId, StructureShape.class);
+            String modName = sp.toSymbol(errShape).getName();
+            int httpStatus = errShape.hasTrait(HttpErrorTrait.class)
+                    ? errShape.expectTrait(HttpErrorTrait.class).getCode()
+                    : -1;
+            if (httpStatus <= 0) {
+                continue;
+            }
+            writer.write("defp decode_$L_response_error($L, _headers, _body) do", opName, httpStatus);
+            writer.indent();
+            List<String> fields = buildErrorFields(errShape, sp);
+            writer.write("{:error, struct!($L.$L, %{$L})}", typesMod, modName,
+                    String.join(", ", fields));
+            writer.dedent();
+            writer.write("end");
+            writer.write("");
+        }
+
+        writer.write("defp decode_$L_response_error(status, _headers, body) do", opName);
         writer.indent();
         writer.write("{:error, {:unknown_error, status, body}}");
         writer.dedent();
         writer.write("end");
         writer.write("");
+    }
+
+    private static List<String> buildErrorFields(StructureShape errShape, SymbolProvider sp) {
+        List<String> fields = new ArrayList<>();
+        for (MemberShape member : errShape.members()) {
+            if (member.getMemberName().equals("__beam_error_kind")) {
+                continue;
+            }
+            fields.add(fieldName(sp, member) + ": nil");
+        }
+        return fields;
     }
 
     private static void emitRequestDecoder(

@@ -1,10 +1,17 @@
 defmodule S3Test do
   use ExUnit.Case, async: false
 
-  alias AmazonS3Types.ListBucketsInput
+  alias AmazonS3Types.{HeadBucketInput, HeadBucketOutput, ListBucketsInput}
   alias RuntimeTypes.HttpRequest
 
   @bucket_name "smithy-beam-minimal-s3-elixir"
+  @head_bucket "my-bucket"
+
+  setup do
+    on_exit(fn -> :persistent_term.erase({HeadBucketHttpMock, :responses}) end)
+    on_exit(fn -> :persistent_term.erase({HeadBucketHttpMock, :count}) end)
+    :ok
+  end
 
   test "presign_url returns a SigV4 query-string URL" do
     config = %{
@@ -63,5 +70,45 @@ defmodule S3Test do
       for %{name: name} <- output.buckets, not is_nil(name), do: name
 
     assert @bucket_name in names
+  end
+
+  test "head_bucket retries on retryable NotFound and succeeds" do
+    HeadBucketHttpMock.reset([{:status, 404}, {:status, 200}])
+
+    assert {:ok, %HeadBucketOutput{}} =
+             AmazonS3Client.head_bucket(
+               head_bucket_client_config(),
+               %HeadBucketInput{bucket: @head_bucket}
+             )
+
+    assert HeadBucketHttpMock.call_count() == 2
+  end
+
+  test "head_bucket stops retrying when NotFound persists" do
+    HeadBucketHttpMock.reset([{:status, 404}, {:status, 404}, {:status, 404}])
+
+    assert {:error, %AmazonS3Types.NotFound{}} =
+             AmazonS3Client.head_bucket(
+               head_bucket_client_config(retry: [max_attempts: 2, base_delay_ms: 0]),
+               %HeadBucketInput{bucket: @head_bucket}
+             )
+
+    assert HeadBucketHttpMock.call_count() == 2
+  end
+
+  defp head_bucket_client_config(extra \\ []) do
+    Map.merge(
+      %{
+        base_url: "http://localhost:4566",
+        region: "us-east-1",
+        endpoint_prefix: "s3",
+        signing_name: "s3",
+        s3_addressing_style: :path_style,
+        http_client: HeadBucketHttpMock,
+        credentials: nil,
+        retry: [max_attempts: 3, base_delay_ms: 0]
+      },
+      Map.new(extra)
+    )
   end
 end
