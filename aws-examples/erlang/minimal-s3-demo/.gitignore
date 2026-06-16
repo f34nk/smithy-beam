@@ -1,0 +1,8 @@
+_build
+deps
+src/generated
+.smithy
+build/
+model/*.json
+terraform/.terraform*
+terraform/.terraform.*
