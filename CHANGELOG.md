@@ -3,6 +3,34 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-06-16
+
+### Added
+- Restored minimal Erlang S3 demo alongside the Elixir demo to exercise generated waiters and presigned URLs in tests.
+
+### Fixed
+- REST-XML client codecs decode modeled httpError shapes so retryable errors reach generated retry helpers; minimal S3 demos cover HeadBucket retry behavior.
+- Syntax error in Elixir protocol emission.
+
+### Changed
+- Removed no-op builtin protocol codegen stub classes in favor of a shared no-op protocol hook; builtin wire codecs remain in the Erlang and Elixir emitters.
+
+## 2026-06-15
+
+### Added
+- Generated Erlang and Elixir client operations wrap @retryable flows with with_retry and auto-paginate @paginated operations through shared retry and pagination support in codegen-core.
+
+### Fixed
+- Erlang client emission for retry-wrapped operations closes case blocks before the with_retry fun so generated code compiles.
+- AWS Erlang demos consume flattened item lists from paginated client calls.
+- S3 minimal demo adjustments.
+
+### Changed
+- Erlang example projects keep rebar.lock files; Python baseline demo downloads the EC2 model at build time; local model files are gitignored.
+
+### Docs
+- Documented model-driven pagination loops in generated client operations.
+
 ## 2026-06-14
 
 ### Added
