@@ -2,8 +2,37 @@ defmodule S3Test do
   use ExUnit.Case, async: false
 
   alias AmazonS3Types.ListBucketsInput
+  alias RuntimeTypes.HttpRequest
 
   @bucket_name "smithy-beam-minimal-s3-elixir"
+
+  test "presign_url returns a SigV4 query-string URL" do
+    config = %{
+      base_url: "http://localhost:4566",
+      region: "us-east-1",
+      endpoint_prefix: "s3",
+      signing_name: "s3",
+      s3_addressing_style: :path_style,
+      presign_expires: 3600,
+      credentials: %{
+        access_key_id: "AKIAIOSFODNN7EXAMPLE",
+        secret_access_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+      }
+    }
+
+    request = %HttpRequest{
+      method: "GET",
+      path: "/my-bucket/object.txt",
+      host: "localhost:4566"
+    }
+
+    assert {:ok, url} = AmazonS3Presigner.presign_url(config, :get_object, request)
+    assert String.starts_with?(url, "https://localhost:4566/my-bucket/object.txt?")
+    assert url =~ "X-Amz-Algorithm=AWS4-HMAC-SHA256"
+    assert url =~ "X-Amz-Credential=AKIAIOSFODNN7EXAMPLE%2F"
+    assert url =~ "X-Amz-Expires=3600"
+    assert url =~ "X-Amz-Signature="
+  end
 
   test "list_buckets against LocalStack" do
     endpoint = System.get_env("AWS_ENDPOINT")
