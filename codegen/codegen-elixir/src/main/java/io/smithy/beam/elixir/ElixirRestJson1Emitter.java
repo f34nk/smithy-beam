@@ -365,12 +365,13 @@ public final class ElixirRestJson1Emitter {
         writer.write("  path: path,");
         writer.write("  query: query,");
         writer.write("  headers: headers,");
-        writer.write("  body: body");
+        boolean hasOptionalTail = streamingRequestPayload || hasHostLabels;
+        writer.write("  body: body$L", hasOptionalTail ? "," : "");
         if (streamingRequestPayload) {
-            writer.write("  ,stream: stream");
+            writer.write("  stream: stream$L", hasHostLabels ? "," : "");
         }
         if (hasHostLabels) {
-            writer.write("  ,host: host");
+            writer.write("  host: host");
         }
         writer.write("}");
         writer.dedent();

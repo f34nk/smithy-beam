@@ -256,9 +256,9 @@ public final class ElixirRestXmlEmitter {
         writer.write("  path: path,");
         writer.write("  query: query,");
         writer.write("  headers: headers,");
-        writer.write("  body: body");
+        writer.write("  body: body$L", setHost ? "," : "");
         if (setHost) {
-            writer.write("  ,host: host");
+            writer.write("  host: host");
         }
         writer.write("}");
 
