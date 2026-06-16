@@ -5,8 +5,9 @@
   ],
   "maven": {
     "dependencies": [
-      "io.smithy.beam:codegen-elixir:0.1.0-SNAPSHOT",
-      "software.amazon.smithy:smithy-aws-traits:1.54.0"
+      "software.amazon.smithy:smithy-aws-traits:1.54.0",
+      "software.amazon.smithy:smithy-waiters:1.70.0",
+      "io.smithy.beam:codegen-elixir:0.1.0-SNAPSHOT"
     ],
     "repositories": [
       {
