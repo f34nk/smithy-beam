@@ -17,6 +17,7 @@
         "java-codegen": {
           "service": "aws.foo#Foo_123",
           "namespace": "aws.foo",
+          "name": "Bar",
           "modes": [
             "client"
           ]
