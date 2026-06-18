@@ -1,7 +1,7 @@
 -module(demo_app).
 -export([run/0]).
 
--include("amazon_ec2_types.hrl").
+-include("ec2_types.hrl").
 
 -define(DEMO_VPC_CIDR, <<"10.0.0.0/16">>).
 -define(DEMO_VPC_NAME, <<"ec2-demo-vpc">>).
@@ -50,11 +50,11 @@ create_demo_vpc(Config) ->
             }
         ]
     },
-    case amazon_ec2_client:create_vpc(Config, Input) of
+    case ec2_client:create_vpc(Config, Input) of
         {ok, #create_vpc_output{vpc = #vpc{vpc_id = VpcId}}} when is_binary(VpcId) ->
             io:format("SUCCESS: VpcId = ~s~n", [VpcId]),
             io:format("--- ModifyVpcAttribute (EnableDnsSupport) ---~n"),
-            case amazon_ec2_client:modify_vpc_attribute(Config, #modify_vpc_attribute_input{
+            case ec2_client:modify_vpc_attribute(Config, #modify_vpc_attribute_input{
                 vpc_id = VpcId,
                 enable_dns_support = #attribute_boolean_value{value = true}
             }) of
@@ -64,7 +64,7 @@ create_demo_vpc(Config) ->
                     erlang:error({modify_vpc_attribute_dns_support_failed, DnsSupportReason})
             end,
             io:format("--- ModifyVpcAttribute (EnableDnsHostnames) ---~n"),
-            case amazon_ec2_client:modify_vpc_attribute(Config, #modify_vpc_attribute_input{
+            case ec2_client:modify_vpc_attribute(Config, #modify_vpc_attribute_input{
                 vpc_id = VpcId,
                 enable_dns_hostnames = #attribute_boolean_value{value = true}
             }) of
@@ -92,12 +92,12 @@ create_demo_subnet(Config, VpcId) ->
             }
         ]
     },
-    case amazon_ec2_client:create_subnet(Config, Input) of
+    case ec2_client:create_subnet(Config, Input) of
         {ok, #create_subnet_output{subnet = #subnet{subnet_id = SubnetId}}}
             when is_binary(SubnetId) ->
             io:format("SUCCESS: SubnetId = ~s~n", [SubnetId]),
             io:format("--- ModifySubnetAttribute (MapPublicIpOnLaunch) ---~n"),
-            case amazon_ec2_client:modify_subnet_attribute(Config, #modify_subnet_attribute_input{
+            case ec2_client:modify_subnet_attribute(Config, #modify_subnet_attribute_input{
                 subnet_id = SubnetId,
                 map_public_ip_on_launch = #attribute_boolean_value{value = true}
             }) of
@@ -126,7 +126,7 @@ create_demo_security_group(Config, VpcId) ->
             }
         ]
     },
-    case amazon_ec2_client:create_security_group(Config, Input) of
+    case ec2_client:create_security_group(Config, Input) of
         {ok, #create_security_group_output{group_id = SgId}} when is_binary(SgId) ->
             io:format("SUCCESS: SecurityGroupId = ~s~n", [SgId]),
             io:format("--- AuthorizeSecurityGroupIngress ---~n"),
@@ -141,7 +141,7 @@ create_demo_security_group(Config, VpcId) ->
                     }
                 ]
             },
-            case amazon_ec2_client:authorize_security_group_ingress(Config, IngressInput) of
+            case ec2_client:authorize_security_group_ingress(Config, IngressInput) of
                 {ok, _} ->
                     io:format("SUCCESS: SSH ingress rule~n");
                 {error, IngressReason} ->
@@ -159,7 +159,7 @@ create_demo_security_group(Config, VpcId) ->
                     }
                 ]
             },
-            case amazon_ec2_client:authorize_security_group_egress(Config, EgressInput) of
+            case ec2_client:authorize_security_group_egress(Config, EgressInput) of
                 {ok, _} ->
                     io:format("SUCCESS: All-traffic egress rule~n~n");
                 {error, EgressReason} ->
@@ -184,7 +184,7 @@ setup_infrastructure(Config) ->
 describe_vpcs(Config, ExpectedVpcId) ->
     io:format("--- DescribeVpcs ---~n"),
     Input = #describe_vpcs_input{},
-    case amazon_ec2_client:describe_vpcs(Config, Input) of
+    case ec2_client:describe_vpcs(Config, Input) of
         {ok, Vpcs} when is_list(Vpcs) ->
             case lists:keyfind(ExpectedVpcId, #vpc.vpc_id, Vpcs) of
                 #vpc{vpc_id = VpcId, cidr_block = CidrBlock} ->
@@ -204,7 +204,7 @@ describe_vpcs(Config, ExpectedVpcId) ->
 describe_security_groups(Config, ExpectedSgId) ->
     io:format("--- DescribeSecurityGroups ---~n"),
     Input = #describe_security_groups_input{},
-    case amazon_ec2_client:describe_security_groups(Config, Input) of
+    case ec2_client:describe_security_groups(Config, Input) of
         {ok, Sgs} when is_list(Sgs) ->
             case lists:keyfind(ExpectedSgId, #security_group.group_id, Sgs) of
                 #security_group{group_id = GroupId, group_name = GroupName} ->
@@ -237,7 +237,7 @@ run_instance(Config, SubnetId, SgId) ->
             }
         ]
     },
-    case amazon_ec2_client:run_instances(Config, Input) of
+    case ec2_client:run_instances(Config, Input) of
         {ok, #run_instances_output{instances = [#instance{instance_id = InstanceId} | _]}}
             when is_binary(InstanceId) ->
             io:format("SUCCESS: InstanceId = ~s~n~n", [InstanceId]),
@@ -251,7 +251,7 @@ run_instance(Config, SubnetId, SgId) ->
 describe_instance(Config, InstanceId) ->
     io:format("--- DescribeInstances ---~n"),
     Input = #describe_instances_input{instance_ids = [InstanceId]},
-    case amazon_ec2_client:describe_instances(Config, Input) of
+    case ec2_client:describe_instances(Config, Input) of
         {ok, Reservations} when is_list(Reservations) ->
             Instances = instances_from_reservations(Reservations),
             InstanceIds = [Id || #instance{instance_id = Id} <- Instances, is_binary(Id)],
@@ -270,7 +270,7 @@ describe_instance(Config, InstanceId) ->
 terminate_instance(Config, InstanceId) ->
     io:format("--- TerminateInstances ---~n"),
     Input = #terminate_instances_input{instance_ids = [InstanceId]},
-    case amazon_ec2_client:terminate_instances(Config, Input) of
+    case ec2_client:terminate_instances(Config, Input) of
         {ok, #terminate_instances_output{terminating_instances = Instances}} ->
             io:format("SUCCESS: TerminateInstances returned~n"),
             print_terminating_instances(Instances);

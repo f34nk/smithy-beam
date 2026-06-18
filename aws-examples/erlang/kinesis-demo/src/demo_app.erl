@@ -1,7 +1,7 @@
 -module(demo_app).
 -export([run/0]).
 
--include("kinesis_20131202_types.hrl").
+-include("kinesis_types.hrl").
 
 -define(STREAM_NAME, <<"kinesis-demo-stream">>).
 -define(SENT_RECORDS, [
@@ -20,7 +20,7 @@ run() ->
 
     %% 1. List streams and verify the demo stream
     io:format("--- ListStreams ---~n"),
-    case kinesis_20131202_client:list_streams(Config, #list_streams_input{}) of
+    case kinesis_client:list_streams(Config, #list_streams_input{}) of
         {ok, Pages} when is_list(Pages) ->
             StreamNames = stream_names_from_list_streams_pages(Pages),
             case StreamNames of
@@ -43,7 +43,7 @@ run() ->
     %% 2. Describe the demo stream
     io:format("--- DescribeStream ---~n"),
     DescribeInput = #describe_stream_input{stream_name = ?STREAM_NAME},
-    ShardId = case kinesis_20131202_client:describe_stream(Config, DescribeInput) of
+    ShardId = case kinesis_client:describe_stream(Config, DescribeInput) of
         {ok, #describe_stream_output{
             stream_description = #stream_description{
                 stream_status = Status,
@@ -82,7 +82,7 @@ run() ->
                 data = Data,
                 partition_key = PartitionKey
             },
-            case kinesis_20131202_client:put_record(Config, PutInput) of
+            case kinesis_client:put_record(Config, PutInput) of
                 {ok, #put_record_output{sequence_number = SeqNum, shard_id = ShardIdOut}} ->
                     case byte_size(SeqNum) > 0 of
                         true  -> io:format("  Record ~p: ShardId=~s, Seq=~s~n", [Idx, ShardIdOut, SeqNum]);
@@ -108,7 +108,7 @@ run() ->
                 shard_id = ShardId,
                 shard_iterator_type = trim_horizon
             },
-            case kinesis_20131202_client:get_shard_iterator(Config, GetIterInput) of
+            case kinesis_client:get_shard_iterator(Config, GetIterInput) of
                 {ok, #get_shard_iterator_output{shard_iterator = Iter}} ->
                     case byte_size(Iter) > 0 of
                         true  -> io:format("SUCCESS: Got shard iterator~n");
@@ -127,7 +127,7 @@ run() ->
         shard_iterator = ShardIterator,
         limit = 10
     },
-    case kinesis_20131202_client:get_records(Config, GetRecordsInput) of
+    case kinesis_client:get_records(Config, GetRecordsInput) of
         {ok, #get_records_output{records = FetchedRecords, millis_behind_latest = MillisBehind}} ->
             io:format("SUCCESS: Retrieved ~p record(s), ~p ms behind latest~n",
                       [length(FetchedRecords), MillisBehind]),
@@ -161,7 +161,7 @@ run() ->
     %% 6. Describe stream summary
     io:format("--- DescribeStreamSummary ---~n"),
     SummaryInput = #describe_stream_summary_input{stream_name = ?STREAM_NAME},
-    case kinesis_20131202_client:describe_stream_summary(Config, SummaryInput) of
+    case kinesis_client:describe_stream_summary(Config, SummaryInput) of
         {ok, #describe_stream_summary_output{
             stream_description_summary = #stream_description_summary{
                 open_shard_count = OpenShards,
@@ -192,7 +192,7 @@ create_demo_stream(Config) ->
             <<"Environment">> => <<"demo">>
         }
     },
-    case kinesis_20131202_client:create_stream(Config, Input) of
+    case kinesis_client:create_stream(Config, Input) of
         {ok, _} ->
             io:format("SUCCESS: Stream '~s' create requested~n", [?STREAM_NAME]);
         {error, #resource_in_use_exception{}} ->
@@ -202,7 +202,7 @@ create_demo_stream(Config) ->
     end,
     io:format("--- Wait StreamExists ---~n"),
     WaitInput = #describe_stream_input{stream_name = ?STREAM_NAME},
-    case kinesis_20131202_waiters:wait_stream_exists(Config, WaitInput, #{}) of
+    case kinesis_waiters:wait_stream_exists(Config, WaitInput, #{}) of
         {ok, _} ->
             io:format("SUCCESS: Stream '~s' is ACTIVE~n~n", [?STREAM_NAME]);
         {error, WaitReason} ->
@@ -218,7 +218,7 @@ setup_infrastructure(Config) ->
 
 delete_demo_stream(Config) ->
     io:format("--- DeleteStream ---~n"),
-    case kinesis_20131202_client:delete_stream(Config,
+    case kinesis_client:delete_stream(Config,
         #delete_stream_input{stream_name = ?STREAM_NAME}) of
         {ok, _} ->
             io:format("SUCCESS: Stream '~s' delete requested~n", [?STREAM_NAME]);
@@ -229,7 +229,7 @@ delete_demo_stream(Config) ->
     end,
     io:format("--- Wait StreamNotExists ---~n"),
     WaitInput = #describe_stream_input{stream_name = ?STREAM_NAME},
-    case kinesis_20131202_waiters:wait_stream_not_exists(Config, WaitInput, #{}) of
+    case kinesis_waiters:wait_stream_not_exists(Config, WaitInput, #{}) of
         {ok, _} ->
             io:format("SUCCESS: Stream '~s' removed~n~n", [?STREAM_NAME]);
         {error, WaitReason} ->

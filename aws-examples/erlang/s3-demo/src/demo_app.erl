@@ -1,7 +1,7 @@
 -module(demo_app).
 -export([run/0]).
 
--include("amazon_s3_types.hrl").
+-include("s3_types.hrl").
 
 -define(BUCKET_NAME, <<"us-east-1-nonprod-configs">>).
 -define(CONFIG1_KEY, <<"configs/config1.toml">>).
@@ -47,7 +47,7 @@ create_demo_bucket(Config) ->
     Input = #create_bucket_input{
         bucket = ?BUCKET_NAME
     },
-    case amazon_s3_client:create_bucket(Config, Input) of
+    case s3_client:create_bucket(Config, Input) of
         {ok, _} ->
             io:format("SUCCESS: Bucket '~s' created~n", [?BUCKET_NAME]);
         {error, #bucket_already_owned_by_you{}} ->
@@ -65,7 +65,7 @@ put_config_object(Config, Key, Body) ->
         body = Body,
         acl = public_read
     },
-    case amazon_s3_client:put_object(Config, Input) of
+    case s3_client:put_object(Config, Input) of
         {ok, _} ->
             io:format("SUCCESS: PutObject '~s'~n", [Key]);
         {error, Reason} ->
@@ -87,7 +87,7 @@ setup_infrastructure(Config) ->
     ok.
 
 delete_config_object(Config, Key) ->
-    case amazon_s3_client:delete_object(Config,
+    case s3_client:delete_object(Config,
         #delete_object_input{bucket = ?BUCKET_NAME, key = Key}) of
         {ok, _} ->
             io:format("SUCCESS: Deleted '~s'~n", [Key]);
@@ -101,7 +101,7 @@ delete_demo_bucket(Config) ->
     delete_config_object(Config, ?CONFIG2_KEY),
     delete_config_object(Config, ?OBJECT_KEY),
     io:format("--- DeleteBucket ---~n"),
-    case amazon_s3_client:delete_bucket(Config,
+    case s3_client:delete_bucket(Config,
         #delete_bucket_input{bucket = ?BUCKET_NAME}) of
         {ok, _} ->
             io:format("SUCCESS: Bucket '~s' deleted~n", [?BUCKET_NAME]);
@@ -116,7 +116,7 @@ delete_demo_bucket(Config) ->
 list_buckets(Config) ->
     io:format("--- ListBuckets ---~n"),
     Input = #list_buckets_input{},
-    case amazon_s3_client:list_buckets(Config, Input) of
+    case s3_client:list_buckets(Config, Input) of
         {ok, Buckets} when is_list(Buckets), Buckets =/= [] ->
             io:format("SUCCESS: Found ~p bucket(s)~n", [length(Buckets)]),
             BucketNames = [Name || #bucket{name = Name} <- Buckets, Name =/= undefined],
@@ -145,7 +145,7 @@ put_object(Config) ->
         body = ?EXPECTED_BODY,
         content_type = <<"text/plain">>
     },
-    case amazon_s3_client:put_object(Config, Input) of
+    case s3_client:put_object(Config, Input) of
         {ok, PutOutput} ->
             io:format("SUCCESS: PutObject returned successfully!~n"),
             io:format("Response: ~p~n~n", [PutOutput]);
@@ -160,7 +160,7 @@ list_objects(Config) ->
         prefix = <<"configs/">>,
         max_keys = 100
     },
-    case amazon_s3_client:list_objects(Config, Input) of
+    case s3_client:list_objects(Config, Input) of
         {ok, Result} ->
             Contents = contents_from_list_objects(Result),
             case Contents of
@@ -191,7 +191,7 @@ get_object(Config) ->
         bucket = ?BUCKET_NAME,
         key = ?OBJECT_KEY
     },
-    case amazon_s3_client:get_object(Config, Input) of
+    case s3_client:get_object(Config, Input) of
         {ok, #get_object_output{body = Body}} ->
             io:format("SUCCESS: GetObject returned successfully!~n"),
             case Body =:= ?EXPECTED_BODY of

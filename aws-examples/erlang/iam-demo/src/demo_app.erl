@@ -1,7 +1,7 @@
 -module(demo_app).
 -export([run/0]).
 
--include("aws_identity_management_v20100508_types.hrl").
+-include("iam_types.hrl").
 
 -define(USER_NAME, <<"iam-demo-user">>).
 -define(GROUP_NAME, <<"iam-demo-group">>).
@@ -18,7 +18,7 @@ run() ->
 
     %% 1. List users
     io:format("--- ListUsers ---~n"),
-    CountBefore = case aws_identity_management_v20100508_client:list_users(Config, #list_users_input{}) of
+    CountBefore = case iam_client:list_users(Config, #list_users_input{}) of
         {ok, Users} when is_list(Users) ->
             case Users of
                 [] -> erlang:error({assertion_failed, empty_user_list});
@@ -39,7 +39,7 @@ run() ->
     %% 2. Get the demo user
     io:format("--- GetUser ---~n"),
     GetUserInput = #get_user_input{user_name = ?USER_NAME},
-    case aws_identity_management_v20100508_client:get_user(Config, GetUserInput) of
+    case iam_client:get_user(Config, GetUserInput) of
         {ok, #get_user_output{user = #user{
             user_name = ReturnedUserName,
             arn = UserArn,
@@ -58,7 +58,7 @@ run() ->
 
     %% 3. List groups
     io:format("--- ListGroups ---~n"),
-    case aws_identity_management_v20100508_client:list_groups(Config, #list_groups_input{}) of
+    case iam_client:list_groups(Config, #list_groups_input{}) of
         {ok, Groups} when is_list(Groups) ->
             case Groups of
                 [] -> erlang:error({assertion_failed, empty_group_list});
@@ -78,7 +78,7 @@ run() ->
     %% 4. List groups for user
     io:format("--- ListGroupsForUser ---~n"),
     ListGroupsForUserInput = #list_groups_for_user_input{user_name = ?USER_NAME},
-    case aws_identity_management_v20100508_client:list_groups_for_user(Config, ListGroupsForUserInput) of
+    case iam_client:list_groups_for_user(Config, ListGroupsForUserInput) of
         {ok, UserGroups} when is_list(UserGroups) ->
             io:format("SUCCESS: User '~s' is in ~p group(s)~n", [?USER_NAME, length(UserGroups)]),
             lists:foreach(
@@ -99,7 +99,7 @@ run() ->
         path = ?DEMO_PATH,
         tags = [#tag{key = <<"CreatedBy">>, value = <<"smithy-erlang">>}]
     },
-    case aws_identity_management_v20100508_client:create_user(Config, CreateUserInput) of
+    case iam_client:create_user(Config, CreateUserInput) of
         {ok, #create_user_output{user = #user{user_name = CreatedName, arn = NewUserArn}}} ->
             case CreatedName =:= ?NEW_USER_NAME of
                 true  -> io:format("SUCCESS: Created user '~s'~n", [?NEW_USER_NAME]);
@@ -113,7 +113,7 @@ run() ->
 
     %% 6. List users again to verify user count grew and new user is present
     io:format("--- ListUsers (verify) ---~n"),
-    case aws_identity_management_v20100508_client:list_users(Config, #list_users_input{}) of
+    case iam_client:list_users(Config, #list_users_input{}) of
         {ok, Users2} when is_list(Users2) ->
             CountAfter = length(Users2),
             io:format("SUCCESS: Found ~p user(s)~n", [CountAfter]),
@@ -142,7 +142,7 @@ run() ->
         user_name = ?NEW_USER_NAME,
         group_name = ?GROUP_NAME
     },
-    case aws_identity_management_v20100508_client:add_user_to_group(Config, AddUserToGroupInput) of
+    case iam_client:add_user_to_group(Config, AddUserToGroupInput) of
         {ok, _} ->
             io:format("SUCCESS: Added '~s' to group '~s'~n", [?NEW_USER_NAME, ?GROUP_NAME]);
         {error, AddUserError} ->
@@ -153,7 +153,7 @@ run() ->
     %% 8. List groups for new user
     io:format("--- ListGroupsForUser (new user) ---~n"),
     ListGroupsForNewUserInput = #list_groups_for_user_input{user_name = ?NEW_USER_NAME},
-    case aws_identity_management_v20100508_client:list_groups_for_user(Config, ListGroupsForNewUserInput) of
+    case iam_client:list_groups_for_user(Config, ListGroupsForNewUserInput) of
         {ok, NewUserGroups} when is_list(NewUserGroups) ->
             case NewUserGroups of
                 [] -> erlang:error({assertion_failed, {new_user_not_in_any_group, ?NEW_USER_NAME}});
@@ -181,7 +181,7 @@ run() ->
         user_name = ?NEW_USER_NAME,
         group_name = ?GROUP_NAME
     },
-    case aws_identity_management_v20100508_client:remove_user_from_group(Config, RemoveUserFromGroupInput) of
+    case iam_client:remove_user_from_group(Config, RemoveUserFromGroupInput) of
         {ok, _} ->
             io:format("SUCCESS: Removed '~s' from group '~s'~n", [?NEW_USER_NAME, ?GROUP_NAME]);
         {error, RemoveUserError} ->
@@ -192,7 +192,7 @@ run() ->
     %% 10. Delete the new user
     io:format("--- DeleteUser ---~n"),
     DeleteUserInput = #delete_user_input{user_name = ?NEW_USER_NAME},
-    case aws_identity_management_v20100508_client:delete_user(Config, DeleteUserInput) of
+    case iam_client:delete_user(Config, DeleteUserInput) of
         {ok, _} ->
             io:format("SUCCESS: Deleted user '~s'~n", [?NEW_USER_NAME]);
         {error, DeleteUserError} ->
@@ -203,7 +203,7 @@ run() ->
     %% 11. Verify deletion
     io:format("--- GetUser (verify deletion) ---~n"),
     GetDeletedUserInput = #get_user_input{user_name = ?NEW_USER_NAME},
-    case aws_identity_management_v20100508_client:get_user(Config, GetDeletedUserInput) of
+    case iam_client:get_user(Config, GetDeletedUserInput) of
         {ok, _} ->
             erlang:error({assertion_failed, user_not_deleted, ?NEW_USER_NAME});
         {error, {<<"NoSuchEntity">>, _Message}} ->
@@ -229,7 +229,7 @@ create_demo_group(Config) ->
         group_name = ?GROUP_NAME,
         path = ?DEMO_PATH
     },
-    case aws_identity_management_v20100508_client:create_group(Config, Input) of
+    case iam_client:create_group(Config, Input) of
         {ok, #create_group_output{group = #group{group_name = GroupName}}} ->
             io:format("SUCCESS: Created group '~s'~n~n", [GroupName]);
         {error, Reason} ->
@@ -252,7 +252,7 @@ create_demo_user(Config) ->
             #tag{key = <<"Environment">>, value = <<"demo">>}
         ]
     },
-    case aws_identity_management_v20100508_client:create_user(Config, Input) of
+    case iam_client:create_user(Config, Input) of
         {ok, #create_user_output{user = #user{user_name = UserName, arn = UserArn}}} ->
             io:format("SUCCESS: Created user '~s'~n", [UserName]),
             io:format("  ARN: ~s~n~n", [UserArn]);
@@ -272,7 +272,7 @@ add_demo_user_to_group(Config) ->
         user_name = ?USER_NAME,
         group_name = ?GROUP_NAME
     },
-    case aws_identity_management_v20100508_client:add_user_to_group(Config, Input) of
+    case iam_client:add_user_to_group(Config, Input) of
         {ok, _} ->
             io:format("SUCCESS: Added '~s' to group '~s'~n~n", [?USER_NAME, ?GROUP_NAME]);
         {error, Reason} ->
@@ -294,7 +294,7 @@ delete_demo_infrastructure(Config) ->
         user_name = ?USER_NAME,
         group_name = ?GROUP_NAME
     },
-    case aws_identity_management_v20100508_client:remove_user_from_group(Config, RemoveInput) of
+    case iam_client:remove_user_from_group(Config, RemoveInput) of
         {ok, _} ->
             io:format("SUCCESS: Removed '~s' from group '~s'~n", [?USER_NAME, ?GROUP_NAME]);
         {error, RemoveReason} ->
@@ -302,7 +302,7 @@ delete_demo_infrastructure(Config) ->
     end,
     io:format("--- DeleteUser (demo user) ---~n"),
     DeleteUserInput = #delete_user_input{user_name = ?USER_NAME},
-    case aws_identity_management_v20100508_client:delete_user(Config, DeleteUserInput) of
+    case iam_client:delete_user(Config, DeleteUserInput) of
         {ok, _} ->
             io:format("SUCCESS: Deleted user '~s'~n", [?USER_NAME]);
         {error, DeleteUserReason} ->
@@ -310,7 +310,7 @@ delete_demo_infrastructure(Config) ->
     end,
     io:format("--- DeleteGroup ---~n"),
     DeleteGroupInput = #delete_group_input{group_name = ?GROUP_NAME},
-    case aws_identity_management_v20100508_client:delete_group(Config, DeleteGroupInput) of
+    case iam_client:delete_group(Config, DeleteGroupInput) of
         {ok, _} ->
             io:format("SUCCESS: Deleted group '~s'~n~n", [?GROUP_NAME]);
         {error, DeleteGroupReason} ->

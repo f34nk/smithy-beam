@@ -1,7 +1,7 @@
 -module(demo_app).
 -export([run/0]).
 
--include("amazon_simple_notification_service_types.hrl").
+-include("sns_types.hrl").
 
 -define(TOPIC_NAME, <<"sns-demo-topic">>).
 -define(TEST_TOPIC_NAME, <<"sns-demo-test-topic">>).
@@ -14,7 +14,7 @@ run() ->
 
     %% 1. List topics to see what was created by Terraform
     io:format("--- ListTopics ---~n"),
-    case amazon_simple_notification_service_client:list_topics(Config, #list_topics_input{}) of
+    case sns_client:list_topics(Config, #list_topics_input{}) of
         {ok, TopicList} when is_list(TopicList) ->
             case TopicList of
                 [] -> erlang:error({assertion_failed, empty_topic_list});
@@ -40,7 +40,7 @@ run() ->
             #tag{key = <<"CreatedBy">>, value = <<"smithy-erlang">>}
         ]
     },
-    TestTopicArn = case amazon_simple_notification_service_client:create_topic(Config, CreateInput) of
+    TestTopicArn = case sns_client:create_topic(Config, CreateInput) of
         {ok, #create_topic_output{topic_arn = Arn}} ->
             case binary:match(format_binary(Arn), ?TEST_TOPIC_NAME) of
                 nomatch -> erlang:error({assertion_failed, {arn_missing_topic_name, Arn}});
@@ -55,7 +55,7 @@ run() ->
     %% 3. Get topic attributes
     io:format("--- GetTopicAttributes ---~n"),
     AttrInput = #get_topic_attributes_input{topic_arn = TestTopicArn},
-    case amazon_simple_notification_service_client:get_topic_attributes(Config, AttrInput) of
+    case sns_client:get_topic_attributes(Config, AttrInput) of
         {ok, #get_topic_attributes_output{attributes = Attrs}} ->
             io:format("SUCCESS: Topic attributes:~n"),
             print_attributes(ensure_map(Attrs));
@@ -67,7 +67,7 @@ run() ->
     %% 4. List tags for the topic
     io:format("--- ListTagsForResource ---~n"),
     TagsInput = #list_tags_for_resource_input{resource_arn = TestTopicArn},
-    case amazon_simple_notification_service_client:list_tags_for_resource(Config, TagsInput) of
+    case sns_client:list_tags_for_resource(Config, TagsInput) of
         {ok, #list_tags_for_resource_output{tags = Tags}} ->
             TagList = ensure_list(Tags),
             io:format("SUCCESS: Found ~p tag(s):~n", [length(TagList)]),
@@ -89,7 +89,7 @@ run() ->
         protocol = <<"email-json">>,
         endpoint = <<"test@example.com">>
     },
-    SubscriptionArn = case amazon_simple_notification_service_client:subscribe(Config, SubscribeInput) of
+    SubscriptionArn = case sns_client:subscribe(Config, SubscribeInput) of
         {ok, #subscribe_output{subscription_arn = SubArn}} ->
             case is_subscription_arn(SubArn) of
                 true  -> io:format("SUCCESS: Subscription ARN: ~s~n", [SubArn]);
@@ -104,7 +104,7 @@ run() ->
     %% 6. List subscriptions by topic
     io:format("--- ListSubscriptionsByTopic ---~n"),
     ListSubsInput = #list_subscriptions_by_topic_input{topic_arn = TestTopicArn},
-    case amazon_simple_notification_service_client:list_subscriptions_by_topic(Config, ListSubsInput) of
+    case sns_client:list_subscriptions_by_topic(Config, ListSubsInput) of
         {ok, SubList} when is_list(SubList) ->
             case SubList of
                 [] -> erlang:error({assertion_failed, empty_subscription_list});
@@ -146,7 +146,7 @@ run() ->
             }
         }
     },
-    case amazon_simple_notification_service_client:publish(Config, PublishInput) of
+    case sns_client:publish(Config, PublishInput) of
         {ok, #publish_output{message_id = MessageId}} ->
             case is_non_empty_binary(MessageId) of
                 true  -> io:format("SUCCESS: Published message, ID: ~s~n", [MessageId]);
@@ -163,7 +163,7 @@ run() ->
         topic_arn = TestTopicArn,
         message = <<"This is a plain text message from the Erlang SNS demo.">>
     },
-    case amazon_simple_notification_service_client:publish(Config, PublishInput2) of
+    case sns_client:publish(Config, PublishInput2) of
         {ok, #publish_output{message_id = MessageId2}} ->
             case is_non_empty_binary(MessageId2) of
                 true  -> io:format("SUCCESS: Published message, ID: ~s~n", [MessageId2]);
@@ -181,7 +181,7 @@ run() ->
         true ->
             io:format("--- Unsubscribe ---~n"),
             UnsubInput = #unsubscribe_input{subscription_arn = SubscriptionArn},
-            case amazon_simple_notification_service_client:unsubscribe(Config, UnsubInput) of
+            case sns_client:unsubscribe(Config, UnsubInput) of
                 {ok, _} ->
                     io:format("SUCCESS: Unsubscribed~n");
                 {error, UnsubError} ->
@@ -193,7 +193,7 @@ run() ->
     %% 10. Delete the test topic
     io:format("--- DeleteTopic ---~n"),
     DeleteInput = #delete_topic_input{topic_arn = TestTopicArn},
-    case amazon_simple_notification_service_client:delete_topic(Config, DeleteInput) of
+    case sns_client:delete_topic(Config, DeleteInput) of
         {ok, _} ->
             io:format("SUCCESS: Topic deleted~n");
         {error, DeleteError} ->
@@ -203,7 +203,7 @@ run() ->
 
     %% 11. Verify topic was deleted by listing again
     io:format("--- ListTopics (verify deletion) ---~n"),
-    case amazon_simple_notification_service_client:list_topics(Config, #list_topics_input{}) of
+    case sns_client:list_topics(Config, #list_topics_input{}) of
         {ok, VerifyTopicList} when is_list(VerifyTopicList) ->
             TestTopicExists = lists:any(
                 fun(#topic{topic_arn = Arn2}) ->

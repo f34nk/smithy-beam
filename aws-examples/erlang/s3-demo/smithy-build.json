@@ -21,7 +21,8 @@
   "plugins": {
     "erlang-client-codegen": {
       "service": "com.amazonaws.s3#AmazonS3",
-      "edition": "2026"
+      "edition": "2026",
+      "name": "s3"
     }
   }
 }

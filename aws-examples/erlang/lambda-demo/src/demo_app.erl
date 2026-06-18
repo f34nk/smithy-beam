@@ -1,7 +1,7 @@
 -module(demo_app).
 -export([run/0]).
 
--include("aws_gir_api_service_types.hrl").
+-include("lambda_types.hrl").
 
 -define(LAMBDA_FUNCTION_NAME, <<"lambda-demo-function">>).
 -define(ALIAS_NAME, <<"demo">>).
@@ -23,7 +23,7 @@ run() ->
     %% 1. Account overview (service-level operation)
     %% ---------------------------------------------------------------
     io:format("--- 1. GetAccountSettings ---~n"),
-    case aws_gir_api_service_client:get_account_settings(Config, #get_account_settings_input{}) of
+    case lambda_client:get_account_settings(Config, #get_account_settings_input{}) of
         {ok, #get_account_settings_output{account_usage = AcctUsage, account_limit = AcctLimit}} ->
             case AcctUsage of
                 undefined ->
@@ -46,7 +46,7 @@ run() ->
     %% 2. Survey — list all functions in the account
     %% ---------------------------------------------------------------
     io:format("--- 2. ListFunctions ---~n"),
-    case aws_gir_api_service_client:list_functions(Config, #list_functions_input{}) of
+    case lambda_client:list_functions(Config, #list_functions_input{}) of
         {ok, Fns} when is_list(Fns), Fns =/= [] ->
             io:format("  SUCCESS: Found ~p function(s)~n", [length(Fns)]),
             FnNames = [F#function_configuration.function_name || F <- Fns, F =/= undefined],
@@ -77,7 +77,7 @@ run() ->
     %% ---------------------------------------------------------------
     io:format("--- 3. GetFunction ---~n"),
     GetFnInput = #get_function_input{function_name = ?LAMBDA_FUNCTION_NAME},
-    case aws_gir_api_service_client:get_function(Config, GetFnInput) of
+    case lambda_client:get_function(Config, GetFnInput) of
         {ok, #get_function_output{configuration = GetFnCfg}} when GetFnCfg =/= undefined ->
             #function_configuration{
                 state = State,
@@ -108,7 +108,7 @@ run() ->
         function_name = ?LAMBDA_FUNCTION_NAME,
         payload = <<"{\"hello\": \"from smithy-erlang\"}">>
     },
-    case aws_gir_api_service_client:invoke(Config, InvokeIn) of
+    case lambda_client:invoke(Config, InvokeIn) of
         {ok, #invoke_output{status_code = 200, payload = InvPayload}} when is_binary(InvPayload) ->
             io:format("  SUCCESS: Invocation returned 200~n"),
             io:format("  Status code : 200~n"),
@@ -130,7 +130,7 @@ run() ->
         function_name = ?LAMBDA_FUNCTION_NAME,
         description = <<"Updated by smithy-erlang demo">>
     },
-    case aws_gir_api_service_client:update_function_configuration(Config, UpdateCfgIn) of
+    case lambda_client:update_function_configuration(Config, UpdateCfgIn) of
         {ok, #update_function_configuration_output{description = Description}} ->
             io:format("  SUCCESS: Description : ~s~n", [format_binary(Description)]);
         {ok, _} ->
@@ -149,7 +149,7 @@ run() ->
         description = <<"v1 published by smithy-erlang demo">>
     },
     PublishedVersion =
-        case aws_gir_api_service_client:publish_version(Config, PubVerIn) of
+        case lambda_client:publish_version(Config, PubVerIn) of
             {ok, #publish_version_output{version = Ver}} when is_binary(Ver), byte_size(Ver) > 0 ->
                 io:format("  SUCCESS: Published version : ~s~n", [Ver]),
                 Ver;
@@ -165,7 +165,7 @@ run() ->
     %% ---------------------------------------------------------------
     io:format("--- 7. ListVersionsByFunction ---~n"),
     ListVerIn = #list_versions_by_function_input{function_name = ?LAMBDA_FUNCTION_NAME},
-    case aws_gir_api_service_client:list_versions_by_function(Config, ListVerIn) of
+    case lambda_client:list_versions_by_function(Config, ListVerIn) of
         {ok, Versions} when is_list(Versions) ->
             io:format("  Found ~p version(s):~n", [length(Versions)]),
             case length(Versions) >= 2 of
@@ -195,7 +195,7 @@ run() ->
         function_version = PublishedVersion,
         description = <<"Stable release alias">>
     },
-    case aws_gir_api_service_client:create_alias(Config, CreateAliasIn) of
+    case lambda_client:create_alias(Config, CreateAliasIn) of
         {ok, #create_alias_output{name = AliasName, function_version = AliasVersion}} ->
             io:format("  SUCCESS: Alias '~s' -> version ~s~n",
                       [format_binary(AliasName), format_binary(AliasVersion)]);
@@ -209,7 +209,7 @@ run() ->
     %% ---------------------------------------------------------------
     io:format("--- 9. ListAliases ---~n"),
     ListAliasIn = #list_aliases_input{function_name = ?LAMBDA_FUNCTION_NAME},
-    case aws_gir_api_service_client:list_aliases(Config, ListAliasIn) of
+    case lambda_client:list_aliases(Config, ListAliasIn) of
         {ok, Aliases} when is_list(Aliases), Aliases =/= [] ->
             io:format("  SUCCESS: Found ~p alias(es)~n", [length(Aliases)]),
             AliasNames = [A#alias_configuration.name || A <- Aliases, A =/= undefined],
@@ -239,7 +239,7 @@ run() ->
         qualifier = ?ALIAS_NAME,
         payload = <<"{\"source\": \"alias invocation\"}">>
     },
-    case aws_gir_api_service_client:invoke(Config, InvokeAliasIn) of
+    case lambda_client:invoke(Config, InvokeAliasIn) of
         {ok, #invoke_output{status_code = 200, payload = AliasPayload}} ->
             io:format("  SUCCESS: Alias invocation returned 200~n"),
             io:format("  Status code : 200~n"),
@@ -262,12 +262,12 @@ run() ->
         resource = FunctionArn,
         tags = #{<<"AddedBy">> => <<"smithy-erlang-demo">>}
     },
-    case aws_gir_api_service_client:tag_resource(Config, TagIn) of
+    case lambda_client:tag_resource(Config, TagIn) of
         {ok, _} -> io:format("  Tag added~n");
         {error, TagErr} -> erlang:error({tag_resource_failed, TagErr})
     end,
     ListTagsInput = #list_tags_input{resource = FunctionArn},
-    case aws_gir_api_service_client:list_tags(Config, ListTagsInput) of
+    case lambda_client:list_tags(Config, ListTagsInput) of
         {ok, #list_tags_output{tags = AllTags}} when is_map(AllTags) ->
             io:format("  Current tags (~p): ~p~n", [maps:size(AllTags), AllTags]),
             case maps:is_key(<<"AddedBy">>, AllTags) of
@@ -281,11 +281,11 @@ run() ->
         resource = FunctionArn,
         tag_keys = [<<"AddedBy">>]
     },
-    case aws_gir_api_service_client:untag_resource(Config, UntagIn) of
+    case lambda_client:untag_resource(Config, UntagIn) of
         {ok, _} -> io:format("  Tag removed~n");
         {error, UntagErr} -> erlang:error({untag_resource_failed, UntagErr})
     end,
-    case aws_gir_api_service_client:list_tags(Config, ListTagsInput) of
+    case lambda_client:list_tags(Config, ListTagsInput) of
         {ok, #list_tags_output{tags = PostTags}} when is_map(PostTags) ->
             case maps:is_key(<<"AddedBy">>, PostTags) of
                 false -> io:format("  SUCCESS: Tag 'AddedBy' absent after untag~n");
@@ -304,12 +304,12 @@ run() ->
         function_name = ?LAMBDA_FUNCTION_NAME,
         name = ?ALIAS_NAME
     },
-    case aws_gir_api_service_client:delete_alias(Config, DeleteAliasIn) of
+    case lambda_client:delete_alias(Config, DeleteAliasIn) of
         {ok, _} -> io:format("  Alias '~s' deleted~n", [?ALIAS_NAME]);
         {error, DelAliasErr} -> erlang:error({delete_alias_failed, DelAliasErr})
     end,
     DeleteFnIn = #delete_function_input{function_name = ?LAMBDA_FUNCTION_NAME},
-    case aws_gir_api_service_client:delete_function(Config, DeleteFnIn) of
+    case lambda_client:delete_function(Config, DeleteFnIn) of
         {ok, _} ->
             io:format("  Function '~s' deleted~n", [?LAMBDA_FUNCTION_NAME]);
         {error, DelFnErr} ->
@@ -355,7 +355,7 @@ create_demo_function(Config) ->
             <<"Project">> => <<"smithy-erlang">>
         }
     },
-    case aws_gir_api_service_client:create_function(Config, Input) of
+    case lambda_client:create_function(Config, Input) of
         {ok, _} ->
             io:format("  SUCCESS: Function '~s' created~n", [?LAMBDA_FUNCTION_NAME]);
         {error, #resource_conflict_exception{}} ->
@@ -370,7 +370,7 @@ create_demo_function(Config) ->
 wait_demo_function_active(Config) ->
     io:format("--- Wait FunctionActiveV2 ---~n"),
     Input = #get_function_input{function_name = ?LAMBDA_FUNCTION_NAME},
-    case aws_gir_api_service_waiters:wait_function_active_v2(Config, Input, #{}) of
+    case lambda_waiters:wait_function_active_v2(Config, Input, #{}) of
         ok ->
             io:format("  SUCCESS: Function '~s' is Active~n", [?LAMBDA_FUNCTION_NAME]);
         {ok, _} ->

@@ -1,7 +1,7 @@
 -module(demo_app).
 -export([run/0]).
 
--include("dynamo_db_20120810_types.hrl").
+-include("dynamodb_types.hrl").
 
 %% Table name and hash key from terraform/main.tf
 -define(TABLE_NAME, <<"example">>).
@@ -17,7 +17,7 @@ run() ->
 
     %% 1. List tables to verify connection
     io:format("--- ListTables ---~n"),
-    case dynamo_db_20120810_client:list_tables(Config, #list_tables_input{}) of
+    case dynamodb_client:list_tables(Config, #list_tables_input{}) of
         {ok, TableNames} when is_list(TableNames), TableNames =/= [] ->
             io:format("SUCCESS: Found ~p table(s)~n", [length(TableNames)]),
             case lists:member(?TABLE_NAME, TableNames) of
@@ -48,7 +48,7 @@ run() ->
             <<"Tags">> => #{<<"SS">> => [<<"erlang">>, <<"dynamodb">>, <<"smithy">>]}
         }
     },
-    case dynamo_db_20120810_client:put_item(Config, PutInput) of
+    case dynamodb_client:put_item(Config, PutInput) of
         {ok, _PutOutput} ->
             io:format("SUCCESS: Item '~s' inserted~n", [ItemKey]);
         {error, PutError} ->
@@ -64,7 +64,7 @@ run() ->
             ?HASH_KEY => #{<<"S">> => ItemKey}
         }
     },
-    case dynamo_db_20120810_client:get_item(Config, GetInput) of
+    case dynamodb_client:get_item(Config, GetInput) of
         {ok, #get_item_output{item = Item}} when is_map(Item) ->
             io:format("SUCCESS: Retrieved item~n"),
             Name = maps:get(<<"S">>, maps:get(<<"Name">>, Item, #{}), <<>>),
@@ -95,7 +95,7 @@ run() ->
             <<"Active">> => #{<<"BOOL">> => false}
         }
     },
-    case dynamo_db_20120810_client:put_item(Config, PutInput2) of
+    case dynamodb_client:put_item(Config, PutInput2) of
         {ok, _PutOutput2} ->
             io:format("SUCCESS: Item '~s' inserted~n", [ItemKey2]);
         {error, PutError2} ->
@@ -108,7 +108,7 @@ run() ->
     ScanInput = #scan_input{
         table_name = ?TABLE_NAME
     },
-    case dynamo_db_20120810_client:scan(Config, ScanInput) of
+    case dynamodb_client:scan(Config, ScanInput) of
         {ok, Items} when is_list(Items) ->
             Count = length(Items),
             io:format("SUCCESS: Scanned ~p item(s)~n", [Count]),
@@ -138,7 +138,7 @@ run() ->
             ?HASH_KEY => #{<<"S">> => ItemKey}
         }
     },
-    case dynamo_db_20120810_client:delete_item(Config, DeleteInput) of
+    case dynamodb_client:delete_item(Config, DeleteInput) of
         {ok, _DeleteOutput} ->
             io:format("SUCCESS: Item '~s' deleted~n", [ItemKey]);
         {error, DeleteError} ->
@@ -148,7 +148,7 @@ run() ->
 
     %% 7. Verify deletion with GetItem
     io:format("--- GetItem (verify deletion) ---~n"),
-    case dynamo_db_20120810_client:get_item(Config, GetInput) of
+    case dynamodb_client:get_item(Config, GetInput) of
         {ok, #get_item_output{item = undefined}} ->
             io:format("SUCCESS: Item '~s' confirmed deleted~n", [ItemKey]);
         {ok, _} ->
@@ -166,7 +166,7 @@ run() ->
             ?HASH_KEY => #{<<"S">> => ItemKey2}
         }
     },
-    case dynamo_db_20120810_client:delete_item(Config, DeleteInput2) of
+    case dynamodb_client:delete_item(Config, DeleteInput2) of
         {ok, _} ->
             io:format("SUCCESS: Item '~s' deleted~n", [ItemKey2]);
         {error, DeleteError2} ->
@@ -209,7 +209,7 @@ create_demo_table(Config) ->
         ],
         billing_mode = pay_per_request
     },
-    case dynamo_db_20120810_client:create_table(Config, Input) of
+    case dynamodb_client:create_table(Config, Input) of
         {ok, _} ->
             io:format("SUCCESS: Table '~s' create requested~n", [?TABLE_NAME]);
         {error, #resource_in_use_exception{}} ->
@@ -219,7 +219,7 @@ create_demo_table(Config) ->
     end,
     io:format("--- Wait TableExists ---~n"),
     WaitInput = #describe_table_input{table_name = ?TABLE_NAME},
-    case dynamo_db_20120810_waiters:wait_table_exists(Config, WaitInput, #{}) of
+    case dynamodb_waiters:wait_table_exists(Config, WaitInput, #{}) of
         {ok, _} ->
             io:format("SUCCESS: Table '~s' is ACTIVE~n~n", [?TABLE_NAME]);
         {error, WaitReason} ->
@@ -235,7 +235,7 @@ setup_infrastructure(Config) ->
 
 delete_demo_table(Config) ->
     io:format("--- DeleteTable ---~n"),
-    case dynamo_db_20120810_client:delete_table(Config,
+    case dynamodb_client:delete_table(Config,
         #delete_table_input{table_name = ?TABLE_NAME}) of
         {ok, _} ->
             io:format("SUCCESS: Table '~s' delete requested~n", [?TABLE_NAME]);
@@ -245,7 +245,7 @@ delete_demo_table(Config) ->
             erlang:error({delete_table_failed, Reason})
     end,
     io:format("--- Wait TableNotExists ---~n"),
-    case dynamo_db_20120810_waiters:wait_table_not_exists(Config,
+    case dynamodb_waiters:wait_table_not_exists(Config,
         #describe_table_input{table_name = ?TABLE_NAME}, #{}) of
         {ok, _} ->
             io:format("SUCCESS: Table '~s' removed~n~n", [?TABLE_NAME]);
