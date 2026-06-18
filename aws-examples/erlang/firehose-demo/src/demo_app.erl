@@ -1,7 +1,7 @@
 -module(demo_app).
 -export([run/0]).
 
--include("firehose_20150804_types.hrl").
+-include("firehose_types.hrl").
 
 -define(STREAM_NAME, <<"firehose-demo-stream">>).
 
@@ -13,7 +13,7 @@ run() ->
 
   %% 1. List delivery streams (should be empty initially — no assertion required)
     io:format("--- ListDeliveryStreams (initial) ---~n"),
-    case firehose_20150804_client:list_delivery_streams(Config, #list_delivery_streams_input{}) of
+    case firehose_client:list_delivery_streams(Config, #list_delivery_streams_input{}) of
         {ok, #list_delivery_streams_output{delivery_stream_names = StreamNames}} ->
             io:format("SUCCESS: Found ~p delivery stream(s)~n", [length(StreamNames)]),
             lists:foreach(
@@ -55,7 +55,7 @@ run() ->
             #tag{key = <<"Project">>, value = <<"smithy-erlang">>}
         ]
     },
-    StreamCreated = case firehose_20150804_client:create_delivery_stream(Config, CreateInput) of
+    StreamCreated = case firehose_client:create_delivery_stream(Config, CreateInput) of
         {ok, #create_delivery_stream_output{delivery_stream_arn = Arn}} ->
             io:format("SUCCESS: Created delivery stream~n"),
             io:format("    ARN: ~s~n", [Arn]),
@@ -74,7 +74,7 @@ run() ->
 
           %% 3. List delivery streams again — assert stream appears in list
             io:format("--- ListDeliveryStreams ---~n"),
-            case firehose_20150804_client:list_delivery_streams(Config, #list_delivery_streams_input{}) of
+            case firehose_client:list_delivery_streams(Config, #list_delivery_streams_input{}) of
                 {ok, #list_delivery_streams_output{delivery_stream_names = StreamNames2}} ->
                     case StreamNames2 of
                         [] -> erlang:error({assertion_failed, empty_stream_list_after_create});
@@ -98,7 +98,7 @@ run() ->
             DescribeInput = #describe_delivery_stream_input{
                 delivery_stream_name = ?STREAM_NAME
             },
-            case firehose_20150804_client:describe_delivery_stream(Config, DescribeInput) of
+            case firehose_client:describe_delivery_stream(Config, DescribeInput) of
                 {ok, #describe_delivery_stream_output{
                     delivery_stream_description = #delivery_stream_description{
                         delivery_stream_arn = StreamArn,
@@ -124,7 +124,7 @@ run() ->
             TagsInput = #list_tags_for_delivery_stream_input{
                 delivery_stream_name = ?STREAM_NAME
             },
-            case firehose_20150804_client:list_tags_for_delivery_stream(Config, TagsInput) of
+            case firehose_client:list_tags_for_delivery_stream(Config, TagsInput) of
                 {ok, #list_tags_for_delivery_stream_output{tags = Tags}} ->
                     io:format("SUCCESS: Found ~p tag(s):~n", [length(Tags)]),
                     lists:foreach(
@@ -150,7 +150,7 @@ run() ->
                 delivery_stream_name = ?STREAM_NAME,
                 record = #record{data = base64:encode(<<Record1/binary, "\n">>)}
             },
-            case firehose_20150804_client:put_record(Config, PutInput) of
+            case firehose_client:put_record(Config, PutInput) of
                 {ok, #put_record_output{record_id = RecordId}} ->
                     io:format("SUCCESS: Record sent, ID: ~s~n", [RecordId]);
                 {error, PutError} ->
@@ -184,7 +184,7 @@ run() ->
                 delivery_stream_name = ?STREAM_NAME,
                 records = Records
             },
-            case firehose_20150804_client:put_record_batch(Config, BatchInput) of
+            case firehose_client:put_record_batch(Config, BatchInput) of
                 {ok, #put_record_batch_output{
                     failed_put_count = FailedCount,
                     request_responses = RequestResponses
@@ -215,7 +215,7 @@ run() ->
                 delivery_stream_name = ?STREAM_NAME,
                 tags = [#tag{key = <<"CreatedBy">>, value = <<"smithy-erlang">>}]
             },
-            case firehose_20150804_client:tag_delivery_stream(Config, TagInput) of
+            case firehose_client:tag_delivery_stream(Config, TagInput) of
                 {ok, _} ->
                     io:format("SUCCESS: Tag added~n");
                 {error, TagError} ->
@@ -229,7 +229,7 @@ run() ->
                 delivery_stream_name = ?STREAM_NAME,
                 tag_keys = [<<"CreatedBy">>]
             },
-            case firehose_20150804_client:untag_delivery_stream(Config, UntagInput) of
+            case firehose_client:untag_delivery_stream(Config, UntagInput) of
                 {ok, _} ->
                     io:format("SUCCESS: Tag 'CreatedBy' removed~n");
                 {error, UntagError} ->
@@ -242,7 +242,7 @@ run() ->
             DeleteInput = #delete_delivery_stream_input{
                 delivery_stream_name = ?STREAM_NAME
             },
-            case firehose_20150804_client:delete_delivery_stream(Config, DeleteInput) of
+            case firehose_client:delete_delivery_stream(Config, DeleteInput) of
                 {ok, _} ->
                     io:format("SUCCESS: Delivery stream deleted~n");
                 {error, DeleteError} ->
@@ -253,7 +253,7 @@ run() ->
           %% 11. Verify deletion — crash if stream still exists
             io:format("--- ListDeliveryStreams (verify deletion) ---~n"),
             timer:sleep(1000),
-            case firehose_20150804_client:list_delivery_streams(Config, #list_delivery_streams_input{}) of
+            case firehose_client:list_delivery_streams(Config, #list_delivery_streams_input{}) of
                 {ok, #list_delivery_streams_output{delivery_stream_names = FinalStreams}} ->
                     case lists:member(?STREAM_NAME, FinalStreams) of
                         false ->

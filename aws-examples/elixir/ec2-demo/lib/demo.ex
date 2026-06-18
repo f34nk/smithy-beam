@@ -1,13 +1,13 @@
 defmodule Demo do
   @moduledoc """
   EC2 demo covering DescribeVpcs, DescribeSecurityGroups, RunInstances,
-  DescribeInstances, and TerminateInstances via the generated AmazonEc2Client.
+  DescribeInstances, and TerminateInstances via the generated Ec2Client.
 
   Uses the aws.protocols#ec2Query protocol (XML over HTTPS).
   Run against LocalStack: make demo
   """
 
-  alias AmazonEc2Types.{
+  alias Ec2Types.{
     DescribeInstancesInput,
     DescribeSecurityGroupsInput,
     DescribeVpcsInput,
@@ -52,7 +52,7 @@ defmodule Demo do
   defp describe_vpcs(config) do
     IO.puts("--- DescribeVpcs ---")
 
-    case AmazonEc2Client.describe_vpcs(config, %DescribeVpcsInput{}) do
+    case Ec2Client.describe_vpcs(config, %DescribeVpcsInput{}) do
       {:ok, %{vpcs: vpcs}} when is_list(vpcs) and vpcs != [] ->
         IO.puts("SUCCESS: Found #{length(vpcs)} VPC(s)")
         Enum.each(vpcs, fn %Vpc{vpc_id: id, cidr_block: cidr} ->
@@ -72,7 +72,7 @@ defmodule Demo do
   defp describe_security_groups(config) do
     IO.puts("--- DescribeSecurityGroups ---")
 
-    case AmazonEc2Client.describe_security_groups(config, %DescribeSecurityGroupsInput{}) do
+    case Ec2Client.describe_security_groups(config, %DescribeSecurityGroupsInput{}) do
       {:ok, %{security_groups: sgs}} when is_list(sgs) and sgs != [] ->
         IO.puts("SUCCESS: Found #{length(sgs)} Security Group(s)")
         Enum.each(sgs, fn sg ->
@@ -105,7 +105,7 @@ defmodule Demo do
       ]
     }
 
-    case AmazonEc2Client.run_instances(config, input) do
+    case Ec2Client.run_instances(config, input) do
       {:ok, %{instances: [%Instance{instance_id: instance_id} | _]}}
       when is_binary(instance_id) ->
         IO.puts("SUCCESS: InstanceId = #{instance_id}\n")
@@ -124,7 +124,7 @@ defmodule Demo do
 
     input = %DescribeInstancesInput{instance_ids: [instance_id]}
 
-    case AmazonEc2Client.describe_instances(config, input) do
+    case Ec2Client.describe_instances(config, input) do
       {:ok, %{reservations: reservations}} ->
         instances = instances_from_reservations(reservations)
         described_ids = Enum.map(instances, & &1.instance_id)
@@ -150,7 +150,7 @@ defmodule Demo do
 
     input = %TerminateInstancesInput{instance_ids: [instance_id]}
 
-    case AmazonEc2Client.terminate_instances(config, input) do
+    case Ec2Client.terminate_instances(config, input) do
       {:ok, %{terminating_instances: instances}} ->
         IO.puts("SUCCESS: TerminateInstances returned")
         print_terminating_instances(instances)

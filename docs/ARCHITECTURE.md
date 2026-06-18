@@ -113,7 +113,8 @@ Type-only generation lists a public types plugin:
   "plugins": {
     "erlang-types-codegen": {
       "service": "com.example#MyService",
-      "package": "my_service"
+      "edition": "2026",
+      "name": "my_service"
     }
   }
 }
@@ -128,11 +129,14 @@ entry class for that language (for example `ErlangTypeGeneration` or `ElixirType
   "plugins": {
     "elixir-client-codegen": {
       "service": "com.example#MyService",
-      "package": "my_service"
+      "edition": "2026",
+      "name": "my_service"
     }
   }
 }
 ```
+
+The optional **name** setting supplies a snake_case stem for all service-scoped generated modules and files. Role suffixes (`_client`, `_types`, protocol codec suffixes, and so on) are appended by the generator. When unset, the stem is derived from the service shape id, honoring service rename maps. This matches the smithy-java **name** property semantics, adapted for BEAM snake_case module names.
 
 If a projection lists both a standalone types plugin and a client or server
 plugin, both paths must use the same language-specific type-generation entry

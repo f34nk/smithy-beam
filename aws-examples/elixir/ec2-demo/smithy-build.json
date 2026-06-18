@@ -22,7 +22,8 @@
   "plugins": {
     "elixir-client-codegen": {
       "service": "com.amazonaws.ec2#AmazonEC2",
-      "edition": "2026"
+      "edition": "2026",
+      "name": "ec2"
     }
   }
 }

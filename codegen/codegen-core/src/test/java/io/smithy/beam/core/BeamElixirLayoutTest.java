@@ -22,4 +22,21 @@ class BeamElixirLayoutTest {
         assertThat(layout.typesModuleFile()).isEqualTo("basic_service_types.ex");
         assertThat(layout.clientModuleFile()).isEqualTo("basic_service_client.ex");
     }
+
+    @Test
+    void nameOverride_replacesDerivedStemForAllRoles() {
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        settings.name("aws_lambda");
+        ServiceShape service = ServiceShape.builder()
+                .id(ShapeId.from("com.amazonaws.lambda#AWSGirApiService"))
+                .version("1")
+                .build();
+        BeamElixirLayout layout =
+                new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+
+        assertThat(layout.clientModuleFile()).isEqualTo("aws_lambda_client.ex");
+        assertThat(layout.typesModuleFile()).isEqualTo("aws_lambda_types.ex");
+        assertThat(layout.sigv4ModuleFile()).isEqualTo("aws_lambda_sigv4.ex");
+    }
 }

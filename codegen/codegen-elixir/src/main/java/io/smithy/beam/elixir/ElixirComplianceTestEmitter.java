@@ -44,7 +44,7 @@ public final class ElixirComplianceTestEmitter {
         }
 
         BeamElixirLayout layout = new BeamElixirLayout(
-                settings, service.getId().getNamespace(), service.getId().getName());
+                settings, service.getId().getNamespace(), service);
         String moduleName = ElixirSymbolProvider.toModuleName(layout.complianceTestsModuleName());
         String clientCodecMod = ElixirSymbolProvider.toModuleName(layout.clientCodecModuleName(protocol));
         String serverCodecMod = ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName(protocol));

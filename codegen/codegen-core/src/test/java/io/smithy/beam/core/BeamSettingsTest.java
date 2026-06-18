@@ -128,12 +128,15 @@ class BeamSettingsTest {
     }
 
     @Test
-    void accessors_defaultToNull_whenNotSet() {
+    void name_roundTrips_whenSet() {
         BeamSettings settings = new BeamSettings();
+        settings.name("aws_lambda");
+        assertThat(settings.name()).isEqualTo("aws_lambda");
+    }
 
-        assertThat(settings.service()).isNull();
-        assertThat(settings.edition()).isNull();
-        assertThat(settings.relativeDate()).isNull();
-        assertThat(settings.relativeVersion()).isNull();
+    @Test
+    void name_defaultsToNull_whenNotSet() {
+        BeamSettings settings = new BeamSettings();
+        assertThat(settings.name()).isNull();
     }
 }

@@ -231,7 +231,7 @@ public final class BeamElixirLayout {
     }
 
     private String serviceSnakeName() {
-        return BeamNameUtils.toSnakeCase(requireServiceName());
+        return BeamServiceNaming.effectiveServiceSnakeName(settings, requireServiceName());
     }
 
     private String requireServiceName() {

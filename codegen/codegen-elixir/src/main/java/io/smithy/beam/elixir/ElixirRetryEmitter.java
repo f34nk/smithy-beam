@@ -29,7 +29,7 @@ public final class ElixirRetryEmitter {
         }
 
         BeamElixirLayout layout = new BeamElixirLayout(
-                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
+                ctx.settings(), service.getId().getNamespace(), service);
         String retryMod = ElixirSymbolProvider.toModuleName(layout.retryModuleName());
         String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
         SymbolProvider sp = ctx.symbolProvider();

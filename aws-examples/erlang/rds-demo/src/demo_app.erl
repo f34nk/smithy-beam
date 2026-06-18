@@ -1,7 +1,7 @@
 -module(demo_app).
 -export([run/0]).
 
--include("amazon_rd_sv19_types.hrl").
+-include("rds_types.hrl").
 
 -define(TEST_PARAM_GROUP_NAME, <<"rds-demo-test-param-group">>).
 
@@ -15,7 +15,7 @@ run() ->
 
     %% 1. Describe account attributes
     io:format("--- DescribeAccountAttributes ---~n"),
-    case amazon_rd_sv19_client:describe_account_attributes(
+    case rds_client:describe_account_attributes(
         Config, #describe_account_attributes_input{}) of
         {ok, #describe_account_attributes_output{account_quotas = Quotas}} ->
             io:format("SUCCESS: Found ~p account quota(s)~n", [length(Quotas)]),
@@ -38,7 +38,7 @@ run() ->
 
     %% 2. Describe DB subnet groups
     io:format("--- DescribeDBSubnetGroups ---~n"),
-    case amazon_rd_sv19_client:describe_db_subnet_groups(
+    case rds_client:describe_db_subnet_groups(
         Config, #describe_db_subnet_groups_input{}) of
         {ok, #describe_db_subnet_groups_output{db_subnet_groups = SubnetGroups}} ->
             io:format("SUCCESS: Found ~p DB subnet group(s)~n", [length(SubnetGroups)]),
@@ -57,7 +57,7 @@ run() ->
 
     %% 3. Describe DB parameter groups
     io:format("--- DescribeDBParameterGroups ---~n"),
-    case amazon_rd_sv19_client:describe_db_parameter_groups(
+    case rds_client:describe_db_parameter_groups(
         Config, #describe_db_parameter_groups_input{}) of
         {ok, #describe_db_parameter_groups_output{db_parameter_groups = ParamGroups}} ->
             io:format("SUCCESS: Found ~p DB parameter group(s)~n", [length(ParamGroups)]),
@@ -85,7 +85,7 @@ run() ->
             #tag{key = <<"CreatedBy">>, value = <<"smithy-erlang">>}
         ]
     },
-    ParamGroupCreated = case amazon_rd_sv19_client:create_db_parameter_group(Config, CreateParamInput) of
+    ParamGroupCreated = case rds_client:create_db_parameter_group(Config, CreateParamInput) of
         {ok, #create_db_parameter_group_output{
             db_parameter_group = #db_parameter_group{
                 db_parameter_group_name = ?TEST_PARAM_GROUP_NAME
@@ -109,7 +109,7 @@ run() ->
     case ParamGroupCreated of
         true ->
             io:format("--- DescribeDBParameterGroups (after create) ---~n"),
-            case amazon_rd_sv19_client:describe_db_parameter_groups(
+            case rds_client:describe_db_parameter_groups(
                 Config, #describe_db_parameter_groups_input{}) of
                 {ok, #describe_db_parameter_groups_output{db_parameter_groups = PostGroups}} ->
                     PostGroupNames = [G#db_parameter_group.db_parameter_group_name || G <- PostGroups],
@@ -129,7 +129,7 @@ run() ->
 
     %% 5. Describe DB instances
     io:format("--- DescribeDBInstances ---~n"),
-    case amazon_rd_sv19_client:describe_db_instances(Config, #describe_db_instances_input{}) of
+    case rds_client:describe_db_instances(Config, #describe_db_instances_input{}) of
         {ok, #describe_db_instances_output{db_instances = Instances}} ->
             io:format("SUCCESS: Found ~p DB instance(s)~n", [length(Instances)]),
             lists:foreach(
@@ -156,7 +156,7 @@ run() ->
         engine = <<"mysql">>,
         max_records = 5
     },
-    case amazon_rd_sv19_client:describe_db_engine_versions(Config, EngineInput) of
+    case rds_client:describe_db_engine_versions(Config, EngineInput) of
         {ok, #describe_db_engine_versions_output{db_engine_versions = Versions}} ->
             io:format("SUCCESS: Found ~p engine version(s)~n", [length(Versions)]),
             lists:foreach(
@@ -174,7 +174,7 @@ run() ->
 
     %% 7. Describe DB clusters
     io:format("--- DescribeDBClusters ---~n"),
-    case amazon_rd_sv19_client:describe_db_clusters(Config, #describe_db_clusters_input{}) of
+    case rds_client:describe_db_clusters(Config, #describe_db_clusters_input{}) of
         {ok, #describe_db_clusters_output{db_clusters = Clusters}} ->
             io:format("SUCCESS: Found ~p DB cluster(s)~n", [length(Clusters)]),
             lists:foreach(
@@ -193,7 +193,7 @@ run() ->
     %% 8. Describe reserved DB instances offerings
     io:format("--- DescribeReservedDBInstancesOfferings ---~n"),
     OfferingsInput = #describe_reserved_db_instances_offerings_input{max_records = 5},
-    case amazon_rd_sv19_client:describe_reserved_db_instances_offerings(Config, OfferingsInput) of
+    case rds_client:describe_reserved_db_instances_offerings(Config, OfferingsInput) of
         {ok, #describe_reserved_db_instances_offerings_output{
             reserved_db_instances_offerings = Offerings
         }} ->
@@ -221,7 +221,7 @@ run() ->
             DeleteParamInput = #delete_db_parameter_group_input{
                 db_parameter_group_name = ?TEST_PARAM_GROUP_NAME
             },
-            case amazon_rd_sv19_client:delete_db_parameter_group(Config, DeleteParamInput) of
+            case rds_client:delete_db_parameter_group(Config, DeleteParamInput) of
                 {ok, _} ->
                     io:format("SUCCESS: Parameter group deleted~n");
                 {error, {unknown_error, 501, _}} ->
@@ -232,7 +232,7 @@ run() ->
             io:format("~n"),
 
             io:format("--- DescribeDBParameterGroups (after delete) ---~n"),
-            case amazon_rd_sv19_client:describe_db_parameter_groups(
+            case rds_client:describe_db_parameter_groups(
                 Config, #describe_db_parameter_groups_input{}) of
                 {ok, #describe_db_parameter_groups_output{db_parameter_groups = PostDeleteGroups}} ->
                     PostDeleteNames = [G#db_parameter_group.db_parameter_group_name || G <- PostDeleteGroups],

@@ -58,9 +58,8 @@ final class ErlangClientDirectedCodegen
     public SymbolProvider createSymbolProvider(
             CreateSymbolProviderDirective<BeamSettings> directive) {
         String ns = directive.service().getId().getNamespace();
-        String serviceName = directive.service().getId().getName();
         BeamSettings settings = directive.settings();
-        BeamErlangLayout layout = new BeamErlangLayout(settings, ns, serviceName);
+        BeamErlangLayout layout = new BeamErlangLayout(settings, ns, directive.service());
         String definitionFile = layout.clientModuleFile();
         return SymbolProvider.cache(
                 new ErlangSymbolProvider(
@@ -86,9 +85,8 @@ final class ErlangClientDirectedCodegen
                             directive.model(), resolved.get(), directive.integrations());
         }
         String ns = service.getId().getNamespace();
-        String serviceName = service.getId().getName();
         BeamSettings settings = directive.settings();
-        BeamErlangLayout layout = new BeamErlangLayout(settings, ns, serviceName);
+        BeamErlangLayout layout = new BeamErlangLayout(settings, ns, service);
         String definitionFile = layout.clientModuleFile();
         String moduleName = layout.clientModuleName();
         return new ErlangContext(
@@ -122,8 +120,7 @@ final class ErlangClientDirectedCodegen
                                         directive.model(), service, protocol, edition));
 
         String ns = service.getId().getNamespace();
-        BeamErlangLayout layout = new BeamErlangLayout(
-                ctx.settings(), ns, service.getId().getName());
+        BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns, service);
 
         ctx.writerDelegator().useFileWriter(
                 layout.runtimeTypesHeaderFile(),
@@ -281,7 +278,7 @@ final class ErlangClientDirectedCodegen
         Symbol outSym = sp.toSymbol(output);
 
         BeamErlangLayout layout = new BeamErlangLayout(
-                ctx.settings(), ctx.service().getId().getNamespace(), ctx.service().getId().getName());
+                ctx.settings(), ctx.service().getId().getNamespace(), ctx.service());
         boolean hasProtocol = BeamProtocolSupport.hasWireCodegen(
                 ctx.resolvedProtocolTraitId(), ctx.protocolCodegen(), ctx.integrations());
         boolean wrapWithRetry = BeamClientRetrySupport.operationHasRetryableErrors(ctx.model(), op);

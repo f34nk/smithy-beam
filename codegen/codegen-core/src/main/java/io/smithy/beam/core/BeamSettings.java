@@ -23,6 +23,9 @@ import java.util.List;
  *                 use this id for wire emission instead of deriving it from the service.
  *                 When unset, plugins derive the protocol from the sole @protocolDefinition
  *                 trait on the service, or emit stub-only output when none is present.
+ *   "name" -- optional snake_case stem for service-scoped module and file names.
+ *            When unset, derived from the service shape id (honoring rename maps).
+ *            Must not include role suffixes such as "_client" or "_types".
  */
 public final class BeamSettings {
 
@@ -32,6 +35,7 @@ public final class BeamSettings {
     private String relativeVersion;
     private String packageVersion;
     private ShapeId protocol;
+    private String name;
 
     public BeamSettings() {}
 
@@ -81,6 +85,14 @@ public final class BeamSettings {
 
     public ShapeId protocol() {
         return protocol;
+    }
+
+    public void name(String name) {
+        this.name = name;
+    }
+
+    public String name() {
+        return name;
     }
 
     public ShapeId resolveService(Model model) {

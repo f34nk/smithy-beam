@@ -24,7 +24,8 @@
   "plugins": {
     "erlang-client-codegen": {
       "service": "com.amazonaws.firehose#Firehose_20150804",
-      "edition": "2026"
+      "edition": "2026",
+      "name": "firehose"
     }
   }
 }
