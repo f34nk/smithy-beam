@@ -31,7 +31,7 @@ public final class ErlangRetryEmitter {
         }
 
         BeamErlangLayout layout = new BeamErlangLayout(
-                ctx.settings(), service.getId().getNamespace(), service.getId().getName());
+                ctx.settings(), service.getId().getNamespace(), service);
         String retryMod = layout.retryModuleName();
         SymbolProvider sp = ctx.symbolProvider();
 
