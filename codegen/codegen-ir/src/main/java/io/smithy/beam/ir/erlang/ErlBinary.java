@@ -19,6 +19,10 @@ public final class ErlBinary implements ErlExpr {
 
     @Override
     public List<String> lines() {
-        return List.of(ErlLayout.renderBinaryLiteral(value));
+        return List.of(renderBinaryLiteral());
+    }
+
+    private String renderBinaryLiteral() {
+        return "<<" + ErlString.string(value).asString() + ">>";
     }
 }
