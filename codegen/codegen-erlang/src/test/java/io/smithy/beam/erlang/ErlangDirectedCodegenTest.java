@@ -431,9 +431,9 @@ class ErlangDirectedCodegenTest {
         assertThat(content).doesNotContain("-type boolean() ::");
         assertThat(content).contains("-type double() :: float().");
         assertThat(content).contains("-type string() :: binary().");
-        assertThat(content).contains("f :: float()");
-        assertThat(content).contains("i :: integer()");
-        assertThat(content).contains("b :: boolean()");
+        assertThat(content).contains("f  :: float()");
+        assertThat(content).contains("i  :: integer()");
+        assertThat(content).contains("b  :: boolean()");
     }
 
     private static int countOccurrences(String haystack, String needle) {

@@ -31,6 +31,6 @@ class ClientInputOptionalityTest {
 
         String types = manifest.getFileString("demo_rest_json_types.hrl").orElse("");
         assertThat(types).contains("describe_item_input");
-        assertThat(types).contains("id :: item_id() | undefined");
+        assertThat(types).contains("id  :: item_id() | undefined");
     }
 }

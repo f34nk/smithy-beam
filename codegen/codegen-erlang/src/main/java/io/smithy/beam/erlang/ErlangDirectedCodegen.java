@@ -1,5 +1,11 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.ir.erlang.ErlComment;
+import io.smithy.beam.ir.erlang.ErlHeaderEntry;
+import io.smithy.beam.ir.erlang.ErlRecordDef;
+import io.smithy.beam.ir.erlang.ErlRecordFieldDef;
+import io.smithy.beam.ir.erlang.ErlTypeDef;
+import io.smithy.beam.ir.erlang.ErlTypeHeader;
 import io.smithy.beam.core.BeamMemberNullability;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamCodegenKind;
@@ -28,6 +34,7 @@ import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.UnionShape;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -528,47 +535,53 @@ final class ErlangDirectedCodegen
         SymbolProvider sp = directive.symbolProvider();
         NullableIndex nullableIndex = NullableIndex.of(directive.model());
         Symbol symbol = sp.toSymbol(shape);
-        // Strip trailing "()" to get the record name: "basic_item" from "basic_item()"
         String recordName = symbol.getName().replace("()", "");
         String definitionFile = symbol.getDefinitionFile();
 
         ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
             writer.pushGeneratedDocumentationSection();
             BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
-
-            List<MemberShape> members =
-                    StreamSupport.stream(shape.members().spliterator(), false).toList();
-            if (members.isEmpty()) {
-                writer.write("-record($L, {}).", recordName);
-            } else {
-                writer.openBlock("-record($L, {", recordName);
-                for (int i = 0; i < members.size(); i++) {
-                    MemberShape member = members.get(i);
-                    BeamDocumentation.forShape(member).ifPresent(doc -> {
-                        String fieldName = sp.toSymbol(member)
-                                .getProperty("fieldName", String.class).orElseThrow();
-                        writer.write("%% @doc $L", fieldName);
-                        for (String line : doc.split("\n", -1)) {
-                            if (line.isEmpty()) {
-                                writer.write("%%");
-                            } else {
-                                writer.write("%%   $L", line);
-                            }
-                        }
-                    });
-                    Symbol memberSymbol = sp.toSymbol(member);
-                    String fieldName = memberSymbol.getProperty("fieldName", String.class).orElseThrow();
-                    String memberType = renderErlangType(memberSymbol);
-                    boolean nullable = BeamMemberNullability.isMemberNullable(nullableIndex, shape, member);
-                    String typeSpec = nullable ? memberType + " | undefined" : memberType;
-                    String comma = (i < members.size() - 1) ? "," : "";
-                    writer.write("$L :: $L$L", fieldName, typeSpec, comma);
-                }
-                writer.closeBlock("}).");
-            }
-            writer.write("-type $L :: #$L{}.", symbol.getName(), recordName);
             writer.popState();
+
+            List<ErlHeaderEntry> entries = new ArrayList<>();
+            entries.add(buildStructureRecord(shape, sp, nullableIndex, recordName));
+            entries.add(new ErlTypeDef(recordName, "#" + recordName + "{}"));
+            ErlTypeHeader header = ErlTypeHeader.typeHeader(ctx.moduleName(), List.of(), entries);
+            writer.write(header.asString());
         });
+    }
+
+    private ErlRecordDef buildStructureRecord(
+            StructureShape shape,
+            SymbolProvider sp,
+            NullableIndex nullableIndex,
+            String recordName) {
+        List<MemberShape> members =
+                StreamSupport.stream(shape.members().spliterator(), false).toList();
+        if (members.isEmpty()) {
+            return new ErlRecordDef(recordName, List.of());
+        }
+        List<ErlRecordFieldDef> fields = new ArrayList<>();
+        for (MemberShape member : members) {
+            Symbol memberSymbol = sp.toSymbol(member);
+            String fieldName = memberSymbol.getProperty("fieldName", String.class).orElseThrow();
+            List<ErlComment> preamble = new ArrayList<>();
+            BeamDocumentation.forShape(member).ifPresent(doc -> {
+                preamble.add(ErlComment.comment("@doc " + fieldName));
+                for (String line : doc.split("\n", -1)) {
+                    if (line.isEmpty()) {
+                        preamble.add(ErlComment.comment(""));
+                    } else {
+                        preamble.add(ErlComment.comment("  " + line));
+                    }
+                }
+            });
+            String memberType = renderErlangType(memberSymbol);
+            boolean nullable = BeamMemberNullability.isMemberNullable(nullableIndex, shape, member);
+            String typeSpec = nullable ? memberType + " | undefined" : memberType;
+            fields.add(new ErlRecordFieldDef(fieldName, typeSpec, preamble));
+        }
+        return new ErlRecordDef(recordName, fields);
     }
 
     /**

@@ -27,6 +27,12 @@ class ErlRecordDefTest {
                         + "}).");
     }
 
+    @Test
+    void emptyRecordLines() {
+        assertThat(new ErlRecordDef("health_check_input", List.of()).lines())
+                .containsExactly("-record(health_check_input, {}).");
+    }
+
     private static ErlRecordDef basicItemRecord() {
         return new ErlRecordDef(
                 "basic_item",
