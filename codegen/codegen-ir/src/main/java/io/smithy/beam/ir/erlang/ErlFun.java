@@ -67,6 +67,11 @@ public final class ErlFun implements ErlExpr {
 
     private static List<String> funClauseLines(ErlClause clause, int indent, boolean semicolon) {
         List<String> out = new ArrayList<>();
+        if (clause.body().size() == 1 && clause.body().get(0).lines().size() == 1) {
+            out.add(IrObject.indent(indent) + funClauseHead(clause) + " -> "
+                    + clause.body().get(0).asString() + (semicolon ? ";" : ""));
+            return out;
+        }
         out.add(IrObject.indent(indent) + funClauseHead(clause) + " ->");
         for (ErlExpr expr : clause.body()) {
             if (expr.lines().size() == 1) {

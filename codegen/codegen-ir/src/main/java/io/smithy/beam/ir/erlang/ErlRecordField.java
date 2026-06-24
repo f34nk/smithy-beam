@@ -24,9 +24,22 @@ public final class ErlRecordField implements IrObject {
         return value;
     }
 
+    private static final int LINE_LIMIT = 100;
+
     @Override
     public List<String> lines(int indent) {
-        return List.of(name + " = " + value.asString());
+        String expr = value.asString();
+        String single = IrObject.indent(indent) + name + " = " + expr;
+        if (single.length() <= LINE_LIMIT) {
+            return List.of(single);
+        }
+        int open = expr.indexOf('(');
+        if (open < 0) {
+            return List.of(single);
+        }
+        return List.of(
+                IrObject.indent(indent) + name + " = " + expr.substring(0, open + 1),
+                IrObject.indent(indent + 1) + expr.substring(open + 1));
     }
 
     @Override

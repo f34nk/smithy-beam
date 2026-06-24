@@ -21,6 +21,15 @@ public final class ErlRecordPattern implements ErlPattern {
         return new ErlRecordPattern(name, List.of(fields));
     }
 
+    /** Input = #input_record{ field_a, field_b, ... } */
+    public static ErlRecordPattern recordFunctionHead(
+            String alias, String recordName, List<String> fieldNames) {
+        List<ErlRecordFieldPattern> fields = fieldNames.stream()
+                .map(ErlRecordFieldPattern::field)
+                .toList();
+        return new ErlRecordPattern(recordName, fields, alias);
+    }
+
     public String name() {
         return name;
     }

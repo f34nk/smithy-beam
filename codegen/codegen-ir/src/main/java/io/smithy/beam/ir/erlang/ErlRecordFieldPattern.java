@@ -13,6 +13,11 @@ public final class ErlRecordFieldPattern {
         return new ErlRecordFieldPattern(name, pattern);
     }
 
+    /** Positional record field: renders as the field name alone. */
+    public static ErlRecordFieldPattern field(String name) {
+        return new ErlRecordFieldPattern(name, null);
+    }
+
     public String name() {
         return name;
     }
@@ -22,6 +27,9 @@ public final class ErlRecordFieldPattern {
     }
 
     public String asString() {
+        if (pattern == null) {
+            return name;
+        }
         return name + " = " + pattern.asString();
     }
 }
