@@ -40,6 +40,39 @@ final class ErlLayout {
         return "<<\"" + escapeDoubleQuoted(value) + "\">>";
     }
 
+    static List<String> renderPercentComment(String text, int indent) {
+        String marker = indent(indent) + "%%";
+        if (!text.contains("\n")) {
+            if (text.isEmpty()) {
+                return List.of(marker);
+            }
+            return List.of(marker + " " + text);
+        }
+        List<String> out = new ArrayList<>();
+        for (String line : text.split("\n", -1)) {
+            if (line.isEmpty()) {
+                out.add(marker);
+            } else {
+                out.add(marker + " " + line);
+            }
+        }
+        return out;
+    }
+
+    static List<String> renderDocAttribute(String attribute, String text, int indent) {
+        String head = indent(indent) + "-" + attribute;
+        if (!text.contains("\n")) {
+            return List.of(head + " " + renderString(text) + ".");
+        }
+        List<String> out = new ArrayList<>();
+        out.add(head + " \"\"\"");
+        for (String line : text.split("\n", -1)) {
+            out.add(indent(indent) + line);
+        }
+        out.add(indent(indent) + "\"\"\".");
+        return out;
+    }
+
     private static boolean needsQuotedAtom(String value) {
         if (value.isEmpty()) {
             return true;

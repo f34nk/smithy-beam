@@ -6,12 +6,19 @@ import java.util.List;
 public final class ErlFunction implements IrObject {
     private final String name;
     private final int arity;
+    private final ErlFunctionDoc docOrNull;
     private final ErlFunctionSpec specOrNull;
     private final List<ErlClause> clauses;
 
-    public ErlFunction(String name, int arity, ErlFunctionSpec specOrNull, List<ErlClause> clauses) {
+    public ErlFunction(
+            String name,
+            int arity,
+            ErlFunctionDoc docOrNull,
+            ErlFunctionSpec specOrNull,
+            List<ErlClause> clauses) {
         this.name = name;
         this.arity = arity;
+        this.docOrNull = docOrNull;
         this.specOrNull = specOrNull;
         this.clauses = List.copyOf(clauses);
     }
@@ -24,6 +31,10 @@ public final class ErlFunction implements IrObject {
         return arity;
     }
 
+    public ErlFunctionDoc docOrNull() {
+        return docOrNull;
+    }
+
     public ErlFunctionSpec specOrNull() {
         return specOrNull;
     }
@@ -32,9 +43,39 @@ public final class ErlFunction implements IrObject {
         return clauses;
     }
 
+    public static ErlFunction function(String name, int arity, List<ErlClause> clauses) {
+        return new ErlFunction(name, arity, null, null, clauses);
+    }
+
+    public static ErlFunction functionWithSpec(
+            String name, int arity, ErlFunctionSpec spec, List<ErlClause> clauses) {
+        return new ErlFunction(name, arity, null, spec, clauses);
+    }
+
+    public static ErlFunction functionWithDocAndSpec(
+            String name,
+            int arity,
+            ErlFunctionDoc doc,
+            ErlFunctionSpec spec,
+            List<ErlClause> clauses) {
+        return new ErlFunction(name, arity, doc, spec, clauses);
+    }
+
+    public static ErlFunction functionWithSpec(
+            String name,
+            int arity,
+            String inputTypes,
+            String outputTypes,
+            List<ErlClause> clauses) {
+        return functionWithSpec(name, arity, ErlFunctionSpec.functionSpec(name, inputTypes, outputTypes), clauses);
+    }
+
     @Override
     public List<String> lines(int indent) {
         List<String> out = new ArrayList<>();
+        if (docOrNull != null) {
+            out.addAll(docOrNull.lines(indent));
+        }
         if (specOrNull != null) {
             out.addAll(specOrNull.lines(indent));
         }

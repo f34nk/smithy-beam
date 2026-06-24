@@ -23,27 +23,49 @@ class ErlFunctionTest {
         assertThat(fn.asString()).isEqualTo(readExpectedString("ir/decode_basic_item.expected.erl"));
     }
 
+    @Test
+    void decodeBasicItemWithDocAsString() throws IOException {
+        ErlFunction fn = buildDecodeBasicItemWithDoc();
+        assertThat(fn.asString()).isEqualTo(readExpectedString("ir/decode_basic_item_with_doc.expected.erl"));
+    }
+
     private static ErlFunction buildDecodeBasicItem() {
-        return new ErlFunction(
+        return ErlFunction.functionWithSpec(
                 "decode_basic_item",
                 1,
-                new ErlFunctionSpec(
+                ErlFunctionSpec.functionSpec(
                         "decode_basic_item",
                         "undefined | null | map()",
                         "undefined | #basic_item{}"),
-                List.of(
-                        new ErlClause(
-                                List.of(new ErlAtomPattern("undefined")),
-                                List.of(),
-                                List.of(new ErlAtom("undefined"))),
-                        new ErlClause(
-                                List.of(new ErlAtomPattern("null")),
-                                List.of(),
-                                List.of(new ErlAtom("undefined"))),
-                        new ErlClause(
-                                List.of(new ErlVarPattern("Map")),
-                                List.of(new ErlGuard("is_map", List.of(new ErlVar("Map")))),
-                                List.of(basicItemRecord()))));
+                decodeBasicItemClauses());
+    }
+
+    private static ErlFunction buildDecodeBasicItemWithDoc() {
+        return ErlFunction.functionWithDocAndSpec(
+                "decode_basic_item",
+                1,
+                ErlFunctionDoc.functionDoc("Decode a BasicItem from a JSON map."),
+                ErlFunctionSpec.functionSpec(
+                        "decode_basic_item",
+                        "undefined | null | map()",
+                        "undefined | #basic_item{}"),
+                decodeBasicItemClauses());
+    }
+
+    private static List<ErlClause> decodeBasicItemClauses() {
+        return List.of(
+                new ErlClause(
+                        List.of(new ErlAtomPattern("undefined")),
+                        List.of(),
+                        List.of(new ErlAtom("undefined"))),
+                new ErlClause(
+                        List.of(new ErlAtomPattern("null")),
+                        List.of(),
+                        List.of(new ErlAtom("undefined"))),
+                new ErlClause(
+                        List.of(new ErlVarPattern("Map")),
+                        List.of(new ErlGuard("is_map", List.of(new ErlVar("Map")))),
+                        List.of(basicItemRecord())));
     }
 
     private static ErlRecord basicItemRecord() {
