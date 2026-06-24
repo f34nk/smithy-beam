@@ -53,6 +53,42 @@ class ErlClauseTest {
     }
 
     @Test
+    void recordPatternClauseStaysSingleLine() {
+        ErlClause clause = new ErlClause(
+                List.of(ErlRecordPattern.recordPattern(
+                        "http_response",
+                        ErlRecordFieldPattern.fieldPattern("status", ErlIntegerPattern.integerPattern(200)),
+                        ErlRecordFieldPattern.fieldPattern("headers", ErlVarPattern.varPattern("Headers")),
+                        ErlRecordFieldPattern.fieldPattern("body", ErlVarPattern.varPattern("Body")))),
+                List.of(),
+                List.of(new ErlAtom("ok")));
+        assertThat(clause.lines(0, "decode_get_name_response", false))
+                .containsExactly(
+                        "decode_get_name_response(#http_response{status = 200, headers = Headers, body = Body}) -> ok.");
+    }
+
+    @Test
+    void aliasedEmptyMapClauseStaysSingleLine() {
+        ErlClause clause = new ErlClause(
+                List.of(new ErlRecordPattern("", List.of(), "Map")),
+                List.of(),
+                List.of(new ErlAtom("undefined")));
+        assertThat(clause.lines(0, "decode_event", false))
+                .containsExactly("decode_event(Map = #{}) -> undefined.");
+    }
+
+    @Test
+    void aliasedRecordClauseStaysSingleLine() {
+        ErlClause clause = new ErlClause(
+                List.of(ErlRecordPattern.recordFunctionHead(
+                        "Input", "input_record", List.of("field_a", "field_b"))),
+                List.of(),
+                List.of(new ErlAtom("ok")));
+        assertThat(clause.lines(0, "handle", false))
+                .containsExactly("handle(Input = #input_record{field_a, field_b}) -> ok.");
+    }
+
+    @Test
     void multilineRecordBodyAsString() {
         ErlRecord record = basicItemRecord();
         assertThat(record.asString(1)).isEqualTo(
