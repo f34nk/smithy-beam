@@ -11,6 +11,10 @@ public final class ErlGuard implements IrObject {
         this.args = List.copyOf(args);
     }
 
+    public static ErlGuard guard(String function, ErlExpr... args) {
+        return new ErlGuard(function, List.of(args));
+    }
+
     public String function() {
         return function;
     }

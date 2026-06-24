@@ -13,6 +13,10 @@ public final class ErlCall implements ErlExpr {
         this.args = List.copyOf(args);
     }
 
+    public static ErlCall call(String module, String function, ErlExpr... args) {
+        return new ErlCall(ErlAtom.atom(module), function, List.of(args));
+    }
+
     public ErlAtom module() {
         return module;
     }

@@ -13,6 +13,10 @@ public final class ErlFunctionSpec implements IrObject {
         this.outputTypes = outputTypes;
     }
 
+    public static ErlFunctionSpec functionSpec(String name, String inputTypes, String outputTypes) {
+        return new ErlFunctionSpec(name, inputTypes, outputTypes);
+    }
+
     public String name() {
         return name;
     }

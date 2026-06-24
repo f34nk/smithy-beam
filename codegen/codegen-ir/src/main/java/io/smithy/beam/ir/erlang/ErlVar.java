@@ -9,6 +9,10 @@ public final class ErlVar implements ErlExpr {
         this.name = name;
     }
 
+    public static ErlVar var(String name) {
+        return new ErlVar(name);
+    }
+
     public String name() {
         return name;
     }

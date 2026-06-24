@@ -9,6 +9,10 @@ public final class ErlBinary implements ErlExpr {
         this.value = value;
     }
 
+    public static ErlBinary binary(String value) {
+        return new ErlBinary(value);
+    }
+
     public String value() {
         return value;
     }

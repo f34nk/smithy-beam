@@ -9,6 +9,10 @@ public final class ErlVarPattern implements ErlPattern {
         this.name = name;
     }
 
+    public static ErlVarPattern varPattern(String name) {
+        return new ErlVarPattern(name);
+    }
+
     public String name() {
         return name;
     }

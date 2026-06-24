@@ -10,7 +10,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ErlangIrTest {
+class DecodeBasicItemGoldenTest {
     @Test
     void buildsDecodeBasicItemFunction() {
         ErlFunction decodeBasicItem = decodeBasicItemFunction(null);
@@ -36,7 +36,7 @@ class ErlangIrTest {
     @Test
     void decodeBasicItemLinesMatchGolden() throws IOException {
         ErlFunction decodeBasicItem = decodeBasicItemFunction(
-                ErlangIr.functionSpec(
+                ErlFunctionSpec.functionSpec(
                         "decode_basic_item",
                         "undefined | null | map()",
                         "undefined | #basic_item{}"));
@@ -47,7 +47,7 @@ class ErlangIrTest {
     @Test
     void decodeBasicItemAsStringMatchGolden() throws IOException {
         ErlFunction decodeBasicItem = decodeBasicItemFunction(
-                ErlangIr.functionSpec(
+                ErlFunctionSpec.functionSpec(
                         "decode_basic_item",
                         "undefined | null | map()",
                         "undefined | #basic_item{}"));
@@ -56,7 +56,7 @@ class ErlangIrTest {
     }
 
     private static String readExpectedString(String resourcePath) throws IOException {
-        try (InputStream in = ErlangIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
+        try (InputStream in = DecodeBasicItemGoldenTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
             assertThat(in).as("resource %s", resourcePath).isNotNull();
             String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             if (text.endsWith("\n")) {
@@ -68,46 +68,46 @@ class ErlangIrTest {
 
     private static ErlFunction decodeBasicItemFunction(ErlFunctionSpec specOrNull) {
         List<ErlClause> clauses = List.of(
-                ErlangIr.clause(
-                        List.of(ErlangIr.atomPattern("undefined")),
-                        ErlangIr.atom("undefined")),
-                ErlangIr.clause(
-                        List.of(ErlangIr.atomPattern("null")),
-                        ErlangIr.atom("undefined")),
-                ErlangIr.clause(
-                        List.of(ErlangIr.varPattern("Map")),
-                        List.of(ErlangIr.guard("is_map", ErlangIr.var("Map"))),
+                ErlClause.clause(
+                        List.of(ErlAtomPattern.atomPattern("undefined")),
+                        ErlAtom.atom("undefined")),
+                ErlClause.clause(
+                        List.of(ErlAtomPattern.atomPattern("null")),
+                        ErlAtom.atom("undefined")),
+                ErlClause.clause(
+                        List.of(ErlVarPattern.varPattern("Map")),
+                        List.of(ErlGuard.guard("is_map", ErlVar.var("Map"))),
                         basicItemRecord()));
 
         if (specOrNull == null) {
-            return ErlangIr.function("decode_basic_item", 1, clauses);
+            return ErlFunction.function("decode_basic_item", 1, clauses);
         }
-        return ErlangIr.functionWithSpec("decode_basic_item", 1, specOrNull, clauses);
+        return ErlFunction.functionWithSpec("decode_basic_item", 1, specOrNull, clauses);
     }
 
     private static ErlRecord basicItemRecord() {
-        return ErlangIr.record(
+        return ErlRecord.record(
                 "basic_item",
-                ErlangIr.field(
+                ErlRecordField.field(
                         "name",
-                        ErlangIr.call(
+                        ErlCall.call(
                                 "maps",
                                 "get",
-                                ErlangIr.binary("name"),
-                                ErlangIr.var("Map"),
-                                ErlangIr.atom("undefined"))),
-                ErlangIr.field(
+                                ErlBinary.binary("name"),
+                                ErlVar.var("Map"),
+                                ErlAtom.atom("undefined"))),
+                ErlRecordField.field(
                         "count",
-                        ErlangIr.call(
+                        ErlCall.call(
                                 "maps",
                                 "get",
-                                ErlangIr.binary("count"),
-                                ErlangIr.var("Map"),
-                                ErlangIr.atom("undefined"))));
+                                ErlBinary.binary("count"),
+                                ErlVar.var("Map"),
+                                ErlAtom.atom("undefined"))));
     }
 
     private static List<String> readExpectedLines(String resourcePath) throws IOException {
-        try (InputStream in = ErlangIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
+        try (InputStream in = DecodeBasicItemGoldenTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
             assertThat(in).as("resource %s", resourcePath).isNotNull();
             String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             if (text.endsWith("\n")) {

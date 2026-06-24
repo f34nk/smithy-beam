@@ -9,6 +9,10 @@ public final class ErlString implements ErlExpr {
         this.value = value;
     }
 
+    public static ErlString string(String value) {
+        return new ErlString(value);
+    }
+
     public String value() {
         return value;
     }

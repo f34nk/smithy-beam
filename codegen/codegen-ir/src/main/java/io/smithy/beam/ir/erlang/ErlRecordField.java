@@ -12,6 +12,10 @@ public final class ErlRecordField implements IrObject {
         this.value = value;
     }
 
+    public static ErlRecordField field(String name, ErlExpr value) {
+        return new ErlRecordField(name, value);
+    }
+
     public String name() {
         return name;
     }

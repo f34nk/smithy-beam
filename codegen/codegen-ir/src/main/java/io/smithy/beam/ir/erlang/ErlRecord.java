@@ -14,6 +14,14 @@ public final class ErlRecord implements ErlExpr {
         this.fields = List.copyOf(fields);
     }
 
+    public static ErlRecord record(String name, ErlRecordField... fields) {
+        return new ErlRecord(name, null, List.of(fields));
+    }
+
+    public static ErlRecord recordUpdate(ErlExpr record, String name, ErlRecordField... fields) {
+        return new ErlRecord(name, record, List.of(fields));
+    }
+
     public String name() {
         return name;
     }

@@ -9,6 +9,10 @@ public final class ErlIntegerPattern implements ErlPattern {
         this.value = value;
     }
 
+    public static ErlIntegerPattern integerPattern(long value) {
+        return new ErlIntegerPattern(value);
+    }
+
     public long value() {
         return value;
     }

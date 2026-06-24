@@ -14,6 +14,14 @@ public final class ErlClause implements IrObject {
         this.body = List.copyOf(body);
     }
 
+    public static ErlClause clause(List<ErlPattern> patterns, List<ErlGuard> guards, ErlExpr... body) {
+        return new ErlClause(patterns, guards, List.of(body));
+    }
+
+    public static ErlClause clause(List<ErlPattern> patterns, ErlExpr... body) {
+        return clause(patterns, List.of(), body);
+    }
+
     public List<ErlPattern> patterns() {
         return patterns;
     }

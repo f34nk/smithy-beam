@@ -9,6 +9,10 @@ public final class ErlAtom implements ErlExpr {
         this.value = value;
     }
 
+    public static ErlAtom atom(String value) {
+        return new ErlAtom(value);
+    }
+
     public String value() {
         return value;
     }

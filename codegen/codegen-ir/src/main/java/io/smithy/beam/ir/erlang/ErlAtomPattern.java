@@ -9,6 +9,10 @@ public final class ErlAtomPattern implements ErlPattern {
         this.value = value;
     }
 
+    public static ErlAtomPattern atomPattern(String value) {
+        return new ErlAtomPattern(value);
+    }
+
     public String value() {
         return value;
     }

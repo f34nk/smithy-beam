@@ -9,6 +9,10 @@ public final class ErlInteger implements ErlExpr {
         this.value = value;
     }
 
+    public static ErlInteger integer(long value) {
+        return new ErlInteger(value);
+    }
+
     public long value() {
         return value;
     }

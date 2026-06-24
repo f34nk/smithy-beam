@@ -11,6 +11,10 @@ public final class ErlCallLocal implements ErlExpr {
         this.args = List.copyOf(args);
     }
 
+    public static ErlCallLocal callLocal(String function, ErlExpr... args) {
+        return new ErlCallLocal(function, List.of(args));
+    }
+
     public String function() {
         return function;
     }
