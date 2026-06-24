@@ -154,7 +154,7 @@ final class ErlangRestJsonIr {
     static List<ErlFunction> unionHelperFunctions(Model model, ServiceShape service, SymbolProvider sp) {
         List<ErlFunction> functions = new ArrayList<>();
         for (UnionShape union : ErlangRestJson1Emitter.reachableUnionShapes(model, service)) {
-            functions.add(capture(writer -> ErlangRestJson1Emitter.emitUnionDecodeEncode(writer, union, sp)));
+            functions.addAll(ErlangUnionHelperIr.unionDecodeEncode(union, sp));
         }
         return functions;
     }

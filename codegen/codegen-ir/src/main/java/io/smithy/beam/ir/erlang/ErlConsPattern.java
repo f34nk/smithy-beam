@@ -25,6 +25,9 @@ public final class ErlConsPattern implements ErlPattern {
 
     @Override
     public List<String> lines() {
+        if (tail instanceof ErlNilPattern) {
+            return List.of("[" + head.asString() + "]");
+        }
         return List.of("[" + head.asString() + " | " + tail.asString() + "]");
     }
 }

@@ -1037,41 +1037,6 @@ public final class ErlangRestJson1Emitter {
         return shapes;
     }
 
-    static void emitUnionDecodeEncode(ErlangWriter writer, UnionShape shape, SymbolProvider sp) {
-        String helperName = sp.toSymbol(shape).getName().replace("()", "");
-        writer.write("%% Union helpers for $L", shape.getId());
-        writer.write("decode_$L(#{} = Map) ->", helperName);
-        writer.indent();
-        writer.write("case maps:to_list(Map) of");
-        writer.indent();
-        for (MemberShape m : shape.members()) {
-            String wireKey = m.getMemberName();
-            String tag = unionTagForMember(sp, m);
-            writer.write("[{<<\"$L\">>, V}] -> {$L, V};", wireKey, tag);
-        }
-        writer.write("[{K, _V}] -> {unknown, K};");
-        writer.write("_ -> undefined");
-        writer.dedent();
-        writer.write("end;");
-        writer.dedent();
-        writer.write("decode_$L(undefined) -> undefined;", helperName);
-        writer.write("decode_$L(null) -> undefined.", helperName);
-        writer.write("");
-
-        for (MemberShape m : shape.members()) {
-            String wireKey = m.getMemberName();
-            String tag = unionTagForMember(sp, m);
-            writer.write("encode_$L({$L, V}) -> #{<<\"$L\">> => V};", helperName, tag, wireKey);
-        }
-        writer.write("encode_$L({unknown, K}) when is_binary(K) -> #{K => null};", helperName);
-        writer.write("encode_$L(undefined) -> undefined.", helperName);
-        writer.write("");
-    }
-
-    private static String unionTagForMember(SymbolProvider sp, MemberShape member) {
-        return sp.toSymbol(member).getProperty("unionTag", String.class).orElseThrow();
-    }
-
     static void emitSharedCodecHelpers(
             ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
         boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
