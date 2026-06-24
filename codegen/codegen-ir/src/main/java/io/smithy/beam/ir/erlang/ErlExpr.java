@@ -1,4 +1,5 @@
 package io.smithy.beam.ir.erlang;
 
 public sealed interface ErlExpr extends IrObject
-        permits ErlAtom, ErlVar, ErlInteger, ErlString, ErlBinary, ErlCall, ErlCallLocal, ErlRecord {}
+        permits ErlAtom, ErlVar, ErlInteger, ErlString, ErlBinary, ErlCall, ErlCallLocal, ErlRecord,
+                ErlTuple {}
