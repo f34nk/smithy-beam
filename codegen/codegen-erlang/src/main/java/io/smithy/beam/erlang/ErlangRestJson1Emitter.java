@@ -91,18 +91,22 @@ public final class ErlangRestJson1Emitter {
             writer.write("");
 
             for (OperationShape op : operations) {
-                emitEncoder(writer, model, service, op, httpIndex, sp, encodeWithConfig, layout.eventStreamModuleName());
-                emitRequestDecoder(writer, model, op, httpIndex, sp, layout.eventStreamModuleName());
-                emitDecoder(writer, model, service, op, httpIndex, sp, layout);
+                ErlangRestJsonIr.writeFunction(writer, ErlangRestJsonIr.encodeRequest(
+                        model, service, op, httpIndex, sp, encodeWithConfig, layout.eventStreamModuleName()));
+                ErlangRestJsonIr.writeFunction(writer, ErlangRestJsonIr.decodeRequest(
+                        model, op, httpIndex, sp, layout.eventStreamModuleName()));
+                ErlangRestJsonIr.writeFunction(writer, ErlangRestJsonIr.decodeResponse(
+                        model, service, op, httpIndex, sp, layout));
             }
 
             for (OperationShape op : operations) {
-                emitErrorDispatch(writer, model, service, op, httpIndex, sp);
+                ErlangRestJsonIr.writeFunction(writer, ErlangRestJsonIr.errorDispatch(
+                        model, service, op, httpIndex, sp));
             }
 
-            emitStructureHelpers(writer, model, service, sp);
-            emitEnumHelpers(writer, model, service, sp);
-            emitUnionHelpers(writer, model, service, sp);
+            ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.structureHelperFunctions(model, service, sp));
+            ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.enumHelperFunctions(model, service, sp));
+            ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.unionHelperFunctions(model, service, sp));
             emitHelpers(writer, checksumBindings, compressionBindings);
             if (encodeWithConfig) {
                 emitBuildHostHelpers(writer, model, service, sp);
@@ -149,19 +153,20 @@ public final class ErlangRestJson1Emitter {
 
             Set<ShapeId> emittedErrorEncoders = new LinkedHashSet<>();
             for (OperationShape op : operations) {
-                emitRequestDecoder(writer, model, op, httpIndex, sp, layout.eventStreamModuleName());
+                ErlangRestJsonIr.writeFunction(writer, ErlangRestJsonIr.decodeRequest(
+                        model, op, httpIndex, sp, layout.eventStreamModuleName()));
                 emitResponseEncoder(writer, model, op, httpIndex, sp);
                 emitErrorResponseEncoders(writer, model, op, sp, emittedErrorEncoders);
             }
-            emitStructureHelpers(writer, model, service, sp);
-            emitEnumHelpers(writer, model, service, sp);
-            emitUnionHelpers(writer, model, service, sp);
+            ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.structureHelperFunctions(model, service, sp));
+            ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.enumHelperFunctions(model, service, sp));
+            ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.unionHelperFunctions(model, service, sp));
             emitHelpers(writer, checksumBindings, false);
         });
     }
 
     /** Emits encode_<op>_request for one operation. */
-    private static void emitEncoder(
+    static void emitEncoder(
             ErlangWriter writer,
             Model model,
             ServiceShape service,
@@ -345,7 +350,7 @@ public final class ErlangRestJson1Emitter {
     }
 
     /** Emits decode_<op>_request for one operation (server-side request parsing). */
-    private static void emitRequestDecoder(
+    static void emitRequestDecoder(
             ErlangWriter writer,
             Model model,
             OperationShape op,
@@ -666,7 +671,7 @@ public final class ErlangRestJson1Emitter {
     }
 
     /** Emits decode_<op>_response/1 for one operation. */
-    private static void emitDecoder(
+    static void emitDecoder(
             ErlangWriter writer,
             Model model,
             ServiceShape service,
@@ -848,7 +853,7 @@ public final class ErlangRestJson1Emitter {
         writer.write("");
     }
 
-    private static void emitErrorDispatch(
+    static void emitErrorDispatch(
             ErlangWriter writer,
             Model model,
             ServiceShape service,
@@ -937,18 +942,34 @@ public final class ErlangRestJson1Emitter {
     private static void emitEnumHelpers(
             ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
 
+        for (EnumShape enumShape : reachableEnumShapes(model, service)) {
+            emitEnumDecodeEncode(writer, enumShape, sp);
+        }
+        for (IntEnumShape intEnumShape : reachableIntEnumShapes(model, service)) {
+            emitIntEnumDecodeEncode(writer, intEnumShape, sp);
+        }
+    }
+
+    static List<EnumShape> reachableEnumShapes(Model model, ServiceShape service) {
         Set<ShapeId> emitted = new LinkedHashSet<>();
+        List<EnumShape> shapes = new ArrayList<>();
         for (Shape shape : new Walker(model).walkShapes(service)) {
-            if (shape instanceof EnumShape enumShape) {
-                if (emitted.add(enumShape.getId())) {
-                    emitEnumDecodeEncode(writer, enumShape, sp);
-                }
-            } else if (shape instanceof IntEnumShape intEnumShape) {
-                if (emitted.add(intEnumShape.getId())) {
-                    emitIntEnumDecodeEncode(writer, intEnumShape, sp);
-                }
+            if (shape instanceof EnumShape enumShape && emitted.add(enumShape.getId())) {
+                shapes.add(enumShape);
             }
         }
+        return shapes;
+    }
+
+    static List<IntEnumShape> reachableIntEnumShapes(Model model, ServiceShape service) {
+        Set<ShapeId> emitted = new LinkedHashSet<>();
+        List<IntEnumShape> shapes = new ArrayList<>();
+        for (Shape shape : new Walker(model).walkShapes(service)) {
+            if (shape instanceof IntEnumShape intEnumShape && emitted.add(intEnumShape.getId())) {
+                shapes.add(intEnumShape);
+            }
+        }
+        return shapes;
     }
 
     private static void collectEnumTarget(Model model, MemberShape member, Set<ShapeId> out) {
@@ -961,35 +982,52 @@ public final class ErlangRestJson1Emitter {
     private static void emitStructureHelpers(
             ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
 
-        Set<ShapeId> emitted = new LinkedHashSet<>();
-        Set<ShapeId> listElementStructures = new LinkedHashSet<>();
+        Set<StructureShape> structures = new LinkedHashSet<>();
+        Set<StructureShape> listElementStructures = new LinkedHashSet<>();
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+        collectStructureHelperTargets(model, service, httpIndex, structures, listElementStructures);
+
+        for (StructureShape structure : structures) {
+            emitStructureDecodeEncode(writer, model, httpIndex, structure, sp);
+            if (listElementStructures.contains(structure)) {
+                emitStructureListDecodeEncode(writer, structure, sp);
+            }
+        }
+    }
+
+    static void collectStructureHelperTargets(
+            Model model,
+            ServiceShape service,
+            HttpBindingIndex httpIndex,
+            Set<StructureShape> structures,
+            Set<StructureShape> listElementStructures) {
+        Set<ShapeId> emitted = new LinkedHashSet<>();
+        Set<ShapeId> listElementIds = new LinkedHashSet<>();
 
         for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
             StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
             for (MemberShape member : ErlangJsonCodecSupport.documentMembers(httpIndex, op, input, true)) {
-                collectStructureTargets(model, member, emitted, listElementStructures);
+                collectStructureTargets(model, member, emitted, listElementIds);
             }
             StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
             for (MemberShape member : ErlangJsonCodecSupport.documentMembers(httpIndex, op, output, false)) {
-                collectStructureTargets(model, member, emitted, listElementStructures);
+                collectStructureTargets(model, member, emitted, listElementIds);
             }
             for (HttpBinding.Location loc : HttpBinding.Location.values()) {
                 for (HttpBinding b : httpIndex.getRequestBindings(op, loc)) {
-                    collectStructureTargets(model, b.getMember(), emitted, listElementStructures);
+                    collectStructureTargets(model, b.getMember(), emitted, listElementIds);
                 }
                 for (HttpBinding b : httpIndex.getResponseBindings(op, loc)) {
-                    collectStructureTargets(model, b.getMember(), emitted, listElementStructures);
+                    collectStructureTargets(model, b.getMember(), emitted, listElementIds);
                 }
             }
         }
 
         for (ShapeId structureId : emitted) {
-            StructureShape structure = model.expectShape(structureId, StructureShape.class);
-            emitStructureDecodeEncode(writer, model, httpIndex, structure, sp);
-            if (listElementStructures.contains(structureId)) {
-                emitStructureListDecodeEncode(writer, structure, sp);
-            }
+            structures.add(model.expectShape(structureId, StructureShape.class));
+        }
+        for (ShapeId structureId : listElementIds) {
+            listElementStructures.add(model.expectShape(structureId, StructureShape.class));
         }
     }
 
@@ -1013,7 +1051,7 @@ public final class ErlangRestJson1Emitter {
         }
     }
 
-    private static void emitStructureDecodeEncode(
+    static void emitStructureDecodeEncode(
             ErlangWriter writer,
             Model model,
             HttpBindingIndex httpIndex,
@@ -1061,7 +1099,7 @@ public final class ErlangRestJson1Emitter {
         writer.write("");
     }
 
-    private static void emitStructureListDecodeEncode(
+    static void emitStructureListDecodeEncode(
             ErlangWriter writer, StructureShape structure, SymbolProvider sp) {
         String helperName = ErlangJsonCodecSupport.structureHelperName(sp, structure);
         writer.write("decode_$L_list(undefined) -> undefined;", helperName);
@@ -1082,18 +1120,26 @@ public final class ErlangRestJson1Emitter {
     private static void emitUnionHelpers(
             ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
 
+        for (UnionShape union : reachableUnionShapes(model, service)) {
+            emitUnionDecodeEncode(writer, union, sp);
+        }
+    }
+
+    static List<UnionShape> reachableUnionShapes(Model model, ServiceShape service) {
         BeamEventStreamIndex eventStreamIndex = BeamEventStreamIndex.of(model);
         Set<ShapeId> emitted = new LinkedHashSet<>();
+        List<UnionShape> shapes = new ArrayList<>();
         for (Shape shape : new Walker(model).walkShapes(service)) {
             if (shape instanceof UnionShape union
                     && !eventStreamIndex.isEventStreamUnion(union)
                     && emitted.add(union.getId())) {
-                emitUnionDecodeEncode(writer, union, sp);
+                shapes.add(union);
             }
         }
+        return shapes;
     }
 
-    private static void emitUnionDecodeEncode(ErlangWriter writer, UnionShape shape, SymbolProvider sp) {
+    static void emitUnionDecodeEncode(ErlangWriter writer, UnionShape shape, SymbolProvider sp) {
         String helperName = sp.toSymbol(shape).getName().replace("()", "");
         writer.write("%% Union helpers for $L", shape.getId());
         writer.write("decode_$L(#{} = Map) ->", helperName);
@@ -1128,7 +1174,7 @@ public final class ErlangRestJson1Emitter {
         return sp.toSymbol(member).getProperty("unionTag", String.class).orElseThrow();
     }
 
-    private static void emitEnumDecodeEncode(ErlangWriter writer, EnumShape shape, SymbolProvider sp) {
+    static void emitEnumDecodeEncode(ErlangWriter writer, EnumShape shape, SymbolProvider sp) {
         String helperName = sp.toSymbol(shape).getName().replace("()", "");
         writer.write("%% Enum helpers for $L", shape.getId());
         for (MemberShape m : shape.members()) {
@@ -1154,7 +1200,7 @@ public final class ErlangRestJson1Emitter {
         writer.write("");
     }
 
-    private static void emitIntEnumDecodeEncode(ErlangWriter writer, IntEnumShape shape, SymbolProvider sp) {
+    static void emitIntEnumDecodeEncode(ErlangWriter writer, IntEnumShape shape, SymbolProvider sp) {
         String helperName = sp.toSymbol(shape).getName().replace("()", "");
         writer.write("%% IntEnum helpers for $L", shape.getId());
         for (MemberShape m : shape.members()) {
@@ -1189,9 +1235,9 @@ public final class ErlangRestJson1Emitter {
             ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
         boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
         boolean compressionBindings = serviceHasCompressionOperations(model, service);
-        emitStructureHelpers(writer, model, service, sp);
-        emitEnumHelpers(writer, model, service, sp);
-        emitUnionHelpers(writer, model, service, sp);
+        ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.structureHelperFunctions(model, service, sp));
+        ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.enumHelperFunctions(model, service, sp));
+        ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.unionHelperFunctions(model, service, sp));
         emitHelpers(writer, checksumBindings, compressionBindings);
     }
 

@@ -9,6 +9,7 @@ public final class ErlFunction implements IrObject {
     private final ErlFunctionDoc docOrNull;
     private final ErlFunctionSpec specOrNull;
     private final List<ErlClause> clauses;
+    private final String renderedOrNull;
 
     public ErlFunction(
             String name,
@@ -16,11 +17,22 @@ public final class ErlFunction implements IrObject {
             ErlFunctionDoc docOrNull,
             ErlFunctionSpec specOrNull,
             List<ErlClause> clauses) {
+        this(name, arity, docOrNull, specOrNull, clauses, null);
+    }
+
+    private ErlFunction(
+            String name,
+            int arity,
+            ErlFunctionDoc docOrNull,
+            ErlFunctionSpec specOrNull,
+            List<ErlClause> clauses,
+            String renderedOrNull) {
         this.name = name;
         this.arity = arity;
         this.docOrNull = docOrNull;
         this.specOrNull = specOrNull;
         this.clauses = List.copyOf(clauses);
+        this.renderedOrNull = renderedOrNull;
     }
 
     public String name() {
@@ -70,8 +82,27 @@ public final class ErlFunction implements IrObject {
         return functionWithSpec(name, arity, ErlFunctionSpec.functionSpec(name, inputTypes, outputTypes), clauses);
     }
 
+    public static ErlFunction rendered(String rendered) {
+        String text = rendered == null ? "" : rendered.strip();
+        return new ErlFunction("", 0, null, null, List.of(), text);
+    }
+
+    @Override
+    public String asString() {
+        if (renderedOrNull != null) {
+            return renderedOrNull;
+        }
+        return IrObject.super.asString();
+    }
+
     @Override
     public List<String> lines(int indent) {
+        if (renderedOrNull != null) {
+            if (renderedOrNull.isEmpty()) {
+                return List.of();
+            }
+            return List.of(renderedOrNull.split("\n", -1));
+        }
         List<String> out = new ArrayList<>();
         if (docOrNull != null) {
             out.addAll(docOrNull.lines(indent));
