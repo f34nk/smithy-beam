@@ -14,4 +14,9 @@ class ErlStringTest {
     void asString() {
         assertThat(new ErlString("hello").asString()).isEqualTo("\"hello\"");
     }
+
+    @Test
+    void escapesEmbeddedQuotes() {
+        assertThat(ErlString.string("say \"hi\"").asString()).isEqualTo("\"say \\\"hi\\\"\"");
+    }
 }

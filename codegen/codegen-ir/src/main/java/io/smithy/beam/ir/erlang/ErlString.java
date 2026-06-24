@@ -19,6 +19,14 @@ public final class ErlString implements ErlExpr {
 
     @Override
     public List<String> lines() {
-        return List.of(ErlLayout.renderString(value));
+        return List.of(renderString());
+    }
+
+    private String renderString() {
+        return "\"" + escapeDoubleQuoted(value) + "\"";
+    }
+
+    private static String escapeDoubleQuoted(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
