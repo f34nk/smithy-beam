@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,8 +34,10 @@ class ErlangAwsQueryIrTest {
 
     @Test
     void queryHelpersAwsContainsMapListAndStructureClauses() {
-        ErlFunction fn = ErlangAwsQueryIr.queryHelpers(false);
-        String text = fn.asString();
+        for (ErlFunction fn : ErlangAwsQueryIr.queryHelpers(false)) {
+            assertStructural(fn);
+        }
+        String text = helpersAsString(ErlangAwsQueryIr.queryHelpers(false));
         assertThat(text).contains("flatten_member(Key, Value) when is_map(Value) ->");
         assertThat(text).contains("flatten_member(Key, Value) when is_list(Value) ->");
         assertThat(text).contains("flatten_member(Key, Value) when is_tuple(Value) ->");
@@ -42,14 +46,45 @@ class ErlangAwsQueryIrTest {
 
     @Test
     void xmlHelpersAwsContainsListDecodeHelpers() {
-        ErlFunction fn = ErlangAwsQueryIr.xmlHelpers(false);
-        String text = fn.asString();
+        for (ErlFunction fn : ErlangAwsQueryIr.xmlHelpers(false)) {
+            assertStructural(fn);
+        }
+        String text = helpersAsString(ErlangAwsQueryIr.xmlHelpers(false));
         assertThat(text).contains("xml_child_list(Parent, ListName, ItemName) ->");
         assertThat(text).contains("xml_child_struct_list(Parent, ListName, ItemName, DecodeFun) ->");
     }
 
-    private static void assertGolden(ErlFunction fn, String resourcePath) throws IOException {
-        assertThat(fn.asString()).isEqualTo(readExpectedString(resourcePath));
+    @Test
+    void serverQueryDecodeHelpersAreStructural() {
+        for (ErlFunction fn : ErlangAwsQueryIr.serverQueryDecodeHelpers(false)) {
+            assertStructural(fn);
+        }
+    }
+
+    @Test
+    void serverXmlEncodeHelpersAreStructural() {
+        for (ErlFunction fn : ErlangAwsQueryIr.serverXmlEncodeHelpers(false)) {
+            assertStructural(fn);
+        }
+        for (ErlFunction fn : ErlangAwsQueryIr.serverXmlEncodeHelpers(true)) {
+            assertStructural(fn);
+        }
+    }
+
+    private static void assertGolden(List<ErlFunction> functions, String resourcePath) throws IOException {
+        assertThat(helpersAsString(functions)).isEqualTo(readExpectedString(resourcePath));
+        for (ErlFunction fn : functions) {
+            assertStructural(fn);
+        }
+    }
+
+    private static String helpersAsString(List<ErlFunction> functions) {
+        return functions.stream().map(ErlFunction::asString).collect(Collectors.joining("\n\n"));
+    }
+
+    private static void assertStructural(ErlFunction fn) {
+        assertThat(fn.name()).isNotBlank();
+        assertThat(fn.clauses()).isNotEmpty();
     }
 
     private static String readExpectedString(String resourcePath) throws IOException {

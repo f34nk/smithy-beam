@@ -76,6 +76,31 @@ final class ErlangXmlCodecIr {
         return functions;
     }
 
+    static List<ErlFunction> awsQueryServerEncodeHelpers() {
+        return List.of(
+                encodeXml(),
+                buildXmlElement(),
+                buildXmlChild(),
+                xmlNamespaceAttrs(),
+                ErlangCodecHelperIr.toBinary(ErlangCodecHelperIr.ToBinaryVariant.XML_QUERY));
+    }
+
+    static ErlFunction elementContentFunction() {
+        return elementContent();
+    }
+
+    static ErlFunction isElementFunction() {
+        return isElement();
+    }
+
+    static ErlFunction xmlChildTextFunction() {
+        return xmlChildText();
+    }
+
+    static ErlFunction isElementStringFunction() {
+        return isElementString();
+    }
+
     public static ErlFunction decodeSparseMap() {
         ErlFun sparseMapFun = ErlFun.fun(
                 ErlClause.clause(

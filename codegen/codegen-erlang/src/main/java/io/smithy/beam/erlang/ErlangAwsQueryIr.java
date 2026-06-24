@@ -48,12 +48,12 @@ final class ErlangAwsQueryIr {
                 writer, model, httpIndex, sp, input, ec2Query, lastClause));
     }
 
-    static ErlFunction queryHelpers(boolean ec2Query) {
-        return capture(writer -> ErlangAwsQueryEmitter.emitQueryHelpers(writer, ec2Query));
+    static List<ErlFunction> queryHelpers(boolean ec2Query) {
+        return ErlangAwsQueryHelperIr.queryHelperFunctions(ec2Query);
     }
 
-    static ErlFunction xmlHelpers(boolean ec2Query) {
-        return capture(writer -> ErlangAwsQueryEmitter.emitXmlHelpers(writer, ec2Query));
+    static List<ErlFunction> xmlHelpers(boolean ec2Query) {
+        return ErlangAwsQueryHelperIr.xmlHelperFunctions(ec2Query);
     }
 
     static ErlFunction serverDecodeRequest(
@@ -84,12 +84,12 @@ final class ErlangAwsQueryIr {
                 writer, model, sp, input, ec2Query));
     }
 
-    static ErlFunction serverQueryDecodeHelpers(boolean ec2Query) {
-        return capture(writer -> ErlangAwsQueryEmitter.emitServerQueryDecodeHelpers(writer, ec2Query));
+    static List<ErlFunction> serverQueryDecodeHelpers(boolean ec2Query) {
+        return ErlangAwsQueryHelperIr.serverQueryDecodeHelperFunctions(ec2Query);
     }
 
-    static ErlFunction serverXmlEncodeHelpers(boolean ec2Query) {
-        return capture(writer -> ErlangAwsQueryEmitter.emitServerXmlEncodeHelpers(writer, ec2Query));
+    static List<ErlFunction> serverXmlEncodeHelpers(boolean ec2Query) {
+        return ErlangAwsQueryHelperIr.serverXmlEncodeHelperFunctions(ec2Query);
     }
 
     static List<StructureShape> inputShapes(Model model, ServiceShape service) {
