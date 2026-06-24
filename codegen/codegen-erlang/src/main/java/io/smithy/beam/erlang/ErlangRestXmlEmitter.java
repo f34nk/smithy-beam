@@ -91,14 +91,17 @@ public final class ErlangRestXmlEmitter {
             emitServiceXmlNamespace(writer, serviceNamespace);
 
             for (OperationShape op : operations) {
-                emitEncoder(writer, model, service, op, httpIndex, sp, encodeWithConfig);
-                emitRequestDecoder(writer, model, op, httpIndex, sp);
-                emitDecoder(writer, model, op, httpIndex, sp);
+                ErlangRestXmlIr.writeFunction(writer, ErlangRestXmlIr.encodeRequest(
+                        model, service, op, httpIndex, sp, encodeWithConfig));
+                ErlangRestXmlIr.writeFunction(writer, ErlangRestXmlIr.decodeRequest(
+                        model, op, httpIndex, sp));
+                ErlangRestXmlIr.writeFunction(writer, ErlangRestXmlIr.decodeResponse(
+                        model, op, httpIndex, sp));
             }
 
-            emitEnumHelpers(writer, model, service, sp);
-            emitXmlEncodeHelpers(writer);
-            emitXmlDecodeHelpers(writer);
+            ErlangRestXmlIr.writeFunctions(writer, ErlangRestXmlIr.enumHelperFunctions(model, service, sp));
+            ErlangRestXmlIr.writeFunction(writer, ErlangRestXmlIr.xmlEncodeHelpers());
+            ErlangRestXmlIr.writeFunction(writer, ErlangRestXmlIr.xmlDecodeHelpers());
             emitPrefixHeaderHelpers(writer);
             emitIdempotencyHelpers(writer);
             if (checksumBindings) {
@@ -150,18 +153,20 @@ public final class ErlangRestXmlEmitter {
 
             Set<ShapeId> emittedErrorEncoders = new LinkedHashSet<>();
             for (OperationShape op : operations) {
-                emitRequestDecoder(writer, model, op, httpIndex, sp);
-                emitResponseEncoder(writer, model, op, httpIndex, sp);
+                ErlangRestXmlIr.writeFunction(writer, ErlangRestXmlIr.decodeRequest(
+                        model, op, httpIndex, sp));
+                ErlangRestXmlIr.writeFunction(writer, ErlangRestXmlIr.encodeResponse(
+                        model, op, httpIndex, sp));
                 emitErrorResponseEncoders(writer, model, op, sp, emittedErrorEncoders);
             }
 
-            emitEnumHelpers(writer, model, service, sp);
-            emitXmlEncodeHelpers(writer);
-            emitXmlDecodeHelpers(writer);
+            ErlangRestXmlIr.writeFunctions(writer, ErlangRestXmlIr.enumHelperFunctions(model, service, sp));
+            ErlangRestXmlIr.writeFunction(writer, ErlangRestXmlIr.xmlEncodeHelpers());
+            ErlangRestXmlIr.writeFunction(writer, ErlangRestXmlIr.xmlDecodeHelpers());
         });
     }
 
-    private static void emitRequestDecoder(
+    static void emitRequestDecoder(
             ErlangWriter writer,
             Model model,
             OperationShape op,
@@ -277,7 +282,7 @@ public final class ErlangRestXmlEmitter {
         writer.write("end,");
     }
 
-    private static void emitDecoder(
+    static void emitDecoder(
             ErlangWriter writer,
             Model model,
             OperationShape op,
@@ -455,7 +460,7 @@ public final class ErlangRestXmlEmitter {
         return fields;
     }
 
-    private static void emitResponseEncoder(
+    static void emitResponseEncoder(
             ErlangWriter writer,
             Model model,
             OperationShape op,
@@ -810,7 +815,7 @@ public final class ErlangRestXmlEmitter {
         writer.write("");
     }
 
-    private static void emitXmlDecodeHelpers(ErlangWriter writer) {
+    static void emitXmlDecodeHelpers(ErlangWriter writer) {
         writer.write("parse_xml_root(Body, RootName) ->");
         writer.indent();
         writer.write("try");
@@ -1011,7 +1016,7 @@ public final class ErlangRestXmlEmitter {
         writer.write("");
     }
 
-    private static void emitEncoder(
+    static void emitEncoder(
             ErlangWriter writer,
             Model model,
             ServiceShape service,
@@ -1236,7 +1241,7 @@ public final class ErlangRestXmlEmitter {
         return "#{" + String.join(", ", entries) + "}";
     }
 
-    private static void emitXmlEncodeHelpers(ErlangWriter writer) {
+    static void emitXmlEncodeHelpers(ErlangWriter writer) {
         writer.write("encode_xml(RootMap, XmlNs) ->");
         writer.indent();
         writer.write("[{RootName, Content}] = maps:to_list(RootMap),");
@@ -1490,24 +1495,29 @@ public final class ErlangRestXmlEmitter {
         return "to_binary(" + valueVar + ")";
     }
 
-    private static void emitEnumHelpers(
-            ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
-
+    static List<EnumShape> reachableEnumShapes(Model model, ServiceShape service) {
         Set<ShapeId> emitted = new LinkedHashSet<>();
+        List<EnumShape> shapes = new ArrayList<>();
         for (Shape shape : new Walker(model).walkShapes(service)) {
-            if (shape instanceof EnumShape enumShape) {
-                if (emitted.add(enumShape.getId())) {
-                    emitEnumDecodeEncode(writer, enumShape, sp);
-                }
-            } else if (shape instanceof IntEnumShape intEnumShape) {
-                if (emitted.add(intEnumShape.getId())) {
-                    emitIntEnumDecodeEncode(writer, intEnumShape, sp);
-                }
+            if (shape instanceof EnumShape enumShape && emitted.add(enumShape.getId())) {
+                shapes.add(enumShape);
             }
         }
+        return shapes;
     }
 
-    private static void emitEnumDecodeEncode(ErlangWriter writer, EnumShape shape, SymbolProvider sp) {
+    static List<IntEnumShape> reachableIntEnumShapes(Model model, ServiceShape service) {
+        Set<ShapeId> emitted = new LinkedHashSet<>();
+        List<IntEnumShape> shapes = new ArrayList<>();
+        for (Shape shape : new Walker(model).walkShapes(service)) {
+            if (shape instanceof IntEnumShape intEnumShape && emitted.add(intEnumShape.getId())) {
+                shapes.add(intEnumShape);
+            }
+        }
+        return shapes;
+    }
+
+    static void emitEnumDecodeEncode(ErlangWriter writer, EnumShape shape, SymbolProvider sp) {
         String helperName = sp.toSymbol(shape).getName().replace("()", "");
         writer.write("%% Enum helpers for $L", shape.getId());
         for (MemberShape m : shape.members()) {
@@ -1533,7 +1543,7 @@ public final class ErlangRestXmlEmitter {
         writer.write("");
     }
 
-    private static void emitIntEnumDecodeEncode(ErlangWriter writer, IntEnumShape shape, SymbolProvider sp) {
+    static void emitIntEnumDecodeEncode(ErlangWriter writer, IntEnumShape shape, SymbolProvider sp) {
         String helperName = sp.toSymbol(shape).getName().replace("()", "");
         writer.write("%% IntEnum helpers for $L", shape.getId());
         for (MemberShape m : shape.members()) {
