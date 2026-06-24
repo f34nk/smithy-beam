@@ -11,7 +11,6 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 final class ErlangRestXmlIr {
     private ErlangRestXmlIr() {}
@@ -23,8 +22,8 @@ final class ErlangRestXmlIr {
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
             boolean encodeWithConfig) {
-        return capture(writer -> ErlangRestXmlEmitter.emitEncoder(
-                writer, model, service, op, httpIndex, sp, encodeWithConfig));
+        return ErlangRestXmlOperationIr.buildEncodeRequest(
+                model, service, op, httpIndex, sp, encodeWithConfig);
     }
 
     static ErlFunction decodeRequest(
@@ -32,16 +31,15 @@ final class ErlangRestXmlIr {
             OperationShape op,
             HttpBindingIndex httpIndex,
             SymbolProvider sp) {
-        return capture(writer -> ErlangRestXmlEmitter.emitRequestDecoder(
-                writer, model, op, httpIndex, sp));
+        return ErlangRestXmlOperationIr.buildDecodeRequest(model, op, httpIndex, sp);
     }
 
-    static ErlFunction decodeResponse(
+    static List<ErlFunction> decodeResponse(
             Model model,
             OperationShape op,
             HttpBindingIndex httpIndex,
             SymbolProvider sp) {
-        return capture(writer -> ErlangRestXmlEmitter.emitDecoder(writer, model, op, httpIndex, sp));
+        return ErlangRestXmlOperationIr.buildDecodeResponse(model, op, httpIndex, sp);
     }
 
     static ErlFunction encodeResponse(
@@ -49,8 +47,7 @@ final class ErlangRestXmlIr {
             OperationShape op,
             HttpBindingIndex httpIndex,
             SymbolProvider sp) {
-        return capture(writer -> ErlangRestXmlEmitter.emitResponseEncoder(
-                writer, model, op, httpIndex, sp));
+        return ErlangRestXmlOperationIr.buildEncodeResponse(model, op, httpIndex, sp);
     }
 
     static List<ErlFunction> enumHelperFunctions(Model model, ServiceShape service, SymbolProvider sp) {
@@ -64,12 +61,12 @@ final class ErlangRestXmlIr {
         return functions;
     }
 
-    static ErlFunction xmlDecodeHelpers() {
-        return capture(ErlangRestXmlEmitter::emitXmlDecodeHelpers);
+    static List<ErlFunction> xmlDecodeHelpers() {
+        return ErlangXmlCodecIr.restXmlDecodeHelpers();
     }
 
-    static ErlFunction xmlEncodeHelpers() {
-        return capture(ErlangRestXmlEmitter::emitXmlEncodeHelpers);
+    static List<ErlFunction> xmlEncodeHelpers() {
+        return ErlangXmlCodecIr.restXmlEncodeHelpers();
     }
 
     static void writeFunction(ErlangWriter writer, ErlFunction fn) {
@@ -81,11 +78,5 @@ final class ErlangRestXmlIr {
         for (ErlFunction fn : functions) {
             writeFunction(writer, fn);
         }
-    }
-
-    private static ErlFunction capture(Consumer<ErlangWriter> action) {
-        ErlangWriter writer = new ErlangWriter("capture.erl");
-        action.accept(writer);
-        return ErlFunction.rendered(writer.toString().strip());
     }
 }

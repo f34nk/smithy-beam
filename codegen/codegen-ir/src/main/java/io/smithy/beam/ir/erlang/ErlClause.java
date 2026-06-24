@@ -7,11 +7,17 @@ public final class ErlClause implements IrObject {
     private final List<ErlPattern> patterns;
     private final List<ErlGuard> guards;
     private final List<ErlExpr> body;
+    private final boolean forceBlockBody;
 
-    public ErlClause(List<ErlPattern> patterns, List<ErlGuard> guards, List<ErlExpr> body) {
+    public ErlClause(List<ErlPattern> patterns, List<ErlGuard> guards, List<ErlExpr> body, boolean forceBlockBody) {
         this.patterns = List.copyOf(patterns);
         this.guards = List.copyOf(guards);
         this.body = List.copyOf(body);
+        this.forceBlockBody = forceBlockBody;
+    }
+
+    public ErlClause(List<ErlPattern> patterns, List<ErlGuard> guards, List<ErlExpr> body) {
+        this(patterns, guards, body, false);
     }
 
     public static ErlClause clause(List<ErlPattern> patterns, List<ErlGuard> guards, ErlExpr... body) {
@@ -20,6 +26,14 @@ public final class ErlClause implements IrObject {
 
     public static ErlClause clause(List<ErlPattern> patterns, ErlExpr... body) {
         return clause(patterns, List.of(), body);
+    }
+
+    public static ErlClause blockClause(List<ErlPattern> patterns, List<ErlGuard> guards, ErlExpr... body) {
+        return new ErlClause(patterns, guards, List.of(body), true);
+    }
+
+    public static ErlClause blockClause(List<ErlPattern> patterns, ErlExpr... body) {
+        return blockClause(patterns, List.of(), body);
     }
 
     public List<ErlPattern> patterns() {
@@ -52,7 +66,11 @@ public final class ErlClause implements IrObject {
         } else {
             out.set(out.size() - 1, out.get(out.size() - 1) + " ->");
             for (ErlExpr expr : body) {
-                out.addAll(expr.lines(indent + 1));
+                if (expr.lines().size() == 1) {
+                    out.add(IrObject.indent(indent + 1) + expr.asString());
+                } else {
+                    out.addAll(expr.lines(indent + 1));
+                }
             }
             String last = out.get(out.size() - 1);
             out.set(out.size() - 1, last + (semicolon ? ";" : "."));
@@ -61,11 +79,16 @@ public final class ErlClause implements IrObject {
     }
 
     private boolean needsMultilineHead() {
-        if (patterns.size() > 1) {
-            return true;
-        }
         if (patterns.size() == 1 && patterns.get(0) instanceof ErlRecordPattern recordPattern) {
             return recordPattern.aliasOrNull() != null;
+        }
+        if (patterns.size() > 1) {
+            for (ErlPattern pattern : patterns) {
+                if (pattern instanceof ErlRecordPattern recordPattern
+                        && (recordPattern.aliasOrNull() != null || !recordPattern.fields().isEmpty())) {
+                    return true;
+                }
+            }
         }
         return false;
     }
@@ -125,6 +148,9 @@ public final class ErlClause implements IrObject {
     }
 
     private boolean isInlineBody() {
+        if (forceBlockBody) {
+            return false;
+        }
         return body.size() == 1 && body.get(0).lines().size() == 1;
     }
 }

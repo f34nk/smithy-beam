@@ -16,6 +16,11 @@ class ErlAtomTest {
     }
 
     @Test
+    void linesXmlElementAtomUnquoted() {
+        assertThat(new ErlAtom("xmlElement").asString()).isEqualTo("xmlElement");
+    }
+
+    @Test
     void linesQuoted() {
         assertThat(new ErlAtom("Region").lines()).containsExactly("'Region'");
     }

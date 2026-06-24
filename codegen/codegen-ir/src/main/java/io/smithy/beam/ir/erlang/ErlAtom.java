@@ -37,7 +37,7 @@ public final class ErlAtom implements ErlExpr {
         if (Character.isLowerCase(first) || first == '_') {
             for (int i = 1; i < value.length(); i++) {
                 char c = value.charAt(i);
-                if (!(Character.isLowerCase(c) || Character.isDigit(c) || c == '_' || c == '@')) {
+                if (!(Character.isLetterOrDigit(c) || c == '_' || c == '@')) {
                     return true;
                 }
             }
