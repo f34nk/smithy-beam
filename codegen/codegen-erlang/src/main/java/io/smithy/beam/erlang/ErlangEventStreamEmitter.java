@@ -57,41 +57,35 @@ public final class ErlangEventStreamEmitter {
             writer.write("");
 
             for (UnionShape union : unions) {
-                emitUnionEventStream(writer, model, union, sp);
+                ErlangEventStreamIr.writeFunctions(writer, ErlangEventStreamIr.unionHelpers(model, union, sp));
             }
 
-            writer.write("encode_event_headers(EventType) ->");
-            writer.indent();
-            writer.write("[");
-            writer.write("    {<<\":event-type\">>, EventType},");
-            writer.write("    {<<\":message-type\">>, <<\"event\">>},");
-            writer.write("    {<<\":content-type\">>, <<\"application/json\">>}");
-            writer.write("].");
-            writer.dedent();
-            writer.write("");
-            writer.write("header_value(Headers, Name) ->");
-            writer.indent();
-            writer.write("proplists:get_value(Name, Headers, undefined).");
-            writer.dedent();
-            writer.write("");
+            ErlangEventStreamIr.writeFunctions(writer, List.of(
+                    ErlangEventStreamIr.encodeEventHeaders(),
+                    ErlangEventStreamIr.headerValue()));
         });
     }
 
-    private static void emitUnionEventStream(
-            ErlangWriter writer, Model model, UnionShape union, SymbolProvider sp) {
+    static void emitUnionEncodeList(ErlangWriter writer, UnionShape union, SymbolProvider sp) {
         String helper = helperName(sp, union);
         writer.write("%% Event stream helpers for $L", union.getId());
         writer.write("encode_$L(Events) when is_list(Events) ->", helper);
         writer.indent();
         writer.write("[encode_$L_event(E) || E <- Events].", helper);
         writer.dedent();
-        writer.write("");
+    }
+
+    static void emitUnionDecodeList(ErlangWriter writer, UnionShape union, SymbolProvider sp) {
+        String helper = helperName(sp, union);
         writer.write("decode_$L(Body) when is_binary(Body) ->", helper);
         writer.indent();
         writer.write("[decode_$L_event(F) || F <- aws_event_stream:decode_frames(Body)].", helper);
         writer.dedent();
-        writer.write("");
+    }
 
+    static void emitUnionEncodeEventClauses(
+            ErlangWriter writer, Model model, UnionShape union, SymbolProvider sp) {
+        String helper = helperName(sp, union);
         List<MemberShape> members = new ArrayList<>(union.members());
         for (int i = 0; i < members.size(); i++) {
             emitEncodeEventClause(writer, model, helper, members.get(i), sp, ";");
@@ -100,15 +94,21 @@ public final class ErlangEventStreamEmitter {
         writer.indent();
         writer.write("error({bad_event, unknown}).");
         writer.dedent();
-        writer.write("");
+    }
 
+    static void emitUnionDecodeEvent(ErlangWriter writer, UnionShape union, SymbolProvider sp) {
+        String helper = helperName(sp, union);
         writer.write("decode_$L_event(#{headers := Headers, payload := Payload}) ->", helper);
         writer.indent();
         writer.write("EventType = header_value(Headers, <<\":event-type\">>),");
         writer.write("decode_$L_event_type(EventType, Payload).", helper);
         writer.dedent();
-        writer.write("");
+    }
 
+    static void emitUnionDecodeEventTypeClauses(
+            ErlangWriter writer, Model model, UnionShape union, SymbolProvider sp) {
+        String helper = helperName(sp, union);
+        List<MemberShape> members = new ArrayList<>(union.members());
         for (int i = 0; i < members.size(); i++) {
             emitDecodeEventTypeClause(writer, model, helper, members.get(i), sp, ";");
         }
@@ -116,7 +116,6 @@ public final class ErlangEventStreamEmitter {
         writer.indent();
         writer.write("error({bad_event, EventType}).");
         writer.dedent();
-        writer.write("");
     }
 
     private static void emitEncodeEventClause(
@@ -225,6 +224,24 @@ public final class ErlangEventStreamEmitter {
         }
         record.append("        }\n    end");
         return record.toString();
+    }
+
+    static void emitEncodeEventHeaders(ErlangWriter writer) {
+        writer.write("encode_event_headers(EventType) ->");
+        writer.indent();
+        writer.write("[");
+        writer.write("    {<<\":event-type\">>, EventType},");
+        writer.write("    {<<\":message-type\">>, <<\"event\">>},");
+        writer.write("    {<<\":content-type\">>, <<\"application/json\">>}");
+        writer.write("].");
+        writer.dedent();
+    }
+
+    static void emitHeaderValue(ErlangWriter writer) {
+        writer.write("header_value(Headers, Name) ->");
+        writer.indent();
+        writer.write("proplists:get_value(Name, Headers, undefined).");
+        writer.dedent();
     }
 
     static String helperName(SymbolProvider sp, UnionShape union) {
