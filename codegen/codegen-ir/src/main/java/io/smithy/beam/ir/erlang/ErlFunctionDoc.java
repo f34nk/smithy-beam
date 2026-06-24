@@ -3,7 +3,7 @@ package io.smithy.beam.ir.erlang;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class ErlFunctionDoc implements IrObject {
+public final class ErlFunctionDoc implements ErlFunctionPreambleEntry {
     private final String text;
 
     public ErlFunctionDoc(String text) {

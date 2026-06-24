@@ -29,6 +29,13 @@ class ErlFunctionTest {
         assertThat(fn.asString()).isEqualTo(readExpectedString("ir/decode_basic_item_with_doc.expected.erl"));
     }
 
+    @Test
+    void decodeBasicItemWithCommentAndDocAsString() throws IOException {
+        ErlFunction fn = buildDecodeBasicItemWithCommentAndDoc();
+        assertThat(fn.asString())
+                .isEqualTo(readExpectedString("ir/decode_basic_item_with_comment_and_doc.expected.erl"));
+    }
+
     private static ErlFunction buildDecodeBasicItem() {
         return ErlFunction.functionWithSpec(
                 "decode_basic_item",
@@ -45,6 +52,20 @@ class ErlFunctionTest {
                 "decode_basic_item",
                 1,
                 ErlFunctionDoc.functionDoc("Decode a BasicItem from a JSON map."),
+                ErlFunctionSpec.functionSpec(
+                        "decode_basic_item",
+                        "undefined | null | map()",
+                        "undefined | #basic_item{}"),
+                decodeBasicItemClauses());
+    }
+
+    private static ErlFunction buildDecodeBasicItemWithCommentAndDoc() {
+        return ErlFunction.function(
+                "decode_basic_item",
+                1,
+                List.of(
+                        ErlComment.comment("Generated decoder."),
+                        ErlFunctionDoc.functionDoc("Decode a BasicItem from a JSON map.")),
                 ErlFunctionSpec.functionSpec(
                         "decode_basic_item",
                         "undefined | null | map()",
