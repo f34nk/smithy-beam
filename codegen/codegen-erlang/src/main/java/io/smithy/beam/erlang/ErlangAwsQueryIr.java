@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 final class ErlangAwsQueryIr {
     private ErlangAwsQueryIr() {}
@@ -23,8 +22,7 @@ final class ErlangAwsQueryIr {
             OperationShape op,
             HttpBindingIndex httpIndex,
             SymbolProvider sp) {
-        return capture(writer -> ErlangAwsQueryEmitter.emitEncoder(
-                writer, model, service, op, httpIndex, sp));
+        return ErlangAwsQueryOperationIr.buildEncodeRequest(model, service, op, httpIndex, sp);
     }
 
     static ErlFunction decodeResponse(
@@ -33,19 +31,16 @@ final class ErlangAwsQueryIr {
             OperationShape op,
             SymbolProvider sp,
             boolean ec2Query) {
-        return capture(writer -> ErlangAwsQueryEmitter.emitDecoder(
-                writer, model, service, op, sp, ec2Query));
+        return ErlangAwsQueryOperationIr.buildDecodeResponse(model, service, op, sp, ec2Query);
     }
 
-    static ErlFunction flattenInputClause(
+    static ErlFunction flattenQueryInput(
             Model model,
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
-            StructureShape input,
-            boolean ec2Query,
-            boolean lastClause) {
-        return capture(writer -> ErlangAwsQueryEmitter.emitFlattenInputClause(
-                writer, model, httpIndex, sp, input, ec2Query, lastClause));
+            List<StructureShape> inputs,
+            boolean ec2Query) {
+        return ErlangAwsQueryOperationIr.buildFlattenQueryInput(model, httpIndex, sp, inputs, ec2Query);
     }
 
     static List<ErlFunction> queryHelpers(boolean ec2Query) {
@@ -61,8 +56,7 @@ final class ErlangAwsQueryIr {
             OperationShape op,
             SymbolProvider sp,
             boolean ec2Query) {
-        return capture(writer -> ErlangAwsQueryEmitter.emitServerRequestDecoder(
-                writer, model, op, sp, ec2Query));
+        return ErlangAwsQueryOperationIr.buildServerDecodeRequest(model, op, sp, ec2Query);
     }
 
     static ErlFunction serverEncodeResponse(
@@ -71,8 +65,7 @@ final class ErlangAwsQueryIr {
             OperationShape op,
             SymbolProvider sp,
             boolean ec2Query) {
-        return capture(writer -> ErlangAwsQueryEmitter.emitServerResponseEncoder(
-                writer, model, service, op, sp, ec2Query));
+        return ErlangAwsQueryOperationIr.buildServerEncodeResponse(model, service, op, sp, ec2Query);
     }
 
     static ErlFunction parseInputFromForm(
@@ -80,8 +73,7 @@ final class ErlangAwsQueryIr {
             SymbolProvider sp,
             StructureShape input,
             boolean ec2Query) {
-        return capture(writer -> ErlangAwsQueryEmitter.emitParseInputFromForm(
-                writer, model, sp, input, ec2Query));
+        return ErlangAwsQueryOperationIr.buildParseInputFromForm(model, sp, input, ec2Query);
     }
 
     static List<ErlFunction> serverQueryDecodeHelpers(boolean ec2Query) {
@@ -109,11 +101,5 @@ final class ErlangAwsQueryIr {
         for (ErlFunction fn : functions) {
             writeFunction(writer, fn);
         }
-    }
-
-    private static ErlFunction capture(Consumer<ErlangWriter> action) {
-        ErlangWriter writer = new ErlangWriter("capture.erl");
-        action.accept(writer);
-        return ErlFunction.rendered(writer.toString().strip());
     }
 }
