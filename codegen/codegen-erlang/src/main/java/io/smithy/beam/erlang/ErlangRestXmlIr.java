@@ -56,10 +56,10 @@ final class ErlangRestXmlIr {
     static List<ErlFunction> enumHelperFunctions(Model model, ServiceShape service, SymbolProvider sp) {
         List<ErlFunction> functions = new ArrayList<>();
         for (EnumShape enumShape : ErlangRestXmlEmitter.reachableEnumShapes(model, service)) {
-            functions.add(capture(writer -> ErlangRestXmlEmitter.emitEnumDecodeEncode(writer, enumShape, sp)));
+            functions.addAll(ErlangEnumHelperIr.enumDecodeEncode(enumShape, sp));
         }
         for (IntEnumShape intEnumShape : ErlangRestXmlEmitter.reachableIntEnumShapes(model, service)) {
-            functions.add(capture(writer -> ErlangRestXmlEmitter.emitIntEnumDecodeEncode(writer, intEnumShape, sp)));
+            functions.addAll(ErlangEnumHelperIr.intEnumDecodeEncode(intEnumShape, sp));
         }
         return functions;
     }

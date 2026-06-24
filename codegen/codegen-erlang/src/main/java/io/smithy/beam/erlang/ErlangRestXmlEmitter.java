@@ -1517,62 +1517,6 @@ public final class ErlangRestXmlEmitter {
         return shapes;
     }
 
-    static void emitEnumDecodeEncode(ErlangWriter writer, EnumShape shape, SymbolProvider sp) {
-        String helperName = sp.toSymbol(shape).getName().replace("()", "");
-        writer.write("%% Enum helpers for $L", shape.getId());
-        for (MemberShape m : shape.members()) {
-            String wireValue = m.getTrait(EnumValueTrait.class)
-                    .flatMap(EnumValueTrait::getStringValue)
-                    .orElse(m.getMemberName());
-            String atom = enumAtomForMember(sp, shape, m.getMemberName());
-            writer.write("decode_$L(<<\"$L\">>) -> $L;", helperName, wireValue, atom);
-        }
-        writer.write("decode_$L(V) when is_binary(V) -> {unknown, V};", helperName);
-        writer.write("decode_$L(null) -> undefined;", helperName);
-        writer.write("decode_$L(undefined) -> undefined.", helperName);
-        writer.write("");
-        for (MemberShape m : shape.members()) {
-            String wireValue = m.getTrait(EnumValueTrait.class)
-                    .flatMap(EnumValueTrait::getStringValue)
-                    .orElse(m.getMemberName());
-            String atom = enumAtomForMember(sp, shape, m.getMemberName());
-            writer.write("encode_$L($L) -> <<\"$L\">>;", helperName, atom, wireValue);
-        }
-        writer.write("encode_$L({unknown, V}) when is_binary(V) -> V;", helperName);
-        writer.write("encode_$L(undefined) -> undefined.", helperName);
-        writer.write("");
-    }
-
-    static void emitIntEnumDecodeEncode(ErlangWriter writer, IntEnumShape shape, SymbolProvider sp) {
-        String helperName = sp.toSymbol(shape).getName().replace("()", "");
-        writer.write("%% IntEnum helpers for $L", shape.getId());
-        for (MemberShape m : shape.members()) {
-            int wireValue = m.expectTrait(EnumValueTrait.class).expectIntValue();
-            String atom = enumAtomForMember(sp, shape, m.getMemberName());
-            writer.write("decode_$L($L) -> $L;", helperName, wireValue, atom);
-        }
-        writer.write("decode_$L(V) when is_integer(V) -> {unknown, V};", helperName);
-        writer.write("decode_$L(null) -> undefined;", helperName);
-        writer.write("decode_$L(undefined) -> undefined.", helperName);
-        writer.write("");
-        for (MemberShape m : shape.members()) {
-            int wireValue = m.expectTrait(EnumValueTrait.class).expectIntValue();
-            String atom = enumAtomForMember(sp, shape, m.getMemberName());
-            writer.write("encode_$L($L) -> $L;", helperName, atom, wireValue);
-        }
-        writer.write("encode_$L({unknown, V}) when is_integer(V) -> V;", helperName);
-        writer.write("encode_$L(undefined) -> undefined.", helperName);
-        writer.write("");
-    }
-
-    private static String enumAtomForMember(SymbolProvider sp, Shape enumShape, String memberName) {
-        @SuppressWarnings("unchecked")
-        Map<String, String> byMember = sp.toSymbol(enumShape)
-                .getProperty("enumAtomByMember", Map.class)
-                .orElseThrow();
-        return byMember.get(memberName);
-    }
-
     private static String resolvedRequestContentType(
             Model model, OperationShape op, List<HttpBinding> payloadMembers) {
         if (!payloadMembers.isEmpty()) {

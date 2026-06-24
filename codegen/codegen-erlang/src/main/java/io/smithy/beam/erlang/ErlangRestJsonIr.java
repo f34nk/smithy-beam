@@ -85,10 +85,10 @@ final class ErlangRestJsonIr {
     static List<ErlFunction> enumHelperFunctions(Model model, ServiceShape service, SymbolProvider sp) {
         List<ErlFunction> functions = new ArrayList<>();
         for (EnumShape enumShape : ErlangRestJson1Emitter.reachableEnumShapes(model, service)) {
-            functions.add(capture(writer -> ErlangRestJson1Emitter.emitEnumDecodeEncode(writer, enumShape, sp)));
+            functions.addAll(ErlangEnumHelperIr.enumDecodeEncode(enumShape, sp));
         }
         for (IntEnumShape intEnumShape : ErlangRestJson1Emitter.reachableIntEnumShapes(model, service)) {
-            functions.add(capture(writer -> ErlangRestJson1Emitter.emitIntEnumDecodeEncode(writer, intEnumShape, sp)));
+            functions.addAll(ErlangEnumHelperIr.intEnumDecodeEncode(intEnumShape, sp));
         }
         return functions;
     }
