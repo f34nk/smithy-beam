@@ -19,6 +19,34 @@ public final class ErlAtom implements ErlExpr {
 
     @Override
     public List<String> lines() {
-        return List.of(ErlLayout.renderAtom(value));
+        return List.of(renderAtom());
+    }
+
+    private String renderAtom() {
+        if (needsQuotedAtom(value)) {
+            return "'" + escapeSingleQuoted(value) + "'";
+        }
+        return value;
+    }
+
+    private static boolean needsQuotedAtom(String value) {
+        if (value.isEmpty()) {
+            return true;
+        }
+        char first = value.charAt(0);
+        if (Character.isLowerCase(first) || first == '_') {
+            for (int i = 1; i < value.length(); i++) {
+                char c = value.charAt(i);
+                if (!(Character.isLowerCase(c) || Character.isDigit(c) || c == '_' || c == '@')) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return true;
+    }
+
+    private static String escapeSingleQuoted(String value) {
+        return value.replace("\\", "\\\\").replace("'", "\\'");
     }
 }
