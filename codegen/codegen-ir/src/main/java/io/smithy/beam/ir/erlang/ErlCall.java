@@ -32,7 +32,7 @@ public final class ErlCall implements ErlExpr {
     @Override
     public List<String> lines() {
         StringBuilder sb = new StringBuilder();
-        sb.append(ErlLayout.renderAtom(module.value())).append(':').append(function).append('(');
+        sb.append(module.asString()).append(':').append(function).append('(');
         for (int i = 0; i < args.size(); i++) {
             if (i > 0) {
                 sb.append(", ");

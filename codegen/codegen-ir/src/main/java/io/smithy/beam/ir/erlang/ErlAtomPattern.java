@@ -19,6 +19,6 @@ public final class ErlAtomPattern implements ErlPattern {
 
     @Override
     public List<String> lines() {
-        return List.of(ErlLayout.renderAtom(value));
+        return List.of(ErlAtom.atom(value).asString());
     }
 }

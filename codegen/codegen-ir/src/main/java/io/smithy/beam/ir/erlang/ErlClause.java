@@ -43,10 +43,10 @@ public final class ErlClause implements IrObject {
         List<String> out = new ArrayList<>();
         String head = buildHead(functionName);
         if (isInlineBody()) {
-            out.add(ErlLayout.indent(indent) + head + " -> " + body.get(0).asString()
+            out.add(IrObject.indent(indent) + head + " -> " + body.get(0).asString()
                     + (semicolon ? ";" : "."));
         } else {
-            out.add(ErlLayout.indent(indent) + head + " ->");
+            out.add(IrObject.indent(indent) + head + " ->");
             for (ErlExpr expr : body) {
                 out.addAll(expr.lines(indent + 1));
             }

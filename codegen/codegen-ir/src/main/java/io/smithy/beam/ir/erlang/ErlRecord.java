@@ -43,14 +43,14 @@ public final class ErlRecord implements ErlExpr {
         } else {
             open = "#" + name + "{";
         }
-        out.add(ErlLayout.indent(indent) + open);
+        out.add(IrObject.indent(indent) + open);
         for (int i = 0; i < fields.size(); i++) {
             String suffix = (i < fields.size() - 1) ? "," : "";
-            out.add(ErlLayout.indent(indent + 1)
+            out.add(IrObject.indent(indent + 1)
                     + fields.get(i).name() + " = "
                     + fields.get(i).value().asString() + suffix);
         }
-        out.add(ErlLayout.indent(indent) + "}");
+        out.add(IrObject.indent(indent) + "}");
         return out;
     }
 
