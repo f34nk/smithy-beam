@@ -14,6 +14,13 @@ public final class ErlTypeHeader implements IrObject {
         this.entries = List.copyOf(entries);
     }
 
+    public static ErlTypeHeader typeHeader(
+            String name,
+            List<ErlPreambleEntry> preamble,
+            List<ErlHeaderEntry> entries) {
+        return new ErlTypeHeader(name, preamble, entries);
+    }
+
     public String name() {
         return name;
     }

@@ -24,7 +24,7 @@ class ErlTypeHeaderTest {
     }
 
     private static ErlTypeHeader buildBasicTypes() {
-        return new ErlTypeHeader(
+        return ErlTypeHeader.typeHeader(
                 "basic_types",
                 List.of(
                         ErlComment.comment("Record and type definitions for the basic_service_types model."),
