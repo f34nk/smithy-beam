@@ -1,5 +1,6 @@
 package io.smithy.beam.ir.erlang;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class ErlComment implements ErlPreambleEntry {
@@ -19,7 +20,22 @@ public final class ErlComment implements ErlPreambleEntry {
 
     @Override
     public List<String> lines(int indent) {
-        return ErlLayout.renderPercentComment(text, indent);
+        String marker = IrObject.indent(indent) + "%%";
+        if (!text.contains("\n")) {
+            if (text.isEmpty()) {
+                return List.of(marker);
+            }
+            return List.of(marker + " " + text);
+        }
+        List<String> out = new ArrayList<>();
+        for (String line : text.split("\n", -1)) {
+            if (line.isEmpty()) {
+                out.add(marker);
+            } else {
+                out.add(marker + " " + line);
+            }
+        }
+        return out;
     }
 
     @Override
