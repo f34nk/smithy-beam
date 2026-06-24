@@ -19,11 +19,11 @@ public final class ErlangHttpDispatchEmitter {
         BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(),
                 service.getId().getNamespace(), service);
         String httpModule = layout.runtimeHttpModuleName();
-        String helpersMod = layout.runtimeHelpersModuleName();
         boolean sigv4 = BeamSigV4Metadata.from(service).isPresent();
         boolean endpointRules = BeamEndpointRuleSetEmitter.hasRuleSet(ctx.model(), service);
         String endpointsMod = layout.endpointsModuleName();
         String credentialsMod = layout.credentialsModuleName();
+        String helpersMod = layout.runtimeHelpersModuleName();
         String configVar = sigv4 ? "Config1" : "Config";
 
         ctx.writerDelegator().useFileWriter(layout.runtimeHttpModuleFile(), writer -> {
@@ -36,179 +36,203 @@ public final class ErlangHttpDispatchEmitter {
             writer.write("%% @doc Sends an http_request() and returns http_response().");
             writer.write("%% Config may contain `{base_url, ...}` and `{http_client, Module}` for tests.");
             writer.write("%% Uses httpc by default; pass another module for tests.");
-            writer.write("dispatch(Config, Request) ->");
-            writer.write("    HttpClient = maps:get(http_client, Config, httpc),");
-            writer.write("    dispatch(HttpClient, Config, Request).");
-            writer.write("");
-            writer.write("dispatch(HttpClient, Config, Request) ->");
-            writer.write("    dispatch_signed(HttpClient, Config, Request).");
-            writer.write("");
-            writer.write("dispatch_signed(HttpClient, Config, #http_request{");
-            writer.indent();
-            writer.write("method = Method,");
-            writer.write("path = Path,");
-            writer.write("query = Query,");
-            writer.write("headers = Headers,");
-            writer.write("body = Body,");
-            writer.write("host = Host");
-            writer.dedent();
-            writer.write("}) ->");
-            writer.indent();
-            if (sigv4) {
-                writer.write("Config1 = case maps:get(credentials, Config, undefined) of");
-                writer.indent();
-                writer.write("undefined ->");
-                writer.indent();
-                writer.write("case $L:resolve(Config) of", credentialsMod);
-                writer.indent();
-                writer.write("{ok, Creds} -> Config#{credentials => Creds};");
-                writer.write("_ -> Config");
-                writer.dedent();
-                writer.write("end;");
-                writer.dedent();
-                writer.write("_ -> Config");
-                writer.dedent();
-                writer.write("end,");
-            }
-            ErlangFormat.beginBinding(writer, "BaseUrl");
-            writer.write("case maps:get(base_url, $L, undefined) of", configVar);
+            ErlangHttpDispatchIr.writeFunction(writer, ErlangHttpDispatchIr.dispatchArity2());
+            ErlangHttpDispatchIr.writeFunction(writer, ErlangHttpDispatchIr.dispatchArity3());
+            ErlangHttpDispatchIr.writeFunction(writer, ErlangHttpDispatchIr.dispatchSigned(
+                    sigv4, endpointRules, configVar, helpersMod, endpointsMod, credentialsMod));
+            ErlangHttpDispatchIr.writeFunction(writer, ErlangHttpDispatchIr.splitBaseUrl());
+            ErlangHttpDispatchIr.writeFunction(writer, ErlangHttpDispatchIr.mime());
+        });
+    }
+
+    static void emitDispatchArity2(ErlangWriter writer) {
+        writer.write("dispatch(Config, Request) ->");
+        writer.write("    HttpClient = maps:get(http_client, Config, httpc),");
+        writer.write("    dispatch(HttpClient, Config, Request).");
+    }
+
+    static void emitDispatchArity3(ErlangWriter writer) {
+        writer.write("dispatch(HttpClient, Config, Request) ->");
+        writer.write("    dispatch_signed(HttpClient, Config, Request).");
+    }
+
+    static void emitDispatchSigned(
+            ErlangWriter writer,
+            boolean sigv4,
+            boolean endpointRules,
+            String configVar,
+            String helpersMod,
+            String endpointsMod,
+            String credentialsMod) {
+        writer.write("dispatch_signed(HttpClient, Config, #http_request{");
+        writer.indent();
+        writer.write("method = Method,");
+        writer.write("path = Path,");
+        writer.write("query = Query,");
+        writer.write("headers = Headers,");
+        writer.write("body = Body,");
+        writer.write("host = Host");
+        writer.dedent();
+        writer.write("}) ->");
+        writer.indent();
+        if (sigv4) {
+            writer.write("Config1 = case maps:get(credentials, Config, undefined) of");
             writer.indent();
             writer.write("undefined ->");
             writer.indent();
-            writer.write("case maps:get(endpoint_prefix, $L, undefined) of", configVar);
+            writer.write("case $L:resolve(Config) of", credentialsMod);
             writer.indent();
-            writer.write("undefined -> <<>>;");
-            if (endpointRules) {
-                writer.write("_ ->");
-                writer.indent();
-                writer.write("case $L:resolve($L, #{}) of", endpointsMod, configVar);
-                writer.indent();
-                writer.write("{ok, #{url := ResolvedUrl}} -> ResolvedUrl;");
-                writer.write("_ -> $L:resolve_base_url($L)", helpersMod, configVar);
-                writer.dedent();
-                writer.write("end");
-                writer.dedent();
-            } else {
-                writer.write("_ -> $L:resolve_base_url($L)", helpersMod, configVar);
-            }
+            writer.write("{ok, Creds} -> Config#{credentials => Creds};");
+            writer.write("_ -> Config");
             writer.dedent();
             writer.write("end;");
             writer.dedent();
-            writer.write("GivenUrl ->");
-            writer.indent();
-            writer.write("GivenUrl");
-            writer.dedent();
+            writer.write("_ -> Config");
             writer.dedent();
             writer.write("end,");
-            ErlangFormat.endBinding(writer);
-            ErlangFormat.beginBinding(writer, "QueryStr");
-            writer.write("case maps:to_list(Query) of");
-            writer.indent();
-            writer.write("[] ->");
-            writer.indent();
-            writer.write("<<>>;");
-            writer.dedent();
-            writer.write("Pairs ->");
-            writer.indent();
-            writer.write("Encoded = uri_string:compose_query(");
-            writer.write("    [{K, V} || {K, V} <- Pairs]");
-            writer.write("),");
-            writer.write("<<\"?\", Encoded/binary>>");
-            writer.dedent();
-            writer.dedent();
-            writer.write("end,");
-            ErlangFormat.endBinding(writer);
-            writer.write("{Scheme, DefaultAuthority} = split_base_url(BaseUrl),");
-            ErlangFormat.beginBinding(writer, "Authority");
-            writer.write("case Host of");
-            writer.indent();
-            writer.write("undefined -> DefaultAuthority;");
-            writer.write("_ -> Host");
-            writer.dedent();
-            writer.write("end,");
-            ErlangFormat.endBinding(writer);
-            writer.write("ReqUrl = <<Scheme/binary, Authority/binary, Path/binary, QueryStr/binary>>,");
-            ErlangFormat.writeListComprehension(
-                    writer,
-                    "HttpcHeaders",
-                    "{binary_to_list(K), binary_to_list(V)}",
-                    List.of("{K, V} <- Headers"),
-                    List.of());
-            ErlangFormat.beginBinding(writer, "Req");
-            writer.write("case Body of");
-            writer.indent();
-            writer.write("<<>> -> {binary_to_list(ReqUrl), HttpcHeaders};");
-            writer.write("_ -> {binary_to_list(ReqUrl), HttpcHeaders, mime(Headers), Body}");
-            writer.dedent();
-            writer.write("end,");
-            ErlangFormat.endBinding(writer);
-            writer.write("case");
-            writer.indent();
-            writer.write("HttpClient:request(");
-            writer.indent();
-            writer.write("binary_to_atom(string:lowercase(Method), utf8),");
-            writer.write("Req, [], [{body_format, binary}]");
-            writer.dedent();
-            writer.write(") of");
-            writer.indent();
-            writer.write("{ok, {{_, Status, _}, RespHeaders, RespBody}} ->");
-            writer.indent();
-            ErlangFormat.writeListComprehension(
-                    writer,
-                    "BinHeaders",
-                    "{list_to_binary(K), list_to_binary(V)}",
-                    List.of("{K, V} <- RespHeaders"),
-                    List.of());
-            writer.write("{ok, #http_response{");
-            writer.write("    status = Status,");
-            writer.write("    headers = BinHeaders,");
-            writer.write("    body = RespBody}};");
-            writer.dedent();
-            writer.write("{error, Reason} ->");
-            writer.indent();
-            writer.write("{error, Reason}");
-            writer.dedent();
-            writer.dedent();
-            writer.write("end.");
-            writer.dedent();
-            writer.dedent();
-            writer.write("");
-            writer.write("split_base_url(<<>>) ->");
-            writer.indent();
-            writer.write("{<<>>, <<>>};");
-            writer.dedent();
-            writer.write("split_base_url(BaseUrl) ->");
-            writer.indent();
-            writer.write("case uri_string:parse(binary_to_list(BaseUrl)) of");
-            writer.indent();
-            writer.write("#{scheme := Scheme, host := Host} = Parts ->");
-            writer.indent();
-            writer.write("PortSuffix = case maps:get(port, Parts, undefined) of");
-            writer.indent();
-            writer.write("undefined -> <<>>;");
-            writer.write("Port -> <<\":\", (integer_to_binary(Port))/binary>>");
-            writer.dedent();
-            writer.write("end,");
-            writer.write("{<< (list_to_binary(Scheme))/binary, \"://\">>,");
-            writer.write(" << (list_to_binary(Host))/binary, PortSuffix/binary >>};");
-            writer.dedent();
+        }
+        ErlangFormat.beginBinding(writer, "BaseUrl");
+        writer.write("case maps:get(base_url, $L, undefined) of", configVar);
+        writer.indent();
+        writer.write("undefined ->");
+        writer.indent();
+        writer.write("case maps:get(endpoint_prefix, $L, undefined) of", configVar);
+        writer.indent();
+        writer.write("undefined -> <<>>;");
+        if (endpointRules) {
             writer.write("_ ->");
             writer.indent();
-            writer.write("{<<>>, BaseUrl}");
-            writer.dedent();
-            writer.dedent();
-            writer.write("end.");
-            writer.dedent();
-            writer.write("");
-            writer.write("mime(Headers) ->");
+            writer.write("case $L:resolve($L, #{}) of", endpointsMod, configVar);
             writer.indent();
-            writer.write("case proplists:get_value(<<\"Content-Type\">>, Headers) of");
-            writer.indent();
-            writer.write("undefined -> \"application/octet-stream\";");
-            writer.write("CT -> binary_to_list(CT)");
+            writer.write("{ok, #{url := ResolvedUrl}} -> ResolvedUrl;");
+            writer.write("_ -> $L:resolve_base_url($L)", helpersMod, configVar);
             writer.dedent();
-            writer.write("end.");
+            writer.write("end");
             writer.dedent();
-        });
+        } else {
+            writer.write("_ -> $L:resolve_base_url($L)", helpersMod, configVar);
+        }
+        writer.dedent();
+        writer.write("end;");
+        writer.dedent();
+        writer.write("GivenUrl ->");
+        writer.indent();
+        writer.write("GivenUrl");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end,");
+        ErlangFormat.endBinding(writer);
+        ErlangFormat.beginBinding(writer, "QueryStr");
+        writer.write("case maps:to_list(Query) of");
+        writer.indent();
+        writer.write("[] ->");
+        writer.indent();
+        writer.write("<<>>;");
+        writer.dedent();
+        writer.write("Pairs ->");
+        writer.indent();
+        writer.write("Encoded = uri_string:compose_query(");
+        writer.write("    [{K, V} || {K, V} <- Pairs]");
+        writer.write("),");
+        writer.write("<<\"?\", Encoded/binary>>");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end,");
+        ErlangFormat.endBinding(writer);
+        writer.write("{Scheme, DefaultAuthority} = split_base_url(BaseUrl),");
+        ErlangFormat.beginBinding(writer, "Authority");
+        writer.write("case Host of");
+        writer.indent();
+        writer.write("undefined -> DefaultAuthority;");
+        writer.write("_ -> Host");
+        writer.dedent();
+        writer.write("end,");
+        ErlangFormat.endBinding(writer);
+        writer.write("ReqUrl = <<Scheme/binary, Authority/binary, Path/binary, QueryStr/binary>>,");
+        ErlangFormat.writeListComprehension(
+                writer,
+                "HttpcHeaders",
+                "{binary_to_list(K), binary_to_list(V)}",
+                List.of("{K, V} <- Headers"),
+                List.of());
+        ErlangFormat.beginBinding(writer, "Req");
+        writer.write("case Body of");
+        writer.indent();
+        writer.write("<<>> -> {binary_to_list(ReqUrl), HttpcHeaders};");
+        writer.write("_ -> {binary_to_list(ReqUrl), HttpcHeaders, mime(Headers), Body}");
+        writer.dedent();
+        writer.write("end,");
+        ErlangFormat.endBinding(writer);
+        writer.write("case");
+        writer.indent();
+        writer.write("HttpClient:request(");
+        writer.indent();
+        writer.write("binary_to_atom(string:lowercase(Method), utf8),");
+        writer.write("Req, [], [{body_format, binary}]");
+        writer.dedent();
+        writer.write(") of");
+        writer.indent();
+        writer.write("{ok, {{_, Status, _}, RespHeaders, RespBody}} ->");
+        writer.indent();
+        ErlangFormat.writeListComprehension(
+                writer,
+                "BinHeaders",
+                "{list_to_binary(K), list_to_binary(V)}",
+                List.of("{K, V} <- RespHeaders"),
+                List.of());
+        writer.write("{ok, #http_response{");
+        writer.write("    status = Status,");
+        writer.write("    headers = BinHeaders,");
+        writer.write("    body = RespBody}};");
+        writer.dedent();
+        writer.write("{error, Reason} ->");
+        writer.indent();
+        writer.write("{error, Reason}");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
+        writer.dedent();
+    }
+
+    static void emitSplitBaseUrl(ErlangWriter writer) {
+        writer.write("split_base_url(<<>>) ->");
+        writer.indent();
+        writer.write("{<<>>, <<>>};");
+        writer.dedent();
+        writer.write("split_base_url(BaseUrl) ->");
+        writer.indent();
+        writer.write("case uri_string:parse(binary_to_list(BaseUrl)) of");
+        writer.indent();
+        writer.write("#{scheme := Scheme, host := Host} = Parts ->");
+        writer.indent();
+        writer.write("PortSuffix = case maps:get(port, Parts, undefined) of");
+        writer.indent();
+        writer.write("undefined -> <<>>;");
+        writer.write("Port -> <<\":\", (integer_to_binary(Port))/binary>>");
+        writer.dedent();
+        writer.write("end,");
+        writer.write("{<< (list_to_binary(Scheme))/binary, \"://\">>,");
+        writer.write(" << (list_to_binary(Host))/binary, PortSuffix/binary >>};");
+        writer.dedent();
+        writer.write("_ ->");
+        writer.indent();
+        writer.write("{<<>>, BaseUrl}");
+        writer.dedent();
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
+    }
+
+    static void emitMimeHelper(ErlangWriter writer) {
+        writer.write("mime(Headers) ->");
+        writer.indent();
+        writer.write("case proplists:get_value(<<\"Content-Type\">>, Headers) of");
+        writer.indent();
+        writer.write("undefined -> \"application/octet-stream\";");
+        writer.write("CT -> binary_to_list(CT)");
+        writer.dedent();
+        writer.write("end.");
+        writer.dedent();
     }
 }
