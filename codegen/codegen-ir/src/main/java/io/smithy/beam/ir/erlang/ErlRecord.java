@@ -36,6 +36,9 @@ public final class ErlRecord implements ErlExpr {
 
     @Override
     public List<String> lines(int indent) {
+        if (recordOrNull != null && fields.size() == 1) {
+            return List.of(renderSingleLine(indent));
+        }
         List<String> out = new ArrayList<>();
         String open;
         if (recordOrNull != null) {
@@ -52,6 +55,23 @@ public final class ErlRecord implements ErlExpr {
         }
         out.add(IrObject.indent(indent) + "}");
         return out;
+    }
+
+    private String renderSingleLine(int indent) {
+        StringBuilder sb = new StringBuilder(IrObject.indent(indent));
+        if (recordOrNull != null) {
+            sb.append(recordOrNull.asString()).append('#').append(name).append("{ ");
+        } else {
+            sb.append('#').append(name).append("{ ");
+        }
+        for (int i = 0; i < fields.size(); i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append(fields.get(i).name()).append(" = ").append(fields.get(i).value().asString());
+        }
+        sb.append(" }");
+        return sb.toString();
     }
 
     @Override
