@@ -42,10 +42,9 @@ public final class ErlCall implements ErlExpr {
     @Override
     public List<String> lines(int indent) {
         if (isFiltermap()) {
-            ErlFun fun = (ErlFun) args.get(0);
             List<String> out = new ArrayList<>();
             out.add(IrObject.indent(indent) + "lists:filtermap(");
-            List<String> funLines = new ArrayList<>(fun.lines(indent + 1));
+            List<String> funLines = new ArrayList<>(((ErlFun) args.get(0)).inlineClauseLines(indent + 1));
             String lastFunLine = funLines.remove(funLines.size() - 1);
             out.addAll(funLines);
             out.add(lastFunLine + ",");

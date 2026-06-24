@@ -65,13 +65,21 @@ public final class ErlFun implements ErlExpr {
         return false;
     }
 
+    List<String> inlineClauseLines(int indent) {
+        List<String> out = new ArrayList<>();
+        out.add(IrObject.indent(indent) + "fun");
+        for (int i = 0; i < clauses.size(); i++) {
+            ErlClause clause = clauses.get(i);
+            boolean semicolon = i < clauses.size() - 1;
+            out.add(IrObject.indent(indent + 1) + funClauseHead(clause) + " -> "
+                    + clause.body().get(0).asString() + (semicolon ? ";" : ""));
+        }
+        out.add(IrObject.indent(indent) + "end");
+        return out;
+    }
+
     private static List<String> funClauseLines(ErlClause clause, int indent, boolean semicolon) {
         List<String> out = new ArrayList<>();
-        if (clause.body().size() == 1 && clause.body().get(0).lines().size() == 1) {
-            out.add(IrObject.indent(indent) + funClauseHead(clause) + " -> "
-                    + clause.body().get(0).asString() + (semicolon ? ";" : ""));
-            return out;
-        }
         out.add(IrObject.indent(indent) + funClauseHead(clause) + " ->");
         for (ErlExpr expr : clause.body()) {
             if (expr.lines().size() == 1) {
