@@ -1,5 +1,6 @@
 package io.smithy.beam.ir.erlang;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class ErlMatch implements ErlExpr {
@@ -25,6 +26,17 @@ public final class ErlMatch implements ErlExpr {
 
     @Override
     public List<String> lines() {
-        return List.of(pattern.asString() + " = " + expr.asString());
+        return lines(0);
+    }
+
+    @Override
+    public List<String> lines(int indent) {
+        if (expr.lines().size() == 1) {
+            return List.of(IrObject.indent(indent) + pattern.asString() + " = " + expr.asString());
+        }
+        List<String> out = new ArrayList<>();
+        out.add(IrObject.indent(indent) + pattern.asString() + " =");
+        out.addAll(expr.lines(indent + 1));
+        return out;
     }
 }

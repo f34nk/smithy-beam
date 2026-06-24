@@ -41,12 +41,16 @@ public final class ErlClause implements IrObject {
 
     public List<String> lines(int indent, String functionName, boolean semicolon) {
         List<String> out = new ArrayList<>();
-        String head = buildHead(functionName);
+        if (needsMultilineHead()) {
+            out.addAll(buildMultilineHeadLines(indent, functionName));
+        } else {
+            out.add(IrObject.indent(indent) + buildHead(functionName));
+        }
         if (isInlineBody()) {
-            out.add(IrObject.indent(indent) + head + " -> " + body.get(0).asString()
+            out.set(out.size() - 1, out.get(out.size() - 1) + " -> " + body.get(0).asString()
                     + (semicolon ? ";" : "."));
         } else {
-            out.add(IrObject.indent(indent) + head + " ->");
+            out.set(out.size() - 1, out.get(out.size() - 1) + " ->");
             for (ErlExpr expr : body) {
                 out.addAll(expr.lines(indent + 1));
             }
@@ -54,6 +58,54 @@ public final class ErlClause implements IrObject {
             out.set(out.size() - 1, last + (semicolon ? ";" : "."));
         }
         return out;
+    }
+
+    private boolean needsMultilineHead() {
+        if (patterns.size() > 1) {
+            return true;
+        }
+        if (patterns.size() == 1 && patterns.get(0) instanceof ErlRecordPattern recordPattern) {
+            return recordPattern.aliasOrNull() != null;
+        }
+        return false;
+    }
+
+    private List<String> buildMultilineHeadLines(int indent, String functionName) {
+        List<String> out = new ArrayList<>();
+        out.add(IrObject.indent(indent) + functionName + "(");
+        for (int i = 0; i < patterns.size(); i++) {
+            boolean lastArg = i == patterns.size() - 1;
+            String suffix = lastArg ? "" : ",";
+            ErlPattern pattern = patterns.get(i);
+            if (pattern instanceof ErlRecordPattern recordPattern && recordPattern.aliasOrNull() != null) {
+                out.add(IrObject.indent(indent + 1) + recordPattern.aliasOrNull() + " = #" + recordPattern.name() + "{");
+                List<ErlRecordFieldPattern> fields = recordPattern.fields();
+                for (int j = 0; j < fields.size(); j++) {
+                    String fieldSuffix = j < fields.size() - 1 ? "," : "";
+                    out.add(IrObject.indent(indent + 2) + fields.get(j).asString() + fieldSuffix);
+                }
+                out.add(IrObject.indent(indent + 1) + "}" + suffix);
+            } else {
+                out.add(IrObject.indent(indent + 1) + pattern.asString() + suffix);
+            }
+        }
+        String closing = ")";
+        if (!guards.isEmpty()) {
+            closing += " when " + guardText();
+        }
+        out.add(IrObject.indent(indent) + closing);
+        return out;
+    }
+
+    private String guardText() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < guards.size(); i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append(guards.get(i).asString());
+        }
+        return sb.toString();
     }
 
     private String buildHead(String functionName) {
@@ -67,13 +119,7 @@ public final class ErlClause implements IrObject {
         }
         sb.append(')');
         if (!guards.isEmpty()) {
-            sb.append(" when ");
-            for (int i = 0; i < guards.size(); i++) {
-                if (i > 0) {
-                    sb.append(", ");
-                }
-                sb.append(guards.get(i).asString());
-            }
+            sb.append(" when ").append(guardText());
         }
         return sb.toString();
     }

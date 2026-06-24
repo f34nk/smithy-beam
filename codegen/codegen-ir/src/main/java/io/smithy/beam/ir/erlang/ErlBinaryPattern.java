@@ -19,6 +19,9 @@ public final class ErlBinaryPattern implements ErlPattern {
 
     @Override
     public List<String> lines() {
+        if (value.isEmpty()) {
+            return List.of("<<>>");
+        }
         return List.of("<<" + ErlString.string(value).asString() + ">>");
     }
 }

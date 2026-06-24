@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
+import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
@@ -109,6 +110,80 @@ class ErlangRestJsonIrTest {
         assertStructural(functions.get(1));
         String combined = functions.get(0).asString() + "\n\n" + functions.get(1).asString();
         assertThat(combined).isEqualTo(readExpectedString("ir/structure_decode_encode_basic_item.expected.erl"));
+    }
+
+    @Test
+    void encodeGetNameRequestMatchesGolden() throws IOException {
+        Model model = httpModel();
+        ServiceShape service = model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+        OperationShape op = model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        io.smithy.beam.core.BeamErlangLayout layout =
+                new io.smithy.beam.core.BeamErlangLayout(settings, service.getId().getNamespace(), service);
+        ErlangSymbolProvider sp = new ErlangSymbolProvider(
+                settings, model, service, layout.clientModuleFile(), BeamCodegenKind.CLIENT);
+        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+        ErlFunction fn = ErlangRestJsonIr.encodeRequest(
+                model, service, op, httpIndex, sp, false, layout.eventStreamModuleName());
+        assertStructural(fn);
+        assertThat(fn.asString()).isEqualTo(readExpectedString("ir/rest_json_encode_get_name_request.expected.erl"));
+    }
+
+    @Test
+    void decodeGetNameResponseMatchesGolden() throws IOException {
+        Model model = httpModel();
+        ServiceShape service = model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+        OperationShape op = model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        io.smithy.beam.core.BeamErlangLayout layout =
+                new io.smithy.beam.core.BeamErlangLayout(settings, service.getId().getNamespace(), service);
+        ErlangSymbolProvider sp = new ErlangSymbolProvider(
+                settings, model, service, layout.clientModuleFile(), BeamCodegenKind.CLIENT);
+        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+        ErlFunction fn = ErlangRestJsonIr.decodeResponse(model, service, op, httpIndex, sp, layout);
+        assertStructural(fn);
+        assertThat(fn.asString()).isEqualTo(readExpectedString("ir/rest_json_decode_get_name_response.expected.erl"));
+    }
+
+    private static Model httpModel() {
+        String idl = """
+                $version: "2"
+                namespace smithy.beam.demo.http
+
+                use aws.protocols#restJson1
+
+                string Name
+
+                @restJson1
+                service HttpService {
+                    version: "2026"
+                    operations: [GetName]
+                }
+
+                @readonly
+                @http(method: "GET", uri: "/names/{name}", code: 200)
+                operation GetName {
+                    input: GetNameInput
+                    output: GetNameOutput
+                }
+
+                structure GetNameInput {
+                    @required
+                    @httpLabel
+                    name: Name
+                }
+
+                structure GetNameOutput {
+                    name: Name
+                }
+                """;
+        return Model.assembler()
+                .addUnparsedModel("http.smithy", idl)
+                .discoverModels()
+                .assemble()
+                .unwrap();
     }
 
     @Test

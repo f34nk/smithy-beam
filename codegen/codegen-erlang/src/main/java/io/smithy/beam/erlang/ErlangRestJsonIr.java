@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 final class ErlangRestJsonIr {
     private ErlangRestJsonIr() {}
@@ -38,8 +37,8 @@ final class ErlangRestJsonIr {
             SymbolProvider sp,
             boolean encodeWithConfig,
             String eventStreamModule) {
-        return capture(writer -> ErlangRestJson1Emitter.emitEncoder(
-                writer, model, service, op, httpIndex, sp, encodeWithConfig, eventStreamModule));
+        return ErlangRestJsonOperationIr.buildEncodeRequest(
+                model, service, op, httpIndex, sp, encodeWithConfig, eventStreamModule);
     }
 
     static ErlFunction decodeRequest(
@@ -48,8 +47,7 @@ final class ErlangRestJsonIr {
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
             String eventStreamModule) {
-        return capture(writer -> ErlangRestJson1Emitter.emitRequestDecoder(
-                writer, model, op, httpIndex, sp, eventStreamModule));
+        return ErlangRestJsonOperationIr.buildDecodeRequest(model, op, httpIndex, sp, eventStreamModule);
     }
 
     static ErlFunction decodeResponse(
@@ -59,8 +57,8 @@ final class ErlangRestJsonIr {
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
             BeamErlangLayout layout) {
-        return capture(writer -> ErlangRestJson1Emitter.emitDecoder(
-                writer, model, service, op, httpIndex, sp, layout));
+        return ErlangRestJsonOperationIr.buildDecodeResponse(
+                model, service, op, httpIndex, sp, layout);
     }
 
     static ErlFunction errorDispatch(
@@ -69,8 +67,7 @@ final class ErlangRestJsonIr {
             OperationShape op,
             HttpBindingIndex httpIndex,
             SymbolProvider sp) {
-        return capture(writer -> ErlangRestJson1Emitter.emitErrorDispatch(
-                writer, model, service, op, httpIndex, sp));
+        return ErlangRestJsonOperationIr.buildErrorDispatch(model, service, op, httpIndex, sp);
     }
 
     static List<ErlFunction> structureHelperFunctions(Model model, ServiceShape service, SymbolProvider sp) {
@@ -168,11 +165,5 @@ final class ErlangRestJsonIr {
         for (ErlFunction fn : functions) {
             writeFunction(writer, fn);
         }
-    }
-
-    private static ErlFunction capture(Consumer<ErlangWriter> action) {
-        ErlangWriter writer = new ErlangWriter("capture.erl");
-        action.accept(writer);
-        return ErlFunction.rendered(writer.toString().strip());
     }
 }
