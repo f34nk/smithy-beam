@@ -1,7 +1,16 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.ir.erlang.ErlAtom;
+import io.smithy.beam.ir.erlang.ErlAtomPattern;
+import io.smithy.beam.ir.erlang.ErlCallLocal;
+import io.smithy.beam.ir.erlang.ErlClause;
 import io.smithy.beam.ir.erlang.ErlFunction;
+import io.smithy.beam.ir.erlang.ErlGuard;
+import io.smithy.beam.ir.erlang.ErlListComprehension;
+import io.smithy.beam.ir.erlang.ErlOp;
+import io.smithy.beam.ir.erlang.ErlVar;
+import io.smithy.beam.ir.erlang.ErlVarPattern;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
@@ -75,11 +84,56 @@ final class ErlangRestJsonIr {
             functions.add(capture(writer -> ErlangRestJson1Emitter.emitStructureDecodeEncode(
                     writer, model, httpIndex, structure, sp)));
             if (listElementStructures.contains(structure)) {
-                functions.add(capture(writer -> ErlangRestJson1Emitter.emitStructureListDecodeEncode(
-                        writer, structure, sp)));
+                functions.addAll(buildStructureListDecodeEncodeFunctions(structure, sp));
             }
         }
         return functions;
+    }
+
+    static List<ErlFunction> buildStructureListDecodeEncodeFunctions(StructureShape structure, SymbolProvider sp) {
+        String helperName = ErlangJsonCodecSupport.structureHelperName(sp, structure);
+        return List.of(
+                buildStructureListDecode(helperName),
+                buildStructureListEncode(helperName));
+    }
+
+    private static ErlFunction buildStructureListDecode(String helperName) {
+        return ErlFunction.function(
+                "decode_" + helperName + "_list",
+                1,
+                List.of(
+                        ErlClause.clause(
+                                List.of(ErlAtomPattern.atomPattern("undefined")),
+                                ErlAtom.atom("undefined")),
+                        ErlClause.clause(
+                                List.of(ErlAtomPattern.atomPattern("null")),
+                                ErlAtom.atom("undefined")),
+                        ErlClause.clause(
+                                List.of(ErlVarPattern.varPattern("List")),
+                                List.of(ErlGuard.guard("is_list", ErlVar.var("List"))),
+                                ErlListComprehension.comprehensionWithFilters(
+                                        ErlCallLocal.callLocal("decode_" + helperName, ErlVar.var("V")),
+                                        ErlVarPattern.varPattern("V"),
+                                        ErlVar.var("List"),
+                                        List.of(ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("null")))))));
+    }
+
+    private static ErlFunction buildStructureListEncode(String helperName) {
+        return ErlFunction.function(
+                "encode_" + helperName + "_list",
+                1,
+                List.of(
+                        ErlClause.clause(
+                                List.of(ErlAtomPattern.atomPattern("undefined")),
+                                ErlAtom.atom("undefined")),
+                        ErlClause.clause(
+                                List.of(ErlVarPattern.varPattern("List")),
+                                List.of(ErlGuard.guard("is_list", ErlVar.var("List"))),
+                                ErlListComprehension.comprehensionWithFilters(
+                                        ErlCallLocal.callLocal("encode_" + helperName, ErlVar.var("V")),
+                                        ErlVarPattern.varPattern("V"),
+                                        ErlVar.var("List"),
+                                        List.of(ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))))));
     }
 
     static List<ErlFunction> enumHelperFunctions(Model model, ServiceShape service, SymbolProvider sp) {

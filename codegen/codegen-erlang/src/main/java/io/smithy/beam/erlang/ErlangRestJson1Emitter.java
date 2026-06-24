@@ -977,9 +977,6 @@ public final class ErlangRestJson1Emitter {
 
         for (StructureShape structure : structures) {
             emitStructureDecodeEncode(writer, model, httpIndex, structure, sp);
-            if (listElementStructures.contains(structure)) {
-                emitStructureListDecodeEncode(writer, structure, sp);
-            }
         }
     }
 
@@ -1083,24 +1080,6 @@ public final class ErlangRestJson1Emitter {
                     comma);
         }
         writer.write("}).");
-        writer.dedent();
-        writer.write("");
-    }
-
-    static void emitStructureListDecodeEncode(
-            ErlangWriter writer, StructureShape structure, SymbolProvider sp) {
-        String helperName = ErlangJsonCodecSupport.structureHelperName(sp, structure);
-        writer.write("decode_$L_list(undefined) -> undefined;", helperName);
-        writer.write("decode_$L_list(null) -> undefined;", helperName);
-        writer.write("decode_$L_list(List) when is_list(List) ->", helperName);
-        writer.indent();
-        writer.write("[decode_$L(V) || V <- List, V =/= null].", helperName);
-        writer.dedent();
-        writer.write("");
-        writer.write("encode_$L_list(undefined) -> undefined;", helperName);
-        writer.write("encode_$L_list(List) when is_list(List) ->", helperName);
-        writer.indent();
-        writer.write("[encode_$L(V) || V <- List, V =/= undefined].", helperName);
         writer.dedent();
         writer.write("");
     }
