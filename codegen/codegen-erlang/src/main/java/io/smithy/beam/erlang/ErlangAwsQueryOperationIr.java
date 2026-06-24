@@ -50,6 +50,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class ErlangAwsQueryOperationIr {
+    private static final ErlVarPattern W = ErlVarPattern.varPattern("_");
+
     private ErlangAwsQueryOperationIr() {}
 
     static ErlFunction buildEncodeRequest(
@@ -208,7 +210,6 @@ final class ErlangAwsQueryOperationIr {
             Model model,
             SymbolProvider sp,
             boolean ec2Query) {
-        ErlVarPattern w = ErlVarPattern.varPattern("_");
         ErlCallLocal unwrap = ErlCallLocal.callLocal(
                 "unwrap_query_result", ErlVar.var("Body"), ErlBinary.binary(resultElement));
         if (output.members().isEmpty()) {
@@ -216,12 +217,12 @@ final class ErlangAwsQueryOperationIr {
             return ErlCase.caseExpr(
                     unwrap,
                     ErlClause.clause(
-                            List.of(ErlTuplePattern.tuplePattern(ErlAtomPattern.atomPattern("ok"), w)),
+                            List.of(ErlTuplePattern.tuplePattern(ErlAtomPattern.atomPattern("ok"), W)),
                             ErlTuple.tuple(ErlAtom.atom("ok"), emptyOutput)),
                     ErlClause.clause(
                             List.of(ErlTuplePattern.tuplePattern(
                                     ErlAtomPattern.atomPattern("error"),
-                                    ErlTuplePattern.tuplePattern(ErlAtomPattern.atomPattern("missing_result"), w))),
+                                    ErlTuplePattern.tuplePattern(ErlAtomPattern.atomPattern("missing_result"), W))),
                             ErlTuple.tuple(ErlAtom.atom("ok"), emptyOutput)),
                     ErlClause.clause(
                             List.of(ErlTuplePattern.tuplePattern(
@@ -294,7 +295,7 @@ final class ErlangAwsQueryOperationIr {
         ErlRecordPattern pattern = outputBindingHead(outputRecord, output, sp);
 
         ErlFun filterUndefined = ErlFun.fun(ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("_"), ErlVarPattern.varPattern("V")),
+                List.of(W, ErlVarPattern.varPattern("V")),
                 ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined"))));
 
         List<ErlExpr> body = new ArrayList<>();
