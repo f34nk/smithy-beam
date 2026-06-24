@@ -31,6 +31,9 @@ public final class ErlMatch implements ErlExpr {
 
     @Override
     public List<String> lines(int indent) {
+        if (expr instanceof ErlCase erlCase) {
+            return erlCase.matchLines(pattern, indent);
+        }
         if (expr.lines().size() == 1) {
             return List.of(IrObject.indent(indent) + pattern.asString() + " = " + expr.asString());
         }

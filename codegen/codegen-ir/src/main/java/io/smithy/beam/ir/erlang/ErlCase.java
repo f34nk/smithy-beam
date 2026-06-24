@@ -28,11 +28,23 @@ public final class ErlCase implements ErlExpr {
     public List<String> lines(int indent) {
         List<String> out = new ArrayList<>();
         out.add(IrObject.indent(indent) + "case " + scrutinee.asString() + " of");
+        appendClauseLines(out, indent);
+        out.add(IrObject.indent(indent) + "end");
+        return out;
+    }
+
+    List<String> matchLines(ErlPattern pattern, int indent) {
+        List<String> out = new ArrayList<>();
+        out.add(IrObject.indent(indent) + pattern.asString() + " = case " + scrutinee.asString() + " of");
+        appendClauseLines(out, indent);
+        out.add(IrObject.indent(indent) + "end");
+        return out;
+    }
+
+    private void appendClauseLines(List<String> out, int indent) {
         for (int i = 0; i < clauses.size(); i++) {
             out.addAll(caseClauseLines(clauses.get(i), indent + 1, i < clauses.size() - 1));
         }
-        out.add(IrObject.indent(indent) + "end");
-        return out;
     }
 
     @Override
