@@ -55,11 +55,13 @@ final class ErlangAwsJsonRpcEmitter {
             writer.write("");
 
             for (OperationShape op : operations) {
-                emitRequestDecoder(writer, model, op, httpIndex, sp, eventStreamModule);
-                emitResponseEncoder(writer, model, op, httpIndex, sp, contentType, eventStreamModule);
+                ErlangAwsJsonIr.writeFunction(writer, ErlangAwsJsonIr.decodeRequest(
+                        model, op, httpIndex, sp, eventStreamModule));
+                ErlangAwsJsonIr.writeFunction(writer, ErlangAwsJsonIr.encodeResponse(
+                        model, op, httpIndex, sp, contentType, eventStreamModule));
             }
 
-            ErlangRestJson1Emitter.emitSharedCodecHelpers(writer, model, service, sp);
+            ErlangAwsJsonIr.writeFunction(writer, ErlangAwsJsonIr.sharedCodecHelpers(model, service, sp));
         });
     }
 
@@ -94,19 +96,21 @@ final class ErlangAwsJsonRpcEmitter {
             writer.write("");
 
             for (OperationShape op : operations) {
-                emitEncoder(writer, model, op, httpIndex, sp, targetPrefix, contentType, eventStreamModule);
-                emitDecoder(writer, model, op, httpIndex, sp, eventStreamModule);
+                ErlangAwsJsonIr.writeFunction(writer, ErlangAwsJsonIr.encodeRequest(
+                        model, op, httpIndex, sp, targetPrefix, contentType, eventStreamModule));
+                ErlangAwsJsonIr.writeFunction(writer, ErlangAwsJsonIr.decodeResponse(
+                        model, op, httpIndex, sp, eventStreamModule));
             }
 
             for (OperationShape op : operations) {
-                emitErrorDispatch(writer, model, op, sp);
+                ErlangAwsJsonIr.writeFunction(writer, ErlangAwsJsonIr.errorDispatch(model, op, sp));
             }
 
-            ErlangRestJson1Emitter.emitSharedCodecHelpers(writer, model, service, sp);
+            ErlangAwsJsonIr.writeFunction(writer, ErlangAwsJsonIr.sharedCodecHelpers(model, service, sp));
         });
     }
 
-    private static void emitRequestDecoder(
+    static void emitRequestDecoder(
             ErlangWriter writer,
             Model model,
             OperationShape op,
@@ -143,7 +147,7 @@ final class ErlangAwsJsonRpcEmitter {
         writer.write("");
     }
 
-    private static void emitResponseEncoder(
+    static void emitResponseEncoder(
             ErlangWriter writer,
             Model model,
             OperationShape op,
@@ -186,7 +190,7 @@ final class ErlangAwsJsonRpcEmitter {
         writer.write("");
     }
 
-    private static void emitEncoder(
+    static void emitEncoder(
             ErlangWriter writer,
             Model model,
             OperationShape op,
@@ -240,7 +244,7 @@ final class ErlangAwsJsonRpcEmitter {
         writer.write("");
     }
 
-    private static void emitDecoder(
+    static void emitDecoder(
             ErlangWriter writer,
             Model model,
             OperationShape op,
@@ -285,7 +289,7 @@ final class ErlangAwsJsonRpcEmitter {
         writer.write("");
     }
 
-    private static void emitErrorDispatch(
+    static void emitErrorDispatch(
             ErlangWriter writer, Model model, OperationShape op, SymbolProvider sp) {
 
         String opName = sp.toSymbol(op).getName();
