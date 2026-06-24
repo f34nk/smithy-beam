@@ -81,13 +81,17 @@ final class ErlangRestJsonIr {
         ErlangRestJson1Emitter.collectStructureHelperTargets(
                 model, service, httpIndex, structures, listElementStructures);
         for (StructureShape structure : structures) {
-            functions.add(capture(writer -> ErlangRestJson1Emitter.emitStructureDecodeEncode(
-                    writer, model, httpIndex, structure, sp)));
+            functions.addAll(ErlangStructureHelperIr.structureDecodeEncode(model, httpIndex, structure, sp));
             if (listElementStructures.contains(structure)) {
                 functions.addAll(buildStructureListDecodeEncodeFunctions(structure, sp));
             }
         }
         return functions;
+    }
+
+    static List<ErlFunction> buildStructureDecodeEncode(
+            Model model, HttpBindingIndex httpIndex, StructureShape structure, SymbolProvider sp) {
+        return ErlangStructureHelperIr.structureDecodeEncode(model, httpIndex, structure, sp);
     }
 
     static List<ErlFunction> buildStructureListDecodeEncodeFunctions(StructureShape structure, SymbolProvider sp) {

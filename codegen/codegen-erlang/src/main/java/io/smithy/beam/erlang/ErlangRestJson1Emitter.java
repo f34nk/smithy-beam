@@ -967,19 +967,6 @@ public final class ErlangRestJson1Emitter {
         }
     }
 
-    private static void emitStructureHelpers(
-            ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
-
-        Set<StructureShape> structures = new LinkedHashSet<>();
-        Set<StructureShape> listElementStructures = new LinkedHashSet<>();
-        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-        collectStructureHelperTargets(model, service, httpIndex, structures, listElementStructures);
-
-        for (StructureShape structure : structures) {
-            emitStructureDecodeEncode(writer, model, httpIndex, structure, sp);
-        }
-    }
-
     static void collectStructureHelperTargets(
             Model model,
             ServiceShape service,
@@ -1033,62 +1020,6 @@ public final class ErlangRestJson1Emitter {
             collectStructureTargets(model, list.getMember(), out, listElements);
         } else if (target instanceof MapShape map) {
             collectStructureTargets(model, map.getValue(), out, listElements);
-        }
-    }
-
-    static void emitStructureDecodeEncode(
-            ErlangWriter writer,
-            Model model,
-            HttpBindingIndex httpIndex,
-            StructureShape structure,
-            SymbolProvider sp) {
-        String helperName = ErlangJsonCodecSupport.structureHelperName(sp, structure);
-        writer.write("%% Structure helpers for $L", structure.getId());
-        writer.write("decode_$L(undefined) -> undefined;", helperName);
-        writer.write("decode_$L(null) -> undefined;", helperName);
-        writer.write("decode_$L(Map) when is_map(Map) ->", helperName);
-        writer.indent();
-        writer.write("#$L{", helperName);
-        List<String> fields = new ArrayList<>();
-        for (MemberShape member : structure.members()) {
-            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
-            String wireKey = jsonKey(member);
-            String raw = "maps:get(<<\"" + wireKey + "\">>, Map, undefined)";
-            fields.add("        " + fieldName + " = "
-                    + ErlangJsonCodecSupport.decodeJsonValue(model, sp, httpIndex, member, raw));
-        }
-        if (!fields.isEmpty()) {
-            writer.write(String.join(",\n", fields));
-        }
-        writer.write("}.");
-        writer.dedent();
-        writer.write("");
-
-        writer.write("encode_$L(undefined) -> undefined;", helperName);
-        writer.write("encode_$L(Record) ->", helperName);
-        writer.indent();
-        writer.write("maps:filter(fun(_, V) -> V =/= undefined end, #{");
-        List<MemberShape> members = new ArrayList<>(structure.members());
-        for (int i = 0; i < members.size(); i++) {
-            MemberShape member = members.get(i);
-            String wireKey = jsonKey(member);
-            String comma = i < members.size() - 1 ? "," : "";
-            writer.write("    <<\"$L\">> => $L$L",
-                    wireKey,
-                    ErlangJsonCodecSupport.encodeJsonValueFromRecord(
-                            model, sp, httpIndex, structure, member, "Record"),
-                    comma);
-        }
-        writer.write("}).");
-        writer.dedent();
-        writer.write("");
-    }
-
-    private static void emitUnionHelpers(
-            ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
-
-        for (UnionShape union : reachableUnionShapes(model, service)) {
-            emitUnionDecodeEncode(writer, union, sp);
         }
     }
 
