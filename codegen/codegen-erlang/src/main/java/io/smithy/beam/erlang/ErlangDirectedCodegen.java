@@ -547,7 +547,10 @@ final class ErlangDirectedCodegen
             entries.add(buildStructureRecord(shape, sp, nullableIndex, recordName));
             entries.add(new ErlTypeDef(recordName, "#" + recordName + "{}"));
             ErlTypeHeader header = ErlTypeHeader.typeHeader(ctx.moduleName(), List.of(), entries);
-            writer.write(header.asString());
+            // Smithy's writer.write(String) runs the string through CodeFormatter, so
+            // literal {, }, and $ are treated as template syntax.
+            // To bypass the formatter, write the string as a literal format argument.
+            writer.write("$L", header.asString());
         });
     }
 

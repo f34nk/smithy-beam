@@ -1326,7 +1326,7 @@ public final class ErlangRestJson1Emitter {
         writer.write("    [V || V <- List, V =/= null].");
         writer.write("");
         ErlFunction decodeSparseMap = ErlangXmlCodecIr.decodeSparseMap();
-        writer.write(decodeSparseMap.asString());
+        writer.write("$L", decodeSparseMap.asString());
         writer.write("");
         writer.write("encode_sparse_list(undefined) -> null;");
         writer.write("encode_sparse_list(List) when is_list(List) ->");
