@@ -1,27 +1,44 @@
 package io.smithy.beam.ir.erlang;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class ErlListComprehension implements ErlExpr {
     private final ErlExpr expression;
     private final ErlPattern generatorPattern;
     private final ErlExpr generatorExpr;
-    private final ErlExpr filterOrNull;
+    private final List<ErlExpr> filters;
 
     public ErlListComprehension(
             ErlExpr expression,
             ErlPattern generatorPattern,
             ErlExpr generatorExpr,
-            ErlExpr filterOrNull) {
+            List<ErlExpr> filters) {
         this.expression = expression;
         this.generatorPattern = generatorPattern;
         this.generatorExpr = generatorExpr;
-        this.filterOrNull = filterOrNull;
+        this.filters = List.copyOf(filters);
     }
 
     public static ErlListComprehension comprehension(
             ErlExpr expression, ErlPattern generatorPattern, ErlExpr generatorExpr) {
-        return new ErlListComprehension(expression, generatorPattern, generatorExpr, null);
+        return new ErlListComprehension(expression, generatorPattern, generatorExpr, List.of());
+    }
+
+    public static ErlListComprehension comprehension(
+            ErlExpr expression,
+            ErlPattern generatorPattern,
+            ErlExpr generatorExpr,
+            ErlExpr filter) {
+        return new ErlListComprehension(expression, generatorPattern, generatorExpr, List.of(filter));
+    }
+
+    public static ErlListComprehension comprehensionWithFilters(
+            ErlExpr expression,
+            ErlPattern generatorPattern,
+            ErlExpr generatorExpr,
+            List<ErlExpr> filters) {
+        return new ErlListComprehension(expression, generatorPattern, generatorExpr, filters);
     }
 
     public ErlExpr expression() {
@@ -36,23 +53,50 @@ public final class ErlListComprehension implements ErlExpr {
         return generatorExpr;
     }
 
-    public ErlExpr filterOrNull() {
-        return filterOrNull;
+    public List<ErlExpr> filters() {
+        return filters;
     }
 
     @Override
     public List<String> lines() {
-        StringBuilder sb = new StringBuilder("[");
-        sb.append(expression.asString());
-        sb.append(" || ");
-        sb.append(generatorPattern.asString());
-        sb.append(" <- ");
-        sb.append(generatorExpr.asString());
-        if (filterOrNull != null) {
-            sb.append(", ");
-            sb.append(filterOrNull.asString());
+        return lines(0);
+    }
+
+    @Override
+    public List<String> lines(int indent) {
+        List<String> exprLines = expression.lines(indent + 1);
+        if (exprLines.size() == 1 && filters.size() <= 1) {
+            StringBuilder sb = new StringBuilder("[");
+            sb.append(expression.asString());
+            sb.append(" || ");
+            sb.append(generatorPattern.asString());
+            sb.append(" <- ");
+            sb.append(generatorExpr.asString());
+            for (ErlExpr filter : filters) {
+                sb.append(", ");
+                sb.append(filter.asString());
+            }
+            sb.append(']');
+            return List.of(sb.toString());
         }
-        sb.append(']');
-        return List.of(sb.toString());
+
+        List<String> out = new ArrayList<>();
+        out.add(IrObject.indent(indent) + "[");
+        out.addAll(exprLines);
+        StringBuilder genLine = new StringBuilder(IrObject.indent(indent) + " || ");
+        genLine.append(generatorPattern.asString());
+        genLine.append(" <- ");
+        genLine.append(generatorExpr.asString());
+        if (!filters.isEmpty()) {
+            genLine.append(',');
+            out.add(genLine.toString());
+            for (ErlExpr filter : filters) {
+                out.add(IrObject.indent(indent + 1) + filter.asString());
+            }
+        } else {
+            out.add(genLine.toString());
+        }
+        out.add(IrObject.indent(indent) + "]");
+        return out;
     }
 }

@@ -799,28 +799,14 @@ public final class ErlangRestXmlEmitter {
     }
 
     private static void emitPrefixHeaderHelpers(ErlangWriter writer) {
-        writer.write("prefix_headers_to_list(_Prefix, undefined) ->");
-        writer.write("    [];");
-        writer.write("prefix_headers_to_list(Prefix, Map) when is_map(Map) ->");
-        writer.write("    [{<<Prefix/binary, H/binary>>, to_binary(V)} || {H, V} <- maps:to_list(Map)].");
+        writer.write("$L", ErlangCodecHelperIr.prefixHeadersToList().asString());
         writer.write("");
-        writer.write("prefix_headers_from_list(Headers, Prefix) ->");
-        writer.write("    Map = maps:from_list([");
-        writer.write("        {binary:part(Name, byte_size(Prefix)), Val}");
-        writer.write("     || {Name, Val} <- Headers,");
-        writer.write("        byte_size(Name) > byte_size(Prefix),");
-        writer.write("        binary:part(Name, 0, byte_size(Prefix)) =:= Prefix");
-        writer.write("    ]),");
-        writer.write("    case maps:size(Map) of");
-        writer.write("        0 -> undefined;");
-        writer.write("        _ -> Map");
-        writer.write("    end.");
+        writer.write("$L", ErlangCodecHelperIr.prefixHeadersFromList().asString());
         writer.write("");
     }
 
     private static void emitIdempotencyHelpers(ErlangWriter writer) {
-        writer.write("generate_uuid() ->");
-        writer.write("    list_to_binary(uuid:to_string(uuid:v4())).");
+        writer.write("$L", ErlangCodecHelperIr.generateUuid().asString());
         writer.write("");
     }
 
@@ -1289,17 +1275,9 @@ public final class ErlangRestXmlEmitter {
         writer.dedent();
         writer.write("xml_namespace_attrs(_) -> [].");
         writer.write("");
-        writer.write("encode_query_value(V) when is_integer(V) -> integer_to_binary(V);");
-        writer.write("encode_query_value(V) when is_float(V) -> float_to_binary(V, [short]);");
-        writer.write("encode_query_value(V) when is_boolean(V) -> atom_to_binary(V, utf8);");
-        writer.write("encode_query_value(V) -> to_binary(V).");
+        writer.write("$L", ErlangCodecHelperIr.encodeQueryValueXmlQuery().asString());
         writer.write("");
-        writer.write("to_binary(V) when is_binary(V) -> V;");
-        writer.write("to_binary(V) when is_list(V) -> list_to_binary(V);");
-        writer.write("to_binary(V) when is_atom(V) -> atom_to_binary(V, utf8);");
-        writer.write("to_binary(V) when is_integer(V) -> integer_to_binary(V);");
-        writer.write("to_binary(V) when is_float(V) -> float_to_binary(V, [short]);");
-        writer.write("to_binary(V) when is_boolean(V) -> atom_to_binary(V, utf8).");
+        writer.write("$L", ErlangCodecHelperIr.toBinary(ErlangCodecHelperIr.ToBinaryVariant.XML_QUERY).asString());
         writer.write("");
     }
 
