@@ -42,10 +42,7 @@ class ErlRecordTest {
         ErlRecord update = new ErlRecord("basic_item",
                 new ErlVar("Item"),
                 List.of(new ErlRecordField("name", new ErlBinary("updated"))));
-        assertThat(update.lines()).containsExactly(
-                "Item#basic_item{",
-                "    name = <<\"updated\">>",
-                "}");
+        assertThat(update.lines()).containsExactly("Item#basic_item{ name = <<\"updated\">> }");
     }
 
     @Test
@@ -53,7 +50,6 @@ class ErlRecordTest {
         ErlRecord update = new ErlRecord("basic_item",
                 new ErlVar("Item"),
                 List.of(new ErlRecordField("name", new ErlBinary("updated"))));
-        assertThat(update.asString()).isEqualTo(
-                "Item#basic_item{\n    name = <<\"updated\">>\n}");
+        assertThat(update.asString()).isEqualTo("Item#basic_item{ name = <<\"updated\">> }");
     }
 }
