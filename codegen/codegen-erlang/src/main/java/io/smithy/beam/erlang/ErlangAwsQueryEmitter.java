@@ -71,24 +71,20 @@ public final class ErlangAwsQueryEmitter {
             writer.write("");
 
             for (OperationShape op : operations) {
-                emitEncoder(writer, model, service, op, httpIndex, sp);
-                emitDecoder(writer, model, service, op, sp, ec2Query);
+                ErlangAwsQueryIr.writeFunction(writer, ErlangAwsQueryIr.encodeRequest(
+                        model, service, op, httpIndex, sp));
+                ErlangAwsQueryIr.writeFunction(writer, ErlangAwsQueryIr.decodeResponse(
+                        model, service, op, sp, ec2Query));
             }
 
-            List<StructureShape> flattenInputs = new ArrayList<>(inputShapes);
+            List<StructureShape> flattenInputs = ErlangAwsQueryIr.inputShapes(model, service);
             for (int i = 0; i < flattenInputs.size(); i++) {
-                emitFlattenInputClause(
-                        writer,
-                        model,
-                        httpIndex,
-                        sp,
-                        flattenInputs.get(i),
-                        ec2Query,
-                        i == flattenInputs.size() - 1);
+                ErlangAwsQueryIr.writeFunction(writer, ErlangAwsQueryIr.flattenInputClause(
+                        model, httpIndex, sp, flattenInputs.get(i), ec2Query, i == flattenInputs.size() - 1));
             }
 
-            emitQueryHelpers(writer, ec2Query);
-            emitXmlHelpers(writer, ec2Query);
+            ErlangAwsQueryIr.writeFunction(writer, ErlangAwsQueryIr.queryHelpers(ec2Query));
+            ErlangAwsQueryIr.writeFunction(writer, ErlangAwsQueryIr.xmlHelpers(ec2Query));
         });
     }
 
@@ -132,20 +128,23 @@ public final class ErlangAwsQueryEmitter {
             emitServiceXmlNamespace(writer, serviceNamespace);
 
             for (OperationShape op : operations) {
-                emitServerRequestDecoder(writer, model, op, sp, ec2Query);
-                emitServerResponseEncoder(writer, model, service, op, sp, ec2Query);
+                ErlangAwsQueryIr.writeFunction(writer, ErlangAwsQueryIr.serverDecodeRequest(
+                        model, op, sp, ec2Query));
+                ErlangAwsQueryIr.writeFunction(writer, ErlangAwsQueryIr.serverEncodeResponse(
+                        model, service, op, sp, ec2Query));
             }
 
             for (StructureShape input : inputShapes) {
-                emitParseInputFromForm(writer, model, sp, input, ec2Query);
+                ErlangAwsQueryIr.writeFunction(writer, ErlangAwsQueryIr.parseInputFromForm(
+                        model, sp, input, ec2Query));
             }
 
-            emitServerQueryDecodeHelpers(writer, ec2Query);
-            emitServerXmlEncodeHelpers(writer, ec2Query);
+            ErlangAwsQueryIr.writeFunction(writer, ErlangAwsQueryIr.serverQueryDecodeHelpers(ec2Query));
+            ErlangAwsQueryIr.writeFunction(writer, ErlangAwsQueryIr.serverXmlEncodeHelpers(ec2Query));
         });
     }
 
-    private static void emitServerRequestDecoder(
+    static void emitServerRequestDecoder(
             ErlangWriter writer,
             Model model,
             OperationShape op,
@@ -167,7 +166,7 @@ public final class ErlangAwsQueryEmitter {
         writer.write("");
     }
 
-    private static void emitServerResponseEncoder(
+    static void emitServerResponseEncoder(
             ErlangWriter writer,
             Model model,
             ServiceShape service,
@@ -207,7 +206,7 @@ public final class ErlangAwsQueryEmitter {
         writer.write("");
     }
 
-    private static void emitParseInputFromForm(
+    static void emitParseInputFromForm(
             ErlangWriter writer,
             Model model,
             SymbolProvider sp,
@@ -272,7 +271,7 @@ public final class ErlangAwsQueryEmitter {
         writer.write("");
     }
 
-    private static void emitServerQueryDecodeHelpers(ErlangWriter writer, boolean ec2Query) {
+    static void emitServerQueryDecodeHelpers(ErlangWriter writer, boolean ec2Query) {
         writer.write("parse_query_params(Body) ->");
         writer.indent();
         writer.write("maps:from_list(uri_string:dissect_query(Body)).");
@@ -321,7 +320,7 @@ public final class ErlangAwsQueryEmitter {
         writer.write("");
     }
 
-    private static void emitServerXmlEncodeHelpers(ErlangWriter writer, boolean ec2Query) {
+    static void emitServerXmlEncodeHelpers(ErlangWriter writer, boolean ec2Query) {
         if (!ec2Query) {
             writer.write("wrap_aws_query_response(ResultName, ResultContent, ResponseName, XmlNs) ->");
             writer.indent();
@@ -375,7 +374,7 @@ public final class ErlangAwsQueryEmitter {
         return operation.getId().getName(service);
     }
 
-    private static void emitEncoder(
+    static void emitEncoder(
             ErlangWriter writer,
             Model model,
             ServiceShape service,
@@ -416,7 +415,7 @@ public final class ErlangAwsQueryEmitter {
         writer.write("");
     }
 
-    private static void emitFlattenInputClause(
+    static void emitFlattenInputClause(
             ErlangWriter writer,
             Model model,
             HttpBindingIndex httpIndex,
@@ -461,7 +460,7 @@ public final class ErlangAwsQueryEmitter {
         writer.write("");
     }
 
-    private static void emitDecoder(
+    static void emitDecoder(
             ErlangWriter writer,
             Model model,
             ServiceShape service,
@@ -598,7 +597,7 @@ public final class ErlangAwsQueryEmitter {
         return "xml_child_list(" + xmlVar + ", " + listNameExpr + ", <<\"" + itemElement + "\">>)";
     }
 
-    private static void emitXmlHelpers(ErlangWriter writer, boolean ec2Query) {
+    static void emitXmlHelpers(ErlangWriter writer, boolean ec2Query) {
         writer.write("unwrap_query_result(Body, ResultName) ->");
         writer.indent();
         writer.write("try");
@@ -841,7 +840,7 @@ public final class ErlangAwsQueryEmitter {
         writer.dedent();
     }
 
-    private static void emitQueryHelpers(ErlangWriter writer, boolean ec2Query) {
+    static void emitQueryHelpers(ErlangWriter writer, boolean ec2Query) {
         writer.write("flatten_member(_Key, undefined) ->");
         writer.indent();
         writer.write("[];");
