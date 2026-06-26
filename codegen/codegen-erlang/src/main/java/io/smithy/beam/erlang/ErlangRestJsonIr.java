@@ -11,6 +11,7 @@ import io.smithy.beam.ir.erlang.ErlListComprehension;
 import io.smithy.beam.ir.erlang.ErlOp;
 import io.smithy.beam.ir.erlang.ErlVar;
 import io.smithy.beam.ir.erlang.ErlVarPattern;
+import io.smithy.beam.core.BeamRequestCompressionIndex;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
@@ -154,6 +155,55 @@ final class ErlangRestJsonIr {
             functions.addAll(ErlangUnionHelperIr.unionDecodeEncode(union, sp));
         }
         return functions;
+    }
+
+    static List<ErlFunction> privateCodecHelpers(Model model, ServiceShape service) {
+        List<ErlFunction> functions = new ArrayList<>();
+        functions.add(ErlangCodecHelperIr.toBinary(ErlangCodecHelperIr.ToBinaryVariant.REST_JSON));
+        functions.add(ErlangCodecHelperIr.encodeQueryValueRestJson());
+        functions.add(ErlangCodecHelperIr.uriEncode());
+        functions.add(ErlangCodecHelperIr.uriDecode());
+        functions.add(ErlangCodecHelperIr.decodeQueryParam());
+        functions.add(ErlangCodecHelperIr.prefixHeadersToList());
+        functions.add(ErlangCodecHelperIr.prefixHeadersFromList());
+        functions.add(ErlangCodecHelperIr.decodeJsonBody());
+        functions.add(ErlangCodecHelperIr.contentTypeMatches());
+        functions.add(ErlangCodecHelperIr.ctBase());
+        functions.add(ErlangCodecHelperIr.decodeSparseList());
+        functions.add(ErlangCodecHelperIr.decodeList());
+        functions.add(ErlangXmlCodecIr.decodeSparseMap());
+        functions.add(ErlangCodecHelperIr.encodeSparseList());
+        functions.add(ErlangCodecHelperIr.encodeSparseMap());
+        functions.add(ErlangCodecHelperIr.encodeTimestampEpochSeconds());
+        functions.add(ErlangCodecHelperIr.encodeTimestampDateTime());
+        functions.add(ErlangCodecHelperIr.decodeTimestampEpochSeconds());
+        functions.add(ErlangCodecHelperIr.decodeTimestampDateTime());
+        functions.add(ErlangCodecHelperIr.generateUuid());
+
+        boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
+        boolean compressionBindings = serviceHasCompressionOperations(model, service);
+        if (checksumBindings) {
+            functions.addAll(ErlangHttpChecksumIr.checksumHelperFunctions());
+        } else if (compressionBindings) {
+            functions.add(ErlangCodecHelperIr.headersSet());
+        }
+        return functions;
+    }
+
+    static boolean serviceHasCompressionOperations(Model model, ServiceShape service) {
+        for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
+            if (supportsGzipCompression(op)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean supportsGzipCompression(OperationShape op) {
+        return BeamRequestCompressionIndex.forOperation(op)
+                .map(trait -> trait.getEncodings().stream()
+                        .anyMatch(encoding -> encoding.equalsIgnoreCase("gzip")))
+                .orElse(false);
     }
 
     static void writeFunction(ErlangWriter writer, ErlFunction fn) {

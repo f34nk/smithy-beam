@@ -7,8 +7,8 @@ import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 final class ErlangAwsJsonIr {
     private ErlangAwsJsonIr() {}
@@ -21,8 +21,8 @@ final class ErlangAwsJsonIr {
             String targetPrefix,
             String contentType,
             String eventStreamModule) {
-        return capture(writer -> ErlangAwsJsonRpcEmitter.emitEncoder(
-                writer, model, op, httpIndex, sp, targetPrefix, contentType, eventStreamModule));
+        return ErlangAwsJsonOperationIr.buildEncodeRequest(
+                model, op, httpIndex, sp, targetPrefix, contentType, eventStreamModule);
     }
 
     static ErlFunction decodeResponse(
@@ -31,12 +31,12 @@ final class ErlangAwsJsonIr {
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
             String eventStreamModule) {
-        return capture(writer -> ErlangAwsJsonRpcEmitter.emitDecoder(
-                writer, model, op, httpIndex, sp, eventStreamModule));
+        return ErlangAwsJsonOperationIr.buildDecodeResponse(
+                model, op, httpIndex, sp, eventStreamModule);
     }
 
     static ErlFunction errorDispatch(Model model, OperationShape op, SymbolProvider sp) {
-        return capture(writer -> ErlangAwsJsonRpcEmitter.emitErrorDispatch(writer, model, op, sp));
+        return ErlangAwsJsonOperationIr.buildErrorDispatch(model, op, sp);
     }
 
     static ErlFunction decodeRequest(
@@ -45,8 +45,8 @@ final class ErlangAwsJsonIr {
             HttpBindingIndex httpIndex,
             SymbolProvider sp,
             String eventStreamModule) {
-        return capture(writer -> ErlangAwsJsonRpcEmitter.emitRequestDecoder(
-                writer, model, op, httpIndex, sp, eventStreamModule));
+        return ErlangAwsJsonOperationIr.buildDecodeRequest(
+                model, op, httpIndex, sp, eventStreamModule);
     }
 
     static ErlFunction encodeResponse(
@@ -56,12 +56,17 @@ final class ErlangAwsJsonIr {
             SymbolProvider sp,
             String contentType,
             String eventStreamModule) {
-        return capture(writer -> ErlangAwsJsonRpcEmitter.emitResponseEncoder(
-                writer, model, op, httpIndex, sp, contentType, eventStreamModule));
+        return ErlangAwsJsonOperationIr.buildEncodeResponse(
+                model, op, httpIndex, sp, contentType, eventStreamModule);
     }
 
-    static ErlFunction sharedCodecHelpers(Model model, ServiceShape service, SymbolProvider sp) {
-        return capture(writer -> ErlangRestJson1Emitter.emitSharedCodecHelpers(writer, model, service, sp));
+    static List<ErlFunction> sharedCodecHelpers(Model model, ServiceShape service, SymbolProvider sp) {
+        List<ErlFunction> functions = new ArrayList<>();
+        functions.addAll(ErlangRestJsonIr.structureHelperFunctions(model, service, sp));
+        functions.addAll(ErlangRestJsonIr.enumHelperFunctions(model, service, sp));
+        functions.addAll(ErlangRestJsonIr.unionHelperFunctions(model, service, sp));
+        functions.addAll(ErlangRestJsonIr.privateCodecHelpers(model, service));
+        return functions;
     }
 
     static void writeFunction(ErlangWriter writer, ErlFunction fn) {
@@ -73,11 +78,5 @@ final class ErlangAwsJsonIr {
         for (ErlFunction fn : functions) {
             writeFunction(writer, fn);
         }
-    }
-
-    private static ErlFunction capture(Consumer<ErlangWriter> action) {
-        ErlangWriter writer = new ErlangWriter("capture.erl");
-        action.accept(writer);
-        return ErlFunction.rendered(writer.toString().strip());
     }
 }

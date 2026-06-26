@@ -5,9 +5,7 @@ import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
-import io.smithy.beam.ir.erlang.ErlFunction;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.core.BeamRequestCompressionIndex;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -70,8 +68,6 @@ public final class ErlangRestJson1Emitter {
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
         boolean encodeWithConfig = serviceHasHostLabelOperations(model, service);
-        boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
-        boolean compressionBindings = serviceHasCompressionOperations(model, service);
         List<String> exports = new ArrayList<>();
         for (OperationShape op : operations) {
             String name = sp.toSymbol(op).getName();
@@ -107,7 +103,7 @@ public final class ErlangRestJson1Emitter {
             ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.structureHelperFunctions(model, service, sp));
             ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.enumHelperFunctions(model, service, sp));
             ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.unionHelperFunctions(model, service, sp));
-            emitHelpers(writer, checksumBindings, compressionBindings);
+            ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.privateCodecHelpers(model, service));
             if (encodeWithConfig) {
                 emitBuildHostHelpers(writer, model, service, sp);
             }
@@ -127,7 +123,6 @@ public final class ErlangRestJson1Emitter {
         SymbolProvider sp = ctx.symbolProvider();
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
-        boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
         List<String> exports = new ArrayList<>();
         Set<ShapeId> errorIds = new LinkedHashSet<>();
         for (OperationShape op : operations) {
@@ -161,7 +156,7 @@ public final class ErlangRestJson1Emitter {
             ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.structureHelperFunctions(model, service, sp));
             ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.enumHelperFunctions(model, service, sp));
             ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.unionHelperFunctions(model, service, sp));
-            emitHelpers(writer, checksumBindings, false);
+            ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.privateCodecHelpers(model, service));
         });
     }
 
@@ -436,88 +431,6 @@ public final class ErlangRestJson1Emitter {
             }
         }
         return shapes;
-    }
-
-    static void emitSharedCodecHelpers(
-            ErlangWriter writer, Model model, ServiceShape service, SymbolProvider sp) {
-        boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service);
-        boolean compressionBindings = serviceHasCompressionOperations(model, service);
-        ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.structureHelperFunctions(model, service, sp));
-        ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.enumHelperFunctions(model, service, sp));
-        ErlangRestJsonIr.writeFunctions(writer, ErlangRestJsonIr.unionHelperFunctions(model, service, sp));
-        emitHelpers(writer, checksumBindings, compressionBindings);
-    }
-
-    private static boolean serviceHasCompressionOperations(Model model, ServiceShape service) {
-        for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
-            if (supportsGzipCompression(op)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean supportsGzipCompression(OperationShape op) {
-        return BeamRequestCompressionIndex.forOperation(op)
-                .map(trait -> trait.getEncodings().stream()
-                        .anyMatch(encoding -> encoding.equalsIgnoreCase("gzip")))
-                .orElse(false);
-    }
-
-    /** Emits private helper functions used across all codecs. */
-    private static void emitHelpers(
-            ErlangWriter writer, boolean checksumBindings, boolean compressionBindings) {
-        writer.write("%% -- Private helpers --");
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.toBinary(ErlangCodecHelperIr.ToBinaryVariant.REST_JSON).asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.encodeQueryValueRestJson().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.uriEncode().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.uriDecode().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.decodeQueryParam().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.prefixHeadersToList().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.prefixHeadersFromList().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.decodeJsonBody().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.contentTypeMatches().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.ctBase().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.decodeSparseList().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.decodeList().asString());
-        writer.write("");
-        ErlFunction decodeSparseMap = ErlangXmlCodecIr.decodeSparseMap();
-        writer.write("$L", decodeSparseMap.asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.encodeSparseList().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.encodeSparseMap().asString());
-        writer.write("");
-        writer.write("%% Timestamp helpers");
-        writer.write("%% Erlang timestamp() is {MegaSecs, Secs, MicroSecs}.");
-        writer.write("$L", ErlangCodecHelperIr.encodeTimestampEpochSeconds().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.encodeTimestampDateTime().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.decodeTimestampEpochSeconds().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.decodeTimestampDateTime().asString());
-        writer.write("");
-        writer.write("$L", ErlangCodecHelperIr.generateUuid().asString());
-        writer.write("");
-        if (checksumBindings) {
-            ErlangHttpChecksumEmitter.emitChecksumHelpers(writer);
-        } else if (compressionBindings) {
-            writer.write("$L", ErlangCodecHelperIr.headersSet().asString());
-            writer.write("");
-        }
     }
 
     private static void emitBuildHostHelpers(
