@@ -7,15 +7,25 @@ public final class ErlRecord implements ErlExpr {
     private final String name;
     private final ErlExpr recordOrNull;
     private final List<ErlRecordField> fields;
+    private final boolean compact;
 
-    public ErlRecord(String name, ErlExpr recordOrNull, List<ErlRecordField> fields) {
+    public ErlRecord(String name, ErlExpr recordOrNull, List<ErlRecordField> fields, boolean compact) {
         this.name = name;
         this.recordOrNull = recordOrNull;
         this.fields = List.copyOf(fields);
+        this.compact = compact;
+    }
+
+    public ErlRecord(String name, ErlExpr recordOrNull, List<ErlRecordField> fields) {
+        this(name, recordOrNull, fields, false);
     }
 
     public static ErlRecord record(String name, ErlRecordField... fields) {
         return new ErlRecord(name, null, List.of(fields));
+    }
+
+    public static ErlRecord recordCompact(String name, ErlRecordField... fields) {
+        return new ErlRecord(name, null, List.of(fields), true);
     }
 
     public static ErlRecord recordUpdate(ErlExpr record, String name, ErlRecordField... fields) {
@@ -36,7 +46,7 @@ public final class ErlRecord implements ErlExpr {
 
     @Override
     public List<String> lines(int indent) {
-        if (recordOrNull != null && fields.size() == 1) {
+        if (compact || (recordOrNull != null && fields.size() == 1)) {
             return List.of(renderSingleLine(indent));
         }
         List<String> out = new ArrayList<>();
