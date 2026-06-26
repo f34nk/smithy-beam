@@ -14,6 +14,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ErlangHandlerDiscoveryIrTest {
     @Test
+    void resolveImplAsStringMatchesGolden() throws IOException {
+        assertThat(ErlangHandlerDiscoveryIr.resolveImpl("basic_service_behaviour").asString())
+                .isEqualTo(readExpectedString("ir/handler_discovery_resolve_impl.expected.erl"));
+    }
+
+    @Test
+    void makeHandlerAsStringMatchesGolden() throws IOException {
+        assertThat(ErlangHandlerDiscoveryIr.makeHandler().asString())
+                .isEqualTo(readExpectedString("ir/handler_discovery_make_handler.expected.erl"));
+    }
+
+    @Test
+    void initHandlersAsStringMatchesGolden() throws IOException {
+        assertThat(ErlangHandlerDiscoveryIr.initHandlers().asString())
+                .isEqualTo(readExpectedString("ir/handler_discovery_init_handlers.expected.erl"));
+    }
+
+    @Test
     void dispatchHandlerAsStringMatchesGolden() throws IOException {
         assertThat(ErlangHandlerDiscoveryIr.dispatchHandler().asString())
                 .isEqualTo(readExpectedString("ir/handler_discovery_dispatch_handler.expected.erl"));

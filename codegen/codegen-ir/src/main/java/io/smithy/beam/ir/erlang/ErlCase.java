@@ -61,7 +61,11 @@ public final class ErlCase implements ErlExpr {
         } else {
             out.add(IrObject.indent(indent) + head + " ->");
             for (ErlExpr expr : clause.body()) {
-                out.addAll(expr.lines(indent + 1));
+                if (expr.lines().size() == 1) {
+                    out.add(IrObject.indent(indent + 1) + expr.asString());
+                } else {
+                    out.addAll(expr.lines(indent + 1));
+                }
             }
             String last = out.get(out.size() - 1);
             out.set(out.size() - 1, last + (semicolon ? ";" : ""));
@@ -92,6 +96,9 @@ public final class ErlCase implements ErlExpr {
     }
 
     private static boolean isInlineBody(ErlClause clause) {
+        if (clause.forceBlockBody()) {
+            return false;
+        }
         return clause.body().size() == 1 && clause.body().get(0).lines().size() == 1;
     }
 }

@@ -29,4 +29,10 @@ class ErlRemoteCallTest {
                 ErlList.list(ErlTuple.tuple(ErlAtom.atom("body_format"), ErlAtom.atom("binary"))));
         assertThat(call.asString()).isEqualTo("HttpClient:request(get, Req, [], [{body_format, binary}])");
     }
+
+    @Test
+    void remoteCallVariableFunction() {
+        assertThat(ErlRemoteCall.call(ErlVar.var("Impl"), ErlVar.var("Fun"), ErlVar.var("Ctx")).asString())
+                .isEqualTo("Impl:Fun(Ctx)");
+    }
 }

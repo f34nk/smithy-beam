@@ -48,6 +48,10 @@ public final class ErlClause implements IrObject {
         return body;
     }
 
+    public boolean forceBlockBody() {
+        return forceBlockBody;
+    }
+
     @Override
     public List<String> lines() {
         throw new UnsupportedOperationException("Use lines(indent, functionName, semicolon)");

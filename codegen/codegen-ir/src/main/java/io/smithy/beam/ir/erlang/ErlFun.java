@@ -5,13 +5,23 @@ import java.util.List;
 
 public final class ErlFun implements ErlExpr {
     private final List<ErlClause> clauses;
+    private final boolean compact;
 
     public ErlFun(List<ErlClause> clauses) {
+        this(clauses, false);
+    }
+
+    private ErlFun(List<ErlClause> clauses, boolean compact) {
         this.clauses = List.copyOf(clauses);
+        this.compact = compact;
     }
 
     public static ErlFun fun(ErlClause... clauses) {
         return new ErlFun(List.of(clauses));
+    }
+
+    public static ErlFun compactFun(ErlClause clause) {
+        return new ErlFun(List.of(clause), true);
     }
 
     public List<ErlClause> clauses() {
@@ -20,6 +30,11 @@ public final class ErlFun implements ErlExpr {
 
     @Override
     public List<String> lines(int indent) {
+        if (compact && clauses.size() == 1) {
+            ErlClause clause = clauses.get(0);
+            return List.of(IrObject.indent(indent) + "fun" + funClauseHead(clause) + " -> "
+                    + clause.body().get(0).asString() + " end");
+        }
         List<String> out = new ArrayList<>();
         out.add(IrObject.indent(indent) + "fun");
         if (clauses.size() == 1 && clauses.get(0).patterns().isEmpty()) {
