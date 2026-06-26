@@ -1,2 +1,1 @@
-header_value(Headers, Name) ->
-    proplists:get_value(Name, Headers, undefined).
+header_value(Headers, Name) -> proplists:get_value(Name, Headers, undefined).

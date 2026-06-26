@@ -100,7 +100,7 @@ final class ErlangUnionHelperIr {
         return ErlConsPattern.consPattern(element, ErlNilPattern.nilPattern());
     }
 
-    private static String unionTagForMember(SymbolProvider sp, MemberShape member) {
+    static String unionTagForMember(SymbolProvider sp, MemberShape member) {
         return sp.toSymbol(member).getProperty("unionTag", String.class).orElseThrow();
     }
 }
