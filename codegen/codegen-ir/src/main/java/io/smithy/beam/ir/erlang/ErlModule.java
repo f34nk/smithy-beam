@@ -1,6 +1,7 @@
 package io.smithy.beam.ir.erlang;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public final class ErlModule implements IrObject {
@@ -54,6 +55,18 @@ public final class ErlModule implements IrObject {
                 out.add("");
             }
             out.addAll(functions.get(i).lines(indent));
+        }
+        return flattenEmbeddedNewlines(out);
+    }
+
+    private static List<String> flattenEmbeddedNewlines(List<String> lines) {
+        List<String> out = new ArrayList<>();
+        for (String line : lines) {
+            if (line.indexOf('\n') < 0) {
+                out.add(line);
+            } else {
+                out.addAll(Arrays.asList(line.split("\n", -1)));
+            }
         }
         return out;
     }

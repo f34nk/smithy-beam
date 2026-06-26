@@ -346,7 +346,7 @@ final class ErlangDirectedCodegen
      * enums, and int enums). All named service types share one header file, so both kinds
      * currently render as the type alias name from {@link Symbol#getName()}.
      */
-    private String renderErlangType(Symbol symbol) {
+    private static String renderErlangType(Symbol symbol) {
         boolean builtIn = symbol.getProperty("builtIn", Boolean.class).orElse(false);
         if (builtIn) {
             return symbol.getName();
@@ -543,10 +543,8 @@ final class ErlangDirectedCodegen
             BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
             writer.popState();
 
-            List<ErlHeaderEntry> entries = new ArrayList<>();
-            entries.add(buildStructureRecord(shape, sp, nullableIndex, recordName));
-            entries.add(new ErlTypeDef(recordName, "#" + recordName + "{}"));
-            ErlTypeHeader header = ErlTypeHeader.typeHeader(ctx.moduleName(), List.of(), entries);
+            ErlTypeHeader header = buildStructureTypeHeader(
+                    directive.model(), directive.service(), shape, directive.settings());
             // Smithy's writer.write(String) runs the string through CodeFormatter, so
             // literal {, }, and $ are treated as template syntax.
             // To bypass the formatter, write the string as a literal format argument.
@@ -554,7 +552,24 @@ final class ErlangDirectedCodegen
         });
     }
 
-    private ErlRecordDef buildStructureRecord(
+    static ErlTypeHeader buildStructureTypeHeader(
+            Model model,
+            ServiceShape service,
+            StructureShape shape,
+            BeamSettings settings) {
+        BeamErlangLayout layout = new BeamErlangLayout(settings, service.getId().getNamespace(), service);
+        SymbolProvider sp = SymbolProvider.cache(
+                new ErlangSymbolProvider(
+                        settings, model, service, layout.typesHeaderFile(), BeamCodegenKind.TYPES));
+        NullableIndex nullableIndex = NullableIndex.of(model);
+        String recordName = sp.toSymbol(shape).getName().replace("()", "");
+        List<ErlHeaderEntry> entries = List.of(
+                buildStructureRecord(shape, sp, nullableIndex, recordName),
+                new ErlTypeDef(recordName, "#" + recordName + "{}"));
+        return ErlTypeHeader.typeHeader(layout.typesModuleName(), List.of(), entries);
+    }
+
+    static ErlRecordDef buildStructureRecord(
             StructureShape shape,
             SymbolProvider sp,
             NullableIndex nullableIndex,
