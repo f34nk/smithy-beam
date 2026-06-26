@@ -2,7 +2,20 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.ir.erlang.ErlAtom;
+import io.smithy.beam.ir.erlang.ErlBinary;
+import io.smithy.beam.ir.erlang.ErlCall;
+import io.smithy.beam.ir.erlang.ErlCallLocal;
+import io.smithy.beam.ir.erlang.ErlClause;
 import io.smithy.beam.ir.erlang.ErlExportAttribute;
+import io.smithy.beam.ir.erlang.ErlExpr;
+import io.smithy.beam.ir.erlang.ErlFun;
+import io.smithy.beam.ir.erlang.ErlGuard;
+import io.smithy.beam.ir.erlang.ErlList;
+import io.smithy.beam.ir.erlang.ErlOp;
+import io.smithy.beam.ir.erlang.ErlTuple;
+import io.smithy.beam.ir.erlang.ErlVar;
+import io.smithy.beam.ir.erlang.ErlVarPattern;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
@@ -191,25 +204,42 @@ public final class ErlangRestJson1Emitter {
                 ? "" : "\n    " + String.join(",\n    ", patternParts) + "\n";
 
         writer.write("%% Encode HTTP response for $L.", op.getId());
-        ErlangFormat.writeSpec(writer, "encode_" + opName + "_response(" + outputType + ") -> #http_response{}");
+        ErlangInfrastructureIr.writeSpec(
+                writer,
+                "encode_" + opName + "_response",
+                outputType,
+                "#http_response{}");
         writer.write("encode_$L_response(#$L{$L}) ->", opName, outputRecord, pattern);
         writer.indent();
 
         if (respHeaders.isEmpty()) {
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>}],", responseContentType);
         } else {
-            List<String> headerClauses = new ArrayList<>();
+            List<ErlClause> headerClauses = new ArrayList<>();
             for (HttpBinding hb : respHeaders) {
-                String headerName = hb.getLocationName();
-                headerClauses.add(
-                        "(V) when V =/= undefined -> {true, {<<\"" + headerName + "\">>, to_binary(V)}};");
+                headerClauses.add(ErlClause.clause(
+                        List.of(ErlVarPattern.varPattern("V")),
+                        List.of(ErlGuard.exprGuard(ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))),
+                        ErlTuple.tuple(
+                                ErlAtom.atom("true"),
+                                ErlTuple.tuple(
+                                        ErlBinary.binary(hb.getLocationName()),
+                                        ErlCallLocal.callLocal("to_binary", ErlVar.var("V"))))));
             }
-            headerClauses.add("(_) -> false");
-            String headerArgs = respHeaders.stream()
-                    .map(hb -> toBindingVar(BeamNameUtils.toSnakeCase(hb.getMember().getMemberName())))
-                    .collect(Collectors.joining(", "));
-            writer.write("ExtraHeaders = ");
-            ErlangFormat.writeFiltermap(writer, headerClauses, headerArgs);
+            headerClauses.add(ErlClause.clause(List.of(ErlVarPattern.varPattern("_")), ErlAtom.atom("false")));
+            List<ErlExpr> headerArgs = respHeaders.stream()
+                    .map(hb -> (ErlExpr) ErlVar.var(toBindingVar(BeamNameUtils.toSnakeCase(hb.getMember().getMemberName()))))
+                    .toList();
+            ErlCall extraHeaders = ErlCall.filtermap(
+                    ErlFun.fun(headerClauses.toArray(ErlClause[]::new)),
+                    ErlList.list(headerArgs.toArray(ErlExpr[]::new)));
+            List<String> extraHeaderLines = extraHeaders.lines();
+            writer.write("ExtraHeaders = $L", extraHeaderLines.get(0));
+            writer.indent();
+            for (int i = 1; i < extraHeaderLines.size(); i++) {
+                writer.write("$L", extraHeaderLines.get(i));
+            }
+            writer.dedent();
             writer.write(",");
             writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>} | ExtraHeaders],", responseContentType);
         }
