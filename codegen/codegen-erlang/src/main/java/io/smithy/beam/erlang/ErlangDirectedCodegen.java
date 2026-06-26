@@ -271,22 +271,43 @@ final class ErlangDirectedCodegen
                         return;
                     }
                     recordPreambleAlias(s, preambleAliasesEmitted);
-                    String baseType = sym.getProperty("baseType", String.class).orElse("term()");
-                    writer.pushGeneratedDocumentationSection();
-                    BeamDocumentation.writeShapeDocIfPresent(writer, s, DocTarget.ERLANG);
-                    if (s instanceof BigDecimalShape) {
-                        writer.write("-type $L :: $L.       %% decimal:decimal()", sym.getName(), baseType);
-                    } else if (s instanceof BlobShape
-                            && sym.getProperty("streamingBlob", Boolean.class).orElse(false)) {
-                        writer.write(
-                                "-type $L :: $L.       %% streaming payload; framing deferred to protocol layer",
-                                sym.getName(),
-                                baseType);
-                    } else {
-                        writer.write("-type $L :: $L.", sym.getName(), baseType);
-                    }
-                    writer.popState();
+                    List<ErlComment> doc = shapeDocComments(s);
+                    writer.write("$L", scalarTypeAlias(s, sym, doc).asString());
                 });
+    }
+
+    private static ErlTypeDef scalarTypeAlias(Shape shape, Symbol sym, List<ErlComment> docPreamble) {
+        String baseType = sym.getProperty("baseType", String.class).orElse("term()");
+        List<ErlComment> preamble = new ArrayList<>(docPreamble);
+        if (shape instanceof BigDecimalShape) {
+            preamble.add(ErlComment.comment("decimal:decimal()"));
+        } else if (shape instanceof BlobShape
+                && sym.getProperty("streamingBlob", Boolean.class).orElse(false)) {
+            preamble.add(ErlComment.comment(
+                    "streaming payload; framing deferred to protocol layer"));
+        }
+        return new ErlTypeDef(sym.getName(), baseType, preamble);
+    }
+
+    private static List<ErlComment> shapeDocComments(Shape shape) {
+        return BeamDocumentation.forShape(shape)
+                .map(doc -> {
+                    List<ErlComment> comments = new ArrayList<>();
+                    if (!doc.contains("\n")) {
+                        comments.add(ErlComment.comment("@doc " + doc));
+                    } else {
+                        comments.add(ErlComment.comment("@doc"));
+                        for (String line : doc.split("\n", -1)) {
+                            if (line.isEmpty()) {
+                                comments.add(ErlComment.comment(""));
+                            } else {
+                                comments.add(ErlComment.comment(line));
+                            }
+                        }
+                    }
+                    return comments;
+                })
+                .orElseGet(ArrayList::new);
     }
 
     private void writeListAliases(

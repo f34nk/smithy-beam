@@ -353,8 +353,8 @@ class ErlangDirectedCodegenTest {
 
         assertThat(content)
                 .contains(
-                        "-type pe_streaming_blob() :: binary()."
-                                + "       %% streaming payload; framing deferred to protocol layer")
+                        "%% streaming payload; framing deferred to protocol layer",
+                        "-type pe_streaming_blob() :: binary().")
                 .contains("-type pe_timestamp() :: erlang:timestamp().")
                 .contains("-type pe_document() :: term().")
                 .contains("-type pe_string_list() :: [pe_string()].")
@@ -434,6 +434,68 @@ class ErlangDirectedCodegenTest {
         assertThat(content).contains("f :: float()");
         assertThat(content).contains("i :: integer()");
         assertThat(content).contains("b :: boolean()");
+    }
+
+    @Test
+    void scalarAliasGoldenIncludesBlobAndBigDecimalCommentVariants() {
+        Model model = Model.assembler()
+                .addUnparsedModel(
+                        "scalar_variants.smithy",
+                        """
+                        $version: "2"
+                        namespace com.scalarvariants
+
+                        use smithy.api#default
+                        use smithy.api#streaming
+
+                        service ScalarVariantService {
+                            operations: [GetScalarBundle]
+                        }
+
+                        @readonly
+                        operation GetScalarBundle {
+                            output: ScalarBundle
+                        }
+
+                        structure ScalarBundle {
+                            @default("")
+                            payload: SvStreamingBlob
+                            amount: SvBigDecimal
+                        }
+
+                        @streaming
+                        blob SvStreamingBlob
+                        bigDecimal SvBigDecimal
+                        """)
+                .assemble()
+                .unwrap();
+
+        ServiceShape service = model.expectShape(
+                ShapeId.from("com.scalarvariants#ScalarVariantService"), ServiceShape.class);
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        String typesHeader =
+                new BeamErlangLayout(settings, service.getId().getNamespace(), service)
+                        .typesHeaderFile();
+
+        MockManifest manifest = new MockManifest();
+        ObjectNode pluginSettings = ObjectNode.builder()
+                .withMember("service", "com.scalarvariants#ScalarVariantService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypeGeneration()
+                .generate(PluginContext.builder()
+                        .model(model)
+                        .fileManifest(manifest)
+                        .settings(pluginSettings)
+                        .build());
+
+        String content = manifest.expectFileString(typesHeader);
+        assertThat(content)
+                .contains(
+                        "%% streaming payload; framing deferred to protocol layer",
+                        "-type sv_streaming_blob() :: binary().")
+                .contains("%% decimal:decimal()", "-type sv_big_decimal() :: term().");
     }
 
     private static int countOccurrences(String haystack, String needle) {

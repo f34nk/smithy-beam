@@ -6,20 +6,26 @@ import java.util.List;
 public final class ErlTypeDef implements ErlHeaderEntry {
     private final String name;
     private final String body;
+    private final List<ErlComment> preamble;
     private final List<String> variants;
 
     public ErlTypeDef(String name, String body) {
-        this(name, body, List.of());
+        this(name, body, List.of(), List.of());
     }
 
-    private ErlTypeDef(String name, String body, List<String> variants) {
+    public ErlTypeDef(String name, String body, List<ErlComment> preamble) {
+        this(name, body, preamble, List.of());
+    }
+
+    private ErlTypeDef(String name, String body, List<ErlComment> preamble, List<String> variants) {
         this.name = name;
         this.body = body;
+        this.preamble = List.copyOf(preamble);
         this.variants = List.copyOf(variants);
     }
 
     public static ErlTypeDef unionType(String name, List<String> variants) {
-        return new ErlTypeDef(name, String.join(" | ", variants), variants);
+        return new ErlTypeDef(name, String.join(" | ", variants), List.of(), variants);
     }
 
     public String name() {
@@ -32,6 +38,15 @@ public final class ErlTypeDef implements ErlHeaderEntry {
 
     @Override
     public List<String> lines(int indent) {
+        List<String> out = new ArrayList<>();
+        for (ErlComment comment : preamble) {
+            out.addAll(comment.lines(indent));
+        }
+        out.addAll(typeBodyLines(indent));
+        return out;
+    }
+
+    private List<String> typeBodyLines(int indent) {
         String typeName = typeDeclName();
         if (variants.size() <= 2) {
             return List.of(IrObject.indent(indent) + "-type " + typeName + " :: " + body + ".");

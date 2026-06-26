@@ -20,6 +20,35 @@ class ErlTypeDefTest {
     }
 
     @Test
+    void preambleWithDocComment() {
+        List<ErlComment> preamble = List.of(ErlComment.comment("@doc A blob payload."));
+        assertThat(new ErlTypeDef("pa_blob", "binary()", preamble).lines())
+                .containsExactly(
+                        "%% @doc A blob payload.",
+                        "-type pa_blob() :: binary().");
+    }
+
+    @Test
+    void scalarVariantComments() {
+        assertThat(new ErlTypeDef(
+                                "pa_big_decimal",
+                                "term()",
+                                List.of(ErlComment.comment("decimal:decimal()")))
+                        .asString())
+                .isEqualTo("%% decimal:decimal()\n-type pa_big_decimal() :: term().");
+
+        assertThat(new ErlTypeDef(
+                                "pa_streaming_blob",
+                                "binary()",
+                                List.of(ErlComment.comment(
+                                        "streaming payload; framing deferred to protocol layer")))
+                        .asString())
+                .isEqualTo(
+                        "%% streaming payload; framing deferred to protocol layer\n"
+                                + "-type pa_streaming_blob() :: binary().");
+    }
+
+    @Test
     void unionTypeMultilineAsString() {
         String out = ErlTypeDef.unionType(
                         "basic_union()",
