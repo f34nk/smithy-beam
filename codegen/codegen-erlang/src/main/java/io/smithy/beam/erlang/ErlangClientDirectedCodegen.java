@@ -202,7 +202,7 @@ final class ErlangClientDirectedCodegen
         } else if (ctx.protocolCodegen() != null
                 && BeamProtocolIds.REST_XML.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
-            ErlangRestXmlEmitter.emitCodecModule(ctx, directive.shape());
+            ErlangRestXmlIr.emitClientCodecModule(ctx, directive.shape());
         }
 
         ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);

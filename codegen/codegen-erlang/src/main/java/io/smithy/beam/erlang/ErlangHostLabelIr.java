@@ -50,14 +50,14 @@ final class ErlangHostLabelIr {
     private static ErlFunction buildHostFunction(
             Model model, OperationShape op, List<MemberShape> hostLabels, SymbolProvider sp) {
         StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
-        String inputRecord = ErlangRestXmlEmitter.recordName(sp.toSymbol(input));
+        String inputRecord = ErlangRestXmlSupport.recordName(sp.toSymbol(input));
         SmithyPattern hostPrefix = op.expectTrait(EndpointTrait.class).getHostPrefix();
 
         List<ErlRecordFieldPattern> fields = new ArrayList<>();
         for (MemberShape m : hostLabels) {
             String field = BeamNameUtils.toSnakeCase(m.getMemberName());
             fields.add(ErlRecordFieldPattern.fieldPattern(
-                    field, ErlVarPattern.varPattern(ErlangRestXmlEmitter.toBindingVar(field))));
+                    field, ErlVarPattern.varPattern(ErlangRestXmlSupport.toBindingVar(field))));
         }
 
         ErlBinaryTemplate result = ErlBinaryTemplate.binaryTemplate(
@@ -98,7 +98,7 @@ final class ErlangHostLabelIr {
         for (SmithyPattern.Segment segment : hostPrefix.getSegments()) {
             if (segment.isLabel()) {
                 String fieldName = BeamNameUtils.toSnakeCase(segment.getContent());
-                String bindingVar = ErlangRestXmlEmitter.toBindingVar(fieldName);
+                String bindingVar = ErlangRestXmlSupport.toBindingVar(fieldName);
                 segments.add(ErlBinaryExpr.expr(
                         ErlCallLocal.callLocal(
                                 "uri_encode",

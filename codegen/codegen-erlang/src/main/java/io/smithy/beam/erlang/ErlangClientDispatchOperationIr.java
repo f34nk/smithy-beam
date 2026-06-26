@@ -172,7 +172,7 @@ final class ErlangClientDispatchOperationIr {
         Symbol opSym = sp.toSymbol(op);
         boolean sigv4 = BeamSigV4Metadata.from(ctx.service()).isPresent();
         boolean encodeWithConfig = ErlangRestJsonSupport.serviceHasHostLabelOperations(ctx.model(), ctx.service())
-                || ErlangRestXmlEmitter.serviceEncodesWithConfig(ctx.model(), ctx.service());
+                || ErlangRestXmlSupport.serviceEncodesWithConfig(ctx.model(), ctx.service());
         return new DispatchContext(
                 ctx,
                 op,
