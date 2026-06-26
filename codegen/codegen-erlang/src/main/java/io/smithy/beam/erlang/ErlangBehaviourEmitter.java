@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.ir.erlang.ErlCallbackSpec;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -49,7 +50,9 @@ final class ErlangBehaviourEmitter {
         StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
         Symbol inSym = sp.toSymbol(input);
         Symbol outSym = sp.toSymbol(output);
-        String handler = "handle_" + opSym.getName();
+        String name = "handle_" + opSym.getName();
+        String inputTypes = "Ctx :: term(), Input :: " + inSym.getName() + ", Meta :: term()";
+        String outputTypes = "{ok, " + outSym.getName() + "} | {error, term()}";
 
         ctx.writerDelegator().useFileWriter(
                 new BeamErlangLayout(ctx.settings(), ctx.service().getId().getNamespace(), ctx.service())
@@ -57,14 +60,7 @@ final class ErlangBehaviourEmitter {
                 writer -> {
                     writer.pushOperationBodySection();
                     BeamDocumentation.forShape(op).ifPresent(doc -> BeamDocumentation.writeErlangDoc(writer, doc));
-                    ErlangFormat.writeCallback(
-                            writer,
-                            handler
-                                    + "(Ctx :: term(), Input :: "
-                                    + inSym.getName()
-                                    + ", Meta :: term()) -> {ok, "
-                                    + outSym.getName()
-                                    + "} | {error, term()}");
+                    writer.write("$L", ErlCallbackSpec.callbackSpec(name, inputTypes, outputTypes).asString());
                     writer.write("");
                     writer.popState();
                 });
