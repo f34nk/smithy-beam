@@ -209,7 +209,7 @@ final class ErlangRestJsonOperationIr {
                 patterns.size(),
                 ErlFunctionDoc.functionDoc("Decode HTTP request for " + op.getId() + "."),
                 spec,
-                List.of(ErlClause.clause(patterns, body.toArray(ErlExpr[]::new))));
+                List.of(ErlClause.clause(patterns, ErlExprBlock.block(body.toArray(ErlExpr[]::new)))));
     }
 
     static ErlFunction buildDecodeResponse(

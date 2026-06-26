@@ -230,6 +230,19 @@ run() ->
     end,
     io:format("~n"),
 
+    %% Warm up the published version before alias invoke. LocalStack often needs a
+    %% separate cold start for qualifier-based invocations.
+    WarmupIn = #invoke_input{
+        function_name = ?LAMBDA_FUNCTION_NAME,
+        qualifier = PublishedVersion,
+        payload = <<"{\"warmup\": true}">>
+    },
+    case lambda_client:invoke(Config, WarmupIn) of
+        {ok, _} -> ok;
+        {error, WarmupErr} -> erlang:error({invoke_warmup_failed, WarmupErr})
+    end,
+    timer:sleep(1000),
+
     %% ---------------------------------------------------------------
     %% 10. Invoke via alias
     %% ---------------------------------------------------------------
@@ -239,7 +252,7 @@ run() ->
         qualifier = ?ALIAS_NAME,
         payload = <<"{\"source\": \"alias invocation\"}">>
     },
-    case lambda_client:invoke(Config, InvokeAliasIn) of
+    case invoke_with_retry(Config, InvokeAliasIn, 5) of
         {ok, #invoke_output{status_code = 200, payload = AliasPayload}} ->
             io:format("  SUCCESS: Alias invocation returned 200~n"),
             io:format("  Status code : 200~n"),
@@ -391,3 +404,23 @@ format_binary(undefined) -> <<"?">>;
 format_binary(Value) when is_binary(Value) -> Value;
 format_binary(Value) when is_atom(Value) -> atom_to_binary(Value, utf8);
 format_binary(Value) -> io_lib:format("~p", [Value]).
+
+invoke_with_retry(Config, Input, Attempts) when Attempts > 0 ->
+    case lambda_client:invoke(Config, Input) of
+        {ok, _} = Ok ->
+            Ok;
+        {error, {service_exception, _, Msg, _} = Err} when is_binary(Msg), Attempts > 1 ->
+            case binary:match(Msg, <<"Timeout">>) of
+                nomatch ->
+                    {error, Err};
+                _ ->
+                    io:format("  Alias invoke timed out, retrying (~p attempts left)...~n",
+                              [Attempts - 1]),
+                    timer:sleep(3000),
+                    invoke_with_retry(Config, Input, Attempts - 1)
+            end;
+        Other ->
+            Other
+    end;
+invoke_with_retry(_Config, _Input, 0) ->
+    {error, invoke_alias_retries_exhausted}.

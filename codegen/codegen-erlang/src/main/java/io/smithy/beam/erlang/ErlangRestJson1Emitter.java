@@ -268,7 +268,7 @@ public final class ErlangRestJson1Emitter {
         if (!respPayload.isEmpty() && isStreamingBlob(model, respPayload.get(0).getMember())) {
             writer.write("    ,stream = Stream");
         }
-        writer.write("}.");
+        writer.write("}");
     }
 
     static List<EnumShape> reachableEnumShapes(Model model, ServiceShape service) {

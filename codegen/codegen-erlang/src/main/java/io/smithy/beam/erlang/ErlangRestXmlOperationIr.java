@@ -214,7 +214,7 @@ final class ErlangRestXmlOperationIr {
                             writer.write("    status = $L,", status);
                             writer.write("    headers = [{<<\"Content-Type\">>, <<\"application/xml\">>}],");
                             writer.write("    body = Body");
-                            writer.write("}.");
+                            writer.write("}");
                         }))));
     }
 

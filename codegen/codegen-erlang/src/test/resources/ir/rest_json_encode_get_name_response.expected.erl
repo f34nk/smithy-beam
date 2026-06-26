@@ -10,4 +10,4 @@ encode_get_name_response(#get_name_output{name = Name}) ->
             status = 200,
             headers = Headers,
             body = Body
-        }..
+        }.

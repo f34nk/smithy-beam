@@ -2,10 +2,16 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.ir.erlang.ErlFunction;
 import org.junit.jupiter.api.Test;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.knowledge.HttpBindingIndex;
+import software.amazon.smithy.model.shapes.OperationShape;
+import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,7 +39,31 @@ class ErlangRestXmlIrTest {
         assertStructural(sampleEncodeRequest());
     }
 
-    private static ErlFunction sampleEncodeRequest() {
+    @Test
+    void capturedCodecBodiesDoNotDuplicateClauseTerminators() {
+        Model model = sampleModel();
+        ServiceShape service = model.expectShape(
+                ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+        OperationShape op = model.expectShape(
+                ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
+        ErlangSymbolProvider sp = sampleSymbolProvider(model, service);
+        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+
+        String encodeRequest = ErlangRestXmlIr.encodeRequest(model, service, op, httpIndex, sp, false).asString();
+        String decodeRequest = ErlangRestXmlOperationIr.buildDecodeRequest(model, op, httpIndex, sp).asString();
+        String decodeResponse = ErlangRestXmlOperationIr.buildDecodeResponse(model, op, httpIndex, sp).stream()
+                .map(ErlFunction::asString)
+                .collect(java.util.stream.Collectors.joining("\n\n"));
+        String encodeResponse = ErlangRestXmlOperationIr.buildEncodeResponse(model, op, httpIndex, sp).asString();
+
+        for (String generated : List.of(encodeRequest, decodeRequest, decodeResponse, encodeResponse)) {
+            assertThat(generated).doesNotContain("}..");
+            assertThat(generated).doesNotContain("}};;");
+            assertThat(generated).doesNotContain("};.");
+        }
+    }
+
+    private static Model sampleModel() {
         String idl = """
                 $version: "2"
                 namespace smithy.beam.demo.http
@@ -65,30 +95,35 @@ class ErlangRestXmlIrTest {
                     name: Name
                 }
                 """;
-        var model = software.amazon.smithy.model.Model.assembler()
+        return Model.assembler()
                 .addUnparsedModel("http.smithy", idl)
                 .discoverModels()
                 .assemble()
                 .unwrap();
-        var service = model.expectShape(
-                software.amazon.smithy.model.shapes.ShapeId.from("smithy.beam.demo.http#HttpService"),
-                software.amazon.smithy.model.shapes.ServiceShape.class);
-        var op = model.expectShape(
-                software.amazon.smithy.model.shapes.ShapeId.from("smithy.beam.demo.http#GetName"),
-                software.amazon.smithy.model.shapes.OperationShape.class);
-        var sp = new ErlangSymbolProvider(
+    }
+
+    private static ErlFunction sampleEncodeRequest() {
+        Model model = sampleModel();
+        ServiceShape service = model.expectShape(
+                ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+        OperationShape op = model.expectShape(
+                ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
+        return ErlangRestXmlIr.encodeRequest(
+                model,
+                service,
+                op,
+                HttpBindingIndex.of(model),
+                sampleSymbolProvider(model, service),
+                false);
+    }
+
+    private static ErlangSymbolProvider sampleSymbolProvider(Model model, ServiceShape service) {
+        return new ErlangSymbolProvider(
                 new io.smithy.beam.core.BeamSettings(),
                 model,
                 service,
                 "http_types.hrl",
                 io.smithy.beam.core.BeamCodegenKind.CLIENT);
-        return ErlangRestXmlIr.encodeRequest(
-                model,
-                service,
-                op,
-                software.amazon.smithy.model.knowledge.HttpBindingIndex.of(model),
-                sp,
-                false);
     }
 
     private static void assertStructural(ErlFunction fn) {

@@ -199,7 +199,7 @@ public final class ErlangRestXmlEmitter {
         if (!recordFields.isEmpty()) {
             writer.write(String.join(",\n", recordFields));
         }
-        writer.write("}}.");
+        writer.write("}}");
     }
 
     private static void emitPayloadDecodeField(
@@ -340,20 +340,19 @@ public final class ErlangRestXmlEmitter {
         }
         success.append("}}");
         if (BeamHttpChecksumIndex.of(model).responseChecksums(op).isEmpty()) {
-            writer.write("$L;", success.toString());
+            writer.write("$L", success.toString());
         } else {
             writer.write("Result = $L,", success.toString());
             ErlangHttpChecksumEmitter.emitResponseChecksumGuard(writer, model, op, "Result");
-            writer.write(";");
         }
     }
 
     static void emitDecodeResponseFallbackBody(ErlangWriter writer, OperationShape op, SymbolProvider sp) {
         String opName = sp.toSymbol(op).getName();
         if (op.getErrors().isEmpty()) {
-            writer.write("decode_rest_xml_error(Status, Body).");
+            writer.write("decode_rest_xml_error(Status, Body)");
         } else {
-            writer.write("decode_$L_response_error(Status, Body).", opName);
+            writer.write("decode_$L_response_error(Status, Body)", opName);
         }
     }
 
@@ -379,11 +378,11 @@ public final class ErlangRestXmlEmitter {
                             io.smithy.beam.ir.erlang.ErlVarPattern.varPattern("_Body")),
                     capturedErrorBody(writer -> {
                         if (fields.isEmpty()) {
-                            writer.write("{error, #$L{}};", recName);
+                            writer.write("{error, #$L{}}", recName);
                         } else {
                             writer.write("{error, #$L{", recName);
                             writer.write("    " + String.join(",\n    ", fields));
-                            writer.write("}};");
+                            writer.write("}}");
                         }
                     })));
         }
@@ -391,7 +390,7 @@ public final class ErlangRestXmlEmitter {
                 List.of(
                         io.smithy.beam.ir.erlang.ErlVarPattern.varPattern("Status"),
                         io.smithy.beam.ir.erlang.ErlVarPattern.varPattern("Body")),
-                io.smithy.beam.ir.erlang.ErlCapturedBlock.capturedBlock("decode_rest_xml_error(Status, Body).")));
+                io.smithy.beam.ir.erlang.ErlCapturedBlock.capturedBlock("decode_rest_xml_error(Status, Body)")));
         return clauses;
     }
 
@@ -464,7 +463,7 @@ public final class ErlangRestXmlEmitter {
         writer.write("    status = $L,", successCode);
         writer.write("    headers = Headers,");
         writer.write("    body = Body");
-        writer.write("}.");
+        writer.write("}");
     }
 
     private static void emitResponseBodyFromPayload(
@@ -831,7 +830,7 @@ public final class ErlangRestXmlEmitter {
         if (hasHostLabels || s3BucketAddressing) {
             writer.write("    ,host = Host");
         }
-        writer.write("}.");
+        writer.write("}");
     }
 
     private static void emitRequestBody(
