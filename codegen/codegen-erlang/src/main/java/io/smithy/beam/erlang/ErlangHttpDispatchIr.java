@@ -1,5 +1,8 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.ir.erlang.ErlAttribute;
+import io.smithy.beam.ir.erlang.ErlComment;
+import io.smithy.beam.ir.erlang.ErlExportAttribute;
 import io.smithy.beam.ir.erlang.ErlAtom;
 import io.smithy.beam.ir.erlang.ErlAtomPattern;
 import io.smithy.beam.ir.erlang.ErlBinary;
@@ -23,6 +26,7 @@ import io.smithy.beam.ir.erlang.ErlMapPattern;
 import io.smithy.beam.ir.erlang.ErlMapUpdate;
 import io.smithy.beam.ir.erlang.ErlMatch;
 import io.smithy.beam.ir.erlang.ErlMatchPattern;
+import io.smithy.beam.ir.erlang.ErlModule;
 import io.smithy.beam.ir.erlang.ErlNilPattern;
 import io.smithy.beam.ir.erlang.ErlRecord;
 import io.smithy.beam.ir.erlang.ErlRecordField;
@@ -34,12 +38,41 @@ import io.smithy.beam.ir.erlang.ErlTuple;
 import io.smithy.beam.ir.erlang.ErlTuplePattern;
 import io.smithy.beam.ir.erlang.ErlVar;
 import io.smithy.beam.ir.erlang.ErlVarPattern;
+import software.amazon.smithy.model.shapes.ServiceShape;
 
 import java.util.ArrayList;
 import java.util.List;
 
 final class ErlangHttpDispatchIr {
     private ErlangHttpDispatchIr() {}
+
+    static ErlModule httpDispatchModule(
+            String httpModule,
+            String runtimeTypesHeaderFile,
+            ServiceShape service,
+            boolean sigv4,
+            boolean endpointRules,
+            String configVar,
+            String helpersMod,
+            String endpointsMod,
+            String credentialsMod) {
+        List<ErlFunction> functions = List.of(
+                dispatchArity2(),
+                dispatchArity3(),
+                dispatchSigned(sigv4, endpointRules, configVar, helpersMod, endpointsMod, credentialsMod),
+                splitBaseUrl(),
+                mime());
+
+        return new ErlModule(
+                httpModule,
+                List.of(
+                        ErlComment.comment("Generated HTTP dispatcher for " + service.getId() + "."),
+                        ErlComment.comment("Uses httpc from OTP. Replace via adapter for testing.")),
+                List.of(
+                        new ErlAttribute("include", "\"" + runtimeTypesHeaderFile + "\""),
+                        ErlExportAttribute.export(List.of("dispatch/2", "dispatch/3"))),
+                functions);
+    }
 
     static ErlFunction dispatchArity2() {
         return ErlFunction.function(
@@ -181,11 +214,6 @@ final class ErlangHttpDispatchIr {
                                 ErlClause.clause(
                                         List.of(ErlVarPattern.varPattern("CT")),
                                         ErlCallLocal.callLocal("binary_to_list", ErlVar.var("CT")))))));
-    }
-
-    static void writeFunction(ErlangWriter writer, ErlFunction fn) {
-        writer.write("$L", fn.asString());
-        writer.write("");
     }
 
     private static ErlRecordPattern httpRequestPattern() {

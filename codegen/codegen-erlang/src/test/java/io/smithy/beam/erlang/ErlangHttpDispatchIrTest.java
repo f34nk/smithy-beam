@@ -1,7 +1,11 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.ir.erlang.ErlFunction;
+import io.smithy.beam.ir.erlang.ErlModule;
 import org.junit.jupiter.api.Test;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,6 +17,64 @@ class ErlangHttpDispatchIrTest {
     private static final String HELPERS_MOD = "runtime_helpers";
     private static final String ENDPOINTS_MOD = "endpoints";
     private static final String CREDENTIALS_MOD = "credentials";
+
+    @Test
+    void httpDispatchModuleAsStringMatchesGolden() throws IOException {
+        Model model = httpDispatchModel();
+        ServiceShape service = model.expectShape(
+                ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+        ErlModule module = ErlangHttpDispatchIr.httpDispatchModule(
+                "runtime_http",
+                "runtime_types.hrl",
+                service,
+                false,
+                false,
+                "Config",
+                HELPERS_MOD,
+                ENDPOINTS_MOD,
+                CREDENTIALS_MOD);
+        assertThat(module.asString())
+                .isEqualTo(readExpectedString("ir/http_dispatch_module.expected.erl"));
+    }
+
+    private static Model httpDispatchModel() {
+        String idl = """
+                $version: "2"
+                namespace smithy.beam.demo.http
+
+                use aws.protocols#restJson1
+
+                string Name
+
+                @restJson1
+                service HttpService {
+                    version: "2026"
+                    operations: [GetName]
+                }
+
+                @readonly
+                @http(method: "GET", uri: "/names/{name}", code: 200)
+                operation GetName {
+                    input: GetNameInput
+                    output: GetNameOutput
+                }
+
+                structure GetNameInput {
+                    @required
+                    @httpLabel
+                    name: Name
+                }
+
+                structure GetNameOutput {
+                    name: Name
+                }
+                """;
+        return Model.assembler()
+                .addUnparsedModel("http.smithy", idl)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
 
     @Test
     void splitBaseUrlAsStringMatchesGolden() throws IOException {

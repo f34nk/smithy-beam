@@ -3,7 +3,14 @@ package io.smithy.beam.erlang;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamSigV4Metadata;
+import io.smithy.beam.ir.erlang.ErlAttribute;
+import io.smithy.beam.ir.erlang.ErlComment;
+import io.smithy.beam.ir.erlang.ErlExportAttribute;
+import io.smithy.beam.ir.erlang.ErlFunction;
+import io.smithy.beam.ir.erlang.ErlModule;
 import software.amazon.smithy.model.shapes.ServiceShape;
+
+import java.util.List;
 
 /**
  * Emits {@code runtime_http.erl} with an httpc-based HTTP dispatcher for generated clients.
@@ -24,22 +31,18 @@ public final class ErlangHttpDispatchEmitter {
         String helpersMod = layout.runtimeHelpersModuleName();
         String configVar = sigv4 ? "Config1" : "Config";
 
+        ErlModule module = ErlangHttpDispatchIr.httpDispatchModule(
+                httpModule,
+                layout.runtimeTypesHeaderFile(),
+                service,
+                sigv4,
+                endpointRules,
+                configVar,
+                helpersMod,
+                endpointsMod,
+                credentialsMod);
         ctx.writerDelegator().useFileWriter(layout.runtimeHttpModuleFile(), writer -> {
-            writer.write("%% Generated HTTP dispatcher for $L.", service.getId());
-            writer.write("%% Uses httpc from OTP. Replace via adapter for testing.");
-            writer.write("-module($L).", httpModule);
-            writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            writer.write("-export([dispatch/2, dispatch/3]).");
-            writer.write("");
-            writer.write("%% @doc Sends an http_request() and returns http_response().");
-            writer.write("%% Config may contain `{base_url, ...}` and `{http_client, Module}` for tests.");
-            writer.write("%% Uses httpc by default; pass another module for tests.");
-            ErlangHttpDispatchIr.writeFunction(writer, ErlangHttpDispatchIr.dispatchArity2());
-            ErlangHttpDispatchIr.writeFunction(writer, ErlangHttpDispatchIr.dispatchArity3());
-            ErlangHttpDispatchIr.writeFunction(writer, ErlangHttpDispatchIr.dispatchSigned(
-                    sigv4, endpointRules, configVar, helpersMod, endpointsMod, credentialsMod));
-            ErlangHttpDispatchIr.writeFunction(writer, ErlangHttpDispatchIr.splitBaseUrl());
-            ErlangHttpDispatchIr.writeFunction(writer, ErlangHttpDispatchIr.mime());
+            writer.write("$L", module.asString());
         });
     }
 }
