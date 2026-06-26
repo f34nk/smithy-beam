@@ -2,7 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.ir.erlang.ErlExportAttribute;
+import io.smithy.beam.ir.erlang.ErlModule;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -42,21 +42,16 @@ public final class ErlangEventStreamEmitter {
             exports.add("decode_" + helper + "/1");
         }
 
+        ErlModule module = ErlangEventStreamIr.eventStreamModule(
+                moduleName,
+                layout.typesHeaderFile(),
+                service,
+                unions,
+                model,
+                sp,
+                exports);
         ctx.writerDelegator().useFileWriter(layout.eventStreamModuleFile(), writer -> {
-            writer.write("%% Generated Amazon Event Stream helpers for $L.", service.getId());
-            writer.write("-module($L).", moduleName);
-            writer.write("-include(\"$L\").", layout.typesHeaderFile());
-            writer.write("$L", ErlExportAttribute.export(exports).asString());
-            writer.write("");
-
-            for (UnionShape union : unions) {
-                writer.write("%% Event stream helpers for $L.", union.getId());
-                ErlangEventStreamIr.writeFunctions(writer, ErlangEventStreamIr.unionHelpers(model, union, sp));
-            }
-
-            ErlangEventStreamIr.writeFunctions(writer, List.of(
-                    ErlangEventStreamIr.encodeEventHeaders(),
-                    ErlangEventStreamIr.headerValue()));
+            writer.write("$L", module.asString());
         });
     }
 

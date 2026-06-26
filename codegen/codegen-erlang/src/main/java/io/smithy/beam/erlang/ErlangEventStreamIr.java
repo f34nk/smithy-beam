@@ -7,6 +7,7 @@ import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.BlobShape;
 import software.amazon.smithy.model.shapes.MemberShape;
+import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.StringShape;
 import software.amazon.smithy.model.shapes.StructureShape;
@@ -18,6 +19,31 @@ import java.util.List;
 
 final class ErlangEventStreamIr {
     private ErlangEventStreamIr() {}
+
+    static ErlModule eventStreamModule(
+            String moduleName,
+            String typesHeaderFile,
+            ServiceShape service,
+            List<UnionShape> unions,
+            Model model,
+            SymbolProvider sp,
+            List<String> exports) {
+        List<ErlFunction> functions = new ArrayList<>();
+        for (UnionShape union : unions) {
+            functions.addAll(unionHelpers(model, union, sp));
+        }
+        functions.add(encodeEventHeaders());
+        functions.add(headerValue());
+
+        return new ErlModule(
+                moduleName,
+                List.of(ErlComment.comment(
+                        "Generated Amazon Event Stream helpers for " + service.getId() + ".")),
+                List.of(
+                        new ErlAttribute("include", "\"" + typesHeaderFile + "\""),
+                        ErlExportAttribute.export(exports)),
+                functions);
+    }
 
     static ErlFunction encodeEventHeaders() {
         return ErlFunction.function(
@@ -159,15 +185,6 @@ final class ErlangEventStreamIr {
         return ErlFunction.function("decode_" + helper + "_event_type", 2, clauses);
     }
 
-    static void writeFunctions(ErlangWriter writer, List<ErlFunction> functions) {
-        for (ErlFunction fn : functions) {
-            for (String line : fn.lines()) {
-                writer.write(line);
-            }
-            writer.write("");
-        }
-    }
-
     static String helperName(SymbolProvider sp, UnionShape union) {
         return sp.toSymbol(union).getName().replace("()", "");
     }
@@ -243,52 +260,53 @@ final class ErlangEventStreamIr {
         if (structure.members().isEmpty()) {
             return ErlCall.call("jsone", "encode", ErlMap.map());
         }
-        StringBuilder map = new StringBuilder("jsone:encode(maps:filter(fun(_, V) -> V =/= undefined end, #{");
-        List<MemberShape> members = new ArrayList<>(structure.members());
-        for (int i = 0; i < members.size(); i++) {
-            MemberShape member = members.get(i);
+        List<ErlMapEntry> entries = new ArrayList<>();
+        for (MemberShape member : structure.members()) {
             String wireKey = jsonKey(member);
             String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
-            String comma = i < members.size() - 1 ? "," : "";
-            map.append("\n        <<\"").append(wireKey).append("\">> => ")
-                    .append(valueVar)
-                    .append("#")
-                    .append(recordName)
-                    .append(".")
-                    .append(fieldName)
-                    .append(comma);
+            entries.add(ErlMapEntry.entry(
+                    ErlBinary.binary(wireKey),
+                    ErlRecordAccess.recordAccess(ErlVar.var(valueVar), recordName, fieldName)));
         }
-        map.append("\n    }))");
-        return ErlCapturedBlock.capturedBlock(map.toString());
+        return ErlCall.call(
+                "jsone",
+                "encode",
+                ErlCall.call(
+                        "maps",
+                        "filter",
+                        ErlFun.fun(ErlClause.clause(
+                                List.of(
+                                        ErlVarPattern.varPattern("_"),
+                                        ErlVarPattern.varPattern("V")),
+                                ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))),
+                        ErlMap.map(entries.toArray(ErlMapEntry[]::new))));
     }
 
     private static ErlExpr decodeStructurePayload(
             StructureShape structure, String payloadVar, SymbolProvider sp) {
         String recordName = recordName(sp.toSymbol(structure));
         if (structure.members().isEmpty()) {
-            return ErlCapturedBlock.capturedBlock("#" + recordName + "{}");
+            return ErlRecord.record(recordName);
         }
-        StringBuilder record = new StringBuilder("begin\n        Decoded = jsone:decode(")
-                .append(payloadVar)
-                .append(", [return_maps]),\n        #")
-                .append(recordName)
-                .append("{\n");
-        List<MemberShape> members = new ArrayList<>(structure.members());
-        for (int i = 0; i < members.size(); i++) {
-            MemberShape member = members.get(i);
+        ErlCall decoded = ErlCall.call(
+                "jsone",
+                "decode",
+                ErlVar.var(payloadVar),
+                ErlList.list(ErlAtom.atom("return_maps")));
+        List<ErlRecordField> fields = new ArrayList<>();
+        for (MemberShape member : structure.members()) {
             String wireKey = jsonKey(member);
             String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
-            String comma = i < members.size() - 1 ? "," : "";
-            record.append("            ")
-                    .append(fieldName)
-                    .append(" = maps:get(<<\"")
-                    .append(wireKey)
-                    .append("\">>, Decoded, undefined)")
-                    .append(comma)
-                    .append("\n");
+            fields.add(ErlRecordField.field(
+                    fieldName,
+                    ErlCall.call(
+                            "maps",
+                            "get",
+                            ErlBinary.binary(wireKey),
+                            decoded,
+                            ErlAtom.atom("undefined"))));
         }
-        record.append("        }\n    end");
-        return ErlCapturedBlock.capturedBlock(record.toString());
+        return ErlRecord.record(recordName, fields.toArray(ErlRecordField[]::new));
     }
 
     private static String recordName(Symbol symbol) {
