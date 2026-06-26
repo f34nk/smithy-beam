@@ -73,8 +73,8 @@ class ErlangTypesPluginTest {
                 .contains("{flag, basic_boolean()}")
                 .contains("{unknown, binary()}")
                 .contains("-record(basic_item, {")
-                .contains("name  :: basic_string(),")
-                .contains("count  :: basic_integer() | undefined")
+                .contains("name :: basic_string(),")
+                .contains("count :: basic_integer() | undefined")
                 .contains("-type basic_item() :: #basic_item{}.");
     }
 
@@ -129,8 +129,8 @@ class ErlangTypesPluginTest {
                 .contains("receive_")
                 .contains("{case_, rw_string()}")
                 .contains("{end_, rw_string()}")
-                .contains("receive_  ::")
-                .contains("after_  ::")
+                .contains("receive_ ::")
+                .contains("after_ ::")
                 .contains("my_type_2");
         assertThat(content).contains("and_").contains("or_");
     }
@@ -354,9 +354,9 @@ class ErlangTypesPluginTest {
                 .contains("-type rt_node_list() :: [rt_node()].")
                 .contains("-type rt_node_map() :: #{rt_string() => rt_node()}.")
                 .contains("-record(rt_node, {")
-                .contains("label  :: rt_string(),")
-                .contains("children  :: rt_node_list()")
-                .contains("by_key  :: rt_node_map()")
+                .contains("label :: rt_string(),")
+                .contains("children :: rt_node_list()")
+                .contains("by_key :: rt_node_map()")
                 .contains("-type rt_node() :: #rt_node{}.");
 
         assertThat(countOccurrences(content, "-type rt_string() ::")).isEqualTo(1);
@@ -400,11 +400,11 @@ class ErlangTypesPluginTest {
 
         assertThat(content)
                 .contains("-type nm_list() :: [nm_string()].")
-                .contains("label  :: nm_string(),")
-                .contains("count  :: nm_integer() | undefined")
-                .contains("tags  :: nm_list() | undefined");
+                .contains("label :: nm_string(),")
+                .contains("count :: nm_integer() | undefined")
+                .contains("tags :: nm_list() | undefined");
         assertThat(content.substring(content.indexOf("-record(mixed_nullable")))
-                .doesNotContain("label  :: nm_string() | undefined");
+                .doesNotContain("label :: nm_string() | undefined");
     }
 
     @Test
@@ -461,9 +461,9 @@ class ErlangTypesPluginTest {
         new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
         String content = manifest.expectFileString("member_order_service_types.hrl");
-        int zebra = content.indexOf("zebra  ::");
-        int alpha = content.indexOf("alpha  ::");
-        int mike = content.indexOf("mike  ::");
+        int zebra = content.indexOf("zebra ::");
+        int alpha = content.indexOf("alpha ::");
+        int mike = content.indexOf("mike ::");
         assertThat(zebra).isGreaterThan(-1);
         assertThat(alpha).isGreaterThan(-1);
         assertThat(mike).isGreaterThan(-1);

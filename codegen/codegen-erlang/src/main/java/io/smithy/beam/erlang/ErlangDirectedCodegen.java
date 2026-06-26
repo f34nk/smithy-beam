@@ -522,7 +522,7 @@ final class ErlangDirectedCodegen
      *
      * Output format:
      *   -record(basic_item, {
-     *       name  :: basic_string(),
+     *       name :: basic_string(),
      *       count :: basic_integer() | undefined
      *   }).
      *   -type basic_item() :: #basic_item{}.

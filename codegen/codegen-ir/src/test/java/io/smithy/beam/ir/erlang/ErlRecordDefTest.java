@@ -12,8 +12,8 @@ class ErlRecordDefTest {
         ErlRecordDef record = basicItemRecord();
         assertThat(record.lines()).containsExactly(
                 "-record(basic_item, {",
-                "    name  :: basic_string(),",
-                "    count  :: basic_integer() | undefined",
+                "    name :: basic_string(),",
+                "    count :: basic_integer() | undefined",
                 "}).");
     }
 
@@ -22,8 +22,8 @@ class ErlRecordDefTest {
         ErlRecordDef record = basicItemRecord();
         assertThat(record.asString()).isEqualTo(
                 "-record(basic_item, {\n"
-                        + "    name  :: basic_string(),\n"
-                        + "    count  :: basic_integer() | undefined\n"
+                        + "    name :: basic_string(),\n"
+                        + "    count :: basic_integer() | undefined\n"
                         + "}).");
     }
 

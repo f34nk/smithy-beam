@@ -68,7 +68,7 @@ class ErlangIrGoldenPluginParityTest {
         String types = manifest.expectFileString("http_service_types.hrl");
         assertThat(types)
                 .contains("-record(get_name_output, {")
-                .contains("name  :: name() | undefined")
+                .contains("name :: name() | undefined")
                 .contains("-type get_name_output() :: #get_name_output{}.");
     }
 

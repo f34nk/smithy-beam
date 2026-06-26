@@ -31,7 +31,7 @@ public final class ErlRecordFieldDef implements IrObject {
 
     @Override
     public List<String> lines(int indent) {
-        return List.of(IrObject.indent(indent) + name + "  :: " + typeName);
+        return List.of(IrObject.indent(indent) + name + " :: " + typeName);
     }
 
     @Override
