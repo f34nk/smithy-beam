@@ -2,10 +2,18 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamProtocolCodegenFactory;
+import io.smithy.beam.core.BeamProtocolIds;
+import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.ir.erlang.ErlFunction;
+import io.smithy.beam.ir.erlang.ErlModule;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import software.amazon.smithy.build.MockManifest;
+import software.amazon.smithy.codegen.core.SymbolProvider;
+import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -16,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,6 +46,16 @@ class ErlangAwsJsonIrTest {
         settings.edition("2026");
         BeamErlangLayout layout = new BeamErlangLayout(settings, service.getId().getNamespace(), service);
         provider = new ErlangSymbolProvider(settings, model, service, layout.clientModuleFile(), BeamCodegenKind.CLIENT);
+    }
+
+    @Test
+    void buildClientCodecModuleHasExpectedStructure() {
+        ErlModule module = ErlangAwsJsonIr.buildClientCodecModule(clientContext(), service, BeamProtocolIds.AWS_JSON_1_1);
+        assertThat(module.moduleName()).isNotBlank();
+        assertThat(module.functions()).isNotEmpty();
+        for (ErlFunction fn : module.functions()) {
+            assertStructural(fn);
+        }
     }
 
     @Test
@@ -142,5 +161,29 @@ class ErlangAwsJsonIrTest {
             }
             return text;
         }
+    }
+
+    private static ErlangContext clientContext() {
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        BeamErlangLayout layout = new BeamErlangLayout(settings, service.getId().getNamespace(), service);
+        SymbolProvider sp = SymbolProvider.cache(
+                new ErlangSymbolProvider(
+                        settings, model, service, layout.clientModuleFile(), BeamCodegenKind.CLIENT));
+        MockManifest manifest = new MockManifest();
+        Optional<ShapeId> resolved = BeamProtocolResolver.resolve(model, service, settings);
+        return new ErlangContext(
+                model,
+                settings,
+                sp,
+                manifest,
+                new WriterDelegator<>(manifest, sp, ErlangWriter.factory()),
+                List.of(),
+                service,
+                BeamHttpBindings.from(model),
+                resolved.map(id -> BeamProtocolCodegenFactory.create(model, id, List.of())).orElse(null),
+                resolved.orElse(null),
+                layout.clientModuleName(),
+                layout.clientModuleFile());
     }
 }

@@ -186,11 +186,11 @@ final class ErlangServerDirectedCodegen
         } else if (ctx.protocolCodegen() != null
                 && BeamProtocolIds.AWS_JSON_1_0.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
-            ErlangAwsJson10Emitter.emitServerCodecModule(ctx, service);
+            ErlangAwsJsonIr.emitServerCodecModule(ctx, service, BeamProtocolIds.AWS_JSON_1_0);
         } else if (ctx.protocolCodegen() != null
                 && BeamProtocolIds.AWS_JSON_1_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
-            ErlangAwsJson11Emitter.emitServerCodecModule(ctx, service);
+            ErlangAwsJsonIr.emitServerCodecModule(ctx, service, BeamProtocolIds.AWS_JSON_1_1);
         } else if (ctx.protocolCodegen() != null
                 && BeamProtocolIds.REST_XML.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
