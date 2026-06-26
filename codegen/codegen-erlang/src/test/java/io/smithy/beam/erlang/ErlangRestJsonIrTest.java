@@ -2,20 +2,27 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.ir.erlang.ErlExpr;
 import io.smithy.beam.ir.erlang.ErlFunction;
+import io.smithy.beam.ir.erlang.ErlMapEntry;
+import io.smithy.beam.ir.erlang.ErlRecordField;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
+import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
+import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.StructureShape;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -128,6 +135,49 @@ class ErlangRestJsonIrTest {
                 model, service, op, httpIndex, sp, false, layout.eventStreamModuleName());
         assertStructural(fn);
         assertThat(fn.asString()).isEqualTo(readExpectedString("ir/rest_json_encode_get_name_request.expected.erl"));
+    }
+
+    @Test
+    void decodedBodyPreludeMatchesGolden() throws IOException {
+        String combined = ErlangJsonCodecSupport.decodedBodyPrelude().stream()
+                .flatMap(expr -> expr.lines().stream())
+                .collect(Collectors.joining("\n"));
+        assertThat(combined).isEqualTo(readExpectedString("ir/json_decoded_body_prelude.expected.erl"));
+    }
+
+    @Test
+    void bodyMapEntriesForBasicItemMatchesGolden() throws IOException {
+        Model model = model();
+        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+        List<MemberShape> members = List.of(
+                model.expectShape(
+                        software.amazon.smithy.model.shapes.ShapeId.from("com.example#BasicItem"),
+                        StructureShape.class).getMember("name").orElseThrow(),
+                model.expectShape(
+                        software.amazon.smithy.model.shapes.ShapeId.from("com.example#BasicItem"),
+                        StructureShape.class).getMember("count").orElseThrow());
+        List<ErlMapEntry> entries = ErlangJsonCodecSupport.bodyMapEntries(
+                model, httpIndex, provider, members, HttpBinding.Location.DOCUMENT, "event_stream");
+        String combined = entries.stream()
+                .map(ErlMapEntry::asString)
+                .collect(Collectors.joining(",\n"));
+        assertThat(combined).isEqualTo(readExpectedString("ir/json_body_map_entries_basic_item.expected.erl"));
+    }
+
+    @Test
+    void encodeResponseBodyExprsMatchGolden() throws IOException {
+        Model model = httpModel();
+        ServiceShape service = model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+        OperationShape op = model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        ErlangSymbolProvider sp = new ErlangSymbolProvider(
+                settings, model, service, "http_types.hrl", BeamCodegenKind.CLIENT);
+        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+        String combined = ErlangRestJsonOperationIr.buildEncodeResponseBodyExprs(model, op, httpIndex, sp).stream()
+                .flatMap(expr -> expr.lines().stream())
+                .collect(Collectors.joining("\n"));
+        assertThat(combined).isEqualTo(readExpectedString("ir/rest_json_encode_response_body.expected.erl"));
     }
 
     @Test

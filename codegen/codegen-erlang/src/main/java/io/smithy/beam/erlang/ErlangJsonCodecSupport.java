@@ -1,5 +1,23 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamEventStreamIndex;
+import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.ir.erlang.ErlAtom;
+import io.smithy.beam.ir.erlang.ErlAtomPattern;
+import io.smithy.beam.ir.erlang.ErlBinary;
+import io.smithy.beam.ir.erlang.ErlBinaryPattern;
+import io.smithy.beam.ir.erlang.ErlCall;
+import io.smithy.beam.ir.erlang.ErlCallLocal;
+import io.smithy.beam.ir.erlang.ErlCase;
+import io.smithy.beam.ir.erlang.ErlClause;
+import io.smithy.beam.ir.erlang.ErlExpr;
+import io.smithy.beam.ir.erlang.ErlMap;
+import io.smithy.beam.ir.erlang.ErlMapEntry;
+import io.smithy.beam.ir.erlang.ErlMatch;
+import io.smithy.beam.ir.erlang.ErlRecordField;
+import io.smithy.beam.ir.erlang.ErlTuplePattern;
+import io.smithy.beam.ir.erlang.ErlVar;
+import io.smithy.beam.ir.erlang.ErlVarPattern;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -9,8 +27,6 @@ import software.amazon.smithy.model.shapes.EnumShape;
 import software.amazon.smithy.model.shapes.IntEnumShape;
 import software.amazon.smithy.model.shapes.ListShape;
 import software.amazon.smithy.model.shapes.MapShape;
-import io.smithy.beam.core.BeamEventStreamIndex;
-import io.smithy.beam.core.BeamNameUtils;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.Shape;
@@ -219,78 +235,165 @@ final class ErlangJsonCodecSupport {
         return new ArrayList<>(structure.members());
     }
 
-    static void emitBodyMapEntries(
-            ErlangWriter writer,
-            Model model,
-            HttpBindingIndex httpIndex,
-            SymbolProvider sp,
-            List<MemberShape> members,
-            HttpBinding.Location location,
-            String eventStreamModule) {
-        for (int i = 0; i < members.size(); i++) {
-            MemberShape member = members.get(i);
-            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
-            String wireKey = jsonKey(member);
-            String comma = i < members.size() - 1 ? "," : "";
-            Shape target = model.expectShape(member.getTarget());
-            if (target instanceof UnionShape
-                    && BeamEventStreamIndex.of(model).isEventStreamUnion(target)) {
-                UnionShape union = (UnionShape) target;
-                String helper = ErlangEventStreamEmitter.helperName(sp, union);
-                writer.write("    <<\"$L\">> => $L:encode_$L($L)$L",
-                        wireKey, eventStreamModule, helper, toBindingVar(fieldName), comma);
-            } else {
-                writer.write("    <<\"$L\">> => $L$L",
-                        wireKey, encodeDocumentValue(model, sp, httpIndex, member, fieldName), comma);
-            }
-        }
-    }
-
-    static void emitRecordFieldsFromDecoded(
-            ErlangWriter writer,
-            Model model,
-            HttpBindingIndex httpIndex,
-            SymbolProvider sp,
-            List<MemberShape> members,
-            HttpBinding.Location location,
-            String eventStreamModule) {
-        List<String> recordFields = new ArrayList<>();
-        for (MemberShape member : members) {
-            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
-            String wireKey = jsonKey(member);
-            Shape target = model.expectShape(member.getTarget());
-            if (target instanceof UnionShape
-                    && BeamEventStreamIndex.of(model).isEventStreamUnion(target)) {
-                UnionShape union = (UnionShape) target;
-                String helper = ErlangEventStreamEmitter.helperName(sp, union);
-                recordFields.add("    " + fieldName + " = " + eventStreamModule + ":decode_" + helper + "(Body)");
-            } else {
-                recordFields.add("    " + documentDecodeAssignment(model, sp, httpIndex, fieldName, member));
-            }
-        }
-        if (!recordFields.isEmpty()) {
-            writer.write(String.join(",\n", recordFields));
-        }
-    }
-
-    static void emitDecodeJsonBody(ErlangWriter writer) {
-        writer.write("Decoded = case Body of");
-        writer.indent();
-        writer.write("<<>> -> #{};");
-        writer.write("_ ->");
-        writer.indent();
-        writer.write("case jsone:try_decode(Body) of");
-        writer.indent();
-        writer.write("{ok, Val, _} when is_map(Val) -> Val;");
-        writer.write("{error, _} -> #{}");
-        writer.dedent();
-        writer.write("end");
-        writer.dedent();
-        writer.dedent();
-        writer.write("end,");
-    }
-
     static boolean isEventStreamPayload(List<MemberShape> members, Model model) {
         return members.size() == 1 && BeamEventStreamIndex.of(model).isEventStreamMember(members.get(0));
+    }
+
+    static List<ErlMapEntry> bodyMapEntries(
+            Model model,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            List<MemberShape> members,
+            HttpBinding.Location location,
+            String eventStreamModule) {
+        List<ErlMapEntry> entries = new ArrayList<>();
+        for (MemberShape member : members) {
+            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+            Shape target = model.expectShape(member.getTarget());
+            if (target instanceof UnionShape union
+                    && BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
+                String helper = ErlangEventStreamEmitter.helperName(sp, union);
+                entries.add(ErlMapEntry.entry(
+                        ErlBinary.binary(jsonKey(member)),
+                        ErlCall.call(
+                                eventStreamModule,
+                                "encode_" + helper,
+                                ErlVar.var(toBindingVar(fieldName)))));
+            } else {
+                entries.add(ErlMapEntry.entry(
+                        ErlBinary.binary(jsonKey(member)),
+                        encodeJsonExpr(model, sp, httpIndex, member, toBindingVar(fieldName))));
+            }
+        }
+        return entries;
+    }
+
+    static List<ErlRecordField> recordFieldsFromDecoded(
+            Model model,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            List<MemberShape> members,
+            HttpBinding.Location location,
+            String eventStreamModule) {
+        List<ErlRecordField> fields = new ArrayList<>();
+        for (MemberShape member : members) {
+            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+            Shape target = model.expectShape(member.getTarget());
+            if (target instanceof UnionShape union
+                    && BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
+                String helper = ErlangEventStreamEmitter.helperName(sp, union);
+                fields.add(ErlRecordField.field(
+                        fieldName,
+                        ErlCall.call(eventStreamModule, "decode_" + helper, ErlVar.var("Body"))));
+            } else {
+                ErlExpr raw = ErlangCodecHelperIr.mapsGetDefault(
+                        ErlBinary.binary(jsonKey(member)), ErlVar.var("Decoded"), ErlAtom.atom("undefined"));
+                fields.add(ErlRecordField.field(fieldName, decodeJsonExpr(model, sp, httpIndex, member, raw)));
+            }
+        }
+        return fields;
+    }
+
+    static List<ErlExpr> decodedBodyPrelude() {
+        return List.of(ErlMatch.match(ErlVarPattern.varPattern("Decoded"), decodedBodyExpr()));
+    }
+
+    static ErlCase decodedBodyExpr() {
+        return ErlCase.caseExpr(
+                ErlVar.var("Body"),
+                ErlClause.clause(List.of(ErlBinaryPattern.binaryPattern("")), ErlMap.map()),
+                ErlClause.clause(
+                        List.of(ErlVarPattern.varPattern("_")),
+                        ErlCase.caseExpr(
+                                ErlCall.call("jsone", "try_decode", ErlVar.var("Body")),
+                                ErlClause.clause(
+                                        List.of(ErlTuplePattern.tuplePattern(
+                                                ErlAtomPattern.atomPattern("ok"),
+                                                ErlVarPattern.varPattern("Val"),
+                                                ErlVarPattern.varPattern("_"))),
+                                        ErlVar.var("Val")),
+                                ErlClause.clause(
+                                        List.of(ErlTuplePattern.tuplePattern(
+                                                ErlAtomPattern.atomPattern("error"),
+                                                ErlVarPattern.varPattern("_"))),
+                                        ErlMap.map()))));
+    }
+
+    static ErlExpr decodeJsonExpr(
+            Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member, ErlExpr raw) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof EnumShape || target instanceof IntEnumShape) {
+            String helperName = structureHelperName(sp, target);
+            return ErlCallLocal.callLocal("decode_" + helperName, raw);
+        }
+        if (target instanceof UnionShape union
+                && !BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
+            String helperName = structureHelperName(sp, target);
+            return ErlCallLocal.callLocal("decode_" + helperName, raw);
+        }
+        if (target instanceof StructureShape) {
+            String helperName = structureHelperName(sp, target);
+            return ErlCallLocal.callLocal("decode_" + helperName, raw);
+        }
+        if (target instanceof TimestampShape) {
+            String decodeHelper = timestampDecodeHelper(httpIndex, member, HttpBinding.Location.DOCUMENT);
+            return ErlCallLocal.callLocal(decodeHelper, raw);
+        }
+        if (target instanceof ListShape listShape) {
+            Shape element = model.expectShape(listShape.getMember().getTarget());
+            if (element instanceof StructureShape) {
+                String helperName = structureHelperName(sp, element);
+                return ErlCallLocal.callLocal("decode_" + helperName + "_list", raw);
+            }
+            String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
+            return ErlCallLocal.callLocal(helper, raw);
+        }
+        if (target instanceof MapShape) {
+            if (target.hasTrait(SparseTrait.class)) {
+                return ErlCallLocal.callLocal("decode_sparse_map", raw);
+            }
+            return raw;
+        }
+        return raw;
+    }
+
+    static ErlExpr encodeJsonExpr(
+            Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member, String bindingVar) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof EnumShape || target instanceof IntEnumShape) {
+            String helperName = structureHelperName(sp, target);
+            return ErlCallLocal.callLocal("encode_" + helperName, ErlVar.var(bindingVar));
+        }
+        if (target instanceof UnionShape union
+                && !BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
+            String helperName = structureHelperName(sp, target);
+            return ErlCallLocal.callLocal("encode_" + helperName, ErlVar.var(bindingVar));
+        }
+        if (target instanceof StructureShape) {
+            String helperName = structureHelperName(sp, target);
+            return ErlCallLocal.callLocal("encode_" + helperName, ErlVar.var(bindingVar));
+        }
+        if (target instanceof TimestampShape) {
+            String encodeHelper = timestampEncodeHelper(httpIndex, member, HttpBinding.Location.DOCUMENT);
+            return ErlCallLocal.callLocal(encodeHelper, ErlVar.var(bindingVar));
+        }
+        if (target instanceof ListShape listShape) {
+            Shape element = model.expectShape(listShape.getMember().getTarget());
+            if (element instanceof StructureShape) {
+                String helperName = structureHelperName(sp, element);
+                return ErlCallLocal.callLocal("encode_" + helperName + "_list", ErlVar.var(bindingVar));
+            }
+            if (target.hasTrait(SparseTrait.class)) {
+                return ErlCallLocal.callLocal("encode_sparse_list", ErlVar.var(bindingVar));
+            }
+            return ErlVar.var(bindingVar);
+        }
+        if (target instanceof MapShape) {
+            if (target.hasTrait(SparseTrait.class)) {
+                return ErlCallLocal.callLocal("encode_sparse_map", ErlVar.var(bindingVar));
+            }
+            return ErlVar.var(bindingVar);
+        }
+        return ErlVar.var(bindingVar);
     }
 }
