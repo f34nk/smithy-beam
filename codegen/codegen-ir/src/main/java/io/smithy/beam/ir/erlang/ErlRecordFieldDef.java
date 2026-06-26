@@ -16,6 +16,10 @@ public final class ErlRecordFieldDef implements IrObject {
         this(name, typeName, null, preamble);
     }
 
+    public ErlRecordFieldDef(String name, String typeName, String defaultValue) {
+        this(name, typeName, defaultValue, List.of());
+    }
+
     public ErlRecordFieldDef(String name, String typeName, String defaultValue, List<ErlComment> preamble) {
         this.name = name;
         this.typeName = typeName;

@@ -3,7 +3,7 @@ package io.smithy.beam.ir.erlang;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class ErlComment implements ErlPreambleEntry {
+public final class ErlComment implements ErlPreambleEntry, ErlHeaderEntry {
     private final String text;
 
     public ErlComment(String text) {
