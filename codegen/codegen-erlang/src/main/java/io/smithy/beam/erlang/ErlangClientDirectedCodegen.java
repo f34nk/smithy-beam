@@ -194,11 +194,11 @@ final class ErlangClientDirectedCodegen
         } else if (ctx.protocolCodegen() != null
                 && BeamProtocolIds.AWS_QUERY.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
-            ErlangAwsQueryEmitter.emitCodecModule(ctx, directive.shape());
+            ErlangAwsQueryIr.emitClientCodecModule(ctx, directive.shape(), BeamProtocolIds.AWS_QUERY);
         } else if (ctx.protocolCodegen() != null
                 && BeamProtocolIds.EC2_QUERY.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
-            ErlangEc2QueryEmitter.emitCodecModule(ctx, directive.shape());
+            ErlangAwsQueryIr.emitClientCodecModule(ctx, directive.shape(), BeamProtocolIds.EC2_QUERY);
         } else if (ctx.protocolCodegen() != null
                 && BeamProtocolIds.REST_XML.equals(
                         ctx.protocolCodegen().protocolTraitId())) {

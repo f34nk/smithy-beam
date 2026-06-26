@@ -198,11 +198,11 @@ final class ErlangServerDirectedCodegen
         } else if (ctx.protocolCodegen() != null
                 && BeamProtocolIds.AWS_QUERY.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
-            ErlangAwsQueryEmitter.emitServerCodecModule(ctx, service);
+            ErlangAwsQueryIr.emitServerCodecModule(ctx, service, BeamProtocolIds.AWS_QUERY);
         } else if (ctx.protocolCodegen() != null
                 && BeamProtocolIds.EC2_QUERY.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
-            ErlangEc2QueryEmitter.emitServerCodecModule(ctx, service);
+            ErlangAwsQueryIr.emitServerCodecModule(ctx, service, BeamProtocolIds.EC2_QUERY);
         }
 
         ErlangRouterEmitter.emit(ctx, service);
