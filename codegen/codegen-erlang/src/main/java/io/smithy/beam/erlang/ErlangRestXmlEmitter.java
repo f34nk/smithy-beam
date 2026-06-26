@@ -12,6 +12,16 @@ import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
 import io.smithy.beam.core.BeamXmlBindingIndex;
+import io.smithy.beam.ir.erlang.ErlAtom;
+import io.smithy.beam.ir.erlang.ErlCallLocal;
+import io.smithy.beam.ir.erlang.ErlClause;
+import io.smithy.beam.ir.erlang.ErlExpr;
+import io.smithy.beam.ir.erlang.ErlIntegerPattern;
+import io.smithy.beam.ir.erlang.ErlRecord;
+import io.smithy.beam.ir.erlang.ErlRecordField;
+import io.smithy.beam.ir.erlang.ErlTuple;
+import io.smithy.beam.ir.erlang.ErlVar;
+import io.smithy.beam.ir.erlang.ErlVarPattern;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -135,12 +145,11 @@ public final class ErlangRestXmlEmitter {
         });
     }
 
-    static List<io.smithy.beam.ir.erlang.ErlClause> buildResponseErrorDispatchClauses(
+    static List<ErlClause> buildResponseErrorDispatchClauses(
             Model model,
             OperationShape op,
             SymbolProvider sp) {
-        String opName = sp.toSymbol(op).getName();
-        List<io.smithy.beam.ir.erlang.ErlClause> clauses = new ArrayList<>();
+        List<ErlClause> clauses = new ArrayList<>();
         for (ShapeId errorId : op.getErrors()) {
             StructureShape errShape = model.expectShape(errorId, StructureShape.class);
             String recName = recordName(sp.toSymbol(errShape));
@@ -150,48 +159,34 @@ public final class ErlangRestXmlEmitter {
             if (httpStatus <= 0) {
                 continue;
             }
-            List<String> fields = buildRestXmlErrorFields(errShape);
-            clauses.add(io.smithy.beam.ir.erlang.ErlClause.clause(
+            clauses.add(ErlClause.clause(
                     List.of(
-                            io.smithy.beam.ir.erlang.ErlIntegerPattern.integerPattern(httpStatus),
-                            io.smithy.beam.ir.erlang.ErlVarPattern.varPattern("_Body")),
-                    capturedErrorBody(writer -> {
-                        if (fields.isEmpty()) {
-                            writer.write("{error, #$L{}}", recName);
-                        } else {
-                            writer.write("{error, #$L{", recName);
-                            writer.write("    " + String.join(",\n    ", fields));
-                            writer.write("}}");
-                        }
-                    })));
+                            ErlIntegerPattern.integerPattern(httpStatus),
+                            ErlVarPattern.varPattern("_Body")),
+                    ErlTuple.tuple(ErlAtom.atom("error"), restXmlErrorRecord(errShape, recName))));
         }
-        clauses.add(io.smithy.beam.ir.erlang.ErlClause.clause(
+        clauses.add(ErlClause.clause(
                 List.of(
-                        io.smithy.beam.ir.erlang.ErlVarPattern.varPattern("Status"),
-                        io.smithy.beam.ir.erlang.ErlVarPattern.varPattern("Body")),
-                io.smithy.beam.ir.erlang.ErlCapturedBlock.capturedBlock("decode_rest_xml_error(Status, Body)")));
+                        ErlVarPattern.varPattern("Status"),
+                        ErlVarPattern.varPattern("Body")),
+                ErlCallLocal.callLocal("decode_rest_xml_error", ErlVar.var("Status"), ErlVar.var("Body"))));
         return clauses;
     }
 
-    private static io.smithy.beam.ir.erlang.ErlCapturedBlock capturedErrorBody(
-            java.util.function.Consumer<ErlangWriter> action) {
-        ErlangWriter writer = new ErlangWriter("capture.erl");
-        writer.indent();
-        action.accept(writer);
-        return io.smithy.beam.ir.erlang.ErlCapturedBlock.capturedBlock(writer.toString().strip());
-    }
-
-    private static List<String> buildRestXmlErrorFields(StructureShape errShape) {
-        List<String> fields = new ArrayList<>();
+    private static ErlRecord restXmlErrorRecord(StructureShape errShape, String recName) {
+        List<ErlRecordField> fields = new ArrayList<>();
         for (MemberShape member : errShape.members()) {
             if (member.getMemberName().equals("__beam_error_kind")) {
                 continue;
             }
-            fields.add(BeamNameUtils.toSnakeCase(member.getMemberName()) + " = undefined");
+            fields.add(ErlRecordField.field(
+                    BeamNameUtils.toSnakeCase(member.getMemberName()), ErlAtom.atom("undefined")));
         }
-        return fields;
+        if (fields.isEmpty()) {
+            return ErlRecord.record(recName);
+        }
+        return ErlRecord.record(recName, fields.toArray(ErlRecordField[]::new));
     }
-
 
     static String buildStructureXmlMap(
             Model model, StructureShape structure, String recordVar, String recordTag) {

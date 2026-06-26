@@ -44,7 +44,6 @@ import io.smithy.beam.ir.erlang.ErlTuple;
 import io.smithy.beam.ir.erlang.ErlTuplePattern;
 import io.smithy.beam.ir.erlang.ErlVar;
 import io.smithy.beam.ir.erlang.ErlVarPattern;
-import io.smithy.beam.ir.erlang.ErlCapturedBlock;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -76,7 +75,6 @@ import software.amazon.smithy.model.traits.TimestampFormatTrait;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 final class ErlangRestJsonOperationIr {
     private ErlangRestJsonOperationIr() {}
@@ -125,7 +123,7 @@ final class ErlangRestJsonOperationIr {
         body.addAll(buildRequestHeadersExprs(model, op, headers, prefixHeaders, sp));
         body.addAll(buildRequestBodyExprs(model, httpIndex, reqPayload, docMembers, method, sp, eventStreamModule));
         ErlangHttpChecksumIr.requestChecksumHeadersExpr(model, op, sp, "Headers").ifPresent(body::add);
-        body.addAll(captureOptionalExprs(writer -> emitRequestCompression(writer, op)));
+        body.addAll(buildRequestCompressionExprs(op));
 
         boolean streamingRequestPayload = hasStreamingRequestPayload(model, reqPayload, method);
         if (streamingRequestPayload) {
@@ -1238,42 +1236,36 @@ final class ErlangRestJsonOperationIr {
                 ErlRecordFieldPattern.fieldPattern("body", ErlVarPattern.varPattern("Body")));
     }
 
-    private static ErlExpr captureBody(Consumer<ErlangWriter> action) {
-        ErlangWriter writer = new ErlangWriter("capture.erl");
-        writer.indent();
-        action.accept(writer);
-        String text = writer.toString().strip();
-        return ErlCapturedBlock.capturedBlock(text);
-    }
-
-    private static List<ErlExpr> captureOptionalExprs(Consumer<ErlangWriter> action) {
-        ErlangWriter writer = new ErlangWriter("capture.erl");
-        writer.indent();
-        action.accept(writer);
-        String text = writer.toString().strip();
-        if (text.isEmpty()) {
+    private static List<ErlExpr> buildRequestCompressionExprs(OperationShape op) {
+        if (!supportsGzipCompression(op)) {
             return List.of();
         }
-        return List.of(ErlCapturedBlock.capturedBlock(text));
-    }
-
-    private static void emitRequestCompression(ErlangWriter writer, OperationShape op) {
-        if (!supportsGzipCompression(op)) {
-            return;
-        }
-        writer.write("Headers1 = Headers,");
-        writer.write("{Body, Headers} = case byte_size(Body) >= 10240 of");
-        writer.indent();
-        writer.write("true ->");
-        writer.indent();
-        writer.write("Compressed = zlib:gzip(Body),");
-        writer.write("{Compressed, headers_set(<<\"Content-Encoding\">>, <<\"gzip\">>, Headers1)};");
-        writer.dedent();
-        writer.write("false ->");
-        writer.indent();
-        writer.write("{Body, Headers1}");
-        writer.dedent();
-        writer.write("end,");
+        return List.of(
+                ErlMatch.match(ErlVarPattern.varPattern("Headers1"), ErlVar.var("Headers")),
+                ErlMatch.match(
+                        ErlTuplePattern.tuplePattern(
+                                ErlVarPattern.varPattern("Body"), ErlVarPattern.varPattern("Headers")),
+                        ErlCase.caseExpr(
+                                ErlOp.op(
+                                        ">=",
+                                        ErlCallLocal.callLocal("byte_size", ErlVar.var("Body")),
+                                        ErlInteger.integer(10240)),
+                                ErlClause.clause(
+                                        List.of(ErlAtomPattern.atomPattern("true")),
+                                        ErlExprBlock.block(
+                                                ErlMatch.match(
+                                                        ErlVarPattern.varPattern("Compressed"),
+                                                        ErlCall.call("zlib", "gzip", ErlVar.var("Body"))),
+                                                ErlTuple.tuple(
+                                                        ErlVar.var("Compressed"),
+                                                        ErlCallLocal.callLocal(
+                                                                "headers_set",
+                                                                ErlBinary.binary("Content-Encoding"),
+                                                                ErlBinary.binary("gzip"),
+                                                                ErlVar.var("Headers1"))))),
+                                ErlClause.clause(
+                                        List.of(ErlAtomPattern.atomPattern("false")),
+                                        ErlTuple.tuple(ErlVar.var("Body"), ErlVar.var("Headers1"))))));
     }
 
     private static boolean supportsGzipCompression(OperationShape op) {

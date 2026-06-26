@@ -16,7 +16,6 @@ import io.smithy.beam.ir.erlang.ErlBinaryTemplate;
 import io.smithy.beam.ir.erlang.ErlBinaryText;
 import io.smithy.beam.ir.erlang.ErlCall;
 import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCapturedBlock;
 import io.smithy.beam.ir.erlang.ErlCase;
 import io.smithy.beam.ir.erlang.ErlClause;
 import io.smithy.beam.ir.erlang.ErlExpr;
@@ -72,7 +71,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
 
 final class ErlangRestXmlOperationIr {
     private static final String DEFAULT_CONTENT_TYPE = "application/xml";
@@ -248,23 +246,40 @@ final class ErlangRestXmlOperationIr {
                 : 500;
         String rootElement = BeamXmlBindingIndex.shapeElementName(errShape);
 
+        ErlExpr body = ErlExprBlock.block(
+                ErlMatch.match(ErlVarPattern.varPattern("XmlNs"), ErlCallLocal.callLocal("xml_namespace")),
+                ErlMatch.match(
+                        ErlVarPattern.varPattern("MemberMap"),
+                        buildStructureXmlMapExpr(model, errShape, "Error", recName)),
+                ErlMatch.match(
+                        ErlVarPattern.varPattern("Inner"),
+                        ErlCallLocal.callLocal(
+                                "encode_xml",
+                                ErlMap.map(
+                                        ErlMapEntry.entry(ErlBinary.binary(rootElement), ErlVar.var("MemberMap"))),
+                                ErlVar.var("XmlNs"))),
+                ErlMatch.match(
+                        ErlVarPattern.varPattern("Body"),
+                        ErlCallLocal.callLocal(
+                                "encode_xml",
+                                ErlMap.map(ErlMapEntry.entry(ErlBinary.binary("Error"), ErlVar.var("Inner"))),
+                                ErlVar.var("XmlNs"))),
+                ErlRecord.record(
+                        "http_response",
+                        ErlRecordField.field("status", ErlInteger.integer(status)),
+                        ErlRecordField.field(
+                                "headers",
+                                ErlList.list(ErlTuple.tuple(
+                                        ErlBinary.binary("Content-Type"),
+                                        ErlBinary.binary("application/xml")))),
+                        ErlRecordField.field("body", ErlVar.var("Body"))));
+
         return ErlFunction.function(
                 "encode_" + recName + "_response",
                 1,
                 List.of(ErlClause.clause(
                         List.of(new ErlRecordPattern(recName, List.of())),
-                        captureBody(writer -> {
-                            writer.write("XmlNs = xml_namespace(),");
-                            writer.write("MemberMap = $L,", ErlangRestXmlEmitter.buildStructureXmlMap(
-                                    model, errShape, "Error", recName));
-                            writer.write("Inner = encode_xml(#{<<\"$L\">> => MemberMap}, XmlNs),", rootElement);
-                            writer.write("Body = encode_xml(#{<<\"Error\">> => Inner}, XmlNs),");
-                            writer.write("#http_response{");
-                            writer.write("    status = $L,", status);
-                            writer.write("    headers = [{<<\"Content-Type\">>, <<\"application/xml\">>}],");
-                            writer.write("    body = Body");
-                            writer.write("}");
-                        }))));
+                        body)));
     }
 
     static List<ErlExpr> buildDecodeRequestBodyExprs(
@@ -1335,13 +1350,5 @@ final class ErlangRestXmlOperationIr {
                 ErlRecordFieldPattern.fieldPattern("query", ErlVarPattern.varPattern("Query")),
                 ErlRecordFieldPattern.fieldPattern("headers", ErlVarPattern.varPattern("Headers")),
                 ErlRecordFieldPattern.fieldPattern("body", ErlVarPattern.varPattern("Body")));
-    }
-
-    private static ErlExpr captureBody(Consumer<ErlangWriter> action) {
-        ErlangWriter writer = new ErlangWriter("capture.erl");
-        writer.indent();
-        action.accept(writer);
-        String text = writer.toString().strip();
-        return ErlCapturedBlock.capturedBlock(text);
     }
 }
