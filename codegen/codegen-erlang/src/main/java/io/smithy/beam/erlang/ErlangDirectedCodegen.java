@@ -512,7 +512,7 @@ final class ErlangDirectedCodegen
                     .collect(Collectors.toList());
             variants.add("{unknown, binary()}");
 
-            ErlangFormat.writeUnionType(writer, symbol.getName(), variants);
+            writer.write("$L", ErlTypeDef.unionType(symbol.getName(), variants).asString());
             writer.popState();
         });
     }
