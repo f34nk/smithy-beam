@@ -4,7 +4,8 @@ import java.util.List;
 
 public sealed interface ErlPattern extends IrObject
         permits ErlAtomPattern, ErlVarPattern, ErlIntegerPattern, ErlTuplePattern, ErlConsPattern,
-                ErlNilPattern, ErlBinaryPattern, ErlBinPattern, ErlRecordPattern, ErlMatchPattern {
+                ErlNilPattern, ErlBinaryPattern, ErlBinPattern, ErlRecordPattern, ErlMatchPattern,
+                ErlMapPattern {
 
     /** Build clause patterns from emitter arg strings (one pattern per argument). */
     static List<ErlPattern> functionHeadPatterns(List<String> args) {
