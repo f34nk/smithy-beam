@@ -339,11 +339,12 @@ public final class ErlangRestXmlEmitter {
             success.append("\n").append(String.join(",\n", recordFields)).append("\n");
         }
         success.append("}}");
-        if (BeamHttpChecksumIndex.of(model).responseChecksums(op).isEmpty()) {
-            writer.write("$L", success.toString());
-        } else {
-            writer.write("Result = $L,", success.toString());
-            ErlangHttpChecksumEmitter.emitResponseChecksumGuard(writer, model, op, "Result");
+        io.smithy.beam.ir.erlang.ErlExpr guarded = ErlangHttpChecksumIr.responseChecksumGuardExpr(
+                model,
+                op,
+                io.smithy.beam.ir.erlang.ErlCapturedBlock.capturedBlock(success.toString()));
+        for (String line : guarded.lines()) {
+            writer.write(line);
         }
     }
 
@@ -813,9 +814,14 @@ public final class ErlangRestXmlEmitter {
         }
 
         emitRequestBody(writer, model, payloadMembers, method, sp);
-        Optional<String> headersWithChecksum =
-                ErlangHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp, "Headers");
-        String requestHeaders = headersWithChecksum.orElse("Headers");
+        ErlangHttpChecksumIr.requestChecksumHeadersExpr(model, op, sp, "Headers").ifPresent(expr -> {
+            for (String line : expr.lines()) {
+                writer.write(line);
+            }
+        });
+        String requestHeaders = BeamHttpChecksumIndex.of(model).requestChecksums(op).isEmpty()
+                ? "Headers"
+                : "HeadersWithChecksum";
 
         if (hasHostLabels && !s3BucketAddressing) {
             writer.write("Host = build_host(Input, Config),");

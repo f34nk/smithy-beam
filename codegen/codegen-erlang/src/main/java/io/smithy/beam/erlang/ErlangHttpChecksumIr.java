@@ -1,5 +1,7 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamHttpChecksumIndex;
+import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.ir.erlang.ErlAtom;
 import io.smithy.beam.ir.erlang.ErlAtomPattern;
 import io.smithy.beam.ir.erlang.ErlBinary;
@@ -12,20 +14,134 @@ import io.smithy.beam.ir.erlang.ErlCallLocal;
 import io.smithy.beam.ir.erlang.ErlCase;
 import io.smithy.beam.ir.erlang.ErlClause;
 import io.smithy.beam.ir.erlang.ErlConsPattern;
+import io.smithy.beam.ir.erlang.ErlExpr;
+import io.smithy.beam.ir.erlang.ErlExprBlock;
 import io.smithy.beam.ir.erlang.ErlFunction;
 import io.smithy.beam.ir.erlang.ErlGuard;
 import io.smithy.beam.ir.erlang.ErlInteger;
+import io.smithy.beam.ir.erlang.ErlList;
+import io.smithy.beam.ir.erlang.ErlMatch;
 import io.smithy.beam.ir.erlang.ErlNilPattern;
 import io.smithy.beam.ir.erlang.ErlOp;
 import io.smithy.beam.ir.erlang.ErlTuple;
+import io.smithy.beam.ir.erlang.ErlTuplePattern;
 import io.smithy.beam.ir.erlang.ErlVar;
 import io.smithy.beam.ir.erlang.ErlVarPattern;
+import software.amazon.smithy.codegen.core.Symbol;
+import software.amazon.smithy.codegen.core.SymbolProvider;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.shapes.EnumShape;
+import software.amazon.smithy.model.shapes.MemberShape;
+import software.amazon.smithy.model.shapes.OperationShape;
+import software.amazon.smithy.model.shapes.Shape;
+import software.amazon.smithy.model.shapes.StructureShape;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 
 final class ErlangHttpChecksumIr {
     private ErlangHttpChecksumIr() {}
+
+    static void writeFunctions(ErlangWriter writer, List<ErlFunction> functions) {
+        for (ErlFunction fn : functions) {
+            for (String line : fn.lines()) {
+                writer.write(line);
+            }
+            writer.write("");
+        }
+    }
+
+    static Optional<ErlExpr> requestChecksumHeadersExpr(
+            Model model,
+            OperationShape op,
+            SymbolProvider sp,
+            String headersIn) {
+        BeamHttpChecksumIndex checksumIndex = BeamHttpChecksumIndex.of(model);
+        List<BeamHttpChecksumIndex.ChecksumBinding> bindings = checksumIndex.requestChecksums(op);
+        if (bindings.isEmpty()) {
+            return Optional.empty();
+        }
+
+        String headersOut = headersIn + "WithChecksum";
+        Optional<String> algorithmMember = checksumIndex.requestAlgorithmMemberName(op);
+        if (algorithmMember.isPresent()) {
+            String bindingVar = ErlangJsonCodecSupport.toBindingVar(
+                    BeamNameUtils.toSnakeCase(algorithmMember.get()));
+            List<ErlClause> clauses = new ArrayList<>();
+            clauses.add(ErlClause.clause(
+                    List.of(ErlAtomPattern.atomPattern("undefined")),
+                    ErlVar.var(headersIn)));
+            for (BeamHttpChecksumIndex.ChecksumBinding binding : bindings) {
+                String enumAtom = enumAtomForAlgorithm(model, op, sp, checksumIndex, binding.algorithm());
+                clauses.add(ErlClause.clause(
+                        List.of(ErlAtomPattern.atomPattern(enumAtom)),
+                        checksumBranchExpr(binding, headersIn)));
+            }
+            clauses.add(ErlClause.clause(
+                    List.of(ErlVarPattern.varPattern("Other")),
+                    ErlCallLocal.callLocal(
+                            "error",
+                            ErlTuple.tuple(
+                                    ErlAtom.atom("unsupported_checksum_algorithm"),
+                                    ErlVar.var("Other")))));
+            return Optional.of(ErlMatch.match(
+                    ErlVarPattern.varPattern(headersOut),
+                    ErlCase.caseExpr(ErlVar.var(bindingVar), clauses.toArray(ErlClause[]::new))));
+        }
+
+        List<ErlExpr> exprs = new ArrayList<>();
+        String current = headersIn;
+        for (int i = 0; i < bindings.size(); i++) {
+            BeamHttpChecksumIndex.ChecksumBinding cb = bindings.get(i);
+            String checksumVar = "Checksum" + i;
+            String next = i == bindings.size() - 1 ? headersOut : headersIn + "Checksum" + i;
+            exprs.add(checksumComputationExpr(cb, checksumVar));
+            exprs.add(ErlMatch.match(
+                    ErlVarPattern.varPattern(next),
+                    ErlCallLocal.callLocal(
+                            "headers_set",
+                            ErlBinary.binary(cb.headerName()),
+                            ErlCallLocal.callLocal("checksum_header_encode", ErlVar.var(checksumVar)),
+                            ErlVar.var(current))));
+            current = next;
+        }
+        return Optional.of(ErlExprBlock.block(exprs.toArray(ErlExpr[]::new)));
+    }
+
+    static ErlExpr responseChecksumGuardExpr(
+            Model model,
+            OperationShape op,
+            ErlExpr successExpr) {
+        BeamHttpChecksumIndex checksumIndex = BeamHttpChecksumIndex.of(model);
+        List<BeamHttpChecksumIndex.ChecksumBinding> bindings = checksumIndex.responseChecksums(op);
+        if (bindings.isEmpty()) {
+            return successExpr;
+        }
+
+        List<ErlExpr> headerNames = new ArrayList<>();
+        for (BeamHttpChecksumIndex.ChecksumBinding binding : bindings) {
+            headerNames.add(ErlBinary.binary(binding.headerName()));
+        }
+        return ErlCase.caseExpr(
+                ErlCallLocal.callLocal(
+                        "validate_response_checksum",
+                        ErlVar.var("Body"),
+                        ErlVar.var("Headers"),
+                        ErlList.list(headerNames.toArray(ErlExpr[]::new))),
+                ErlClause.clause(List.of(ErlAtomPattern.atomPattern("ok")), successExpr),
+                ErlClause.clause(
+                        List.of(ErlTuplePattern.tuplePattern(
+                                ErlAtomPattern.atomPattern("error"),
+                                ErlVarPattern.varPattern("Reason"))),
+                        ErlTuple.tuple(
+                                ErlAtom.atom("error"),
+                                ErlTuple.tuple(
+                                        ErlAtom.atom("checksum_validation_failed"),
+                                        ErlVar.var("Reason")))));
+    }
 
     static List<ErlFunction> checksumHelperFunctions() {
         List<ErlFunction> functions = new ArrayList<>();
@@ -219,5 +335,54 @@ final class ErlangHttpChecksumIr {
                                         "string",
                                         "uppercase",
                                         ErlCallLocal.callLocal("binary_to_list", ErlVar.var("Rest")))))));
+    }
+
+    private static ErlExpr checksumBranchExpr(
+            BeamHttpChecksumIndex.ChecksumBinding cb,
+            String headersVar) {
+        return ErlExprBlock.block(
+                checksumComputationExpr(cb, "Checksum"),
+                ErlCallLocal.callLocal(
+                        "headers_set",
+                        ErlBinary.binary(cb.headerName()),
+                        ErlCallLocal.callLocal("checksum_header_encode", ErlVar.var("Checksum")),
+                        ErlVar.var(headersVar)));
+    }
+
+    private static ErlExpr checksumComputationExpr(
+            BeamHttpChecksumIndex.ChecksumBinding cb,
+            String checksumVar) {
+        if (cb.usesCryptoHash()) {
+            return ErlMatch.match(
+                    ErlVarPattern.varPattern(checksumVar),
+                    ErlCall.call("crypto", "hash", ErlAtom.atom(cb.algorithmErlangAtom()), ErlVar.var("Body")));
+        }
+        return ErlMatch.match(
+                ErlVarPattern.varPattern(checksumVar),
+                ErlCallLocal.callLocal(cb.hashHelperName(), ErlVar.var("Body")));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static String enumAtomForAlgorithm(
+            Model model,
+            OperationShape op,
+            SymbolProvider sp,
+            BeamHttpChecksumIndex checksumIndex,
+            String algorithm) {
+        String memberName = checksumIndex.requestAlgorithmMemberName(op).orElseThrow();
+        StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
+        MemberShape member = input.getMember(memberName).orElseThrow();
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof EnumShape enumShape) {
+            for (MemberShape enumMember : enumShape.members()) {
+                if (enumMember.getMemberName().equalsIgnoreCase(algorithm)) {
+                    Symbol symbol = sp.toSymbol(target);
+                    Map<String, String> byMember = symbol.getProperty("enumAtomByMember", Map.class)
+                            .orElseThrow();
+                    return byMember.get(enumMember.getMemberName());
+                }
+            }
+        }
+        return algorithm.toLowerCase(Locale.US);
     }
 }

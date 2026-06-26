@@ -124,8 +124,7 @@ final class ErlangRestJsonOperationIr {
         body.addAll(buildQueryParamsExprs(queryParams));
         body.addAll(buildRequestHeadersExprs(model, op, headers, prefixHeaders, sp));
         body.addAll(buildRequestBodyExprs(model, httpIndex, reqPayload, docMembers, method, sp, eventStreamModule));
-        body.addAll(captureOptionalExprs(writer ->
-                ErlangHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp, "Headers")));
+        ErlangHttpChecksumIr.requestChecksumHeadersExpr(model, op, sp, "Headers").ifPresent(body::add);
         body.addAll(captureOptionalExprs(writer -> emitRequestCompression(writer, op)));
 
         boolean streamingRequestPayload = hasStreamingRequestPayload(model, reqPayload, method);
@@ -153,7 +152,9 @@ final class ErlangRestJsonOperationIr {
                     ErlCallLocal.callLocal("build_host", ErlVar.var("Input"), ErlVar.var("Config"))));
         }
 
-        String requestHeaders = headersWithChecksum(body);
+        String requestHeaders = BeamHttpChecksumIndex.of(model).requestChecksums(op).isEmpty()
+                ? "Headers"
+                : "HeadersWithChecksum";
         body.add(buildHttpRequestRecord(
                 method, requestHeaders, streamingRequestPayload, hasHostLabels));
 
@@ -199,7 +200,7 @@ final class ErlangRestJsonOperationIr {
 
         List<ErlExpr> body = new ArrayList<>();
         if (!docMembers.isEmpty()) {
-            body.add(ErlMatch.match(ErlVarPattern.varPattern("Decoded"), decodeBodyJsonExpr()));
+            body.addAll(ErlangJsonCodecSupport.decodedBodyPrelude());
         }
         body.add(buildInputRecord(inputRecord, model, httpIndex, sp, eventStreamModule, labels, queries, queryParams,
                 headers, prefixHeaders, docMembers, reqPayload, streamingRequestPayload));
@@ -443,8 +444,128 @@ final class ErlangRestJsonOperationIr {
                 spec,
                 List.of(ErlClause.clause(
                         List.of(encodeResponsePattern(model, op, httpIndex, sp, output, outputRecord)),
-                        captureBody(writer -> ErlangRestJson1Emitter.emitEncodeResponseBody(
-                                writer, model, op, httpIndex, sp)))));
+                        ErlExprBlock.block(
+                                buildEncodeResponseBodyExprs(model, op, httpIndex, sp)
+                                        .toArray(ErlExpr[]::new)))));
+    }
+
+    static List<ErlExpr> buildEncodeResponseBodyExprs(
+            Model model,
+            OperationShape op,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp) {
+        int successCode = httpIndex.getResponseCode(op);
+        List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> respPrefixHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.PREFIX_HEADERS);
+        List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
+        List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
+        String responseContentType = resolvedResponseContentType(model, op);
+
+        List<ErlExpr> body = new ArrayList<>();
+        body.addAll(buildResponseHeadersExprs(respHeaders, responseContentType));
+        for (HttpBinding ph : respPrefixHeaders) {
+            String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
+            body.add(ErlMatch.match(
+                    ErlVarPattern.varPattern("Headers"),
+                    ErlOp.op(
+                            "++",
+                            ErlVar.var("Headers"),
+                            ErlCallLocal.callLocal(
+                                    "prefix_headers_to_list",
+                                    ErlBinary.binary(ph.getLocationName()),
+                                    ErlVar.var(toBindingVar(fieldName))))));
+        }
+
+        boolean streamingResponsePayload = !respPayload.isEmpty()
+                && isStreamingBlob(model, respPayload.get(0).getMember());
+        if (!respPayload.isEmpty()) {
+            HttpBinding pb = respPayload.get(0);
+            String fieldName = BeamNameUtils.toSnakeCase(pb.getMember().getMemberName());
+            String bindingVar = toBindingVar(fieldName);
+            if (streamingResponsePayload) {
+                body.add(ErlMatch.match(
+                        ErlVarPattern.varPattern("Stream"),
+                        ErlCase.caseExpr(
+                                ErlVar.var(bindingVar),
+                                ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
+                                ErlClause.clause(List.of(ErlVarPattern.varPattern("Value")), ErlVar.var("Value")))));
+                body.add(ErlMatch.match(ErlVarPattern.varPattern("Body"), ErlBinary.binary("")));
+            } else {
+                body.add(ErlMatch.match(ErlVarPattern.varPattern("Body"), ErlVar.var(bindingVar)));
+            }
+        } else if (!respDoc.isEmpty()) {
+            List<MemberShape> docMembers = respDoc.stream().map(HttpBinding::getMember).toList();
+            List<ErlMapEntry> entries = ErlangJsonCodecSupport.bodyMapEntries(
+                    model, httpIndex, sp, docMembers, HttpBinding.Location.DOCUMENT, null);
+            body.add(ErlMatch.match(
+                    ErlVarPattern.varPattern("BodyMap"),
+                    ErlCall.call(
+                            "maps",
+                            "filter",
+                            ErlFun.fun(ErlClause.clause(
+                                    List.of(
+                                            ErlVarPattern.varPattern("_"),
+                                            ErlVarPattern.varPattern("V")),
+                                    ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))),
+                            ErlMap.map(entries.toArray(ErlMapEntry[]::new)))));
+            body.add(ErlMatch.match(
+                    ErlVarPattern.varPattern("Body"),
+                    ErlCall.call("jsone", "encode", ErlVar.var("BodyMap"))));
+        } else {
+            body.add(ErlMatch.match(ErlVarPattern.varPattern("Body"), ErlBinary.binary("")));
+        }
+
+        List<ErlRecordField> recordFields = new ArrayList<>();
+        recordFields.add(ErlRecordField.field("status", ErlInteger.integer(successCode)));
+        recordFields.add(ErlRecordField.field("headers", ErlVar.var("Headers")));
+        recordFields.add(ErlRecordField.field("body", ErlVar.var("Body")));
+        if (streamingResponsePayload) {
+            recordFields.add(ErlRecordField.field("stream", ErlVar.var("Stream")));
+        }
+        body.add(ErlRecord.record("http_response", recordFields.toArray(ErlRecordField[]::new)));
+        return body;
+    }
+
+    private static List<ErlExpr> buildResponseHeadersExprs(
+            List<HttpBinding> respHeaders, String responseContentType) {
+        List<ErlExpr> exprs = new ArrayList<>();
+        if (respHeaders.isEmpty()) {
+            exprs.add(ErlMatch.match(
+                    ErlVarPattern.varPattern("Headers"),
+                    ErlList.list(ErlTuple.tuple(
+                            ErlBinary.binary("Content-Type"),
+                            ErlBinary.binary(responseContentType)))));
+            return exprs;
+        }
+
+        List<ErlClause> headerClauses = new ArrayList<>();
+        for (HttpBinding hb : respHeaders) {
+            headerClauses.add(ErlClause.clause(
+                    List.of(ErlVarPattern.varPattern("V")),
+                    List.of(ErlGuard.exprGuard(ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))),
+                    ErlTuple.tuple(
+                            ErlAtom.atom("true"),
+                            ErlTuple.tuple(
+                                    ErlBinary.binary(hb.getLocationName()),
+                                    ErlCallLocal.callLocal("to_binary", ErlVar.var("V"))))));
+        }
+        headerClauses.add(ErlClause.clause(List.of(ErlVarPattern.varPattern("_")), ErlAtom.atom("false")));
+        List<ErlExpr> headerArgs = respHeaders.stream()
+                .map(hb -> (ErlExpr) ErlVar.var(toBindingVar(BeamNameUtils.toSnakeCase(hb.getMember().getMemberName()))))
+                .toList();
+        exprs.add(ErlMatch.match(
+                ErlVarPattern.varPattern("ExtraHeaders"),
+                ErlCall.filtermap(
+                        ErlFun.fun(headerClauses.toArray(ErlClause[]::new)),
+                        ErlList.list(headerArgs.toArray(ErlExpr[]::new)))));
+        exprs.add(ErlMatch.match(
+                ErlVarPattern.varPattern("Headers"),
+                ErlList.cons(
+                        ErlTuple.tuple(
+                                ErlBinary.binary("Content-Type"),
+                                ErlBinary.binary(responseContentType)),
+                        ErlVar.var("ExtraHeaders"))));
+        return exprs;
     }
 
     private static ErlRecordPattern encodeResponsePattern(
@@ -548,22 +669,8 @@ final class ErlangRestJsonOperationIr {
             SymbolProvider sp,
             List<MemberShape> members,
             String eventStreamModule) {
-        List<ErlRecordField> fields = new ArrayList<>();
-        for (MemberShape member : members) {
-            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
-            Shape target = model.expectShape(member.getTarget());
-            if (target instanceof UnionShape union
-                    && BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
-                String helper = ErlangEventStreamEmitter.helperName(sp, union);
-                fields.add(ErlRecordField.field(
-                        fieldName,
-                        ErlCall.call(eventStreamModule, "decode_" + helper, ErlVar.var("Body"))));
-            } else {
-                ErlExpr raw = ErlangCodecHelperIr.mapsGetDefault(
-                        ErlBinary.binary(jsonKey(member)), ErlVar.var("Decoded"), ErlAtom.atom("undefined"));
-                fields.add(ErlRecordField.field(fieldName, decodeJsonExpr(model, sp, httpIndex, member, raw)));
-            }
-        }
+        List<ErlRecordField> fields = ErlangJsonCodecSupport.recordFieldsFromDecoded(
+                model, httpIndex, sp, members, HttpBinding.Location.DOCUMENT, eventStreamModule);
         return ErlRecord.record(recordName, fields.toArray(ErlRecordField[]::new));
     }
 
@@ -587,13 +694,8 @@ final class ErlangRestJsonOperationIr {
                                     "encode_" + helper,
                                     ErlVar.var(toBindingVar(fieldName))))));
         }
-        List<ErlMapEntry> entries = new ArrayList<>();
-        for (MemberShape member : members) {
-            String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
-            entries.add(ErlMapEntry.entry(
-                    ErlBinary.binary(jsonKey(member)),
-                    encodeJsonExpr(model, sp, httpIndex, member, toBindingVar(fieldName))));
-        }
+        List<ErlMapEntry> entries = ErlangJsonCodecSupport.bodyMapEntries(
+                model, httpIndex, sp, members, HttpBinding.Location.DOCUMENT, eventStreamModule);
         return List.of(
                 ErlMatch.match(
                         ErlVarPattern.varPattern("BodyMap"),
@@ -629,7 +731,7 @@ final class ErlangRestJsonOperationIr {
         List<ErlExpr> body = new ArrayList<>();
         if (!respDoc.isEmpty()
                 || (!respPayload.isEmpty() && !needsContentTypeCheck && !eventStreamResponsePayload)) {
-            body.add(ErlMatch.match(ErlVarPattern.varPattern("Decoded"), decodeBodyJsonExpr()));
+            body.addAll(ErlangJsonCodecSupport.decodedBodyPrelude());
         }
         for (HttpBinding hb : respHeaders) {
             String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
@@ -690,12 +792,7 @@ final class ErlangRestJsonOperationIr {
         ErlTuple success = ErlTuple.tuple(
                 ErlAtom.atom("ok"),
                 ErlRecord.record(outputRecord, recordFields.toArray(ErlRecordField[]::new)));
-        if (BeamHttpChecksumIndex.of(model).responseChecksums(op).isEmpty()) {
-            body.add(success);
-        } else {
-            body.addAll(captureOptionalExprs(writer ->
-                    ErlangHttpChecksumEmitter.emitResponseChecksumGuard(writer, model, op, success.asString())));
-        }
+        body.add(ErlangHttpChecksumIr.responseChecksumGuardExpr(model, op, success));
         return body.size() == 1 ? body.get(0) : ErlExprBlock.block(body.toArray(ErlExpr[]::new));
     }
 
@@ -1056,13 +1153,9 @@ final class ErlangRestJsonOperationIr {
         if (docMembers.isEmpty() || method.equals("GET") || method.equals("DELETE") || method.equals("HEAD")) {
             exprs.add(ErlMatch.match(ErlVarPattern.varPattern("Body"), ErlBinary.binary("")));
         } else {
-            List<ErlMapEntry> entries = new ArrayList<>();
-            for (HttpBinding db : docMembers) {
-                String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
-                entries.add(ErlMapEntry.entry(
-                        ErlBinary.binary(jsonKey(db.getMember())),
-                        encodeJsonExpr(model, sp, httpIndex, db.getMember(), toBindingVar(fieldName))));
-            }
+            List<MemberShape> docMemberShapes = docMembers.stream().map(HttpBinding::getMember).toList();
+            List<ErlMapEntry> entries = ErlangJsonCodecSupport.bodyMapEntries(
+                    model, httpIndex, sp, docMemberShapes, HttpBinding.Location.DOCUMENT, eventStreamModule);
             exprs.add(ErlMatch.match(
                     ErlVarPattern.varPattern("BodyMap"),
                     ErlCall.call(
@@ -1104,22 +1197,17 @@ final class ErlangRestJsonOperationIr {
     }
 
     static ErlCase decodeBodyJsonExpr() {
-        return ErlCase.caseExpr(
-                ErlVar.var("Body"),
-                ErlClause.clause(List.of(ErlBinaryPattern.binaryPattern("")), ErlMap.map()),
-                ErlClause.clause(
-                        List.of(ErlVarPattern.varPattern("_")),
-                        ErlCase.caseExpr(
-                                ErlCall.call("jsone", "try_decode", ErlVar.var("Body")),
-                                ErlClause.clause(
-                                        List.of(ErlTuplePattern.tuplePattern(
-                                                ErlAtomPattern.atomPattern("ok"),
-                                                ErlVarPattern.varPattern("Val"),
-                                                ErlVarPattern.varPattern("_"))),
-                                        ErlVar.var("Val")),
-                                ErlClause.clause(
-                                        List.of(ErlTuplePattern.tuplePattern(ErlAtomPattern.atomPattern("error"), ErlVarPattern.varPattern("_"))),
-                                        ErlMap.map()))));
+        return ErlangJsonCodecSupport.decodedBodyExpr();
+    }
+
+    static ErlExpr decodeJsonExpr(
+            Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member, ErlExpr raw) {
+        return ErlangJsonCodecSupport.decodeJsonExpr(model, sp, httpIndex, member, raw);
+    }
+
+    static ErlExpr encodeJsonExpr(
+            Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member, String bindingVar) {
+        return ErlangJsonCodecSupport.encodeJsonExpr(model, sp, httpIndex, member, bindingVar);
     }
 
     private static ErlRecordPattern recordBindingHead(String alias, String recordName, List<HttpBinding> bindings) {
@@ -1148,93 +1236,6 @@ final class ErlangRestJsonOperationIr {
                 ErlRecordFieldPattern.fieldPattern("status", ErlVarPattern.varPattern("Status")),
                 ErlRecordFieldPattern.fieldPattern("headers", ErlVarPattern.varPattern("RespHeaders")),
                 ErlRecordFieldPattern.fieldPattern("body", ErlVarPattern.varPattern("Body")));
-    }
-
-    static ErlExpr decodeJsonExpr(
-            Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member, ErlExpr raw) {
-        Shape target = model.expectShape(member.getTarget());
-        if (target instanceof EnumShape || target instanceof IntEnumShape) {
-            String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
-            return ErlCallLocal.callLocal("decode_" + helperName, raw);
-        }
-        if (target instanceof UnionShape union
-                && !BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
-            String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
-            return ErlCallLocal.callLocal("decode_" + helperName, raw);
-        }
-        if (target instanceof StructureShape) {
-            String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
-            return ErlCallLocal.callLocal("decode_" + helperName, raw);
-        }
-        if (target instanceof TimestampShape) {
-            String decodeHelper = timestampDecodeHelper(httpIndex, member, HttpBinding.Location.DOCUMENT);
-            return ErlCallLocal.callLocal(decodeHelper, raw);
-        }
-        if (target instanceof ListShape listShape) {
-            Shape element = model.expectShape(listShape.getMember().getTarget());
-            if (element instanceof StructureShape) {
-                String helperName = ErlangJsonCodecSupport.structureHelperName(sp, element);
-                return ErlCallLocal.callLocal("decode_" + helperName + "_list", raw);
-            }
-            String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
-            return ErlCallLocal.callLocal(helper, raw);
-        }
-        if (target instanceof MapShape) {
-            if (target.hasTrait(SparseTrait.class)) {
-                return ErlCallLocal.callLocal("decode_sparse_map", raw);
-            }
-            return raw;
-        }
-        return raw;
-    }
-
-    static ErlExpr encodeJsonExpr(
-            Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member, String bindingVar) {
-        Shape target = model.expectShape(member.getTarget());
-        if (target instanceof EnumShape || target instanceof IntEnumShape) {
-            String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
-            return ErlCallLocal.callLocal("encode_" + helperName, ErlVar.var(bindingVar));
-        }
-        if (target instanceof UnionShape union
-                && !BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
-            String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
-            return ErlCallLocal.callLocal("encode_" + helperName, ErlVar.var(bindingVar));
-        }
-        if (target instanceof StructureShape) {
-            String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
-            return ErlCallLocal.callLocal("encode_" + helperName, ErlVar.var(bindingVar));
-        }
-        if (target instanceof TimestampShape) {
-            String encodeHelper = timestampEncodeHelper(httpIndex, member, HttpBinding.Location.DOCUMENT);
-            return ErlCallLocal.callLocal(encodeHelper, ErlVar.var(bindingVar));
-        }
-        if (target instanceof ListShape listShape) {
-            Shape element = model.expectShape(listShape.getMember().getTarget());
-            if (element instanceof StructureShape) {
-                String helperName = ErlangJsonCodecSupport.structureHelperName(sp, element);
-                return ErlCallLocal.callLocal("encode_" + helperName + "_list", ErlVar.var(bindingVar));
-            }
-            if (target.hasTrait(SparseTrait.class)) {
-                return ErlCallLocal.callLocal("encode_sparse_list", ErlVar.var(bindingVar));
-            }
-            return ErlVar.var(bindingVar);
-        }
-        if (target instanceof MapShape) {
-            if (target.hasTrait(SparseTrait.class)) {
-                return ErlCallLocal.callLocal("encode_sparse_map", ErlVar.var(bindingVar));
-            }
-            return ErlVar.var(bindingVar);
-        }
-        return ErlVar.var(bindingVar);
-    }
-
-    private static String headersWithChecksum(List<ErlExpr> body) {
-        for (ErlExpr expr : body) {
-            if (expr instanceof ErlCapturedBlock captured && captured.text().contains("HeadersWithChecksum")) {
-                return "HeadersWithChecksum";
-            }
-        }
-        return "Headers";
     }
 
     private static ErlExpr captureBody(Consumer<ErlangWriter> action) {
