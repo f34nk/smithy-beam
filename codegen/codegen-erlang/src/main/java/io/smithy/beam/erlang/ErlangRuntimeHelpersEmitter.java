@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.ir.erlang.ErlExportAttribute;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
@@ -48,7 +49,7 @@ public final class ErlangRuntimeHelpersEmitter {
             writer.write("%% Do not edit.");
             writer.write("-module($L).", helpersMod);
             writer.write("");
-            ErlangFormat.writeExport(writer, exports);
+            writer.write("$L", ErlExportAttribute.export(exports).asString());
             writer.write("");
 
             if (awsMetadata) {

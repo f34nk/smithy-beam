@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.ir.erlang.ErlExportAttribute;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
@@ -45,7 +46,7 @@ final class ErlangAwsJsonRpcEmitter {
             writer.write("-module($L).", serverCodecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            ErlangFormat.writeExport(writer, exports);
+            writer.write("$L", ErlExportAttribute.export(exports).asString());
             writer.write("");
 
             for (OperationShape op : operations) {
@@ -86,7 +87,7 @@ final class ErlangAwsJsonRpcEmitter {
             writer.write("-module($L).", codecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            ErlangFormat.writeExport(writer, exports);
+            writer.write("$L", ErlExportAttribute.export(exports).asString());
             writer.write("");
 
             for (OperationShape op : operations) {

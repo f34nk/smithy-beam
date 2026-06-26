@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.ir.erlang.ErlExportAttribute;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
@@ -142,7 +143,7 @@ final class ErlangServerDirectedCodegen
             writer.pushModuleHeaderSection();
             writer.write("-module($L).", layout.serverModuleName());
             writer.write("-behaviour($L).", behaviourMod);
-            ErlangFormat.writeExport(writer, exports);
+            writer.write("$L", ErlExportAttribute.export(exports).asString());
             writer.popState();
 
             writer.pushDependenciesSection();

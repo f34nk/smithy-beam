@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.ir.erlang.ErlExportAttribute;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -45,7 +46,7 @@ public final class ErlangEventStreamEmitter {
             writer.write("%% Generated Amazon Event Stream helpers for $L.", service.getId());
             writer.write("-module($L).", moduleName);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
-            ErlangFormat.writeExport(writer, exports);
+            writer.write("$L", ErlExportAttribute.export(exports).asString());
             writer.write("");
 
             for (UnionShape union : unions) {

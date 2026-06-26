@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.ir.erlang.ErlExportAttribute;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
@@ -83,7 +84,7 @@ public final class ErlangRestJson1Emitter {
             writer.write("-module($L).", codecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            ErlangFormat.writeExport(writer, exports);
+            writer.write("$L", ErlExportAttribute.export(exports).asString());
             writer.write("");
 
             for (OperationShape op : operations) {
@@ -143,7 +144,7 @@ public final class ErlangRestJson1Emitter {
             writer.write("-module($L).", serverCodecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            ErlangFormat.writeExport(writer, exports);
+            writer.write("$L", ErlExportAttribute.export(exports).asString());
             writer.write("");
 
             Set<ShapeId> emittedErrorEncoders = new LinkedHashSet<>();

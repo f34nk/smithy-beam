@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.ir.erlang.ErlExportAttribute;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamResourceInputBuilder;
 import io.smithy.beam.core.BeamResourceInputBuilder.IdentifierArg;
@@ -75,7 +76,7 @@ public final class ErlangResourceEmitter {
             if (!server) {
                 writer.write("-type client_config() :: #{binary() => term()}.");
             }
-            ErlangFormat.writeExport(writer, exports);
+            writer.write("$L", ErlExportAttribute.export(exports).asString());
             writer.write("");
 
             for (HelperBinding binding : bindings) {

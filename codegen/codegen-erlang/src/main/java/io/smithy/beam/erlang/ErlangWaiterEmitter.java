@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.ir.erlang.ErlExportAttribute;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamWaiterIndex;
 import io.smithy.beam.core.BeamWaiterPaths;
@@ -46,7 +47,7 @@ public final class ErlangWaiterEmitter {
             writer.write("%% Generated waiters for $L.", service.getId());
             writer.write("-module($L).", waitersMod);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
-            ErlangFormat.writeExport(writer, exports);
+            writer.write("$L", ErlExportAttribute.export(exports).asString());
             writer.write("");
 
             for (BeamWaiterIndex.WaiterBinding binding : index.bindings()) {

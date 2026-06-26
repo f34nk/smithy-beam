@@ -6,6 +6,7 @@ import io.smithy.beam.core.BeamClientRetrySupport;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.ir.erlang.ErlExportAttribute;
 import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
@@ -138,8 +139,6 @@ final class ErlangClientDirectedCodegen
             Symbol sym = directive.symbolProvider().toSymbol(op);
             exports.add(sym.getName() + "/2");
         }
-        String exportList = String.join(", ", exports);
-
         ctx.writerDelegator().useFileWriter(layout.clientModuleFile(), writer -> {
             writer.pushGeneratedDocumentationSection();
             writer.write("%% Generated Erlang client for $L.", service.getId());
@@ -156,11 +155,7 @@ final class ErlangClientDirectedCodegen
             writer.popState();
 
             writer.pushModuleHeaderSection();
-            if (exportList.isEmpty()) {
-                writer.write("-export([]).");
-            } else {
-                ErlangFormat.writeExport(writer, exports);
-            }
+            writer.write("$L", ErlExportAttribute.export(exports).asString());
             writer.write("");
             writer.popState();
         });

@@ -3,6 +3,7 @@ package io.smithy.beam.erlang;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.ir.erlang.ErlExportAttribute;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -53,7 +54,7 @@ public final class ErlangAwsQueryEmitter {
             writer.write("-module($L).", codecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            ErlangFormat.writeExport(writer, exports);
+            writer.write("$L", ErlExportAttribute.export(exports).asString());
             writer.write("");
 
             for (OperationShape op : operations) {
@@ -106,7 +107,7 @@ public final class ErlangAwsQueryEmitter {
             writer.write("-module($L).", serverCodecModule);
             writer.write("-include(\"$L\").", layout.typesHeaderFile());
             writer.write("-include(\"$L\").", layout.runtimeTypesHeaderFile());
-            ErlangFormat.writeExport(writer, exports);
+            writer.write("$L", ErlExportAttribute.export(exports).asString());
             writer.write("");
 
             emitServiceXmlNamespace(writer, serviceNamespace);
