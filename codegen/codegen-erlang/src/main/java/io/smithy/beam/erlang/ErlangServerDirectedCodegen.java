@@ -182,7 +182,7 @@ final class ErlangServerDirectedCodegen
         if (ctx.protocolCodegen() != null
                 && BeamProtocolIds.REST_JSON_1.equals(
                         ctx.protocolCodegen().protocolTraitId())) {
-            ErlangRestJson1Emitter.emitServerCodecModule(ctx, service);
+            ErlangRestJsonIr.emitServerCodecModule(ctx, service);
         } else if (ctx.protocolCodegen() != null
                 && BeamProtocolIds.AWS_JSON_1_0.equals(
                         ctx.protocolCodegen().protocolTraitId())) {

@@ -49,7 +49,7 @@ public final class ErlangComplianceTestEmitter {
         SymbolProvider sp = ctx.symbolProvider();
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
-        boolean encodeWithConfig = ErlangRestJson1Emitter.serviceHasHostLabelOperations(model, service)
+        boolean encodeWithConfig = ErlangRestJsonSupport.serviceHasHostLabelOperations(model, service)
                 || ErlangRestXmlEmitter.serviceHasHostLabelOperations(model, service);
 
         ctx.writerDelegator().useFileWriter(layout.complianceTestsModuleFile(), writer -> {

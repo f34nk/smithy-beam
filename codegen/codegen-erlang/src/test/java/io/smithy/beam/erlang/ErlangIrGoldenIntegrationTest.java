@@ -81,7 +81,7 @@ class ErlangIrGoldenIntegrationTest {
 
     @Test
     void clientCodecModuleFromSmithyMatchesGolden() throws IOException {
-        ErlModule module = ErlangRestJson1Emitter.buildClientCodecModule(clientContext(), service);
+        ErlModule module = ErlangRestJsonIr.buildClientCodecModule(clientContext(), service);
         IrGoldenAssertions.assertLinesAndAsString(
                 module, "ir/golden/http_service_rest_json_1_client_codec.expected.erl");
         for (var fn : module.functions()) {
