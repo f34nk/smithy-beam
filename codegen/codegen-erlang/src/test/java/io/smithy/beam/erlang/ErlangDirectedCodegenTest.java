@@ -498,6 +498,72 @@ class ErlangDirectedCodegenTest {
                 .contains("%% decimal:decimal()", "-type sv_big_decimal() :: term().");
     }
 
+    @Test
+    void listAndSparseMapAliasGoldenUsesErlTypeDef() {
+        Model model = Model.assembler()
+                .addUnparsedModel(
+                        "list_map_aliases.smithy",
+                        """
+                        $version: "2"
+                        namespace com.listmapaliases
+
+                        use smithy.api#sparse
+
+                        service ListMapAliasService {
+                            operations: [GetListMapBundle]
+                        }
+
+                        @readonly
+                        operation GetListMapBundle {
+                            output: ListMapBundle
+                        }
+
+                        structure ListMapBundle {
+                            tags: LmaStringList
+                            attrs: LmaSparseStringMap
+                        }
+
+                        string LmaString
+
+                        list LmaStringList {
+                            member: LmaString
+                        }
+
+                        @sparse
+                        map LmaSparseStringMap {
+                            key: LmaString
+                            value: LmaString
+                        }
+                        """)
+                .assemble()
+                .unwrap();
+
+        ServiceShape service = model.expectShape(
+                ShapeId.from("com.listmapaliases#ListMapAliasService"), ServiceShape.class);
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        String typesHeader =
+                new BeamErlangLayout(settings, service.getId().getNamespace(), service)
+                        .typesHeaderFile();
+
+        MockManifest manifest = new MockManifest();
+        ObjectNode pluginSettings = ObjectNode.builder()
+                .withMember("service", "com.listmapaliases#ListMapAliasService")
+                .withMember("edition", "2026")
+                .build();
+        new ErlangTypeGeneration()
+                .generate(PluginContext.builder()
+                        .model(model)
+                        .fileManifest(manifest)
+                        .settings(pluginSettings)
+                        .build());
+
+        String content = manifest.expectFileString(typesHeader);
+        assertThat(content)
+                .contains("-type lma_string_list() :: [lma_string()].")
+                .contains("-type lma_sparse_string_map() :: #{lma_string() => lma_string() | undefined}.");
+    }
+
     private static int countOccurrences(String haystack, String needle) {
         int count = 0;
         int index = 0;

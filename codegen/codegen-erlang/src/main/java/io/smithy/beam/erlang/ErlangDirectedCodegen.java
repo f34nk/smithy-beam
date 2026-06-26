@@ -327,10 +327,9 @@ final class ErlangDirectedCodegen
                     if (s.hasTrait(SparseTrait.ID)) {
                         elementType = elementType + " | undefined";
                     }
-                    writer.pushGeneratedDocumentationSection();
-                    BeamDocumentation.writeShapeDocIfPresent(writer, s, DocTarget.ERLANG);
-                    writer.write("-type $L :: [$L].", sym.getName(), elementType);
-                    writer.popState();
+                    ErlTypeDef def = new ErlTypeDef(
+                            sym.getName(), "[" + elementType + "]", shapeDocComments(s));
+                    writer.write("$L", def.asString());
                 });
     }
 
@@ -352,11 +351,11 @@ final class ErlangDirectedCodegen
                     if (s.hasTrait(SparseTrait.ID)) {
                         valueType = valueType + " | undefined";
                     }
-                    writer.pushGeneratedDocumentationSection();
-                    BeamDocumentation.writeShapeDocIfPresent(writer, s, DocTarget.ERLANG);
-                    writer.write("-type $L :: #{$L => $L}.",
-                            sym.getName(), renderErlangType(keySym), valueType);
-                    writer.popState();
+                    ErlTypeDef def = new ErlTypeDef(
+                            sym.getName(),
+                            "#{" + renderErlangType(keySym) + " => " + valueType + "}",
+                            shapeDocComments(s));
+                    writer.write("$L", def.asString());
                 });
     }
 
