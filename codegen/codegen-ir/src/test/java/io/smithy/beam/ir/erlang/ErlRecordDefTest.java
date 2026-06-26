@@ -33,6 +33,27 @@ class ErlRecordDefTest {
                 .containsExactly("-record(health_check_input, {}).");
     }
 
+    @Test
+    void fieldWithDefaultAndPreamble() {
+        ErlRecordDef record = new ErlRecordDef(
+                "service_unavailable",
+                List.of(
+                        new ErlRecordFieldDef("message", "binary() | undefined"),
+                        new ErlRecordFieldDef(
+                                "'__beam_error_kind'",
+                                "client | server",
+                                "server",
+                                List.of(ErlComment.comment(
+                                        "fault: server | retryable: true | throttling: false")))));
+        assertThat(record.asString())
+                .isEqualTo(
+                        "-record(service_unavailable, {\n"
+                                + "    message :: binary() | undefined,\n"
+                                + "    %% fault: server | retryable: true | throttling: false\n"
+                                + "    '__beam_error_kind' = server :: client | server\n"
+                                + "}).");
+    }
+
     private static ErlRecordDef basicItemRecord() {
         return new ErlRecordDef(
                 "basic_item",

@@ -34,7 +34,15 @@ public final class ErlRecordDef implements ErlHeaderEntry {
             for (ErlComment comment : field.preamble()) {
                 out.addAll(comment.lines(indent + 1));
             }
-            out.add(IrObject.indent(indent + 1) + field.name() + " :: " + field.typeName() + comma);
+            List<String> fieldLines = field.lines(indent + 1);
+            for (int j = 0; j < fieldLines.size(); j++) {
+                String line = fieldLines.get(j);
+                if (j == fieldLines.size() - 1) {
+                    out.add(line + comma);
+                } else {
+                    out.add(line);
+                }
+            }
         }
         out.add(IrObject.indent(indent) + "}).");
         return out;

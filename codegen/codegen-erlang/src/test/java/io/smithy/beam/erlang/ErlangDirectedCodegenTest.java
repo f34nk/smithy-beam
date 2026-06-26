@@ -3,6 +3,9 @@ package io.smithy.beam.erlang;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.core.BeamRetryIndex;
+import io.smithy.beam.ir.erlang.ErlRecordDef;
+import io.smithy.beam.ir.erlang.ErlTypeDef;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -12,9 +15,12 @@ import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.node.ObjectNode;
+import software.amazon.smithy.model.knowledge.NullableIndex;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.ShapeId;
+import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.traits.ErrorTrait;
 
 import java.util.Set;
 
@@ -562,6 +568,68 @@ class ErlangDirectedCodegenTest {
         assertThat(content)
                 .contains("-type lma_string_list() :: [lma_string()].")
                 .contains("-type lma_sparse_string_map() :: #{lma_string() => lma_string() | undefined}.");
+    }
+
+    @Test
+    void buildErrorRecordGoldenUsesIrNodes() {
+        Model model = Model.assembler()
+                .addUnparsedModel(
+                        "error_record.smithy",
+                        """
+                        $version: "2"
+                        namespace com.errorrecord
+
+                        use smithy.api#error
+
+                        service ErrorRecordService {
+                            operations: [Fail]
+                            errors: [ErUnavailable]
+                        }
+
+                        operation Fail {
+                            errors: [ErUnavailable]
+                        }
+
+                        @error("server")
+                        @retryable
+                        structure ErUnavailable {
+                            message: ErString
+                        }
+
+                        string ErString
+                        """)
+                .assemble()
+                .unwrap();
+
+        ServiceShape service = model.expectShape(
+                ShapeId.from("com.errorrecord#ErrorRecordService"), ServiceShape.class);
+        StructureShape shape = model.expectShape(
+                ShapeId.from("com.errorrecord#ErUnavailable"), StructureShape.class);
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        String typesHeader =
+                new BeamErlangLayout(settings, service.getId().getNamespace(), service)
+                        .typesHeaderFile();
+        SymbolProvider symbolProvider = new ErlangSymbolProvider(
+                settings, model, service, typesHeader, BeamCodegenKind.TYPES);
+        ErrorTrait errorTrait = shape.expectTrait(ErrorTrait.class);
+        BeamRetryIndex.RetryInfo retryInfo = BeamRetryIndex.forError(shape).orElseThrow();
+
+        ErlRecordDef record = ErlangDirectedCodegen.buildErrorRecord(
+                shape,
+                symbolProvider,
+                NullableIndex.of(model),
+                errorTrait,
+                retryInfo.retryable(),
+                retryInfo.throttling());
+        ErlTypeDef type = new ErlTypeDef("er_unavailable", "#er_unavailable{}");
+
+        assertThat(record.asString())
+                .contains("-record(er_unavailable, {")
+                .contains("message :: er_string() | undefined,")
+                .contains("%% fault: server | retryable: true | throttling: false")
+                .contains("'__beam_error_kind' = server :: client | server");
+        assertThat(type.asString()).isEqualTo("-type er_unavailable() :: #er_unavailable{}.");
     }
 
     private static int countOccurrences(String haystack, String needle) {

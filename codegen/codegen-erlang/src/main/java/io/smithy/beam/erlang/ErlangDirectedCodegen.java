@@ -622,6 +622,35 @@ final class ErlangDirectedCodegen
         return new ErlRecordDef(recordName, fields);
     }
 
+    static ErlRecordDef buildErrorRecord(
+            StructureShape shape,
+            SymbolProvider sp,
+            NullableIndex ni,
+            ErrorTrait errorTrait,
+            boolean isRetryable,
+            boolean isThrottling) {
+        String recordName = sp.toSymbol(shape).getName().replace("()", "");
+        List<ErlRecordFieldDef> fields = new ArrayList<>();
+        for (MemberShape member : shape.members()) {
+            Symbol memberSym = sp.toSymbol(member);
+            String fieldName = memberSym.getProperty("fieldName", String.class)
+                    .orElse(BeamNameUtils.toSnakeCase(member.getMemberName()));
+            String typeStr = memberSym.getName();
+            if (ni.isMemberNullable(member, NullableIndex.CheckMode.CLIENT)) {
+                typeStr = typeStr + " | undefined";
+            }
+            fields.add(new ErlRecordFieldDef(fieldName, typeStr));
+        }
+        List<ErlComment> meta = List.of(
+                ErlComment.comment("fault: " + errorTrait.getValue()
+                        + " | retryable: " + isRetryable
+                        + " | throttling: " + isThrottling));
+        String kind = errorTrait.getValue().equals("client") ? "client" : "server";
+        fields.add(new ErlRecordFieldDef(
+                "'__beam_error_kind'", "client | server", kind, meta));
+        return new ErlRecordDef(recordName, fields);
+    }
+
     /**
      * Emits {@code -record} and {@code -type} for {@code @error} structures, including
      * fault kind and retryable metadata on the record.
@@ -641,33 +670,26 @@ final class ErlangDirectedCodegen
                 new BeamErlangLayout(ctx.settings(), ctx.service().getId().getNamespace(), ctx.service())
                         .typesHeaderFile(),
                 writer -> {
-                    writer.pushGeneratedDocumentationSection();
-                    BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
-                    writer.popState();
-                    writer.write("");
-                    writer.write("%% Error shape: $L ($L)", shape.getId(), errorTrait.getValue());
-                    writer.write("-record($L, {", recordName);
-                    NullableIndex ni = NullableIndex.of(ctx.model());
-                    for (MemberShape member : shape.members()) {
-                        Symbol memberSym = ctx.symbolProvider().toSymbol(member);
-                        String fieldName = memberSym.getProperty("fieldName", String.class)
-                                .orElse(BeamNameUtils.toSnakeCase(member.getMemberName()));
-                        String typeStr = memberSym.getName();
-                        if (ni.isMemberNullable(member, NullableIndex.CheckMode.CLIENT)) {
-                            writer.write("    $L :: $L | undefined,", fieldName, typeStr);
-                        } else {
-                            writer.write("    $L :: $L,", fieldName, typeStr);
-                        }
+                    for (ErlComment comment : shapeDocComments(shape)) {
+                        writer.write("$L", comment.asString());
                     }
-                    writer.write("    %% fault: $L | retryable: $L | throttling: $L",
-                            errorTrait.getValue(),
+                    writer.write("");
+                    ErlRecordDef record = buildErrorRecord(
+                            shape,
+                            ctx.symbolProvider(),
+                            NullableIndex.of(ctx.model()),
+                            errorTrait,
                             isRetryable,
                             isThrottling);
-                    writer.write("    '__beam_error_kind' = $L :: $L",
-                            errorTrait.getValue().equals("client") ? "client" : "server",
-                            "client | server");
-                    writer.write("}).");
-                    writer.write("-type $L() :: #$L{}.", recordName, recordName);
+                    ErlTypeDef type = new ErlTypeDef(recordName, "#" + recordName + "{}");
+                    List<ErlComment> header = List.of(
+                            ErlComment.comment(
+                                    "Error shape: " + shape.getId() + " (" + errorTrait.getValue() + ")"));
+                    for (ErlComment comment : header) {
+                        writer.write("$L", comment.asString());
+                    }
+                    writer.write("$L", record.asString());
+                    writer.write("$L", type.asString());
                 });
     }
 }

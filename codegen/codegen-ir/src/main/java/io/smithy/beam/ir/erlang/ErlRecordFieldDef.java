@@ -5,15 +5,21 @@ import java.util.List;
 public final class ErlRecordFieldDef implements IrObject {
     private final String name;
     private final String typeName;
+    private final String defaultValue;
     private final List<ErlComment> preamble;
 
     public ErlRecordFieldDef(String name, String typeName) {
-        this(name, typeName, List.of());
+        this(name, typeName, null, List.of());
     }
 
     public ErlRecordFieldDef(String name, String typeName, List<ErlComment> preamble) {
+        this(name, typeName, null, preamble);
+    }
+
+    public ErlRecordFieldDef(String name, String typeName, String defaultValue, List<ErlComment> preamble) {
         this.name = name;
         this.typeName = typeName;
+        this.defaultValue = defaultValue;
         this.preamble = List.copyOf(preamble);
     }
 
@@ -31,7 +37,8 @@ public final class ErlRecordFieldDef implements IrObject {
 
     @Override
     public List<String> lines(int indent) {
-        return List.of(IrObject.indent(indent) + name + " :: " + typeName);
+        String lhs = defaultValue != null ? name + " = " + defaultValue : name;
+        return List.of(IrObject.indent(indent) + lhs + " :: " + typeName);
     }
 
     @Override
