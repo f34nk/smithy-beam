@@ -2,6 +2,7 @@
 smithy = "1.54.0"
 junit-jupiter = "5.11.0"
 assertj = "3.26.3"
+spotless = "7.0.2"
 
 [libraries]
 smithy-aws-traits = { module = "software.amazon.smithy:smithy-aws-traits", version.ref = "smithy" }
@@ -17,3 +18,4 @@ assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 
 [plugins]
 smithy-jar = { id = "software.amazon.smithy.gradle.smithy-jar", version = "1.2.0" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
