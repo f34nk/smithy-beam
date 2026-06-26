@@ -68,14 +68,13 @@ final class ErlangXmlCodecIr {
     }
 
     public static List<ErlFunction> restXmlEncodeHelpers() {
-        List<ErlFunction> functions = new ArrayList<>();
-        functions.add(encodeXml());
-        functions.add(buildXmlElement());
-        functions.add(buildXmlChild());
-        functions.add(xmlNamespaceAttrs());
-        functions.add(ErlangCodecHelperIr.encodeQueryValueXmlQuery());
-        functions.add(ErlangCodecHelperIr.toBinary(ErlangCodecHelperIr.ToBinaryVariant.XML_QUERY));
-        return functions;
+        return List.of(
+                encodeXml(),
+                buildXmlElement(),
+                buildXmlChild(),
+                xmlNamespaceAttrs(),
+                ErlangCodecHelperIr.encodeQueryValueXmlQuery(),
+                ErlangCodecHelperIr.toBinary(ErlangCodecHelperIr.ToBinaryVariant.XML_QUERY));
     }
 
     static List<ErlFunction> awsQueryServerEncodeHelpers() {

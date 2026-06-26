@@ -194,16 +194,8 @@ end"""))));
         return ErlTuplePattern.tuplePattern(
                 ErlAtomPattern.atomPattern("xmlElement"),
                 ErlVarPattern.varPattern("Name"),
-                W,
-                W,
-                W,
-                W,
-                W,
-                W,
-                W,
-                W,
-                W,
-                W);
+                W, W, W, W, W, W, W, W, W, W);
+           
     }
 
     private static ErlTuplePattern sixTupleNamePattern() {
@@ -214,17 +206,9 @@ end"""))));
     private static ErlTuplePattern xmlElementContentPattern() {
         return ErlTuplePattern.tuplePattern(
                 ErlAtomPattern.atomPattern("xmlElement"),
-                W,
-                W,
-                W,
-                W,
-                W,
-                W,
-                W,
+                W, W, W, W, W, W, W,
                 ErlVarPattern.varPattern("Content"),
-                W,
-                W,
-                W);
+                W, W, W);
     }
 
     private static ErlTuplePattern sixTupleContentPattern() {
@@ -232,13 +216,12 @@ end"""))));
     }
 
     static List<ErlFunction> serverQueryDecodeHelperFunctions(boolean ec2Query) {
-        List<ErlFunction> functions = new ArrayList<>();
-        functions.add(parseQueryParams());
-        functions.add(formValue());
-        functions.add(ec2Query ? formListValuesEc2() : formListValuesAws());
-        functions.add(indexedFormValues());
-        functions.add(formIndex());
-        return functions;
+        return List.of(
+                parseQueryParams(),
+                formValue(),
+                ec2Query ? formListValuesEc2() : formListValuesAws(),
+                indexedFormValues(),
+                formIndex());
     }
 
     static List<ErlFunction> serverXmlEncodeHelperFunctions(boolean ec2Query) {
