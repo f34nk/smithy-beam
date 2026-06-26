@@ -328,30 +328,30 @@ final class ErlangClientDirectedCodegen
                             op,
                             wrapWithRetry,
                             retryModule,
-                            () -> ErlangClientDispatchIr.writeBody(
+                            () -> ErlangClientDispatchIr.writeExprs(
                                     writer,
-                                    ErlangClientDispatchIr.operationBody(
+                                    ErlangClientDispatchIr.operationBodyExprs(
                                             ctx,
                                             op,
                                             layout,
                                             wrapWithRetry,
                                             retryModule,
                                             paginated,
-                                            ErlangClientDispatchEmitter.DispatchBodyMode.PAGINATED_PAGE)),
+                                            ErlangClientDispatchOperationIr.DispatchBodyMode.PAGINATED_PAGE)),
                             writer);
                 } else {
                     writer.write("$L(Config, Input) ->", opSym.getName());
                     writer.indent();
-                    ErlangClientDispatchIr.writeBody(
+                    ErlangClientDispatchIr.writeExprs(
                             writer,
-                            ErlangClientDispatchIr.operationBody(
+                            ErlangClientDispatchIr.operationBodyExprs(
                                     ctx,
                                     op,
                                     layout,
                                     wrapWithRetry,
                                     retryModule,
                                     paginated,
-                                    ErlangClientDispatchEmitter.DispatchBodyMode.SINGLE_PAGE));
+                                    ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE));
                     writer.dedent();
                 }
             } else {

@@ -1,13 +1,14 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamClientPaginationSupport;
+import io.smithy.beam.ir.erlang.ErlCapturedBlock;
+import io.smithy.beam.ir.erlang.ErlExpr;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.knowledge.PaginationInfo;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
-import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.StructureShape;
 
 import java.util.List;
@@ -32,14 +33,17 @@ public final class ErlangClientPaginationEmitter {
         Symbol opSym = sp.toSymbol(op);
         StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
         StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
-        String inputRecord = recordName(sp.toSymbol(input));
-        String inputToken = fieldName(sp, pi.getInputTokenMember());
-        String outputTokenExpr = recordAccess(
-                "Output", output, pi.getOutputTokenMemberPath(), ctx.model(), sp);
+        String inputRecord = ErlangClientDispatchOperationIr.recordName(sp.toSymbol(input));
+        String inputToken = ErlangClientDispatchOperationIr.fieldName(sp, pi.getInputTokenMember());
+        String outputTokenExpr = ErlangClientDispatchOperationIr.buildRecordAccessExpr(
+                        "Output", output, pi.getOutputTokenMemberPath(), ctx.model(), sp)
+                .asString();
         List<MemberShape> itemsPath = pi.getItemsMemberPath();
         boolean hasItems = BeamClientPaginationSupport.hasItemsMember(pi);
         String itemsExpr = hasItems
-                ? recordAccess("Output", output, itemsPath, ctx.model(), sp)
+                ? ErlangClientDispatchOperationIr.buildRecordAccessExpr(
+                                "Output", output, itemsPath, ctx.model(), sp)
+                        .asString()
                 : null;
 
         writer.write("$L(Config, Input) ->", opSym.getName());
@@ -82,52 +86,11 @@ public final class ErlangClientPaginationEmitter {
             String outputTokenExpr,
             String inputRecord,
             String inputToken) {
-        if (hasItems) {
-            writer.write("NewAcc = Acc ++ $L,", itemsExpr);
-        } else {
-            writer.write("NewAcc = [Output | Acc],");
-        }
-        writer.write("case $L of", outputTokenExpr);
-        writer.indent();
-        if (hasItems) {
-            writer.write("undefined ->");
-            writer.indent();
-            writer.write("{ok, NewAcc};");
-            writer.dedent();
-        } else {
-            writer.write("undefined -> {ok, lists:reverse(NewAcc)};");
-        }
-        writer.write("NextToken ->");
-        writer.indent();
-        writer.write("NextInput = Input#$L{$L = NextToken},", inputRecord, inputToken);
-        writer.write("$L(Config, NextInput, NewAcc)", opSym.getName());
-        writer.dedent();
-        writer.dedent();
-        writer.write("end;");
-    }
-
-    static String recordName(Symbol symbol) {
-        return symbol.getName().replace("()", "");
-    }
-
-    static String fieldName(SymbolProvider sp, MemberShape member) {
-        return sp.toSymbol(member).getProperty("fieldName", String.class).orElseThrow();
-    }
-
-    static String recordAccess(
-            String rootVar,
-            StructureShape rootShape,
-            List<MemberShape> path,
-            software.amazon.smithy.model.Model model,
-            SymbolProvider sp) {
-        String expr = rootVar;
-        Shape container = rootShape;
-        for (MemberShape member : path) {
-            String record = recordName(sp.toSymbol(container));
-            String field = fieldName(sp, member);
-            expr = "element(#" + record + "." + field + ", " + expr + ")";
-            container = model.expectShape(member.getTarget(), Shape.class);
-        }
-        return expr;
+        ErlExpr items = hasItems ? ErlCapturedBlock.capturedBlock(itemsExpr) : null;
+        ErlExpr outputToken = ErlCapturedBlock.capturedBlock(outputTokenExpr);
+        ErlangClientDispatchIr.writeExprs(
+                writer,
+                ErlangClientDispatchOperationIr.buildAccumulationAndRecursion(
+                        opSym, hasItems, items, outputToken, inputRecord, inputToken));
     }
 }
