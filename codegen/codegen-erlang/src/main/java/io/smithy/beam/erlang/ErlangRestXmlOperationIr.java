@@ -1,6 +1,7 @@
 package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamXmlBindingIndex;
 import io.smithy.beam.ir.erlang.ErlCapturedBlock;
 import io.smithy.beam.ir.erlang.ErlClause;
 import io.smithy.beam.ir.erlang.ErlExpr;
@@ -19,7 +20,9 @@ import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.traits.HttpErrorTrait;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -186,6 +189,33 @@ final class ErlangRestXmlOperationIr {
                         List.of(encodeResponsePattern(model, op, httpIndex, sp, output, outputRecord)),
                         captureBody(writer -> ErlangRestXmlEmitter.emitEncodeResponseBody(
                                 writer, model, op, httpIndex, sp)))));
+    }
+
+    static ErlFunction buildErrorResponseEncoder(Model model, ShapeId errorId, SymbolProvider sp) {
+        StructureShape errShape = model.expectShape(errorId, StructureShape.class);
+        String recName = ErlangRestXmlEmitter.recordName(sp.toSymbol(errShape));
+        int status = errShape.hasTrait(HttpErrorTrait.class)
+                ? errShape.expectTrait(HttpErrorTrait.class).getCode()
+                : 500;
+        String rootElement = BeamXmlBindingIndex.shapeElementName(errShape);
+
+        return ErlFunction.function(
+                "encode_" + recName + "_response",
+                1,
+                List.of(ErlClause.clause(
+                        List.of(new ErlRecordPattern(recName, List.of())),
+                        captureBody(writer -> {
+                            writer.write("XmlNs = xml_namespace(),");
+                            writer.write("MemberMap = $L,", ErlangRestXmlEmitter.buildStructureXmlMap(
+                                    model, errShape, "Error", recName));
+                            writer.write("Inner = encode_xml(#{<<\"$L\">> => MemberMap}, XmlNs),", rootElement);
+                            writer.write("Body = encode_xml(#{<<\"Error\">> => Inner}, XmlNs),");
+                            writer.write("#http_response{");
+                            writer.write("    status = $L,", status);
+                            writer.write("    headers = [{<<\"Content-Type\">>, <<\"application/xml\">>}],");
+                            writer.write("    body = Body");
+                            writer.write("}.");
+                        }))));
     }
 
     private static ErlRecordPattern encodeResponsePattern(

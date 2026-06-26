@@ -131,6 +131,35 @@ class ErlangRestJsonIrTest {
     }
 
     @Test
+    void encodeGetNameResponseMatchesGolden() throws IOException {
+        Model model = httpModel();
+        ServiceShape service = model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+        OperationShape op = model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        ErlangSymbolProvider sp = new ErlangSymbolProvider(
+                settings, model, service, "http_types.hrl", BeamCodegenKind.CLIENT);
+        HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+        ErlFunction fn = ErlangRestJsonOperationIr.buildEncodeResponse(model, op, httpIndex, sp);
+        assertStructural(fn);
+        assertThat(fn.asString()).isEqualTo(readExpectedString("ir/rest_json_encode_get_name_response.expected.erl"));
+    }
+
+    @Test
+    void encodeNotFoundErrorResponseMatchesGolden() throws IOException {
+        Model model = errorModel();
+        ShapeId errorId = ShapeId.from("smithy.beam.demo.http#NotFoundError");
+        BeamSettings settings = new BeamSettings();
+        settings.edition("2026");
+        ServiceShape service = model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+        ErlangSymbolProvider sp = new ErlangSymbolProvider(
+                settings, model, service, "http_types.hrl", BeamCodegenKind.CLIENT);
+        ErlFunction fn = ErlangRestJsonOperationIr.buildErrorResponseEncoder(model, errorId, sp);
+        assertStructural(fn);
+        assertThat(fn.asString()).isEqualTo(readExpectedString("ir/rest_json_encode_not_found_error_response.expected.erl"));
+    }
+
+    @Test
     void decodeGetNameResponseMatchesGolden() throws IOException {
         Model model = httpModel();
         ServiceShape service = model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
@@ -177,6 +206,53 @@ class ErlangRestJsonIrTest {
 
                 structure GetNameOutput {
                     name: Name
+                }
+                """;
+        return Model.assembler()
+                .addUnparsedModel("http.smithy", idl)
+                .discoverModels()
+                .assemble()
+                .unwrap();
+    }
+
+    private static Model errorModel() {
+        String idl = """
+                $version: "2"
+                namespace smithy.beam.demo.http
+
+                use aws.protocols#restJson1
+                use smithy.api#httpError
+
+                string Name
+
+                @restJson1
+                service HttpService {
+                    version: "2026"
+                    operations: [GetName]
+                }
+
+                @readonly
+                @http(method: "GET", uri: "/names/{name}", code: 200)
+                operation GetName {
+                    input: GetNameInput
+                    output: GetNameOutput
+                    errors: [NotFoundError]
+                }
+
+                structure GetNameInput {
+                    @required
+                    @httpLabel
+                    name: Name
+                }
+
+                structure GetNameOutput {
+                    name: Name
+                }
+
+                @httpError(404)
+                @error("client")
+                structure NotFoundError {
+                    message: String
                 }
                 """;
         return Model.assembler()

@@ -2,7 +2,7 @@ package io.smithy.beam.ir.erlang;
 
 import java.util.List;
 
-public final class ErlAttribute implements IrObject {
+public final class ErlAttribute implements ErlModuleAttribute {
     private final String name;
     private final String value;
 

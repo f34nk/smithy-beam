@@ -22,6 +22,7 @@ import io.smithy.beam.ir.erlang.ErlInteger;
 import io.smithy.beam.ir.erlang.ErlList;
 import io.smithy.beam.ir.erlang.ErlListComprehension;
 import io.smithy.beam.ir.erlang.ErlMap;
+import io.smithy.beam.ir.erlang.ErlMapEntry;
 import io.smithy.beam.ir.erlang.ErlMatch;
 import io.smithy.beam.ir.erlang.ErlNilPattern;
 import io.smithy.beam.ir.erlang.ErlOp;
@@ -34,6 +35,7 @@ import io.smithy.beam.ir.erlang.ErlVarPattern;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 final class ErlangXmlCodecIr {
     private ErlangXmlCodecIr() {}
@@ -668,6 +670,21 @@ final class ErlangXmlCodecIr {
                                                 ErlTuple.tuple(
                                                         ErlAtom.atom("text"),
                                                         ErlCallLocal.callLocal("to_binary", ErlVar.var("Value"))))))));
+    }
+
+    static ErlFunction xmlNamespace(Optional<String> namespaceUri) {
+        if (namespaceUri.isPresent()) {
+            return ErlFunction.function(
+                    "xml_namespace",
+                    0,
+                    List.of(ErlClause.clause(
+                            List.of(),
+                            ErlMap.map(ErlMapEntry.entry(ErlAtom.atom("uri"), ErlBinary.binary(namespaceUri.get()))))));
+        }
+        return ErlFunction.function(
+                "xml_namespace",
+                0,
+                List.of(ErlClause.clause(List.of(), ErlMap.map())));
     }
 
     private static ErlFunction xmlNamespaceAttrs() {

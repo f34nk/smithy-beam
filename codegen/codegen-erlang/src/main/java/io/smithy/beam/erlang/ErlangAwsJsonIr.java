@@ -69,14 +69,43 @@ final class ErlangAwsJsonIr {
         return functions;
     }
 
-    static void writeFunction(ErlangWriter writer, ErlFunction fn) {
-        writer.write("$L", fn.asString());
-        writer.write("");
+    static List<ErlFunction> clientCodecFunctions(
+            Model model,
+            ServiceShape service,
+            List<OperationShape> operations,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            String targetPrefix,
+            String contentType,
+            String eventStreamModule) {
+        List<ErlFunction> functions = new ArrayList<>();
+        for (OperationShape op : operations) {
+            functions.add(encodeRequest(
+                    model, op, httpIndex, sp, targetPrefix, contentType, eventStreamModule));
+            functions.add(decodeResponse(model, op, httpIndex, sp, eventStreamModule));
+        }
+        for (OperationShape op : operations) {
+            functions.add(errorDispatch(model, op, sp));
+        }
+        functions.addAll(sharedCodecHelpers(model, service, sp));
+        return functions;
     }
 
-    static void writeFunctions(ErlangWriter writer, List<ErlFunction> functions) {
-        for (ErlFunction fn : functions) {
-            writeFunction(writer, fn);
+    static List<ErlFunction> serverCodecFunctions(
+            Model model,
+            ServiceShape service,
+            List<OperationShape> operations,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            String contentType,
+            String eventStreamModule) {
+        List<ErlFunction> functions = new ArrayList<>();
+        for (OperationShape op : operations) {
+            functions.add(decodeRequest(model, op, httpIndex, sp, eventStreamModule));
+            functions.add(encodeResponse(
+                    model, op, httpIndex, sp, contentType, eventStreamModule));
         }
+        functions.addAll(sharedCodecHelpers(model, service, sp));
+        return functions;
     }
 }

@@ -31,7 +31,7 @@ class ErlModuleTest {
                         ErlModuleDoc.moduleDoc("REST JSON 1 codecs for basic_service (generated).")),
                 List.of(
                         new ErlAttribute("include", "\"basic_types.hrl\""),
-                        new ErlAttribute("export", "[decode_basic_item/1]")),
+                        ErlExportAttribute.export(List.of("decode_basic_item/1"))),
                 List.of(buildDecodeBasicItem()));
     }
 

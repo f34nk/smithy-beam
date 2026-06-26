@@ -423,6 +423,105 @@ final class ErlangRestJsonOperationIr {
         return buildErrorDispatch(model, null, op, HttpBindingIndex.of(model), sp);
     }
 
+    static ErlFunction buildEncodeResponse(
+            Model model,
+            OperationShape op,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp) {
+        String opName = sp.toSymbol(op).getName();
+        StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
+        String outputRecord = recordName(sp.toSymbol(output));
+        String outputType = sp.toSymbol(output).getName();
+
+        ErlFunctionSpec spec = ErlFunctionSpec.functionSpec(
+                "encode_" + opName + "_response", outputType, "#http_response{}");
+
+        return ErlFunction.functionWithDocAndSpec(
+                "encode_" + opName + "_response",
+                1,
+                ErlFunctionDoc.functionDoc("Encode HTTP response for " + op.getId() + "."),
+                spec,
+                List.of(ErlClause.clause(
+                        List.of(encodeResponsePattern(model, op, httpIndex, sp, output, outputRecord)),
+                        captureBody(writer -> ErlangRestJson1Emitter.emitEncodeResponseBody(
+                                writer, model, op, httpIndex, sp)))));
+    }
+
+    private static ErlRecordPattern encodeResponsePattern(
+            Model model,
+            OperationShape op,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            StructureShape output,
+            String outputRecord) {
+        List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
+        List<HttpBinding> respPrefixHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.PREFIX_HEADERS);
+        List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
+        List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
+
+        List<ErlRecordFieldPattern> fields = new ArrayList<>();
+        for (HttpBinding b : concat(respHeaders, respPrefixHeaders, respDoc, respPayload)) {
+            String field = BeamNameUtils.toSnakeCase(b.getMember().getMemberName());
+            fields.add(ErlRecordFieldPattern.fieldPattern(
+                    field, ErlVarPattern.varPattern(toBindingVar(field))));
+        }
+        return new ErlRecordPattern(outputRecord, fields);
+    }
+
+    static ErlFunction buildErrorResponseEncoder(Model model, ShapeId errorId, SymbolProvider sp) {
+        StructureShape errShape = model.expectShape(errorId, StructureShape.class);
+        String recName = recordName(sp.toSymbol(errShape));
+        int status = errShape.hasTrait(HttpErrorTrait.class)
+                ? errShape.expectTrait(HttpErrorTrait.class).getCode()
+                : 500;
+
+        List<ErlRecordFieldPattern> fields = new ArrayList<>();
+        for (MemberShape m : errShape.members()) {
+            if (m.getMemberName().equals("__beam_error_kind")) {
+                continue;
+            }
+            String field = BeamNameUtils.toSnakeCase(m.getMemberName());
+            fields.add(ErlRecordFieldPattern.fieldPattern(
+                    field, ErlVarPattern.varPattern(toBindingVar(field))));
+        }
+
+        List<ErlMapEntry> bodyEntries = new ArrayList<>();
+        bodyEntries.add(ErlMapEntry.entry(ErlBinary.binary("__type"), ErlBinary.binary(errorId.getName())));
+        for (MemberShape m : errShape.members()) {
+            if (m.getMemberName().equals("__beam_error_kind")) {
+                continue;
+            }
+            String field = BeamNameUtils.toSnakeCase(m.getMemberName());
+            bodyEntries.add(ErlMapEntry.entry(
+                    ErlBinary.binary(m.getMemberName()), ErlVar.var(toBindingVar(field))));
+        }
+
+        ErlExpr body = ErlExprBlock.block(
+                ErlMatch.match(ErlVarPattern.varPattern("BodyMap"), ErlMap.map(bodyEntries.toArray(ErlMapEntry[]::new))),
+                ErlMatch.match(
+                        ErlVarPattern.varPattern("Body"),
+                        ErlCall.call("jsone", "encode", ErlVar.var("BodyMap"))),
+                ErlRecord.record(
+                        "http_response",
+                        ErlRecordField.field("status", ErlInteger.integer(status)),
+                        ErlRecordField.field(
+                                "headers",
+                                ErlList.list(ErlTuple.tuple(
+                                        ErlBinary.binary("Content-Type"),
+                                        ErlBinary.binary("application/json")))),
+                        ErlRecordField.field("body", ErlVar.var("Body"))));
+
+        return ErlFunction.functionWithDocAndSpec(
+                "encode_" + recName + "_response",
+                1,
+                ErlFunctionDoc.functionDoc("Encode HTTP error response for " + errorId + "."),
+                ErlFunctionSpec.functionSpec(
+                        "encode_" + recName + "_response",
+                        "#" + recName + "{}",
+                        "#http_response{}"),
+                List.of(ErlClause.clause(List.of(new ErlRecordPattern(recName, fields)), body)));
+    }
+
     static ErlRecordPattern memberBindingHead(
             String alias, String recordName, StructureShape structure, SymbolProvider sp) {
         List<ErlRecordFieldPattern> fields = new ArrayList<>();
@@ -1136,6 +1235,14 @@ final class ErlangRestJsonOperationIr {
             }
         }
         return "Headers";
+    }
+
+    private static ErlExpr captureBody(Consumer<ErlangWriter> action) {
+        ErlangWriter writer = new ErlangWriter("capture.erl");
+        writer.indent();
+        action.accept(writer);
+        String text = writer.toString().strip();
+        return ErlCapturedBlock.capturedBlock(text);
     }
 
     private static List<ErlExpr> captureOptionalExprs(Consumer<ErlangWriter> action) {

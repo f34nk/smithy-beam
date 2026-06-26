@@ -11,6 +11,7 @@ import software.amazon.smithy.model.shapes.StructureShape;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 final class ErlangAwsQueryIr {
@@ -92,14 +93,43 @@ final class ErlangAwsQueryIr {
         return new ArrayList<>(shapes);
     }
 
-    static void writeFunction(ErlangWriter writer, ErlFunction fn) {
-        writer.write("$L", fn.asString());
-        writer.write("");
+    static List<ErlFunction> clientCodecFunctions(
+            Model model,
+            ServiceShape service,
+            List<OperationShape> operations,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            boolean ec2Query) {
+        List<ErlFunction> functions = new ArrayList<>();
+        for (OperationShape op : operations) {
+            functions.add(encodeRequest(model, service, op, httpIndex, sp));
+            functions.add(decodeResponse(model, service, op, sp, ec2Query));
+        }
+        functions.add(flattenQueryInput(
+                model, httpIndex, sp, inputShapes(model, service), ec2Query));
+        functions.addAll(queryHelpers(ec2Query));
+        functions.addAll(xmlHelpers(ec2Query));
+        return functions;
     }
 
-    static void writeFunctions(ErlangWriter writer, List<ErlFunction> functions) {
-        for (ErlFunction fn : functions) {
-            writeFunction(writer, fn);
+    static List<ErlFunction> serverCodecFunctions(
+            Model model,
+            ServiceShape service,
+            List<OperationShape> operations,
+            SymbolProvider sp,
+            Optional<String> serviceNamespace,
+            boolean ec2Query) {
+        List<ErlFunction> functions = new ArrayList<>();
+        functions.add(ErlangXmlCodecIr.xmlNamespace(serviceNamespace));
+        for (OperationShape op : operations) {
+            functions.add(serverDecodeRequest(model, op, sp, ec2Query));
+            functions.add(serverEncodeResponse(model, service, op, sp, ec2Query));
         }
+        for (StructureShape input : inputShapes(model, service)) {
+            functions.add(parseInputFromForm(model, sp, input, ec2Query));
+        }
+        functions.addAll(serverQueryDecodeHelpers(ec2Query));
+        functions.addAll(serverXmlEncodeHelpers(ec2Query));
+        return functions;
     }
 }

@@ -3,7 +3,7 @@ package io.smithy.beam.ir.erlang;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class ErlExportAttribute implements IrObject {
+public final class ErlExportAttribute implements ErlModuleAttribute {
     private static final int EXPORT_LINE_LIMIT = 100;
 
     private final List<String> exports;

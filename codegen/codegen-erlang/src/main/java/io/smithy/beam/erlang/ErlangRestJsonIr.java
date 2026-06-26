@@ -19,6 +19,7 @@ import software.amazon.smithy.model.shapes.EnumShape;
 import software.amazon.smithy.model.shapes.IntEnumShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.UnionShape;
 
@@ -206,14 +207,58 @@ final class ErlangRestJsonIr {
                 .orElse(false);
     }
 
-    static void writeFunction(ErlangWriter writer, ErlFunction fn) {
-        writer.write("$L", fn.asString());
-        writer.write("");
+    static List<ErlFunction> clientCodecFunctions(
+            Model model,
+            ServiceShape service,
+            List<OperationShape> operations,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            BeamErlangLayout layout,
+            boolean encodeWithConfig) {
+        List<ErlFunction> functions = new ArrayList<>();
+        String eventStreamModule = layout.eventStreamModuleName();
+        for (OperationShape op : operations) {
+            functions.add(encodeRequest(
+                    model, service, op, httpIndex, sp, encodeWithConfig, eventStreamModule));
+            functions.add(decodeRequest(model, op, httpIndex, sp, eventStreamModule));
+            functions.add(decodeResponse(model, service, op, httpIndex, sp, layout));
+        }
+        for (OperationShape op : operations) {
+            functions.add(errorDispatch(model, service, op, httpIndex, sp));
+        }
+        functions.addAll(structureHelperFunctions(model, service, sp));
+        functions.addAll(enumHelperFunctions(model, service, sp));
+        functions.addAll(unionHelperFunctions(model, service, sp));
+        functions.addAll(privateCodecHelpers(model, service));
+        if (encodeWithConfig) {
+            functions.addAll(ErlangHostLabelIr.buildHostFunctions(model, service, sp));
+        }
+        return functions;
     }
 
-    static void writeFunctions(ErlangWriter writer, List<ErlFunction> functions) {
-        for (ErlFunction fn : functions) {
-            writeFunction(writer, fn);
+    static List<ErlFunction> serverCodecFunctions(
+            Model model,
+            ServiceShape service,
+            List<OperationShape> operations,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            BeamErlangLayout layout) {
+        List<ErlFunction> functions = new ArrayList<>();
+        String eventStreamModule = layout.eventStreamModuleName();
+        Set<ShapeId> emittedErrorEncoders = new LinkedHashSet<>();
+        for (OperationShape op : operations) {
+            functions.add(decodeRequest(model, op, httpIndex, sp, eventStreamModule));
+            functions.add(ErlangRestJsonOperationIr.buildEncodeResponse(model, op, httpIndex, sp));
+            for (ShapeId errorId : op.getErrors()) {
+                if (emittedErrorEncoders.add(errorId)) {
+                    functions.add(ErlangRestJsonOperationIr.buildErrorResponseEncoder(model, errorId, sp));
+                }
+            }
         }
+        functions.addAll(structureHelperFunctions(model, service, sp));
+        functions.addAll(enumHelperFunctions(model, service, sp));
+        functions.addAll(unionHelperFunctions(model, service, sp));
+        functions.addAll(privateCodecHelpers(model, service));
+        return functions;
     }
 }

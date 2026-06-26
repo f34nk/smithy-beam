@@ -6,13 +6,13 @@ import java.util.List;
 public final class ErlModule implements IrObject {
     private final String moduleName;
     private final List<ErlPreambleEntry> preamble;
-    private final List<ErlAttribute> attributes;
+    private final List<ErlModuleAttribute> attributes;
     private final List<ErlFunction> functions;
 
     public ErlModule(
             String moduleName,
             List<ErlPreambleEntry> preamble,
-            List<ErlAttribute> attributes,
+            List<ErlModuleAttribute> attributes,
             List<ErlFunction> functions) {
         this.moduleName = moduleName;
         this.preamble = List.copyOf(preamble);
@@ -28,7 +28,7 @@ public final class ErlModule implements IrObject {
         return preamble;
     }
 
-    public List<ErlAttribute> attributes() {
+    public List<ErlModuleAttribute> attributes() {
         return attributes;
     }
 
@@ -43,7 +43,7 @@ public final class ErlModule implements IrObject {
             out.addAll(item.lines(indent));
         }
         out.addAll(new ErlAttribute("module", moduleName).lines(indent));
-        for (ErlAttribute attribute : attributes) {
+        for (ErlModuleAttribute attribute : attributes) {
             out.addAll(attribute.lines(indent));
         }
         if (!functions.isEmpty()) {

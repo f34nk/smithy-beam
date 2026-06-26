@@ -8,9 +8,13 @@ import software.amazon.smithy.model.shapes.EnumShape;
 import software.amazon.smithy.model.shapes.IntEnumShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 final class ErlangRestXmlIr {
     private ErlangRestXmlIr() {}
@@ -69,14 +73,58 @@ final class ErlangRestXmlIr {
         return ErlangXmlCodecIr.restXmlEncodeHelpers();
     }
 
-    static void writeFunction(ErlangWriter writer, ErlFunction fn) {
-        writer.write("$L", fn.asString());
-        writer.write("");
+    static List<ErlFunction> clientCodecFunctions(
+            Model model,
+            ServiceShape service,
+            List<OperationShape> operations,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            Optional<String> serviceNamespace,
+            boolean encodeWithConfig) {
+        List<ErlFunction> functions = new ArrayList<>();
+        functions.add(ErlangXmlCodecIr.xmlNamespace(serviceNamespace));
+        for (OperationShape op : operations) {
+            functions.add(encodeRequest(model, service, op, httpIndex, sp, encodeWithConfig));
+            functions.add(decodeRequest(model, op, httpIndex, sp));
+            functions.addAll(decodeResponse(model, op, httpIndex, sp));
+        }
+        functions.addAll(enumHelperFunctions(model, service, sp));
+        functions.addAll(xmlEncodeHelpers());
+        functions.addAll(xmlDecodeHelpers());
+        functions.add(ErlangCodecHelperIr.prefixHeadersToList());
+        functions.add(ErlangCodecHelperIr.prefixHeadersFromList());
+        functions.add(ErlangCodecHelperIr.generateUuid());
+        if (ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service)) {
+            functions.addAll(ErlangHttpChecksumIr.checksumHelperFunctions());
+        }
+        if (encodeWithConfig) {
+            functions.addAll(ErlangHostLabelIr.buildHostFunctions(model, service, sp));
+        }
+        return functions;
     }
 
-    static void writeFunctions(ErlangWriter writer, List<ErlFunction> functions) {
-        for (ErlFunction fn : functions) {
-            writeFunction(writer, fn);
+    static List<ErlFunction> serverCodecFunctions(
+            Model model,
+            ServiceShape service,
+            List<OperationShape> operations,
+            HttpBindingIndex httpIndex,
+            SymbolProvider sp,
+            Optional<String> serviceNamespace) {
+        List<ErlFunction> functions = new ArrayList<>();
+        functions.add(ErlangXmlCodecIr.xmlNamespace(serviceNamespace));
+        Set<ShapeId> emittedErrorEncoders = new LinkedHashSet<>();
+        for (OperationShape op : operations) {
+            functions.add(decodeRequest(model, op, httpIndex, sp));
+            functions.add(encodeResponse(model, op, httpIndex, sp));
+            for (ShapeId errorId : op.getErrors()) {
+                if (emittedErrorEncoders.add(errorId)) {
+                    functions.add(ErlangRestXmlOperationIr.buildErrorResponseEncoder(model, errorId, sp));
+                }
+            }
         }
+        functions.addAll(enumHelperFunctions(model, service, sp));
+        functions.addAll(xmlEncodeHelpers());
+        functions.addAll(xmlDecodeHelpers());
+        return functions;
     }
 }
