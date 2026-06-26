@@ -11,9 +11,7 @@ final class ErlangInfrastructureIr {
     }
 
     static void writeFunction(ErlangWriter writer, ErlFunction fn) {
-        for (String line : fn.lines()) {
-            writer.write(line);
-        }
+        writer.write("$L", fn.asString());
         writer.write("");
     }
 }
