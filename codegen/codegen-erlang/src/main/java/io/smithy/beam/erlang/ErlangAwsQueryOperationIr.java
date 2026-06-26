@@ -4,7 +4,6 @@ import io.smithy.beam.core.BeamAwsQueryFormEncoder;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamXmlBindingIndex;
 import io.smithy.beam.core.BeamXmlDecoder;
-import io.smithy.beam.ir.erlang.ErlCapturedBlock;
 import io.smithy.beam.ir.erlang.ErlAtom;
 import io.smithy.beam.ir.erlang.ErlAtomPattern;
 import io.smithy.beam.ir.erlang.ErlBinary;
@@ -213,7 +212,7 @@ final class ErlangAwsQueryOperationIr {
         ErlCallLocal unwrap = ErlCallLocal.callLocal(
                 "unwrap_query_result", ErlVar.var("Body"), ErlBinary.binary(resultElement));
         if (output.members().isEmpty()) {
-            ErlExpr emptyOutput = ErlCapturedBlock.capturedBlock("#" + outputRecord + "{}");
+            ErlExpr emptyOutput = ErlRecord.record(outputRecord);
             return ErlCase.caseExpr(
                     unwrap,
                     ErlClause.clause(

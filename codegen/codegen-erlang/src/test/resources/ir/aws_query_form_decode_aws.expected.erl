@@ -9,11 +9,7 @@ form_list_values_aws(Params, Key) ->
     indexed_form_values(Params, Prefix).
 
 indexed_form_values(Params, Prefix) ->
-    Entries = [
-        {form_index(K, Prefix), maps:get(K, Params)}
-        || K <- maps:keys(Params),
-           binary:match(K, Prefix) =:= {0, byte_size(Prefix)}
-    ],
+    Entries = [{form_index(K, Prefix), maps:get(K, Params)} || K <- maps:keys(Params), binary:match(K, Prefix) =:= {0, byte_size(Prefix)}],
     case lists:sort(Entries) of
         [] -> undefined;
         Sorted -> [V || {_, V} <- Sorted]

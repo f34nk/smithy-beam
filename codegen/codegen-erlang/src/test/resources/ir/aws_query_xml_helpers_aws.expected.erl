@@ -27,7 +27,12 @@ element_content([H | _]) -> element_content(H);
 element_content(_) -> [].
 
 find_element(Name, Content) ->
-    case [C || C <- Content, is_element(C), element_name(C) =:= Name] of
+    case [
+C
+ || C <- Content,
+    is_element(C),
+    element_name(C) =:= Name
+] of
         [Element | _] -> Element;
         [] -> undefined
     end.
@@ -58,15 +63,22 @@ xml_child_text(Parent, Name) ->
 element_text({xmlElement, _, _, _, _, _, _, _, Content, _, _, _}) ->
     xml_text_values(Content);
 element_text({_, _, Content, _, _, _}) when is_list(Content) ->
-    [T || T <- Content, is_list(T), not is_element_string(T)];
+    [
+T
+     || T <- Content,
+        is_list(T),
+        not is_element_string(T)
+    ];
 element_text(_) -> [].
 
-xml_text_values(Content) ->
-    lists:flatten([case C of
+xml_text_values(Content) -> lists:flatten([
+    case C of
         {xmlText, _, _, _, V, _} when is_list(V) -> V;
         {xmlText, _, _, _, V, _} when is_binary(V) -> binary_to_list(V);
         _ -> []
-    end || C <- Content]).
+    end
+ || C <- Content
+]).
 
 is_element_string(T) when is_list(T) ->
     case T of
@@ -80,20 +92,18 @@ xml_child_struct_list(Parent, ListName, ItemName, DecodeFun) ->
     case find_element(ListName, element_content(Parent)) of
         undefined -> undefined;
         ListElement ->
-            [DecodeFun(Item) || Item <- element_content(ListElement),
-                                is_element(Item),
-                                element_name(Item) =:= ItemName]
+            [
+DecodeFun(Item)
+             || Item <- element_content(ListElement),
+                is_element(Item),
+                element_name(Item) =:= ItemName
+            ]
     end.
 
 xml_child_list(Parent, ListName, ItemName) ->
     case find_element(ListName, element_content(Parent)) of
         undefined -> undefined;
-        ListElement ->
-            [ItemText || Item <- element_content(ListElement),
-                         is_element(Item),
-                         element_name(Item) =:= ItemName,
-                         ItemText <- [list_to_binary(element_text(Item))],
-                         ItemText =/= <<>>]
+        ListElement -> [ItemText || Item <- element_content(ListElement), is_element(Item), element_name(Item) =:= ItemName, ItemText <- [list_to_binary(element_text(Item))], ItemText =/= <<>>]
     end.
 
 decode_query_error(Status, Body) ->
@@ -105,13 +115,9 @@ decode_query_error(Status, Body) ->
             ErrorResponse ->
                 case find_element(<<"Error">>, element_content(ErrorResponse)) of
                     undefined -> {error, {unknown_error, Status, Body}};
-                    Error ->
-                        {error, {
-                            xml_child_text(Error, <<"Code">>),
-                            xml_child_text(Error, <<"Message">>)
-                        }}
-                    end
+                    Error -> {error, {xml_child_text(Error, <<"Code">>), xml_child_text(Error, <<"Message">>)}}
                 end
-            catch
-                _:Reason -> {error, {unknown_error, Status, Body}}
-            end.
+        end
+    catch
+        _:_ -> {error, {unknown_error, Status, Body}}
+    end.

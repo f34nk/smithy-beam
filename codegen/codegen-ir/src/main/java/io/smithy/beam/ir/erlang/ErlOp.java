@@ -13,8 +13,18 @@ public final class ErlOp implements ErlExpr {
         this.right = right;
     }
 
+    private ErlOp(String prefixOperator, ErlExpr operand) {
+        this.operator = prefixOperator;
+        this.left = operand;
+        this.right = null;
+    }
+
     public static ErlOp op(String operator, ErlExpr left, ErlExpr right) {
         return new ErlOp(operator, left, right);
+    }
+
+    public static ErlOp prefix(String operator, ErlExpr operand) {
+        return new ErlOp(operator, operand);
     }
 
     public String operator() {
@@ -31,6 +41,9 @@ public final class ErlOp implements ErlExpr {
 
     @Override
     public List<String> lines() {
+        if (right == null) {
+            return List.of(operator + " " + left.asString());
+        }
         return List.of(left.asString() + " " + operator + " " + right.asString());
     }
 }

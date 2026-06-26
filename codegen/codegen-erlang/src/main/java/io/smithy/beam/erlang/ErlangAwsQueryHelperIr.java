@@ -5,15 +5,19 @@ import io.smithy.beam.ir.erlang.ErlApply;
 import io.smithy.beam.ir.erlang.ErlAtom;
 import io.smithy.beam.ir.erlang.ErlAtomPattern;
 import io.smithy.beam.ir.erlang.ErlBinary;
+import io.smithy.beam.ir.erlang.ErlBinaryExpr;
+import io.smithy.beam.ir.erlang.ErlBinaryTemplate;
+import io.smithy.beam.ir.erlang.ErlBinaryText;
 import io.smithy.beam.ir.erlang.ErlCall;
 import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCapturedBlock;
 import io.smithy.beam.ir.erlang.ErlCase;
 import io.smithy.beam.ir.erlang.ErlCatchClause;
 import io.smithy.beam.ir.erlang.ErlClause;
 import io.smithy.beam.ir.erlang.ErlComprehensionFilter;
 import io.smithy.beam.ir.erlang.ErlComprehensionGenerator;
+import io.smithy.beam.ir.erlang.ErlComprehensionQual;
 import io.smithy.beam.ir.erlang.ErlConsPattern;
+import io.smithy.beam.ir.erlang.ErlExpr;
 import io.smithy.beam.ir.erlang.ErlExprBlock;
 import io.smithy.beam.ir.erlang.ErlFunction;
 import io.smithy.beam.ir.erlang.ErlGuard;
@@ -68,17 +72,28 @@ final class ErlangAwsQueryHelperIr {
     }
 
     private static ErlFunction awsQueryFindElement() {
+        ErlListComprehension matches = ErlListComprehension.comprehensionWithFilters(
+                ErlVar.var("C"),
+                ErlVarPattern.varPattern("C"),
+                ErlVar.var("Content"),
+                List.of(
+                        ErlCallLocal.callLocal("is_element", ErlVar.var("C")),
+                        ErlOp.op(
+                                "=:=",
+                                ErlCallLocal.callLocal("element_name", ErlVar.var("C")),
+                                ErlVar.var("Name"))));
+
         return ErlFunction.function(
                 "find_element",
                 2,
-                List.of(ErlClause.blockClause(
+                List.of(ErlClause.clause(
                         List.of(ErlVarPattern.varPattern("Name"), ErlVarPattern.varPattern("Content")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
-case [C || C <- Content, is_element(C), element_name(C) =:= Name] of
-    [Element | _] -> Element;
-    [] -> undefined
-end"""))));
+                        ErlCase.caseExpr(
+                                matches,
+                                ErlClause.clause(
+                                        List.of(ErlConsPattern.consPattern(ErlVarPattern.varPattern("Element"), W)),
+                                        ErlVar.var("Element")),
+                                ErlClause.clause(List.of(ErlNilPattern.nilPattern()), ErlAtom.atom("undefined"))))));
     }
 
     private static ErlFunction awsQueryElementName() {
@@ -127,67 +142,121 @@ end"""))));
                         ErlClause.blockClause(
                                 List.of(sixTupleContentPattern()),
                                 List.of(ErlGuard.guard("is_list", ErlVar.var("Content"))),
-                                ErlCapturedBlock.capturedBlock(
-                                        "[T || T <- Content, is_list(T), not is_element_string(T)]")),
+                                ErlListComprehension.comprehensionWithFilters(
+                                        ErlVar.var("T"),
+                                        ErlVarPattern.varPattern("T"),
+                                        ErlVar.var("Content"),
+                                        List.of(
+                                                ErlGuard.guard("is_list", ErlVar.var("T")),
+                                                ErlGuard.exprGuard(ErlOp.prefix(
+                                                        "not",
+                                                        ErlCallLocal.callLocal(
+                                                                "is_element_string", ErlVar.var("T"))))))),
                         ErlClause.clause(List.of(W), ErlList.list())));
     }
 
     private static ErlFunction awsQueryXmlTextValues() {
+        ErlCase textCase = ErlCase.caseExpr(
+                ErlVar.var("C"),
+                ErlClause.clause(
+                        List.of(xmlTextPattern()),
+                        List.of(ErlGuard.guard("is_list", ErlVar.var("V"))),
+                        ErlVar.var("V")),
+                ErlClause.clause(
+                        List.of(xmlTextPattern()),
+                        List.of(ErlGuard.guard("is_binary", ErlVar.var("V"))),
+                        ErlCallLocal.callLocal("binary_to_list", ErlVar.var("V"))),
+                ErlClause.clause(List.of(W), ErlList.list()));
+
         return ErlFunction.function(
                 "xml_text_values",
                 1,
-                List.of(ErlClause.blockClause(
+                List.of(ErlClause.clause(
                         List.of(ErlVarPattern.varPattern("Content")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
-lists:flatten([case C of
-    {xmlText, _, _, _, V, _} when is_list(V) -> V;
-    {xmlText, _, _, _, V, _} when is_binary(V) -> binary_to_list(V);
-    _ -> []
-end || C <- Content])"""))));
+                        ErlCall.call(
+                                "lists",
+                                "flatten",
+                                ErlListComprehension.comprehension(
+                                        textCase,
+                                        ErlVarPattern.varPattern("C"),
+                                        ErlVar.var("Content"))))));
+    }
+
+    private static ErlTuplePattern xmlTextPattern() {
+        return ErlTuplePattern.tuplePattern(
+                ErlAtomPattern.atomPattern("xmlText"), W, W, W, ErlVarPattern.varPattern("V"), W);
     }
 
     private static ErlFunction awsQueryXmlChildStructList() {
+        ErlApply decodeItem = ErlApply.apply(ErlVar.var("DecodeFun"), ErlVar.var("Item"));
+
         return ErlFunction.function(
                 "xml_child_struct_list",
                 4,
-                List.of(ErlClause.blockClause(
+                List.of(ErlClause.clause(
                         List.of(
                                 ErlVarPattern.varPattern("Parent"),
                                 ErlVarPattern.varPattern("ListName"),
                                 ErlVarPattern.varPattern("ItemName"),
                                 ErlVarPattern.varPattern("DecodeFun")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
-case find_element(ListName, element_content(Parent)) of
-    undefined -> undefined;
-    ListElement ->
-        [DecodeFun(Item) || Item <- element_content(ListElement),
-                            is_element(Item),
-                            element_name(Item) =:= ItemName]
-end"""))));
+                        ErlCase.caseExpr(
+                                ErlCallLocal.callLocal(
+                                        "find_element",
+                                        ErlVar.var("ListName"),
+                                        ErlCallLocal.callLocal("element_content", ErlVar.var("Parent"))),
+                                ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
+                                ErlClause.clause(
+                                        List.of(ErlVarPattern.varPattern("ListElement")),
+                                        ErlListComprehension.comprehensionWithFilters(
+                                                decodeItem,
+                                                ErlVarPattern.varPattern("Item"),
+                                                ErlCallLocal.callLocal("element_content", ErlVar.var("ListElement")),
+                                                List.of(
+                                                        ErlCallLocal.callLocal("is_element", ErlVar.var("Item")),
+                                                        ErlOp.op(
+                                                                "=:=",
+                                                                ErlCallLocal.callLocal("element_name", ErlVar.var("Item")),
+                                                                ErlVar.var("ItemName")))))))));
     }
 
     private static ErlFunction awsQueryXmlChildList() {
+        List<ErlComprehensionQual> itemQualifiers = List.of(
+                new ErlComprehensionGenerator(
+                        ErlVarPattern.varPattern("Item"),
+                        ErlCallLocal.callLocal("element_content", ErlVar.var("ListElement"))),
+                new ErlComprehensionFilter(ErlCallLocal.callLocal("is_element", ErlVar.var("Item"))),
+                new ErlComprehensionFilter(
+                        ErlOp.op(
+                                "=:=",
+                                ErlCallLocal.callLocal("element_name", ErlVar.var("Item")),
+                                ErlVar.var("ItemName"))),
+                new ErlComprehensionGenerator(
+                        ErlVarPattern.varPattern("ItemText"),
+                        ErlList.list(
+                                ErlCallLocal.callLocal(
+                                        "list_to_binary",
+                                        ErlCallLocal.callLocal("element_text", ErlVar.var("Item"))))),
+                new ErlComprehensionFilter(
+                        ErlOp.op("=/=", ErlVar.var("ItemText"), ErlBinary.binary(""))));
+
         return ErlFunction.function(
                 "xml_child_list",
                 3,
-                List.of(ErlClause.blockClause(
+                List.of(ErlClause.clause(
                         List.of(
                                 ErlVarPattern.varPattern("Parent"),
                                 ErlVarPattern.varPattern("ListName"),
                                 ErlVarPattern.varPattern("ItemName")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
-case find_element(ListName, element_content(Parent)) of
-    undefined -> undefined;
-    ListElement ->
-        [ItemText || Item <- element_content(ListElement),
-                     is_element(Item),
-                     element_name(Item) =:= ItemName,
-                     ItemText <- [list_to_binary(element_text(Item))],
-                     ItemText =/= <<>>]
-end"""))));
+                        ErlCase.caseExpr(
+                                ErlCallLocal.callLocal(
+                                        "find_element",
+                                        ErlVar.var("ListName"),
+                                        ErlCallLocal.callLocal("element_content", ErlVar.var("Parent"))),
+                                ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
+                                ErlClause.clause(
+                                        List.of(ErlVarPattern.varPattern("ListElement")),
+                                        ErlListComprehension.comprehensionQualifiers(
+                                                ErlVar.var("ItemText"), itemQualifiers))))));
     }
 
     private static ErlTuplePattern xmlElementNamePattern() {
@@ -235,25 +304,9 @@ end"""))));
 
     private static ErlFunction flattenMember(boolean ec2Query) {
         String listSuffix = ec2Query ? "." : ".member.";
-        ErlCapturedBlock listBody = ErlCapturedBlock.capturedBlock(
-                """
-                lists:append([
-                    flatten_member(
-                        <<Key/binary, "%s", (integer_to_binary(I))/binary>>,
-                        V
-                    )
-                    || {I, V} <- lists:enumerate(Value), V =/= undefined
-                ])"""
-                        .formatted(listSuffix));
+        ErlExpr listBody = ErlCall.call("lists", "append", flattenMemberListComprehension(listSuffix));
 
-        ErlCapturedBlock mapBody = ErlCapturedBlock.capturedBlock(
-                """
-                lists:append([
-                    flatten_member(<<Key/binary, ".entry.", (integer_to_binary(I))/binary, ".key">>, K)
-                    ++ flatten_member(<<Key/binary, ".entry.", (integer_to_binary(I))/binary, ".value">>, V)
-                    || {I, {K, V}} <- lists:enumerate(maps:to_list(Value)),
-                       K =/= undefined, V =/= undefined
-                ])""");
+        ErlExpr mapBody = ErlCall.call("lists", "append", flattenMemberMapComprehension());
 
         return ErlFunction.function(
                 "flatten_member",
@@ -277,6 +330,61 @@ end"""))));
                         ErlClause.blockClause(
                                 List.of(ErlVarPattern.varPattern("Key"), ErlVarPattern.varPattern("Value")),
                                 ErlList.list(ErlTuple.tuple(ErlVar.var("Key"), ErlVar.var("Value"))))));
+    }
+
+    private static ErlListComprehension flattenMemberListComprehension(String listSuffix) {
+        return ErlListComprehension.comprehensionQualifiers(
+                ErlCallLocal.callLocal(
+                        "flatten_member",
+                        flattenMemberIndexedKey(listSuffix),
+                        ErlVar.var("V")),
+                List.of(
+                        new ErlComprehensionGenerator(
+                                ErlTuplePattern.tuplePattern(
+                                        ErlVarPattern.varPattern("I"), ErlVarPattern.varPattern("V")),
+                                ErlCall.call("lists", "enumerate", ErlVar.var("Value"))),
+                        new ErlComprehensionFilter(
+                                ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))));
+    }
+
+    private static ErlListComprehension flattenMemberMapComprehension() {
+        return ErlListComprehension.comprehensionQualifiers(
+                ErlOp.op(
+                        "++",
+                        ErlCallLocal.callLocal(
+                                "flatten_member",
+                                flattenMemberEntryKey(".key"),
+                                ErlVar.var("K")),
+                        ErlCallLocal.callLocal(
+                                "flatten_member",
+                                flattenMemberEntryKey(".value"),
+                                ErlVar.var("V"))),
+                List.of(
+                        new ErlComprehensionGenerator(
+                                ErlTuplePattern.tuplePattern(
+                                        ErlVarPattern.varPattern("I"),
+                                        ErlTuplePattern.tuplePattern(
+                                                ErlVarPattern.varPattern("K"), ErlVarPattern.varPattern("V"))),
+                                ErlCall.call("lists", "enumerate", ErlCall.call("maps", "to_list", ErlVar.var("Value")))),
+                        new ErlComprehensionFilter(
+                                ErlOp.op("=/=", ErlVar.var("K"), ErlAtom.atom("undefined"))),
+                        new ErlComprehensionFilter(
+                                ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))));
+    }
+
+    private static ErlBinaryTemplate flattenMemberIndexedKey(String listSuffix) {
+        return ErlBinaryTemplate.binaryTemplate(
+                ErlBinaryExpr.expr(ErlVar.var("Key"), true),
+                ErlBinaryText.text(listSuffix),
+                ErlBinaryExpr.expr(ErlCallLocal.callLocal("integer_to_binary", ErlVar.var("I")), "binary"));
+    }
+
+    private static ErlBinaryTemplate flattenMemberEntryKey(String suffix) {
+        return ErlBinaryTemplate.binaryTemplate(
+                ErlBinaryExpr.expr(ErlVar.var("Key"), true),
+                ErlBinaryText.text(".entry."),
+                ErlBinaryExpr.expr(ErlCallLocal.callLocal("integer_to_binary", ErlVar.var("I")), "binary"),
+                ErlBinaryText.text(suffix));
     }
 
     private static ErlFunction flattenStructure() {
@@ -409,71 +517,140 @@ end"""))));
         return ErlFunction.function(
                 "decode_query_error",
                 2,
-                List.of(ErlClause.blockClause(
+                List.of(ErlClause.clause(
                         List.of(ErlVarPattern.varPattern("Status"), ErlVarPattern.varPattern("Body")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
-try
-    {Xml, _} = xmerl_scan:string(binary_to_list(Body)),
-    Root = normalize_xml_element(Xml),
-    case query_result_element(Root, <<"%s">>) of
-        undefined -> {error, {unknown_error, Status, Body}};
-        ErrorResponse ->
-            case find_element(<<"%s">>, element_content(ErrorResponse)) of
-                undefined -> {error, {unknown_error, Status, Body}};
-                Error ->
-                    {error, {
-                        xml_child_text(Error, <<"%s">>),
-                        xml_child_text(Error, <<"%s">>)
-                    }}
-                end
-            end
-        catch
-            _:Reason -> {error, {unknown_error, Status, Body}}
-        end"""
-                                        .formatted(
-                                                BeamXmlDecoder.ERROR_RESPONSE_ELEMENT,
-                                                BeamXmlDecoder.ERROR_ELEMENT,
-                                                BeamXmlDecoder.ERROR_CODE_ELEMENT,
-                                                BeamXmlDecoder.ERROR_MESSAGE_ELEMENT)))));
+                        decodeQueryErrorBody(
+                                BeamXmlDecoder.ERROR_RESPONSE_ELEMENT,
+                                BeamXmlDecoder.ERROR_ELEMENT,
+                                BeamXmlDecoder.ERROR_CODE_ELEMENT,
+                                BeamXmlDecoder.ERROR_MESSAGE_ELEMENT))));
     }
 
     private static ErlFunction decodeEc2QueryError() {
         return ErlFunction.function(
                 "decode_query_error",
                 2,
-                List.of(ErlClause.blockClause(
+                List.of(ErlClause.clause(
                         List.of(ErlVarPattern.varPattern("Status"), ErlVarPattern.varPattern("Body")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
-try
-    {Xml, _} = xmerl_scan:string(binary_to_list(Body)),
-    Root = normalize_xml_element(Xml),
-    case query_result_element(Root, <<"%s">>) of
-        undefined -> {error, {unknown_error, Status, Body}};
-        Response ->
-            case find_element(<<"%s">>, element_content(Response)) of
-                undefined -> {error, {unknown_error, Status, Body}};
-                Errors ->
-                    case find_element(<<"%s">>, element_content(Errors)) of
-                        undefined -> {error, {unknown_error, Status, Body}};
-                        Error ->
-                            {error, {
-                                xml_child_text(Error, <<"%s">>),
-                                xml_child_text(Error, <<"%s">>)
-                            }}
-                        end
-                    end
-                end
-        catch
-            _:Reason -> {error, {unknown_error, Status, Body}}
-        end"""
-                                        .formatted(
-                                                BeamXmlDecoder.EC2_RESPONSE_ELEMENT,
-                                                BeamXmlDecoder.EC2_ERRORS_ELEMENT,
-                                                BeamXmlDecoder.ERROR_ELEMENT,
-                                                BeamXmlDecoder.ERROR_CODE_ELEMENT,
-                                                BeamXmlDecoder.ERROR_MESSAGE_ELEMENT)))));
+                        decodeQueryErrorBodyEc2())));
+    }
+
+    private static ErlTry decodeQueryErrorBody(
+            String responseElement, String errorElement, String codeElement, String messageElement) {
+        ErlCase errorLookup = ErlCase.caseExpr(
+                ErlCallLocal.callLocal(
+                        "find_element",
+                        ErlBinary.binary(errorElement),
+                        ErlCallLocal.callLocal("element_content", ErlVar.var("ErrorResponse"))),
+                ErlClause.clause(
+                        List.of(ErlAtomPattern.atomPattern("undefined")),
+                        unknownQueryError()),
+                ErlClause.clause(
+                        List.of(ErlVarPattern.varPattern("Error")),
+                        ErlTuple.tuple(
+                                ErlAtom.atom("error"),
+                                ErlTuple.tuple(
+                                        ErlCallLocal.callLocal(
+                                                "xml_child_text", ErlVar.var("Error"), ErlBinary.binary(codeElement)),
+                                        ErlCallLocal.callLocal(
+                                                "xml_child_text",
+                                                ErlVar.var("Error"),
+                                                ErlBinary.binary(messageElement))))));
+
+        ErlCase responseLookup = ErlCase.caseExpr(
+                ErlCallLocal.callLocal(
+                        "query_result_element",
+                        ErlVar.var("Root"),
+                        ErlBinary.binary(responseElement)),
+                ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), unknownQueryError()),
+                ErlClause.clause(List.of(ErlVarPattern.varPattern("ErrorResponse")), errorLookup));
+
+        return ErlTry.tryExpr(
+                List.of(
+                        ErlMatch.match(
+                                ErlTuplePattern.tuplePattern(
+                                        ErlVarPattern.varPattern("Xml"), ErlVarPattern.varPattern("_")),
+                                ErlCall.call(
+                                        "xmerl_scan",
+                                        "string",
+                                        ErlCallLocal.callLocal("binary_to_list", ErlVar.var("Body")))),
+                        ErlMatch.match(
+                                ErlVarPattern.varPattern("Root"),
+                                ErlCallLocal.callLocal("normalize_xml_element", ErlVar.var("Xml"))),
+                        responseLookup),
+                List.of(ErlCatchClause.catchClause(W, W, unknownQueryError())));
+    }
+
+    private static ErlTry decodeQueryErrorBodyEc2() {
+        ErlCase errorLookup = ErlCase.caseExpr(
+                ErlCallLocal.callLocal(
+                        "find_element",
+                        ErlBinary.binary(BeamXmlDecoder.ERROR_ELEMENT),
+                        ErlCallLocal.callLocal("element_content", ErlVar.var("Error"))),
+                ErlClause.clause(
+                        List.of(ErlAtomPattern.atomPattern("undefined")),
+                        unknownQueryError()),
+                ErlClause.clause(
+                        List.of(ErlVarPattern.varPattern("Error")),
+                        ErlTuple.tuple(
+                                ErlAtom.atom("error"),
+                                ErlTuple.tuple(
+                                        ErlCallLocal.callLocal(
+                                                "xml_child_text",
+                                                ErlVar.var("Error"),
+                                                ErlBinary.binary(BeamXmlDecoder.ERROR_CODE_ELEMENT)),
+                                        ErlCallLocal.callLocal(
+                                                "xml_child_text",
+                                                ErlVar.var("Error"),
+                                                ErlBinary.binary(BeamXmlDecoder.ERROR_MESSAGE_ELEMENT))))));
+
+        ErlCase errorsLookup = ErlCase.caseExpr(
+                ErlCallLocal.callLocal(
+                        "find_element",
+                        ErlBinary.binary(BeamXmlDecoder.EC2_ERRORS_ELEMENT),
+                        ErlCallLocal.callLocal("element_content", ErlVar.var("Response"))),
+                ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), unknownQueryError()),
+                ErlClause.clause(
+                        List.of(ErlVarPattern.varPattern("Errors")),
+                        ErlCase.caseExpr(
+                                ErlCallLocal.callLocal(
+                                        "find_element",
+                                        ErlBinary.binary(BeamXmlDecoder.ERROR_ELEMENT),
+                                        ErlCallLocal.callLocal("element_content", ErlVar.var("Errors"))),
+                                ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), unknownQueryError()),
+                                ErlClause.clause(List.of(ErlVarPattern.varPattern("Error")), errorLookup))));
+
+        ErlCase responseLookup = ErlCase.caseExpr(
+                ErlCallLocal.callLocal(
+                        "query_result_element",
+                        ErlVar.var("Root"),
+                        ErlBinary.binary(BeamXmlDecoder.EC2_RESPONSE_ELEMENT)),
+                ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), unknownQueryError()),
+                ErlClause.clause(List.of(ErlVarPattern.varPattern("Response")), errorsLookup));
+
+        return ErlTry.tryExpr(
+                List.of(
+                        ErlMatch.match(
+                                ErlTuplePattern.tuplePattern(
+                                        ErlVarPattern.varPattern("Xml"), ErlVarPattern.varPattern("_")),
+                                ErlCall.call(
+                                        "xmerl_scan",
+                                        "string",
+                                        ErlCallLocal.callLocal("binary_to_list", ErlVar.var("Body")))),
+                        ErlMatch.match(
+                                ErlVarPattern.varPattern("Root"),
+                                ErlCallLocal.callLocal("normalize_xml_element", ErlVar.var("Xml"))),
+                        responseLookup),
+                List.of(ErlCatchClause.catchClause(W, W, unknownQueryError())));
+    }
+
+    private static ErlTuple unknownQueryError() {
+        return ErlTuple.tuple(
+                ErlAtom.atom("error"),
+                ErlTuple.tuple(
+                        ErlAtom.atom("unknown_error"),
+                        ErlVar.var("Status"),
+                        ErlVar.var("Body")));
     }
 
     private static ErlFunction parseQueryParams() {
@@ -511,7 +688,7 @@ try
                         ErlExprBlock.block(
                                 ErlMatch.match(
                                         ErlVarPattern.varPattern("Prefix"),
-                                        ErlCapturedBlock.capturedBlock("<<Key/binary, \".member.\">>")),
+                                        formListPrefix(".member.")),
                                 ErlCallLocal.callLocal(
                                         "indexed_form_values", ErlVar.var("Params"), ErlVar.var("Prefix"))))));
     }
@@ -525,28 +702,47 @@ try
                         ErlExprBlock.block(
                                 ErlMatch.match(
                                         ErlVarPattern.varPattern("Prefix"),
-                                        ErlCapturedBlock.capturedBlock("<<Key/binary, \".\">>")),
+                                        formListPrefix(".")),
                                 ErlCallLocal.callLocal(
                                         "indexed_form_values", ErlVar.var("Params"), ErlVar.var("Prefix"))))));
     }
 
+    private static ErlBinaryTemplate formListPrefix(String suffix) {
+        return ErlBinaryTemplate.binaryTemplate(
+                ErlBinaryExpr.expr(ErlVar.var("Key"), true),
+                ErlBinaryText.text(suffix));
+    }
+
     private static ErlFunction indexedFormValues() {
+        ErlListComprehension entries = ErlListComprehension.comprehensionWithFilters(
+                ErlTuple.tuple(
+                        ErlCallLocal.callLocal("form_index", ErlVar.var("K"), ErlVar.var("Prefix")),
+                        ErlCall.call("maps", "get", ErlVar.var("K"), ErlVar.var("Params"))),
+                ErlVarPattern.varPattern("K"),
+                ErlCall.call("maps", "keys", ErlVar.var("Params")),
+                List.of(ErlOp.op(
+                        "=:=",
+                        ErlCall.call("binary", "match", ErlVar.var("K"), ErlVar.var("Prefix")),
+                        ErlTuple.tuple(ErlInteger.integer(0), ErlCallLocal.callLocal("byte_size", ErlVar.var("Prefix"))))));
+
+        ErlListComprehension sortedValues = ErlListComprehension.comprehension(
+                ErlVar.var("V"),
+                ErlTuplePattern.tuplePattern(W, ErlVarPattern.varPattern("V")),
+                ErlVar.var("Sorted"));
+
         return ErlFunction.function(
                 "indexed_form_values",
                 2,
                 List.of(ErlClause.blockClause(
                         List.of(ErlVarPattern.varPattern("Params"), ErlVarPattern.varPattern("Prefix")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
-                                Entries = [
-                                    {form_index(K, Prefix), maps:get(K, Params)}
-                                    || K <- maps:keys(Params),
-                                       binary:match(K, Prefix) =:= {0, byte_size(Prefix)}
-                                ],
-                                case lists:sort(Entries) of
-                                    [] -> undefined;
-                                    Sorted -> [V || {_, V} <- Sorted]
-                                end"""))));
+                        ErlExprBlock.block(
+                                ErlMatch.match(ErlVarPattern.varPattern("Entries"), entries),
+                                ErlCase.caseExpr(
+                                        ErlCall.call("lists", "sort", ErlVar.var("Entries")),
+                                        ErlClause.clause(List.of(ErlNilPattern.nilPattern()), ErlAtom.atom("undefined")),
+                                        ErlClause.clause(
+                                                List.of(ErlVarPattern.varPattern("Sorted")),
+                                                sortedValues))))));
     }
 
     private static ErlFunction formIndex() {

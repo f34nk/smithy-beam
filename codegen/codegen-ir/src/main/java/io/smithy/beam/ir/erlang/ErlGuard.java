@@ -2,7 +2,7 @@ package io.smithy.beam.ir.erlang;
 
 import java.util.List;
 
-public final class ErlGuard implements IrObject {
+public final class ErlGuard implements ErlExpr {
     private final String functionOrNull;
     private final List<ErlExpr> args;
     private final String exprOrNull;
