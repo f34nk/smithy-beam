@@ -156,121 +156,6 @@ public final class ErlangRestJson1Emitter {
         });
     }
 
-    /** Response encoder body for capture-bridge IR in ErlangRestJsonOperationIr. */
-    static void emitEncodeResponseBody(
-            ErlangWriter writer,
-            Model model,
-            OperationShape op,
-            HttpBindingIndex httpIndex,
-            SymbolProvider sp) {
-
-        int successCode = httpIndex.getResponseCode(op);
-
-        List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
-        List<HttpBinding> respPrefixHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.PREFIX_HEADERS);
-        List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
-        List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
-
-        String responseContentType = resolvedResponseContentType(model, op);
-
-        if (respHeaders.isEmpty()) {
-            writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>}],", responseContentType);
-        } else {
-            List<ErlClause> headerClauses = new ArrayList<>();
-            for (HttpBinding hb : respHeaders) {
-                headerClauses.add(ErlClause.clause(
-                        List.of(ErlVarPattern.varPattern("V")),
-                        List.of(ErlGuard.exprGuard(ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))),
-                        ErlTuple.tuple(
-                                ErlAtom.atom("true"),
-                                ErlTuple.tuple(
-                                        ErlBinary.binary(hb.getLocationName()),
-                                        ErlCallLocal.callLocal("to_binary", ErlVar.var("V"))))));
-            }
-            headerClauses.add(ErlClause.clause(List.of(ErlVarPattern.varPattern("_")), ErlAtom.atom("false")));
-            List<ErlExpr> headerArgs = respHeaders.stream()
-                    .map(hb -> (ErlExpr) ErlVar.var(toBindingVar(BeamNameUtils.toSnakeCase(hb.getMember().getMemberName()))))
-                    .toList();
-            ErlCall extraHeaders = ErlCall.filtermap(
-                    ErlFun.fun(headerClauses.toArray(ErlClause[]::new)),
-                    ErlList.list(headerArgs.toArray(ErlExpr[]::new)));
-            List<String> extraHeaderLines = extraHeaders.lines();
-            writer.write("ExtraHeaders = $L", extraHeaderLines.get(0));
-            writer.indent();
-            for (int i = 1; i < extraHeaderLines.size(); i++) {
-                writer.write("$L", extraHeaderLines.get(i));
-            }
-            writer.dedent();
-            writer.write(",");
-            writer.write("Headers = [{<<\"Content-Type\">>, <<\"$L\">>} | ExtraHeaders],", responseContentType);
-        }
-
-        for (HttpBinding ph : respPrefixHeaders) {
-            String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
-            String prefix = ph.getLocationName();
-            writer.write("Headers = Headers ++ prefix_headers_to_list(<<\"$L\">>, $L),",
-                    prefix, toBindingVar(fieldName));
-        }
-
-        if (!respPayload.isEmpty()) {
-            HttpBinding pb = respPayload.get(0);
-            String fieldName = BeamNameUtils.toSnakeCase(pb.getMember().getMemberName());
-            if (isStreamingBlob(model, pb.getMember())) {
-                writer.write("Stream = case $L of", toBindingVar(fieldName));
-                writer.indent();
-                writer.write("undefined -> undefined;");
-                writer.write("Value -> Value");
-                writer.dedent();
-                writer.write("end,");
-                writer.write("Body = <<>>,");
-            } else {
-                writer.write("Body = $L,", toBindingVar(fieldName));
-            }
-        } else if (!respDoc.isEmpty()) {
-            writer.write("BodyMap = maps:filter(fun(_, V) -> V =/= undefined end, #{");
-            for (int i = 0; i < respDoc.size(); i++) {
-                HttpBinding db = respDoc.get(i);
-                String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
-                String wireKey = jsonKey(db.getMember());
-                String comma = i < respDoc.size() - 1 ? "," : "";
-                Shape target = model.expectShape(db.getMember().getTarget());
-                if (target instanceof EnumShape || target instanceof IntEnumShape) {
-                    String helperName = sp.toSymbol(target).getName().replace("()", "");
-                    writer.write("    <<\"$L\">> => encode_$L($L)$L",
-                            wireKey, helperName, toBindingVar(fieldName), comma);
-                } else if (target instanceof UnionShape) {
-                    String helperName = sp.toSymbol(target).getName().replace("()", "");
-                    writer.write("    <<\"$L\">> => encode_$L($L)$L",
-                            wireKey, helperName, toBindingVar(fieldName), comma);
-                } else if (target instanceof TimestampShape) {
-                    String encodeHelper = timestampEncodeHelper(
-                            httpIndex, db.getMember(), HttpBinding.Location.DOCUMENT);
-                    writer.write("    <<\"$L\">> => $L($L)$L",
-                            wireKey, encodeHelper, toBindingVar(fieldName), comma);
-                } else {
-                    writer.write("    <<\"$L\">> => $L$L",
-                            wireKey,
-                            ErlangJsonCodecSupport.encodeDocumentValue(
-                                    model, sp, httpIndex, db.getMember(), fieldName),
-                            comma);
-                }
-            }
-            writer.write("}),");
-            writer.write("Body = jsone:encode(BodyMap),");
-        } else {
-            writer.write("Body = <<>>,");
-        }
-
-        writer.write("#http_response{");
-        writer.write("    status = $L,", successCode);
-        writer.write("    headers = Headers,");
-        writer.write("    body = Body");
-        if (!respPayload.isEmpty() && isStreamingBlob(model, respPayload.get(0).getMember())) {
-            writer.write("    ,stream = Stream");
-        }
-        writer.write("}");
-    }
-
     static List<EnumShape> reachableEnumShapes(Model model, ServiceShape service) {
         Set<ShapeId> emitted = new LinkedHashSet<>();
         List<EnumShape> shapes = new ArrayList<>();
@@ -385,40 +270,6 @@ public final class ErlangRestJson1Emitter {
         return symbol.getName().replace("()", "");
     }
 
-    private static boolean isStreamingBlob(Model model, MemberShape member) {
-        Shape target = model.expectShape(member.getTarget());
-        return target instanceof BlobShape && target.hasTrait(StreamingTrait.class);
-    }
-
-    /** Erlang variable for a snake_case record field (Inaka CamelCase, no underscores). */
-    static String toBindingVar(String snakeField) {
-        return BeamNameUtils.toCamelCaseVariable(snakeField);
-    }
-
-    private static String jsonKey(MemberShape member) {
-        return member.getTrait(JsonNameTrait.class)
-                .map(JsonNameTrait::getValue)
-                .orElse(member.getMemberName());
-    }
-
-    private static String timestampEncodeHelper(
-            HttpBindingIndex httpIndex, MemberShape member, HttpBinding.Location location) {
-        TimestampFormatTrait.Format fmt = httpIndex.determineTimestampFormat(
-                member, location, TimestampFormatTrait.Format.DATE_TIME);
-        return fmt == TimestampFormatTrait.Format.EPOCH_SECONDS
-                ? "encode_timestamp_epoch_seconds"
-                : "encode_timestamp_date_time";
-    }
-
-    private static String timestampDecodeHelper(
-            HttpBindingIndex httpIndex, MemberShape member, HttpBinding.Location location) {
-        TimestampFormatTrait.Format fmt = httpIndex.determineTimestampFormat(
-                member, location, TimestampFormatTrait.Format.DATE_TIME);
-        return fmt == TimestampFormatTrait.Format.EPOCH_SECONDS
-                ? "decode_timestamp_epoch_seconds"
-                : "decode_timestamp_date_time";
-    }
-
     @SafeVarargs
     private static <T> List<T> concat(List<T>... lists) {
         List<T> out = new ArrayList<>();
@@ -426,11 +277,5 @@ public final class ErlangRestJson1Emitter {
             out.addAll(l);
         }
         return out;
-    }
-
-    private static String resolvedResponseContentType(Model model, OperationShape op) {
-        return BeamHttpBindings.from(model)
-                .responseContentType(op, "application/json")
-                .orElse("application/json");
     }
 }
