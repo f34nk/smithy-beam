@@ -4,5 +4,4 @@
     name :: basic_string(),
     count :: basic_integer() | undefined
 }).
-
 -type basic_item() :: #basic_item{}.

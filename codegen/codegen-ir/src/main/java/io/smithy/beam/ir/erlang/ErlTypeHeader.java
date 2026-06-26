@@ -40,12 +40,19 @@ public final class ErlTypeHeader implements IrObject {
             out.addAll(item.lines(indent));
         }
         for (int i = 0; i < entries.size(); i++) {
-            if (i > 0) {
+            if (i > 0 && shouldSeparateEntries(entries.get(i - 1), entries.get(i))) {
                 out.add("");
             }
             out.addAll(entries.get(i).lines(indent));
         }
         return out;
+    }
+
+    private static boolean shouldSeparateEntries(ErlHeaderEntry previous, ErlHeaderEntry current) {
+        if (previous instanceof ErlRecordDef record && current instanceof ErlTypeDef type) {
+            return !record.name().equals(type.name());
+        }
+        return true;
     }
 
     @Override
