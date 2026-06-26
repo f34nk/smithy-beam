@@ -3,6 +3,40 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-06-26
+
+### Added
+- Golden IR module and header integration tests covering Smithy-driven structure headers and protocol codec modules.
+
+### Changed
+- Completed Erlang codegen migration to structural IR; protocol codec modules, client dispatch, event streams, handler discovery, HTTP dispatch, and AWS JSON RPC factories now emit through IR trees instead of ErlangFormat.
+- Generated record field type specs use a single space before ::.
+
+### Fixed
+- Duplicated terminators in REST codec captured bodies, an extra blank line between generated record and type declarations, and plugin golden parity trailing newlines.
+
+### Removed
+- ErlangFormat and the capture escape hatch for raw Erlang fragments.
+
+## 2026-06-24
+
+### Added
+- Extended Erlang IR with modules, type headers, record definitions, and remaining expression and pattern forms; structure records render through ErlTypeHeader.
+- Routed REST JSON, REST XML, AWS Query, AWS JSON RPC, HTTP dispatch, client dispatch, event streams, and handler discovery through structural IR emitters.
+
+### Fixed
+- IR rendering for compact function clause heads, match-case bindings, single-field record updates, and inline fun clause scope in filtermap.
+
+## 2026-06-23
+
+### Added
+- codegen-ir module with structural Erlang IR foundation: IrObject contract, expression and pattern nodes, guards, clauses, function specs, and factory helpers for building trees.
+
+## 2026-06-18
+
+### Added
+- Optional name setting in BeamSettings to override generated module stems; Erlang and Elixir layouts apply it, and aws-examples rename generated output via the name property.
+
 ## 2026-06-16
 
 ### Added
