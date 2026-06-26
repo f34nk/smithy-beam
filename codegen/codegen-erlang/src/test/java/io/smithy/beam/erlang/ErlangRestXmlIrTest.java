@@ -40,6 +40,71 @@ class ErlangRestXmlIrTest {
     }
 
     @Test
+    void decodeGetNameRequestIsStructural() {
+        assertStructural(decodeGetNameRequest());
+    }
+
+    @Test
+    void encodeGetNameResponseIsStructural() {
+        assertStructural(encodeGetNameResponse());
+    }
+
+    @Test
+    void decodeGetNameRequestMatchesGolden() throws IOException {
+        assertThat(decodeGetNameRequest().asString())
+                .isEqualTo(readExpectedString("ir/rest_xml_decode_get_name_request.expected.erl"));
+    }
+
+    @Test
+    void decodeGetNameResponseMatchesGolden() throws IOException {
+        assertThat(decodeGetNameResponse()).isEqualTo(readExpectedString("ir/rest_xml_decode_get_name_response.expected.erl"));
+    }
+
+    @Test
+    void encodeGetNameRequestMatchesGolden() throws IOException {
+        assertThat(sampleEncodeRequest().asString())
+                .isEqualTo(readExpectedString("ir/rest_xml_encode_get_name_request.expected.erl"));
+    }
+
+    @Test
+    void encodeGetNameResponseMatchesGolden() throws IOException {
+        assertThat(encodeGetNameResponse().asString())
+                .isEqualTo(readExpectedString("ir/rest_xml_encode_get_name_response.expected.erl"));
+    }
+
+    private static ErlFunction decodeGetNameRequest() {
+        Model model = sampleModel();
+        OperationShape op = model.expectShape(
+                ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
+        return ErlangRestXmlOperationIr.buildDecodeRequest(
+                model, op, HttpBindingIndex.of(model), sampleSymbolProvider(model,
+                        model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class)));
+    }
+
+    private static String decodeGetNameResponse() {
+        Model model = sampleModel();
+        ServiceShape service = model.expectShape(
+                ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+        OperationShape op = model.expectShape(
+                ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
+        return ErlangRestXmlOperationIr.buildDecodeResponse(
+                        model, op, HttpBindingIndex.of(model), sampleSymbolProvider(model, service))
+                .stream()
+                .map(ErlFunction::asString)
+                .collect(java.util.stream.Collectors.joining("\n\n"));
+    }
+
+    private static ErlFunction encodeGetNameResponse() {
+        Model model = sampleModel();
+        ServiceShape service = model.expectShape(
+                ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+        OperationShape op = model.expectShape(
+                ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
+        return ErlangRestXmlOperationIr.buildEncodeResponse(
+                model, op, HttpBindingIndex.of(model), sampleSymbolProvider(model, service));
+    }
+
+    @Test
     void capturedCodecBodiesDoNotDuplicateClauseTerminators() {
         Model model = sampleModel();
         ServiceShape service = model.expectShape(
@@ -63,7 +128,7 @@ class ErlangRestXmlIrTest {
         }
     }
 
-    private static Model sampleModel() {
+    static Model sampleModel() {
         String idl = """
                 $version: "2"
                 namespace smithy.beam.demo.http
@@ -117,7 +182,7 @@ class ErlangRestXmlIrTest {
                 false);
     }
 
-    private static ErlangSymbolProvider sampleSymbolProvider(Model model, ServiceShape service) {
+    static ErlangSymbolProvider sampleSymbolProvider(Model model, ServiceShape service) {
         return new ErlangSymbolProvider(
                 new io.smithy.beam.core.BeamSettings(),
                 model,
