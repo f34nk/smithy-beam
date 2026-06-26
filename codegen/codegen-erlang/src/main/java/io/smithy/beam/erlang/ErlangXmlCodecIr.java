@@ -6,7 +6,6 @@ import io.smithy.beam.ir.erlang.ErlAtomPattern;
 import io.smithy.beam.ir.erlang.ErlBinary;
 import io.smithy.beam.ir.erlang.ErlCall;
 import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCapturedBlock;
 import io.smithy.beam.ir.erlang.ErlCase;
 import io.smithy.beam.ir.erlang.ErlCatchClause;
 import io.smithy.beam.ir.erlang.ErlClause;
@@ -316,8 +315,8 @@ final class ErlangXmlCodecIr {
                                         ErlVarPattern.varPattern("T"),
                                         ErlVar.var("Content"),
                                         List.of(
-                                                ErlCapturedBlock.capturedBlock("is_list(T)"),
-                                                ErlCapturedBlock.capturedBlock("not is_element_string(T)")))),
+                                                isListGuard(ErlVar.var("T")),
+                                                notElementStringGuard(ErlVar.var("T"))))),
                         ErlClause.clause(List.of(W), ErlList.list())));
     }
 
@@ -735,5 +734,14 @@ final class ErlangXmlCodecIr {
     private static ErlTuplePattern xmlTextPattern() {
         return ErlTuplePattern.tuplePattern(
                 ErlAtomPattern.atomPattern("xmlText"), W, W, W, ErlVarPattern.varPattern("V"), W);
+    }
+
+    private static ErlGuard isListGuard(ErlVar var) {
+        return ErlGuard.guard("is_list", var);
+    }
+
+    private static ErlGuard notElementStringGuard(ErlVar var) {
+        return ErlGuard.exprGuard(
+                ErlOp.prefix("not", ErlCallLocal.callLocal("is_element_string", var)));
     }
 }
