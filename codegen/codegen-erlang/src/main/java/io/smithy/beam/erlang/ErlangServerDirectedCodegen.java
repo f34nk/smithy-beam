@@ -179,31 +179,7 @@ final class ErlangServerDirectedCodegen
         ErlangContext ctx = directive.context();
         ServiceShape service = directive.shape();
 
-        if (ctx.protocolCodegen() != null
-                && BeamProtocolIds.REST_JSON_1.equals(
-                        ctx.protocolCodegen().protocolTraitId())) {
-            ErlangRestJsonIr.emitServerCodecModule(ctx, service);
-        } else if (ctx.protocolCodegen() != null
-                && BeamProtocolIds.AWS_JSON_1_0.equals(
-                        ctx.protocolCodegen().protocolTraitId())) {
-            ErlangAwsJsonIr.emitServerCodecModule(ctx, service, BeamProtocolIds.AWS_JSON_1_0);
-        } else if (ctx.protocolCodegen() != null
-                && BeamProtocolIds.AWS_JSON_1_1.equals(
-                        ctx.protocolCodegen().protocolTraitId())) {
-            ErlangAwsJsonIr.emitServerCodecModule(ctx, service, BeamProtocolIds.AWS_JSON_1_1);
-        } else if (ctx.protocolCodegen() != null
-                && BeamProtocolIds.REST_XML.equals(
-                        ctx.protocolCodegen().protocolTraitId())) {
-            ErlangRestXmlIr.emitServerCodecModule(ctx, service);
-        } else if (ctx.protocolCodegen() != null
-                && BeamProtocolIds.AWS_QUERY.equals(
-                        ctx.protocolCodegen().protocolTraitId())) {
-            ErlangAwsQueryIr.emitServerCodecModule(ctx, service, BeamProtocolIds.AWS_QUERY);
-        } else if (ctx.protocolCodegen() != null
-                && BeamProtocolIds.EC2_QUERY.equals(
-                        ctx.protocolCodegen().protocolTraitId())) {
-            ErlangAwsQueryIr.emitServerCodecModule(ctx, service, BeamProtocolIds.EC2_QUERY);
-        }
+        ErlangProtocolCodecIr.emitServerCodec(ctx, service);
 
         ErlangRouterEmitter.emit(ctx, service);
         ErlangComplianceTestEmitter.emit(ctx, service);
