@@ -46,6 +46,9 @@ public final class ErlRecord implements ErlExpr {
 
     @Override
     public List<String> lines(int indent) {
+        if (fields.isEmpty()) {
+            return List.of(renderEmptyRecord(indent));
+        }
         if (compact || (recordOrNull != null && fields.size() == 1)) {
             return List.of(renderSingleLine(indent));
         }
@@ -65,6 +68,16 @@ public final class ErlRecord implements ErlExpr {
         }
         out.add(IrObject.indent(indent) + "}");
         return out;
+    }
+
+    private String renderEmptyRecord(int indent) {
+        StringBuilder sb = new StringBuilder(IrObject.indent(indent));
+        if (recordOrNull != null) {
+            sb.append(recordOrNull.asString()).append('#').append(name).append("{}");
+        } else {
+            sb.append('#').append(name).append("{}");
+        }
+        return sb.toString();
     }
 
     private String renderSingleLine(int indent) {

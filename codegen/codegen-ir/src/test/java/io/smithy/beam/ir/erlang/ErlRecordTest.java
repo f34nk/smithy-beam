@@ -14,6 +14,12 @@ class ErlRecordTest {
     }
 
     @Test
+    void emptyRecordAsString() {
+        ErlRecord record = new ErlRecord("delete_user_output", null, List.of());
+        assertThat(record.asString()).isEqualTo("#delete_user_output{}");
+    }
+
+    @Test
     void recordLiteralLines() {
         ErlRecord record = new ErlRecord("basic_item", null, List.of(
                 new ErlRecordField("name", mapsGet("name")),
