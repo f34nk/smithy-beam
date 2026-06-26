@@ -44,18 +44,21 @@ class ErlangIrGoldenPluginParityTest {
     private static String readGolden(String resourcePath) throws IOException {
         try (InputStream in = ErlangIrGoldenPluginParityTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
             assertThat(in).as("resource %s", resourcePath).isNotNull();
-            String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            if (text.endsWith("\n")) {
-                text = text.substring(0, text.length() - 1);
-            }
-            return text;
+            return stripTrailingNewline(new String(in.readAllBytes(), StandardCharsets.UTF_8));
         }
+    }
+
+    private static String stripTrailingNewline(String text) {
+        if (text.endsWith("\n")) {
+            return text.substring(0, text.length() - 1);
+        }
+        return text;
     }
 
     @Test
     void clientPluginCodecModuleMatchesIrGolden() throws IOException {
         MockManifest manifest = runClientPlugin(loadModel());
-        String emitted = manifest.expectFileString("http_service_rest_json_1.erl");
+        String emitted = stripTrailingNewline(manifest.expectFileString("http_service_rest_json_1.erl"));
         assertThat(emitted).isEqualTo(readGolden("golden/http_service_rest_json_1_client_codec.expected.erl"));
     }
 

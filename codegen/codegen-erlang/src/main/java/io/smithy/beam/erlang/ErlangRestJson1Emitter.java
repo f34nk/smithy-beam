@@ -107,7 +107,7 @@ public final class ErlangRestJson1Emitter {
                 ctx.settings(), service.getId().getNamespace(), service);
         String codecFile = layout.clientCodecModuleName(protocol) + ".erl";
         ErlModule module = buildClientCodecModule(ctx, service);
-        ctx.writerDelegator().useFileWriter(codecFile, writer -> writer.write(module.asString()));
+        ctx.writerDelegator().useFileWriter(codecFile, writer -> writer.write("$L", module.asString()));
     }
 
     /** Entry point called from ErlangServerDirectedCodegen#generateService. */
