@@ -149,14 +149,11 @@ public final class ErlangResourceEmitter {
         BeamDocumentation.forShape(op).ifPresent(
                 doc -> BeamDocumentation.writeErlangDoc(writer, doc));
 
-        ErlangFormat.writeSpec(
+        ErlangInfrastructureIr.writeSpec(
                 writer,
-                helper
-                        + "("
-                        + String.join(", ", specParams)
-                        + ") -> {'ok', "
-                        + outSym.getName()
-                        + "} | {'error', term()}");
+                helper,
+                String.join(", ", specParams),
+                "{'ok', " + outSym.getName() + "} | {'error', term()}");
         writer.write("$L($L) ->", helper, paramList(plan, server));
         writer.indent();
         writer.write("$L:$L($L).",

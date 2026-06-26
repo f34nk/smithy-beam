@@ -307,14 +307,11 @@ final class ErlangClientDirectedCodegen
             } else {
                 successReturnType = outSym.getName();
             }
-            ErlangFormat.writeSpec(
+            ErlangInfrastructureIr.writeSpec(
                     writer,
-                    opSym.getName()
-                            + "(client_config(), "
-                            + inSym.getName()
-                            + ") -> {'ok', "
-                            + successReturnType
-                            + "} | {'error', term()}");
+                    opSym.getName(),
+                    "client_config(), " + inSym.getName(),
+                    "{'ok', " + successReturnType + "} | {'error', term()}");
             if (hasProtocol) {
                 if (paginated) {
                     ErlangClientPaginationEmitter.emitPaginatedOperation(

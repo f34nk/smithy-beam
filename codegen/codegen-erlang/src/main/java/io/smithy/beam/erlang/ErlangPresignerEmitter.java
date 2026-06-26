@@ -28,7 +28,11 @@ public final class ErlangPresignerEmitter {
             writer.write("-export([presign_url/3]).");
             writer.write("");
             writer.write("-type client_config() :: #{binary() => term()}.");
-            ErlangFormat.writeSpec(writer, "presign_url(client_config(), Operation :: atom(), http_request()) -> {ok, binary()} | {error, term()}");
+            ErlangInfrastructureIr.writeSpec(
+                    writer,
+                    "presign_url",
+                    "client_config(), Operation :: atom(), http_request()",
+                    "{ok, binary()} | {error, term()}");
             writer.write("presign_url(Config, Operation, Request) ->");
             writer.indent();
             writer.write("Credentials = maps:get(credentials, Config),");

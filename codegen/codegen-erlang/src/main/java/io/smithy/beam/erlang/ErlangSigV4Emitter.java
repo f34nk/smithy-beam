@@ -43,8 +43,11 @@ public final class ErlangSigV4Emitter {
             writer.write("sign_request(Request, Credentials, Region, Service, Opts).");
             writer.dedent();
             writer.write("");
-            ErlangFormat.writeSpec(
-                    writer, "presign(http_request(), map(), binary(), binary(), map()) -> {ok, binary()} | {error, term()}");
+            ErlangInfrastructureIr.writeSpec(
+                    writer,
+                    "presign",
+                    "http_request(), map(), binary(), binary(), map()",
+                    "{ok, binary()} | {error, term()}");
             writer.write("presign(Request, Credentials, Region, Service, Opts) ->");
             writer.indent();
             writer.write("AccessKeyId = maps:get(access_key_id, Credentials),");

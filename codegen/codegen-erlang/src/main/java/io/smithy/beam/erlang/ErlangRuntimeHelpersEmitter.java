@@ -53,7 +53,7 @@ public final class ErlangRuntimeHelpersEmitter {
             writer.write("");
 
             if (awsMetadata) {
-                ErlangFormat.writeSpec(writer, "resolve_base_url(map()) -> binary()");
+                ErlangInfrastructureIr.writeSpec(writer, "resolve_base_url", "map()", "binary()");
                 writer.write("resolve_base_url(Config) ->");
                 writer.indent();
                 writer.write("Prefix = maps:get(endpoint_prefix, Config),");
