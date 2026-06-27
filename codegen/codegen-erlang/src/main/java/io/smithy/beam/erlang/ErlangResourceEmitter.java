@@ -8,6 +8,7 @@ import io.smithy.beam.core.BeamResourceInputBuilder;
 import io.smithy.beam.core.BeamResourceInputBuilder.IdentifierArg;
 import io.smithy.beam.core.BeamResourceInputBuilder.InputPlan;
 import io.smithy.beam.core.BeamResourceLifecycle;
+import io.smithy.beam.ir.erlang.ErlModule;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -32,7 +33,14 @@ public final class ErlangResourceEmitter {
         if (!BeamResourceLifecycle.hasEmittableBindings(resource)) {
             return;
         }
-        emit(ctx, resource, false);
+        BeamResourceIndex index = BeamResourceIndex.of(ctx.model());
+        BeamErlangLayout layout = new BeamErlangLayout(
+                ctx.settings(), ctx.service().getId().getNamespace(), ctx.service());
+        String resourceSnake = ctx.symbolProvider().toSymbol(resource).getName();
+        String file = layout.resourceClientModuleFile(resourceSnake);
+        ErlModule module = ErlangResourceIr.clientModule(
+                ctx, resource, index, layout, layout.clientModuleName());
+        ErlangCodecEmission.writeModule(ctx, file, module);
     }
 
     public static void emitServer(ErlangContext ctx, ResourceShape resource) {
