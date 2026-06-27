@@ -204,7 +204,7 @@ final class ErlangRestXmlIr {
         functions.add(ErlangCodecHelperIr.prefixHeadersToList());
         functions.add(ErlangCodecHelperIr.prefixHeadersFromList());
         functions.add(ErlangCodecHelperIr.generateUuid());
-        if (ErlangHttpChecksumEmitter.serviceHasChecksumOperations(model, service)) {
+        if (ErlangHttpChecksumIr.serviceHasChecksumOperations(model, service)) {
             functions.addAll(ErlangHttpChecksumIr.checksumHelperFunctions());
         }
         if (encodeWithConfig) {

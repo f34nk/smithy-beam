@@ -21,8 +21,11 @@ final class ErlangRuntimeTypesIr {
 
     static ErlTypeHeader runtimeTypesHeader(
             String moduleName,
-            Optional<String> endpointRuleSetMap) {
+            Optional<String> endpointRuleSetMap,
+            Optional<String> serviceId) {
         List<ErlHeaderEntry> entries = new ArrayList<>();
+        serviceId.ifPresent(
+                id -> entries.add(ErlComment.comment("Generated runtime types for " + id + ".")));
         entries.add(new ErlIfndef("BEAM_RUNTIME_TYPES_INCLUDED"));
         entries.add(new ErlDefine("BEAM_RUNTIME_TYPES_INCLUDED", "true"));
         entries.add(new ErlBlankLine());

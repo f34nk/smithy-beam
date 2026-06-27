@@ -117,10 +117,13 @@ final class ErlangServerDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(
                 layout.runtimeTypesHeaderFile(),
-                writer -> {
-                    writer.write("%% Generated runtime types for $L.", ctx.service().getId());
-                    ErlangRuntimeTypesEmitter.writeBody(writer, Optional.empty());
-                });
+                writer -> writer.write(
+                        "$L",
+                        ErlangRuntimeTypesIr.runtimeTypesHeader(
+                                        "runtime_types",
+                                        Optional.empty(),
+                                        Optional.of(service.getId().toString()))
+                                .asString()));
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
         ErlangBehaviourEmitter.beginService(ctx, service, operations);

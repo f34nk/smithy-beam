@@ -132,11 +132,16 @@ final class ErlangClientDirectedCodegen
         ctx.writerDelegator().useFileWriter(
                 layout.runtimeTypesHeaderFile(),
                 writer -> {
-                    writer.write("%% Generated runtime types for $L.", ctx.service().getId());
                     Optional<String> ruleSet =
                             BeamEndpointRuleSetEmitter.serializeRuleSetErlangMap(
                                     directive.model(), service);
-                    ErlangRuntimeTypesEmitter.writeBody(writer, ruleSet);
+                    writer.write(
+                            "$L",
+                            ErlangRuntimeTypesIr.runtimeTypesHeader(
+                                            "runtime_types",
+                                            ruleSet,
+                                            Optional.of(service.getId().toString()))
+                                    .asString());
                 });
     }
 

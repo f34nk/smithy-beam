@@ -2,6 +2,8 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.shapes.ServiceShape;
 import io.smithy.beam.ir.erlang.ErlAtom;
 import io.smithy.beam.ir.erlang.ErlAtomPattern;
 import io.smithy.beam.ir.erlang.ErlBinary;
@@ -45,13 +47,10 @@ import java.util.Optional;
 final class ErlangHttpChecksumIr {
     private ErlangHttpChecksumIr() {}
 
-    static void writeFunctions(ErlangWriter writer, List<ErlFunction> functions) {
-        for (ErlFunction fn : functions) {
-            for (String line : fn.lines()) {
-                writer.write("$L", line);
-            }
-            writer.write("");
-        }
+    static boolean serviceHasChecksumOperations(Model model, ServiceShape service) {
+        BeamHttpChecksumIndex index = BeamHttpChecksumIndex.of(model);
+        return ErlangTopDown.containedOperationsSorted(model, service).stream()
+                .anyMatch(index::hasChecksumBehavior);
     }
 
     static Optional<ErlExpr> requestChecksumHeadersExpr(

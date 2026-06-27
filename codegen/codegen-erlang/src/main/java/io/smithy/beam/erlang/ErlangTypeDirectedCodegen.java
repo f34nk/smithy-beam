@@ -129,8 +129,14 @@ final class ErlangTypeDirectedCodegen
             BeamDocumentation.forShape(directive.service()).ifPresentOrElse(
                     doc -> BeamDocumentation.writeErlangDoc(writer, doc),
                     () -> {
-                        writer.write("%% Record and type definitions for the $L model.", ctx.moduleName());
-                        writer.write("%% ");
+                        writer.write(
+                                "$L",
+                                ErlComment.comment(
+                                                "Record and type definitions for the "
+                                                        + ctx.moduleName()
+                                                        + " model.")
+                                        .asString());
+                        writer.write("$L", ErlComment.comment("").asString());
                     });
             writer.popState();
 
@@ -438,7 +444,15 @@ final class ErlangTypeDirectedCodegen
             ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
                 writer.pushGeneratedDocumentationSection();
                 BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
-                writer.write("-type $L :: {unknown, binary()}.", symbol.getName());
+                writer.write(
+                        "$L",
+                        enumTypeDeclaration(
+                                symbol,
+                                List.of(),
+                                shapeDocComments(shape),
+                                shape.getId(),
+                                atomByMember,
+                                List.copyOf(shape.members())));
                 writer.popState();
             });
             return;
@@ -447,19 +461,42 @@ final class ErlangTypeDirectedCodegen
         ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
             writer.pushGeneratedDocumentationSection();
             BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
-            // Build "active | inactive | pending | {unknown, binary()}"
-            String variants = String.join(" | ", atoms) + " | {unknown, binary()}";
-            writer.write("-type $L :: $L.", symbol.getName(), variants);
-            writer.write("%% Wire values for $L:", shape.getId());
-            for (MemberShape m : shape.members()) {
-                String wireValue = m.getTrait(EnumValueTrait.class)
-                        .flatMap(EnumValueTrait::getStringValue)
-                        .orElse(m.getMemberName());
-                String atom = atomByMember.get(m.getMemberName());
-                writer.write("%%   $L -> <<\"$L\">>", atom, wireValue);
-            }
+            writer.write(
+                    "$L",
+                    enumTypeDeclaration(
+                            symbol,
+                            atoms,
+                            shapeDocComments(shape),
+                            shape.getId(),
+                            atomByMember,
+                            List.copyOf(shape.members())));
             writer.popState();
         });
+    }
+
+    private static String enumTypeDeclaration(
+            Symbol symbol,
+            List<String> atoms,
+            List<ErlComment> shapeDoc,
+            ShapeId shapeId,
+            Map<String, String> atomByMember,
+            List<MemberShape> members) {
+        List<String> lines = new ArrayList<>();
+        if (atoms.isEmpty()) {
+            lines.addAll(new ErlTypeDef(symbol.getName(), "{unknown, binary()}", shapeDoc).lines());
+            return String.join("\n", lines);
+        }
+        String variants = String.join(" | ", atoms) + " | {unknown, binary()}";
+        lines.addAll(new ErlTypeDef(symbol.getName(), variants, shapeDoc).lines());
+        lines.addAll(ErlComment.comment("Wire values for " + shapeId).lines());
+        for (MemberShape member : members) {
+            String wireValue = member.getTrait(EnumValueTrait.class)
+                    .flatMap(EnumValueTrait::getStringValue)
+                    .orElse(member.getMemberName());
+            String atom = atomByMember.get(member.getMemberName());
+            lines.addAll(ErlComment.comment("  " + atom + " -> <<\"" + wireValue + ">>").lines());
+        }
+        return String.join("\n", lines);
     }
 
     /**
@@ -483,7 +520,10 @@ final class ErlangTypeDirectedCodegen
             ctx.writerDelegator().useFileWriter(definitionFile, writer -> {
                 writer.pushGeneratedDocumentationSection();
                 BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
-                writer.write("-type $L :: {unknown, integer()}.", symbol.getName());
+                writer.write(
+                        "$L",
+                        new ErlTypeDef(symbol.getName(), "{unknown, integer()}", shapeDocComments(shape))
+                                .asString());
                 writer.popState();
             });
             return;
@@ -493,7 +533,9 @@ final class ErlangTypeDirectedCodegen
             writer.pushGeneratedDocumentationSection();
             BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
             String variants = String.join(" | ", atoms) + " | {unknown, integer()}";
-            writer.write("-type $L :: $L.", symbol.getName(), variants);
+            writer.write(
+                    "$L",
+                    new ErlTypeDef(symbol.getName(), variants, shapeDocComments(shape)).asString());
             writer.popState();
         });
     }
@@ -670,10 +712,11 @@ final class ErlangTypeDirectedCodegen
                 new BeamErlangLayout(ctx.settings(), ctx.service().getId().getNamespace(), ctx.service())
                         .typesHeaderFile(),
                 writer -> {
+                    List<String> chunks = new ArrayList<>();
                     for (ErlComment comment : shapeDocComments(shape)) {
-                        writer.write("$L", comment.asString());
+                        chunks.add(comment.asString());
                     }
-                    writer.write("");
+                    chunks.add("");
                     ErlRecordDef record = buildErrorRecord(
                             shape,
                             ctx.symbolProvider(),
@@ -682,14 +725,12 @@ final class ErlangTypeDirectedCodegen
                             isRetryable,
                             isThrottling);
                     ErlTypeDef type = new ErlTypeDef(recordName, "#" + recordName + "{}");
-                    List<ErlComment> header = List.of(
-                            ErlComment.comment(
-                                    "Error shape: " + shape.getId() + " (" + errorTrait.getValue() + ")"));
-                    for (ErlComment comment : header) {
-                        writer.write("$L", comment.asString());
-                    }
-                    writer.write("$L", record.asString());
-                    writer.write("$L", type.asString());
+                    chunks.add(ErlComment.comment(
+                                    "Error shape: " + shape.getId() + " (" + errorTrait.getValue() + ")")
+                            .asString());
+                    chunks.add(record.asString());
+                    chunks.add(type.asString());
+                    writer.write("$L", String.join("\n", chunks));
                 });
     }
 }

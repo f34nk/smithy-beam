@@ -52,7 +52,8 @@ public final class ErlangClientPaginationEmitter {
                 retryModule,
                 successReturnType,
                 null)) {
-            ErlangInfrastructureIr.writeFunction(writer, fn);
+            writer.write("$L", fn.asString());
+            writer.write("$L", "");
         }
     }
 }

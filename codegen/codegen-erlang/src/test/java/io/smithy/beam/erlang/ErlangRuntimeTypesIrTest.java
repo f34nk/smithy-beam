@@ -14,14 +14,17 @@ class ErlangRuntimeTypesIrTest {
     @Test
     void runtimeTypesHeaderMatchesResource() throws IOException {
         String expected = loadResource("runtime_types.hrl");
-        assertThat(ErlangRuntimeTypesIr.runtimeTypesHeader("runtime_types", Optional.empty()).asString())
+        assertThat(ErlangRuntimeTypesIr.runtimeTypesHeader(
+                        "runtime_types", Optional.empty(), Optional.empty())
+                .asString())
                 .isEqualTo(stripTrailingNewline(expected));
     }
 
     @Test
     void runtimeTypesHeaderAppendsEndpointRuleSetDefine() {
         String map = "#{'argv' => [<<\"us-east-1\">>]}";
-        String output = ErlangRuntimeTypesIr.runtimeTypesHeader("runtime_types", Optional.of(map))
+        String output = ErlangRuntimeTypesIr.runtimeTypesHeader(
+                        "runtime_types", Optional.of(map), Optional.empty())
                 .asString();
         assertThat(output)
                 .contains("%% @endpointRuleSet embedded at codegen time.")

@@ -22,7 +22,7 @@ public final class ErlangRuntimeHelpersEmitter {
     public static void emitIfNeeded(ErlangContext ctx, ServiceShape service) {
         boolean awsMetadata = BeamAwsServiceMetadata.from(service).isPresent();
         boolean labelBindings = serviceHasLabelBindings(ctx.model(), service);
-        boolean checksumBindings = ErlangHttpChecksumEmitter.serviceHasChecksumOperations(ctx.model(), service);
+        boolean checksumBindings = ErlangHttpChecksumIr.serviceHasChecksumOperations(ctx.model(), service);
         if (!awsMetadata && !labelBindings && !checksumBindings) {
             return;
         }
