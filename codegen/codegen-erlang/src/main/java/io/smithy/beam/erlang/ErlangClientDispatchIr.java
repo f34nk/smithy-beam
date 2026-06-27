@@ -30,7 +30,7 @@ final class ErlangClientDispatchIr {
                 if (j == lines.size() - 1 && hasComma) {
                     line = line + ",";
                 }
-                writer.write(line);
+                writer.write("$L", line);
             }
         }
     }

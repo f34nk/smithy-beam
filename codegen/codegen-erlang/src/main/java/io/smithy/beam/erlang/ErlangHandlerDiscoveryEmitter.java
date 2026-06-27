@@ -19,7 +19,7 @@ final class ErlangHandlerDiscoveryEmitter {
                 if (line.isEmpty()) {
                     writer.write("");
                 } else {
-                    writer.write(line);
+                    writer.write("$L", line);
                 }
             }
             ErlangHandlerDiscoveryIr.writeFunction(writer, ErlangHandlerDiscoveryIr.resolveImpl(behaviourMod));

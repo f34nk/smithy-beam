@@ -48,7 +48,7 @@ final class ErlangHttpChecksumIr {
     static void writeFunctions(ErlangWriter writer, List<ErlFunction> functions) {
         for (ErlFunction fn : functions) {
             for (String line : fn.lines()) {
-                writer.write(line);
+                writer.write("$L", line);
             }
             writer.write("");
         }
