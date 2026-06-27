@@ -8,4 +8,6 @@ public sealed interface ExPattern extends IrObject
         ExMapPattern,
         ExStructPattern,
         ExListPattern,
-        ExConsPattern {}
+        ExConsPattern,
+        ExStringPattern,
+        ExTuplePattern {}

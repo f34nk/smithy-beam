@@ -144,10 +144,16 @@ public final class ExClause implements IrObject {
   }
 
   private String buildInlineHead(String keyword, String name) {
+    if (patterns.isEmpty()) {
+      return keyword + " " + name + guardSuffix();
+    }
     return keyword + " " + name + "(" + patternText() + ")" + guardSuffix();
   }
 
   private String buildBlockHead(String keyword, String name) {
+    if (patterns.isEmpty()) {
+      return keyword + " " + name + guardSuffix();
+    }
     return keyword + " " + name + "(" + patternText() + ")" + guardSuffix();
   }
 

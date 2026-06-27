@@ -3,7 +3,7 @@ package io.smithy.beam.ir.elixir;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class ExComment implements ExPreambleEntry {
+public final class ExComment implements ExPreambleEntry, ExModuleEntry {
   static final int HEREDOC_BODY_INDENT_LEVELS = 1;
 
   private final String text;

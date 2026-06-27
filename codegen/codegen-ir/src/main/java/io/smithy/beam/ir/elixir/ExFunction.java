@@ -8,6 +8,7 @@ public final class ExFunction implements IrObject {
   private final String name;
   private final ExDoc docOrNull;
   private final ExSpec specOrNull;
+  private final ExImplAttr implOrNull;
   private final List<ExClause> clauses;
 
   public ExFunction(
@@ -15,12 +16,23 @@ public final class ExFunction implements IrObject {
       String name,
       ExDoc docOrNull,
       ExSpec specOrNull,
+      ExImplAttr implOrNull,
       List<ExClause> clauses) {
     this.keyword = keyword;
     this.name = name;
     this.docOrNull = docOrNull;
     this.specOrNull = specOrNull;
+    this.implOrNull = implOrNull;
     this.clauses = List.copyOf(clauses);
+  }
+
+  public ExFunction(
+      String keyword,
+      String name,
+      ExDoc docOrNull,
+      ExSpec specOrNull,
+      List<ExClause> clauses) {
+    this(keyword, name, docOrNull, specOrNull, null, clauses);
   }
 
   public String keyword() {
@@ -47,18 +59,22 @@ public final class ExFunction implements IrObject {
     return new ExFunction("def", name, null, null, clauses);
   }
 
+  public static ExFunction defFunctionWithImpl(String name, List<ExClause> clauses) {
+    return new ExFunction("def", name, null, null, ExImplAttr.implTrue(), clauses);
+  }
+
   public static ExFunction defpFunction(String name, List<ExClause> clauses) {
     return new ExFunction("defp", name, null, null, clauses);
   }
 
   public static ExFunction functionWithDocAndSpec(
       String keyword, String name, ExDoc doc, ExSpec spec, List<ExClause> clauses) {
-    return new ExFunction(keyword, name, doc, spec, clauses);
+    return new ExFunction(keyword, name, doc, spec, null, clauses);
   }
 
   public static ExFunction functionWithSpec(
       String keyword, String name, ExSpec spec, List<ExClause> clauses) {
-    return new ExFunction(keyword, name, null, spec, clauses);
+    return new ExFunction(keyword, name, null, spec, null, clauses);
   }
 
   @Override
@@ -69,6 +85,9 @@ public final class ExFunction implements IrObject {
     }
     if (specOrNull != null) {
       out.addAll(specOrNull.lines(indent));
+    }
+    if (implOrNull != null) {
+      out.addAll(implOrNull.lines(indent));
     }
     for (int i = 0; i < clauses.size(); i++) {
       out.addAll(clauses.get(i).lines(indent, keyword, name, i < clauses.size() - 1));

@@ -34,7 +34,11 @@ public final class ExTypeDef implements ExModuleEntry {
   }
 
   public static ExTypeDef unionType(String name, List<String> variants) {
-    return new ExTypeDef(name, String.join(" | ", variants), List.of(), variants, null);
+    return unionType(name, variants, List.of());
+  }
+
+  public static ExTypeDef unionType(String name, List<String> variants, List<ExComment> preamble) {
+    return new ExTypeDef(name, String.join(" | ", variants), preamble, variants, null);
   }
 
   public static ExTypeDef structureType(String name, List<String> fieldLines) {
