@@ -350,7 +350,13 @@ final class ElixirDirectedCodegen
     ExTypesModule module =
         ExTypesModule.typesModule(ctx.moduleName(), ctx.typesPreambleEntries(), ctx.typesEntries());
     ctx.writerDelegator()
-        .useFileWriter(ctx.definitionFile(), writer -> writer.write("$L", module.asString()));
+        .useFileWriter(
+            ctx.definitionFile(),
+            writer -> {
+              writer.pushGeneratedDocumentationSection();
+              writer.write("$L", module.asString());
+              writer.popState();
+            });
   }
 
   @Override
