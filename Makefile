@@ -38,6 +38,25 @@ format/java:
 	#
 	./gradlew spotlessApply
 	
+.PHONY: format/erlang
+format/erlang:
+	find ./codegen -name *.expected.hrl -type f -exec dirname {} \; |\
+	uniq |\
+	xargs -S1024 -P $(PARALLEL_JOBS) -I {} sh -c ' \
+		target="{}"; \
+		echo "Format $$target"; \
+		cd $$target; \
+		erlfmt --write *.hrl; \
+	'; \
+	find ./codegen -name *.expected.erl -type f -exec dirname {} \; |\
+	uniq |\
+	xargs -S1024 -P $(PARALLEL_JOBS) -I {} sh -c ' \
+		target="{}"; \
+		echo "Format $$target"; \
+		cd $$target; \
+		erlfmt --write *.erl; \
+	'; \
+
 .PHONY: clean
 clean:
 	#
