@@ -1,4 +1,4 @@
--doc "Invokes {@code Fun} with exponential backoff when a modeled retryable error is returned.".
+%% @doc Invokes {@code Fun} with exponential backoff when a modeled retryable error is returned.
 -spec with_retry(fun(() -> term()), map()) -> term().
 with_retry(Fun, Opts) ->
     Max = maps:get(max_attempts, Opts, 3),

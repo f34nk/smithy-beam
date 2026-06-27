@@ -1,4 +1,4 @@
--doc "Encode HTTP response for smithy.beam.demo.http#GetName.".
+%% @doc Encode HTTP response for smithy.beam.demo.http#GetName.
 -spec encode_get_name_response(get_name_output()) -> #http_response{}.
 encode_get_name_response(#get_name_output{name = Name}) ->
     Headers = [{<<"Content-Type">>, <<"application/json">>}],

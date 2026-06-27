@@ -5,7 +5,7 @@
 -include("runtime_types.hrl").
 -export([encode_get_name_request/1, decode_get_name_request/2, decode_get_name_response/1]).
 
--doc "Encode HTTP request for smithy.beam.demo.http#GetName.".
+%% @doc Encode HTTP request for smithy.beam.demo.http#GetName.
 -spec encode_get_name_request(get_name_input()) -> #http_request{}.
 encode_get_name_request(Input = #get_name_input{name = Name}) ->
     Path = <<"/names/", (uri_encode(to_binary(Name)))/binary>>,
@@ -20,14 +20,14 @@ encode_get_name_request(Input = #get_name_input{name = Name}) ->
         body = Body
     }.
 
--doc "Decode HTTP request for smithy.beam.demo.http#GetName.".
+%% @doc Decode HTTP request for smithy.beam.demo.http#GetName.
 -spec decode_get_name_request(#http_request{}, map()) -> get_name_input().
 decode_get_name_request(#http_request{query = Query, headers = Headers, body = Body}, LabelMap) ->
     #get_name_input{
         name = uri_decode(maps:get(<<"name">>, LabelMap, undefined))
     }.
 
--doc "Decode HTTP response for smithy.beam.demo.http#GetName.".
+%% @doc Decode HTTP response for smithy.beam.demo.http#GetName.
 -spec decode_get_name_response(#http_response{}) -> {'ok', get_name_output()} | {'error', term()}.
 decode_get_name_response(#http_response{status = 200, headers = Headers, body = Body}) ->
     Decoded = case Body of
@@ -43,7 +43,7 @@ decode_get_name_response(#http_response{status = 200, headers = Headers, body = 
     }};
 decode_get_name_response(#http_response{status = Status, headers = RespHeaders, body = Body}) -> decode_get_name_response_error(Status, RespHeaders, Body).
 
--doc "Error dispatch for smithy.beam.demo.http#GetName.".
+%% @doc Error dispatch for smithy.beam.demo.http#GetName.
 decode_get_name_response_error(Status, _Hdrs, Body) -> {error, {unknown_error, Status, Body}}.
 
 to_binary(V) when is_binary(V) -> V;

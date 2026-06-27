@@ -3,7 +3,7 @@
 -include("retry_service_types.hrl").
 -export([with_retry/2, retryable/1, throttling/1, should_retry/1]).
 
--doc "Invokes {@code Fun} with exponential backoff when a modeled retryable error is returned.".
+%% @doc Invokes {@code Fun} with exponential backoff when a modeled retryable error is returned.
 -spec with_retry(fun(() -> term()), map()) -> term().
 with_retry(Fun, Opts) ->
     Max = maps:get(max_attempts, Opts, 3),

@@ -8,12 +8,12 @@ class ErlFunctionDocTest {
     @Test
     void singleLineAsString() {
         assertThat(ErlFunctionDoc.functionDoc("Decode request body.").asString())
-                .isEqualTo("-doc \"Decode request body.\".");
+                .isEqualTo("%% @doc Decode request body.");
     }
 
     @Test
     void multilineAsString() {
         assertThat(ErlFunctionDoc.functionDoc("Line one.\n\nLine two.").asString())
-                .isEqualTo("-doc \"\"\"\nLine one.\n\nLine two.\n\"\"\".");
+                .isEqualTo("%% @doc\n%% Line one.\n%%\n%% Line two.");
     }
 }

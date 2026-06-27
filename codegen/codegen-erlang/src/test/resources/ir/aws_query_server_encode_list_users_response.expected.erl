@@ -1,4 +1,4 @@
--doc "Encode AWS Query server response for smithy.beam.test.awsquery#ListUsers.".
+%% @doc Encode AWS Query server response for smithy.beam.test.awsquery#ListUsers.
 -spec encode_list_users_response(list_users_output()) -> #http_response{}.
 encode_list_users_response(#list_users_output{users = Users}) ->
     ResultContent = maps:filter(fun (_, V) ->

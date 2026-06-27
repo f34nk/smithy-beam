@@ -1,4 +1,4 @@
--doc "Decode AWS JSON response for smithy.beam.test.awsjson11#GetUser.".
+%% @doc Decode AWS JSON response for smithy.beam.test.awsjson11#GetUser.
 -spec decode_get_user_response(#http_response{}) -> {'ok', get_user_output()} | {'error', term()}.
 decode_get_user_response(#http_response{status = 200, body = Body}) ->
     Decoded = case Body of

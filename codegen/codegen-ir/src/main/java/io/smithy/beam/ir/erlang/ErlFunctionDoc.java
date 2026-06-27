@@ -20,20 +20,19 @@ public final class ErlFunctionDoc implements IrObject {
 
     @Override
     public List<String> lines(int indent) {
-        return renderDocAttribute("doc", text, indent);
-    }
-
-    private static List<String> renderDocAttribute(String attribute, String text, int indent) {
-        String head = IrObject.indent(indent) + "-" + attribute;
+        String marker = IrObject.indent(indent) + "%%";
         if (!text.contains("\n")) {
-            return List.of(head + " " + ErlString.string(text).asString() + ".");
+            return List.of(marker + " @doc " + text);
         }
         List<String> out = new ArrayList<>();
-        out.add(head + " \"\"\"");
+        out.add(marker + " @doc");
         for (String line : text.split("\n", -1)) {
-            out.add(IrObject.indent(indent) + line);
+            if (line.isEmpty()) {
+                out.add(marker);
+            } else {
+                out.add(marker + " " + line);
+            }
         }
-        out.add(IrObject.indent(indent) + "\"\"\".");
         return out;
     }
 
