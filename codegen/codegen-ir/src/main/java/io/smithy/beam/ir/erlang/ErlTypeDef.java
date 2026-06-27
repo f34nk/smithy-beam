@@ -3,7 +3,7 @@ package io.smithy.beam.ir.erlang;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class ErlTypeDef implements ErlHeaderEntry {
+public final class ErlTypeDef implements ErlHeaderEntry, ErlModuleAttribute {
     private final String name;
     private final String body;
     private final List<ErlComment> preamble;
@@ -48,6 +48,9 @@ public final class ErlTypeDef implements ErlHeaderEntry {
 
     private List<String> typeBodyLines(int indent) {
         String typeName = typeDeclName();
+        if (body.indexOf('\n') >= 0) {
+            return multilineTypeBodyLines(indent, typeName);
+        }
         if (variants.size() <= 2) {
             return List.of(IrObject.indent(indent) + "-type " + typeName + " :: " + body + ".");
         }
@@ -61,6 +64,17 @@ public final class ErlTypeDef implements ErlHeaderEntry {
                 out.add(IrObject.indent(indent + 1) + "| " + variants.get(i) + suffix);
             }
         }
+        return out;
+    }
+
+    private List<String> multilineTypeBodyLines(int indent, String typeName) {
+        List<String> out = new ArrayList<>();
+        String[] bodyLines = body.split("\n", -1);
+        out.add(IrObject.indent(indent) + "-type " + typeName + " :: " + bodyLines[0]);
+        for (int i = 1; i < bodyLines.length - 1; i++) {
+            out.add(IrObject.indent(indent) + bodyLines[i]);
+        }
+        out.add(IrObject.indent(indent) + bodyLines[bodyLines.length - 1] + ".");
         return out;
     }
 
