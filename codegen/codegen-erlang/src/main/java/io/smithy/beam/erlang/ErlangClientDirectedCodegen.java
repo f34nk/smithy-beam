@@ -304,15 +304,17 @@ final class ErlangClientDirectedCodegen
         StringBuilder text = new StringBuilder();
         BeamDocumentation.forShape(op).ifPresent(doc -> text.append(doc).append('\n'));
         if (ctx.protocolCodegen() != null) {
-            text.append("HTTP request bindings for ").append(op.getId()).append(':').append('\n');
-            for (Map.Entry<String, HttpBinding> entry :
-                    ctx.httpBindings().requestBindings(op).entrySet()) {
-                HttpBinding binding = entry.getValue();
-                text.append("  ")
-                        .append(entry.getKey())
-                        .append(" @ ")
-                        .append(binding.getLocation())
-                        .append('\n');
+            Map<String, HttpBinding> bindings = ctx.httpBindings().requestBindings(op);
+            if (!bindings.isEmpty()) {
+                text.append("HTTP request bindings for ").append(op.getId()).append(':').append('\n');
+                for (Map.Entry<String, HttpBinding> entry : bindings.entrySet()) {
+                    HttpBinding binding = entry.getValue();
+                    text.append("  ")
+                            .append(entry.getKey())
+                            .append(" @ ")
+                            .append(binding.getLocation())
+                            .append('\n');
+                }
             }
         }
         if (text.isEmpty()) {
