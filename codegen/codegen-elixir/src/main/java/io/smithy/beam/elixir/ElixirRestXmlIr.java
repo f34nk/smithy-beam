@@ -23,4 +23,13 @@ final class ElixirRestXmlIr {
     }
     return functions;
   }
+
+  static List<ExFunction> sharedClientCodecHelpers() {
+    return List.of(
+        ElixirCodecHelperIr.prefixHeadersToList(),
+        ElixirCodecHelperIr.prefixHeadersFromList(),
+        ElixirCodecHelperIr.generateUuid(),
+        ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY),
+        ElixirCodecHelperIr.encodeQueryValueXmlQuery());
+  }
 }

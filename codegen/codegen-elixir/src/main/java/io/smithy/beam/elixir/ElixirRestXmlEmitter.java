@@ -115,6 +115,7 @@ public final class ElixirRestXmlEmitter {
               }
 
               emitXmlHelpers(writer, checksumBindings);
+              emitExFunctions(writer, ElixirRestXmlIr.sharedClientCodecHelpers());
 
               writer.dedent();
               writer.write("end");
@@ -623,7 +624,7 @@ public final class ElixirRestXmlEmitter {
     writer.write("");
     writer.write("defp build_xml_element(name, content, xml_ns) do");
     writer.indent();
-    writer.write("{name, xml_namespace_attrs(xml_ns), [{:text, xml_text(content)}]}");
+    writer.write("{name, xml_namespace_attrs(xml_ns), [{:text, to_binary(content)}]}");
     writer.dedent();
     writer.write("end");
     writer.write("");
@@ -634,7 +635,7 @@ public final class ElixirRestXmlEmitter {
     writer.dedent();
     writer.write("end");
     writer.write("");
-    writer.write("defp build_xml_child(name, value), do: {name, [], [{:text, xml_text(value)}]}");
+    writer.write("defp build_xml_child(name, value), do: {name, [], [{:text, to_binary(value)}]}");
     writer.write("");
     writer.write("defp xml_namespace_attrs(%{uri: uri}), do: [xmlns: uri]");
     writer.write("defp xml_namespace_attrs(_), do: []");
@@ -834,12 +835,15 @@ public final class ElixirRestXmlEmitter {
     writer.dedent();
     writer.write("end");
     writer.write("");
-    writer.write("defp xml_text(v) when is_binary(v), do: v");
-    writer.write("defp xml_text(v) when is_atom(v), do: Atom.to_string(v)");
-    writer.write("defp xml_text(v), do: inspect(v)");
-    writer.write("");
     if (checksumBindings) {
       ElixirHttpChecksumEmitter.emitChecksumHelpers(writer);
+    }
+  }
+
+  private static void emitExFunctions(ElixirWriter writer, List<io.smithy.beam.ir.elixir.ExFunction> functions) {
+    for (io.smithy.beam.ir.elixir.ExFunction function : functions) {
+      writer.write("$L", function.asString());
+      writer.write("");
     }
   }
 

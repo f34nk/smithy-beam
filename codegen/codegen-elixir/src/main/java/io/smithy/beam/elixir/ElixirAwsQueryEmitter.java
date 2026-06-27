@@ -384,7 +384,7 @@ public final class ElixirAwsQueryEmitter {
     writer.write("");
     writer.write("defp build_xml_element(name, content, xml_ns) do");
     writer.indent();
-    writer.write("{name, xml_namespace_attrs(xml_ns), [{:text, to_string(content)}]}");
+    writer.write("{name, xml_namespace_attrs(xml_ns), [{:text, to_binary(content)}]}");
     writer.dedent();
     writer.write("end");
     writer.write("");
@@ -408,7 +408,7 @@ public final class ElixirAwsQueryEmitter {
     writer.write("");
     writer.write("defp build_xml_child(name, value) do");
     writer.indent();
-    writer.write("{name, [], [{:text, to_string(value)}]}");
+    writer.write("{name, [], [{:text, to_binary(value)}]}");
     writer.dedent();
     writer.write("end");
     writer.write("");
@@ -419,12 +419,16 @@ public final class ElixirAwsQueryEmitter {
     writer.dedent();
     writer.write("defp xml_namespace_attrs(_), do: []");
     writer.write("");
-    writer.write("defp to_string(value) when is_binary(value), do: value");
-    writer.write("defp to_string(value) when is_integer(value), do: Integer.to_string(value)");
-    writer.write("defp to_string(value) when is_float(value), do: Float.to_string(value)");
-    writer.write("defp to_string(value) when is_boolean(value), do: Atom.to_string(value)");
-    writer.write("defp to_string(value) when is_atom(value), do: Atom.to_string(value)");
-    writer.write("");
+    emitExFunctions(
+        writer, List.of(ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY)));
+  }
+
+  private static void emitExFunctions(
+      ElixirWriter writer, List<io.smithy.beam.ir.elixir.ExFunction> functions) {
+    for (io.smithy.beam.ir.elixir.ExFunction function : functions) {
+      writer.write("$L", function.asString());
+      writer.write("");
+    }
   }
 
   private static String operationWireName(OperationShape operation, ServiceShape service) {
