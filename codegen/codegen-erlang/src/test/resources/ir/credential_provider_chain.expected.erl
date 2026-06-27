@@ -1,7 +1,8 @@
 -spec resolve_chain(client_config()) -> {ok, aws_credentials()} | {error, term()}.
 resolve_chain(Config) -> resolve_chain(Config, [env, profile, ecs, ec2]).
 
-resolve_chain(_Config, []) -> {error, not_found};
+resolve_chain(_Config, []) ->
+    {error, not_found};
 resolve_chain(Config, [Provider | Rest]) ->
     case resolve_provider(Provider, Config) of
         {ok, Creds} -> {ok, Creds};

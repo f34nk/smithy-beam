@@ -8,7 +8,7 @@ case runtime_http:dispatch(Config, Req) of
                     undefined ->
                         {ok, NewAcc};
                     NextToken ->
-                        NextInput = Input#list_widgets_input{ next_token = NextToken },
+                        NextInput = Input#list_widgets_input{next_token = NextToken},
                         list_widgets(Config, NextInput, NewAcc)
                 end;
             {error, Reason} ->

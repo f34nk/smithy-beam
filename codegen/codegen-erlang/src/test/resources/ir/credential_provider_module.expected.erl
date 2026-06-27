@@ -18,7 +18,8 @@ resolve(Config) ->
 -spec resolve_chain(client_config()) -> {ok, aws_credentials()} | {error, term()}.
 resolve_chain(Config) -> resolve_chain(Config, [env, profile, ecs, ec2]).
 
-resolve_chain(_Config, []) -> {error, not_found};
+resolve_chain(_Config, []) ->
+    {error, not_found};
 resolve_chain(Config, [Provider | Rest]) ->
     case resolve_provider(Provider, Config) of
         {ok, Creds} -> {ok, Creds};
@@ -36,9 +37,11 @@ resolve_from_env(_Config) ->
     case {os:getenv("AWS_ACCESS_KEY_ID"), os:getenv("AWS_SECRET_ACCESS_KEY")} of
         {Id, Secret} when Id =/= false, Secret =/= false ->
             Token = os:getenv("AWS_SESSION_TOKEN"),
-            {ok, #{access_key_id => list_to_binary(Id),
-                  secret_access_key => list_to_binary(Secret),
-                  session_token => env_session_token(Token)}};
+            {ok, #{
+                access_key_id => list_to_binary(Id),
+                secret_access_key => list_to_binary(Secret),
+                session_token => env_session_token(Token)
+            }};
         _ ->
             {error, not_found}
     end.
@@ -61,7 +64,8 @@ profile_name(Config) ->
                 false -> <<"default">>;
                 Name -> list_to_binary(Name)
             end;
-        Name -> Name
+        Name ->
+            Name
     end.
 
 profile_credentials_path(Config) ->
@@ -70,9 +74,11 @@ profile_credentials_path(Config) ->
             case os:getenv("AWS_SHARED_CREDENTIALS_FILE") of
                 false ->
                     filename:join([os:getenv("HOME"), <<".aws/credentials">>]);
-                Path -> list_to_binary(Path)
+                Path ->
+                    list_to_binary(Path)
             end;
-        Path -> Path
+        Path ->
+            Path
     end.
 
 env_session_token(false) -> undefined;
@@ -85,7 +91,8 @@ parse_profile_credentials(Contents, Profile) ->
         error -> {error, not_found}
     end.
 
-find_profile_section([], _Profile, Acc) -> maps_to_credentials(Acc);
+find_profile_section([], _Profile, Acc) ->
+    maps_to_credentials(Acc);
 find_profile_section([Line | Rest], Profile, Acc) ->
     ExpectedHeader = "[" ++ binary_to_list(Profile) ++ "]",
     Trimmed = string:trim(binary_to_list(Line)),
@@ -95,31 +102,43 @@ find_profile_section([Line | Rest], Profile, Acc) ->
         [$[ | _] ->
             find_profile_section(Rest, Profile, #{});
         _ ->
-            if map_size(Acc) > 0 ->
-                maps_to_credentials(Acc);
-            true ->
-                find_profile_section(Rest, Profile, Acc)
+            if
+                map_size(Acc) > 0 ->
+                    maps_to_credentials(Acc);
+                true ->
+                    find_profile_section(Rest, Profile, Acc)
             end
     end.
 
-read_profile_entries([], Acc) -> maps_to_credentials(Acc);
+read_profile_entries([], Acc) ->
+    maps_to_credentials(Acc);
 read_profile_entries([Line | Rest], Acc) ->
     Trimmed = string:trim(binary_to_list(Line)),
     case Trimmed of
-        [$[ | _] -> maps_to_credentials(Acc);
-        "" -> read_profile_entries(Rest, Acc);
+        [$[ | _] ->
+            maps_to_credentials(Acc);
+        "" ->
+            read_profile_entries(Rest, Acc);
         Entry ->
             case string:split(Entry, "=", leading) of
                 [Key, Value] ->
                     read_profile_entries(Rest, Acc#{list_to_binary(Key) => list_to_binary(Value)});
-                _ -> read_profile_entries(Rest, Acc)
+                _ ->
+                    read_profile_entries(Rest, Acc)
             end
     end.
 
-maps_to_credentials(#{<<"aws_access_key_id">> := Id, <<"aws_secret_access_key">> := Secret} = Fields) ->
+maps_to_credentials(
+    #{<<"aws_access_key_id">> := Id, <<"aws_secret_access_key">> := Secret} = Fields
+) ->
     Token = maps:get(<<"aws_session_token">>, Fields, undefined),
-    {ok, #{access_key_id => trim_credential(Id), secret_access_key => trim_credential(Secret), session_token => optional_credential(Token)}};
-maps_to_credentials(_) -> {error, not_found}.
+    {ok, #{
+        access_key_id => trim_credential(Id),
+        secret_access_key => trim_credential(Secret),
+        session_token => optional_credential(Token)
+    }};
+maps_to_credentials(_) ->
+    {error, not_found}.
 
 trim_credential(Value) -> list_to_binary(string:trim(binary_to_list(Value))).
 
@@ -162,9 +181,11 @@ decode_json_credentials(Body) ->
     case jsx:decode(Body, [return_maps]) of
         #{<<"AccessKeyId">> := Id, <<"SecretAccessKey">> := Secret} = Doc ->
             Token = maps:get(<<"Token">>, Doc, undefined),
-            {ok, #{access_key_id => Id,
-                  secret_access_key => Secret,
-                  session_token => Token}};
+            {ok, #{
+                access_key_id => Id,
+                secret_access_key => Secret,
+                session_token => Token
+            }};
         _ ->
             {error, invalid_credentials}
     end.

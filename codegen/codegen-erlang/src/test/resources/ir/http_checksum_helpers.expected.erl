@@ -23,15 +23,22 @@ checksum_digest(Body, <<"SHA256">>) -> sha256_hash(Body);
 checksum_digest(Body, <<"CRC32">>) -> crc32_hash(Body);
 checksum_digest(Body, <<"CRC32C">>) -> crc32c_hash(Body).
 
-validate_response_checksum(_Body, _Headers, []) -> ok;
+validate_response_checksum(_Body, _Headers, []) ->
+    ok;
 validate_response_checksum(Body, Headers, [HeaderName | Rest]) ->
     case proplists:get_value(HeaderName, Headers, undefined) of
-        undefined -> validate_response_checksum(Body, Headers, Rest);
+        undefined ->
+            validate_response_checksum(Body, Headers, Rest);
         Expected ->
-            case checksum_header_encode(checksum_digest(Body, checksum_algorithm_from_header(HeaderName))) =:= Expected of
+            case
+                checksum_header_encode(
+                    checksum_digest(Body, checksum_algorithm_from_header(HeaderName))
+                ) =:= Expected
+            of
                 true -> ok;
                 false -> {error, {checksum_mismatch, HeaderName}}
             end
     end.
 
-checksum_algorithm_from_header(<<"x-amz-checksum-", Rest/binary>>) -> list_to_binary(string:uppercase(binary_to_list(Rest))).
+checksum_algorithm_from_header(<<"x-amz-checksum-", Rest/binary>>) ->
+    list_to_binary(string:uppercase(binary_to_list(Rest))).

@@ -9,7 +9,8 @@ segments(Path) ->
     Parts = binary:split(Path, <<"/">>, [global]),
     [S || S <- Parts, S =/= <<>>].
 
-match_segments([], [], Acc) -> {ok, Acc};
+match_segments([], [], Acc) ->
+    {ok, Acc};
 match_segments([Seg | RestPath], [TplSeg | RestTpl], Acc) ->
     case label_name(TplSeg) of
         {ok, Key} ->
@@ -21,11 +22,13 @@ match_segments([Seg | RestPath], [TplSeg | RestTpl], Acc) ->
                 false -> error
             end
     end;
-match_segments(_, _, _) -> error.
+match_segments(_, _, _) ->
+    error.
 
 label_name(<<"{", Rest/binary>>) ->
     case binary:split(Rest, <<"}">>) of
         [Label | [<<>>]] -> {ok, Label};
         _ -> error
     end;
-label_name(_) -> error.
+label_name(_) ->
+    error.

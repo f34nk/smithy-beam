@@ -14,7 +14,7 @@ list_widgets(Config, Input, Acc) ->
                         undefined ->
                             {ok, NewAcc};
                         NextToken ->
-                            NextInput = Input#list_widgets_input{ next_token = NextToken },
+                            NextInput = Input#list_widgets_input{next_token = NextToken},
                             list_widgets(Config, NextInput, NewAcc)
                     end;
                 {error, Reason} ->

@@ -1,9 +1,16 @@
 flatten_member(_Key, undefined) ->
     [];
 flatten_member(Key, Value) when is_list(Value) ->
-    lists:append([flatten_member(<<Key/binary, ".", (integer_to_binary(I))/binary>>, V) || {I, V} <- lists:enumerate(Value), V =/= undefined]);
+    lists:append([
+        flatten_member(<<Key/binary, ".", (integer_to_binary(I))/binary>>, V)
+     || {I, V} <- lists:enumerate(Value), V =/= undefined
+    ]);
 flatten_member(Key, Value) when is_map(Value) ->
-    lists:append([flatten_member(<<Key/binary, ".entry.", (integer_to_binary(I))/binary, ".key">>, K) ++ flatten_member(<<Key/binary, ".entry.", (integer_to_binary(I))/binary, ".value">>, V) || {I, {K, V}} <- lists:enumerate(maps:to_list(Value)), K =/= undefined, V =/= undefined]);
+    lists:append([
+        flatten_member(<<Key/binary, ".entry.", (integer_to_binary(I))/binary, ".key">>, K) ++
+            flatten_member(<<Key/binary, ".entry.", (integer_to_binary(I))/binary, ".value">>, V)
+     || {I, {K, V}} <- lists:enumerate(maps:to_list(Value)), K =/= undefined, V =/= undefined
+    ]);
 flatten_member(Key, Value) when is_tuple(Value) ->
     flatten_structure(Key, Value);
 flatten_member(Key, Value) ->

@@ -5,8 +5,10 @@ decode_event(Map = #{}) ->
         [{K, _V}] -> {unknown, K};
         _ -> undefined
     end;
-decode_event(undefined) -> undefined;
-decode_event(null) -> undefined.
+decode_event(undefined) ->
+    undefined;
+decode_event(null) ->
+    undefined.
 
 encode_event({message, V}) -> #{<<"message">> => V};
 encode_event({code, V}) -> #{<<"code">> => V};

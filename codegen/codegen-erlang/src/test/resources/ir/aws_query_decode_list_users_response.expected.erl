@@ -7,6 +7,8 @@ decode_list_users_response(#http_response{status = 200, body = Body}) ->
             {ok, #list_users_output{
                 users = xml_child_list(Result, <<"Users">>, <<"member">>)
             }};
-        {error, Reason} -> {error, Reason}
+        {error, Reason} ->
+            {error, Reason}
     end;
-decode_list_users_response(#http_response{status = Status, body = Body}) -> decode_query_error(Status, Body).
+decode_list_users_response(#http_response{status = Status, body = Body}) ->
+    decode_query_error(Status, Body).

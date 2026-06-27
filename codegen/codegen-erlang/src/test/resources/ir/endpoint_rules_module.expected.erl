@@ -6,7 +6,8 @@
 -type endpoint_params() :: #{binary() => term()}.
 
 -spec resolve(client_config(), endpoint_params()) -> {ok, #{url := binary()}} | {error, term()}.
-resolve(Config, Params) -> aws_endpoint_rules:evaluate(?ENDPOINT_RULE_SET, merge_params(Config, Params)).
+resolve(Config, Params) ->
+    aws_endpoint_rules:evaluate(?ENDPOINT_RULE_SET, merge_params(Config, Params)).
 
 merge_params(Config, Params) ->
     ConfigParams = config_to_rule_params(Config),
@@ -19,7 +20,10 @@ config_to_rule_params(Config) ->
         Value -> #{<<"Region">> => Value}
     end.
 
-client_context_params(Config) -> maps:merge(optional_param(Config, region, <<"Region">>), optional_param(Config, bucket, <<"Bucket">>)).
+client_context_params(Config) ->
+    maps:merge(
+        optional_param(Config, region, <<"Region">>), optional_param(Config, bucket, <<"Bucket">>)
+    ).
 
 optional_param(Config, Key, RuleKey) ->
     case maps:get(Key, Config, undefined) of
