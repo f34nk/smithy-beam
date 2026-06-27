@@ -36,8 +36,38 @@ public record ErlangContext(
         BeamProtocolCodegen protocolCodegen,
         ShapeId resolvedProtocolTraitId,
         String moduleName,
-        String definitionFile)
+        String definitionFile,
+        ErlangClientModuleBuilder clientModuleBuilderOrNull)
         implements CodegenContext<BeamSettings, ErlangWriter, ErlangIntegration> {
+
+    public ErlangContext(
+            Model model,
+            BeamSettings settings,
+            SymbolProvider symbolProvider,
+            FileManifest fileManifest,
+            WriterDelegator<ErlangWriter> writerDelegator,
+            List<ErlangIntegration> integrations,
+            ServiceShape service,
+            BeamHttpBindings httpBindings,
+            BeamProtocolCodegen protocolCodegen,
+            ShapeId resolvedProtocolTraitId,
+            String moduleName,
+            String definitionFile) {
+        this(
+                model,
+                settings,
+                symbolProvider,
+                fileManifest,
+                writerDelegator,
+                integrations,
+                service,
+                httpBindings,
+                protocolCodegen,
+                resolvedProtocolTraitId,
+                moduleName,
+                definitionFile,
+                null);
+    }
 
     public boolean hasWireProtocol() {
         return BeamProtocolSupport.hasWireCodegen(
