@@ -1,547 +1,510 @@
 package io.smithy.beam.test;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import io.smithy.beam.erlang.ErlangTypesPlugin;
+import java.net.URL;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.FileManifest;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.build.PluginContext;
+import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.node.ObjectNode;
-import software.amazon.smithy.codegen.core.CodegenException;
-
-import java.net.URL;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ErlangTypesPluginTest {
 
-    private static final String TYPES_FILE = "basic_service_types.hrl";
+  private static final String TYPES_FILE = "basic_service_types.hrl";
 
-    private static Model loadModel() {
-        URL resource = ErlangTypesPluginTest.class.getResource("/model/basic.smithy");
-        assertThat(resource).isNotNull();
-        return Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
+  private static Model loadModel() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/basic.smithy");
+    assertThat(resource).isNotNull();
+    return Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+  }
+
+  private static PluginContext buildContext(Model model, FileManifest manifest) {
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.basic#BasicService")
+            .withMember("edition", "2026")
+            .build();
+    return PluginContext.builder().model(model).fileManifest(manifest).settings(settings).build();
+  }
+
+  @Test
+  void generatesExpectedTypesInBasicServiceTypesHeader() {
+    Model model = loadModel();
+    MockManifest manifest = new MockManifest();
+
+    new ErlangTypesPlugin().execute(buildContext(model, manifest));
+
+    String content = manifest.expectFileString(TYPES_FILE);
+
+    assertThat(content)
+        .contains("%% Record and type definitions for the basic_service_types model.")
+        .contains("-type basic_string() :: binary().")
+        .contains("-type basic_integer() :: integer().")
+        .contains("-type basic_long() :: integer().")
+        .contains("-type basic_float() :: float().")
+        .contains("-type basic_boolean() :: boolean().")
+        .contains("-type basic_blob() :: binary().")
+        .contains("-type basic_byte() :: integer().")
+        .contains("-type basic_short() :: integer().")
+        .contains("-type basic_double() :: float().")
+        .contains("-type basic_big_integer() :: integer().")
+        .contains("-type basic_timestamp() :: erlang:timestamp().")
+        .contains("-type basic_document() :: term().")
+        .contains("-type basic_list() :: [basic_string()].")
+        .contains("-type basic_map() :: #{basic_string() => basic_string()}.")
+        .contains("-type basic_status() :: active | inactive | pending | {unknown, binary()}.")
+        .contains("-type basic_priority() :: low | medium | high | {unknown, integer()}.")
+        .contains("-type basic_union() ::")
+        .contains("{text, basic_string()}")
+        .contains("{number, basic_integer()}")
+        .contains("{flag, basic_boolean()}")
+        .contains("{unknown, binary()}")
+        .contains("-record(basic_item, {")
+        .contains("name :: basic_string(),")
+        .contains("count :: basic_integer() | undefined")
+        .contains("-type basic_item() :: #basic_item{}.");
+  }
+
+  private static Model loadReservedWordsModel() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/reserved_words.smithy");
+    assertThat(resource).isNotNull();
+    return Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+  }
+
+  private static PluginContext buildReservedWordsContext(MockManifest manifest) {
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.reserved#ReservedService")
+            .withMember("edition", "2026")
+            .build();
+    return PluginContext.builder()
+        .model(loadReservedWordsModel())
+        .fileManifest(manifest)
+        .settings(settings)
+        .build();
+  }
+
+  @Test
+  void restJson1ServiceEmitsTypesOnlyWithoutWireModules() {
+    Model model = loadReservedWordsModel();
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.reserved#ReservedService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+    assertThat(manifest.expectFileString("reserved_service_types.hrl")).contains("-type");
+    assertThat(manifest.getFileString("reserved_service_rest_json_1.erl")).isEmpty();
+    assertThat(manifest.getFileString("reserved_service_router.erl")).isEmpty();
+    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
+  }
+
+  @Test
+  void reservedWordsEscapeAndDeconflictInErlangOutput() {
+    MockManifest manifest = new MockManifest();
+    new ErlangTypesPlugin().execute(buildReservedWordsContext(manifest));
+    String content = manifest.expectFileString("reserved_service_types.hrl");
+    assertThat(content)
+        .contains("after_")
+        .contains("begin_")
+        .contains("case_")
+        .contains("end_")
+        .contains("receive_")
+        .contains("{case_, rw_string()}")
+        .contains("{end_, rw_string()}")
+        .contains("receive_ ::")
+        .contains("after_ ::")
+        .contains("my_type_2");
+    assertThat(content).contains("and_").contains("or_");
+  }
+
+  private static Model loadErrorShapesModel() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/error_shapes.smithy");
+    assertThat(resource).isNotNull();
+    return Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+  }
+
+  @Test
+  void errorShapeEmitsRecordWithModeledMetadata() {
+    Model model = loadErrorShapesModel();
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.error_shapes#ErrorShapeService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+
+    String content = manifest.expectFileString("error_shape_service_types.hrl");
+
+    assertThat(content)
+        .contains("%% Error shape: smithy.beam.demo.error_shapes#ServiceUnavailable (server)")
+        .contains("-record(service_unavailable, {")
+        .contains("message :: binary() | undefined,")
+        .contains("%% fault: server | retryable: true | throttling: false")
+        .contains("'__beam_error_kind' = server :: client | server")
+        .contains("-type service_unavailable() :: #service_unavailable{}.");
+  }
+
+  @Test
+  void defaultsToOnlyServiceWhenServiceSettingOmitted() {
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings = ObjectNode.builder().withMember("edition", "2026").build();
+    PluginContext context =
+        PluginContext.builder()
+            .model(loadModel())
+            .fileManifest(manifest)
+            .settings(settings)
+            .build();
+    new ErlangTypesPlugin().execute(context);
+    assertThat(manifest.expectFileString("basic_service_types.hrl"))
+        .contains("-type basic_string()");
+  }
+
+  @Test
+  void multipleServicesWithoutExplicitServiceSettingFails() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/multi_service.smithy");
+    assertThat(resource).isNotNull();
+    Model model = Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+    ObjectNode settings = ObjectNode.builder().withMember("edition", "2026").build();
+    PluginContext context =
+        PluginContext.builder()
+            .model(model)
+            .fileManifest(new MockManifest())
+            .settings(settings)
+            .build();
+    assertThatThrownBy(() -> new ErlangTypesPlugin().execute(context))
+        .isInstanceOf(CodegenException.class)
+        .hasMessageContaining("service");
+  }
+
+  @Test
+  void missingEditionFails() {
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings =
+        ObjectNode.builder().withMember("service", "smithy.beam.demo.basic#BasicService").build();
+    PluginContext context =
+        PluginContext.builder()
+            .model(loadModel())
+            .fileManifest(manifest)
+            .settings(settings)
+            .build();
+    assertThatThrownBy(() -> new ErlangTypesPlugin().execute(context))
+        .isInstanceOf(CodegenException.class)
+        .hasMessageContaining("edition");
+  }
+
+  private static Model loadMultiServiceModel() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/multi_service.smithy");
+    assertThat(resource).isNotNull();
+    return Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+  }
+
+  private static PluginContext pluginContext(
+      Model model, MockManifest manifest, ObjectNode settings) {
+    return PluginContext.builder().model(model).fileManifest(manifest).settings(settings).build();
+  }
+
+  @Test
+  void relativeDateAndRelativeVersionWithModelProtocolDoNotChangeMultiServiceTypesOutput() {
+    Model model = loadMultiServiceModel();
+    MockManifest baseline = new MockManifest();
+    ObjectNode baselineSettings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.multi#ServiceA")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
+
+    MockManifest extended = new MockManifest();
+    ObjectNode extendedSettings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.multi#ServiceA")
+            .withMember("edition", "2026")
+            .withMember("relativeDate", "2026-01-01")
+            .withMember("relativeVersion", "1.0.0")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, extended, extendedSettings));
+
+    assertThat(extended.expectFileString("service_a_types.hrl"))
+        .isEqualTo(baseline.expectFileString("service_a_types.hrl"));
+  }
+
+  private static Model loadRelativeDeprecationModel() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/relative_deprecation.smithy");
+    assertThat(resource).isNotNull();
+    return Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+  }
+
+  private static Model loadMemberOrderModel() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/member_order.smithy");
+    assertThat(resource).isNotNull();
+    return Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+  }
+
+  private static Model loadNullableMembersModel() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/nullable_members.smithy");
+    assertThat(resource).isNotNull();
+    return Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+  }
+
+  private static Model loadSparseCollectionsModel() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/sparse_collections.smithy");
+    assertThat(resource).isNotNull();
+    return Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+  }
+
+  private static Model loadRecursiveTreeModel() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/recursive_tree.smithy");
+    assertThat(resource).isNotNull();
+    return Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+  }
+
+  private static Model loadDedicatedOperationIoModel() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/dedicated_operation_io.smithy");
+    assertThat(resource).isNotNull();
+    return Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+  }
+
+  private static Model loadStreamingBlobModel() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/streaming_blob.smithy");
+    assertThat(resource).isNotNull();
+    return Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+  }
+
+  private static int countOccurrences(String haystack, String needle) {
+    int count = 0;
+    int index = 0;
+    while ((index = haystack.indexOf(needle, index)) != -1) {
+      count++;
+      index += needle.length();
     }
+    return count;
+  }
 
-    private static PluginContext buildContext(Model model, FileManifest manifest) {
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.basic#BasicService")
-                .withMember("edition", "2026")
-                .build();
-        return PluginContext.builder()
-                .model(model)
-                .fileManifest(manifest)
-                .settings(settings)
-                .build();
-    }
+  @Test
+  void recursiveAggregatesReferenceNamedTypeAliases() {
+    Model model = loadRecursiveTreeModel();
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.recursive_tree#RecursiveTreeService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-    @Test
-    void generatesExpectedTypesInBasicServiceTypesHeader() {
-        Model model = loadModel();
-        MockManifest manifest = new MockManifest();
+    String content = manifest.expectFileString("recursive_tree_service_types.hrl");
 
-        new ErlangTypesPlugin().execute(buildContext(model, manifest));
+    assertThat(content)
+        .contains("-type rt_string() :: binary().")
+        .contains("-type rt_node_list() :: [rt_node()].")
+        .contains("-type rt_node_map() :: #{rt_string() => rt_node()}.")
+        .contains("-record(rt_node, {")
+        .contains("label :: rt_string(),")
+        .contains("children :: rt_node_list()")
+        .contains("by_key :: rt_node_map()")
+        .contains("-type rt_node() :: #rt_node{}.");
 
-        String content = manifest.expectFileString(TYPES_FILE);
+    assertThat(countOccurrences(content, "-type rt_string() ::")).isEqualTo(1);
+    assertThat(countOccurrences(content, "-type rt_node_list() ::")).isEqualTo(1);
+    assertThat(countOccurrences(content, "-type rt_node_map() ::")).isEqualTo(1);
+    assertThat(countOccurrences(content, "-type rt_node() ::")).isEqualTo(1);
+    assertThat(countOccurrences(content, "-record(rt_node, {")).isEqualTo(1);
 
-        assertThat(content)
-                .contains("%% Record and type definitions for the basic_service_types model.")
-                .contains("-type basic_string() :: binary().")
-                .contains("-type basic_integer() :: integer().")
-                .contains("-type basic_long() :: integer().")
-                .contains("-type basic_float() :: float().")
-                .contains("-type basic_boolean() :: boolean().")
-                .contains("-type basic_blob() :: binary().")
-                .contains("-type basic_byte() :: integer().")
-                .contains("-type basic_short() :: integer().")
-                .contains("-type basic_double() :: float().")
-                .contains("-type basic_big_integer() :: integer().")
-                .contains("-type basic_timestamp() :: erlang:timestamp().")
-                .contains("-type basic_document() :: term().")
-                .contains("-type basic_list() :: [basic_string()].")
-                .contains("-type basic_map() :: #{basic_string() => basic_string()}.")
-                .contains("-type basic_status() :: active | inactive | pending | {unknown, binary()}.")
-                .contains("-type basic_priority() :: low | medium | high | {unknown, integer()}.")
-                .contains("-type basic_union() ::")
-                .contains("{text, basic_string()}")
-                .contains("{number, basic_integer()}")
-                .contains("{flag, basic_boolean()}")
-                .contains("{unknown, binary()}")
-                .contains("-record(basic_item, {")
-                .contains("name :: basic_string(),")
-                .contains("count :: basic_integer() | undefined")
-                .contains("-type basic_item() :: #basic_item{}.");
-    }
+    assertThat(content).doesNotContain("[#rt_node");
+    assertThat(content).doesNotContain("[#{");
+  }
 
-    private static Model loadReservedWordsModel() {
-        URL resource = ErlangTypesPluginTest.class.getResource("/model/reserved_words.smithy");
-        assertThat(resource).isNotNull();
-        return Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-    }
+  @Test
+  void sparseListAndMapShapesWidenElementAndValueTypes() {
+    Model model = loadSparseCollectionsModel();
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.sparse_collections#SparseCollectionsService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-    private static PluginContext buildReservedWordsContext(MockManifest manifest) {
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.reserved#ReservedService")
-                .withMember("edition", "2026")
-                .build();
-        return PluginContext.builder()
-                .model(loadReservedWordsModel())
-                .fileManifest(manifest)
-                .settings(settings)
-                .build();
-    }
+    String content = manifest.expectFileString("sparse_collections_service_types.hrl");
 
-    @Test
-    void restJson1ServiceEmitsTypesOnlyWithoutWireModules() {
-        Model model = loadReservedWordsModel();
-        MockManifest manifest = new MockManifest();
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.reserved#ReservedService")
-                .withMember("edition", "2026")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+    assertThat(content)
+        .contains("-type sc_sparse_list() :: [sc_string() | undefined].")
+        .contains("-type sc_sparse_map() :: #{sc_string() => sc_integer() | undefined}.");
+  }
 
-        assertThat(manifest.expectFileString("reserved_service_types.hrl")).contains("-type");
-        assertThat(manifest.getFileString("reserved_service_rest_json_1.erl")).isEmpty();
-        assertThat(manifest.getFileString("reserved_service_router.erl")).isEmpty();
-        assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
-    }
+  @Test
+  void mixedRequiredAndOptionalMembersFollowNullableIndex() {
+    Model model = loadNullableMembersModel();
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.nullable_members#NullableMembersService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-    @Test
-    void reservedWordsEscapeAndDeconflictInErlangOutput() {
-        MockManifest manifest = new MockManifest();
-        new ErlangTypesPlugin().execute(buildReservedWordsContext(manifest));
-        String content = manifest.expectFileString("reserved_service_types.hrl");
-        assertThat(content)
-                .contains("after_")
-                .contains("begin_")
-                .contains("case_")
-                .contains("end_")
-                .contains("receive_")
-                .contains("{case_, rw_string()}")
-                .contains("{end_, rw_string()}")
-                .contains("receive_ ::")
-                .contains("after_ ::")
-                .contains("my_type_2");
-        assertThat(content).contains("and_").contains("or_");
-    }
+    String content = manifest.expectFileString("nullable_members_service_types.hrl");
 
-    private static Model loadErrorShapesModel() {
-        URL resource = ErlangTypesPluginTest.class.getResource("/model/error_shapes.smithy");
-        assertThat(resource).isNotNull();
-        return Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-    }
+    assertThat(content)
+        .contains("-type nm_list() :: [nm_string()].")
+        .contains("label :: nm_string(),")
+        .contains("count :: nm_integer() | undefined")
+        .contains("tags :: nm_list() | undefined");
+    assertThat(content.substring(content.indexOf("-record(mixed_nullable")))
+        .doesNotContain("label :: nm_string() | undefined");
+  }
 
-    @Test
-    void errorShapeEmitsRecordWithModeledMetadata() {
-        Model model = loadErrorShapesModel();
-        MockManifest manifest = new MockManifest();
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.error_shapes#ErrorShapeService")
-                .withMember("edition", "2026")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
+  @Test
+  void streamingBlobAliasCarriesStreamingPayloadComment() {
+    Model model = loadStreamingBlobModel();
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.streaming_blob#StreamingBlobService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-        String content = manifest.expectFileString("error_shape_service_types.hrl");
+    String content = manifest.expectFileString("streaming_blob_service_types.hrl");
 
-        assertThat(content)
-                .contains(
-                        "%% Error shape: smithy.beam.demo.error_shapes#ServiceUnavailable (server)")
-                .contains("-record(service_unavailable, {")
-                .contains("message :: binary() | undefined,")
-                .contains("%% fault: server | retryable: true | throttling: false")
-                .contains("'__beam_error_kind' = server :: client | server")
-                .contains("-type service_unavailable() :: #service_unavailable{}.");
-    }
+    assertThat(content)
+        .contains(
+            "%% streaming payload; framing deferred to protocol layer",
+            "-type sb_streaming_payload() :: binary().")
+        .contains("-type sb_blob() :: binary().");
+    assertThat(content).doesNotContain("sb_blob() :: binary().       %% streaming");
+  }
 
-    @Test
-    void defaultsToOnlyServiceWhenServiceSettingOmitted() {
-            MockManifest manifest = new MockManifest();
-            ObjectNode settings = ObjectNode.builder().withMember("edition", "2026").build();
-            PluginContext context = PluginContext.builder()
-                            .model(loadModel())
-                            .fileManifest(manifest)
-                            .settings(settings)
-                            .build();
-            new ErlangTypesPlugin().execute(context);
-            assertThat(manifest.expectFileString("basic_service_types.hrl")).contains("-type basic_string()");
-    }
+  @Test
+  void dedicatedOperationIoEmitsCompactEmptyRecordsForUnitLikeStructures() {
+    Model model = loadDedicatedOperationIoModel();
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.dedicated_io#DedicatedIoService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-    @Test
-    void multipleServicesWithoutExplicitServiceSettingFails() {
-            URL resource = ErlangTypesPluginTest.class.getResource("/model/multi_service.smithy");
-            assertThat(resource).isNotNull();
-            Model model = Model.assembler()
-                            .addImport(resource)
-                            .discoverModels()
-                            .assemble()
-                            .unwrap();
-            ObjectNode settings = ObjectNode.builder().withMember("edition", "2026").build();
-            PluginContext context = PluginContext.builder()
-                            .model(model)
-                            .fileManifest(new MockManifest())
-                            .settings(settings)
-                            .build();
-            assertThatThrownBy(() -> new ErlangTypesPlugin().execute(context))
-                            .isInstanceOf(CodegenException.class)
-                            .hasMessageContaining("service");
-    }
+    String content = manifest.expectFileString("dedicated_io_service_types.hrl");
 
-    @Test
-    void missingEditionFails() {
-            MockManifest manifest = new MockManifest();
-            ObjectNode settings = ObjectNode.builder()
-                            .withMember("service", "smithy.beam.demo.basic#BasicService")
-                            .build();
-            PluginContext context = PluginContext.builder()
-                            .model(loadModel())
-                            .fileManifest(manifest)
-                            .settings(settings)
-                            .build();
-            assertThatThrownBy(() -> new ErlangTypesPlugin().execute(context))
-                            .isInstanceOf(CodegenException.class)
-                            .hasMessageContaining("edition");
-    }
+    assertThat(content)
+        .contains("-record(health_check_input, {}).")
+        .contains("-type health_check_input() :: #health_check_input{}.")
+        .contains("-record(health_check_output, {}).")
+        .contains("-type health_check_output() :: #health_check_output{}.");
+    assertThat(countOccurrences(content, "-record(health_check_input, {}).")).isEqualTo(1);
+    assertThat(countOccurrences(content, "-record(health_check_output, {}).")).isEqualTo(1);
+    assertThat(content).doesNotContain("-record(health_check_input, {\n");
+    assertThat(content).doesNotContain("-record(health_check_output, {\n");
+  }
 
-    private static Model loadMultiServiceModel() {
-        URL resource = ErlangTypesPluginTest.class.getResource("/model/multi_service.smithy");
-        assertThat(resource).isNotNull();
-        return Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-    }
+  @Test
+  void structureRecordFieldsFollowSmithyMemberDeclarationOrder() {
+    Model model = loadMemberOrderModel();
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.member_order#MemberOrderService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-    private static PluginContext pluginContext(Model model, MockManifest manifest, ObjectNode settings) {
-        return PluginContext.builder()
-                .model(model)
-                .fileManifest(manifest)
-                .settings(settings)
-                .build();
-    }
+    String content = manifest.expectFileString("member_order_service_types.hrl");
+    int zebra = content.indexOf("zebra ::");
+    int alpha = content.indexOf("alpha ::");
+    int mike = content.indexOf("mike ::");
+    assertThat(zebra).isGreaterThan(-1);
+    assertThat(alpha).isGreaterThan(-1);
+    assertThat(mike).isGreaterThan(-1);
+    assertThat(zebra).isLessThan(alpha);
+    assertThat(alpha).isLessThan(mike);
+  }
 
-    @Test
-    void relativeDateAndRelativeVersionWithModelProtocolDoNotChangeMultiServiceTypesOutput() {
-        Model model = loadMultiServiceModel();
-        MockManifest baseline = new MockManifest();
-        ObjectNode baselineSettings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.multi#ServiceA")
-                .withMember("edition", "2026")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
+  @Test
+  void relativeDateRemovesDeprecatedStringShapeFromGeneratedTypes() {
+    Model model = loadRelativeDeprecationModel();
 
-        MockManifest extended = new MockManifest();
-        ObjectNode extendedSettings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.multi#ServiceA")
-                .withMember("edition", "2026")
-                .withMember("relativeDate", "2026-01-01")
-                .withMember("relativeVersion", "1.0.0")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, extended, extendedSettings));
+    MockManifest baseline = new MockManifest();
+    ObjectNode baselineSettings =
+        ObjectNode.builder()
+            .withMember(
+                "service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
+    assertThat(baseline.expectFileString("relative_deprecation_service_types.hrl"))
+        .contains("-type legacy_string() :: binary().");
 
-        assertThat(extended.expectFileString("service_a_types.hrl"))
-                .isEqualTo(baseline.expectFileString("service_a_types.hrl"));
-    }
+    MockManifest filtered = new MockManifest();
+    ObjectNode filteredSettings =
+        ObjectNode.builder()
+            .withMember(
+                "service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
+            .withMember("edition", "2026")
+            .withMember("relativeDate", "2026-01-01")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, filtered, filteredSettings));
+    assertThat(filtered.expectFileString("relative_deprecation_service_types.hrl"))
+        .doesNotContain("-type legacy_string() :: binary().");
+  }
 
-    private static Model loadRelativeDeprecationModel() {
-        URL resource = ErlangTypesPluginTest.class.getResource("/model/relative_deprecation.smithy");
-        assertThat(resource).isNotNull();
-        return Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-    }
+  @Test
+  void documentedTypesEmitShapeAndMemberDocs() {
+    URL resource = ErlangTypesPluginTest.class.getResource("/model/documented_types.smithy");
+    assertThat(resource).isNotNull();
+    Model model = Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.documented_types#DocumentedTypesService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
 
-    private static Model loadMemberOrderModel() {
-        URL resource = ErlangTypesPluginTest.class.getResource("/model/member_order.smithy");
-        assertThat(resource).isNotNull();
-        return Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-    }
+    String content = manifest.expectFileString("documented_types_service_types.hrl");
 
-    private static Model loadNullableMembersModel() {
-        URL resource = ErlangTypesPluginTest.class.getResource("/model/nullable_members.smithy");
-        assertThat(resource).isNotNull();
-        return Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-    }
+    assertThat(content).contains("%% @doc");
+    assertThat(content).contains("A documented structure with member docs.");
+    assertThat(content).contains("%% @doc name");
+    assertThat(content).contains("Human-readable item name.");
+    assertThat(content).contains("-type documented_status()");
+    assertThat(content).contains("String enum with documented variants.");
+  }
 
-    private static Model loadSparseCollectionsModel() {
-        URL resource = ErlangTypesPluginTest.class.getResource("/model/sparse_collections.smithy");
-        assertThat(resource).isNotNull();
-        return Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-    }
+  @Test
+  void relativeVersionRemovesDeprecatedStringShapeFromGeneratedTypes() {
+    Model model = loadRelativeDeprecationModel();
 
-    private static Model loadRecursiveTreeModel() {
-        URL resource = ErlangTypesPluginTest.class.getResource("/model/recursive_tree.smithy");
-        assertThat(resource).isNotNull();
-        return Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-    }
+    MockManifest baseline = new MockManifest();
+    ObjectNode baselineSettings =
+        ObjectNode.builder()
+            .withMember(
+                "service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
+    assertThat(baseline.expectFileString("relative_deprecation_service_types.hrl"))
+        .contains("-type legacy_version_string() :: binary().");
 
-    private static Model loadDedicatedOperationIoModel() {
-        URL resource = ErlangTypesPluginTest.class.getResource("/model/dedicated_operation_io.smithy");
-        assertThat(resource).isNotNull();
-        return Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-    }
-
-    private static Model loadStreamingBlobModel() {
-        URL resource = ErlangTypesPluginTest.class.getResource("/model/streaming_blob.smithy");
-        assertThat(resource).isNotNull();
-        return Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-    }
-
-    private static int countOccurrences(String haystack, String needle) {
-        int count = 0;
-        int index = 0;
-        while ((index = haystack.indexOf(needle, index)) != -1) {
-            count++;
-            index += needle.length();
-        }
-        return count;
-    }
-
-    @Test
-    void recursiveAggregatesReferenceNamedTypeAliases() {
-        Model model = loadRecursiveTreeModel();
-        MockManifest manifest = new MockManifest();
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.recursive_tree#RecursiveTreeService")
-                .withMember("edition", "2026")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
-
-        String content = manifest.expectFileString("recursive_tree_service_types.hrl");
-
-        assertThat(content)
-                .contains("-type rt_string() :: binary().")
-                .contains("-type rt_node_list() :: [rt_node()].")
-                .contains("-type rt_node_map() :: #{rt_string() => rt_node()}.")
-                .contains("-record(rt_node, {")
-                .contains("label :: rt_string(),")
-                .contains("children :: rt_node_list()")
-                .contains("by_key :: rt_node_map()")
-                .contains("-type rt_node() :: #rt_node{}.");
-
-        assertThat(countOccurrences(content, "-type rt_string() ::")).isEqualTo(1);
-        assertThat(countOccurrences(content, "-type rt_node_list() ::")).isEqualTo(1);
-        assertThat(countOccurrences(content, "-type rt_node_map() ::")).isEqualTo(1);
-        assertThat(countOccurrences(content, "-type rt_node() ::")).isEqualTo(1);
-        assertThat(countOccurrences(content, "-record(rt_node, {")).isEqualTo(1);
-
-        assertThat(content).doesNotContain("[#rt_node");
-        assertThat(content).doesNotContain("[#{");
-    }
-
-    @Test
-    void sparseListAndMapShapesWidenElementAndValueTypes() {
-        Model model = loadSparseCollectionsModel();
-        MockManifest manifest = new MockManifest();
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.sparse_collections#SparseCollectionsService")
-                .withMember("edition", "2026")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
-
-        String content = manifest.expectFileString("sparse_collections_service_types.hrl");
-
-        assertThat(content)
-                .contains("-type sc_sparse_list() :: [sc_string() | undefined].")
-                .contains("-type sc_sparse_map() :: #{sc_string() => sc_integer() | undefined}.");
-    }
-
-    @Test
-    void mixedRequiredAndOptionalMembersFollowNullableIndex() {
-        Model model = loadNullableMembersModel();
-        MockManifest manifest = new MockManifest();
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.nullable_members#NullableMembersService")
-                .withMember("edition", "2026")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
-
-        String content = manifest.expectFileString("nullable_members_service_types.hrl");
-
-        assertThat(content)
-                .contains("-type nm_list() :: [nm_string()].")
-                .contains("label :: nm_string(),")
-                .contains("count :: nm_integer() | undefined")
-                .contains("tags :: nm_list() | undefined");
-        assertThat(content.substring(content.indexOf("-record(mixed_nullable")))
-                .doesNotContain("label :: nm_string() | undefined");
-    }
-
-    @Test
-    void streamingBlobAliasCarriesStreamingPayloadComment() {
-        Model model = loadStreamingBlobModel();
-        MockManifest manifest = new MockManifest();
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.streaming_blob#StreamingBlobService")
-                .withMember("edition", "2026")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
-
-        String content = manifest.expectFileString("streaming_blob_service_types.hrl");
-
-        assertThat(content)
-                .contains(
-                        "%% streaming payload; framing deferred to protocol layer",
-                        "-type sb_streaming_payload() :: binary().")
-                .contains("-type sb_blob() :: binary().");
-        assertThat(content).doesNotContain("sb_blob() :: binary().       %% streaming");
-    }
-
-    @Test
-    void dedicatedOperationIoEmitsCompactEmptyRecordsForUnitLikeStructures() {
-        Model model = loadDedicatedOperationIoModel();
-        MockManifest manifest = new MockManifest();
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.dedicated_io#DedicatedIoService")
-                .withMember("edition", "2026")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
-
-        String content = manifest.expectFileString("dedicated_io_service_types.hrl");
-
-        assertThat(content)
-                .contains("-record(health_check_input, {}).")
-                .contains("-type health_check_input() :: #health_check_input{}.")
-                .contains("-record(health_check_output, {}).")
-                .contains("-type health_check_output() :: #health_check_output{}.");
-        assertThat(countOccurrences(content, "-record(health_check_input, {}).")).isEqualTo(1);
-        assertThat(countOccurrences(content, "-record(health_check_output, {}).")).isEqualTo(1);
-        assertThat(content).doesNotContain("-record(health_check_input, {\n");
-        assertThat(content).doesNotContain("-record(health_check_output, {\n");
-    }
-
-    @Test
-    void structureRecordFieldsFollowSmithyMemberDeclarationOrder() {
-        Model model = loadMemberOrderModel();
-        MockManifest manifest = new MockManifest();
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.member_order#MemberOrderService")
-                .withMember("edition", "2026")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
-
-        String content = manifest.expectFileString("member_order_service_types.hrl");
-        int zebra = content.indexOf("zebra ::");
-        int alpha = content.indexOf("alpha ::");
-        int mike = content.indexOf("mike ::");
-        assertThat(zebra).isGreaterThan(-1);
-        assertThat(alpha).isGreaterThan(-1);
-        assertThat(mike).isGreaterThan(-1);
-        assertThat(zebra).isLessThan(alpha);
-        assertThat(alpha).isLessThan(mike);
-    }
-
-    @Test
-    void relativeDateRemovesDeprecatedStringShapeFromGeneratedTypes() {
-        Model model = loadRelativeDeprecationModel();
-
-        MockManifest baseline = new MockManifest();
-        ObjectNode baselineSettings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
-                .withMember("edition", "2026")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
-        assertThat(baseline.expectFileString("relative_deprecation_service_types.hrl"))
-                .contains("-type legacy_string() :: binary().");
-
-        MockManifest filtered = new MockManifest();
-        ObjectNode filteredSettings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
-                .withMember("edition", "2026")
-                .withMember("relativeDate", "2026-01-01")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, filtered, filteredSettings));
-        assertThat(filtered.expectFileString("relative_deprecation_service_types.hrl"))
-                .doesNotContain("-type legacy_string() :: binary().");
-    }
-
-    @Test
-    void documentedTypesEmitShapeAndMemberDocs() {
-        URL resource = ErlangTypesPluginTest.class.getResource("/model/documented_types.smithy");
-        assertThat(resource).isNotNull();
-        Model model = Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-        MockManifest manifest = new MockManifest();
-        ObjectNode settings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.documented_types#DocumentedTypesService")
-                .withMember("edition", "2026")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, manifest, settings));
-
-        String content = manifest.expectFileString("documented_types_service_types.hrl");
-
-        assertThat(content).contains("%% @doc");
-        assertThat(content).contains("A documented structure with member docs.");
-        assertThat(content).contains("%% @doc name");
-        assertThat(content).contains("Human-readable item name.");
-        assertThat(content).contains("-type documented_status()");
-        assertThat(content).contains("String enum with documented variants.");
-    }
-
-    @Test
-    void relativeVersionRemovesDeprecatedStringShapeFromGeneratedTypes() {
-        Model model = loadRelativeDeprecationModel();
-
-        MockManifest baseline = new MockManifest();
-        ObjectNode baselineSettings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
-                .withMember("edition", "2026")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, baseline, baselineSettings));
-        assertThat(baseline.expectFileString("relative_deprecation_service_types.hrl"))
-                .contains("-type legacy_version_string() :: binary().");
-
-        MockManifest filtered = new MockManifest();
-        ObjectNode filteredSettings = ObjectNode.builder()
-                .withMember("service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
-                .withMember("edition", "2026")
-                .withMember("relativeVersion", "1.0.0")
-                .build();
-        new ErlangTypesPlugin().execute(pluginContext(model, filtered, filteredSettings));
-        assertThat(filtered.expectFileString("relative_deprecation_service_types.hrl"))
-                .doesNotContain("-type legacy_version_string() :: binary().");
-    }
+    MockManifest filtered = new MockManifest();
+    ObjectNode filteredSettings =
+        ObjectNode.builder()
+            .withMember(
+                "service", "smithy.beam.demo.relative_deprecation#RelativeDeprecationService")
+            .withMember("edition", "2026")
+            .withMember("relativeVersion", "1.0.0")
+            .build();
+    new ErlangTypesPlugin().execute(pluginContext(model, filtered, filteredSettings));
+    assertThat(filtered.expectFileString("relative_deprecation_service_types.hrl"))
+        .doesNotContain("-type legacy_version_string() :: binary().");
+  }
 }

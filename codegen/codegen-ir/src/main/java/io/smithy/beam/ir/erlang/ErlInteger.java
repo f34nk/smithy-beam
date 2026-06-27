@@ -3,22 +3,22 @@ package io.smithy.beam.ir.erlang;
 import java.util.List;
 
 public final class ErlInteger implements ErlExpr {
-    private final long value;
+  private final long value;
 
-    public ErlInteger(long value) {
-        this.value = value;
-    }
+  public ErlInteger(long value) {
+    this.value = value;
+  }
 
-    public static ErlInteger integer(long value) {
-        return new ErlInteger(value);
-    }
+  public static ErlInteger integer(long value) {
+    return new ErlInteger(value);
+  }
 
-    public long value() {
-        return value;
-    }
+  public long value() {
+    return value;
+  }
 
-    @Override
-    public List<String> lines() {
-        return List.of(Long.toString(value));
-    }
+  @Override
+  public List<String> lines() {
+    return List.of(Long.toString(value));
+  }
 }

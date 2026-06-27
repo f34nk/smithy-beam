@@ -1,5 +1,7 @@
 package io.smithy.beam.test;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.smithy.beam.elixir.ElixirClientPlugin;
 import io.smithy.beam.erlang.ErlangClientPlugin;
 import org.junit.jupiter.api.Test;
@@ -8,11 +10,10 @@ import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.node.ObjectNode;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class IdempotencyTokenTest {
 
-    private static final String MODEL = """
+  private static final String MODEL =
+      """
             $version: "2"
             namespace smithy.beam.test.idempotencytoken
 
@@ -42,61 +43,68 @@ class IdempotencyTokenTest {
             }
             """;
 
-    private static Model loadModel() {
-        return Model.assembler()
-                .addUnparsedModel("test.smithy", MODEL)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-    }
+  private static Model loadModel() {
+    return Model.assembler()
+        .addUnparsedModel("test.smithy", MODEL)
+        .discoverModels()
+        .assemble()
+        .unwrap();
+  }
 
-    private static MockManifest runErlangPlugin(Model model) {
-        MockManifest manifest = new MockManifest();
-        new ErlangClientPlugin().execute(PluginContext.builder()
+  private static MockManifest runErlangPlugin(Model model) {
+    MockManifest manifest = new MockManifest();
+    new ErlangClientPlugin()
+        .execute(
+            PluginContext.builder()
                 .model(model)
                 .fileManifest(manifest)
-                .settings(ObjectNode.builder()
-                        .withMember("service",
-                                "smithy.beam.test.idempotencytoken#IdempotencyTokenService")
+                .settings(
+                    ObjectNode.builder()
+                        .withMember(
+                            "service", "smithy.beam.test.idempotencytoken#IdempotencyTokenService")
                         .withMember("edition", "2026")
                         .build())
                 .build());
-        return manifest;
-    }
+    return manifest;
+  }
 
-    private static MockManifest runElixirPlugin(Model model) {
-        MockManifest manifest = new MockManifest();
-        new ElixirClientPlugin().execute(PluginContext.builder()
+  private static MockManifest runElixirPlugin(Model model) {
+    MockManifest manifest = new MockManifest();
+    new ElixirClientPlugin()
+        .execute(
+            PluginContext.builder()
                 .model(model)
                 .fileManifest(manifest)
-                .settings(ObjectNode.builder()
-                        .withMember("service",
-                                "smithy.beam.test.idempotencytoken#IdempotencyTokenService")
+                .settings(
+                    ObjectNode.builder()
+                        .withMember(
+                            "service", "smithy.beam.test.idempotencytoken#IdempotencyTokenService")
                         .withMember("edition", "2026")
                         .build())
                 .build());
-        return manifest;
-    }
+    return manifest;
+  }
 
-    @Test
-    void idempotencyTokenAutoFillInErlangRequestEncoder() {
-        MockManifest manifest = runErlangPlugin(loadModel());
-        String codec = manifest.getFileString("idempotency_token_service_rest_json_1.erl").orElse("");
-        assertThat(codec).contains("encode_create_resource_request(");
-        assertThat(codec).contains("Input1 = case Input#create_resource_input.client_token of");
-        assertThat(codec).contains("undefined -> Input#create_resource_input{ client_token = generate_uuid() }");
-        assertThat(codec).contains("ClientToken = Input1#create_resource_input.client_token");
-        assertThat(codec).contains("generate_uuid() ->");
-        assertThat(codec).contains("uuid:to_string(uuid:v4())");
-    }
+  @Test
+  void idempotencyTokenAutoFillInErlangRequestEncoder() {
+    MockManifest manifest = runErlangPlugin(loadModel());
+    String codec = manifest.getFileString("idempotency_token_service_rest_json_1.erl").orElse("");
+    assertThat(codec).contains("encode_create_resource_request(");
+    assertThat(codec).contains("Input1 = case Input#create_resource_input.client_token of");
+    assertThat(codec)
+        .contains("undefined -> Input#create_resource_input{ client_token = generate_uuid() }");
+    assertThat(codec).contains("ClientToken = Input1#create_resource_input.client_token");
+    assertThat(codec).contains("generate_uuid() ->");
+    assertThat(codec).contains("uuid:to_string(uuid:v4())");
+  }
 
-    @Test
-    void idempotencyTokenAutoFillInElixirRequestEncoder() {
-        MockManifest manifest = runElixirPlugin(loadModel());
-        String codec = manifest.getFileString("idempotency_token_service_rest_json_1.ex").orElse("");
-        assertThat(codec).contains("def encode_create_resource_request(input) do");
-        assertThat(codec).contains("case input.client_token do");
-        assertThat(codec).contains("nil -> %{input | client_token: generate_uuid()}");
-        assertThat(codec).contains("defp generate_uuid do");
-    }
+  @Test
+  void idempotencyTokenAutoFillInElixirRequestEncoder() {
+    MockManifest manifest = runElixirPlugin(loadModel());
+    String codec = manifest.getFileString("idempotency_token_service_rest_json_1.ex").orElse("");
+    assertThat(codec).contains("def encode_create_resource_request(input) do");
+    assertThat(codec).contains("case input.client_token do");
+    assertThat(codec).contains("nil -> %{input | client_token: generate_uuid()}");
+    assertThat(codec).contains("defp generate_uuid do");
+  }
 }

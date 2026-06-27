@@ -5,34 +5,29 @@ import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.codegen.core.directed.CodegenDirector;
 
-/**
- * Runs Elixir type generation then client-specific DirectedCodegen on the same
- * file manifest.
- */
+/** Runs Elixir type generation then client-specific DirectedCodegen on the same file manifest. */
 public final class ElixirClientGeneration {
 
-    /**
-     * Runs types then client codegen using the given Smithy-Build plugin context.
-     */
-    public void generate(PluginContext context) {
-        new ElixirTypeGeneration().generate(context);
+  /** Runs types then client codegen using the given Smithy-Build plugin context. */
+  public void generate(PluginContext context) {
+    new ElixirTypeGeneration().generate(context);
 
-        CodegenDirector<ElixirWriter, ElixirIntegration, ElixirContext, BeamSettings> runner =
-                new CodegenDirector<>();
+    CodegenDirector<ElixirWriter, ElixirIntegration, ElixirContext, BeamSettings> runner =
+        new CodegenDirector<>();
 
-        runner.directedCodegen(new ElixirClientDirectedCodegen());
-        runner.integrationClass(ElixirIntegration.class);
-        runner.fileManifest(context.getFileManifest());
-        runner.integrationSettings(context.getSettings());
-        context.getPluginClassLoader().ifPresent(runner::integrationClassLoader);
-        runner.model(context.getModel());
+    runner.directedCodegen(new ElixirClientDirectedCodegen());
+    runner.integrationClass(ElixirIntegration.class);
+    runner.fileManifest(context.getFileManifest());
+    runner.integrationSettings(context.getSettings());
+    context.getPluginClassLoader().ifPresent(runner::integrationClassLoader);
+    runner.model(context.getModel());
 
-        BeamSettings settings = runner.settings(BeamSettings.class, context.getSettings());
-        var serviceId = settings.resolveService(context.getModel());
-        runner.service(serviceId);
+    BeamSettings settings = runner.settings(BeamSettings.class, context.getSettings());
+    var serviceId = settings.resolveService(context.getModel());
+    runner.service(serviceId);
 
-        BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
 
-        runner.run();
-    }
+    runner.run();
+  }
 }

@@ -1,22 +1,5 @@
 package io.smithy.beam.core;
 
-import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
-import org.mockito.Mockito;
-import software.amazon.smithy.codegen.core.directed.CodegenDirector;
-import software.amazon.smithy.model.Model;
-import software.amazon.smithy.model.transform.ModelTransformer;
-import software.amazon.smithy.model.shapes.OperationShape;
-import software.amazon.smithy.model.shapes.ServiceShape;
-import software.amazon.smithy.model.shapes.ShapeId;
-import software.amazon.smithy.model.shapes.StructureShape;
-import software.amazon.smithy.model.shapes.EnumShape;
-
-import java.lang.reflect.Field;
-import java.net.URL;
-import java.util.List;
-import java.util.function.BiFunction;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -24,232 +7,235 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import java.lang.reflect.Field;
+import java.net.URL;
+import java.util.List;
+import java.util.function.BiFunction;
+import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
+import org.mockito.Mockito;
+import software.amazon.smithy.codegen.core.directed.CodegenDirector;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.shapes.EnumShape;
+import software.amazon.smithy.model.shapes.OperationShape;
+import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
+import software.amazon.smithy.model.shapes.StructureShape;
+import software.amazon.smithy.model.transform.ModelTransformer;
+
 class BeamCodegenTransformsTest {
 
-    private static final String SMITHY_PIN = "1.54.0";
+  private static final String SMITHY_PIN = "1.54.0";
 
-    private static final ShapeId SERVICE_ID = ShapeId.from("example.com#MyService");
-    private static final ShapeId ORPHAN_ID = ShapeId.from("example.com#Orphan");
+  private static final ShapeId SERVICE_ID = ShapeId.from("example.com#MyService");
+  private static final ShapeId ORPHAN_ID = ShapeId.from("example.com#Orphan");
 
-    @Test
-    void codegenDirectorReflectionFields_matchSmithyPin() throws Exception {
-        Field transformsField =
-                CodegenDirector.class.getDeclaredField(BeamCodegenTransforms.CODEGEN_DIRECTOR_TRANSFORMS_FIELD);
-        Field modelField =
-                CodegenDirector.class.getDeclaredField(BeamCodegenTransforms.CODEGEN_DIRECTOR_MODEL_FIELD);
+  @Test
+  void codegenDirectorReflectionFields_matchSmithyPin() throws Exception {
+    Field transformsField =
+        CodegenDirector.class.getDeclaredField(
+            BeamCodegenTransforms.CODEGEN_DIRECTOR_TRANSFORMS_FIELD);
+    Field modelField =
+        CodegenDirector.class.getDeclaredField(BeamCodegenTransforms.CODEGEN_DIRECTOR_MODEL_FIELD);
 
-        assertThat(transformsField.getName()).isEqualTo("transforms");
-        assertThat(modelField.getName()).isEqualTo("model");
-        assertThat(SMITHY_PIN).isEqualTo("1.54.0");
-    }
+    assertThat(transformsField.getName()).isEqualTo("transforms");
+    assertThat(modelField.getName()).isEqualTo("model");
+    assertThat(SMITHY_PIN).isEqualTo("1.54.0");
+  }
 
-    @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    void applySharedCodegenTransforms_invokesDirectorStepsIncludingRelativeFilters() {
-        CodegenDirector runner = runnerWithService();
-        BeamSettings settings = new BeamSettings();
-        settings.edition("2026");
-        settings.service(SERVICE_ID);
-        settings.relativeDate(" 2026-06-01 ");
-        settings.relativeVersion(" 1.2.3 ");
+  @Test
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  void applySharedCodegenTransforms_invokesDirectorStepsIncludingRelativeFilters() {
+    CodegenDirector runner = runnerWithService();
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    settings.service(SERVICE_ID);
+    settings.relativeDate(" 2026-06-01 ");
+    settings.relativeVersion(" 1.2.3 ");
 
-        BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
 
-        InOrder order = inOrder(runner);
-        order.verify(runner).performDefaultCodegenTransforms();
-        order.verify(runner).createDedicatedInputsAndOutputs();
-        order.verify(runner).removeShapesDeprecatedBeforeDate("2026-06-01");
-        order.verify(runner).removeShapesDeprecatedBeforeVersion("1.2.3");
-    }
+    InOrder order = inOrder(runner);
+    order.verify(runner).performDefaultCodegenTransforms();
+    order.verify(runner).createDedicatedInputsAndOutputs();
+    order.verify(runner).removeShapesDeprecatedBeforeDate("2026-06-01");
+    order.verify(runner).removeShapesDeprecatedBeforeVersion("1.2.3");
+  }
 
-    @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    void applySharedCodegenTransforms_skipsDeprecationFilters_whenRelativeFieldsBlankOrWhitespace() {
-        CodegenDirector runner = runnerWithService();
-        BeamSettings settings = new BeamSettings();
-        settings.edition("2026");
-        settings.service(SERVICE_ID);
-        settings.relativeDate("   ");
-        settings.relativeVersion("\t");
+  @Test
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  void applySharedCodegenTransforms_skipsDeprecationFilters_whenRelativeFieldsBlankOrWhitespace() {
+    CodegenDirector runner = runnerWithService();
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    settings.service(SERVICE_ID);
+    settings.relativeDate("   ");
+    settings.relativeVersion("\t");
 
-        BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
 
-        verify(runner).performDefaultCodegenTransforms();
-        verify(runner).createDedicatedInputsAndOutputs();
-        verify(runner, never()).removeShapesDeprecatedBeforeDate(anyString());
-        verify(runner, never()).removeShapesDeprecatedBeforeVersion(anyString());
-    }
+    verify(runner).performDefaultCodegenTransforms();
+    verify(runner).createDedicatedInputsAndOutputs();
+    verify(runner, never()).removeShapesDeprecatedBeforeDate(anyString());
+    verify(runner, never()).removeShapesDeprecatedBeforeVersion(anyString());
+  }
 
-    @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    void applySharedCodegenTransforms_skipsDeprecationFilters_whenRelativeFieldsUnset() {
-        CodegenDirector runner = runnerWithService();
-        BeamSettings settings = new BeamSettings();
-        settings.edition("2026");
-        settings.service(SERVICE_ID);
+  @Test
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  void applySharedCodegenTransforms_skipsDeprecationFilters_whenRelativeFieldsUnset() {
+    CodegenDirector runner = runnerWithService();
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    settings.service(SERVICE_ID);
 
-        BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
 
-        verify(runner).performDefaultCodegenTransforms();
-        verify(runner).createDedicatedInputsAndOutputs();
-        verify(runner, never()).removeShapesDeprecatedBeforeDate(anyString());
-        verify(runner, never()).removeShapesDeprecatedBeforeVersion(anyString());
-    }
+    verify(runner).performDefaultCodegenTransforms();
+    verify(runner).createDedicatedInputsAndOutputs();
+    verify(runner, never()).removeShapesDeprecatedBeforeDate(anyString());
+    verify(runner, never()).removeShapesDeprecatedBeforeVersion(anyString());
+  }
 
-    @Test
-    void pruneModelToServiceClosure_retainsProtocolTraitDefinitions() {
-        URL resource = BeamCodegenTransformsTest.class.getResource("/model/protocol_rest_json_fixture.smithy");
-        assertThat(resource).isNotNull();
-        Model model = Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-        ShapeId serviceId = ShapeId.from("smithy.beam.demo.protocoljson#DemoRestJson");
-        ServiceShape service = model.expectShape(serviceId, ServiceShape.class);
+  @Test
+  void pruneModelToServiceClosure_retainsProtocolTraitDefinitions() {
+    URL resource =
+        BeamCodegenTransformsTest.class.getResource("/model/protocol_rest_json_fixture.smithy");
+    assertThat(resource).isNotNull();
+    Model model = Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+    ShapeId serviceId = ShapeId.from("smithy.beam.demo.protocoljson#DemoRestJson");
+    ServiceShape service = model.expectShape(serviceId, ServiceShape.class);
 
-        Model pruned = BeamCodegenTransforms.pruneModelToServiceClosure(model, service);
+    Model pruned = BeamCodegenTransforms.pruneModelToServiceClosure(model, service);
 
-        assertThat(BeamProtocolResolver.resolveServiceProtocol(pruned, service)).isPresent();
-    }
+    assertThat(BeamProtocolResolver.resolveServiceProtocol(pruned, service)).isPresent();
+  }
 
-    @Test
-    void pruneModelToServiceClosure_removesShapesOutsideServiceClosure() {
-        Model model = modelWithOrphanShape();
-        ServiceShape service = model.expectShape(SERVICE_ID, ServiceShape.class);
+  @Test
+  void pruneModelToServiceClosure_removesShapesOutsideServiceClosure() {
+    Model model = modelWithOrphanShape();
+    ServiceShape service = model.expectShape(SERVICE_ID, ServiceShape.class);
 
-        Model pruned = BeamCodegenTransforms.pruneModelToServiceClosure(model, service);
+    Model pruned = BeamCodegenTransforms.pruneModelToServiceClosure(model, service);
 
-        assertThat(pruned.getShape(ORPHAN_ID)).isEmpty();
-        assertThat(pruned.getShape(SERVICE_ID)).isPresent();
-    }
+    assertThat(pruned.getShape(ORPHAN_ID)).isEmpty();
+    assertThat(pruned.getShape(SERVICE_ID)).isPresent();
+  }
 
-    @Test
-    void pruneModelToServiceClosure_doesNotThrow_onLargeAwsLikeClosure() {
-        Model model = modelWithEnumInServiceClosure();
-        ServiceShape service = model.expectShape(SERVICE_ID, ServiceShape.class);
-        ShapeId enumId = ShapeId.from("example.com#OrderStatus");
+  @Test
+  void pruneModelToServiceClosure_doesNotThrow_onLargeAwsLikeClosure() {
+    Model model = modelWithEnumInServiceClosure();
+    ServiceShape service = model.expectShape(SERVICE_ID, ServiceShape.class);
+    ShapeId enumId = ShapeId.from("example.com#OrderStatus");
 
-        assertThatCode(() -> BeamCodegenTransforms.pruneModelToServiceClosure(model, service))
-                .doesNotThrowAnyException();
+    assertThatCode(() -> BeamCodegenTransforms.pruneModelToServiceClosure(model, service))
+        .doesNotThrowAnyException();
 
-        Model pruned = BeamCodegenTransforms.pruneModelToServiceClosure(model, service);
-        assertThat(pruned.getShape(SERVICE_ID)).isPresent();
-        assertThat(pruned.getShape(enumId)).isPresent();
-        EnumShape status = pruned.expectShape(enumId, EnumShape.class);
-        assertThat(status.getEnumValues()).isNotEmpty();
-    }
+    Model pruned = BeamCodegenTransforms.pruneModelToServiceClosure(model, service);
+    assertThat(pruned.getShape(SERVICE_ID)).isPresent();
+    assertThat(pruned.getShape(enumId)).isPresent();
+    EnumShape status = pruned.expectShape(enumId, EnumShape.class);
+    assertThat(status.getEnumValues()).isNotEmpty();
+  }
 
-    @Test
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    void applySharedCodegenTransforms_prunesUnreachableShapesViaReflectionWithoutThrowing()
-            throws Exception {
-        Model model = modelWithOrphanShape();
-        CodegenDirector runner = new CodegenDirector<>();
-        runner.model(model);
-        runner.service(SERVICE_ID);
-        BeamSettings settings = new BeamSettings();
-        settings.edition("2026");
-        settings.service(SERVICE_ID);
+  @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  void applySharedCodegenTransforms_prunesUnreachableShapesViaReflectionWithoutThrowing()
+      throws Exception {
+    Model model = modelWithOrphanShape();
+    CodegenDirector runner = new CodegenDirector<>();
+    runner.model(model);
+    runner.service(SERVICE_ID);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    settings.service(SERVICE_ID);
 
-        assertThatCode(() -> BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings))
-                .doesNotThrowAnyException();
+    assertThatCode(() -> BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings))
+        .doesNotThrowAnyException();
 
-        Model transformed = BeamCodegenTransforms.applyDirectorTransforms(runner);
-        assertThat(transformed.getShape(ORPHAN_ID)).isEmpty();
-        assertThat(transformed.getShape(SERVICE_ID)).isPresent();
+    Model transformed = BeamCodegenTransforms.applyDirectorTransforms(runner);
+    assertThat(transformed.getShape(ORPHAN_ID)).isEmpty();
+    assertThat(transformed.getShape(SERVICE_ID)).isPresent();
 
-        Field transformsField =
-                CodegenDirector.class.getDeclaredField(BeamCodegenTransforms.CODEGEN_DIRECTOR_TRANSFORMS_FIELD);
-        transformsField.setAccessible(true);
-        List<BiFunction<Model, ModelTransformer, Model>> transforms =
-                (List<BiFunction<Model, ModelTransformer, Model>>) transformsField.get(runner);
-        assertThat(transforms).isNotEmpty();
-    }
+    Field transformsField =
+        CodegenDirector.class.getDeclaredField(
+            BeamCodegenTransforms.CODEGEN_DIRECTOR_TRANSFORMS_FIELD);
+    transformsField.setAccessible(true);
+    List<BiFunction<Model, ModelTransformer, Model>> transforms =
+        (List<BiFunction<Model, ModelTransformer, Model>>) transformsField.get(runner);
+    assertThat(transforms).isNotEmpty();
+  }
 
-    @Test
-    void pruneModelToServiceClosure_retainsWaiterReferencedErrorShapes() {
-        URL resource = BeamCodegenTransformsTest.class
-                .getResource("/model/waiter_external_error_fixture.smithy");
-        assertThat(resource).isNotNull();
-        Model model = Model.assembler()
-                .addImport(resource)
-                .addImport(BeamCodegenTransformsTest.class
-                        .getResource("/model/waiter_external_error_external.smithy"))
-                .discoverModels()
-                .assemble()
-                .unwrap();
-        ShapeId serviceId = ShapeId.from("smithy.beam.test.waiter_errors#WaiterExternalErrorService");
-        ShapeId errorId = ShapeId.from("smithy.beam.test.waiter_errors.external#ExternalNotFound");
-        ServiceShape service = model.expectShape(serviceId, ServiceShape.class);
+  @Test
+  void pruneModelToServiceClosure_retainsWaiterReferencedErrorShapes() {
+    URL resource =
+        BeamCodegenTransformsTest.class.getResource("/model/waiter_external_error_fixture.smithy");
+    assertThat(resource).isNotNull();
+    Model model =
+        Model.assembler()
+            .addImport(resource)
+            .addImport(
+                BeamCodegenTransformsTest.class.getResource(
+                    "/model/waiter_external_error_external.smithy"))
+            .discoverModels()
+            .assemble()
+            .unwrap();
+    ShapeId serviceId = ShapeId.from("smithy.beam.test.waiter_errors#WaiterExternalErrorService");
+    ShapeId errorId = ShapeId.from("smithy.beam.test.waiter_errors.external#ExternalNotFound");
+    ServiceShape service = model.expectShape(serviceId, ServiceShape.class);
 
-        Model pruned = BeamCodegenTransforms.pruneModelToServiceClosure(model, service);
+    Model pruned = BeamCodegenTransforms.pruneModelToServiceClosure(model, service);
 
-        assertThat(pruned.getShape(errorId)).isPresent();
-        assertThat(BeamWaiterIndex.referencedErrorShapeIds(pruned, pruned.expectShape(serviceId, ServiceShape.class)))
-                .contains(errorId);
-    }
+    assertThat(pruned.getShape(errorId)).isPresent();
+    assertThat(
+            BeamWaiterIndex.referencedErrorShapeIds(
+                pruned, pruned.expectShape(serviceId, ServiceShape.class)))
+        .contains(errorId);
+  }
 
-    @SuppressWarnings("rawtypes")
-    private static CodegenDirector runnerWithService() {
-        CodegenDirector runner = Mockito.spy(new CodegenDirector<>());
-        runner.model(modelWithOrphanShape());
-        runner.service(SERVICE_ID);
-        return runner;
-    }
+  @SuppressWarnings("rawtypes")
+  private static CodegenDirector runnerWithService() {
+    CodegenDirector runner = Mockito.spy(new CodegenDirector<>());
+    runner.model(modelWithOrphanShape());
+    runner.service(SERVICE_ID);
+    return runner;
+  }
 
-    private static Model modelWithEnumInServiceClosure() {
-        ShapeId enumId = ShapeId.from("example.com#OrderStatus");
-        ShapeId orphanEnumId = ShapeId.from("example.com#OrphanStatus");
-        ShapeId bundleId = ShapeId.from("example.com#OrderBundle");
-        ShapeId opId = ShapeId.from("example.com#GetOrder");
-        ServiceShape service = ServiceShape.builder()
-                .id(SERVICE_ID)
-                .version("1")
-                .addOperation(opId)
-                .build();
-        OperationShape operation = OperationShape.builder()
-                .id(opId)
-                .output(bundleId)
-                .build();
-        EnumShape status = EnumShape.builder()
-                .id(enumId)
-                .addMember("ACTIVE", "ACTIVE")
-                .addMember("INACTIVE", "INACTIVE")
-                .build();
-        EnumShape orphanStatus = EnumShape.builder()
-                .id(orphanEnumId)
-                .addMember("A", "A")
-                .build();
-        StructureShape bundle = StructureShape.builder()
-                .id(bundleId)
-                .addMember("status", enumId)
-                .build();
-        return Model.assembler()
-                .addShape(service)
-                .addShape(operation)
-                .addShape(status)
-                .addShape(orphanStatus)
-                .addShape(bundle)
-                .assemble()
-                .unwrap();
-    }
+  private static Model modelWithEnumInServiceClosure() {
+    ShapeId enumId = ShapeId.from("example.com#OrderStatus");
+    ShapeId orphanEnumId = ShapeId.from("example.com#OrphanStatus");
+    ShapeId bundleId = ShapeId.from("example.com#OrderBundle");
+    ShapeId opId = ShapeId.from("example.com#GetOrder");
+    ServiceShape service =
+        ServiceShape.builder().id(SERVICE_ID).version("1").addOperation(opId).build();
+    OperationShape operation = OperationShape.builder().id(opId).output(bundleId).build();
+    EnumShape status =
+        EnumShape.builder()
+            .id(enumId)
+            .addMember("ACTIVE", "ACTIVE")
+            .addMember("INACTIVE", "INACTIVE")
+            .build();
+    EnumShape orphanStatus = EnumShape.builder().id(orphanEnumId).addMember("A", "A").build();
+    StructureShape bundle =
+        StructureShape.builder().id(bundleId).addMember("status", enumId).build();
+    return Model.assembler()
+        .addShape(service)
+        .addShape(operation)
+        .addShape(status)
+        .addShape(orphanStatus)
+        .addShape(bundle)
+        .assemble()
+        .unwrap();
+  }
 
-    private static Model modelWithOrphanShape() {
-        ServiceShape service = ServiceShape.builder()
-                .id(SERVICE_ID)
-                .version("1")
-                .addOperation(ShapeId.from("example.com#Ping"))
-                .build();
-        OperationShape ping = OperationShape.builder()
-                .id(ShapeId.from("example.com#Ping"))
-                .build();
-        StructureShape orphan = StructureShape.builder().id(ORPHAN_ID).build();
-        return Model.assembler()
-                .addShape(service)
-                .addShape(ping)
-                .addShape(orphan)
-                .assemble()
-                .unwrap();
-    }
+  private static Model modelWithOrphanShape() {
+    ServiceShape service =
+        ServiceShape.builder()
+            .id(SERVICE_ID)
+            .version("1")
+            .addOperation(ShapeId.from("example.com#Ping"))
+            .build();
+    OperationShape ping = OperationShape.builder().id(ShapeId.from("example.com#Ping")).build();
+    StructureShape orphan = StructureShape.builder().id(ORPHAN_ID).build();
+    return Model.assembler().addShape(service).addShape(ping).addShape(orphan).assemble().unwrap();
+  }
 }

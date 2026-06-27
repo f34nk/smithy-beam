@@ -1,17 +1,20 @@
 package io.smithy.beam.core;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-
 class BeamProtocolResolverTest {
 
-    @Test
-    void closureAuditAllowsStreamingBlobShapes() {
-        Model model = Model.assembler()
-                .addUnparsedModel("test.smithy", """
+  @Test
+  void closureAuditAllowsStreamingBlobShapes() {
+    Model model =
+        Model.assembler()
+            .addUnparsedModel(
+                "test.smithy",
+                """
                         $version: "2"
                         namespace test
 
@@ -36,20 +39,25 @@ class BeamProtocolResolverTest {
                         @streaming
                         blob StreamBlob
                         """)
-                .assemble()
-                .unwrap();
+            .assemble()
+            .unwrap();
 
-        ServiceShape service = model.getServiceShapes().iterator().next();
-        var protocol = software.amazon.smithy.model.shapes.ShapeId.from("aws.protocols#restJson1");
+    ServiceShape service = model.getServiceShapes().iterator().next();
+    var protocol = software.amazon.smithy.model.shapes.ShapeId.from("aws.protocols#restJson1");
 
-        assertDoesNotThrow(() -> BeamProtocolResolver.assertClosureSupported(
+    assertDoesNotThrow(
+        () ->
+            BeamProtocolResolver.assertClosureSupported(
                 model, service, protocol, BeamEdition.V2026));
-    }
+  }
 
-    @Test
-    void closureAuditAllowsEventStreamUnions() {
-        Model model = Model.assembler()
-                .addUnparsedModel("test.smithy", """
+  @Test
+  void closureAuditAllowsEventStreamUnions() {
+    Model model =
+        Model.assembler()
+            .addUnparsedModel(
+                "test.smithy",
+                """
                         $version: "2"
                         namespace test
 
@@ -78,13 +86,15 @@ class BeamProtocolResolverTest {
                             value: String
                         }
                         """)
-                .assemble()
-                .unwrap();
+            .assemble()
+            .unwrap();
 
-        ServiceShape service = model.getServiceShapes().iterator().next();
-        var protocol = software.amazon.smithy.model.shapes.ShapeId.from("aws.protocols#restJson1");
+    ServiceShape service = model.getServiceShapes().iterator().next();
+    var protocol = software.amazon.smithy.model.shapes.ShapeId.from("aws.protocols#restJson1");
 
-        assertDoesNotThrow(() -> BeamProtocolResolver.assertClosureSupported(
+    assertDoesNotThrow(
+        () ->
+            BeamProtocolResolver.assertClosureSupported(
                 model, service, protocol, BeamEdition.V2026));
-    }
+  }
 }

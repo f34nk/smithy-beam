@@ -1,41 +1,39 @@
 package io.smithy.beam.test;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.smithy.beam.erlang.ErlangClientPlugin;
+import java.net.URL;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.node.ObjectNode;
 
-import java.net.URL;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 class EnumRoundTripTest {
 
-    @Test
-    void enumCodecHelperEmitsUnknownClause() {
-        URL resource = getClass().getResource("/model/protocol_rest_json_fixture.smithy");
-        assertThat(resource).isNotNull();
-        Model model = Model.assembler()
-                .addImport(resource)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-        MockManifest manifest = new MockManifest();
-        new ErlangClientPlugin().execute(PluginContext.builder()
+  @Test
+  void enumCodecHelperEmitsUnknownClause() {
+    URL resource = getClass().getResource("/model/protocol_rest_json_fixture.smithy");
+    assertThat(resource).isNotNull();
+    Model model = Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+    MockManifest manifest = new MockManifest();
+    new ErlangClientPlugin()
+        .execute(
+            PluginContext.builder()
                 .model(model)
                 .fileManifest(manifest)
-                .settings(ObjectNode.builder()
+                .settings(
+                    ObjectNode.builder()
                         .withMember("service", "smithy.beam.demo.protocoljson#DemoRestJson")
                         .withMember("edition", "2026")
                         .build())
                 .build());
 
-        String codec = manifest.getFileString("demo_rest_json_rest_json_1.erl").orElse("");
-        assertThat(codec).contains("when is_binary(V) -> {unknown, V}");
-        assertThat(codec).contains("encode_");
-        assertThat(codec).contains("{unknown, V}) when is_binary(V) -> V");
-        assertThat(codec).contains("undefined) -> undefined");
-    }
+    String codec = manifest.getFileString("demo_rest_json_rest_json_1.erl").orElse("");
+    assertThat(codec).contains("when is_binary(V) -> {unknown, V}");
+    assertThat(codec).contains("encode_");
+    assertThat(codec).contains("{unknown, V}) when is_binary(V) -> V");
+    assertThat(codec).contains("undefined) -> undefined");
+  }
 }

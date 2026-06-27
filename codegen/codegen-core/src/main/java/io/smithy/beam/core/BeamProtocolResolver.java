@@ -1,5 +1,9 @@
 package io.smithy.beam.core;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.neighbor.Walker;
@@ -10,113 +14,110 @@ import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.traits.ProtocolDefinitionTrait;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
-/**
- * Selects the protocol trait {@link ShapeId} used for codegen for a single service.
- */
+/** Selects the protocol trait {@link ShapeId} used for codegen for a single service. */
 public final class BeamProtocolResolver {
 
-    private BeamProtocolResolver() {}
+  private BeamProtocolResolver() {}
 
-    /**
-     * Resolves the protocol trait id for client/server codegen.
-     *
-     * <p>When {@link BeamSettings#protocol()} is set, returns that id regardless of
-     * protocol traits on the service. An explicit setting wins over a conflicting sole
-     * model trait and does not throw when the service carries multiple protocol traits.
-     * Otherwise delegates to {@link #resolveServiceProtocol}.
-     */
-    public static Optional<ShapeId> resolve(
-            Model model, ServiceShape service, BeamSettings settings) {
-        if (settings.protocol() != null) {
-            return Optional.of(settings.protocol());
-        }
-        return resolveServiceProtocol(model, service);
+  /**
+   * Resolves the protocol trait id for client/server codegen.
+   *
+   * <p>When {@link BeamSettings#protocol()} is set, returns that id regardless of protocol traits
+   * on the service. An explicit setting wins over a conflicting sole model trait and does not throw
+   * when the service carries multiple protocol traits. Otherwise delegates to {@link
+   * #resolveServiceProtocol}.
+   */
+  public static Optional<ShapeId> resolve(
+      Model model, ServiceShape service, BeamSettings settings) {
+    if (settings.protocol() != null) {
+      return Optional.of(settings.protocol());
+    }
+    return resolveServiceProtocol(model, service);
+  }
+
+  /**
+   * Returns the sole protocol trait on the service, or empty when the service declares none.
+   * Ignores {@link BeamSettings#protocol()}.
+   */
+  public static Optional<ShapeId> resolveServiceProtocol(Model model, ServiceShape service) {
+    List<ShapeId> traits = findProtocolTraitIds(model, service);
+    if (traits.isEmpty()) {
+      return Optional.empty();
+    }
+    if (traits.size() > 1) {
+      throw new CodegenException(
+          "Service "
+              + service.getId()
+              + " declares multiple protocol traits: "
+              + traits
+              + ". Attach exactly one protocol trait to the service.");
+    }
+    return Optional.of(traits.get(0));
+  }
+
+  /**
+   * Walks the service closure and fails when shapes are unsupported by the given protocol.
+   *
+   * <p>When unsupported shapes are found, throws {@link CodegenException} with one message listing
+   * every offending shape id.
+   */
+  public static void assertClosureSupported(
+      Model model, ServiceShape service, ShapeId protocol, BeamEdition edition) {
+    Walker walker = new Walker(model);
+    Set<Shape> closure = walker.walkShapes(service);
+
+    List<String> diagnostics = new ArrayList<>();
+    for (Shape shape : closure) {
+      if (shape instanceof BigDecimalShape) {
+        diagnostics.add(
+            shape.getId()
+                + ": bigDecimal is not supported by "
+                + protocol
+                + " without an explicit opt-in codec");
+      }
+      if (BeamProtocolIds.REST_XML.equals(protocol) && shape instanceof DocumentShape) {
+        diagnostics.add(
+            shape.getId()
+                + ": document is not supported by "
+                + protocol
+                + "; restXml does not serialize document types");
+      }
     }
 
-    /**
-     * Returns the sole protocol trait on the service, or empty when the service
-     * declares none. Ignores {@link BeamSettings#protocol()}.
-     */
-    public static Optional<ShapeId> resolveServiceProtocol(Model model, ServiceShape service) {
-        List<ShapeId> traits = findProtocolTraitIds(model, service);
-        if (traits.isEmpty()) {
-            return Optional.empty();
-        }
-        if (traits.size() > 1) {
-            throw new CodegenException(
-                    "Service "
-                            + service.getId()
-                            + " declares multiple protocol traits: "
-                            + traits
-                            + ". Attach exactly one protocol trait to the service.");
-        }
-        return Optional.of(traits.get(0));
+    if (!edition.supportsEventStreams()) {
+      BeamEventStreamIndex index = BeamEventStreamIndex.of(model);
+      index
+          .eventStreamUnions(service)
+          .forEach(
+              union ->
+                  diagnostics.add(
+                      union.getId()
+                          + ": event streams require edition "
+                          + BeamEdition.V2026.label()
+                          + " or later"));
     }
 
-    /**
-     * Walks the service closure and fails when shapes are unsupported by the given protocol.
-     *
-     * <p>When unsupported shapes are found, throws {@link CodegenException} with one message
-     * listing every offending shape id.
-     */
-    public static void assertClosureSupported(
-            Model model, ServiceShape service, ShapeId protocol, BeamEdition edition) {
-        Walker walker = new Walker(model);
-        Set<Shape> closure = walker.walkShapes(service);
-
-        List<String> diagnostics = new ArrayList<>();
-        for (Shape shape : closure) {
-            if (shape instanceof BigDecimalShape) {
-                diagnostics.add(
-                        shape.getId()
-                                + ": bigDecimal is not supported by "
-                                + protocol
-                                + " without an explicit opt-in codec");
-            }
-            if (BeamProtocolIds.REST_XML.equals(protocol) && shape instanceof DocumentShape) {
-                diagnostics.add(
-                        shape.getId()
-                                + ": document is not supported by "
-                                + protocol
-                                + "; restXml does not serialize document types");
-            }
-        }
-
-        if (!edition.supportsEventStreams()) {
-            BeamEventStreamIndex index = BeamEventStreamIndex.of(model);
-            index.eventStreamUnions(service).forEach(union -> diagnostics.add(
-                    union.getId()
-                            + ": event streams require edition "
-                            + BeamEdition.V2026.label()
-                            + " or later"));
-        }
-
-        if (!diagnostics.isEmpty()) {
-            throw new CodegenException(
-                    "Service closure for "
-                            + service.getId()
-                            + " contains "
-                            + diagnostics.size()
-                            + " unsupported shape(s) for protocol "
-                            + protocol
-                            + ":\n"
-                            + String.join("\n", diagnostics));
-        }
+    if (!diagnostics.isEmpty()) {
+      throw new CodegenException(
+          "Service closure for "
+              + service.getId()
+              + " contains "
+              + diagnostics.size()
+              + " unsupported shape(s) for protocol "
+              + protocol
+              + ":\n"
+              + String.join("\n", diagnostics));
     }
+  }
 
-    private static List<ShapeId> findProtocolTraitIds(Model model, ServiceShape service) {
-        List<ShapeId> result = new ArrayList<>();
-        for (ShapeId traitId : service.getAllTraits().keySet()) {
-            Optional<Shape> def = model.getShape(traitId);
-            if (def.isPresent() && def.get().hasTrait(ProtocolDefinitionTrait.ID)) {
-                result.add(traitId);
-            }
-        }
-        return result;
+  private static List<ShapeId> findProtocolTraitIds(Model model, ServiceShape service) {
+    List<ShapeId> result = new ArrayList<>();
+    for (ShapeId traitId : service.getAllTraits().keySet()) {
+      Optional<Shape> def = model.getShape(traitId);
+      if (def.isPresent() && def.get().hasTrait(ProtocolDefinitionTrait.ID)) {
+        result.add(traitId);
+      }
     }
+    return result;
+  }
 }

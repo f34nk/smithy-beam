@@ -1,243 +1,240 @@
 package io.smithy.beam.core;
 
+import java.util.List;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
-import java.util.List;
-
-/**
- * Single place for Elixir artifact paths derived from {@link BeamSettings} and namespace.
- */
+/** Single place for Elixir artifact paths derived from {@link BeamSettings} and namespace. */
 public final class BeamElixirLayout {
 
-    private final BeamSettings settings;
-    private final String namespace;
-    private final String serviceName;
+  private final BeamSettings settings;
+  private final String namespace;
+  private final String serviceName;
 
-    public BeamElixirLayout(BeamSettings settings, String namespace) {
-        this(settings, namespace, (String) null);
-    }
+  public BeamElixirLayout(BeamSettings settings, String namespace) {
+    this(settings, namespace, (String) null);
+  }
 
-    /**
-     * @param serviceName effective service name from {@link BeamServiceNaming#effectiveServiceName},
-     *                    not the raw shape id name
-     */
-    public BeamElixirLayout(BeamSettings settings, String namespace, String serviceName) {
-        this.settings = settings;
-        this.namespace = namespace;
-        this.serviceName = serviceName;
-    }
+  /**
+   * @param serviceName effective service name from {@link BeamServiceNaming#effectiveServiceName},
+   *     not the raw shape id name
+   */
+  public BeamElixirLayout(BeamSettings settings, String namespace, String serviceName) {
+    this.settings = settings;
+    this.namespace = namespace;
+    this.serviceName = serviceName;
+  }
 
-    public BeamElixirLayout(BeamSettings settings, String namespace, ServiceShape service) {
-        this(settings, namespace, BeamServiceNaming.effectiveServiceName(service));
-    }
+  public BeamElixirLayout(BeamSettings settings, String namespace, ServiceShape service) {
+    this(settings, namespace, BeamServiceNaming.effectiveServiceName(service));
+  }
 
-    public String typesModuleName() {
-        return serviceSnakeName() + "_types";
-    }
+  public String typesModuleName() {
+    return serviceSnakeName() + "_types";
+  }
 
-    public String typesModuleFile() {
-        return typesModuleName() + ".ex";
-    }
+  public String typesModuleFile() {
+    return typesModuleName() + ".ex";
+  }
 
-    public String clientModuleFile() {
-        return clientModuleName() + ".ex";
-    }
+  public String clientModuleFile() {
+    return clientModuleName() + ".ex";
+  }
 
-    public String clientModuleName() {
-        return serviceSnakeName() + "_client";
-    }
+  public String clientModuleName() {
+    return serviceSnakeName() + "_client";
+  }
 
-    public String serverModuleFile() {
-        return serverModuleName() + ".ex";
-    }
+  public String serverModuleFile() {
+    return serverModuleName() + ".ex";
+  }
 
-    public String serverModuleName() {
-        return serviceSnakeName() + "_server";
-    }
+  public String serverModuleName() {
+    return serviceSnakeName() + "_server";
+  }
 
-    public String behaviourModuleFile() {
-        return behaviourModuleName() + ".ex";
-    }
+  public String behaviourModuleFile() {
+    return behaviourModuleName() + ".ex";
+  }
 
-    public String behaviourModuleName() {
-        return serviceSnakeName() + "_behaviour";
-    }
+  public String behaviourModuleName() {
+    return serviceSnakeName() + "_behaviour";
+  }
 
-    public String implModuleName() {
-        return serviceSnakeName() + "_impl";
-    }
+  public String implModuleName() {
+    return serviceSnakeName() + "_impl";
+  }
 
-    public String routerModuleFile() {
-        return routerModuleName() + ".ex";
-    }
+  public String routerModuleFile() {
+    return routerModuleName() + ".ex";
+  }
 
-    public String routerModuleName() {
-        return serviceSnakeName() + "_router";
-    }
+  public String routerModuleName() {
+    return serviceSnakeName() + "_router";
+  }
 
-    public String restJson1ModuleFile() {
-        return codecModuleFile();
-    }
+  public String restJson1ModuleFile() {
+    return codecModuleFile();
+  }
 
-    public String codecModuleFile() {
-        return clientCodecModuleName() + ".ex";
-    }
+  public String codecModuleFile() {
+    return clientCodecModuleName() + ".ex";
+  }
 
-    public String clientCodecModuleName() {
-        return clientCodecModuleName(BeamProtocolIds.REST_JSON_1);
-    }
+  public String clientCodecModuleName() {
+    return clientCodecModuleName(BeamProtocolIds.REST_JSON_1);
+  }
 
-    public String clientCodecModuleName(ShapeId protocolTraitId) {
-        return clientCodecModuleName(protocolTraitId, List.of());
-    }
+  public String clientCodecModuleName(ShapeId protocolTraitId) {
+    return clientCodecModuleName(protocolTraitId, List.of());
+  }
 
-    public String clientCodecModuleName(
-            ShapeId protocolTraitId, List<? extends BeamProtocolIntegration> integrations) {
-        return serviceSnakeName()
-                + "_"
-                + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId, integrations);
-    }
+  public String clientCodecModuleName(
+      ShapeId protocolTraitId, List<? extends BeamProtocolIntegration> integrations) {
+    return serviceSnakeName()
+        + "_"
+        + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId, integrations);
+  }
 
-    public String runtimeTypesModuleFile() {
-        return runtimeTypesModuleName() + ".ex";
-    }
+  public String runtimeTypesModuleFile() {
+    return runtimeTypesModuleName() + ".ex";
+  }
 
-    public String runtimeTypesModuleName() {
-        return "runtime_types";
-    }
+  public String runtimeTypesModuleName() {
+    return "runtime_types";
+  }
 
-    public String runtimeHelpersModuleFile() {
-        return runtimeHelpersModuleName() + ".ex";
-    }
+  public String runtimeHelpersModuleFile() {
+    return runtimeHelpersModuleName() + ".ex";
+  }
 
-    public String runtimeHelpersModuleName() {
-        return "runtime_helpers";
-    }
+  public String runtimeHelpersModuleName() {
+    return "runtime_helpers";
+  }
 
-    public String runtimeHttpModuleFile() {
-        return runtimeHttpModuleName() + ".ex";
-    }
+  public String runtimeHttpModuleFile() {
+    return runtimeHttpModuleName() + ".ex";
+  }
 
-    public String runtimeHttpModuleName() {
-        return "runtime_http";
-    }
+  public String runtimeHttpModuleName() {
+    return "runtime_http";
+  }
 
-    public String paginatorsModuleFile() {
-        return paginatorsModuleName() + ".ex";
-    }
+  public String paginatorsModuleFile() {
+    return paginatorsModuleName() + ".ex";
+  }
 
-    public String paginatorsModuleName() {
-        return serviceSnakeName() + "_paginators";
-    }
+  public String paginatorsModuleName() {
+    return serviceSnakeName() + "_paginators";
+  }
 
-    public String retryModuleFile() {
-        return retryModuleName() + ".ex";
-    }
+  public String retryModuleFile() {
+    return retryModuleName() + ".ex";
+  }
 
-    public String retryModuleName() {
-        return serviceSnakeName() + "_retry";
-    }
+  public String retryModuleName() {
+    return serviceSnakeName() + "_retry";
+  }
 
-    public String waitersModuleFile() {
-        return waitersModuleName() + ".ex";
-    }
+  public String waitersModuleFile() {
+    return waitersModuleName() + ".ex";
+  }
 
-    public String waitersModuleName() {
-        return serviceSnakeName() + "_waiters";
-    }
+  public String waitersModuleName() {
+    return serviceSnakeName() + "_waiters";
+  }
 
-    public String complianceTestsModuleFile() {
-        return "test/" + complianceTestsModuleName() + ".ex";
-    }
+  public String complianceTestsModuleFile() {
+    return "test/" + complianceTestsModuleName() + ".ex";
+  }
 
-    public String complianceTestsModuleName() {
-        return serviceSnakeName() + "_compliance_tests";
-    }
+  public String complianceTestsModuleName() {
+    return serviceSnakeName() + "_compliance_tests";
+  }
 
-    public String sigv4ModuleFile() {
-        return sigv4ModuleName() + ".ex";
-    }
+  public String sigv4ModuleFile() {
+    return sigv4ModuleName() + ".ex";
+  }
 
-    public String sigv4ModuleName() {
-        return serviceSnakeName() + "_sigv4";
-    }
+  public String sigv4ModuleName() {
+    return serviceSnakeName() + "_sigv4";
+  }
 
-    public String presignerModuleFile() {
-        return presignerModuleName() + ".ex";
-    }
+  public String presignerModuleFile() {
+    return presignerModuleName() + ".ex";
+  }
 
-    public String presignerModuleName() {
-        return serviceSnakeName() + "_presigner";
-    }
+  public String presignerModuleName() {
+    return serviceSnakeName() + "_presigner";
+  }
 
-    public String credentialsModuleFile() {
-        return credentialsModuleName() + ".ex";
-    }
+  public String credentialsModuleFile() {
+    return credentialsModuleName() + ".ex";
+  }
 
-    public String credentialsModuleName() {
-        return serviceSnakeName() + "_credentials";
-    }
+  public String credentialsModuleName() {
+    return serviceSnakeName() + "_credentials";
+  }
 
-    public String endpointsModuleFile() {
-        return endpointsModuleName() + ".ex";
-    }
+  public String endpointsModuleFile() {
+    return endpointsModuleName() + ".ex";
+  }
 
-    public String endpointsModuleName() {
-        return serviceSnakeName() + "_endpoints";
-    }
+  public String endpointsModuleName() {
+    return serviceSnakeName() + "_endpoints";
+  }
 
-    public String eventStreamModuleFile() {
-        return eventStreamModuleName() + ".ex";
-    }
+  public String eventStreamModuleFile() {
+    return eventStreamModuleName() + ".ex";
+  }
 
-    public String eventStreamModuleName() {
-        return serviceSnakeName() + "_event_stream";
-    }
+  public String eventStreamModuleName() {
+    return serviceSnakeName() + "_event_stream";
+  }
 
-    public String resourceClientModuleFile(String resourceSnakeName) {
-        return resourceClientModuleName(resourceSnakeName) + ".ex";
-    }
+  public String resourceClientModuleFile(String resourceSnakeName) {
+    return resourceClientModuleName(resourceSnakeName) + ".ex";
+  }
 
-    public String resourceClientModuleName(String resourceSnakeName) {
-        return resourceSnakeName + "_resource";
-    }
+  public String resourceClientModuleName(String resourceSnakeName) {
+    return resourceSnakeName + "_resource";
+  }
 
-    public String resourceServerModuleFile(String resourceSnakeName) {
-        return resourceServerModuleName(resourceSnakeName) + ".ex";
-    }
+  public String resourceServerModuleFile(String resourceSnakeName) {
+    return resourceServerModuleName(resourceSnakeName) + ".ex";
+  }
 
-    public String resourceServerModuleName(String resourceSnakeName) {
-        return resourceSnakeName + "_resource";
-    }
+  public String resourceServerModuleName(String resourceSnakeName) {
+    return resourceSnakeName + "_resource";
+  }
 
-    public String serverCodecModuleFile() {
-        return serverCodecModuleName() + ".ex";
-    }
+  public String serverCodecModuleFile() {
+    return serverCodecModuleName() + ".ex";
+  }
 
-    public String serverCodecModuleName() {
-        return serverCodecModuleName(BeamProtocolIds.REST_JSON_1);
-    }
+  public String serverCodecModuleName() {
+    return serverCodecModuleName(BeamProtocolIds.REST_JSON_1);
+  }
 
-    public String serverCodecModuleName(ShapeId protocolTraitId) {
-        return serverCodecModuleName(protocolTraitId, List.of());
-    }
+  public String serverCodecModuleName(ShapeId protocolTraitId) {
+    return serverCodecModuleName(protocolTraitId, List.of());
+  }
 
-    public String serverCodecModuleName(
-            ShapeId protocolTraitId, List<? extends BeamProtocolIntegration> integrations) {
-        return serviceSnakeName()
-                + "_"
-                + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId, integrations);
-    }
+  public String serverCodecModuleName(
+      ShapeId protocolTraitId, List<? extends BeamProtocolIntegration> integrations) {
+    return serviceSnakeName()
+        + "_"
+        + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId, integrations);
+  }
 
-    private String serviceSnakeName() {
-        return BeamServiceNaming.effectiveServiceSnakeName(settings, requireServiceName());
-    }
+  private String serviceSnakeName() {
+    return BeamServiceNaming.effectiveServiceSnakeName(settings, requireServiceName());
+  }
 
-    private String requireServiceName() {
-        if (serviceName == null || serviceName.isEmpty()) {
-            throw new IllegalStateException("serviceName is required for server module layout");
-        }
-        return serviceName;
+  private String requireServiceName() {
+    if (serviceName == null || serviceName.isEmpty()) {
+      throw new IllegalStateException("serviceName is required for server module layout");
     }
+    return serviceName;
+  }
 }

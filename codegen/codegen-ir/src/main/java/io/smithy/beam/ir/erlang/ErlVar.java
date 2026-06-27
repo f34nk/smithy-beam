@@ -3,22 +3,22 @@ package io.smithy.beam.ir.erlang;
 import java.util.List;
 
 public final class ErlVar implements ErlExpr {
-    private final String name;
+  private final String name;
 
-    public ErlVar(String name) {
-        this.name = name;
-    }
+  public ErlVar(String name) {
+    this.name = name;
+  }
 
-    public static ErlVar var(String name) {
-        return new ErlVar(name);
-    }
+  public static ErlVar var(String name) {
+    return new ErlVar(name);
+  }
 
-    public String name() {
-        return name;
-    }
+  public String name() {
+    return name;
+  }
 
-    @Override
-    public List<String> lines() {
-        return List.of(name);
-    }
+  @Override
+  public List<String> lines() {
+    return List.of(name);
+  }
 }

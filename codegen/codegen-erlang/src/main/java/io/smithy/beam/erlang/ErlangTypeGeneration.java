@@ -6,32 +6,33 @@ import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.codegen.core.directed.CodegenDirector;
 
 /**
- * Runs Erlang type generation through {@link CodegenDirector} and
- * {@link ErlangTypeDirectedCodegen}. Call from {@link ErlangTypesPlugin} or from
- * other generators in this module that need the same type output.
+ * Runs Erlang type generation through {@link CodegenDirector} and {@link
+ * ErlangTypeDirectedCodegen}. Call from {@link ErlangTypesPlugin} or from other generators in this
+ * module that need the same type output.
  */
 public final class ErlangTypeGeneration {
 
-    /**
-     * Performs directed codegen for the Erlang types generator using the given
-     * Smithy-Build plugin context.
-     */
-    public void generate(PluginContext context) {
-        CodegenDirector<ErlangWriter, ErlangIntegration, ErlangContext, BeamSettings> runner = new CodegenDirector<>();
+  /**
+   * Performs directed codegen for the Erlang types generator using the given Smithy-Build plugin
+   * context.
+   */
+  public void generate(PluginContext context) {
+    CodegenDirector<ErlangWriter, ErlangIntegration, ErlangContext, BeamSettings> runner =
+        new CodegenDirector<>();
 
-        runner.directedCodegen(new ErlangTypeDirectedCodegen());
-        runner.integrationClass(ErlangIntegration.class);
-        runner.fileManifest(context.getFileManifest());
-        runner.integrationSettings(context.getSettings());
-        context.getPluginClassLoader().ifPresent(runner::integrationClassLoader);
-        runner.model(context.getModel());
+    runner.directedCodegen(new ErlangTypeDirectedCodegen());
+    runner.integrationClass(ErlangIntegration.class);
+    runner.fileManifest(context.getFileManifest());
+    runner.integrationSettings(context.getSettings());
+    context.getPluginClassLoader().ifPresent(runner::integrationClassLoader);
+    runner.model(context.getModel());
 
-        BeamSettings settings = runner.settings(BeamSettings.class, context.getSettings());
-        var resolvedService = settings.resolveService(context.getModel());
-        runner.service(resolvedService);
+    BeamSettings settings = runner.settings(BeamSettings.class, context.getSettings());
+    var resolvedService = settings.resolveService(context.getModel());
+    runner.service(resolvedService);
 
-        BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
 
-        runner.run();
-    }
+    runner.run();
+  }
 }

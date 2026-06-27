@@ -1,5 +1,7 @@
 package io.smithy.beam.test;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.smithy.beam.erlang.ErlangClientPlugin;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -7,11 +9,10 @@ import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.node.ObjectNode;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class ErlangBindingVarParityTest {
 
-    private static final String REST_XML_MODEL = """
+  private static final String REST_XML_MODEL =
+      """
             $version: "2"
             namespace smithy.beam.test.bindingvar.restxml
 
@@ -37,7 +38,8 @@ class ErlangBindingVarParityTest {
             structure CreateResourceOutput {}
             """;
 
-    private static final String AWS_QUERY_MODEL = """
+  private static final String AWS_QUERY_MODEL =
+      """
             $version: "2"
             namespace smithy.beam.test.bindingvar.awsquery
 
@@ -65,55 +67,63 @@ class ErlangBindingVarParityTest {
             structure CreateResourceOutput {}
             """;
 
-    private static String generateRestXmlCodec() {
-        Model model = Model.assembler()
-                .addUnparsedModel("restxml.smithy", REST_XML_MODEL)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-        MockManifest manifest = new MockManifest();
-        new ErlangClientPlugin().execute(PluginContext.builder()
+  private static String generateRestXmlCodec() {
+    Model model =
+        Model.assembler()
+            .addUnparsedModel("restxml.smithy", REST_XML_MODEL)
+            .discoverModels()
+            .assemble()
+            .unwrap();
+    MockManifest manifest = new MockManifest();
+    new ErlangClientPlugin()
+        .execute(
+            PluginContext.builder()
                 .model(model)
                 .fileManifest(manifest)
-                .settings(ObjectNode.builder()
-                        .withMember("service",
-                                "smithy.beam.test.bindingvar.restxml#BindingVarRestXml")
+                .settings(
+                    ObjectNode.builder()
+                        .withMember(
+                            "service", "smithy.beam.test.bindingvar.restxml#BindingVarRestXml")
                         .withMember("edition", "2026")
                         .build())
                 .build());
-        return manifest.getFileString("binding_var_rest_xml_rest_xml.erl").orElse("");
-    }
+    return manifest.getFileString("binding_var_rest_xml_rest_xml.erl").orElse("");
+  }
 
-    private static String generateAwsQueryCodec() {
-        Model model = Model.assembler()
-                .addUnparsedModel("awsquery.smithy", AWS_QUERY_MODEL)
-                .discoverModels()
-                .assemble()
-                .unwrap();
-        MockManifest manifest = new MockManifest();
-        new ErlangClientPlugin().execute(PluginContext.builder()
+  private static String generateAwsQueryCodec() {
+    Model model =
+        Model.assembler()
+            .addUnparsedModel("awsquery.smithy", AWS_QUERY_MODEL)
+            .discoverModels()
+            .assemble()
+            .unwrap();
+    MockManifest manifest = new MockManifest();
+    new ErlangClientPlugin()
+        .execute(
+            PluginContext.builder()
                 .model(model)
                 .fileManifest(manifest)
-                .settings(ObjectNode.builder()
-                        .withMember("service",
-                                "smithy.beam.test.bindingvar.awsquery#BindingVarQuery")
+                .settings(
+                    ObjectNode.builder()
+                        .withMember(
+                            "service", "smithy.beam.test.bindingvar.awsquery#BindingVarQuery")
                         .withMember("edition", "2026")
                         .build())
                 .build());
-        return manifest.getFileString("binding_var_query_aws_query.erl").orElse("");
-    }
+    return manifest.getFileString("binding_var_query_aws_query.erl").orElse("");
+  }
 
-    @Test
-    void restXmlCodecUsesCamelCaseBindingVariables() {
-        String codec = generateRestXmlCodec();
-        assertThat(codec).contains("client_token = ClientToken");
-        assertThat(codec).doesNotContain("Client_token");
-    }
+  @Test
+  void restXmlCodecUsesCamelCaseBindingVariables() {
+    String codec = generateRestXmlCodec();
+    assertThat(codec).contains("client_token = ClientToken");
+    assertThat(codec).doesNotContain("Client_token");
+  }
 
-    @Test
-    void awsQueryCodecUsesCamelCaseBindingVariables() {
-        String codec = generateAwsQueryCodec();
-        assertThat(codec).contains("client_token = ClientToken");
-        assertThat(codec).doesNotContain("Client_token");
-    }
+  @Test
+  void awsQueryCodecUsesCamelCaseBindingVariables() {
+    String codec = generateAwsQueryCodec();
+    assertThat(codec).contains("client_token = ClientToken");
+    assertThat(codec).doesNotContain("Client_token");
+  }
 }

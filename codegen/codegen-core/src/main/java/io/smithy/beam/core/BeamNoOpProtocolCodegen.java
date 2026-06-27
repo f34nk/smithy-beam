@@ -7,20 +7,20 @@ import software.amazon.smithy.model.shapes.ShapeId;
 
 final class BeamNoOpProtocolCodegen implements BeamProtocolCodegen {
 
-    private final ShapeId protocolTraitId;
+  private final ShapeId protocolTraitId;
 
-    BeamNoOpProtocolCodegen(ShapeId protocolTraitId) {
-        this.protocolTraitId = protocolTraitId;
-    }
+  BeamNoOpProtocolCodegen(ShapeId protocolTraitId) {
+    this.protocolTraitId = protocolTraitId;
+  }
 
-    @Override
-    public ShapeId protocolTraitId() {
-        return protocolTraitId;
-    }
+  @Override
+  public ShapeId protocolTraitId() {
+    return protocolTraitId;
+  }
 
-    @Override
-    public void emitOperationBindings(
-            CodegenContext<?, ?, ?> ctx, ServiceShape service, OperationShape operation) {
-        // Language emitters own codec function bodies.
-    }
+  @Override
+  public void emitOperationBindings(
+      CodegenContext<?, ?, ?> ctx, ServiceShape service, OperationShape operation) {
+    // Language emitters own codec function bodies.
+  }
 }

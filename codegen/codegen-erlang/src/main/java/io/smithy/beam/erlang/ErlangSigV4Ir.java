@@ -23,44 +23,46 @@ import io.smithy.beam.ir.erlang.ErlTuple;
 import io.smithy.beam.ir.erlang.ErlTypeDef;
 import io.smithy.beam.ir.erlang.ErlVar;
 import io.smithy.beam.ir.erlang.ErlVarPattern;
-import software.amazon.smithy.model.shapes.ServiceShape;
-
 import java.util.ArrayList;
 import java.util.List;
+import software.amazon.smithy.model.shapes.ServiceShape;
 
 final class ErlangSigV4Ir {
-    private static final String CLIENT_CONFIG = "client_config()";
-    private static final String SIGN_INPUT =
-            CLIENT_CONFIG + ", Operation :: atom(), http_request()";
-    private static final String SIGN_REQUEST_INPUT = "http_request(), map(), binary(), binary(), map()";
-    private static final String PRESIGN_RESULT = "{ok, binary()} | {error, term()}";
+  private static final String CLIENT_CONFIG = "client_config()";
+  private static final String SIGN_INPUT = CLIENT_CONFIG + ", Operation :: atom(), http_request()";
+  private static final String SIGN_REQUEST_INPUT =
+      "http_request(), map(), binary(), binary(), map()";
+  private static final String PRESIGN_RESULT = "{ok, binary()} | {error, term()}";
 
-    private ErlangSigV4Ir() {}
+  private ErlangSigV4Ir() {}
 
-    static ErlModule sigV4Module(String sigV4Mod, String runtimeTypesHeaderFile, ServiceShape service) {
-        return new ErlModule(
-                sigV4Mod,
-                List.of(ErlComment.comment("Generated SigV4 signing hook for " + service.getId() + ".")),
+  static ErlModule sigV4Module(
+      String sigV4Mod, String runtimeTypesHeaderFile, ServiceShape service) {
+    return new ErlModule(
+        sigV4Mod,
+        List.of(ErlComment.comment("Generated SigV4 signing hook for " + service.getId() + ".")),
+        List.of(
+            new ErlAttribute("include", "\"" + runtimeTypesHeaderFile + "\""),
+            ErlExportAttribute.export(
+                List.of("sign/3", "presign/5", "endpoint_host_from_config/1")),
+            clientConfigType()),
+        sigV4Functions());
+  }
+
+  static ErlFunction sign() {
+    return ErlFunction.functionWithSpec(
+        "sign",
+        3,
+        SIGN_INPUT,
+        "http_request()",
+        List.of(
+            ErlClause.blockClause(
                 List.of(
-                        new ErlAttribute("include", "\"" + runtimeTypesHeaderFile + "\""),
-                        ErlExportAttribute.export(List.of("sign/3", "presign/5", "endpoint_host_from_config/1")),
-                        clientConfigType()),
-                sigV4Functions());
-    }
-
-    static ErlFunction sign() {
-        return ErlFunction.functionWithSpec(
-                "sign",
-                3,
-                SIGN_INPUT,
-                "http_request()",
-                List.of(ErlClause.blockClause(
-                        List.of(
-                                ErlVarPattern.varPattern("Config"),
-                                ErlVarPattern.varPattern("Operation"),
-                                ErlVarPattern.varPattern("Request")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
+                    ErlVarPattern.varPattern("Config"),
+                    ErlVarPattern.varPattern("Operation"),
+                    ErlVarPattern.varPattern("Request")),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                 Credentials = maps:get(credentials, Config),
                                 Region = maps:get(region, Config, <<\"us-east-1\">>),
                                 Service = maps:get(signing_name, Config),
@@ -70,23 +72,24 @@ final class ErlangSigV4Ir {
                                     endpoint_host => endpoint_host_from_config(Config)
                                 },
                                 sign_request(Request, Credentials, Region, Service, Opts)"""))));
-    }
+  }
 
-    static ErlFunction presign() {
-        return ErlFunction.functionWithSpec(
-                "presign",
-                5,
-                SIGN_REQUEST_INPUT,
-                PRESIGN_RESULT,
-                List.of(ErlClause.blockClause(
-                        List.of(
-                                ErlVarPattern.varPattern("Request"),
-                                ErlVarPattern.varPattern("Credentials"),
-                                ErlVarPattern.varPattern("Region"),
-                                ErlVarPattern.varPattern("Service"),
-                                ErlVarPattern.varPattern("Opts")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
+  static ErlFunction presign() {
+    return ErlFunction.functionWithSpec(
+        "presign",
+        5,
+        SIGN_REQUEST_INPUT,
+        PRESIGN_RESULT,
+        List.of(
+            ErlClause.blockClause(
+                List.of(
+                    ErlVarPattern.varPattern("Request"),
+                    ErlVarPattern.varPattern("Credentials"),
+                    ErlVarPattern.varPattern("Region"),
+                    ErlVarPattern.varPattern("Service"),
+                    ErlVarPattern.varPattern("Opts")),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                 AccessKeyId = maps:get(access_key_id, Credentials),
                                 SecretAccessKey = maps:get(secret_access_key, Credentials),
                                 DateTime = calendar:universal_time(),
@@ -115,23 +118,24 @@ final class ErlangSigV4Ir {
                                     _:Reason ->
                                         {error, Reason}
                                 end"""))));
-    }
+  }
 
-    static ErlFunction signRequest() {
-        return ErlFunction.functionWithSpec(
-                "sign_request",
-                5,
-                SIGN_REQUEST_INPUT,
-                "http_request()",
-                List.of(ErlClause.blockClause(
-                        List.of(
-                                ErlVarPattern.varPattern("Request"),
-                                ErlVarPattern.varPattern("Credentials"),
-                                ErlVarPattern.varPattern("Region"),
-                                ErlVarPattern.varPattern("Service"),
-                                ErlVarPattern.varPattern("Opts")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
+  static ErlFunction signRequest() {
+    return ErlFunction.functionWithSpec(
+        "sign_request",
+        5,
+        SIGN_REQUEST_INPUT,
+        "http_request()",
+        List.of(
+            ErlClause.blockClause(
+                List.of(
+                    ErlVarPattern.varPattern("Request"),
+                    ErlVarPattern.varPattern("Credentials"),
+                    ErlVarPattern.varPattern("Region"),
+                    ErlVarPattern.varPattern("Service"),
+                    ErlVarPattern.varPattern("Opts")),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                 AccessKeyId = maps:get(access_key_id, Credentials),
                                 SecretAccessKey = maps:get(secret_access_key, Credentials),
                                 DateTime = calendar:universal_time(),
@@ -153,210 +157,209 @@ final class ErlangSigV4Ir {
                                     SignOpts
                                 ),
                                 Request#http_request{headers = SignedHeaders}"""))));
-    }
+  }
 
-    static List<ErlFunction> helperFunctions() {
-        return List.of(
-                resolveHost(),
-                coalesce(),
-                buildUrl(),
-                querySuffix(),
-                ensureHostHeader(),
-                headerHost(),
-                maybeAddSessionToken(),
-                signOptions(),
-                bodyDigestOption(),
-                sessionTokenOption(),
-                endpointHostFromConfig(),
-                splitBaseUrl());
-    }
+  static List<ErlFunction> helperFunctions() {
+    return List.of(
+        resolveHost(),
+        coalesce(),
+        buildUrl(),
+        querySuffix(),
+        ensureHostHeader(),
+        headerHost(),
+        maybeAddSessionToken(),
+        signOptions(),
+        bodyDigestOption(),
+        sessionTokenOption(),
+        endpointHostFromConfig(),
+        splitBaseUrl());
+  }
 
-    private static List<ErlFunction> sigV4Functions() {
-        List<ErlFunction> functions = new ArrayList<>();
-        functions.add(sign());
-        functions.add(presign());
-        functions.add(signRequest());
-        functions.addAll(helperFunctions());
-        return functions;
-    }
+  private static List<ErlFunction> sigV4Functions() {
+    List<ErlFunction> functions = new ArrayList<>();
+    functions.add(sign());
+    functions.add(presign());
+    functions.add(signRequest());
+    functions.addAll(helperFunctions());
+    return functions;
+  }
 
-    private static ErlTypeDef clientConfigType() {
-        return new ErlTypeDef("client_config", "#{binary() => term()}");
-    }
+  private static ErlTypeDef clientConfigType() {
+    return new ErlTypeDef("client_config", "#{binary() => term()}");
+  }
 
-    private static ErlFunction resolveHost() {
-        return ErlFunction.function(
-                "resolve_host",
-                2,
-                List.of(ErlClause.blockClause(
-                        List.of(
-                                ErlRecordPattern.recordPattern(
-                                        "http_request",
-                                        ErlRecordFieldPattern.fieldPattern("host", ErlVarPattern.varPattern("Host")),
-                                        ErlRecordFieldPattern.fieldPattern(
-                                                "headers", ErlVarPattern.varPattern("Headers"))),
-                                ErlVarPattern.varPattern("Opts")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
+  private static ErlFunction resolveHost() {
+    return ErlFunction.function(
+        "resolve_host",
+        2,
+        List.of(
+            ErlClause.blockClause(
+                List.of(
+                    ErlRecordPattern.recordPattern(
+                        "http_request",
+                        ErlRecordFieldPattern.fieldPattern(
+                            "host", ErlVarPattern.varPattern("Host")),
+                        ErlRecordFieldPattern.fieldPattern(
+                            "headers", ErlVarPattern.varPattern("Headers"))),
+                    ErlVarPattern.varPattern("Opts")),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                 coalesce([
                                     Host,
                                     maps:get(host, Opts, undefined),
                                     maps:get(endpoint_host, Opts, undefined),
                                     header_host(Headers)
                                 ])"""))));
-    }
+  }
 
-    private static ErlFunction coalesce() {
-        return ErlFunction.function(
-                "coalesce",
-                1,
+  private static ErlFunction coalesce() {
+    return ErlFunction.function(
+        "coalesce",
+        1,
+        List.of(
+            ErlClause.blockClause(
                 List.of(
-                        ErlClause.blockClause(
-                                List.of(ErlConsPattern.consPattern(
-                                        ErlVarPattern.varPattern("H"), ErlVarPattern.varPattern("Rest"))),
-                                ErlCapturedBlock.capturedBlock(
-                                        """
+                    ErlConsPattern.consPattern(
+                        ErlVarPattern.varPattern("H"), ErlVarPattern.varPattern("Rest"))),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                         case H of
                                             undefined -> coalesce(Rest);
                                             <<>> -> coalesce(Rest);
                                             Value -> Value
                                         end""")),
-                        ErlClause.clause(
-                                List.of(ErlNilPattern.nilPattern()), ErlBinary.binary("localhost"))));
-    }
+            ErlClause.clause(List.of(ErlNilPattern.nilPattern()), ErlBinary.binary("localhost"))));
+  }
 
-    private static ErlFunction buildUrl() {
-        return ErlFunction.function(
-                "build_url",
-                3,
-                List.of(ErlClause.blockClause(
-                        List.of(
-                                ErlVarPattern.varPattern("Host"),
-                                ErlVarPattern.varPattern("Path"),
-                                ErlVarPattern.varPattern("Query")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
-                                <<\"https://\", Host/binary, Path/binary, (query_suffix(Query))/binary>>"""))));
-    }
-
-    private static ErlFunction querySuffix() {
-        return ErlFunction.function(
-                "query_suffix",
-                1,
+  private static ErlFunction buildUrl() {
+    return ErlFunction.function(
+        "build_url",
+        3,
+        List.of(
+            ErlClause.blockClause(
                 List.of(
-                        ErlClause.clause(
-                                List.of(ErlVarPattern.varPattern("Query")),
-                                List.of(ErlGuard.exprGuard(ErlOp.op(
-                                        "=:=",
-                                        ErlCallLocal.callLocal("map_size", ErlVar.var("Query")),
-                                        ErlInteger.integer(0)))),
-                                ErlBinary.binary("")),
-                        ErlClause.blockClause(
-                                List.of(ErlVarPattern.varPattern("Query")),
-                                ErlCapturedBlock.capturedBlock(
-                                        """
+                    ErlVarPattern.varPattern("Host"),
+                    ErlVarPattern.varPattern("Path"),
+                    ErlVarPattern.varPattern("Query")),
+                ErlCapturedBlock.capturedBlock(
+                    """
+                                <<\"https://\", Host/binary, Path/binary, (query_suffix(Query))/binary>>"""))));
+  }
+
+  private static ErlFunction querySuffix() {
+    return ErlFunction.function(
+        "query_suffix",
+        1,
+        List.of(
+            ErlClause.clause(
+                List.of(ErlVarPattern.varPattern("Query")),
+                List.of(
+                    ErlGuard.exprGuard(
+                        ErlOp.op(
+                            "=:=",
+                            ErlCallLocal.callLocal("map_size", ErlVar.var("Query")),
+                            ErlInteger.integer(0)))),
+                ErlBinary.binary("")),
+            ErlClause.blockClause(
+                List.of(ErlVarPattern.varPattern("Query")),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                         Params = uri_string:compose_query([{K, V} || {K, V} <- maps:to_list(Query)]),
                                         <<\"?\", Params/binary>>"""))));
-    }
+  }
 
-    private static ErlFunction ensureHostHeader() {
-        return ErlFunction.function(
-                "ensure_host_header",
-                2,
-                List.of(ErlClause.blockClause(
-                        List.of(
-                                ErlVarPattern.varPattern("Headers"),
-                                ErlVarPattern.varPattern("Host")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
+  private static ErlFunction ensureHostHeader() {
+    return ErlFunction.function(
+        "ensure_host_header",
+        2,
+        List.of(
+            ErlClause.blockClause(
+                List.of(ErlVarPattern.varPattern("Headers"), ErlVarPattern.varPattern("Host")),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                 case header_host(Headers) of
                                     undefined -> [{<<\"host\">>, Host} | Headers];
                                     _ -> Headers
                                 end"""))));
-    }
+  }
 
-    private static ErlFunction headerHost() {
-        return ErlFunction.function(
-                "header_host",
-                1,
-                List.of(ErlClause.blockClause(
-                        List.of(ErlVarPattern.varPattern("Headers")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
+  private static ErlFunction headerHost() {
+    return ErlFunction.function(
+        "header_host",
+        1,
+        List.of(
+            ErlClause.blockClause(
+                List.of(ErlVarPattern.varPattern("Headers")),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                 proplists:get_value(<<\"host\">>, Headers, proplists:get_value(<<\"Host\">>, Headers))"""))));
-    }
+  }
 
-    private static ErlFunction maybeAddSessionToken() {
-        return ErlFunction.function(
-                "maybe_add_session_token",
-                2,
-                List.of(
-                        ErlClause.clause(
-                                List.of(
-                                        ErlVarPattern.varPattern("Headers"),
-                                        ErlVarPattern.varPattern("undefined")),
-                                ErlVar.var("Headers")),
-                        ErlClause.blockClause(
-                                List.of(
-                                        ErlVarPattern.varPattern("Headers"),
-                                        ErlVarPattern.varPattern("Token")),
-                                ErlCapturedBlock.capturedBlock(
-                                        """
+  private static ErlFunction maybeAddSessionToken() {
+    return ErlFunction.function(
+        "maybe_add_session_token",
+        2,
+        List.of(
+            ErlClause.clause(
+                List.of(ErlVarPattern.varPattern("Headers"), ErlVarPattern.varPattern("undefined")),
+                ErlVar.var("Headers")),
+            ErlClause.blockClause(
+                List.of(ErlVarPattern.varPattern("Headers"), ErlVarPattern.varPattern("Token")),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                         case proplists:get_value(<<\"x-amz-security-token\">>, Headers) of
                                             undefined -> [{<<\"x-amz-security-token\">>, Token} | Headers];
                                             _ -> Headers
                                         end"""))));
-    }
+  }
 
-    private static ErlFunction signOptions() {
-        return ErlFunction.function(
-                "sign_options",
-                2,
-                List.of(ErlClause.blockClause(
-                        List.of(
-                                ErlVarPattern.varPattern("Service"),
-                                ErlVarPattern.varPattern("Opts")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
+  private static ErlFunction signOptions() {
+    return ErlFunction.function(
+        "sign_options",
+        2,
+        List.of(
+            ErlClause.blockClause(
+                List.of(ErlVarPattern.varPattern("Service"), ErlVarPattern.varPattern("Opts")),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                 [{uri_encode_path, Service =/= <<\"s3\">>}] ++ body_digest_option(Opts)"""))));
-    }
+  }
 
-    private static ErlFunction bodyDigestOption() {
-        return ErlFunction.function(
-                "body_digest_option",
-                1,
-                List.of(ErlClause.blockClause(
-                        List.of(ErlVarPattern.varPattern("Opts")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
+  private static ErlFunction bodyDigestOption() {
+    return ErlFunction.function(
+        "body_digest_option",
+        1,
+        List.of(
+            ErlClause.blockClause(
+                List.of(ErlVarPattern.varPattern("Opts")),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                 case maps:get(unsigned_payload, Opts, false) of
                                     true -> [{body_digest, <<\"UNSIGNED-PAYLOAD\">>}];
                                     false -> []
                                 end"""))));
-    }
+  }
 
-    private static ErlFunction sessionTokenOption() {
-        return ErlFunction.function(
-                "session_token_option",
-                1,
-                List.of(
-                        ErlClause.clause(
-                                List.of(ErlVarPattern.varPattern("undefined")),
-                                ErlList.list()),
-                        ErlClause.clause(
-                                List.of(ErlVarPattern.varPattern("Token")),
-                                ErlList.list(ErlTuple.tuple(
-                                        ErlAtom.atom("session_token"), ErlVar.var("Token"))))));
-    }
+  private static ErlFunction sessionTokenOption() {
+    return ErlFunction.function(
+        "session_token_option",
+        1,
+        List.of(
+            ErlClause.clause(List.of(ErlVarPattern.varPattern("undefined")), ErlList.list()),
+            ErlClause.clause(
+                List.of(ErlVarPattern.varPattern("Token")),
+                ErlList.list(ErlTuple.tuple(ErlAtom.atom("session_token"), ErlVar.var("Token"))))));
+  }
 
-    private static ErlFunction endpointHostFromConfig() {
-        return ErlFunction.function(
-                "endpoint_host_from_config",
-                1,
-                List.of(ErlClause.blockClause(
-                        List.of(ErlVarPattern.varPattern("Config")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
+  private static ErlFunction endpointHostFromConfig() {
+    return ErlFunction.function(
+        "endpoint_host_from_config",
+        1,
+        List.of(
+            ErlClause.blockClause(
+                List.of(ErlVarPattern.varPattern("Config")),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                 case maps:get(base_url, Config, undefined) of
                                     undefined ->
                                         case {maps:get(endpoint_prefix, Config, undefined),
@@ -368,20 +371,20 @@ final class ErlangSigV4Ir {
                                         {_Scheme, Authority} = split_base_url(BaseUrl),
                                         Authority
                                 end"""))));
-    }
+  }
 
-    private static ErlFunction splitBaseUrl() {
-        return ErlFunction.function(
-                "split_base_url",
-                1,
-                List.of(
-                        ErlClause.clause(
-                                List.of(ErlBinaryPattern.binaryPattern("")),
-                                ErlTuple.tuple(ErlBinary.binary(""), ErlBinary.binary(""))),
-                        ErlClause.blockClause(
-                                List.of(ErlVarPattern.varPattern("BaseUrl")),
-                                ErlCapturedBlock.capturedBlock(
-                                        """
+  private static ErlFunction splitBaseUrl() {
+    return ErlFunction.function(
+        "split_base_url",
+        1,
+        List.of(
+            ErlClause.clause(
+                List.of(ErlBinaryPattern.binaryPattern("")),
+                ErlTuple.tuple(ErlBinary.binary(""), ErlBinary.binary(""))),
+            ErlClause.blockClause(
+                List.of(ErlVarPattern.varPattern("BaseUrl")),
+                ErlCapturedBlock.capturedBlock(
+                    """
                                         case uri_string:parse(binary_to_list(BaseUrl)) of
                                             #{scheme := Scheme, host := Host} = Parts ->
                                                 PortSuffix = case maps:get(port, Parts, undefined) of
@@ -393,5 +396,5 @@ final class ErlangSigV4Ir {
                                             _ ->
                                                 {<<>>, BaseUrl}
                                         end"""))));
-    }
+  }
 }

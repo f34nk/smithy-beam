@@ -8,15 +8,18 @@ import software.amazon.smithy.model.shapes.ServiceShape;
  */
 public final class ErlangS3EndpointEmitter {
 
-    private ErlangS3EndpointEmitter() {}
+  private ErlangS3EndpointEmitter() {}
 
-    public static void emit(ErlangContext ctx, ServiceShape service) {
-        if (!BeamS3CustomizationIndex.isS3Service(service)) {
-            return;
-        }
-
-        ctx.writerDelegator().useFileWriter("s3_endpoint.erl", writer -> {
-            writer.write("$L", ErlangS3EndpointIr.s3EndpointModule(service).asString());
-        });
+  public static void emit(ErlangContext ctx, ServiceShape service) {
+    if (!BeamS3CustomizationIndex.isS3Service(service)) {
+      return;
     }
+
+    ctx.writerDelegator()
+        .useFileWriter(
+            "s3_endpoint.erl",
+            writer -> {
+              writer.write("$L", ErlangS3EndpointIr.s3EndpointModule(service).asString());
+            });
+  }
 }

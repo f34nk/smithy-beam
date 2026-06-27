@@ -1,10 +1,12 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenKind;
-import io.smithy.beam.core.BeamScalarTypeAliases;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamScalarTypeAliases;
 import io.smithy.beam.core.BeamSettings;
+import java.util.*;
+import java.util.function.Function;
 import software.amazon.smithy.codegen.core.ReservedWords;
 import software.amazon.smithy.codegen.core.ReservedWordsBuilder;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -14,481 +16,496 @@ import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.*;
 import software.amazon.smithy.model.traits.StreamingTrait;
 
-import java.util.*;
-import java.util.function.Function;
-
 final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol> {
 
-    private final BeamSettings settings;
-    private final Model model;
-    private final ServiceShape service;
-    private final String definitionFile;
-    private final BeamCodegenKind kind;
-    private final String moduleNamespace;
-    private final ReservedWords typeNameEscaper;
-    private final ReservedWords moduleNameEscaper;
-    private final ReservedWords fieldNameEscaper;
-    private final ReservedWords atomEscaper;
-    private final ReservedWords functionNameEscaper;
-    private final Map<ShapeId, String> typeNames;
-    private final Map<ShapeId, String> moduleNames;
-    private final Map<ShapeId, String> fieldNames;
-    private final Map<ShapeId, String> unionTagNames;
-    private final Map<ShapeId, Map<String, String>> enumAtomNames;
-    private final Map<ShapeId, String> serviceFunctionNames;
+  private final BeamSettings settings;
+  private final Model model;
+  private final ServiceShape service;
+  private final String definitionFile;
+  private final BeamCodegenKind kind;
+  private final String moduleNamespace;
+  private final ReservedWords typeNameEscaper;
+  private final ReservedWords moduleNameEscaper;
+  private final ReservedWords fieldNameEscaper;
+  private final ReservedWords atomEscaper;
+  private final ReservedWords functionNameEscaper;
+  private final Map<ShapeId, String> typeNames;
+  private final Map<ShapeId, String> moduleNames;
+  private final Map<ShapeId, String> fieldNames;
+  private final Map<ShapeId, String> unionTagNames;
+  private final Map<ShapeId, Map<String, String>> enumAtomNames;
+  private final Map<ShapeId, String> serviceFunctionNames;
 
-    ElixirSymbolProvider(
-            BeamSettings settings,
-            Model model,
-            ServiceShape service,
-            String definitionFile,
-            String moduleNamespace,
-            BeamCodegenKind kind) {
-        this.settings = settings;
-        this.model = model;
-        this.service = service;
-        this.definitionFile = definitionFile;
-        this.moduleNamespace = moduleNamespace;
-        this.kind = kind;
-        this.typeNameEscaper = elixirReservedWords();
-        this.moduleNameEscaper = elixirReservedWords();
-        this.fieldNameEscaper = elixirReservedWords();
-        this.atomEscaper = elixirReservedWords();
-        this.functionNameEscaper = elixirFunctionReservedWords();
-        this.typeNames = buildTypeNames();
-        this.moduleNames = buildModuleNames();
-        this.fieldNames = buildStructureFieldNames();
-        this.unionTagNames = buildUnionTagNames();
-        this.enumAtomNames = buildEnumAtomNames();
-        this.serviceFunctionNames = buildServiceFunctionNames();
+  ElixirSymbolProvider(
+      BeamSettings settings,
+      Model model,
+      ServiceShape service,
+      String definitionFile,
+      String moduleNamespace,
+      BeamCodegenKind kind) {
+    this.settings = settings;
+    this.model = model;
+    this.service = service;
+    this.definitionFile = definitionFile;
+    this.moduleNamespace = moduleNamespace;
+    this.kind = kind;
+    this.typeNameEscaper = elixirReservedWords();
+    this.moduleNameEscaper = elixirReservedWords();
+    this.fieldNameEscaper = elixirReservedWords();
+    this.atomEscaper = elixirReservedWords();
+    this.functionNameEscaper = elixirFunctionReservedWords();
+    this.typeNames = buildTypeNames();
+    this.moduleNames = buildModuleNames();
+    this.fieldNames = buildStructureFieldNames();
+    this.unionTagNames = buildUnionTagNames();
+    this.enumAtomNames = buildEnumAtomNames();
+    this.serviceFunctionNames = buildServiceFunctionNames();
+  }
+
+  @Override
+  public Symbol toSymbol(Shape shape) {
+    return shape.accept(this);
+  }
+
+  // ── Prelude scalar shapes ────────────────────────────────────────────────
+
+  @Override
+  public Symbol blobShape(BlobShape shape) {
+    if (isPrelude(shape)) {
+      return builtin("binary()");
     }
-
-    @Override
-    public Symbol toSymbol(Shape shape) {
-        return shape.accept(this);
+    Symbol base = namedScalar(shape, "binary()");
+    if (shape.hasTrait(StreamingTrait.ID)) {
+      return base.toBuilder().putProperty("streamingBlob", true).build();
     }
+    return base;
+  }
 
-    // ── Prelude scalar shapes ────────────────────────────────────────────────
+  @Override
+  public Symbol booleanShape(BooleanShape shape) {
+    return isPrelude(shape) ? builtin("boolean()") : namedScalar(shape, "boolean()");
+  }
 
-    @Override
-    public Symbol blobShape(BlobShape shape) {
-        if (isPrelude(shape)) {
-            return builtin("binary()");
-        }
-        Symbol base = namedScalar(shape, "binary()");
-        if (shape.hasTrait(StreamingTrait.ID)) {
-            return base.toBuilder()
-                    .putProperty("streamingBlob", true)
-                    .build();
-        }
-        return base;
+  @Override
+  public Symbol stringShape(StringShape shape) {
+    return isPrelude(shape) ? builtin("String.t()") : namedScalar(shape, "String.t()");
+  }
+
+  @Override
+  public Symbol byteShape(ByteShape shape) {
+    return isPrelude(shape) ? builtin("integer()") : namedScalar(shape, "integer()");
+  }
+
+  @Override
+  public Symbol shortShape(ShortShape shape) {
+    return isPrelude(shape) ? builtin("integer()") : namedScalar(shape, "integer()");
+  }
+
+  @Override
+  public Symbol integerShape(IntegerShape shape) {
+    return isPrelude(shape) ? builtin("integer()") : namedScalar(shape, "integer()");
+  }
+
+  @Override
+  public Symbol longShape(LongShape shape) {
+    return isPrelude(shape) ? builtin("integer()") : namedScalar(shape, "integer()");
+  }
+
+  @Override
+  public Symbol floatShape(FloatShape shape) {
+    return isPrelude(shape) ? builtin("float()") : namedScalar(shape, "float()");
+  }
+
+  @Override
+  public Symbol doubleShape(DoubleShape shape) {
+    return isPrelude(shape) ? builtin("float()") : namedScalar(shape, "float()");
+  }
+
+  @Override
+  public Symbol bigIntegerShape(BigIntegerShape shape) {
+    return isPrelude(shape) ? builtin("integer()") : namedScalar(shape, "integer()");
+  }
+
+  @Override
+  public Symbol bigDecimalShape(BigDecimalShape shape) {
+    return isPrelude(shape) ? builtin("Decimal.t()") : namedScalar(shape, "Decimal.t()");
+  }
+
+  @Override
+  public Symbol timestampShape(TimestampShape shape) {
+    // Type-surface representation for a Smithy instant. Wire timestamp
+    // format handling belongs to future protocol serializers.
+    return isPrelude(shape) ? builtin("DateTime.t()") : namedScalar(shape, "DateTime.t()");
+  }
+
+  @Override
+  public Symbol documentShape(DocumentShape shape) {
+    return isPrelude(shape) ? builtin("any()") : namedScalar(shape, "any()");
+  }
+
+  // ── Aggregate shapes ─────────────────────────────────────────────────────
+
+  @Override
+  public Symbol listShape(ListShape shape) {
+    return namedAlias(shape);
+  }
+
+  @Override
+  public Symbol mapShape(MapShape shape) {
+    return namedAlias(shape);
+  }
+
+  @Override
+  public Symbol unionShape(UnionShape shape) {
+    return namedAlias(shape);
+  }
+
+  @Override
+  public Symbol structureShape(StructureShape shape) {
+    return namedModule(shape);
+  }
+
+  @Override
+  public Symbol memberShape(MemberShape shape) {
+    Symbol.Builder builder = toSymbol(model.expectShape(shape.getTarget())).toBuilder();
+    Optional.ofNullable(fieldNames.get(shape.getId()))
+        .ifPresent(name -> builder.putProperty("fieldName", name));
+    Optional.ofNullable(unionTagNames.get(shape.getId()))
+        .ifPresent(name -> builder.putProperty("unionTag", name));
+    return builder.build();
+  }
+
+  @Override
+  public Symbol enumShape(EnumShape shape) {
+    return namedModule(shape).toBuilder()
+        .putProperty("enumAtoms", new ArrayList<>(enumAtomNames.get(shape.getId()).values()))
+        .putProperty("enumAtomByMember", enumAtomNames.get(shape.getId()))
+        .putProperty("fromValueFunction", toFunctionName("from_string"))
+        .putProperty("toValueFunction", toFunctionName("to_string"))
+        .putProperty("valuesFunction", toFunctionName("values"))
+        .build();
+  }
+
+  @Override
+  public Symbol intEnumShape(IntEnumShape shape) {
+    return namedModule(shape).toBuilder()
+        .putProperty("enumAtoms", new ArrayList<>(enumAtomNames.get(shape.getId()).values()))
+        .putProperty("enumAtomByMember", enumAtomNames.get(shape.getId()))
+        .putProperty("fromValueFunction", toFunctionName("from_integer"))
+        .putProperty("toValueFunction", toFunctionName("to_integer"))
+        .putProperty("valuesFunction", toFunctionName("values"))
+        .build();
+  }
+
+  // ── Service / Operation / Resource ───────────────────────────────────────
+
+  @Override
+  public Symbol serviceShape(ServiceShape shape) {
+    BeamElixirLayout layout = new BeamElixirLayout(settings, shape.getId().getNamespace(), service);
+    String name =
+        switch (kind) {
+          case TYPES -> ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+          case CLIENT -> ElixirSymbolProvider.toModuleName(layout.clientModuleName());
+          case SERVER -> ElixirSymbolProvider.toModuleName(layout.serverModuleName());
+        };
+    return Symbol.builder()
+        .name(name)
+        .namespace(moduleNamespace, ".")
+        .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
+        .putProperty("builtIn", false)
+        .putProperty("beamKind", kind.name())
+        .build();
+  }
+
+  @Override
+  public Symbol operationShape(OperationShape shape) {
+    return serviceScopedFunctionSymbol(shape);
+  }
+
+  @Override
+  public Symbol resourceShape(ResourceShape shape) {
+    return serviceScopedFunctionSymbol(shape);
+  }
+
+  private Symbol serviceScopedFunctionSymbol(Shape shape) {
+    String name =
+        serviceFunctionNames.getOrDefault(
+            shape.getId(), functionNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
+    return Symbol.builder()
+        .name(name)
+        .namespace(moduleNamespace, ".")
+        .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
+        .putProperty("builtIn", false)
+        .putProperty("beamKind", kind.name())
+        .build();
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  private Symbol builtin(String name) {
+    return Symbol.builder()
+        .name(name)
+        .namespace(moduleNamespace, ".")
+        .putProperty("builtIn", true)
+        .build();
+  }
+
+  private Symbol namedScalar(Shape shape, String baseType) {
+    String name = toTypeName(shape);
+    if (BeamScalarTypeAliases.isRedundant(name, baseType)) {
+      return builtin(baseType);
     }
+    return Symbol.builder()
+        .name(name)
+        .namespace(moduleNamespace, ".")
+        .definitionFile(definitionFile)
+        .putProperty("builtIn", false)
+        .putProperty("typeKind", "alias")
+        .putProperty("baseType", baseType)
+        .build();
+  }
 
-    @Override
-    public Symbol booleanShape(BooleanShape shape) {
-        return isPrelude(shape) ? builtin("boolean()") : namedScalar(shape, "boolean()");
+  private Symbol namedAlias(Shape shape) {
+    String name = toTypeName(shape);
+    return Symbol.builder()
+        .name(name)
+        .namespace(moduleNamespace, ".")
+        .definitionFile(definitionFile)
+        .putProperty("builtIn", false)
+        .putProperty("typeKind", "alias")
+        .build();
+  }
+
+  private Symbol namedModule(Shape shape) {
+    String name = toModuleName(shape);
+    return Symbol.builder()
+        .name(name)
+        .namespace(moduleNamespace, ".")
+        .definitionFile(definitionFile)
+        .putProperty("builtIn", false)
+        .putProperty("typeKind", "module")
+        .build();
+  }
+
+  private boolean isPrelude(Shape shape) {
+    return shape.getId().getNamespace().equals("smithy.api");
+  }
+
+  private String memberBaseName(MemberShape member) {
+    ShapeId id = member.getId();
+    return id.getMember().orElseGet(() -> id.getName(service));
+  }
+
+  String toTypeName(Shape shape) {
+    return typeNames.getOrDefault(
+        shape.getId(), typeNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
+  }
+
+  String toModuleName(Shape shape) {
+    return moduleNames.getOrDefault(
+        shape.getId(),
+        toModuleNameFromSnake(
+            moduleNameEscaper.escape(toSnakeCase(shape.getId().getName(service)))));
+  }
+
+  String toFieldName(MemberShape member) {
+    return fieldNames.getOrDefault(
+        member.getId(), fieldNameEscaper.escape(toSnakeCase(memberBaseName(member))));
+  }
+
+  String toUnionTagName(MemberShape member) {
+    return unionTagNames.getOrDefault(
+        member.getId(), atomEscaper.escape(toSnakeCase(memberBaseName(member))));
+  }
+
+  String toFunctionName(String functionName) {
+    return functionNameEscaper.escape(toSnakeCase(functionName));
+  }
+
+  List<String> toEnumAtomNames(EnumShape shape) {
+    return new ArrayList<>(enumAtomNames.get(shape.getId()).values());
+  }
+
+  List<String> toEnumAtomNames(IntEnumShape shape) {
+    return new ArrayList<>(enumAtomNames.get(shape.getId()).values());
+  }
+
+  String toEnumAtomName(Shape enumShape, String memberName) {
+    return enumAtomNames.get(enumShape.getId()).get(memberName);
+  }
+
+  static String toSnakeCase(String name) {
+    return name.replaceAll("([a-z])([A-Z])", "$1_$2")
+        .replaceAll("([A-Z]+)([A-Z][a-z])", "$1_$2")
+        .toLowerCase();
+  }
+
+  /** Converts the last namespace segment to UpperCamelCase module name. */
+  static String toModuleName(String snakeName) {
+    String escaped = elixirReservedWords().escape(toSnakeCase(snakeName));
+    return toModuleNameFromSnake(escaped);
+  }
+
+  private static String toModuleNameFromSnake(String escaped) {
+    StringBuilder sb = new StringBuilder();
+    for (String part : escaped.split("_")) {
+      if (!part.isEmpty()) {
+        sb.append(Character.toUpperCase(part.charAt(0)));
+        sb.append(part.substring(1));
+      }
     }
+    return sb.toString();
+  }
 
-    @Override
-    public Symbol stringShape(StringShape shape) {
-        return isPrelude(shape) ? builtin("String.t()") : namedScalar(shape, "String.t()");
-    }
-
-    @Override
-    public Symbol byteShape(ByteShape shape) {
-        return isPrelude(shape) ? builtin("integer()") : namedScalar(shape, "integer()");
-    }
-
-    @Override
-    public Symbol shortShape(ShortShape shape) {
-        return isPrelude(shape) ? builtin("integer()") : namedScalar(shape, "integer()");
-    }
-
-    @Override
-    public Symbol integerShape(IntegerShape shape) {
-        return isPrelude(shape) ? builtin("integer()") : namedScalar(shape, "integer()");
-    }
-
-    @Override
-    public Symbol longShape(LongShape shape) {
-        return isPrelude(shape) ? builtin("integer()") : namedScalar(shape, "integer()");
-    }
-
-    @Override
-    public Symbol floatShape(FloatShape shape) {
-        return isPrelude(shape) ? builtin("float()") : namedScalar(shape, "float()");
-    }
-
-    @Override
-    public Symbol doubleShape(DoubleShape shape) {
-        return isPrelude(shape) ? builtin("float()") : namedScalar(shape, "float()");
-    }
-
-    @Override
-    public Symbol bigIntegerShape(BigIntegerShape shape) {
-        return isPrelude(shape) ? builtin("integer()") : namedScalar(shape, "integer()");
-    }
-
-    @Override
-    public Symbol bigDecimalShape(BigDecimalShape shape) {
-        return isPrelude(shape) ? builtin("Decimal.t()") : namedScalar(shape, "Decimal.t()");
-    }
-
-    @Override
-    public Symbol timestampShape(TimestampShape shape) {
-        // Type-surface representation for a Smithy instant. Wire timestamp
-        // format handling belongs to future protocol serializers.
-        return isPrelude(shape) ? builtin("DateTime.t()") : namedScalar(shape, "DateTime.t()");
-    }
-
-    @Override
-    public Symbol documentShape(DocumentShape shape) {
-        return isPrelude(shape) ? builtin("any()") : namedScalar(shape, "any()");
-    }
-
-    // ── Aggregate shapes ─────────────────────────────────────────────────────
-
-    @Override
-    public Symbol listShape(ListShape shape) {
-        return namedAlias(shape);
-    }
-
-    @Override
-    public Symbol mapShape(MapShape shape) {
-        return namedAlias(shape);
-    }
-
-    @Override
-    public Symbol unionShape(UnionShape shape) {
-        return namedAlias(shape);
-    }
-
-    @Override
-    public Symbol structureShape(StructureShape shape) {
-        return namedModule(shape);
-    }
-
-    @Override
-    public Symbol memberShape(MemberShape shape) {
-        Symbol.Builder builder = toSymbol(model.expectShape(shape.getTarget())).toBuilder();
-        Optional.ofNullable(fieldNames.get(shape.getId()))
-                .ifPresent(name -> builder.putProperty("fieldName", name));
-        Optional.ofNullable(unionTagNames.get(shape.getId()))
-                .ifPresent(name -> builder.putProperty("unionTag", name));
-        return builder.build();
-    }
-
-    @Override
-    public Symbol enumShape(EnumShape shape) {
-        return namedModule(shape).toBuilder()
-                .putProperty("enumAtoms", new ArrayList<>(enumAtomNames.get(shape.getId()).values()))
-                .putProperty("enumAtomByMember", enumAtomNames.get(shape.getId()))
-                .putProperty("fromValueFunction", toFunctionName("from_string"))
-                .putProperty("toValueFunction", toFunctionName("to_string"))
-                .putProperty("valuesFunction", toFunctionName("values"))
-                .build();
-    }
-
-    @Override
-    public Symbol intEnumShape(IntEnumShape shape) {
-        return namedModule(shape).toBuilder()
-                .putProperty("enumAtoms", new ArrayList<>(enumAtomNames.get(shape.getId()).values()))
-                .putProperty("enumAtomByMember", enumAtomNames.get(shape.getId()))
-                .putProperty("fromValueFunction", toFunctionName("from_integer"))
-                .putProperty("toValueFunction", toFunctionName("to_integer"))
-                .putProperty("valuesFunction", toFunctionName("values"))
-                .build();
-    }
-
-    // ── Service / Operation / Resource ───────────────────────────────────────
-
-    @Override
-    public Symbol serviceShape(ServiceShape shape) {
-        BeamElixirLayout layout =
-                new BeamElixirLayout(settings, shape.getId().getNamespace(), service);
-        String name =
-                switch (kind) {
-                    case TYPES -> ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-                    case CLIENT -> ElixirSymbolProvider.toModuleName(layout.clientModuleName());
-                    case SERVER -> ElixirSymbolProvider.toModuleName(layout.serverModuleName());
-                };
-        return Symbol.builder()
-                        .name(name)
-                        .namespace(moduleNamespace, ".")
-                        .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
-                        .putProperty("builtIn", false)
-                        .putProperty("beamKind", kind.name())
-                .build();
-    }
-
-    @Override
-    public Symbol operationShape(OperationShape shape) {
-        return serviceScopedFunctionSymbol(shape);
-    }
-
-    @Override
-    public Symbol resourceShape(ResourceShape shape) {
-        return serviceScopedFunctionSymbol(shape);
-    }
-
-    private Symbol serviceScopedFunctionSymbol(Shape shape) {
-        String name = serviceFunctionNames.getOrDefault(
-                shape.getId(),
-                functionNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
-        return Symbol.builder()
-                .name(name)
-                .namespace(moduleNamespace, ".")
-                .definitionFile(kind == BeamCodegenKind.TYPES ? "" : definitionFile)
-                .putProperty("builtIn", false)
-                .putProperty("beamKind", kind.name())
-                .build();
-    }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    private Symbol builtin(String name) {
-        return Symbol.builder()
-                .name(name)
-                .namespace(moduleNamespace, ".")
-                .putProperty("builtIn", true)
-                .build();
-    }
-
-    private Symbol namedScalar(Shape shape, String baseType) {
-        String name = toTypeName(shape);
-        if (BeamScalarTypeAliases.isRedundant(name, baseType)) {
-            return builtin(baseType);
-        }
-        return Symbol.builder()
-                        .name(name)
-                        .namespace(moduleNamespace, ".")
-                        .definitionFile(definitionFile)
-                        .putProperty("builtIn", false)
-                        .putProperty("typeKind", "alias")
-                        .putProperty("baseType", baseType)
-                .build();
-    }
-
-    private Symbol namedAlias(Shape shape) {
-        String name = toTypeName(shape);
-        return Symbol.builder()
-                        .name(name)
-                        .namespace(moduleNamespace, ".")
-                        .definitionFile(definitionFile)
-                        .putProperty("builtIn", false)
-                        .putProperty("typeKind", "alias")
-                .build();
-    }
-
-    private Symbol namedModule(Shape shape) {
-        String name = toModuleName(shape);
-        return Symbol.builder()
-                        .name(name)
-                        .namespace(moduleNamespace, ".")
-                        .definitionFile(definitionFile)
-                        .putProperty("builtIn", false)
-                        .putProperty("typeKind", "module")
-                .build();
-    }
-
-    private boolean isPrelude(Shape shape) {
-        return shape.getId().getNamespace().equals("smithy.api");
-    }
-
-    private String memberBaseName(MemberShape member) {
-        ShapeId id = member.getId();
-        return id.getMember().orElseGet(() -> id.getName(service));
-    }
-
-    String toTypeName(Shape shape) {
-        return typeNames.getOrDefault(
-                shape.getId(),
-                typeNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
-    }
-
-    String toModuleName(Shape shape) {
-        return moduleNames.getOrDefault(
-                shape.getId(),
-                toModuleNameFromSnake(moduleNameEscaper.escape(toSnakeCase(shape.getId().getName(service)))));
-    }
-
-    String toFieldName(MemberShape member) {
-        return fieldNames.getOrDefault(
-                member.getId(),
-                fieldNameEscaper.escape(toSnakeCase(memberBaseName(member))));
-    }
-
-    String toUnionTagName(MemberShape member) {
-        return unionTagNames.getOrDefault(
-                member.getId(),
-                atomEscaper.escape(toSnakeCase(memberBaseName(member))));
-    }
-
-    String toFunctionName(String functionName) {
-        return functionNameEscaper.escape(toSnakeCase(functionName));
-    }
-
-    List<String> toEnumAtomNames(EnumShape shape) {
-        return new ArrayList<>(enumAtomNames.get(shape.getId()).values());
-    }
-
-    List<String> toEnumAtomNames(IntEnumShape shape) {
-        return new ArrayList<>(enumAtomNames.get(shape.getId()).values());
-    }
-
-    String toEnumAtomName(Shape enumShape, String memberName) {
-        return enumAtomNames.get(enumShape.getId()).get(memberName);
-    }
-
-    static String toSnakeCase(String name) {
-        return name
-                .replaceAll("([a-z])([A-Z])", "$1_$2")
-                .replaceAll("([A-Z]+)([A-Z][a-z])", "$1_$2")
-                .toLowerCase();
-    }
-
-    /** Converts the last namespace segment to UpperCamelCase module name. */
-    static String toModuleName(String snakeName) {
-        String escaped = elixirReservedWords().escape(toSnakeCase(snakeName));
-        return toModuleNameFromSnake(escaped);
-    }
-
-    private static String toModuleNameFromSnake(String escaped) {
-        StringBuilder sb = new StringBuilder();
-        for (String part : escaped.split("_")) {
-            if (!part.isEmpty()) {
-                sb.append(Character.toUpperCase(part.charAt(0)));
-                sb.append(part.substring(1));
-            }
-        }
-        return sb.toString();
-    }
-
-    private Map<ShapeId, String> buildTypeNames() {
-        List<Shape> shapes = new Walker(model).walkShapes(service).stream()
+  private Map<ShapeId, String> buildTypeNames() {
+    List<Shape> shapes =
+        new Walker(model)
+            .walkShapes(service).stream()
                 .filter(shape -> !isPrelude(shape))
                 .sorted(Comparator.comparing(shape -> shape.getId().toString()))
                 .toList();
-        return indexShapeNames(shapes, shape -> typeNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
-    }
+    return indexShapeNames(
+        shapes, shape -> typeNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
+  }
 
-    private Map<ShapeId, String> buildModuleNames() {
-        List<Shape> shapes = new Walker(model).walkShapes(service).stream()
-                .filter(shape -> shape.isStructureShape() || shape.isEnumShape() || shape.isIntEnumShape())
+  private Map<ShapeId, String> buildModuleNames() {
+    List<Shape> shapes =
+        new Walker(model)
+            .walkShapes(service).stream()
+                .filter(
+                    shape ->
+                        shape.isStructureShape() || shape.isEnumShape() || shape.isIntEnumShape())
                 .sorted(Comparator.comparing(shape -> shape.getId().toString()))
                 .toList();
-        Map<ShapeId, String> result = new HashMap<>();
-        indexShapeNames(shapes, shape -> moduleNameEscaper.escape(toSnakeCase(shape.getId().getName(service))))
-                .forEach((id, name) -> result.put(id, toModuleNameFromSnake(name)));
-        return result;
-    }
+    Map<ShapeId, String> result = new HashMap<>();
+    indexShapeNames(
+            shapes, shape -> moduleNameEscaper.escape(toSnakeCase(shape.getId().getName(service))))
+        .forEach((id, name) -> result.put(id, toModuleNameFromSnake(name)));
+    return result;
+  }
 
-    private Map<ShapeId, String> buildStructureFieldNames() {
-        Map<ShapeId, String> result = new HashMap<>();
-        Set<Shape> closure = new Walker(model).walkShapes(service);
-        model.getStructureShapes().stream()
-                .filter(closure::contains)
-                .forEach(shape -> result.putAll(indexMemberNames(new ArrayList<>(shape.members()),
-                        member -> fieldNameEscaper.escape(
-                                toSnakeCase(memberBaseName(member))))));
-        return result;
-    }
+  private Map<ShapeId, String> buildStructureFieldNames() {
+    Map<ShapeId, String> result = new HashMap<>();
+    Set<Shape> closure = new Walker(model).walkShapes(service);
+    model.getStructureShapes().stream()
+        .filter(closure::contains)
+        .forEach(
+            shape ->
+                result.putAll(
+                    indexMemberNames(
+                        new ArrayList<>(shape.members()),
+                        member -> fieldNameEscaper.escape(toSnakeCase(memberBaseName(member))))));
+    return result;
+  }
 
-    private Map<ShapeId, String> buildUnionTagNames() {
-        Map<ShapeId, String> result = new HashMap<>();
-        Set<Shape> closure = new Walker(model).walkShapes(service);
-        model.getUnionShapes().stream()
-                .filter(closure::contains)
-                .forEach(shape -> result.putAll(indexMemberNames(new ArrayList<>(shape.members()),
-                        member -> atomEscaper.escape(
-                                toSnakeCase(memberBaseName(member))))));
-        return result;
-    }
+  private Map<ShapeId, String> buildUnionTagNames() {
+    Map<ShapeId, String> result = new HashMap<>();
+    Set<Shape> closure = new Walker(model).walkShapes(service);
+    model.getUnionShapes().stream()
+        .filter(closure::contains)
+        .forEach(
+            shape ->
+                result.putAll(
+                    indexMemberNames(
+                        new ArrayList<>(shape.members()),
+                        member -> atomEscaper.escape(toSnakeCase(memberBaseName(member))))));
+    return result;
+  }
 
-    private Map<ShapeId, Map<String, String>> buildEnumAtomNames() {
-        Map<ShapeId, Map<String, String>> result = new HashMap<>();
-        Set<Shape> closure = new Walker(model).walkShapes(service);
-        model.getEnumShapes().stream()
-                .filter(closure::contains)
-                .forEach(shape -> result.put(shape.getId(),
-                        BeamNameUtils.deconflict(shape.getEnumValues().keySet().stream().toList(),
-                                name -> atomEscaper.escape(toSnakeCase(name)))));
-        model.getIntEnumShapes().stream()
-                .filter(closure::contains)
-                .forEach(shape -> result.put(shape.getId(),
-                        BeamNameUtils.deconflict(shape.getEnumValues().keySet().stream().toList(),
-                                name -> atomEscaper.escape(toSnakeCase(name)))));
-        return result;
-    }
+  private Map<ShapeId, Map<String, String>> buildEnumAtomNames() {
+    Map<ShapeId, Map<String, String>> result = new HashMap<>();
+    Set<Shape> closure = new Walker(model).walkShapes(service);
+    model.getEnumShapes().stream()
+        .filter(closure::contains)
+        .forEach(
+            shape ->
+                result.put(
+                    shape.getId(),
+                    BeamNameUtils.deconflict(
+                        shape.getEnumValues().keySet().stream().toList(),
+                        name -> atomEscaper.escape(toSnakeCase(name)))));
+    model.getIntEnumShapes().stream()
+        .filter(closure::contains)
+        .forEach(
+            shape ->
+                result.put(
+                    shape.getId(),
+                    BeamNameUtils.deconflict(
+                        shape.getEnumValues().keySet().stream().toList(),
+                        name -> atomEscaper.escape(toSnakeCase(name)))));
+    return result;
+  }
 
-    private Map<ShapeId, String> buildServiceFunctionNames() {
-        List<Shape> shapes = new Walker(model).walkShapes(service).stream()
+  private Map<ShapeId, String> buildServiceFunctionNames() {
+    List<Shape> shapes =
+        new Walker(model)
+            .walkShapes(service).stream()
                 .filter(shape -> shape.isOperationShape() || shape.isResourceShape())
                 .sorted(Comparator.comparing(shape -> shape.getId().toString()))
                 .toList();
-        return indexShapeNames(shapes, shape ->
-                functionNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
-    }
+    return indexShapeNames(
+        shapes, shape -> functionNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
+  }
 
-    private static Map<ShapeId, String> indexShapeNames(
-            List<Shape> shapes, Function<Shape, String> escapedName) {
-        Map<ShapeId, String> result = new HashMap<>();
-        BeamNameUtils.deconflict(shapes, escapedName)
-                .forEach((shape, name) -> result.put(shape.getId(), name));
-        return result;
-    }
+  private static Map<ShapeId, String> indexShapeNames(
+      List<Shape> shapes, Function<Shape, String> escapedName) {
+    Map<ShapeId, String> result = new HashMap<>();
+    BeamNameUtils.deconflict(shapes, escapedName)
+        .forEach((shape, name) -> result.put(shape.getId(), name));
+    return result;
+  }
 
-    private static Map<ShapeId, String> indexMemberNames(
-            List<MemberShape> members, Function<MemberShape, String> escapedName) {
-        Map<ShapeId, String> result = new HashMap<>();
-        BeamNameUtils.deconflict(members, escapedName)
-                .forEach((member, name) -> result.put(member.getId(), name));
-        return result;
-    }
+  private static Map<ShapeId, String> indexMemberNames(
+      List<MemberShape> members, Function<MemberShape, String> escapedName) {
+    Map<ShapeId, String> result = new HashMap<>();
+    BeamNameUtils.deconflict(members, escapedName)
+        .forEach((member, name) -> result.put(member.getId(), name));
+    return result;
+  }
 
-    private static ReservedWords elixirReservedWords() {
-        return new ReservedWordsBuilder()
-                .put("after", "after_")
-                .put("begin", "begin_")
-                .put("case", "case_")
-                .put("catch", "catch_")
-                .put("do", "do_")
-                .put("else", "else_")
-                .put("end", "end_")
-                .put("fn", "fn_")
-                .put("for", "for_")
-                .put("if", "if_")
-                .put("receive", "receive_")
-                .put("rescue", "rescue_")
-                .put("try", "try_")
-                .put("when", "when_")
-                .put("and", "and_")
-                .put("or", "or_")
-                .build();
-    }
+  private static ReservedWords elixirReservedWords() {
+    return new ReservedWordsBuilder()
+        .put("after", "after_")
+        .put("begin", "begin_")
+        .put("case", "case_")
+        .put("catch", "catch_")
+        .put("do", "do_")
+        .put("else", "else_")
+        .put("end", "end_")
+        .put("fn", "fn_")
+        .put("for", "for_")
+        .put("if", "if_")
+        .put("receive", "receive_")
+        .put("rescue", "rescue_")
+        .put("try", "try_")
+        .put("when", "when_")
+        .put("and", "and_")
+        .put("or", "or_")
+        .build();
+  }
 
-    private static ReservedWords elixirFunctionReservedWords() {
-        return new ReservedWordsBuilder()
-                .put("after", "after_")
-                .put("begin", "begin_")
-                .put("case", "case_")
-                .put("catch", "catch_")
-                .put("do", "do_")
-                .put("else", "else_")
-                .put("end", "end_")
-                .put("fn", "fn_")
-                .put("for", "for_")
-                .put("if", "if_")
-                .put("receive", "receive_")
-                .put("rescue", "rescue_")
-                .put("try", "try_")
-                .put("when", "when_")
-                .put("def", "def_")
-                .put("defmodule", "defmodule_")
-                .put("import", "import_")
-                .put("alias", "alias_")
-                .put("require", "require_")
-                .put("use", "use_")
-                .build();
-    }
+  private static ReservedWords elixirFunctionReservedWords() {
+    return new ReservedWordsBuilder()
+        .put("after", "after_")
+        .put("begin", "begin_")
+        .put("case", "case_")
+        .put("catch", "catch_")
+        .put("do", "do_")
+        .put("else", "else_")
+        .put("end", "end_")
+        .put("fn", "fn_")
+        .put("for", "for_")
+        .put("if", "if_")
+        .put("receive", "receive_")
+        .put("rescue", "rescue_")
+        .put("try", "try_")
+        .put("when", "when_")
+        .put("def", "def_")
+        .put("defmodule", "defmodule_")
+        .put("import", "import_")
+        .put("alias", "alias_")
+        .put("require", "require_")
+        .put("use", "use_")
+        .build();
+  }
 }
