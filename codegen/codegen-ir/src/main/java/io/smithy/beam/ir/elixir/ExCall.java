@@ -17,6 +17,10 @@ public final class ExCall implements ExExpr {
     return new ExCall(module, function, List.of(args));
   }
 
+  public static ExCall filtermap(ExAnonymousFn fun, ExExpr listArg) {
+    return new ExCall("Enum", "filter_map", List.of(listArg, fun));
+  }
+
   public String module() {
     return module;
   }
