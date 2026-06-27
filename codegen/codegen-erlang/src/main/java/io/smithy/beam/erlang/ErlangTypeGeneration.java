@@ -7,7 +7,7 @@ import software.amazon.smithy.codegen.core.directed.CodegenDirector;
 
 /**
  * Runs Erlang type generation through {@link CodegenDirector} and
- * {@link ErlangDirectedCodegen}. Call from {@link ErlangTypesPlugin} or from
+ * {@link ErlangTypeDirectedCodegen}. Call from {@link ErlangTypesPlugin} or from
  * other generators in this module that need the same type output.
  */
 public final class ErlangTypeGeneration {
@@ -19,7 +19,7 @@ public final class ErlangTypeGeneration {
     public void generate(PluginContext context) {
         CodegenDirector<ErlangWriter, ErlangIntegration, ErlangContext, BeamSettings> runner = new CodegenDirector<>();
 
-        runner.directedCodegen(new ErlangDirectedCodegen());
+        runner.directedCodegen(new ErlangTypeDirectedCodegen());
         runner.integrationClass(ErlangIntegration.class);
         runner.fileManifest(context.getFileManifest());
         runner.integrationSettings(context.getSettings());

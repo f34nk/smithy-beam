@@ -73,7 +73,7 @@ class ErlangIrGoldenIntegrationTest {
 
     @Test
     void structureTypeHeaderFromSmithyMatchesGolden() throws IOException {
-        ErlTypeHeader header = ErlangDirectedCodegen.buildStructureTypeHeader(
+        ErlTypeHeader header = ErlangTypeDirectedCodegen.buildStructureTypeHeader(
                 model, service, getNameOutput, settings);
         IrGoldenAssertions.assertLinesAndAsString(
                 header, "ir/golden/get_name_output_structure.expected.hrl");

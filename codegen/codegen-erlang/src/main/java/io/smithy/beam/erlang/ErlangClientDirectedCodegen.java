@@ -197,7 +197,11 @@ final class ErlangClientDirectedCodegen
                     builder.serviceFunctions(),
                     builder.operationFunctions());
             ctx.writerDelegator().useFileWriter(
-                    ctx.definitionFile(), writer -> writer.write("$L", module.asString()));
+                    ctx.definitionFile(), writer -> {
+                        writer.pushGeneratedDocumentationSection();
+                        writer.write("$L", module.asString());
+                        writer.popState();
+                    });
             if (ctx.protocolCodegen() != null) {
                 for (OperationShape op : operations) {
                     ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {

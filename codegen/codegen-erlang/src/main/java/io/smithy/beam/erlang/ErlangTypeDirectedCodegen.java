@@ -58,7 +58,7 @@ import java.util.stream.StreamSupport;
  * generateService is a stub reserved for client/server generation.
  * Resource helpers are emitted by client/server DirectedCodegen classes.
  */
-final class ErlangDirectedCodegen
+final class ErlangTypeDirectedCodegen
         implements DirectedCodegen<ErlangContext, BeamSettings, ErlangIntegration> {
 
     // ── Factory methods ──────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ final class ErlangDirectedCodegen
     static Set<ShapeId> expectedPreambleAliasShapeIds(
             Set<Shape> closure, SymbolProvider symbolProvider) {
         return closure.stream()
-                .filter(ErlangDirectedCodegen::shouldEmitPreambleTypeAlias)
+                .filter(ErlangTypeDirectedCodegen::shouldEmitPreambleTypeAlias)
                 .filter(shape -> !isBuiltinTypeSymbol(symbolProvider.toSymbol(shape)))
                 .map(Shape::getId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -263,7 +263,7 @@ final class ErlangDirectedCodegen
             Set<ShapeId> preambleAliasesEmitted) {
         shapes.stream()
                 .filter(closure::contains)
-                .filter(ErlangDirectedCodegen::shouldEmitPreambleTypeAlias)
+                .filter(ErlangTypeDirectedCodegen::shouldEmitPreambleTypeAlias)
                 .sorted(java.util.Comparator.comparing(s -> s.getId().getName()))
                 .forEach(s -> {
                     Symbol sym = symbolProvider.toSymbol(s);

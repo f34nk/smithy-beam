@@ -26,7 +26,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ErlangDirectedCodegenTest {
+class ErlangTypeDirectedCodegenTest {
 
     private static final String SERVICE_ID = "com.variantorder#VariantOrderService";
 
@@ -251,7 +251,7 @@ class ErlangDirectedCodegenTest {
                 settings, preambleModel, service, typesHeader, BeamCodegenKind.TYPES);
         Set<Shape> closure = new Walker(preambleModel).walkShapes(service);
         Set<ShapeId> expected =
-                ErlangDirectedCodegen.expectedPreambleAliasShapeIds(closure, symbolProvider);
+                ErlangTypeDirectedCodegen.expectedPreambleAliasShapeIds(closure, symbolProvider);
 
         assertThat(expected)
                 .contains(
@@ -346,7 +346,7 @@ class ErlangDirectedCodegenTest {
         String content = manifest.expectFileString(typesHeader);
         Set<Shape> closure = new Walker(preambleModel).walkShapes(service);
         Set<ShapeId> expected =
-                ErlangDirectedCodegen.expectedPreambleAliasShapeIds(closure, symbolProvider);
+                ErlangTypeDirectedCodegen.expectedPreambleAliasShapeIds(closure, symbolProvider);
 
         for (ShapeId shapeId : expected) {
             Shape shape = preambleModel.expectShape(shapeId, Shape.class);
@@ -615,7 +615,7 @@ class ErlangDirectedCodegenTest {
         ErrorTrait errorTrait = shape.expectTrait(ErrorTrait.class);
         BeamRetryIndex.RetryInfo retryInfo = BeamRetryIndex.forError(shape).orElseThrow();
 
-        ErlRecordDef record = ErlangDirectedCodegen.buildErrorRecord(
+        ErlRecordDef record = ErlangTypeDirectedCodegen.buildErrorRecord(
                 shape,
                 symbolProvider,
                 NullableIndex.of(model),
