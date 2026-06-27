@@ -107,12 +107,13 @@ final class ErlangS3EndpointIr {
                     ErlVarPattern.varPattern("RegionHost")),
                 ErlCapturedBlock.capturedBlock(
                     """
-                                case maps:get(s3_use_accelerate, Config, false) of
-                                    true -> <<Bucket/binary, ".s3-accelerate.amazonaws.com">>;
-                                    false ->
-                                        Suffix = s3_host_suffix(Config),
-                                        <<Bucket/binary, Suffix/binary, RegionHost/binary>>
-                                end"""))));
+                    case maps:get(s3_use_accelerate, Config, false) of
+                        true ->
+                            <<Bucket/binary, ".s3-accelerate.amazonaws.com">>;
+                        false ->
+                            Suffix = s3_host_suffix(Config),
+                            <<Bucket/binary, Suffix/binary, RegionHost/binary>>
+                    end"""))));
   }
 
   private static ErlFunction s3HostSuffix() {
@@ -124,10 +125,10 @@ final class ErlangS3EndpointIr {
                 List.of(ErlVarPattern.varPattern("Config")),
                 ErlCapturedBlock.capturedBlock(
                     """
-                                case maps:get(s3_use_dualstack, Config, false) of
-                                    true -> <<".s3.dualstack.">>;
-                                    false -> <<".s3.">>
-                                end"""))));
+                    case maps:get(s3_use_dualstack, Config, false) of
+                        true -> <<".s3.dualstack.">>;
+                        false -> <<".s3.">>
+                    end"""))));
   }
 
   private static ErlFunction splitBaseUrl() {
@@ -142,16 +143,18 @@ final class ErlangS3EndpointIr {
                 List.of(ErlVarPattern.varPattern("BaseUrl")),
                 ErlCapturedBlock.capturedBlock(
                     """
-                                        case uri_string:parse(binary_to_list(BaseUrl)) of
-                                            #{scheme := Scheme, host := Host} = Parts ->
-                                                PortSuffix = case maps:get(port, Parts, undefined) of
-                                                    undefined -> <<>>;
-                                                    Port -> <<":", (integer_to_binary(Port))/binary>>
-                                                end,
-                                                {<< (list_to_binary(Scheme))/binary, "://">>,
-                                                 << (list_to_binary(Host))/binary, PortSuffix/binary >>};
-                                            _ ->
-                                                {<<>>, BaseUrl}
-                                        end"""))));
+                    case uri_string:parse(binary_to_list(BaseUrl)) of
+                        #{scheme := Scheme, host := Host} = Parts ->
+                            PortSuffix =
+                                case maps:get(port, Parts, undefined) of
+                                    undefined -> <<>>;
+                                    Port -> <<\":\", (integer_to_binary(Port))/binary>>
+                                end,
+                            {<<(list_to_binary(Scheme))/binary, \"://\">>, <<
+                                (list_to_binary(Host))/binary, PortSuffix/binary
+                            >>};
+                        _ ->
+                            {<<>>, BaseUrl}
+                    end"""))));
   }
 }

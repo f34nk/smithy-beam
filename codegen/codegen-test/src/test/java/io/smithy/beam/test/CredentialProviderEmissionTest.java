@@ -32,7 +32,7 @@ class CredentialProviderEmissionTest {
     assertThat(http).contains("sigv4test_service_credentials:resolve(Config)");
     assertThat(http).contains("Config#{credentials => Creds}");
     assertThat(credentials).contains("resolve_from_ec2(Config).");
-    assertThat(credentials).contains("if map_size(Acc) > 0 ->");
+    assertThat(credentials).contains("map_size(Acc) > 0 ->");
     assertThat(credentials).doesNotContain("_ when map_size(Acc)");
     assertThat(credentials).doesNotContain("resolve_from_ec2(Config);");
   }

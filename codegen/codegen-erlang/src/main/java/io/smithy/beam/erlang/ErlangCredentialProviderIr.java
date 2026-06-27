@@ -206,9 +206,11 @@ final class ErlangCredentialProviderIr {
                                 case {os:getenv("AWS_ACCESS_KEY_ID"), os:getenv("AWS_SECRET_ACCESS_KEY")} of
                                     {Id, Secret} when Id =/= false, Secret =/= false ->
                                         Token = os:getenv("AWS_SESSION_TOKEN"),
-                                        {ok, #{access_key_id => list_to_binary(Id),
-                                              secret_access_key => list_to_binary(Secret),
-                                              session_token => env_session_token(Token)}};
+                                        {ok, #{
+                                            access_key_id => list_to_binary(Id),
+                                            secret_access_key => list_to_binary(Secret),
+                                            session_token => env_session_token(Token)
+                                        }};
                                     _ ->
                                         {error, not_found}
                                 end"""))));
@@ -250,7 +252,8 @@ final class ErlangCredentialProviderIr {
                                             false -> <<\"default\">>;
                                             Name -> list_to_binary(Name)
                                         end;
-                                    Name -> Name
+                                    Name ->
+                                        Name
                                 end"""))));
   }
 
@@ -268,9 +271,11 @@ final class ErlangCredentialProviderIr {
                                         case os:getenv("AWS_SHARED_CREDENTIALS_FILE") of
                                             false ->
                                                 filename:join([os:getenv("HOME"), <<\".aws/credentials\">>]);
-                                            Path -> list_to_binary(Path)
+                                            Path ->
+                                                list_to_binary(Path)
                                         end;
-                                    Path -> Path
+                                    Path ->
+                                        Path
                                 end"""))));
   }
 
@@ -385,10 +390,11 @@ final class ErlangCredentialProviderIr {
                                             [$[ | _] ->
                                                 find_profile_section(Rest, Profile, #{});
                                             _ ->
-                                                if map_size(Acc) > 0 ->
-                                                    maps_to_credentials(Acc);
-                                                true ->
-                                                    find_profile_section(Rest, Profile, Acc)
+                                                if
+                                                    map_size(Acc) > 0 ->
+                                                        maps_to_credentials(Acc);
+                                                    true ->
+                                                        find_profile_section(Rest, Profile, Acc)
                                                 end
                                         end"""))));
   }
@@ -410,13 +416,16 @@ final class ErlangCredentialProviderIr {
                     """
                                         Trimmed = string:trim(binary_to_list(Line)),
                                         case Trimmed of
-                                            [$[ | _] -> maps_to_credentials(Acc);
-                                            "" -> read_profile_entries(Rest, Acc);
+                                            [$[ | _] ->
+                                                maps_to_credentials(Acc);
+                                            "" ->
+                                                read_profile_entries(Rest, Acc);
                                             Entry ->
                                                 case string:split(Entry, "=", leading) of
                                                     [Key, Value] ->
                                                         read_profile_entries(Rest, Acc#{list_to_binary(Key) => list_to_binary(Value)});
-                                                    _ -> read_profile_entries(Rest, Acc)
+                                                    _ ->
+                                                        read_profile_entries(Rest, Acc)
                                                 end
                                         end"""))));
   }
@@ -525,9 +534,11 @@ final class ErlangCredentialProviderIr {
                                 case jsx:decode(Body, [return_maps]) of
                                     #{<<"AccessKeyId">> := Id, <<"SecretAccessKey">> := Secret} = Doc ->
                                         Token = maps:get(<<"Token">>, Doc, undefined),
-                                        {ok, #{access_key_id => Id,
-                                              secret_access_key => Secret,
-                                              session_token => Token}};
+                                        {ok, #{
+                                            access_key_id => Id,
+                                            secret_access_key => Secret,
+                                            session_token => Token
+                                        }};
                                     _ ->
                                         {error, invalid_credentials}
                                 end"""))));

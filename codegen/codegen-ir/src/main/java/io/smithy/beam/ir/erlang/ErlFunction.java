@@ -77,8 +77,10 @@ public final class ErlFunction implements IrObject {
     if (specOrNull != null) {
       out.addAll(specOrNull.lines(indent));
     }
+    boolean blockAll =
+        ErlFormat.anyInlineClauseExceedsLimit(clauses, indent, clause -> clause.buildHead(name));
     for (int i = 0; i < clauses.size(); i++) {
-      out.addAll(clauses.get(i).lines(indent, name, i < clauses.size() - 1));
+      out.addAll(clauses.get(i).lines(indent, name, i < clauses.size() - 1, blockAll));
     }
     return out;
   }

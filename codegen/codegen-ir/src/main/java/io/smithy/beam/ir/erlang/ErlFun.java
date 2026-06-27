@@ -33,41 +33,35 @@ public final class ErlFun implements ErlExpr {
     if (compact && clauses.size() == 1) {
       ErlClause clause = clauses.get(0);
       return List.of(
-          IrObject.indent(indent)
-              + "fun"
+          ErlFormat.prefixed(indent, "fun")
               + funClauseHead(clause)
               + " -> "
               + clause.body().get(0).asString()
               + " end");
     }
     List<String> out = new ArrayList<>();
-    out.add(IrObject.indent(indent) + "fun");
     if (clauses.size() == 1 && clauses.get(0).patterns().isEmpty()) {
-      out.set(0, IrObject.indent(indent) + "fun () ->");
+      out.add(ErlFormat.prefixed(indent, "fun() ->"));
       ErlExpr body = clauses.get(0).body().get(0);
       if (body.lines().size() == 1) {
-        out.add(IrObject.indent(indent + 1) + body.asString());
+        out.add(ErlFormat.prefixed(indent + 1, body.asString()));
       } else {
         out.addAll(body.lines(indent + 1));
       }
-      out.add(IrObject.indent(indent) + "end");
+      out.add(ErlFormat.prefixed(indent, "end"));
       return out;
     }
-    if (clauses.size() > 1 || hasMultilineBody()) {
+    out.add(ErlFormat.prefixed(indent, "fun"));
+    if (clauses.size() > 1) {
       for (int i = 0; i < clauses.size(); i++) {
         out.addAll(funClauseLines(clauses.get(i), indent + 1, i < clauses.size() - 1));
       }
     } else {
       ErlClause clause = clauses.get(0);
-      out.set(0, IrObject.indent(indent) + "fun " + funClauseHead(clause) + " ->");
-      ErlExpr body = clause.body().get(0);
-      if (body.lines().size() == 1) {
-        out.add(IrObject.indent(indent + 1) + body.asString());
-      } else {
-        out.addAll(body.lines(indent + 1));
-      }
+      out.set(0, ErlFormat.prefixed(indent, "fun" + funClauseHead(clause) + " ->"));
+      out.addAll(ErlFormat.renderExprLines(clause.body().get(0), indent + 1));
     }
-    out.add(IrObject.indent(indent) + "end");
+    out.add(ErlFormat.prefixed(indent, "end"));
     return out;
   }
 
@@ -87,33 +81,25 @@ public final class ErlFun implements ErlExpr {
 
   List<String> inlineClauseLines(int indent) {
     List<String> out = new ArrayList<>();
-    out.add(IrObject.indent(indent) + "fun");
+    out.add(ErlFormat.prefixed(indent, "fun"));
     for (int i = 0; i < clauses.size(); i++) {
       ErlClause clause = clauses.get(i);
       boolean semicolon = i < clauses.size() - 1;
       out.add(
-          IrObject.indent(indent + 1)
-              + funClauseHead(clause)
+          ErlFormat.prefixed(indent + 1, funClauseHead(clause))
               + " -> "
               + clause.body().get(0).asString()
               + (semicolon ? ";" : ""));
     }
-    out.add(IrObject.indent(indent) + "end");
+    out.add(ErlFormat.prefixed(indent, "end"));
     return out;
   }
 
   private static List<String> funClauseLines(ErlClause clause, int indent, boolean semicolon) {
     List<String> out = new ArrayList<>();
-    out.add(IrObject.indent(indent) + funClauseHead(clause) + " ->");
-    for (ErlExpr expr : clause.body()) {
-      if (expr.lines().size() == 1) {
-        out.add(IrObject.indent(indent + 1) + expr.asString());
-      } else {
-        out.addAll(expr.lines(indent + 1));
-      }
-    }
-    String last = out.get(out.size() - 1);
-    out.set(out.size() - 1, last + (semicolon ? ";" : ""));
+    String head = funClauseHead(clause);
+    out.add(ErlFormat.prefixed(indent, head + " ->"));
+    ErlFormat.appendClauseBodyLines(out, clause, indent, semicolon, false);
     return out;
   }
 

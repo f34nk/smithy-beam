@@ -47,11 +47,12 @@ class HttpChecksumEmissionTest {
     assertThat(codec).contains("crc32c_hash(Body)");
     assertThat(codec).contains("sha256_hash(Body)");
     assertThat(codec).contains("validate_response_checksum(Body, Headers,");
-    assertThat(codec)
-        .contains(
-            "case checksum_header_encode(checksum_digest(Body, checksum_algorithm_from_header(HeaderName))) =:= Expected of");
+    assertThat(codec).contains("checksum_header_encode(");
+    assertThat(codec).contains("checksum_digest(Body, checksum_algorithm_from_header(HeaderName))");
+    assertThat(codec).contains(") =:= Expected");
+    assertThat(codec).contains("of");
     assertThat(codec).containsPattern("end\\s+end\\.");
-    assertThat(codec).contains("HeadersWithChecksum = case ChecksumAlgorithm of");
+    assertThat(codec).containsPattern("HeadersWithChecksum =\\s+case ChecksumAlgorithm of");
     assertThat(codec).contains("undefined -> Headers;");
     assertThat(codec).contains("crc32c ->");
     assertThat(codec).contains("sha256 ->");

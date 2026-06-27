@@ -10,18 +10,9 @@ import org.junit.jupiter.api.Test;
 
 class ErlangXmlCodecIrTest {
   @Test
-  void decodeSparseMapLinesMatchGolden() {
+  void decodeSparseMapLinesMatchGolden() throws IOException {
     ErlFunction fn = ErlangXmlCodecIr.decodeSparseMap();
-    assertThat(fn.lines())
-        .containsExactly(
-            "decode_sparse_map(undefined) -> undefined;",
-            """
-                decode_sparse_map(Map) when is_map(Map) -> maps:map(fun
-                    (_K, null) ->
-                        undefined;
-                    (_K, V) ->
-                        V
-                end, Map).""");
+    assertThat(fn.asString()).isEqualTo(readExpectedString("ir/decode_sparse_map.expected.erl"));
   }
 
   @Test

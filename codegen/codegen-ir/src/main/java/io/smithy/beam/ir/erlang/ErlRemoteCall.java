@@ -23,15 +23,12 @@ public final class ErlRemoteCall implements ErlExpr {
 
   @Override
   public List<String> lines() {
-    StringBuilder sb =
-        new StringBuilder(module.asString()).append(':').append(function.asString()).append('(');
-    for (int i = 0; i < args.size(); i++) {
-      if (i > 0) {
-        sb.append(", ");
-      }
-      sb.append(args.get(i).asString());
-    }
-    sb.append(')');
-    return List.of(sb.toString());
+    return lines(0);
+  }
+
+  @Override
+  public List<String> lines(int indent) {
+    String prefix = module.asString() + ":" + function.asString();
+    return ErlFormat.formatPrefixedCall(indent, prefix, args, "");
   }
 }

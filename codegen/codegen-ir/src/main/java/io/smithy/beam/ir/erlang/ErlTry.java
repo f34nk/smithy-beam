@@ -33,14 +33,14 @@ public final class ErlTry implements ErlExpr {
   @Override
   public List<String> lines(int indent) {
     List<String> out = new ArrayList<>();
-    out.add(IrObject.indent(indent) + "try");
+    out.add(ErlFormat.prefixed(indent, "try"));
     out.addAll(tryBodyLines(body, indent + 1));
-    out.add(IrObject.indent(indent) + "catch");
+    out.add(ErlFormat.prefixed(indent, "catch"));
     for (int i = 0; i < catchClauses.size(); i++) {
       String suffix = (i < catchClauses.size() - 1) ? ";" : "";
-      out.add(IrObject.indent(indent + 1) + catchClauses.get(i).asString() + suffix);
+      out.add(ErlFormat.prefixed(indent + 1, catchClauses.get(i).asString() + suffix));
     }
-    out.add(IrObject.indent(indent) + "end");
+    out.add(ErlFormat.prefixed(indent, "end"));
     return out;
   }
 
@@ -53,18 +53,13 @@ public final class ErlTry implements ErlExpr {
     List<String> out = new ArrayList<>();
     for (int i = 0; i < expressions.size(); i++) {
       boolean hasComma = i < expressions.size() - 1;
-      ErlExpr expr = expressions.get(i);
-      if (expr.lines().size() == 1) {
-        out.add(IrObject.indent(indent) + expr.asString() + (hasComma ? "," : ""));
-      } else {
-        List<String> exprLines = expr.lines(indent);
-        for (int j = 0; j < exprLines.size(); j++) {
-          String line = exprLines.get(j);
-          if (j == exprLines.size() - 1 && hasComma) {
-            line = line + ",";
-          }
-          out.add(line);
+      List<String> exprLines = ErlFormat.renderExprLines(expressions.get(i), indent);
+      for (int j = 0; j < exprLines.size(); j++) {
+        String line = exprLines.get(j);
+        if (j == exprLines.size() - 1 && hasComma) {
+          line = line + ",";
         }
+        out.add(line);
       }
     }
     return out;

@@ -43,16 +43,54 @@ public final class ErlCall implements ErlExpr {
   public List<String> lines(int indent) {
     if (isFiltermap()) {
       List<String> out = new ArrayList<>();
-      out.add(IrObject.indent(indent) + "lists:filtermap(");
+      out.add(ErlFormat.prefixed(indent, "lists:filtermap("));
       List<String> funLines = new ArrayList<>(((ErlFun) args.get(0)).inlineClauseLines(indent + 1));
       String lastFunLine = funLines.remove(funLines.size() - 1);
       out.addAll(funLines);
       out.add(lastFunLine + ",");
-      out.add(IrObject.indent(indent + 1) + args.get(1).asString());
-      out.add(IrObject.indent(indent) + ")");
+      out.add(ErlFormat.prefixed(indent + 1, args.get(1).asString()));
+      out.add(ErlFormat.prefixed(indent, ")"));
       return out;
     }
-    return List.of(IrObject.indent(indent) + inlineAsString());
+    List<String> mapsFilter = formatMapsFilter(indent);
+    if (mapsFilter != null) {
+      return mapsFilter;
+    }
+    return ErlFormat.formatPrefixedCall(indent, module.asString() + ":" + function, args, "");
+  }
+
+  private List<String> formatMapsFilter(int indent) {
+    if (!"filter".equals(function)
+        || !"maps".equals(module.value())
+        || args.size() != 2
+        || !(args.get(0) instanceof ErlFun fun)
+        || fun.clauses().size() != 1) {
+      return null;
+    }
+    ErlClause clause = fun.clauses().get(0);
+    String funHead = mapsFilterFunHead(clause);
+    String opener = "maps:filter(fun" + funHead + " ->";
+    if (indent != 0 || ErlFormat.exceedsLineLimit(indent, opener)) {
+      return null;
+    }
+    List<String> out = new ArrayList<>();
+    out.add(ErlFormat.prefixed(indent, opener));
+    out.addAll(ErlFormat.renderExprLines(clause.body().get(0), indent + 1));
+    out.add(ErlFormat.prefixed(indent, "end, " + args.get(1).asString() + ")"));
+    return out;
+  }
+
+  private static String mapsFilterFunHead(ErlClause clause) {
+    StringBuilder sb = new StringBuilder(" (");
+    List<ErlPattern> patterns = clause.patterns();
+    for (int i = 0; i < patterns.size(); i++) {
+      if (i > 0) {
+        sb.append(", ");
+      }
+      sb.append(patterns.get(i).asString());
+    }
+    sb.append(')');
+    return sb.toString();
   }
 
   private boolean isFiltermap() {
@@ -60,18 +98,5 @@ public final class ErlCall implements ErlExpr {
         && "lists".equals(module.value())
         && args.size() == 2
         && args.get(0) instanceof ErlFun;
-  }
-
-  private String inlineAsString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append(module.asString()).append(':').append(function).append('(');
-    for (int i = 0; i < args.size(); i++) {
-      if (i > 0) {
-        sb.append(", ");
-      }
-      sb.append(args.get(i).asString());
-    }
-    sb.append(')');
-    return sb.toString();
   }
 }

@@ -69,8 +69,8 @@ class RestXmlCodecTest {
     assertThat(codec).contains("<<\"ListBucketsOutput\">>");
     assertThat(codec).contains("xml_namespace()");
     assertThat(codec).contains("http://restxmltest.example/doc/2020-01-01/");
-    assertThat(codec).contains("Owner = case Parsed of");
-    assertThat(codec).contains("Owner_xml -> #owner{");
+    assertThat(codec).containsPattern("Owner =\\s+case Parsed of");
+    assertThat(codec).containsPattern("Owner_xml ->\\s+#owner\\{");
   }
 
   @Test

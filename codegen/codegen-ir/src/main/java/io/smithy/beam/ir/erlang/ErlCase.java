@@ -27,24 +27,44 @@ public final class ErlCase implements ErlExpr {
   @Override
   public List<String> lines(int indent) {
     List<String> out = new ArrayList<>();
-    out.add(IrObject.indent(indent) + "case " + scrutinee.asString() + " of");
+    if (ErlFormat.splitCaseScrutinee(indent, scrutinee)) {
+      out.add(ErlFormat.prefixed(indent, "case"));
+      ErlFormat.appendScrutineeLines(out, indent + 1, scrutinee);
+      out.add(ErlFormat.prefixed(indent, "of"));
+    } else {
+      out.add(ErlFormat.prefixed(indent, "case " + scrutinee.asString() + " of"));
+    }
     appendClauseLines(out, indent);
-    out.add(IrObject.indent(indent) + "end");
+    out.add(ErlFormat.prefixed(indent, "end"));
     return out;
   }
 
   List<String> matchLines(ErlPattern pattern, int indent) {
     List<String> out = new ArrayList<>();
-    out.add(
-        IrObject.indent(indent) + pattern.asString() + " = case " + scrutinee.asString() + " of");
-    appendClauseLines(out, indent);
-    out.add(IrObject.indent(indent) + "end");
+    if (ErlFormat.splitMatchCase(indent, scrutinee, clauses)) {
+      out.add(ErlFormat.prefixed(indent, pattern.asString() + " ="));
+      if (ErlFormat.splitCaseScrutinee(indent + 1, scrutinee)) {
+        out.add(ErlFormat.prefixed(indent + 1, "case"));
+        ErlFormat.appendScrutineeLines(out, indent + 2, scrutinee);
+        out.add(ErlFormat.prefixed(indent + 1, "of"));
+      } else {
+        out.add(ErlFormat.prefixed(indent + 1, "case " + scrutinee.asString() + " of"));
+      }
+      appendClauseLines(out, indent + 1);
+      out.add(ErlFormat.prefixed(indent + 1, "end"));
+    } else {
+      out.add(
+          ErlFormat.prefixed(
+              indent, pattern.asString() + " = case " + scrutinee.asString() + " of"));
+      appendClauseLines(out, indent);
+      out.add(ErlFormat.prefixed(indent, "end"));
+    }
     return out;
   }
 
   private void appendClauseLines(List<String> out, int indent) {
     for (int i = 0; i < clauses.size(); i++) {
-      out.addAll(caseClauseLines(clauses.get(i), indent + 1, i < clauses.size() - 1));
+      out.addAll(caseClauseLines(clauses.get(i), indent + 1, i < clauses.size() - 1, clauses));
     }
   }
 
@@ -53,32 +73,22 @@ public final class ErlCase implements ErlExpr {
     return lines(0);
   }
 
-  private static List<String> caseClauseLines(ErlClause clause, int indent, boolean semicolon) {
+  private static List<String> caseClauseLines(
+      ErlClause clause, int indent, boolean semicolon, List<ErlClause> allClauses) {
     List<String> out = new ArrayList<>();
     String head = clauseHead(clause);
-    if (isInlineBody(clause)) {
+    if (ErlFormat.useInlineCaseClauseBody(clause, indent, head, allClauses)) {
       out.add(
-          IrObject.indent(indent)
-              + head
-              + " -> "
-              + clause.body().get(0).asString()
+          ErlFormat.prefixed(indent, head + " -> " + clause.body().get(0).asString())
               + (semicolon ? ";" : ""));
     } else {
-      out.add(IrObject.indent(indent) + head + " ->");
-      for (ErlExpr expr : clause.body()) {
-        if (expr.lines().size() == 1) {
-          out.add(IrObject.indent(indent + 1) + expr.asString());
-        } else {
-          out.addAll(expr.lines(indent + 1));
-        }
-      }
-      String last = out.get(out.size() - 1);
-      out.set(out.size() - 1, last + (semicolon ? ";" : ""));
+      out.add(ErlFormat.prefixed(indent, head + " ->"));
+      ErlFormat.appendClauseBodyLines(out, clause, indent, semicolon, false);
     }
     return out;
   }
 
-  private static String clauseHead(ErlClause clause) {
+  static String clauseHead(ErlClause clause) {
     StringBuilder sb = new StringBuilder();
     List<ErlPattern> patterns = clause.patterns();
     for (int i = 0; i < patterns.size(); i++) {
@@ -98,12 +108,5 @@ public final class ErlCase implements ErlExpr {
       }
     }
     return sb.toString();
-  }
-
-  private static boolean isInlineBody(ErlClause clause) {
-    if (clause.forceBlockBody()) {
-      return false;
-    }
-    return clause.body().size() == 1 && clause.body().get(0).lines().size() == 1;
   }
 }

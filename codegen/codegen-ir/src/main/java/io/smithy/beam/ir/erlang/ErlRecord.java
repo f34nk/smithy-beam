@@ -60,17 +60,19 @@ public final class ErlRecord implements ErlExpr {
     } else {
       open = "#" + name + "{";
     }
-    out.add(IrObject.indent(indent) + open);
+    out.add(ErlFormat.prefixed(indent, open));
     for (int i = 0; i < fields.size(); i++) {
       String suffix = (i < fields.size() - 1) ? "," : "";
-      out.add(
-          IrObject.indent(indent + 1)
-              + fields.get(i).name()
-              + " = "
-              + fields.get(i).value().asString()
-              + suffix);
+      List<String> fieldLines = fields.get(i).lines(indent + 1);
+      for (int j = 0; j < fieldLines.size(); j++) {
+        String line = fieldLines.get(j);
+        if (j == fieldLines.size() - 1) {
+          line = line + suffix;
+        }
+        out.add(line);
+      }
     }
-    out.add(IrObject.indent(indent) + "}");
+    out.add(ErlFormat.prefixed(indent, "}"));
     return out;
   }
 
@@ -87,9 +89,9 @@ public final class ErlRecord implements ErlExpr {
   private String renderSingleLine(int indent) {
     StringBuilder sb = new StringBuilder(IrObject.indent(indent));
     if (recordOrNull != null) {
-      sb.append(recordOrNull.asString()).append('#').append(name).append("{ ");
+      sb.append(recordOrNull.asString()).append('#').append(name).append("{");
     } else {
-      sb.append('#').append(name).append("{ ");
+      sb.append('#').append(name).append("{");
     }
     for (int i = 0; i < fields.size(); i++) {
       if (i > 0) {
@@ -97,7 +99,7 @@ public final class ErlRecord implements ErlExpr {
       }
       sb.append(fields.get(i).name()).append(" = ").append(fields.get(i).value().asString());
     }
-    sb.append(" }");
+    sb.append('}');
     return sb.toString();
   }
 

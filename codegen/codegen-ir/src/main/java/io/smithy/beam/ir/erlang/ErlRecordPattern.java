@@ -42,7 +42,33 @@ public final class ErlRecordPattern implements ErlPattern {
   }
 
   @Override
-  public List<String> lines() {
+  public List<String> lines(int indent) {
+    String inline = inlineContent();
+    if (!ErlFormat.exceedsLineLimit(indent, inline)) {
+      return List.of(inline);
+    }
+    java.util.ArrayList<String> out = new java.util.ArrayList<>();
+    out.add(ErlFormat.prefixed(indent, openPrefix()));
+    StringBuilder fieldLine = new StringBuilder();
+    for (int i = 0; i < fields.size(); i++) {
+      if (i > 0) {
+        fieldLine.append(", ");
+      }
+      fieldLine.append(fields.get(i).asString());
+    }
+    out.add(ErlFormat.prefixed(indent + 1, fieldLine.toString()));
+    out.add(ErlFormat.prefixed(indent, "}"));
+    return out;
+  }
+
+  private String openPrefix() {
+    if (aliasOrNull != null) {
+      return aliasOrNull + " = #" + name + "{";
+    }
+    return "#" + name + "{";
+  }
+
+  private String inlineContent() {
     StringBuilder sb = new StringBuilder();
     if (aliasOrNull != null) {
       sb.append(aliasOrNull).append(" = ");
@@ -55,6 +81,11 @@ public final class ErlRecordPattern implements ErlPattern {
       sb.append(fields.get(i).asString());
     }
     sb.append('}');
-    return List.of(sb.toString());
+    return sb.toString();
+  }
+
+  @Override
+  public List<String> lines() {
+    return lines(0);
   }
 }

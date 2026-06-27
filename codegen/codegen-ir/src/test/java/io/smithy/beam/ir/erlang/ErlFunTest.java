@@ -9,12 +9,12 @@ class ErlFunTest {
   @Test
   void funExpressionLines() {
     ErlFun fun = ErlFun.fun(ErlClause.clause(List.of(new ErlVarPattern("V")), new ErlVar("V")));
-    assertThat(fun.lines()).containsExactly("fun (V) ->", "    V", "end");
+    assertThat(fun.lines()).containsExactly("fun(V) ->", "    V", "end");
   }
 
   @Test
   void funExpressionAsString() {
     ErlFun fun = ErlFun.fun(ErlClause.clause(List.of(new ErlVarPattern("V")), new ErlVar("V")));
-    assertThat(fun.asString()).isEqualTo("fun (V) ->\n    V\nend");
+    assertThat(fun.asString()).isEqualTo("fun(V) ->\n    V\nend");
   }
 }

@@ -25,14 +25,11 @@ public final class ErlCallLocal implements ErlExpr {
 
   @Override
   public List<String> lines() {
-    StringBuilder sb = new StringBuilder(function).append('(');
-    for (int i = 0; i < args.size(); i++) {
-      if (i > 0) {
-        sb.append(", ");
-      }
-      sb.append(args.get(i).asString());
-    }
-    sb.append(')');
-    return List.of(sb.toString());
+    return lines(0);
+  }
+
+  @Override
+  public List<String> lines(int indent) {
+    return ErlFormat.formatPrefixedCall(indent, function, args, "");
   }
 }

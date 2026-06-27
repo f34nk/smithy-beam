@@ -78,7 +78,7 @@ public final class ErlListComprehension implements ErlExpr {
       return qualifierLines(indent);
     }
 
-    List<String> exprLines = expression.lines(indent + 1);
+    List<String> exprLines = ErlFormat.renderExprLines(expression, indent + 1);
     if (exprLines.size() == 1 && filters.size() <= 1) {
       StringBuilder sb = new StringBuilder("[");
       sb.append(expression.asString());
@@ -91,47 +91,96 @@ public final class ErlListComprehension implements ErlExpr {
         sb.append(filter.asString());
       }
       sb.append(']');
-      return List.of(sb.toString());
+      if (!ErlFormat.exceedsLineLimit(indent, sb.toString())) {
+        return List.of(sb.toString());
+      }
     }
 
     List<String> out = new ArrayList<>();
-    out.add(IrObject.indent(indent) + "[");
+    out.add(ErlFormat.prefixed(indent, "["));
     out.addAll(exprLines);
-    StringBuilder genLine = new StringBuilder(IrObject.indent(indent) + " || ");
+    StringBuilder genLine = new StringBuilder(ErlFormat.generatorLinePrefix(indent));
     genLine.append(generatorPattern.asString());
     genLine.append(" <- ");
     genLine.append(generatorExpr.asString());
     if (!filters.isEmpty()) {
-      genLine.append(',');
-      out.add(genLine.toString());
-      for (int i = 0; i < filters.size(); i++) {
-        String suffix = (i < filters.size() - 1) ? "," : "";
-        out.add(IrObject.indent(indent + 1) + filters.get(i).asString() + suffix);
+      if (filters.size() == 1) {
+        genLine.append(", ");
+        genLine.append(filters.get(0).asString());
+        out.add(genLine.toString());
+      } else {
+        genLine.append(',');
+        out.add(genLine.toString());
+        for (int i = 0; i < filters.size(); i++) {
+          String suffix = i < filters.size() - 1 ? "," : "";
+          out.add(ErlFormat.prefixed(indent + 1, filters.get(i).asString() + suffix));
+        }
       }
     } else {
       out.add(genLine.toString());
     }
-    out.add(IrObject.indent(indent) + "]");
+    out.add(ErlFormat.prefixed(indent, "]"));
     return out;
   }
 
   private List<String> qualifierLines(int indent) {
-    List<String> exprLines = expression.lines(indent + 1);
+    List<String> exprLines = ErlFormat.renderExprLines(expression, indent + 1);
     if (exprLines.size() == 1 && fitsSingleLine(qualifiersOrNull)) {
       StringBuilder sb = new StringBuilder("[");
       sb.append(expression.asString());
       appendQualifiers(sb);
       sb.append(']');
-      return List.of(sb.toString());
+      if (!ErlFormat.exceedsLineLimit(indent, sb.toString())) {
+        return List.of(sb.toString());
+      }
     }
 
     List<String> out = new ArrayList<>();
-    out.add(IrObject.indent(indent) + "[");
+    out.add(ErlFormat.prefixed(indent, "["));
     out.addAll(exprLines);
-    StringBuilder genLine = new StringBuilder(IrObject.indent(indent) + " ");
-    appendQualifiers(genLine);
-    out.add(genLine.toString());
-    out.add(IrObject.indent(indent) + "]");
+    List<ErlComprehensionQual> quals = qualifiersOrNull;
+    int index = 0;
+    while (index < quals.size() && !(quals.get(index) instanceof ErlComprehensionGenerator)) {
+      index++;
+    }
+    if (index < quals.size()) {
+      ErlComprehensionGenerator generator = (ErlComprehensionGenerator) quals.get(index);
+      StringBuilder genLine = new StringBuilder(ErlFormat.generatorLinePrefix(indent));
+      genLine.append(generator.pattern().asString());
+      genLine.append(" <- ");
+      genLine.append(generator.expr().asString());
+      index++;
+      int remaining = quals.size() - index;
+      if (remaining == 1 && quals.get(index) instanceof ErlComprehensionFilter filter) {
+        genLine.append(", ");
+        genLine.append(filter.filter().asString());
+        out.add(genLine.toString());
+      } else if (remaining > 0 && remainingQualifiersAreOpFilters(quals, index)) {
+        for (; index < quals.size(); index++) {
+          ErlComprehensionFilter filter = (ErlComprehensionFilter) quals.get(index);
+          genLine.append(", ");
+          genLine.append(filter.filter().asString());
+        }
+        out.add(genLine.toString());
+      } else if (remaining > 0) {
+        genLine.append(',');
+        out.add(genLine.toString());
+        for (; index < quals.size(); index++) {
+          ErlComprehensionQual qual = quals.get(index);
+          String line;
+          if (qual instanceof ErlComprehensionGenerator gen) {
+            line = gen.pattern().asString() + " <- " + gen.expr().asString();
+          } else {
+            line = ((ErlComprehensionFilter) qual).filter().asString();
+          }
+          String suffix = index < quals.size() - 1 ? "," : "";
+          out.add(ErlFormat.prefixed(indent + 1, line + suffix));
+        }
+      } else {
+        out.add(genLine.toString());
+      }
+    }
+    out.add(ErlFormat.prefixed(indent, "]"));
     return out;
   }
 
@@ -145,12 +194,30 @@ public final class ErlListComprehension implements ErlExpr {
     return true;
   }
 
+  private static boolean remainingQualifiersAreOpFilters(
+      List<ErlComprehensionQual> quals, int startIndex) {
+    for (int i = startIndex; i < quals.size(); i++) {
+      if (!(quals.get(i) instanceof ErlComprehensionFilter filter)
+          || filter.filter() instanceof ErlCall
+          || filter.filter() instanceof ErlCallLocal) {
+        return false;
+      }
+    }
+    return startIndex < quals.size();
+  }
+
   private void appendQualifiers(StringBuilder sb) {
+    appendQualifiers(sb, true);
+  }
+
+  private void appendQualifiers(StringBuilder sb, boolean includeLeadingGenerator) {
     boolean sawGenerator = false;
     for (ErlComprehensionQual qual : qualifiersOrNull) {
       if (qual instanceof ErlComprehensionGenerator generator) {
         if (!sawGenerator) {
-          sb.append(" || ");
+          if (includeLeadingGenerator) {
+            sb.append(" || ");
+          }
           sawGenerator = true;
         } else {
           sb.append(", ");

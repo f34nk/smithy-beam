@@ -99,6 +99,115 @@ class ErlClauseTest {
   }
 
   @Test
+  void multilineAliasedRecordPatternInFunctionHead() {
+    ErlClause clause =
+        new ErlClause(
+            List.of(
+                new ErlRecordPattern(
+                    "create_resource_input",
+                    List.of(
+                        ErlRecordFieldPattern.fieldPattern(
+                            "name", ErlVarPattern.varPattern("Name")),
+                        ErlRecordFieldPattern.fieldPattern(
+                            "client_token", ErlVarPattern.varPattern("ClientToken"))),
+                    "Input")),
+            List.of(),
+            List.of(new ErlAtom("ok")));
+    assertThat(clause.lines(0, "encode_create_resource_request", false))
+        .containsExactly(
+            "encode_create_resource_request(Input = #create_resource_input{",
+            "    name = Name, client_token = ClientToken",
+            "}) -> ok.");
+  }
+
+  @Test
+  void multilineRecordPatternInFunctionHead() {
+    ErlClause clause =
+        new ErlClause(
+            List.of(
+                ErlVarPattern.varPattern("HttpClient"),
+                ErlVarPattern.varPattern("Config"),
+                ErlRecordPattern.recordPattern(
+                    "http_request",
+                    ErlRecordFieldPattern.fieldPattern(
+                        "method", ErlVarPattern.varPattern("Method")),
+                    ErlRecordFieldPattern.fieldPattern("path", ErlVarPattern.varPattern("Path")),
+                    ErlRecordFieldPattern.fieldPattern("query", ErlVarPattern.varPattern("Query")),
+                    ErlRecordFieldPattern.fieldPattern(
+                        "headers", ErlVarPattern.varPattern("Headers")),
+                    ErlRecordFieldPattern.fieldPattern("body", ErlVarPattern.varPattern("Body")),
+                    ErlRecordFieldPattern.fieldPattern("host", ErlVarPattern.varPattern("Host")))),
+            List.of(),
+            List.of(
+                ErlExprBlock.block(
+                    ErlMatch.match(
+                        ErlVarPattern.varPattern("BaseUrl"),
+                        ErlCase.caseExpr(
+                            ErlCall.call(
+                                "maps",
+                                "get",
+                                ErlAtom.atom("base_url"),
+                                ErlVar.var("Config"),
+                                ErlAtom.atom("undefined")),
+                            ErlClause.clause(
+                                List.of(ErlAtomPattern.atomPattern("undefined")),
+                                ErlAtom.atom("x")))))));
+    assertThat(clause.lines(0, "dispatch_signed", false))
+        .containsExactly(
+            "dispatch_signed(HttpClient, Config, #http_request{",
+            "    method = Method, path = Path, query = Query, headers = Headers, body = Body, host = Host",
+            "}) ->",
+            "    BaseUrl =",
+            "        case maps:get(base_url, Config, undefined) of",
+            "            undefined -> x",
+            "        end.");
+    ErlFunction fn =
+        ErlFunction.function(
+            "dispatch_signed",
+            3,
+            List.of(
+                new ErlClause(
+                    List.of(
+                        ErlVarPattern.varPattern("HttpClient"),
+                        ErlVarPattern.varPattern("Config"),
+                        ErlRecordPattern.recordPattern(
+                            "http_request",
+                            ErlRecordFieldPattern.fieldPattern(
+                                "method", ErlVarPattern.varPattern("Method")),
+                            ErlRecordFieldPattern.fieldPattern(
+                                "path", ErlVarPattern.varPattern("Path")),
+                            ErlRecordFieldPattern.fieldPattern(
+                                "query", ErlVarPattern.varPattern("Query")),
+                            ErlRecordFieldPattern.fieldPattern(
+                                "headers", ErlVarPattern.varPattern("Headers")),
+                            ErlRecordFieldPattern.fieldPattern(
+                                "body", ErlVarPattern.varPattern("Body")),
+                            ErlRecordFieldPattern.fieldPattern(
+                                "host", ErlVarPattern.varPattern("Host")))),
+                    List.of(),
+                    List.of(
+                        ErlExprBlock.block(
+                            ErlMatch.match(
+                                ErlVarPattern.varPattern("BaseUrl"),
+                                ErlCase.caseExpr(
+                                    ErlCall.call(
+                                        "maps",
+                                        "get",
+                                        ErlAtom.atom("base_url"),
+                                        ErlVar.var("Config"),
+                                        ErlAtom.atom("undefined")),
+                                    ErlClause.clause(
+                                        List.of(ErlAtomPattern.atomPattern("undefined")),
+                                        ErlAtom.atom("x")))))))));
+    assertThat(fn.lines(0).get(1))
+        .isEqualTo(
+            "    method = Method, path = Path, query = Query, headers = Headers, body = Body, host = Host");
+    assertThat(clause.lines(0, "dispatch_signed", false, true).get(1))
+        .isEqualTo(
+            "    method = Method, path = Path, query = Query, headers = Headers, body = Body, host = Host");
+  }
+
+  @Test
   void multilineRecordBodyAsString() {
     ErlRecord record = basicItemRecord();
     assertThat(record.asString(1))

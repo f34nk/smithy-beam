@@ -90,34 +90,35 @@ final class ErlangSigV4Ir {
                     ErlVarPattern.varPattern("Opts")),
                 ErlCapturedBlock.capturedBlock(
                     """
-                                AccessKeyId = maps:get(access_key_id, Credentials),
-                                SecretAccessKey = maps:get(secret_access_key, Credentials),
-                                DateTime = calendar:universal_time(),
-                                Host = resolve_host(Request, Opts),
-                                Url = build_url(Host, Request#http_request.path, Request#http_request.query),
-                                Ttl = maps:get(expires, Opts, 900),
-                                QueryOpts =
-                                    [
-                                        {ttl, Ttl},
-                                        {uri_encode_path, Service =/= <<\"s3\">>}
-                                    ]
-                                    ++ body_digest_option(Opts)
-                                    ++ session_token_option(maps:get(session_token, Credentials, undefined)),
-                                try
-                                    {ok, aws_signature:sign_v4_query_params(
-                                        AccessKeyId,
-                                        SecretAccessKey,
-                                        Region,
-                                        Service,
-                                        DateTime,
-                                        Request#http_request.method,
-                                        Url,
-                                        QueryOpts
-                                    )}
-                                catch
-                                    _:Reason ->
-                                        {error, Reason}
-                                end"""))));
+                    AccessKeyId = maps:get(access_key_id, Credentials),
+                    SecretAccessKey = maps:get(secret_access_key, Credentials),
+                    DateTime = calendar:universal_time(),
+                    Host = resolve_host(Request, Opts),
+                    Url = build_url(Host, Request#http_request.path, Request#http_request.query),
+                    Ttl = maps:get(expires, Opts, 900),
+                    QueryOpts =
+                        [
+                            {ttl, Ttl},
+                            {uri_encode_path, Service =/= <<\"s3\">>}
+                        ] ++
+                            body_digest_option(Opts) ++
+                            session_token_option(maps:get(session_token, Credentials, undefined)),
+                    try
+                        {ok,
+                            aws_signature:sign_v4_query_params(
+                                AccessKeyId,
+                                SecretAccessKey,
+                                Region,
+                                Service,
+                                DateTime,
+                                Request#http_request.method,
+                                Url,
+                                QueryOpts
+                            )}
+                    catch
+                        _:Reason ->
+                            {error, Reason}
+                    end"""))));
   }
 
   static ErlFunction signRequest() {
@@ -360,17 +361,21 @@ final class ErlangSigV4Ir {
                 List.of(ErlVarPattern.varPattern("Config")),
                 ErlCapturedBlock.capturedBlock(
                     """
-                                case maps:get(base_url, Config, undefined) of
-                                    undefined ->
-                                        case {maps:get(endpoint_prefix, Config, undefined),
-                                              maps:get(region, Config, <<\"us-east-1\">>)} of
-                                            {undefined, _} -> undefined;
-                                            {Prefix, Region} -> <<Prefix/binary, \".\", Region/binary, \".amazonaws.com\">>
-                                        end;
-                                    BaseUrl ->
-                                        {_Scheme, Authority} = split_base_url(BaseUrl),
-                                        Authority
-                                end"""))));
+                    case maps:get(base_url, Config, undefined) of
+                        undefined ->
+                            case
+                                {
+                                    maps:get(endpoint_prefix, Config, undefined),
+                                    maps:get(region, Config, <<\"us-east-1\">>)
+                                }
+                            of
+                                {undefined, _} -> undefined;
+                                {Prefix, Region} -> <<Prefix/binary, \".\", Region/binary, \".amazonaws.com\">>
+                            end;
+                        BaseUrl ->
+                            {_Scheme, Authority} = split_base_url(BaseUrl),
+                            Authority
+                    end"""))));
   }
 
   private static ErlFunction splitBaseUrl() {
@@ -385,16 +390,18 @@ final class ErlangSigV4Ir {
                 List.of(ErlVarPattern.varPattern("BaseUrl")),
                 ErlCapturedBlock.capturedBlock(
                     """
-                                        case uri_string:parse(binary_to_list(BaseUrl)) of
-                                            #{scheme := Scheme, host := Host} = Parts ->
-                                                PortSuffix = case maps:get(port, Parts, undefined) of
-                                                    undefined -> <<>>;
-                                                    Port -> <<\":\", (integer_to_binary(Port))/binary>>
-                                                end,
-                                                {<< (list_to_binary(Scheme))/binary, \"://\">>,
-                                                 << (list_to_binary(Host))/binary, PortSuffix/binary >>};
-                                            _ ->
-                                                {<<>>, BaseUrl}
-                                        end"""))));
+                    case uri_string:parse(binary_to_list(BaseUrl)) of
+                        #{scheme := Scheme, host := Host} = Parts ->
+                            PortSuffix =
+                                case maps:get(port, Parts, undefined) of
+                                    undefined -> <<>>;
+                                    Port -> <<\":\", (integer_to_binary(Port))/binary>>
+                                end,
+                            {<<(list_to_binary(Scheme))/binary, \"://\">>, <<
+                                (list_to_binary(Host))/binary, PortSuffix/binary
+                            >>};
+                        _ ->
+                            {<<>>, BaseUrl}
+                    end"""))));
   }
 }

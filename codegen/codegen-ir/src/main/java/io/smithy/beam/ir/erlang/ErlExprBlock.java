@@ -26,18 +26,13 @@ public final class ErlExprBlock implements ErlExpr {
     List<String> out = new ArrayList<>();
     for (int i = 0; i < expressions.size(); i++) {
       boolean hasComma = i < expressions.size() - 1;
-      ErlExpr expr = expressions.get(i);
-      if (expr.lines().size() == 1) {
-        out.add(IrObject.indent(indent) + expr.asString() + (hasComma ? "," : ""));
-      } else {
-        List<String> exprLines = expr.lines(indent);
-        for (int j = 0; j < exprLines.size(); j++) {
-          String line = exprLines.get(j);
-          if (j == exprLines.size() - 1 && hasComma) {
-            line = line + ",";
-          }
-          out.add(line);
+      List<String> exprLines = ErlFormat.renderExprLines(expressions.get(i), indent);
+      for (int j = 0; j < exprLines.size(); j++) {
+        String line = exprLines.get(j);
+        if (j == exprLines.size() - 1 && hasComma) {
+          line = line + ",";
         }
+        out.add(line);
       }
     }
     return out;

@@ -1,5 +1,6 @@
 package io.smithy.beam.ir.erlang;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class ErlMap implements ErlExpr {
@@ -19,6 +20,26 @@ public final class ErlMap implements ErlExpr {
 
   @Override
   public List<String> lines() {
+    return lines(0);
+  }
+
+  @Override
+  public List<String> lines(int indent) {
+    String inline = inlineAsString();
+    if (!ErlFormat.exceedsLineLimit(indent, inline)) {
+      return List.of(inline);
+    }
+    List<String> out = new ArrayList<>();
+    out.add(ErlFormat.prefixed(indent, "#{"));
+    for (int i = 0; i < entries.size(); i++) {
+      String suffix = i < entries.size() - 1 ? "," : "";
+      out.add(ErlFormat.prefixed(indent + 1, entries.get(i).asString() + suffix));
+    }
+    out.add(ErlFormat.prefixed(indent, "}"));
+    return out;
+  }
+
+  private String inlineAsString() {
     StringBuilder sb = new StringBuilder("#{");
     for (int i = 0; i < entries.size(); i++) {
       if (i > 0) {
@@ -27,6 +48,6 @@ public final class ErlMap implements ErlExpr {
       sb.append(entries.get(i).asString());
     }
     sb.append('}');
-    return List.of(sb.toString());
+    return sb.toString();
   }
 }

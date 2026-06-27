@@ -1,5 +1,6 @@
 package io.smithy.beam.ir.erlang;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class ErlOp implements ErlExpr {
@@ -41,9 +42,33 @@ public final class ErlOp implements ErlExpr {
 
   @Override
   public List<String> lines() {
+    return lines(0);
+  }
+
+  @Override
+  public List<String> lines(int indent) {
     if (right == null) {
-      return List.of(operator + " " + left.asString());
+      return List.of(ErlFormat.prefixed(indent, operator + " " + left.asString()));
     }
-    return List.of(left.asString() + " " + operator + " " + right.asString());
+    String inline = left.asString() + " " + operator + " " + right.asString();
+    if (!ErlFormat.exceedsLineLimit(indent, inline)) {
+      return List.of(ErlFormat.prefixed(indent, inline));
+    }
+    if ("++".equals(operator)) {
+      List<String> out = new ArrayList<>();
+      List<String> leftLines = ErlFormat.renderExprLines(left, indent);
+      if (leftLines.size() == 1) {
+        out.add(leftLines.get(0) + " " + operator);
+        out.addAll(ErlFormat.renderExprLines(right, indent + 1));
+        return out;
+      }
+    }
+    if (left instanceof ErlCallLocal callLocal) {
+      List<String> leftLines = new ArrayList<>(callLocal.lines(indent));
+      String last = leftLines.remove(leftLines.size() - 1);
+      leftLines.add(last + " " + operator + " " + right.asString());
+      return leftLines;
+    }
+    return List.of(ErlFormat.prefixed(indent, inline));
   }
 }
