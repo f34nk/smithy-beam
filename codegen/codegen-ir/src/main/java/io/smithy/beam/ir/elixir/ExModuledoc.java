@@ -2,7 +2,7 @@ package io.smithy.beam.ir.elixir;
 
 import java.util.List;
 
-public final class ExModuledoc implements IrObject {
+public final class ExModuledoc implements ExPreambleEntry {
   private final String text;
 
   private ExModuledoc(String text) {

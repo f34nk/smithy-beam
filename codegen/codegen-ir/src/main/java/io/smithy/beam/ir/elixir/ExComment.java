@@ -2,7 +2,7 @@ package io.smithy.beam.ir.elixir;
 
 import java.util.List;
 
-public final class ExComment implements IrObject {
+public final class ExComment implements ExPreambleEntry {
   private final String text;
 
   private ExComment(String text) {
