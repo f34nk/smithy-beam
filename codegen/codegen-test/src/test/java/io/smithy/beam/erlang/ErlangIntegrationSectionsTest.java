@@ -83,7 +83,7 @@ class ErlangIntegrationSectionsTest {
 
         CodegenDirector<ErlangWriter, ErlangIntegration, ErlangContext, BeamSettings> runner =
                 new CodegenDirector<>();
-        runner.directedCodegen(new ErlangDirectedCodegen());
+        runner.directedCodegen(new ErlangTypeDirectedCodegen());
         runner.integrationClass(ErlangIntegration.class);
         runner.fileManifest(context.getFileManifest());
         runner.integrationSettings(context.getSettings());
@@ -125,7 +125,7 @@ class ErlangIntegrationSectionsTest {
 
         CodegenDirector<ErlangWriter, ErlangIntegration, ErlangContext, BeamSettings> runner =
                 new CodegenDirector<>();
-        runner.directedCodegen(new ErlangDirectedCodegen());
+        runner.directedCodegen(new ErlangTypeDirectedCodegen());
         runner.integrationClass(ErlangIntegration.class);
         runner.fileManifest(context.getFileManifest());
         runner.integrationSettings(context.getSettings());

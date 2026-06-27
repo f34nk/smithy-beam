@@ -7,10 +7,9 @@ import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamProtocolResolver;
-import io.smithy.beam.core.BeamProtocolSupport;
-import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.ir.erlang.ErlModule;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
@@ -94,7 +93,10 @@ final class ErlangServerDirectedCodegen
                 protocolCodegen,
                 resolvedProtocolTraitId,
                 moduleName,
-                definitionFile);
+                definitionFile,
+                null,
+                new ErlangBehaviourModuleBuilder(),
+                new ErlangServerModuleBuilder());
     }
 
     @Override
@@ -115,49 +117,16 @@ final class ErlangServerDirectedCodegen
 
         ctx.writerDelegator().useFileWriter(
                 layout.runtimeTypesHeaderFile(),
-                writer -> {
-                    writer.write("%% Generated runtime types for $L.", ctx.service().getId());
-                    ErlangRuntimeTypesEmitter.writeBody(writer, Optional.empty());
-                });
+                writer -> writer.write(
+                        "$L",
+                        ErlangRuntimeTypesIr.runtimeTypesHeader(
+                                        "runtime_types",
+                                        Optional.empty(),
+                                        Optional.of(service.getId().toString()))
+                                .asString()));
 
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
         ErlangBehaviourEmitter.beginService(ctx, service, operations);
-
-        String behaviourMod = layout.behaviourModuleName();
-
-        List<String> exports = new ArrayList<>();
-        exports.add("init_handlers/0");
-        for (OperationShape op : operations) {
-            Symbol sym = directive.symbolProvider().toSymbol(op);
-            exports.add("handle_" + sym.getName() + "/3");
-        }
-        String exportList = String.join(", ", exports);
-
-        ctx.writerDelegator().useFileWriter(layout.serverModuleFile(), writer -> {
-            writer.pushGeneratedDocumentationSection();
-            writer.write("%% Generated Erlang server dispatcher for $L.", service.getId());
-            writer.write("%% Discovers impl callbacks at startup via init_handlers/0.");
-            writer.popState();
-
-            writer.pushModuleHeaderSection();
-            writer.write("-module($L).", layout.serverModuleName());
-            writer.write("-behaviour($L).", behaviourMod);
-            ErlangFormat.writeExport(writer, exports);
-            writer.popState();
-
-            writer.pushDependenciesSection();
-            ((ErlangImports) writer.getImportContainer()).addIncludeRelative(layout.typesHeaderFile());
-            writer.write(ErlangImports.relativeIncludeLine(layout.typesHeaderFile()));
-            writer.popState();
-
-            writer.pushModuleHeaderSection();
-            writer.write("");
-            writer.popState();
-
-            writer.pushProtocolHookSection();
-            writer.write("%% Handler discovery and dispatch helpers.");
-            writer.popState();
-        });
     }
 
     @Override
@@ -177,32 +146,9 @@ final class ErlangServerDirectedCodegen
             GenerateServiceDirective<ErlangContext, BeamSettings> directive) {
         ErlangContext ctx = directive.context();
         ServiceShape service = directive.shape();
+        SymbolProvider sp = directive.symbolProvider();
 
-        if (ctx.protocolCodegen() != null
-                && BeamProtocolIds.REST_JSON_1.equals(
-                        ctx.protocolCodegen().protocolTraitId())) {
-            ErlangRestJson1Emitter.emitServerCodecModule(ctx, service);
-        } else if (ctx.protocolCodegen() != null
-                && BeamProtocolIds.AWS_JSON_1_0.equals(
-                        ctx.protocolCodegen().protocolTraitId())) {
-            ErlangAwsJson10Emitter.emitServerCodecModule(ctx, service);
-        } else if (ctx.protocolCodegen() != null
-                && BeamProtocolIds.AWS_JSON_1_1.equals(
-                        ctx.protocolCodegen().protocolTraitId())) {
-            ErlangAwsJson11Emitter.emitServerCodecModule(ctx, service);
-        } else if (ctx.protocolCodegen() != null
-                && BeamProtocolIds.REST_XML.equals(
-                        ctx.protocolCodegen().protocolTraitId())) {
-            ErlangRestXmlEmitter.emitServerCodecModule(ctx, service);
-        } else if (ctx.protocolCodegen() != null
-                && BeamProtocolIds.AWS_QUERY.equals(
-                        ctx.protocolCodegen().protocolTraitId())) {
-            ErlangAwsQueryEmitter.emitServerCodecModule(ctx, service);
-        } else if (ctx.protocolCodegen() != null
-                && BeamProtocolIds.EC2_QUERY.equals(
-                        ctx.protocolCodegen().protocolTraitId())) {
-            ErlangEc2QueryEmitter.emitServerCodecModule(ctx, service);
-        }
+        ErlangProtocolCodecIr.emitServerCodec(ctx, service);
 
         ErlangRouterEmitter.emit(ctx, service);
         ErlangComplianceTestEmitter.emit(ctx, service);
@@ -214,20 +160,31 @@ final class ErlangServerDirectedCodegen
         BeamErlangLayout layout =
                 new BeamErlangLayout(ctx.settings(), service.getId().getNamespace(), service);
         List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
-        ErlangBehaviourEmitter.finishService(ctx, operations, directive.symbolProvider());
+        ErlangBehaviourEmitter.finishService(ctx, service, operations, sp);
         ErlangHandlerDiscoveryEmitter.emitDiscoveryHelpers(ctx, layout);
 
-        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
-            writer.pushOperationBodySection();
-            writer.write(
-                    "%% Call $L:init_handlers/0 during application start before dispatch.",
-                    ctx.moduleName());
-            writer.write(
-                    "%% Default impl module: $L.",
-                    layout.implModuleName());
-            writer.write("");
-            writer.popState();
-        });
+        ErlangServerModuleBuilder builder = ctx.serverModuleBuilderOrNull();
+        if (builder != null) {
+            List<String> exports = new ArrayList<>();
+            exports.add("init_handlers/0");
+            for (OperationShape op : operations) {
+                Symbol sym = sp.toSymbol(op);
+                exports.add("handle_" + sym.getName() + "/3");
+            }
+            ErlModule module = ErlangServerIr.serverModule(
+                    layout,
+                    service,
+                    layout.behaviourModuleName(),
+                    exports,
+                    builder.operationFunctions(),
+                    builder.discoveryFunctions());
+            ctx.writerDelegator().useFileWriter(
+                    ctx.definitionFile(), writer -> {
+                        writer.pushGeneratedDocumentationSection();
+                        writer.write("$L", module.asString());
+                        writer.popState();
+                    });
+        }
     }
 
     @Override
@@ -239,12 +196,7 @@ final class ErlangServerDirectedCodegen
         Symbol opSym = sp.toSymbol(op);
         String handler = "handle_" + opSym.getName();
 
-        ctx.writerDelegator().useFileWriter(ctx.definitionFile(), writer -> {
-            writer.pushOperationBodySection();
-            ErlangHandlerDiscoveryEmitter.emitOperationDispatch(writer, handler);
-            writer.popState();
-        });
-
+        ErlangHandlerDiscoveryEmitter.emitOperationDispatch(ctx, handler);
         ErlangBehaviourEmitter.emitOperationCallback(ctx, op, sp);
     }
 

@@ -23,6 +23,13 @@ build:
 test: test/java
 # test: test/java test/runtime-erlang test/runtime-elixir
 
+.PHONY: format/java
+format/java:
+	#
+	# Format all Java source files
+	#
+	./gradlew spotlessApply
+
 .PHONY: test/java
 test/java:
 	#

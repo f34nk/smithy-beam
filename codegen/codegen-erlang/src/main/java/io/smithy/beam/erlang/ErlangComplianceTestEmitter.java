@@ -49,8 +49,8 @@ public final class ErlangComplianceTestEmitter {
         SymbolProvider sp = ctx.symbolProvider();
         HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
         BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
-        boolean encodeWithConfig = ErlangRestJson1Emitter.serviceHasHostLabelOperations(model, service)
-                || ErlangRestXmlEmitter.serviceHasHostLabelOperations(model, service);
+        boolean encodeWithConfig = ErlangRestJsonSupport.serviceHasHostLabelOperations(model, service)
+                || ErlangRestXmlSupport.serviceHasHostLabelOperations(model, service);
 
         ctx.writerDelegator().useFileWriter(layout.complianceTestsModuleFile(), writer -> {
             writer.write("%% HTTP protocol compliance tests for $L (generated).", service.getId());

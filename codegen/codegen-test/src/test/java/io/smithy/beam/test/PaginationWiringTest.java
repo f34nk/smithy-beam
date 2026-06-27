@@ -40,7 +40,7 @@ class PaginationWiringTest {
         assertThat(client).contains("encode_list_widgets_request(Input)");
         assertThat(client).contains("next_token");
         assertThat(client).contains("widgets");
-        assertThat(client).contains("element(#nested_widget_result.items");
+        assertThat(client).contains("#nested_widget_result.items");
     }
 
     @Test

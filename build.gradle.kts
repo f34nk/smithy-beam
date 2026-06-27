@@ -2,6 +2,22 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 plugins {
     java
+    alias(libs.plugins.spotless)
+}
+
+repositories {
+    mavenCentral()
+}
+
+spotless {
+    isEnforceCheck = false
+    java {
+        target("codegen/**/src/**/*.java", "examples/**/codegen/src/**/*.java")
+        googleJavaFormat()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }
 
 subprojects {

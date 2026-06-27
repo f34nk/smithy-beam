@@ -77,7 +77,7 @@ class EmptyEnumTypesTest {
                 "empty_enum_service",
                 TYPES_FILE);
 
-        Class<?> codegenClass = Class.forName("io.smithy.beam.erlang.ErlangDirectedCodegen");
+        Class<?> codegenClass = Class.forName("io.smithy.beam.erlang.ErlangTypeDirectedCodegen");
         Constructor<?> codegenConstructor = codegenClass.getDeclaredConstructor();
         codegenConstructor.setAccessible(true);
         Object codegen = codegenConstructor.newInstance();

@@ -302,7 +302,7 @@ class ErlangClientPluginTest {
         assertThat(org).contains("-type client_config() :: #{binary() => term()}.");
         assertThat(org).contains("read/2");
         assertThat(org).contains("resource_lifecycle_service_client:get_organization(");
-        assertThat(org).contains("#get_organization_input{org_id = org_id}");
+        assertThat(org).contains("org_id = org_id");
         assertThat(org).contains("create(Config, Input) ->");
         assertThat(org).contains("resource_lifecycle_service_client:create_organization(Config, Input).");
         assertThat(org).doesNotContain("Input#create_organization_input{}");

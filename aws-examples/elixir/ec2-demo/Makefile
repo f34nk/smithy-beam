@@ -67,7 +67,7 @@ run:
 
 .PHONY: clean
 clean:
-	rm -rf lib/generated _build deps .smithy build/ *.dump
+	rm -rf lib/generated _build deps .smithy build/ *.dump *.json.*
 	rm -rf model/*.json
 	rm -rf rm -rf terraform/.terraform* terraform/terraform.*
 

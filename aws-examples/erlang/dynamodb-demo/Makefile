@@ -73,5 +73,5 @@ run:
 	
 .PHONY: clean
 clean:
-	rm -rf build _build src/generated rebar3.crashdump *.dump test/*.beam
+	rm -rf build _build src/generated rebar3.crashdump *.dump test/*.beam *.json.*
 	rm -rf model/*.json

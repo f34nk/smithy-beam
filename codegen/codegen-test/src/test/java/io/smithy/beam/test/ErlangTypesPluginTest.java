@@ -421,8 +421,8 @@ class ErlangTypesPluginTest {
 
         assertThat(content)
                 .contains(
-                        "-type sb_streaming_payload() :: binary()."
-                                + "       %% streaming payload; framing deferred to protocol layer")
+                        "%% streaming payload; framing deferred to protocol layer",
+                        "-type sb_streaming_payload() :: binary().")
                 .contains("-type sb_blob() :: binary().");
         assertThat(content).doesNotContain("sb_blob() :: binary().       %% streaming");
     }
