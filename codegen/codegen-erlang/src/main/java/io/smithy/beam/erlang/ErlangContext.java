@@ -37,7 +37,9 @@ public record ErlangContext(
         ShapeId resolvedProtocolTraitId,
         String moduleName,
         String definitionFile,
-        ErlangClientModuleBuilder clientModuleBuilderOrNull)
+        ErlangClientModuleBuilder clientModuleBuilderOrNull,
+        ErlangBehaviourModuleBuilder behaviourModuleBuilderOrNull,
+        ErlangServerModuleBuilder serverModuleBuilderOrNull)
         implements CodegenContext<BeamSettings, ErlangWriter, ErlangIntegration> {
 
     public ErlangContext(
@@ -66,6 +68,40 @@ public record ErlangContext(
                 resolvedProtocolTraitId,
                 moduleName,
                 definitionFile,
+                null,
+                null,
+                null);
+    }
+
+    public ErlangContext(
+            Model model,
+            BeamSettings settings,
+            SymbolProvider symbolProvider,
+            FileManifest fileManifest,
+            WriterDelegator<ErlangWriter> writerDelegator,
+            List<ErlangIntegration> integrations,
+            ServiceShape service,
+            BeamHttpBindings httpBindings,
+            BeamProtocolCodegen protocolCodegen,
+            ShapeId resolvedProtocolTraitId,
+            String moduleName,
+            String definitionFile,
+            ErlangClientModuleBuilder clientModuleBuilder) {
+        this(
+                model,
+                settings,
+                symbolProvider,
+                fileManifest,
+                writerDelegator,
+                integrations,
+                service,
+                httpBindings,
+                protocolCodegen,
+                resolvedProtocolTraitId,
+                moduleName,
+                definitionFile,
+                clientModuleBuilder,
+                null,
                 null);
     }
 

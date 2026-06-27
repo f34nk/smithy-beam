@@ -9,16 +9,27 @@ public final class ErlModule implements IrObject {
     private final List<ErlPreambleEntry> preamble;
     private final List<ErlModuleAttribute> attributes;
     private final List<ErlFunction> functions;
+    private final List<ErlPreambleEntry> epilogue;
 
     public ErlModule(
             String moduleName,
             List<ErlPreambleEntry> preamble,
             List<ErlModuleAttribute> attributes,
             List<ErlFunction> functions) {
+        this(moduleName, preamble, attributes, functions, List.of());
+    }
+
+    public ErlModule(
+            String moduleName,
+            List<ErlPreambleEntry> preamble,
+            List<ErlModuleAttribute> attributes,
+            List<ErlFunction> functions,
+            List<ErlPreambleEntry> epilogue) {
         this.moduleName = moduleName;
         this.preamble = List.copyOf(preamble);
         this.attributes = List.copyOf(attributes);
         this.functions = List.copyOf(functions);
+        this.epilogue = List.copyOf(epilogue);
     }
 
     public String moduleName() {
@@ -55,6 +66,12 @@ public final class ErlModule implements IrObject {
                 out.add("");
             }
             out.addAll(functions.get(i).lines(indent));
+        }
+        if (!epilogue.isEmpty()) {
+            out.add("");
+            for (ErlPreambleEntry item : epilogue) {
+                out.addAll(item.lines(indent));
+            }
         }
         return flattenEmbeddedNewlines(out);
     }

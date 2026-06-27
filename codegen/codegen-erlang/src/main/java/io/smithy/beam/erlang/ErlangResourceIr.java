@@ -46,15 +46,36 @@ final class ErlangResourceIr {
             BeamResourceIndex index,
             BeamErlangLayout layout,
             String delegateMod) {
+        return lifecycleModule(ctx, resource, index, layout, delegateMod, false);
+    }
+
+    static ErlModule serverModule(
+            ErlangContext ctx,
+            ResourceShape resource,
+            BeamResourceIndex index,
+            BeamErlangLayout layout,
+            String delegateMod) {
+        return lifecycleModule(ctx, resource, index, layout, delegateMod, true);
+    }
+
+    private static ErlModule lifecycleModule(
+            ErlangContext ctx,
+            ResourceShape resource,
+            BeamResourceIndex index,
+            BeamErlangLayout layout,
+            String delegateMod,
+            boolean server) {
         SymbolProvider sp = ctx.symbolProvider();
         String resourceSnake = sp.toSymbol(resource).getName();
-        String mod = layout.resourceClientModuleName(resourceSnake);
+        String mod = server
+                ? layout.resourceServerModuleName(resourceSnake)
+                : layout.resourceClientModuleName(resourceSnake);
         List<HelperBinding> bindings = collectBindings(index, sp, resource);
         List<String> exports = new ArrayList<>();
         for (HelperBinding binding : bindings) {
             InputPlan plan = BeamResourceInputBuilder.plan(
                     index, sp, resource, index.expectOperation(binding.operationId()));
-            exports.add(binding.helperName() + "/" + helperArity(plan, false));
+            exports.add((server ? "handle_" : "") + binding.helperName() + "/" + helperArity(plan, server));
         }
 
         List<ErlPreambleEntry> preamble = new ArrayList<>();
@@ -63,17 +84,17 @@ final class ErlangResourceIr {
 
         List<ErlFunction> functions = new ArrayList<>();
         for (HelperBinding binding : bindings) {
-            functions.add(helperFunction(index, sp, resource, binding, delegateMod, false));
+            functions.add(helperFunction(index, sp, resource, binding, delegateMod, server));
         }
 
-        return new ErlModule(
-                mod,
-                preamble,
-                List.of(
-                        new ErlAttribute("include", "\"" + layout.typesHeaderFile() + "\""),
-                        ErlangClientIr.clientConfigTypeDef(),
-                        ErlExportAttribute.export(exports)),
-                functions);
+        List<io.smithy.beam.ir.erlang.ErlModuleAttribute> attributes = new ArrayList<>();
+        attributes.add(new ErlAttribute("include", "\"" + layout.typesHeaderFile() + "\""));
+        if (!server) {
+            attributes.add(ErlangClientIr.clientConfigTypeDef());
+        }
+        attributes.add(ErlExportAttribute.export(exports));
+
+        return new ErlModule(mod, preamble, attributes, functions);
     }
 
     private record HelperBinding(String helperName, ShapeId operationId) {}

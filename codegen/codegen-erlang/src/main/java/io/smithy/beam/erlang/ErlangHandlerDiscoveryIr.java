@@ -1,19 +1,11 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.ir.erlang.*;
 
 import java.util.List;
 
 final class ErlangHandlerDiscoveryIr {
     private ErlangHandlerDiscoveryIr() {}
-
-    static List<String> discoveryMacros(BeamErlangLayout layout) {
-        return List.of(
-                "-define(DEFAULT_IMPL, " + layout.implModuleName() + ").",
-                "-define(HANDLERS_KEY, {" + layout.serverModuleName() + ", handlers}).",
-                "");
-    }
 
     static ErlFunction resolveImpl(String behaviourMod) {
         ErlCase ensureLoadedCase = ErlCase.caseExpr(
@@ -29,13 +21,30 @@ final class ErlangHandlerDiscoveryIr {
                                                 behaviourMod,
                                                 "behaviour_info",
                                                 ErlAtom.atom("callbacks"))),
-                                ErlCapturedBlock.capturedBlock(
-                                        """
-                                        Handlers = maps:from_list([
-                                            {Fun, make_handler(Impl, Fun)}
-                                            || {Fun, 3} <- Callbacks,
-                                               erlang:function_exported(Impl, Fun, 3)
-                                        ])"""),
+                                ErlMatch.match(
+                                        ErlVarPattern.varPattern("Handlers"),
+                                        ErlCall.call(
+                                                "maps",
+                                                "from_list",
+                                                ErlListComprehension.comprehensionQualifiers(
+                                                        ErlTuple.tuple(
+                                                                ErlVar.var("Fun"),
+                                                                ErlCallLocal.callLocal(
+                                                                        "make_handler",
+                                                                        ErlVar.var("Impl"),
+                                                                        ErlVar.var("Fun"))),
+                                                        List.of(
+                                                                new ErlComprehensionGenerator(
+                                                                        ErlTuplePattern.tuplePattern(
+                                                                                ErlVarPattern.varPattern("Fun"),
+                                                                                ErlIntegerPattern.integerPattern(3)),
+                                                                        ErlVar.var("Callbacks")),
+                                                                new ErlComprehensionFilter(ErlCall.call(
+                                                                        "erlang",
+                                                                        "function_exported",
+                                                                        ErlVar.var("Impl"),
+                                                                        ErlVar.var("Fun"),
+                                                                        ErlInteger.integer(3))))))),
                                 ErlTuple.tuple(ErlAtom.atom("ok"), ErlVar.var("Handlers")))),
                 ErlClause.blockClause(
                         List.of(ErlTuplePattern.tuplePattern(
@@ -164,10 +173,11 @@ final class ErlangHandlerDiscoveryIr {
                                 ErlVar.var("Meta")))));
     }
 
-    static void writeFunction(ErlangWriter writer, ErlFunction fn) {
-        for (String line : fn.lines()) {
-            writer.write("$L", line);
-        }
-        writer.write("");
+    static List<ErlFunction> discoveryFunctions(String behaviourMod) {
+        return List.of(
+                resolveImpl(behaviourMod),
+                makeHandler(),
+                initHandlers(),
+                dispatchHandler());
     }
 }

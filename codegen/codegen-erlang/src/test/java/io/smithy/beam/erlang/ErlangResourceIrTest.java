@@ -63,6 +63,49 @@ class ErlangResourceIrTest {
         assertThat(org).contains("Top-level organization resource.");
     }
 
+    @Test
+    void serverModuleMatchesResourceLifecycleExpectations() {
+        Model model = resourceLifecycleModel();
+        ServiceShape service = model.expectShape(
+                ShapeId.from("smithy.beam.demo.resource_lifecycle#ResourceLifecycleService"),
+                ServiceShape.class);
+        ResourceShape organization = model.expectShape(
+                ShapeId.from("smithy.beam.demo.resource_lifecycle#Organization"), ResourceShape.class);
+        BeamErlangLayout layout = new BeamErlangLayout(
+                new io.smithy.beam.core.BeamSettings(), service.getId().getNamespace(), service);
+        SymbolProvider sp = SymbolProvider.cache(
+                new ErlangSymbolProvider(
+                        new io.smithy.beam.core.BeamSettings(),
+                        model,
+                        service,
+                        layout.serverModuleFile(),
+                        io.smithy.beam.core.BeamCodegenKind.SERVER));
+        ErlangContext ctx = new ErlangContext(
+                model,
+                new io.smithy.beam.core.BeamSettings(),
+                sp,
+                new MockManifest(),
+                new WriterDelegator<>(new MockManifest(), sp, ErlangWriter.factory()),
+                List.of(),
+                service,
+                io.smithy.beam.core.BeamHttpBindings.from(model),
+                null,
+                null,
+                layout.serverModuleName(),
+                layout.serverModuleFile(),
+                null,
+                null,
+                null);
+        BeamResourceIndex index = BeamResourceIndex.of(model);
+        ErlModule module = ErlangResourceIr.serverModule(
+                ctx, organization, index, layout, layout.serverModuleName());
+        String org = module.asString();
+        assertThat(org).contains("-module(organization_resource).");
+        assertThat(org).doesNotContain("-type client_config()");
+        assertThat(org).contains("handle_read/3");
+        assertThat(org).contains("resource_lifecycle_service_server:handle_get_organization(");
+    }
+
     private static Model resourceLifecycleModel() {
         String idl = """
                 $version: "2"
