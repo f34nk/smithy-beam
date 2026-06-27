@@ -55,8 +55,7 @@ final class ErlangRetryIr {
     static List<ErlFunction> withRetryFunctions() {
         return List.of(
                 withRetryOuter(),
-                withRetryZeroAttempts(),
-                withRetryLoop());
+                withRetryInner());
     }
 
     private static ErlFunction withRetryOuter() {
@@ -78,43 +77,38 @@ final class ErlangRetryIr {
                                 with_retry(Fun, Max, Base, 1)"""))));
     }
 
-    private static ErlFunction withRetryZeroAttempts() {
+    private static ErlFunction withRetryInner() {
         return ErlFunction.function(
                 "with_retry",
                 4,
-                List.of(ErlClause.clause(
-                        List.of(
-                                ErlVarPattern.varPattern("Fun"),
-                                ErlVarPattern.varPattern("0"),
-                                ErlVarPattern.varPattern("_"),
-                                ErlVarPattern.varPattern("_")),
-                        ErlCapturedBlock.capturedBlock("Fun()"))));
-    }
-
-    private static ErlFunction withRetryLoop() {
-        return ErlFunction.function(
-                "with_retry",
-                4,
-                List.of(ErlClause.blockClause(
-                        List.of(
-                                ErlVarPattern.varPattern("Fun"),
-                                ErlVarPattern.varPattern("Attempts"),
-                                ErlVarPattern.varPattern("Base"),
-                                ErlVarPattern.varPattern("N")),
-                        ErlCapturedBlock.capturedBlock(
-                                """
-                                case Fun() of
-                                    {ok, _} = Ok ->
-                                        Ok;
-                                    {error, _} = Err ->
-                                        case should_retry(Err) of
-                                            true when Attempts > 1 ->
-                                                timer:sleep(trunc(Base * math:pow(2, N - 1))),
-                                                with_retry(Fun, Attempts - 1, Base, N + 1);
-                                            _ ->
-                                                Err
-                                        end
-                                end"""))));
+                List.of(
+                        ErlClause.clause(
+                                List.of(
+                                        ErlVarPattern.varPattern("Fun"),
+                                        ErlVarPattern.varPattern("0"),
+                                        ErlVarPattern.varPattern("_"),
+                                        ErlVarPattern.varPattern("_")),
+                                ErlCapturedBlock.capturedBlock("Fun()")),
+                        ErlClause.blockClause(
+                                List.of(
+                                        ErlVarPattern.varPattern("Fun"),
+                                        ErlVarPattern.varPattern("Attempts"),
+                                        ErlVarPattern.varPattern("Base"),
+                                        ErlVarPattern.varPattern("N")),
+                                ErlCapturedBlock.capturedBlock(
+                                        """
+                                        case Fun() of
+                                            {ok, _} = Ok ->
+                                                Ok;
+                                            {error, _} = Err ->
+                                                case should_retry(Err) of
+                                                    true when Attempts > 1 ->
+                                                        timer:sleep(trunc(Base * math:pow(2, N - 1))),
+                                                        with_retry(Fun, Attempts - 1, Base, N + 1);
+                                                    _ ->
+                                                        Err
+                                                end
+                                        end"""))));
     }
 
     static ErlFunction retryable(List<StructureShape> modeledErrors, SymbolProvider sp) {

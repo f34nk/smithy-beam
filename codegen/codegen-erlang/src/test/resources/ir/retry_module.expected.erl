@@ -10,8 +10,7 @@ with_retry(Fun, Opts) ->
     Base = maps:get(base_delay_ms, Opts, 100),
     with_retry(Fun, Max, Base, 1).
 
-with_retry(Fun, 0, _, _) -> Fun().
-
+with_retry(Fun, 0, _, _) -> Fun();
 with_retry(Fun, Attempts, Base, N) ->
     case Fun() of
         {ok, _} = Ok ->

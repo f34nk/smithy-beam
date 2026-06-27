@@ -91,6 +91,8 @@ class ErlangWaiterIrTest {
         assertThat(combined).contains("path_string_equals(Path, Expected, Output)");
         assertThat(combined).contains("record_fields(table_description)");
         assertThat(combined).contains("string_equals(V, Expected)");
+        assertThat(combined).contains("string:uppercase(atom_to_binary(V, utf8))");
+        assertThat(combined).doesNotContain("atom_to_binary:atom_to_binary");
     }
 
     @Test

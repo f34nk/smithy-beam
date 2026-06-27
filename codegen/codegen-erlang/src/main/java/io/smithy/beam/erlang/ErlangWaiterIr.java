@@ -588,8 +588,7 @@ final class ErlangWaiterIr {
                                         ErlCall.call(
                                                 "string",
                                                 "uppercase",
-                                                ErlCall.call(
-                                                        "atom_to_binary",
+                                                ErlCallLocal.callLocal(
                                                         "atom_to_binary",
                                                         ErlVar.var("V"),
                                                         ErlAtom.atom("utf8"))),

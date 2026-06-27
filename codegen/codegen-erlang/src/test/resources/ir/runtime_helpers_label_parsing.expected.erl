@@ -6,7 +6,7 @@ parse_labels(Path, Template) ->
     end.
 
 segments(Path) ->
-    Parts = binary:split(Path, <<"/">>, [global])
+    Parts = binary:split(Path, <<"/">>, [global]),
     [S || S <- Parts, S =/= <<>>].
 
 match_segments([], [], Acc) -> {ok, Acc};

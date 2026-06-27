@@ -139,19 +139,20 @@ final class ErlangRuntimeHelpersIr {
                 1,
                 List.of(ErlClause.blockClause(
                         List.of(ErlVarPattern.varPattern("Path")),
-                        ErlMatch.match(
-                                ErlVarPattern.varPattern("Parts"),
-                                ErlCall.call(
-                                        "binary",
-                                        "split",
-                                        ErlVar.var("Path"),
-                                        ErlBinary.binary("/"),
-                                        ErlList.list(ErlAtom.atom("global")))),
-                        ErlListComprehension.comprehension(
-                                ErlVar.var("S"),
-                                ErlVarPattern.varPattern("S"),
-                                ErlVar.var("Parts"),
-                                ErlOp.op("=/=", ErlVar.var("S"), ErlBinary.binary(""))))));
+                        ErlExprBlock.block(
+                                ErlMatch.match(
+                                        ErlVarPattern.varPattern("Parts"),
+                                        ErlCall.call(
+                                                "binary",
+                                                "split",
+                                                ErlVar.var("Path"),
+                                                ErlBinary.binary("/"),
+                                                ErlList.list(ErlAtom.atom("global")))),
+                                ErlListComprehension.comprehension(
+                                        ErlVar.var("S"),
+                                        ErlVarPattern.varPattern("S"),
+                                        ErlVar.var("Parts"),
+                                        ErlOp.op("=/=", ErlVar.var("S"), ErlBinary.binary("")))))));
     }
 
     static ErlFunction matchSegments() {
