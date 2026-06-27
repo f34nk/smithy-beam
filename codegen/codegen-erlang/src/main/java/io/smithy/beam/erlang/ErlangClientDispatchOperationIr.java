@@ -7,12 +7,15 @@ import io.smithy.beam.ir.erlang.ErlAtom;
 import io.smithy.beam.ir.erlang.ErlAtomPattern;
 import io.smithy.beam.ir.erlang.ErlCall;
 import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCapturedBlock;
 import io.smithy.beam.ir.erlang.ErlCase;
 import io.smithy.beam.ir.erlang.ErlClause;
 import io.smithy.beam.ir.erlang.ErlExpr;
 import io.smithy.beam.ir.erlang.ErlExprBlock;
+import io.smithy.beam.ir.erlang.ErlFun;
 import io.smithy.beam.ir.erlang.ErlList;
+import io.smithy.beam.ir.erlang.ErlRecordAccess;
+import io.smithy.beam.ir.erlang.ErlRecordField;
+import io.smithy.beam.ir.erlang.ErlRecordUpdate;
 import io.smithy.beam.ir.erlang.ErlMap;
 import io.smithy.beam.ir.erlang.ErlMatch;
 import io.smithy.beam.ir.erlang.ErlOp;
@@ -56,18 +59,6 @@ final class ErlangClientDispatchOperationIr {
             boolean sigv4,
             boolean encodeWithConfig) {}
 
-    private enum CaseTerminator {
-        NONE(""),
-        STATEMENT("."),
-        CLAUSE(";");
-
-        private final String suffix;
-
-        CaseTerminator(String suffix) {
-            this.suffix = suffix;
-        }
-    }
-
     static List<ErlExpr> buildDispatchBody(
             ErlangContext ctx,
             OperationShape op,
@@ -109,8 +100,10 @@ final class ErlangClientDispatchOperationIr {
         ErlExpr undefinedSuccess = hasItems
                 ? ErlTuple.tuple(ErlAtom.atom("ok"), ErlVar.var("NewAcc"))
                 : ErlTuple.tuple(ErlAtom.atom("ok"), ErlCall.call("lists", "reverse", ErlVar.var("NewAcc")));
-        ErlExpr nextInput = ErlCapturedBlock.capturedBlock(
-                "Input#" + inputRecord + "{" + inputToken + " = NextToken}");
+        ErlExpr nextInput = ErlRecordUpdate.recordUpdate(
+                ErlVar.var("Input"),
+                inputRecord,
+                ErlRecordField.field(inputToken, ErlVar.var("NextToken")));
         ErlExpr recurse = ErlCallLocal.callLocal(
                 opSym.getName(),
                 ErlVar.var("Config"),
@@ -143,10 +136,7 @@ final class ErlangClientDispatchOperationIr {
         for (MemberShape member : path) {
             String record = recordName(sp.toSymbol(container));
             String field = fieldName(sp, member);
-            expr = ErlCallLocal.callLocal(
-                    "element",
-                    ErlCapturedBlock.capturedBlock("#" + record + "." + field),
-                    expr);
+            expr = ErlRecordAccess.recordAccess(expr, record, field);
             container = model.expectShape(member.getTarget(), Shape.class);
         }
         return expr;
@@ -243,7 +233,7 @@ final class ErlangClientDispatchOperationIr {
                                 ErlAtomPattern.atomPattern("error"),
                                 ErlVarPattern.varPattern("Reason"))),
                         ErlTuple.tuple(ErlAtom.atom("error"), ErlVar.var("Reason"))));
-        return suffixCase(dispatchCase, caseTerminator(ctx));
+        return dispatchCase;
     }
 
     private static ErlExpr buildDecodeSuccessExpr(DispatchContext ctx) {
@@ -307,34 +297,8 @@ final class ErlangClientDispatchOperationIr {
                         ErlAtom.atom("retry"),
                         ErlVar.var("Config"),
                         ErlMap.map())));
-        ErlangWriter funWriter = new ErlangWriter("fun.erl");
-        funWriter.write("fun() ->");
-        funWriter.indent();
-        ErlangClientDispatchIr.writeExprs(funWriter, core);
-        funWriter.dedent();
-        funWriter.write("end");
-        body.add(ErlCapturedBlock.capturedBlock(
-                ctx.retryModule()
-                        + ":with_retry("
-                        + funWriter.toString().strip()
-                        + ", RetryOpts)."));
+        ErlFun retryFun = ErlFun.fun(ErlClause.blockClause(List.of(), ErlExprBlock.block(core.toArray(ErlExpr[]::new))));
+        body.add(ErlCall.call(ctx.retryModule(), "with_retry", retryFun, ErlVar.var("RetryOpts")));
         return body;
-    }
-
-    private static CaseTerminator caseTerminator(DispatchContext ctx) {
-        if (ctx.mode() == DispatchBodyMode.SINGLE_PAGE) {
-            return ctx.wrapWithRetry() ? CaseTerminator.NONE : CaseTerminator.STATEMENT;
-        }
-        if (!ctx.paginated() || !ctx.wrapWithRetry()) {
-            return CaseTerminator.STATEMENT;
-        }
-        return CaseTerminator.NONE;
-    }
-
-    private static ErlExpr suffixCase(ErlCase caseExpr, CaseTerminator terminator) {
-        if (terminator == CaseTerminator.NONE) {
-            return caseExpr;
-        }
-        return ErlCapturedBlock.capturedBlock(caseExpr.asString() + terminator.suffix);
     }
 }

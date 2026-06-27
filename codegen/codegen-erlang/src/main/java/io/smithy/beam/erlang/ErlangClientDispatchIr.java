@@ -23,12 +23,16 @@ final class ErlangClientDispatchIr {
 
     static void writeExprs(ErlangWriter writer, List<ErlExpr> exprs) {
         for (int i = 0; i < exprs.size(); i++) {
-            boolean hasComma = i < exprs.size() - 1;
+            boolean isLast = i == exprs.size() - 1;
             List<String> lines = exprs.get(i).lines();
             for (int j = 0; j < lines.size(); j++) {
                 String line = lines.get(j);
-                if (j == lines.size() - 1 && hasComma) {
-                    line = line + ",";
+                if (j == lines.size() - 1) {
+                    if (isLast) {
+                        line = line + ".";
+                    } else {
+                        line = line + ",";
+                    }
                 }
                 writer.write("$L", line);
             }

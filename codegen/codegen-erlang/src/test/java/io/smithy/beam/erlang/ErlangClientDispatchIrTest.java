@@ -6,7 +6,7 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlCapturedBlock;
+import io.smithy.beam.ir.erlang.ErlCall;
 import io.smithy.beam.ir.erlang.ErlCase;
 import io.smithy.beam.ir.erlang.ErlExpr;
 import io.smithy.beam.ir.erlang.ErlMatch;
@@ -228,8 +228,8 @@ class ErlangClientDispatchIrTest {
                 false,
                 ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
         assertThat(body.get(0)).isInstanceOf(ErlMatch.class);
-        assertThat(body.get(body.size() - 1)).isInstanceOf(ErlCapturedBlock.class);
-        assertThat(((ErlCapturedBlock) body.get(body.size() - 1)).text()).contains("with_retry");
+        assertThat(body.get(body.size() - 1)).isInstanceOf(ErlCall.class);
+        assertThat(((ErlCall) body.get(body.size() - 1)).function()).isEqualTo("with_retry");
         assertThat(renderBody(body))
                 .isEqualTo(readExpectedString("ir/client_dispatch_get_name_retry.expected.erl"));
     }
@@ -274,7 +274,7 @@ class ErlangClientDispatchIrTest {
         assertThat(body.get(0)).isInstanceOf(ErlMatch.class);
         assertThat(body.get(body.size() - 1)).isInstanceOf(ErlExpr.class);
         ErlExpr dispatch = body.get(body.size() - 1);
-        assertThat(dispatch).isInstanceOfAny(ErlCase.class, ErlCapturedBlock.class);
+        assertThat(dispatch).isInstanceOf(ErlCase.class);
     }
 
     private static String renderBody(List<ErlExpr> body) {
