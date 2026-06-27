@@ -19,7 +19,7 @@ public final class ExDoc implements IrObject {
 
   @Override
   public List<String> lines(int indent) {
-    return ExLayout.renderDocAttribute("@doc", text, indent);
+    return ExModuledoc.renderDocAttribute("@doc", text, indent);
   }
 
   @Override

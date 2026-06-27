@@ -19,6 +19,14 @@ public final class ExString implements ExExpr {
 
   @Override
   public List<String> lines() {
-    return List.of(ExLayout.renderString(value));
+    return List.of(renderString(value));
+  }
+
+  static String renderString(String value) {
+    return "\"" + escapeDoubleQuoted(value) + "\"";
+  }
+
+  private static String escapeDoubleQuoted(String text) {
+    return text.replace("\\", "\\\\").replace("\"", "\\\"");
   }
 }

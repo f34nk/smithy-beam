@@ -1,5 +1,6 @@
 package io.smithy.beam.ir.elixir;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class ExCall implements ExExpr {
@@ -35,6 +36,31 @@ public final class ExCall implements ExExpr {
 
   @Override
   public List<String> lines() {
+    return lines(0);
+  }
+
+  @Override
+  public List<String> lines(int indent) {
+    if (isFiltermap()) {
+      List<String> out = new ArrayList<>();
+      out.add(IrObject.indent(indent) + "Enum.filter_map(");
+      out.add(IrObject.indent(indent + 1) + args.get(0).asString() + ",");
+      List<String> funLines = new ArrayList<>(((ExAnonymousFn) args.get(1)).inlineClauseLines(indent + 1));
+      out.addAll(funLines);
+      out.add(IrObject.indent(indent) + ")");
+      return out;
+    }
+    return List.of(IrObject.indent(indent) + inlineAsString());
+  }
+
+  private boolean isFiltermap() {
+    return "filter_map".equals(function)
+        && "Enum".equals(module)
+        && args.size() == 2
+        && args.get(1) instanceof ExAnonymousFn;
+  }
+
+  private String inlineAsString() {
     StringBuilder sb = new StringBuilder();
     sb.append(module).append('.').append(function).append('(');
     for (int i = 0; i < args.size(); i++) {
@@ -44,6 +70,6 @@ public final class ExCall implements ExExpr {
       sb.append(args.get(i).asString());
     }
     sb.append(')');
-    return List.of(sb.toString());
+    return sb.toString();
   }
 }
