@@ -257,6 +257,11 @@ final class ElixirAwsJsonOperationIr {
         List.of(ExClause.blockClause(List.of(pattern), body.toArray(ExExpr[]::new))));
   }
 
+  static ExFunction buildErrorDispatch(
+      Model model, OperationShape op, SymbolProvider sp, String typesMod) {
+    return ElixirRestJsonOperationIr.buildErrorDispatch(model, op, sp, typesMod);
+  }
+
   private static String memberFieldName(SymbolProvider sp, MemberShape member) {
     Symbol sym = sp.toSymbol(member);
     return sym.getProperty("fieldName", String.class)

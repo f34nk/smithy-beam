@@ -4,13 +4,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamProtocolCodegenFactory;
+import io.smithy.beam.core.BeamProtocolIds;
+import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.ir.elixir.ExFunction;
+import io.smithy.beam.ir.elixir.ExModule;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import software.amazon.smithy.build.MockManifest;
+import software.amazon.smithy.codegen.core.SymbolProvider;
+import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -51,6 +61,18 @@ class ElixirAwsJsonIrTest {
     runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     eventStreamModule = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
+  }
+
+  @Test
+  void buildClientCodecModuleHasExpectedStructure() {
+    ExModule module =
+        ElixirAwsJsonIr.buildClientCodecModule(
+            clientContext(), service, BeamProtocolIds.AWS_JSON_1_1);
+    assertThat(module.moduleName()).isNotBlank();
+    assertThat(module.functions()).isNotEmpty();
+    for (ExFunction fn : module.functions()) {
+      ElixirIrTestSupport.assertStructural(fn);
+    }
   }
 
   @Test
@@ -106,6 +128,38 @@ class ElixirAwsJsonIrTest {
     ElixirIrTestSupport.assertStructural(fn);
     assertThat(fn.asString())
         .isEqualTo(readExpectedString("ir/aws_json_encode_get_user_response.expected.ex"));
+  }
+
+  private static ElixirContext clientContext() {
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    BeamElixirLayout layout =
+        new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+    SymbolProvider symbolProvider =
+        SymbolProvider.cache(
+            new ElixirSymbolProvider(
+                settings,
+                model,
+                service,
+                layout.typesModuleFile(),
+                ElixirSymbolProvider.toModuleName(layout.typesModuleName()),
+                BeamCodegenKind.CLIENT));
+    MockManifest manifest = new MockManifest();
+    Optional<ShapeId> resolved = BeamProtocolResolver.resolve(model, service, settings);
+    return new ElixirContext(
+        model,
+        settings,
+        symbolProvider,
+        manifest,
+        new WriterDelegator<>(
+            manifest, symbolProvider, ElixirWriter.factory(layout.clientModuleName())),
+        List.of(),
+        service,
+        BeamHttpBindings.from(model),
+        resolved.map(id -> BeamProtocolCodegenFactory.create(model, id, List.of())).orElse(null),
+        resolved.orElse(null),
+        layout.clientModuleName(),
+        layout.clientModuleFile());
   }
 
   private static Model loadFixtureModel() {
