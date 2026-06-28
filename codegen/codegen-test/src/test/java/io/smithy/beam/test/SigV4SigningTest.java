@@ -70,7 +70,7 @@ class SigV4SigningTest {
     assertThat(sigv4).contains("defmodule Sigv4testServiceSigv4 do");
     assertThat(sigv4)
         .contains(
-            "defp sign_request(%HttpRequest{} = request, credentials, region, service, opts) do");
+            "defp sign_request(request = %HttpRequest{}, credentials, region, service, opts) do");
     assertThat(sigv4).contains(":aws_signature.sign_v4(");
     assertThat(sigv4).contains("endpoint_host: endpoint_host_from_config(config)");
     assertThat(sigv4).contains("def endpoint_host_from_config(config)");
