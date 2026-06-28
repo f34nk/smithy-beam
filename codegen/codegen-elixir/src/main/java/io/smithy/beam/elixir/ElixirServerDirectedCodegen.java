@@ -193,10 +193,10 @@ final class ElixirServerDirectedCodegen
       ElixirAwsJsonIr.emitServerCodecModule(ctx, service, BeamProtocolIds.AWS_JSON_1_1);
     } else if (ctx.protocolCodegen() != null
         && BeamProtocolIds.AWS_QUERY.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirAwsQueryEmitter.emitServerCodecModule(ctx, service);
+      ElixirAwsQueryIr.emitServerCodecModule(ctx, service, BeamProtocolIds.AWS_QUERY);
     } else if (ctx.protocolCodegen() != null
         && BeamProtocolIds.EC2_QUERY.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirEc2QueryEmitter.emitServerCodecModule(ctx, service);
+      ElixirAwsQueryIr.emitServerCodecModule(ctx, service, BeamProtocolIds.EC2_QUERY);
     }
 
     ElixirRouterEmitter.emit(ctx, service);
