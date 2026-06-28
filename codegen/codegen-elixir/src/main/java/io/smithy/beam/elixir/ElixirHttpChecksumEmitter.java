@@ -2,6 +2,7 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.ir.elixir.ExFunction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -22,9 +23,7 @@ final class ElixirHttpChecksumEmitter {
   private ElixirHttpChecksumEmitter() {}
 
   static boolean serviceHasChecksumOperations(Model model, ServiceShape service) {
-    BeamHttpChecksumIndex index = BeamHttpChecksumIndex.of(model);
-    return ElixirTopDown.containedOperationsSorted(model, service).stream()
-        .anyMatch(index::hasChecksumBehavior);
+    return ElixirHttpChecksumIr.serviceHasChecksumOperations(model, service);
   }
 
   static void emitRequestChecksumHeaders(
@@ -90,47 +89,10 @@ final class ElixirHttpChecksumEmitter {
   }
 
   static void emitChecksumHelpers(ElixirWriter writer) {
-    writer.write("defp headers_set(name, value, headers) do");
-    writer.indent();
-    writer.write("List.keystore(name, 0, headers, {name, value})");
-    writer.dedent();
-    writer.write("end");
-    writer.write("");
-    writer.write("defp checksum_header_encode(data) when is_binary(data), do: Base.encode64(data)");
-    writer.write("");
-    writer.write("defp md5_hash(body), do: :crypto.hash(:md5, body)");
-    writer.write("defp sha256_hash(body), do: :crypto.hash(:sha256, body)");
-    writer.write("defp crc32_hash(body), do: <<(:erlang.crc32(body)::32-big-unsigned-integer)>>");
-    writer.write("defp crc32c_hash(body), do: :crypto.hash(:crc32c, body)");
-    writer.write("");
-    writer.write("defp checksum_digest(body, \"MD5\"), do: md5_hash(body)");
-    writer.write("defp checksum_digest(body, \"SHA256\"), do: sha256_hash(body)");
-    writer.write("defp checksum_digest(body, \"CRC32\"), do: crc32_hash(body)");
-    writer.write("defp checksum_digest(body, \"CRC32C\"), do: crc32c_hash(body)");
-    writer.write("");
-    writer.write("defp validate_response_checksum(_body, _headers, []), do: :ok");
-    writer.write("defp validate_response_checksum(body, headers, [header_name | rest]) do");
-    writer.indent();
-    ElixirFormat.writePipeCase(
-        writer,
-        "List.keyfind(headers, header_name, 0)",
-        List.of(
-            new String[] {"{_, expected}", "validate_checksum_match(body, header_name, expected)"},
-            new String[] {"nil", "validate_response_checksum(body, headers, rest)"}));
-    writer.dedent();
-    writer.write("end");
-    writer.write("");
-    writer.write("defp validate_checksum_match(body, header_name, expected) do");
-    writer.indent();
-    writer.write("algorithm = checksum_algorithm_from_header(header_name),");
-    writer.write("computed = checksum_header_encode(checksum_digest(body, algorithm)),");
-    writer.write(
-        "if computed == expected, do: :ok, else: {:error, {:checksum_mismatch, header_name}}");
-    writer.dedent();
-    writer.write("end");
-    writer.write("");
-    writer.write("defp checksum_algorithm_from_header(\"x-amz-checksum-\" <> rest),");
-    writer.write("    do: String.upcase(rest)");
+    for (ExFunction function : ElixirHttpChecksumIr.checksumHelperFunctions()) {
+      writer.write("$L", function.asString());
+      writer.write("");
+    }
   }
 
   private static void emitChecksumBranch(
