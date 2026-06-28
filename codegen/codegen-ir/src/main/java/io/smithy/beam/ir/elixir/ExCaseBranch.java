@@ -39,7 +39,12 @@ public final class ExCaseBranch {
     if (blankBefore) {
       out.add("");
     }
-    out.add(IrObject.indent(indent) + headText() + " -> " + body.asString());
+    if (body.lines().size() == 1) {
+      out.add(IrObject.indent(indent) + headText() + " -> " + body.asString());
+      return out;
+    }
+    out.add(IrObject.indent(indent) + headText() + " ->");
+    out.addAll(body.lines(indent + 1));
     return out;
   }
 
