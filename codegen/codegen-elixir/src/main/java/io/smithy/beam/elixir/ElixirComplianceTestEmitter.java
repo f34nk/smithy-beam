@@ -53,7 +53,7 @@ public final class ElixirComplianceTestEmitter {
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
     boolean encodeWithConfig =
-        ElixirRestJson1Emitter.serviceHasHostLabelOperations(model, service)
+        ElixirRestJsonSupport.serviceHasHostLabelOperations(model, service)
             || ElixirRestXmlEmitter.serviceHasHostLabelOperations(model, service);
     Function<StructureShape, String> structNameFn =
         shape -> ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(shape));

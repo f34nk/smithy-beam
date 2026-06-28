@@ -188,7 +188,7 @@ final class ElixirClientDirectedCodegen
 
     if (ctx.protocolCodegen() != null
         && BeamProtocolIds.REST_JSON_1.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirRestJson1Emitter.emitCodecModule(ctx, directive.shape());
+      ElixirRestJsonIr.emitClientCodecModule(ctx, directive.shape());
     } else if (ctx.protocolCodegen() != null
         && BeamProtocolIds.AWS_JSON_1_0.equals(ctx.protocolCodegen().protocolTraitId())) {
       ElixirAwsJsonIr.emitClientCodecModule(ctx, directive.shape(), BeamProtocolIds.AWS_JSON_1_0);
@@ -464,7 +464,7 @@ final class ElixirClientDirectedCodegen
       writer.indent();
     }
 
-    if (ElixirRestJson1Emitter.serviceHasHostLabelOperations(ctx.model(), ctx.service())
+    if (ElixirRestJsonSupport.serviceHasHostLabelOperations(ctx.model(), ctx.service())
         || ElixirRestXmlEmitter.serviceEncodesWithConfig(ctx.model(), ctx.service())) {
       writer.write("req = $L.encode_$L_request(config, input)", codecMod, opSym.getName());
     } else {

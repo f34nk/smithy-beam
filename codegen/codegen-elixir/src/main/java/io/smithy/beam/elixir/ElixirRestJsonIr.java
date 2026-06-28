@@ -1,6 +1,10 @@
 package io.smithy.beam.elixir;
 
+import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.ir.elixir.ExAliasAttr;
 import io.smithy.beam.ir.elixir.ExFunction;
+import io.smithy.beam.ir.elixir.ExModuledoc;
+import io.smithy.beam.ir.elixir.ExModule;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -18,6 +22,86 @@ import software.amazon.smithy.model.shapes.UnionShape;
 
 final class ElixirRestJsonIr {
   private ElixirRestJsonIr() {}
+
+  static String clientCodecFileName(ElixirContext ctx, ServiceShape service) {
+    return layout(ctx, service).clientCodecModuleName(ctx.resolvedProtocolTraitId()) + ".ex";
+  }
+
+  static String serverCodecFileName(ElixirContext ctx, ServiceShape service) {
+    return layout(ctx, service).serverCodecModuleName(ctx.resolvedProtocolTraitId()) + ".ex";
+  }
+
+  static ExModule buildClientCodecModule(ElixirContext ctx, ServiceShape service) {
+    Model model = ctx.model();
+    ShapeId protocol = ctx.resolvedProtocolTraitId();
+    BeamElixirLayout layout = layout(ctx, service);
+    HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+    SymbolProvider sp = ctx.symbolProvider();
+    String moduleName = ElixirSymbolProvider.toModuleName(layout.clientCodecModuleName(protocol));
+    String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
+    String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+    String eventStreamModule = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
+    List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
+    boolean encodeWithConfig = ElixirRestJsonSupport.serviceHasHostLabelOperations(model, service);
+    List<ExFunction> functions =
+        clientCodecFunctions(
+            model,
+            service,
+            operations,
+            httpIndex,
+            sp,
+            typesMod,
+            runtimeMod,
+            eventStreamModule,
+            encodeWithConfig);
+
+    return ExModule.module(
+        moduleName,
+        List.of(
+            ExModuledoc.moduledoc(
+                "REST JSON 1 codecs for " + service.getId() + " (generated). Do not edit.")),
+        List.of(
+            ExAliasAttr.alias(runtimeMod, "RuntimeTypes"), ExAliasAttr.alias(typesMod, "Types")),
+        functions);
+  }
+
+  static ExModule buildServerCodecModule(ElixirContext ctx, ServiceShape service) {
+    Model model = ctx.model();
+    ShapeId protocol = ctx.resolvedProtocolTraitId();
+    BeamElixirLayout layout = layout(ctx, service);
+    HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+    SymbolProvider sp = ctx.symbolProvider();
+    String moduleName = ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName(protocol));
+    String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
+    String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+    String eventStreamModule = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
+    List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
+    List<ExFunction> functions =
+        serverCodecFunctions(
+            model, service, operations, httpIndex, sp, typesMod, runtimeMod, eventStreamModule);
+
+    return ExModule.module(
+        moduleName,
+        List.of(
+            ExModuledoc.moduledoc(
+                "Server REST JSON 1 codecs for "
+                    + service.getId()
+                    + " (generated). Do not edit.")),
+        List.of(
+            ExAliasAttr.alias(runtimeMod, "RuntimeTypes"), ExAliasAttr.alias(typesMod, "Types")),
+        functions);
+  }
+
+  static void emitClientCodecModule(ElixirContext ctx, ServiceShape service) {
+    ExModule module = buildClientCodecModule(ctx, service);
+    ElixirCodecEmission.writeModule(ctx, clientCodecFileName(ctx, service), module);
+  }
+
+  static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
+    ElixirCodecEmission.emitRuntimeHelpersIfNeeded(ctx, service, true);
+    ExModule module = buildServerCodecModule(ctx, service);
+    ElixirCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service), module);
+  }
 
   static List<ExFunction> enumHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
@@ -176,5 +260,9 @@ final class ElixirRestJsonIr {
     functions.addAll(unionHelperFunctions(model, service, sp));
     functions.addAll(privateCodecHelpers(model, service));
     return functions;
+  }
+
+  private static BeamElixirLayout layout(ElixirContext ctx, ServiceShape service) {
+    return new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
   }
 }
