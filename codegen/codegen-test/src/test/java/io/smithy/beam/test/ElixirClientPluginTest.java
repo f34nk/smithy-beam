@@ -202,7 +202,8 @@ class ElixirClientPluginTest {
     assertThat(manifest.expectFileString("runtime_http.ex"))
         .contains("defmodule RuntimeHttp do")
         .contains("http_client = Map.get(config, :http_client, __MODULE__.ReqClient)")
-        .contains("def dispatch(http_client, config, %RuntimeTypes.HttpRequest{} = req) do")
+        .contains("req = %RuntimeTypes.HttpRequest{}")
+        .contains("dispatch_signed(http_client, config, req)")
         .contains("case http_client.request(req_opts) do");
     assertThat(manifest.expectFileString("demo_rest_json_client.ex"))
         .contains("# HTTP request bindings for smithy.beam.demo.protocoljson#DescribeItem:")
@@ -238,7 +239,7 @@ class ElixirClientPluginTest {
     assertThat(codec).contains("decode_query_param(");
     assertThat(manifest.expectFileString("runtime_helpers.ex"))
         .contains("defmodule RuntimeHelpers do")
-        .contains("def parse_labels(path, template)");
+        .contains("case match_segments(segments(path), segments(template), %{}) do");
     assertThat(codec).contains("def decode_describe_item_request(");
     assertThat(codec).contains("label_map");
     assertThat(codec).doesNotContain("RuntimeHelpers.parse_labels(");
