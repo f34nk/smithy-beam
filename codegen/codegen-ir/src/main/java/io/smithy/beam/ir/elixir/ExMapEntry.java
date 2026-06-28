@@ -22,6 +22,13 @@ public final class ExMapEntry {
   }
 
   public String asString() {
+    if (key instanceof ExAtom atom) {
+      String name = atom.value();
+      if (name.startsWith(":")) {
+        name = name.substring(1);
+      }
+      return name + ": " + value.asString();
+    }
     return key.asString() + " => " + value.asString();
   }
 }
