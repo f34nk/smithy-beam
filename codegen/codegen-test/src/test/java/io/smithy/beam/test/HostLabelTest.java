@@ -110,8 +110,9 @@ class HostLabelTest {
     String codec = manifest.getFileString("host_label_service_rest_json_1.ex").orElse("");
     assertThat(codec).contains("def encode_get_tenant_data_request(config, input)");
     assertThat(codec).contains("host = build_host(input, config)");
-    assertThat(codec).contains("defp build_host(%Types.GetTenantDataInput{");
-    assertThat(codec).contains("URI.encode(to_string(tenant))");
+    assertThat(codec).contains("defp build_host(");
+    assertThat(codec).contains("%Types.GetTenantDataInput{tenant: tenant}");
+    assertThat(codec).contains("URI.encode(Kernel.to_string(tenant))");
 
     String http = manifest.getFileString("runtime_http.ex").orElse("");
     assertThat(http).contains("req.host");

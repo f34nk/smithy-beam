@@ -120,7 +120,7 @@ class Ec2QueryCodecTest {
     assertThat(codec).contains("application/x-www-form-urlencoded");
     assertThat(codec).contains("unwrap_query_result(");
     assertThat(codec).contains("\"DescribeInstancesResponse\"");
-    assertThat(codec).contains("\"#{key}.#{i}\"");
+    assertThat(codec).contains("<<key, \".\", Integer.to_string(i)>>");
     assertThat(codec).doesNotContain(".member.");
   }
 

@@ -173,7 +173,8 @@ class HttpPrefixHeadersTest {
     assertThat(codec).contains("def encode_put_object_request(");
     assertThat(codec).contains("prefix_headers_to_list(\"x-amz-meta-\", input.metadata)");
     assertThat(codec).contains("defp prefix_headers_to_list(_prefix, nil), do: []");
-    assertThat(codec).contains("defp prefix_headers_from_list(headers, prefix) do");
+    assertThat(codec).contains("defp prefix_headers_from_list(");
+    assertThat(codec).contains("String.starts_with?(name, prefix)");
   }
 
   @Test
