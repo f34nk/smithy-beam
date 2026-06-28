@@ -179,25 +179,7 @@ final class ElixirServerDirectedCodegen
     ElixirContext ctx = directive.context();
     ServiceShape service = directive.shape();
 
-    if (ctx.protocolCodegen() != null
-        && BeamProtocolIds.REST_JSON_1.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirRestJsonIr.emitServerCodecModule(ctx, service);
-    } else if (ctx.protocolCodegen() != null
-        && BeamProtocolIds.REST_XML.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirRestXmlIr.emitServerCodecModule(ctx, service);
-    } else if (ctx.protocolCodegen() != null
-        && BeamProtocolIds.AWS_JSON_1_0.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirAwsJsonIr.emitServerCodecModule(ctx, service, BeamProtocolIds.AWS_JSON_1_0);
-    } else if (ctx.protocolCodegen() != null
-        && BeamProtocolIds.AWS_JSON_1_1.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirAwsJsonIr.emitServerCodecModule(ctx, service, BeamProtocolIds.AWS_JSON_1_1);
-    } else if (ctx.protocolCodegen() != null
-        && BeamProtocolIds.AWS_QUERY.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirAwsQueryIr.emitServerCodecModule(ctx, service, BeamProtocolIds.AWS_QUERY);
-    } else if (ctx.protocolCodegen() != null
-        && BeamProtocolIds.EC2_QUERY.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirAwsQueryIr.emitServerCodecModule(ctx, service, BeamProtocolIds.EC2_QUERY);
-    }
+    ElixirProtocolCodecIr.emitServerCodec(ctx, service);
 
     ElixirRouterEmitter.emit(ctx, service);
     ElixirComplianceTestEmitter.emit(ctx, service);
