@@ -688,7 +688,7 @@ final class ElixirAwsQueryHelperIr {
         ExCase.caseExpr(
             ExCallLocal.callLocal(
                 "query_result_element",
-                ExVar.var("root"),
+                ExVar.var("xml"),
                 ExString.string(responseElement)),
             ExCaseBranch.branch(W, unknownQueryError()),
             ExCaseBranch.branch(ExVarPattern.var("error_response"), errorLookup));

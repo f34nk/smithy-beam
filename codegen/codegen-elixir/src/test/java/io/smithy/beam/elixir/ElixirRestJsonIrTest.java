@@ -9,6 +9,7 @@ import io.smithy.beam.ir.elixir.ExFunction;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
@@ -137,6 +138,43 @@ class ElixirRestJsonIrTest {
     ElixirIrTestSupport.assertStructural(fn);
     assertThat(fn.asString())
         .isEqualTo(readExpectedString("ir/rest_json_encode_get_name_response.expected.ex"));
+  }
+
+  @Test
+  void clientCodecFunctionsAreStructural() {
+    Model model = httpModel();
+    ServiceShape service =
+        model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    BeamElixirLayout layout =
+        new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+    ElixirSymbolProvider sp =
+        new ElixirSymbolProvider(
+            settings,
+            model,
+            service,
+            layout.typesModuleFile(),
+            ElixirSymbolProvider.toModuleName(layout.typesModuleName()),
+            BeamCodegenKind.CLIENT);
+    HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+    String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
+    String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+    String eventStreamModule = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
+    List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
+    for (ExFunction fn :
+        ElixirRestJsonIr.clientCodecFunctions(
+            model,
+            service,
+            operations,
+            httpIndex,
+            sp,
+            typesMod,
+            runtimeMod,
+            eventStreamModule,
+            false)) {
+      ElixirIrTestSupport.assertStructural(fn);
+    }
   }
 
   private static Model httpModel() {

@@ -5,6 +5,7 @@ import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExAtomPattern;
 import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExCallLocal;
+import io.smithy.beam.ir.elixir.ExCapturedBlock;
 import io.smithy.beam.ir.elixir.ExCase;
 import io.smithy.beam.ir.elixir.ExCaseBranch;
 import io.smithy.beam.ir.elixir.ExClause;
@@ -14,6 +15,7 @@ import io.smithy.beam.ir.elixir.ExFor;
 import io.smithy.beam.ir.elixir.ExForFilter;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExGuard;
+import io.smithy.beam.ir.elixir.ExIf;
 import io.smithy.beam.ir.elixir.ExList;
 import io.smithy.beam.ir.elixir.ExListPattern;
 import io.smithy.beam.ir.elixir.ExMap;
@@ -30,6 +32,7 @@ import io.smithy.beam.ir.elixir.ExTuple;
 import io.smithy.beam.ir.elixir.ExTuplePattern;
 import io.smithy.beam.ir.elixir.ExVar;
 import io.smithy.beam.ir.elixir.ExVarPattern;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,7 +42,21 @@ final class ElixirXmlCodecIr {
   private static final ExVarPattern W = ExVarPattern.var("_");
 
   static List<ExFunction> restXmlDecodeHelpers() {
-    return List.of(elementText(), collectText(), isElementString());
+    List<ExFunction> functions = new ArrayList<>();
+    functions.add(parseXmlRoot());
+    functions.add(decodePayload());
+    functions.add(xmlElementNamed());
+    functions.add(elementContent());
+    functions.add(findElement());
+    functions.add(isElement());
+    functions.add(elementName());
+    functions.add(xmlChildText());
+    functions.add(elementText());
+    functions.add(collectText());
+    functions.add(isElementString());
+    functions.add(xmlChildList());
+    functions.add(xmlChildStructList());
+    return functions;
   }
 
   static List<ExFunction> restXmlEncodeHelpers() {
@@ -319,5 +336,232 @@ final class ElixirXmlCodecIr {
                         ExMapFieldPattern.field(ExAtom.atom("uri"), ExVarPattern.var("uri")))),
                 ExList.list(ExTuple.tuple(ExAtom.atom("xmlns"), ExVar.var("uri")))),
             ExClause.inlineClause(List.of(W), ExList.list())));
+  }
+
+  private static ExFunction parseXmlRoot() {
+    return ExFunction.defpFunction(
+        "parse_xml_root",
+        List.of(
+            ExClause.blockClause(
+                List.of(ExVarPattern.var("body"), ExVarPattern.var("root_name")),
+                ExCapturedBlock.capturedBlock(
+                    """
+                    try do
+                      {xml, _} = :xmerl_scan.string(String.to_charlist(body))
+                      cond do
+                        xml_element_named(xml, root_name) -> {:ok, xml}
+                        true ->
+                          case find_element(root_name, element_content(xml)) do
+                            nil -> {:error, {:missing_root, root_name}}
+                            root -> {:ok, root}
+                          end
+                      end
+                    rescue
+                      reason -> {:error, {:xml_parse_error, reason}}
+                    end"""))));
+  }
+
+  private static ExFunction decodePayload() {
+    return ExFunction.defpFunction(
+        "decode_payload",
+        List.of(
+            ExClause.blockClause(
+                List.of(ExVarPattern.var("body"), ExVarPattern.var("root_name")),
+                ExCase.caseExpr(
+                    ExCallLocal.callLocal("parse_xml_root", ExVar.var("body"), ExVar.var("root_name")),
+                    ExCaseBranch.branch(
+                        ExTuplePattern.tuple(ExAtomPattern.atom("ok"), W), ExNil.nil()),
+                    ExCaseBranch.branch(
+                        ExTuplePattern.tuple(ExAtomPattern.atom("error"), W), ExNil.nil())))));
+  }
+
+  private static ExFunction xmlElementNamed() {
+    return ExFunction.defpFunction(
+        "xml_element_named",
+        List.of(
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("element"), ExVarPattern.var("name")),
+                ExOp.op(
+                    "and",
+                    ExCallLocal.callLocal("is_element", ExVar.var("element")),
+                    ExOp.op(
+                        "==",
+                        ExCallLocal.callLocal("element_name", ExVar.var("element")),
+                        ExVar.var("name"))))));
+  }
+
+  private static ExFunction elementContent() {
+    ExTuplePattern xmlElement =
+        ExTuplePattern.tuple(
+            ExAtomPattern.atom("xmlElement"),
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            ExVarPattern.var("content"),
+            W,
+            W,
+            W);
+    ExTuplePattern sixTuple =
+        ExTuplePattern.tuple(W, W, ExVarPattern.var("content"), W, W, W);
+    ExConsPattern headList = ExConsPattern.consPattern(ExVarPattern.var("h"), W);
+
+    return ExFunction.defpFunction(
+        "element_content",
+        List.of(
+            ExClause.inlineClause(List.of(xmlElement), ExVar.var("content")),
+            ExClause.inlineClause(
+                List.of(sixTuple),
+                List.of(ExGuard.guard("is_list", ExVar.var("content"))),
+                ExVar.var("content")),
+            ExClause.inlineClause(
+                List.of(headList),
+                ExCallLocal.callLocal("element_content", ExVar.var("h"))),
+            ExClause.inlineClause(List.of(W), ExList.list())));
+  }
+
+  private static ExFunction findElement() {
+    ExAnonymousFn finder =
+        ExAnonymousFn.fn(
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("item")),
+                ExIf.ifExpr(
+                    ExOp.op(
+                        "and",
+                        ExCallLocal.callLocal("is_element", ExVar.var("item")),
+                        ExOp.op(
+                            "==",
+                            ExCallLocal.callLocal("element_name", ExVar.var("item")),
+                            ExVar.var("name"))),
+                    ExVar.var("item"),
+                    ExNil.nil())));
+    return ExFunction.defpFunction(
+        "find_element",
+        List.of(
+            ExClause.blockClause(
+                List.of(ExVarPattern.var("name"), ExVarPattern.var("content")),
+                ExCall.call("Enum", "find_value", ExVar.var("content"), finder))));
+  }
+
+  private static ExFunction isElement() {
+    ExTuplePattern xmlElement =
+        ExTuplePattern.tuple(
+            ExAtomPattern.atom("xmlElement"), W, W, W, W, W, W, W, W, W, W, W);
+    ExTuplePattern sixTuple = ExTuplePattern.tuple(W, W, ExVarPattern.var("content"), W, W, W);
+    return ExFunction.defpFunction(
+        "is_element",
+        List.of(
+            ExClause.inlineClause(List.of(xmlElement), ExAtom.atom("true")),
+            ExClause.inlineClause(
+                List.of(sixTuple),
+                List.of(ExGuard.guard("is_list", ExVar.var("content"))),
+                ExAtom.atom("true")),
+            ExClause.inlineClause(List.of(W), ExAtom.atom("false"))));
+  }
+
+  private static ExFunction elementName() {
+    ExTuplePattern xmlElementName =
+        ExTuplePattern.tuple(
+            ExAtomPattern.atom("xmlElement"),
+            ExVarPattern.var("name"),
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            W);
+    ExTuplePattern sixTupleName =
+        ExTuplePattern.tuple(ExVarPattern.var("name"), W, W, W, W, W);
+
+    return ExFunction.defpFunction(
+        "element_name",
+        List.of(
+            ExClause.inlineClause(
+                List.of(xmlElementName),
+                List.of(ExGuard.guard("is_atom", ExVar.var("name"))),
+                ExCall.call("Atom", "to_string", ExVar.var("name"))),
+            ExClause.inlineClause(
+                List.of(xmlElementName),
+                List.of(ExGuard.guard("is_list", ExVar.var("name"))),
+                ExCall.call("List", "to_string", ExVar.var("name"))),
+            ExClause.inlineClause(
+                List.of(xmlElementName),
+                List.of(ExGuard.guard("is_binary", ExVar.var("name"))),
+                ExVar.var("name")),
+            ExClause.inlineClause(
+                List.of(sixTupleName),
+                List.of(ExGuard.guard("is_atom", ExVar.var("name"))),
+                ExCall.call("Atom", "to_string", ExVar.var("name"))),
+            ExClause.inlineClause(
+                List.of(sixTupleName),
+                List.of(ExGuard.guard("is_list", ExVar.var("name"))),
+                ExCall.call("List", "to_string", ExVar.var("name"))),
+            ExClause.inlineClause(
+                List.of(sixTupleName),
+                List.of(ExGuard.guard("is_binary", ExVar.var("name"))),
+                ExVar.var("name"))));
+  }
+
+  private static ExFunction xmlChildText() {
+    return ExFunction.defpFunction(
+        "xml_child_text",
+        List.of(
+            ExClause.blockClause(
+                List.of(ExVarPattern.var("parent"), ExVarPattern.var("name")),
+                ExCase.caseExpr(
+                    ExCallLocal.callLocal(
+                        "find_element",
+                        ExVar.var("name"),
+                        ExCallLocal.callLocal("element_content", ExVar.var("parent"))),
+                    ExCaseBranch.branch(ExNilPattern.nil(), ExNil.nil()),
+                    ExCaseBranch.branch(
+                        ExVarPattern.var("element"),
+                        ExCase.caseExpr(
+                            ExCallLocal.callLocal("element_text", ExVar.var("element")),
+                            ExCaseBranch.branch(ExListPattern.list(), ExNil.nil()),
+                            ExCaseBranch.branch(
+                                ExConsPattern.consPattern(ExVarPattern.var("text"), W),
+                                ExCall.call("List", "to_string", ExVar.var("text")))))))));
+  }
+
+  private static ExFunction xmlChildStructList() {
+    return ExFunction.defpFunction(
+        "xml_child_struct_list",
+        List.of(
+            ExClause.blockClause(
+                List.of(
+                    ExVarPattern.var("parent"),
+                    ExNilPattern.nil(),
+                    ExVarPattern.var("item_name"),
+                    ExVarPattern.var("decode_fun")),
+                ExCapturedBlock.capturedBlock(
+                    """
+                    parent
+                    |> element_content()
+                    |> Enum.filter(fn item -> is_element(item) and element_name(item) == item_name end)
+                    |> Enum.map(decode_fun)""")),
+            ExClause.blockClause(
+                List.of(
+                    ExVarPattern.var("parent"),
+                    ExVarPattern.var("list_name"),
+                    ExVarPattern.var("item_name"),
+                    ExVarPattern.var("decode_fun")),
+                ExCapturedBlock.capturedBlock(
+                    """
+                    case find_element(list_name, element_content(parent)) do
+                      nil -> nil
+                      list_element ->
+                        list_element
+                        |> element_content()
+                        |> Enum.filter(fn item -> is_element(item) and element_name(item) == item_name end)
+                        |> Enum.map(decode_fun)
+                    end"""))));
   }
 }

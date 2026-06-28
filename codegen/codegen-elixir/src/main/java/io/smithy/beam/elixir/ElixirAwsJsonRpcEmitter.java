@@ -38,7 +38,6 @@ final class ElixirAwsJsonRpcEmitter {
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     String eventStreamMod = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
-
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
 
     ctx.writerDelegator()
@@ -54,23 +53,18 @@ final class ElixirAwsJsonRpcEmitter {
               writer.write("alias $L, as: RuntimeTypes", runtimeMod);
               writer.write("alias $L, as: Types", typesMod);
               writer.write("");
-
-              for (OperationShape op : operations) {
-                emitServerRequestDecoder(
-                    writer, model, op, httpIndex, sp, typesMod, runtimeMod, eventStreamMod);
-                emitServerResponseEncoder(
-                    writer,
-                    model,
-                    op,
-                    httpIndex,
-                    sp,
-                    typesMod,
-                    runtimeMod,
-                    contentType,
-                    eventStreamMod);
-              }
-
-              ElixirRestJson1Emitter.emitSharedCodecHelpers(writer, model, service, sp);
+              writeCodecFunctions(
+                  writer,
+                  ElixirAwsJsonIr.serverCodecFunctions(
+                      model,
+                      service,
+                      operations,
+                      httpIndex,
+                      sp,
+                      typesMod,
+                      runtimeMod,
+                      contentType,
+                      eventStreamMod));
               writer.dedent();
               writer.write("end");
             });
@@ -94,7 +88,6 @@ final class ElixirAwsJsonRpcEmitter {
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     String eventStreamMod = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
     String targetPrefix = service.getId().getName();
-
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
 
     ctx.writerDelegator()
@@ -110,117 +103,37 @@ final class ElixirAwsJsonRpcEmitter {
               writer.write("alias $L, as: RuntimeTypes", runtimeMod);
               writer.write("alias $L, as: Types", typesMod);
               writer.write("");
-
+              writeCodecFunctions(
+                  writer,
+                  ElixirAwsJsonIr.clientOperationCodecFunctions(
+                      model,
+                      service,
+                      operations,
+                      httpIndex,
+                      sp,
+                      typesMod,
+                      runtimeMod,
+                      targetPrefix,
+                      contentType,
+                      eventStreamMod));
               for (OperationShape op : operations) {
-                emitEncoder(
-                    writer,
-                    model,
-                    op,
-                    httpIndex,
-                    sp,
-                    typesMod,
-                    runtimeMod,
-                    targetPrefix,
-                    contentType,
-                    eventStreamMod);
-                emitDecoder(
-                    writer, model, op, httpIndex, sp, typesMod, runtimeMod, eventStreamMod);
+                writeErrorDispatch(writer, model, op, sp, typesMod);
               }
-
-              for (OperationShape op : operations) {
-                emitErrorDispatch(writer, model, op, sp, typesMod);
-              }
-
-              ElixirRestJson1Emitter.emitSharedCodecHelpers(writer, model, service, sp);
-
+              writeCodecFunctions(
+                  writer, ElixirAwsJsonIr.sharedCodecHelpers(model, service, sp));
               writer.dedent();
               writer.write("end");
             });
   }
 
-  private static void emitServerRequestDecoder(
-      ElixirWriter writer,
-      Model model,
-      OperationShape op,
-      HttpBindingIndex httpIndex,
-      SymbolProvider sp,
-      String typesMod,
-      String runtimeMod,
-      String eventStreamModule) {
-    ExFunction fn =
-        ElixirAwsJsonOperationIr.buildDecodeRequest(
-            model, op, httpIndex, sp, typesMod, runtimeMod, eventStreamModule);
-    writer.write("$L", fn.asString());
-    writer.write("");
+  private static void writeCodecFunctions(ElixirWriter writer, List<ExFunction> functions) {
+    for (ExFunction function : functions) {
+      writer.write("$L", function.asString());
+      writer.write("");
+    }
   }
 
-  private static void emitServerResponseEncoder(
-      ElixirWriter writer,
-      Model model,
-      OperationShape op,
-      HttpBindingIndex httpIndex,
-      SymbolProvider sp,
-      String typesMod,
-      String runtimeMod,
-      String contentType,
-      String eventStreamModule) {
-    ExFunction fn =
-        ElixirAwsJsonOperationIr.buildEncodeResponse(
-            model,
-            op,
-            httpIndex,
-            sp,
-            typesMod,
-            runtimeMod,
-            contentType,
-            eventStreamModule);
-    writer.write("$L", fn.asString());
-    writer.write("");
-  }
-
-  private static void emitEncoder(
-      ElixirWriter writer,
-      Model model,
-      OperationShape op,
-      HttpBindingIndex httpIndex,
-      SymbolProvider sp,
-      String typesMod,
-      String runtimeMod,
-      String targetPrefix,
-      String contentType,
-      String eventStreamModule) {
-    ExFunction fn =
-        ElixirAwsJsonOperationIr.buildEncodeRequest(
-            model,
-            op,
-            httpIndex,
-            sp,
-            typesMod,
-            runtimeMod,
-            targetPrefix,
-            contentType,
-            eventStreamModule);
-    writer.write("$L", fn.asString());
-    writer.write("");
-  }
-
-  private static void emitDecoder(
-      ElixirWriter writer,
-      Model model,
-      OperationShape op,
-      HttpBindingIndex httpIndex,
-      SymbolProvider sp,
-      String typesMod,
-      String runtimeMod,
-      String eventStreamModule) {
-    ExFunction fn =
-        ElixirAwsJsonOperationIr.buildDecodeResponse(
-            model, op, httpIndex, sp, typesMod, runtimeMod, eventStreamModule);
-    writer.write("$L", fn.asString());
-    writer.write("");
-  }
-
-  private static void emitErrorDispatch(
+  private static void writeErrorDispatch(
       ElixirWriter writer, Model model, OperationShape op, SymbolProvider sp, String typesMod) {
 
     String opName = sp.toSymbol(op).getName();

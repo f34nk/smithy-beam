@@ -16,6 +16,7 @@ import io.smithy.beam.ir.elixir.ExIf;
 import io.smithy.beam.ir.elixir.ExList;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMapEntry;
+import io.smithy.beam.ir.elixir.ExNil;
 import io.smithy.beam.ir.elixir.ExNilPattern;
 import io.smithy.beam.ir.elixir.ExOp;
 import io.smithy.beam.ir.elixir.ExString;
@@ -129,17 +130,11 @@ final class ElixirCodecHelperIr {
     return ExFunction.defpFunction(
         "decode_sparse_list",
         List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
+            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExNil.nil()),
             ExClause.blockClause(
                 List.of(ExVarPattern.var("list")),
                 List.of(ExGuard.guard("is_list", ExVar.var("list"))),
-                ExCall.call(
-                    "Enum",
-                    "map",
-                    ExVar.var("list"),
-                    ExAnonymousFn.fn(
-                        ExClause.clause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-                        ExClause.clause(List.of(ExVarPattern.var("v")), ExVar.var("v")))))));
+                ExCapturedBlock.capturedBlock("Enum.map(list, fn nil -> nil; v -> v end)"))));
   }
 
   public static ExFunction decodeList() {

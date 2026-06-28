@@ -18,7 +18,11 @@ class ElixirXmlCodecIrTest {
 
   @Test
   void elementTextAsStringMatchGolden() throws IOException {
-    ExFunction fn = ElixirXmlCodecIr.restXmlDecodeHelpers().get(0);
+    ExFunction fn =
+        ElixirXmlCodecIr.restXmlDecodeHelpers().stream()
+            .filter(function -> function.name().equals("element_text"))
+            .findFirst()
+            .orElseThrow();
     assertGolden(fn, "ir/xml_codec_element_text.expected.ex");
   }
 
