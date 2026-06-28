@@ -203,7 +203,7 @@ final class ElixirClientDirectedCodegen
       ElixirAwsQueryIr.emitClientCodecModule(ctx, directive.shape(), BeamProtocolIds.EC2_QUERY);
     } else if (ctx.protocolCodegen() != null
         && BeamProtocolIds.REST_XML.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirRestXmlEmitter.emitCodecModule(ctx, directive.shape());
+      ElixirRestXmlIr.emitClientCodecModule(ctx, directive.shape());
     }
 
     ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
@@ -465,7 +465,7 @@ final class ElixirClientDirectedCodegen
     }
 
     if (ElixirRestJsonSupport.serviceHasHostLabelOperations(ctx.model(), ctx.service())
-        || ElixirRestXmlEmitter.serviceEncodesWithConfig(ctx.model(), ctx.service())) {
+        || ElixirRestXmlSupport.serviceEncodesWithConfig(ctx.model(), ctx.service())) {
       writer.write("req = $L.encode_$L_request(config, input)", codecMod, opSym.getName());
     } else {
       writer.write("req = $L.encode_$L_request(input)", codecMod, opSym.getName());
