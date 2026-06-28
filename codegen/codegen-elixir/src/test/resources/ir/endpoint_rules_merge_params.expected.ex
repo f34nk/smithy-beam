@@ -1,9 +1,6 @@
-defp merge_params(
-  config,
-  params
-) do
-  config_params = config_to_rule_params(config),
-  client_params = client_context_params(config),
+defp merge_params(config, params) do
+  config_params = config_to_rule_params(config)
+  client_params = client_context_params(config)
   Map.merge(Map.merge(config_params, client_params), params)
 end
 

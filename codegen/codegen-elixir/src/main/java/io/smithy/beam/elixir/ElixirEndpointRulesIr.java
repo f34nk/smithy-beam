@@ -11,12 +11,10 @@ import io.smithy.beam.ir.elixir.ExCapturedBlock;
 import io.smithy.beam.ir.elixir.ExCase;
 import io.smithy.beam.ir.elixir.ExCaseBranch;
 import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExExprBlock;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExList;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExMatch;
 import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
 import io.smithy.beam.ir.elixir.ExNilPattern;
@@ -59,7 +57,7 @@ final class ElixirEndpointRulesIr {
         "resolve",
         ExSpec.functionSpec("resolve", "map(), map()", "{:ok, %{url: String.t()}} | {:error, term()}"),
         List.of(
-            ExClause.blockClause(
+            ExClause.blockClauseSingleLineHead(
                 List.of(ExVarPattern.var("config"), ExVarPattern.var("params")),
                 ExCall.call(
                     "AwsEndpointRules",
@@ -81,24 +79,13 @@ final class ElixirEndpointRulesIr {
     return ExFunction.defpFunction(
         "merge_params",
         List.of(
-            ExClause.blockClause(
+            ExClause.blockClauseSingleLineHead(
                 List.of(ExVarPattern.var("config"), ExVarPattern.var("params")),
-                ExExprBlock.block(
-                    ExMatch.match(
-                        ExVarPattern.var("config_params"),
-                        ExCallLocal.callLocal("config_to_rule_params", ExVar.var("config"))),
-                    ExMatch.match(
-                        ExVarPattern.var("client_params"),
-                        ExCallLocal.callLocal("client_context_params", ExVar.var("config"))),
-                    ExCall.call(
-                        "Map",
-                        "merge",
-                        ExCall.call(
-                            "Map",
-                            "merge",
-                            ExVar.var("config_params"),
-                            ExVar.var("client_params")),
-                        ExVar.var("params"))))));
+                ExCapturedBlock.capturedBlock(
+                    """
+                    config_params = config_to_rule_params(config)
+                    client_params = client_context_params(config)
+                    Map.merge(Map.merge(config_params, client_params), params)"""))));
   }
 
   private static ExFunction configToRuleParams() {

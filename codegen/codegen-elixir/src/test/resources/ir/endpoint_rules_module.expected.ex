@@ -3,19 +3,13 @@ defmodule EndpointRulesServiceEndpoints do
   alias RuntimeTypes, as: RuntimeTypes
 
   @spec resolve(map(), map()) :: {:ok, %{url: String.t()}} | {:error, term()}
-  def resolve(
-    config,
-    params
-  ) do
+  def resolve(config, params) do
     AwsEndpointRules.evaluate(RuntimeTypes.endpoint_rule_set(), merge_params(config, params))
   end
 
-  defp merge_params(
-    config,
-    params
-  ) do
-    config_params = config_to_rule_params(config),
-    client_params = client_context_params(config),
+  defp merge_params(config, params) do
+    config_params = config_to_rule_params(config)
+    client_params = client_context_params(config)
     Map.merge(Map.merge(config_params, client_params), params)
   end
 
