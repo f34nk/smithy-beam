@@ -6,14 +6,25 @@ import java.util.List;
 public final class ExCase implements ExExpr {
   private final ExExpr scrutinee;
   private final List<ExCaseBranch> branches;
+  private final boolean blankBetweenBranches;
 
-  public ExCase(ExExpr scrutinee, List<ExCaseBranch> branches) {
+  public ExCase(ExExpr scrutinee, List<ExCaseBranch> branches, boolean blankBetweenBranches) {
     this.scrutinee = scrutinee;
     this.branches = List.copyOf(branches);
+    this.blankBetweenBranches = blankBetweenBranches;
+  }
+
+  public ExCase(ExExpr scrutinee, List<ExCaseBranch> branches) {
+    this(scrutinee, branches, false);
   }
 
   public static ExCase caseExpr(ExExpr scrutinee, ExCaseBranch... branches) {
     return new ExCase(scrutinee, List.of(branches));
+  }
+
+  public static ExCase caseExpr(
+      ExExpr scrutinee, List<ExCaseBranch> branches, boolean blankBetweenBranches) {
+    return new ExCase(scrutinee, branches, blankBetweenBranches);
   }
 
   public ExExpr scrutinee() {
@@ -28,7 +39,7 @@ public final class ExCase implements ExExpr {
   public List<String> lines(int indent) {
     List<String> out = new ArrayList<>();
     out.add(IrObject.indent(indent) + "case " + scrutinee.asString() + " do");
-    appendBranchLines(out, indent + 1, false);
+    appendBranchLines(out, indent + 1, blankBetweenBranches);
     out.add(IrObject.indent(indent) + "end");
     return out;
   }
@@ -41,7 +52,7 @@ public final class ExCase implements ExExpr {
             + " = case "
             + scrutinee.asString()
             + " do");
-    appendBranchLines(out, indent + 1, false);
+    appendBranchLines(out, indent + 1, blankBetweenBranches);
     out.add(IrObject.indent(indent) + "end");
     return out;
   }
