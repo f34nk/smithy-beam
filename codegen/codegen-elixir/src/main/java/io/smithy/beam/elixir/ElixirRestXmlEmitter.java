@@ -2,69 +2,23 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHostLabelIndex;
-import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
 import io.smithy.beam.core.BeamXmlBindingIndex;
-import java.util.ArrayList;
+import io.smithy.beam.ir.elixir.ExFunction;
 import java.util.List;
 import java.util.Optional;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
-import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
-import software.amazon.smithy.model.shapes.BlobShape;
-import software.amazon.smithy.model.shapes.ListShape;
-import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
-import software.amazon.smithy.model.shapes.Shape;
-import software.amazon.smithy.model.shapes.ShapeId;
-import software.amazon.smithy.model.shapes.StringShape;
-import software.amazon.smithy.model.shapes.StructureShape;
-import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.EndpointTrait;
-import software.amazon.smithy.model.traits.HttpErrorTrait;
-import software.amazon.smithy.model.traits.HttpTrait;
-import software.amazon.smithy.model.traits.IdempotencyTokenTrait;
 
 /** REST-XML protocol codec emitter for Elixir clients and servers. */
 public final class ElixirRestXmlEmitter {
 
-  private static final String DEFAULT_CONTENT_TYPE = "application/xml";
-
   private ElixirRestXmlEmitter() {}
-
-  private static void emitRejectNilMapPipeline(
-      ElixirWriter writer, String varName, Runnable emitMapEntries) {
-    ElixirFormat.beginPipelineBinding(writer, varName);
-    writer.write("%{");
-    writer.indent();
-    emitMapEntries.run();
-    writer.dedent();
-    writer.write("}");
-    ElixirFormat.writePipelineStep(writer, "Enum.reject(fn {_, v} -> is_nil(v) end)");
-    ElixirFormat.writePipelineStep(writer, "Map.new()");
-    ElixirFormat.endPipelineBinding(writer);
-  }
-
-  private static void emitExtraHeadersPipeline(
-      ElixirWriter writer, SymbolProvider sp, String recordVar, List<HttpBinding> headers) {
-    ElixirFormat.beginPipelineBinding(writer, "extra_headers");
-    writer.write("[");
-    writer.indent();
-    for (HttpBinding hb : headers) {
-      String field = fieldName(sp, hb.getMember());
-      ElixirFormat.writeIfInList(
-          writer,
-          recordVar + "." + field + " != nil",
-          "{\"" + hb.getLocationName() + "\", to_string(" + recordVar + "." + field + ")}");
-    }
-    writer.dedent();
-    writer.write("]");
-    ElixirFormat.writePipelineStep(writer, "Enum.reject(&is_nil/1)");
-    ElixirFormat.endPipelineBinding(writer);
-  }
 
   public static void emitCodecModule(ElixirContext ctx, ServiceShape service) {
     Model model = ctx.model();
@@ -154,7 +108,7 @@ public final class ElixirRestXmlEmitter {
 
               for (OperationShape op : operations) {
                 emitRequestDecoder(writer, model, op, httpIndex, sp, typesMod);
-                emitResponseEncoder(writer, model, op, httpIndex, sp, typesMod);
+                emitResponseEncoder(writer, model, op, httpIndex, sp, typesMod, runtimeMod);
               }
 
               emitXmlHelpers(writer, checksumBindings);
@@ -183,167 +137,11 @@ public final class ElixirRestXmlEmitter {
       String typesMod,
       String runtimeMod,
       boolean encodeWithConfig) {
-
-    String opName = sp.toSymbol(op).getName();
-    StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
-    HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
-    String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
-    String httpRequestType = "%" + runtimeMod + ".HttpRequest{}";
-
-    List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
-    List<HttpBinding> queries = httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY);
-    List<HttpBinding> headers = httpIndex.getRequestBindings(op, HttpBinding.Location.HEADER);
-    List<HttpBinding> payloadMembers =
-        httpIndex.getRequestBindings(op, HttpBinding.Location.PAYLOAD);
-
-    if (encodeWithConfig) {
-      ElixirFormat.writeSpec(
-          writer, "@spec", "encode_" + opName + "_request", "map(), " + inputType, httpRequestType);
-      writer.write("def encode_$L_request(config, input) do", opName);
-    } else {
-      ElixirFormat.writeSpec(
-          writer, "@spec", "encode_" + opName + "_request", inputType, httpRequestType);
-      writer.write("def encode_$L_request(input) do", opName);
-    }
-    writer.indent();
-
-    for (MemberShape member : input.members()) {
-      if (member.hasTrait(IdempotencyTokenTrait.class)) {
-        String field = fieldName(sp, member);
-        writer.write("input =");
-        writer.indent();
-        writer.write("case input.$L do", field);
-        writer.indent();
-        writer.write("nil -> %{input | $L: generate_uuid()}", field);
-        writer.write("_ -> input");
-        writer.dedent();
-        writer.write("end");
-        writer.dedent();
-        writer.write("");
-      }
-    }
-
-    BeamS3CustomizationIndex s3Index = BeamS3CustomizationIndex.of(model);
-    boolean s3BucketAddressing =
-        s3Index.isS3Service(service) && s3Index.bucketLabelBinding(op).isPresent();
-    boolean setHost = s3BucketAddressing;
-
-    if (s3BucketAddressing) {
-      String bucketField = fieldName(sp, s3Index.bucketLabelBinding(op).orElseThrow().getMember());
-      String keyExpr =
-          s3Index
-              .keyLabelBinding(op)
-              .map(binding -> "to_string(input." + fieldName(sp, binding.getMember()) + ")")
-              .orElse("\"\"");
-      if (encodeWithConfig) {
-        writer.write(
-            "{host, path} = S3Endpoint.resolve_bucket_url(config, to_string(input.$L), $L)",
-            bucketField,
-            keyExpr);
-      } else {
-        writer.write(
-            "{host, path} = S3Endpoint.resolve_bucket_url(%{}, to_string(input.$L), $L)",
-            bucketField, keyExpr);
-      }
-    } else {
-      String pathExpr = buildPathExpression(httpTrait.getUri().toString(), labels, sp);
-      writer.write("path = $L", pathExpr);
-    }
-
-    if (!queries.isEmpty()) {
-      emitRejectNilMapPipeline(
-          writer,
-          "query",
-          () -> {
-            for (HttpBinding qb : queries) {
-              writer.write(
-                  "\"$L\" => input.$L,", qb.getLocationName(), fieldName(sp, qb.getMember()));
-            }
-          });
-    } else {
-      writer.write("query = %{}");
-    }
-
-    if (headers.isEmpty()) {
-      writer.write("headers = [{\"Content-Type\", \"application/xml\"}]");
-    } else {
-      emitExtraHeadersPipeline(writer, sp, "input", headers);
-      writer.write("headers = [{\"Content-Type\", \"application/xml\"} | extra_headers]");
-    }
-
-    emitRequestBody(writer, model, payloadMembers, httpTrait.getMethod(), sp);
-    ElixirHttpChecksumEmitter.emitRequestChecksumHeaders(writer, model, op, sp);
-
-    writer.write("%RuntimeTypes.HttpRequest{");
-    writer.write("  method: \"$L\",", httpTrait.getMethod());
-    writer.write("  path: path,");
-    writer.write("  query: query,");
-    writer.write("  headers: headers,");
-    writer.write("  body: body$L", setHost ? "," : "");
-    if (setHost) {
-      writer.write("  host: host");
-    }
-    writer.write("}");
-
-    writer.dedent();
-    writer.write("end");
+    ExFunction fn =
+        ElixirRestXmlOperationIr.buildEncodeRequest(
+            model, service, op, httpIndex, sp, typesMod, runtimeMod, encodeWithConfig);
+    writer.write("$L", fn.asString());
     writer.write("");
-  }
-
-  private static void emitRequestBody(
-      ElixirWriter writer,
-      Model model,
-      List<HttpBinding> payloadMembers,
-      String method,
-      SymbolProvider sp) {
-
-    if (payloadMembers.isEmpty()
-        || method.equals("GET")
-        || method.equals("DELETE")
-        || method.equals("HEAD")) {
-      writer.write("body = \"\"");
-      return;
-    }
-
-    HttpBinding payload = payloadMembers.get(0);
-    MemberShape member = payload.getMember();
-    Shape target = model.expectShape(member.getTarget());
-    String field = fieldName(sp, member);
-
-    if (target instanceof BlobShape || target instanceof StringShape) {
-      writer.write("body =");
-      writer.indent();
-      writer.write("case input.$L do", field);
-      writer.indent();
-      writer.write("nil -> \"\"");
-      writer.write("");
-      writer.write("value -> value");
-      writer.dedent();
-      writer.write("end");
-      writer.dedent();
-      return;
-    }
-
-    String rootElement = BeamXmlBindingIndex.payloadRootElementName(member, target);
-    writer.write("body =");
-    writer.indent();
-    writer.write("case input.$L do", field);
-    writer.indent();
-    writer.write("nil -> \"\"");
-    writer.write("payload_value ->");
-    writer.indent();
-    if (target instanceof StructureShape structure) {
-      writer.write("member_map = $L", buildStructureMap(model, structure, "payload_value", sp));
-      writer.write("encode_xml(%{\"$L\" => member_map}, xml_namespace())", rootElement);
-    } else if (target instanceof UnionShape union) {
-      emitUnionPayloadEncode(writer, model, union, rootElement, "payload_value", sp);
-    } else {
-      writer.write("encode_xml(%{\"$L\" => payload_value}, xml_namespace())", rootElement);
-    }
-    writer.dedent();
-    writer.dedent();
-    writer.write("end");
-    writer.dedent();
   }
 
   private static void emitDecoder(
@@ -353,125 +151,15 @@ public final class ElixirRestXmlEmitter {
       HttpBindingIndex httpIndex,
       SymbolProvider sp,
       String typesMod) {
-
-    String opName = sp.toSymbol(op).getName();
-    StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
-    String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
-    int successCode = httpIndex.getResponseCode(op);
-    List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
-
-    ElixirFormat.writeSpec(
-        writer,
-        "@spec",
-        "decode_" + opName + "_response",
-        "map()",
-        "{:ok, " + outputType + "} | {:error, term()}");
-    writer.write(
-        "def decode_$L_response(%{status: $L, headers: headers, body: body}) do",
-        opName, successCode);
-    writer.indent();
-
-    if (!respPayload.isEmpty()) {
-      HttpBinding pb = respPayload.get(0);
-      MemberShape member = pb.getMember();
-      Shape target = model.expectShape(member.getTarget());
-      String field = fieldName(sp, member);
-      if (target instanceof BlobShape || target instanceof StringShape) {
-        ElixirHttpChecksumEmitter.emitResponseChecksumGuard(
-            writer, model, op, "{:ok, %Types." + structName(sp, output) + "{" + field + ": body}}");
-      } else {
-        String rootElement = BeamXmlBindingIndex.payloadRootElementName(member, target);
-        String decoded = payloadDecodeExpr(model, target, "root", sp);
-        writer.write("case parse_xml_root(body, \"$L\") do", rootElement);
-        writer.indent();
-        writer.write(
-            "{:ok, root} -> {:ok, %Types.$L{$L: $L}}", structName(sp, output), field, decoded);
-        writer.write("");
-        writer.write("{:error, reason} -> {:error, reason}");
-        writer.dedent();
-        writer.write("end");
-      }
-    } else if (!output.members().isEmpty()) {
-      String rootElement = BeamXmlBindingIndex.shapeElementName(output);
-      writer.write("case parse_xml_root(body, \"$L\") do", rootElement);
-      writer.indent();
-      writer.write("{:ok, root} -> {:ok, $L}", decodeOutputStruct(model, output, "root", sp));
-      writer.write("");
-      writer.write("{:error, reason} -> {:error, reason}");
-      writer.dedent();
-      writer.write("end");
-    } else {
-      writer.write("{:ok, %Types.$L{}}", structName(sp, output));
-    }
-
-    writer.dedent();
-    writer.write("end");
+    ExFunction fn =
+        ElixirRestXmlOperationIr.buildDecodeResponse(model, op, httpIndex, sp, typesMod);
+    writer.write("$L", fn.asString());
     writer.write("");
-    if (op.getErrors().isEmpty()) {
-      writer.write("def decode_$L_response(%{status: status, body: body}) do", opName);
-      writer.indent();
-      writer.write("{:error, {:unknown_error, status, body}}");
-      writer.dedent();
-      writer.write("end");
-      writer.write("");
-    } else {
-      writer.write(
-          "def decode_$L_response(%{status: status, headers: headers, body: body}) do", opName);
-      writer.indent();
-      writer.write("decode_$L_response_error(status, headers, body)", opName);
-      writer.dedent();
-      writer.write("end");
-      writer.write("");
-      emitErrorDispatch(writer, model, op, sp, typesMod);
-    }
-  }
-
-  private static void emitErrorDispatch(
-      ElixirWriter writer, Model model, OperationShape op, SymbolProvider sp, String typesMod) {
-
-    String opName = sp.toSymbol(op).getName();
-    List<ShapeId> errors = new ArrayList<>(op.getErrors());
-    if (errors.isEmpty()) {
-      return;
-    }
-
-    writer.write("# Error dispatch for $L", op.getId());
-    for (ShapeId errorId : errors) {
-      StructureShape errShape = model.expectShape(errorId, StructureShape.class);
-      String modName = sp.toSymbol(errShape).getName();
-      int httpStatus =
-          errShape.hasTrait(HttpErrorTrait.class)
-              ? errShape.expectTrait(HttpErrorTrait.class).getCode()
-              : -1;
-      if (httpStatus <= 0) {
-        continue;
-      }
-      writer.write("defp decode_$L_response_error($L, _headers, _body) do", opName, httpStatus);
-      writer.indent();
-      List<String> fields = buildErrorFields(errShape, sp);
-      writer.write("{:error, struct!($L.$L, %{$L})}", typesMod, modName, String.join(", ", fields));
-      writer.dedent();
-      writer.write("end");
+    ExFunction errorFn = ElixirRestXmlOperationIr.buildErrorDispatch(model, op, sp, typesMod);
+    if (errorFn != null) {
+      writer.write("$L", errorFn.asString());
       writer.write("");
     }
-
-    writer.write("defp decode_$L_response_error(status, _headers, body) do", opName);
-    writer.indent();
-    writer.write("{:error, {:unknown_error, status, body}}");
-    writer.dedent();
-    writer.write("end");
-    writer.write("");
-  }
-
-  private static List<String> buildErrorFields(StructureShape errShape, SymbolProvider sp) {
-    List<String> fields = new ArrayList<>();
-    for (MemberShape member : errShape.members()) {
-      if (member.getMemberName().equals("__beam_error_kind")) {
-        continue;
-      }
-      fields.add(fieldName(sp, member) + ": nil");
-    }
-    return fields;
   }
 
   private static void emitRequestDecoder(
@@ -481,55 +169,9 @@ public final class ElixirRestXmlEmitter {
       HttpBindingIndex httpIndex,
       SymbolProvider sp,
       String typesMod) {
-
-    String opName = sp.toSymbol(op).getName();
-    StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
-    String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
-    List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
-    List<HttpBinding> payloadMembers =
-        httpIndex.getRequestBindings(op, HttpBinding.Location.PAYLOAD);
-
-    if (labels.isEmpty()) {
-      ElixirFormat.writeSpec(
-          writer,
-          "@spec",
-          "decode_" + opName + "_request",
-          "map()",
-          "{:ok, " + inputType + "} | {:error, term()}");
-      writer.write("def decode_$L_request(%{body: body} = req) do", opName);
-    } else {
-      ElixirFormat.writeSpec(
-          writer,
-          "@spec",
-          "decode_" + opName + "_request",
-          "map(), map()",
-          "{:ok, " + inputType + "} | {:error, term()}");
-      writer.write("def decode_$L_request(labels, %{body: body} = _req) do", opName);
-    }
-    writer.indent();
-
-    List<String> fields = new ArrayList<>();
-    for (HttpBinding lb : labels) {
-      String field = fieldName(sp, lb.getMember());
-      fields.add(field + ": Map.get(labels, \"" + lb.getLocationName() + "\")");
-    }
-
-    if (!payloadMembers.isEmpty()) {
-      HttpBinding payload = payloadMembers.get(0);
-      MemberShape member = payload.getMember();
-      Shape target = model.expectShape(member.getTarget());
-      String field = fieldName(sp, member);
-      if (target instanceof BlobShape || target instanceof StringShape) {
-        fields.add(field + ": body");
-      } else {
-        String rootElement = BeamXmlBindingIndex.payloadRootElementName(member, target);
-        fields.add(field + ": " + payloadBodyDecode(model, target, rootElement, sp));
-      }
-    }
-
-    writer.write("{:ok, %Types.$L{$L}}", structName(sp, input), String.join(", ", fields));
-    writer.dedent();
-    writer.write("end");
+    ExFunction fn =
+        ElixirRestXmlOperationIr.buildDecodeRequest(model, op, httpIndex, sp, typesMod);
+    writer.write("$L", fn.asString());
     writer.write("");
   }
 
@@ -539,68 +181,12 @@ public final class ElixirRestXmlEmitter {
       OperationShape op,
       HttpBindingIndex httpIndex,
       SymbolProvider sp,
-      String typesMod) {
-
-    String opName = sp.toSymbol(op).getName();
-    StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
-    String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
-    int successCode = httpIndex.getResponseCode(op);
-    List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
-
-    ElixirFormat.writeSpec(writer, "@spec", "encode_" + opName + "_response", outputType, "map()");
-    writer.write("def encode_$L_response(output) do", opName);
-    writer.indent();
-    writer.write("headers = [{\"Content-Type\", \"application/xml\"}]");
-
-    if (!respPayload.isEmpty()) {
-      HttpBinding pb = respPayload.get(0);
-      MemberShape member = pb.getMember();
-      Shape target = model.expectShape(member.getTarget());
-      String field = fieldName(sp, member);
-      if (target instanceof BlobShape || target instanceof StringShape) {
-        writer.write("body = Map.get(output, :$L) || \"\"", field);
-      } else {
-        String rootElement = BeamXmlBindingIndex.payloadRootElementName(member, target);
-        writer.write("body =");
-        writer.indent();
-        writer.write("case Map.get(output, :$L) do", field);
-        writer.indent();
-        writer.write("nil -> \"\"");
-        writer.write("payload_value ->");
-        writer.indent();
-        if (target instanceof StructureShape structure) {
-          writer.write(
-              "member_map = $L",
-              buildStructureMapFromOutput(model, structure, "payload_value", sp));
-          writer.write("encode_xml(%{\"$L\" => member_map}, xml_namespace())", rootElement);
-        } else if (target instanceof UnionShape union) {
-          emitUnionPayloadEncode(writer, model, union, rootElement, "payload_value", sp);
-        } else {
-          writer.write("encode_xml(%{\"$L\" => payload_value}, xml_namespace())", rootElement);
-        }
-        writer.dedent();
-        writer.dedent();
-        writer.write("end");
-        writer.dedent();
-      }
-    } else if (!output.members().isEmpty()) {
-      String rootElement = BeamXmlBindingIndex.shapeElementName(output);
-      writer.write("member_map = %{");
-      for (MemberShape member : output.members()) {
-        String field = fieldName(sp, member);
-        String wireName = BeamXmlBindingIndex.memberElementName(member);
-        writer.write("  \"$L\" => output.$L,", wireName, field);
-      }
-      writer.write("}");
-      writer.write("body = encode_xml(%{\"$L\" => member_map}, xml_namespace())", rootElement);
-    } else {
-      writer.write("body = \"\"");
-    }
-
-    writer.write(
-        "%RuntimeTypes.HttpResponse{status: $L, headers: headers, body: body}", successCode);
-    writer.dedent();
-    writer.write("end");
+      String typesMod,
+      String runtimeMod) {
+    ExFunction fn =
+        ElixirRestXmlOperationIr.buildEncodeResponse(
+            model, op, httpIndex, sp, typesMod, runtimeMod);
+    writer.write("$L", fn.asString());
     writer.write("");
   }
 
@@ -845,232 +431,6 @@ public final class ElixirRestXmlEmitter {
       writer.write("$L", function.asString());
       writer.write("");
     }
-  }
-
-  private static String payloadBodyDecode(
-      Model model, Shape target, String rootElement, SymbolProvider sp) {
-    return "(case parse_xml_root(body, \""
-        + rootElement
-        + "\") do "
-        + "{:ok, root} -> "
-        + payloadDecodeExpr(model, target, "root", sp)
-        + "; "
-        + "{:error, _} -> nil end)";
-  }
-
-  private static String payloadDecodeExpr(
-      Model model, Shape target, String xmlVar, SymbolProvider sp) {
-    if (target instanceof StructureShape structure) {
-      return decodeStructure(model, structure, xmlVar, sp);
-    }
-    if (target instanceof UnionShape union) {
-      return decodeUnionFromXml(model, union, xmlVar, sp);
-    }
-    return "xml_child_text(" + xmlVar + ", \"\")";
-  }
-
-  private static String decodeUnionFromXml(
-      Model model, UnionShape union, String xmlVar, SymbolProvider sp) {
-    return buildUnionDecodeCase(model, union, xmlVar, sp, 0);
-  }
-
-  private static String buildUnionDecodeCase(
-      Model model, UnionShape union, String xmlVar, SymbolProvider sp, int memberIndex) {
-    List<MemberShape> members = new ArrayList<>(union.members());
-    if (memberIndex >= members.size()) {
-      return "nil";
-    }
-    MemberShape member = members.get(memberIndex);
-    String element = BeamXmlBindingIndex.memberElementName(member);
-    String tag = unionTagForMember(sp, member);
-    String valueExpr = decodeUnionMemberValue(model, member, "element", sp);
-    String nextArm = buildUnionDecodeCase(model, union, xmlVar, sp, memberIndex + 1);
-    return "(case find_element(\""
-        + element
-        + "\", element_content("
-        + xmlVar
-        + ")) do "
-        + "nil -> "
-        + nextArm
-        + "; "
-        + "element -> {"
-        + tag
-        + ", "
-        + valueExpr
-        + "} "
-        + "end)";
-  }
-
-  private static String decodeUnionMemberValue(
-      Model model, MemberShape member, String elementVar, SymbolProvider sp) {
-    Shape target = model.expectShape(member.getTarget());
-    if (target instanceof StructureShape structure) {
-      return decodeStructure(model, structure, elementVar, sp);
-    }
-    if (target instanceof ListShape listShape) {
-      String itemElement = BeamXmlBindingIndex.listItemElementName(member, listShape, model);
-      Shape listMember = model.expectShape(listShape.getMember().getTarget());
-      if (listMember instanceof StructureShape nested) {
-        String itemStruct = decodeStructure(model, nested, "item", sp);
-        return "xml_child_struct_list("
-            + elementVar
-            + ", nil, \""
-            + itemElement
-            + "\", fn item -> "
-            + itemStruct
-            + " end)";
-      }
-      return "xml_child_list(" + elementVar + ", nil, \"" + itemElement + "\")";
-    }
-    return "element_text(" + elementVar + ") |> case do [] -> nil; text -> text end";
-  }
-
-  private static void emitUnionPayloadEncode(
-      ElixirWriter writer,
-      Model model,
-      UnionShape union,
-      String rootElement,
-      String valueVar,
-      SymbolProvider sp) {
-    writer.write("case $L do", valueVar);
-    writer.indent();
-    for (MemberShape member : union.members()) {
-      String element = BeamXmlBindingIndex.memberElementName(member);
-      String tag = unionTagForMember(sp, member);
-      Shape memberTarget = model.expectShape(member.getTarget());
-      writer.write("{$L, v} ->", tag);
-      writer.indent();
-      String innerValue;
-      if (memberTarget instanceof StructureShape structure) {
-        writer.write("inner_map = $L", buildStructureMap(model, structure, "v", sp));
-        innerValue = "inner_map";
-      } else {
-        innerValue = "v";
-      }
-      writer.write(
-          "encode_xml(%{\"$L\" => %{\"$L\" => $L}}, xml_namespace())",
-          rootElement, element, innerValue);
-      writer.dedent();
-    }
-    writer.write("nil -> \"\"");
-    writer.dedent();
-    writer.write("end");
-  }
-
-  private static String unionTagForMember(SymbolProvider sp, MemberShape member) {
-    return ":" + sp.toSymbol(member).getProperty("unionTag", String.class).orElseThrow();
-  }
-
-  private static String buildStructureMap(
-      Model model, StructureShape structure, String varName, SymbolProvider sp) {
-    List<String> entries = new ArrayList<>();
-    for (MemberShape member : structure.members()) {
-      if (BeamXmlBindingIndex.isXmlAttribute(member)) {
-        continue;
-      }
-      String field = fieldName(sp, member);
-      String wireName = BeamXmlBindingIndex.memberElementName(member);
-      entries.add("\"" + wireName + "\" => " + varName + "." + field);
-    }
-    return "%{" + String.join(", ", entries) + "}";
-  }
-
-  private static String buildStructureMapFromOutput(
-      Model model, StructureShape structure, String varName, SymbolProvider sp) {
-    return buildStructureMap(model, structure, varName, sp);
-  }
-
-  private static String decodeStructure(
-      Model model, StructureShape structure, String xmlVar, SymbolProvider sp) {
-    List<String> fields = new ArrayList<>();
-    for (MemberShape member : structure.members()) {
-      String field = fieldName(sp, member);
-      Shape target = model.expectShape(member.getTarget());
-      if (target instanceof ListShape listShape) {
-        fields.add(field + ": " + decodeListFieldFromXml(model, member, listShape, xmlVar, sp));
-      } else {
-        fields.add(
-            field
-                + ": xml_child_text("
-                + xmlVar
-                + ", \""
-                + BeamXmlBindingIndex.memberElementName(member)
-                + "\")");
-      }
-    }
-    return "%Types." + structName(sp, structure) + "{" + String.join(", ", fields) + "}";
-  }
-
-  private static String decodeListFieldFromXml(
-      Model model, MemberShape member, ListShape listShape, String xmlVar, SymbolProvider sp) {
-    String element = BeamXmlBindingIndex.memberElementName(member);
-    String itemElement = BeamXmlBindingIndex.listItemElementName(member, listShape, model);
-    String listNameArg =
-        BeamXmlBindingIndex.isContainerMemberFlattened(member) ? "nil" : "\"" + element + "\"";
-    Shape listMember = model.expectShape(listShape.getMember().getTarget());
-    if (listMember instanceof StructureShape nested) {
-      String itemStruct = decodeStructure(model, nested, "item", sp);
-      return "xml_child_struct_list("
-          + xmlVar
-          + ", "
-          + listNameArg
-          + ", \""
-          + itemElement
-          + "\", fn item -> "
-          + itemStruct
-          + " end)";
-    }
-    return "xml_child_list(" + xmlVar + ", " + listNameArg + ", \"" + itemElement + "\")";
-  }
-
-  private static String decodeOutputStruct(
-      Model model, StructureShape output, String xmlVar, SymbolProvider sp) {
-    return decodeStructure(model, output, xmlVar, sp);
-  }
-
-  private static String structName(SymbolProvider sp, StructureShape shape) {
-    return sp.toSymbol(shape).getName();
-  }
-
-  private static String fieldName(SymbolProvider sp, MemberShape member) {
-    return BeamNameUtils.toSnakeCase(member.getMemberName());
-  }
-
-  private static String buildPathExpression(
-      String uriTemplate, List<HttpBinding> labels, SymbolProvider sp) {
-    if (labels.isEmpty()) {
-      return "\"" + uriTemplate + "\"";
-    }
-    StringBuilder sb = new StringBuilder("\"");
-    int pos = 0;
-    while (pos < uriTemplate.length()) {
-      int start = uriTemplate.indexOf('{', pos);
-      if (start < 0) {
-        sb.append(uriTemplate.substring(pos)).append("\"");
-        break;
-      }
-      if (start > pos) {
-        sb.append(uriTemplate, pos, start);
-      }
-      int end = uriTemplate.indexOf('}', start);
-      String labelName = uriTemplate.substring(start + 1, end);
-      sb.append("\" <> URI.encode(to_string(input.")
-          .append(
-              fieldName(
-                  sp,
-                  labels.stream()
-                      .filter(l -> l.getLocationName().equals(labelName))
-                      .findFirst()
-                      .map(HttpBinding::getMember)
-                      .orElseThrow()))
-          .append(")) <> \"");
-      pos = end + 1;
-    }
-    if (sb.charAt(sb.length() - 1) == '"') {
-      return sb.toString();
-    }
-    sb.append("\"");
-    return sb.toString();
   }
 
   public static boolean serviceHasHostLabelOperations(Model model, ServiceShape service) {
