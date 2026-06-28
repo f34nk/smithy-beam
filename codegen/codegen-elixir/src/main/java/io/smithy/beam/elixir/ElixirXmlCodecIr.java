@@ -128,7 +128,7 @@ final class ElixirXmlCodecIr {
         ExCall.call("Enum", "reject", rejectFn));
   }
 
-  private static ExFunction elementText() {
+  static ExFunction elementText() {
     ExTuplePattern xmlElementContent =
         ExTuplePattern.tuple(
             ExAtomPattern.atom("xmlElement"),
@@ -178,7 +178,7 @@ final class ElixirXmlCodecIr {
             ExClause.inlineClause(List.of(W), ExList.list())));
   }
 
-  private static ExFunction isElementString() {
+  static ExFunction isElementString() {
     return ExFunction.defpFunction(
         "is_element_string",
         List.of(
