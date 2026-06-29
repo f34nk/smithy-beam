@@ -1,6 +1,9 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamClientPaginationSupport;
+import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.ir.elixir.ExDoc;
+import io.smithy.beam.ir.elixir.ExFunction;
 import java.util.List;
 import java.util.stream.Collectors;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -16,6 +19,19 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 public final class ElixirClientPaginationEmitter {
 
   private ElixirClientPaginationEmitter() {}
+
+  public static List<ExFunction> paginatedOperationFunctions(
+      ElixirContext ctx,
+      ServiceShape service,
+      OperationShape op,
+      BeamElixirLayout layout,
+      boolean wrapWithRetry,
+      String retryModule,
+      String successReturnType,
+      ExDoc docOrNull) {
+    return ElixirClientPaginationIr.paginatedOperationFunctions(
+        ctx, service, op, layout, wrapWithRetry, retryModule, successReturnType, docOrNull);
+  }
 
   public static void emitPaginatedOperation(
       ElixirContext ctx,
