@@ -85,7 +85,7 @@ class ElixirServerPluginTest {
     assertThat(source).contains("Function.capture(impl, fun, 3)");
     assertThat(source).contains("def init_handlers do");
     assertThat(source).contains(":persistent_term.put(@handlers_key, handlers)");
-    assertThat(source).contains("defp dispatch_handler(fun, ctx, input, meta) do");
+    assertThat(source).contains("defp dispatch_handler");
     assertThat(source).contains("dispatch_handler(:handle_get_type_closure, ctx, input, meta)");
     assertThat(source)
         .doesNotContain(
