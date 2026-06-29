@@ -36,7 +36,8 @@ public record ElixirContext(
     String moduleName,
     String definitionFile,
     List<ExPreambleEntry> typesPreambleEntries,
-    List<ExModuleEntry> typesEntries)
+    List<ExModuleEntry> typesEntries,
+    ElixirClientModuleBuilder clientModuleBuilderOrNull)
     implements CodegenContext<BeamSettings, ElixirWriter, ElixirIntegration> {
 
   public ElixirContext(
@@ -66,7 +67,8 @@ public record ElixirContext(
         moduleName,
         definitionFile,
         new ArrayList<>(),
-        new ArrayList<>());
+        new ArrayList<>(),
+        null);
   }
 
   public void addTypesPreambleEntry(ExPreambleEntry entry) {

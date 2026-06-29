@@ -8,4 +8,5 @@ public sealed interface ExModuleEntry extends IrObject
         ExBlankLine,
         ExComment,
         ExTypedoc,
-        ExSourceLine {}
+        ExSourceLine,
+        ExFunction {}
