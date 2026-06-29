@@ -113,6 +113,10 @@ public final class ExClause implements IrObject {
     }
 
     for (ExExpr expr : body) {
+      if (expr instanceof ExBlankBodyLine) {
+        out.add("");
+        continue;
+      }
       if (expr.lines().size() == 1) {
         out.add(IrObject.indent(indent + 1) + expr.asString());
       } else {

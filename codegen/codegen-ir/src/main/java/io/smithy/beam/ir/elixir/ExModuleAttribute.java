@@ -6,4 +6,6 @@ public sealed interface ExModuleAttribute extends IrObject
         ExImportAttr,
         ExImplAttr,
         ExBehaviourAttr,
-        ExModuleAssignAttr {}
+        ExModuleAssignAttr,
+        ExUseAttr,
+        ExBlankModuleAttr {}

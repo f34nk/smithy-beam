@@ -30,4 +30,6 @@ public sealed interface ExExpr extends IrObject
         ExBinaryTemplate,
         ExStructUpdate,
         ExMapUpdate,
-        ExStructAccess {}
+        ExStructAccess,
+        ExMacroCall,
+        ExBlankBodyLine {}
