@@ -288,8 +288,8 @@ final class ElixirWaiterIr {
     return ExFunction.defpFunction(
         "matches_acceptor?",
         List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("_acceptor"), ExVarPattern.var("_result")),
+            ExClause.blockClause(
+                List.of(ExVarPattern.var("acceptor"), ExVarPattern.var("result")),
                 ExCapturedBlock.capturedBlock(
                     """
                     case {acceptor, result} do
