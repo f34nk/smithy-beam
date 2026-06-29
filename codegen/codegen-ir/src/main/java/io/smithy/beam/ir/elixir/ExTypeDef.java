@@ -11,6 +11,22 @@ public final class ExTypeDef implements ExModuleEntry {
   private final List<ExComment> preamble;
   private final List<String> variants;
   private final List<String> structureFieldLinesOrNull;
+  private final boolean moduleStruct;
+
+  private ExTypeDef(
+      String name,
+      String body,
+      List<ExComment> preamble,
+      List<String> variants,
+      List<String> structureFieldLinesOrNull,
+      boolean moduleStruct) {
+    this.name = name;
+    this.body = body;
+    this.preamble = List.copyOf(preamble);
+    this.variants = List.copyOf(variants);
+    this.structureFieldLinesOrNull = structureFieldLinesOrNull;
+    this.moduleStruct = moduleStruct;
+  }
 
   private ExTypeDef(
       String name,
@@ -18,11 +34,7 @@ public final class ExTypeDef implements ExModuleEntry {
       List<ExComment> preamble,
       List<String> variants,
       List<String> structureFieldLinesOrNull) {
-    this.name = name;
-    this.body = body;
-    this.preamble = List.copyOf(preamble);
-    this.variants = List.copyOf(variants);
-    this.structureFieldLinesOrNull = structureFieldLinesOrNull;
+    this(name, body, preamble, variants, structureFieldLinesOrNull, false);
   }
 
   public static ExTypeDef alias(String name, String body, List<ExComment> preamble) {
@@ -42,7 +54,17 @@ public final class ExTypeDef implements ExModuleEntry {
   }
 
   public static ExTypeDef structureType(String name, List<String> fieldLines) {
-    return new ExTypeDef(name, "", List.of(), List.of(), List.copyOf(fieldLines));
+    return fieldStructureType(name, fieldLines, true);
+  }
+
+  public static ExTypeDef mapType(String name, List<String> fieldLines) {
+    return fieldStructureType(name, fieldLines, false);
+  }
+
+  private static ExTypeDef fieldStructureType(
+      String name, List<String> fieldLines, boolean moduleStruct) {
+    return new ExTypeDef(
+        name, "", List.of(), List.of(), List.copyOf(fieldLines), moduleStruct);
   }
 
   public String name() {
@@ -88,7 +110,8 @@ public final class ExTypeDef implements ExModuleEntry {
 
   private List<String> structureTypeLines(int indent) {
     List<String> out = new ArrayList<>();
-    out.add(IrObject.indent(indent) + "@type " + name + " :: %__MODULE__{");
+    String opener = moduleStruct ? "%__MODULE__{" : "%{";
+    out.add(IrObject.indent(indent) + "@type " + name + " :: " + opener);
     int fieldIndent = indent + 4;
     for (int i = 0; i < structureFieldLinesOrNull.size(); i++) {
       String suffix = (i < structureFieldLinesOrNull.size() - 1) ? "," : "";
