@@ -50,7 +50,48 @@ public final class ExCall implements ExExpr {
       out.add(IrObject.indent(indent) + ")");
       return out;
     }
+    if (shouldBreakArgs()) {
+      return brokenCallLines(indent);
+    }
     return List.of(IrObject.indent(indent) + inlineAsString());
+  }
+
+  private boolean shouldBreakArgs() {
+    for (ExExpr arg : args) {
+      if (arg.lines().size() > 1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private List<String> brokenCallLines(int indent) {
+    List<String> out = new ArrayList<>();
+    out.add(IrObject.indent(indent) + module + '.' + function + '(');
+    for (int i = 0; i < args.size(); i++) {
+      appendBrokenArg(out, args.get(i), indent + 1, i < args.size() - 1);
+    }
+    out.add(IrObject.indent(indent) + ")");
+    return out;
+  }
+
+  private static void appendBrokenArg(
+      List<String> out, ExExpr arg, int indent, boolean trailingComma) {
+    List<String> argLines = arg.lines(indent);
+    if (argLines.isEmpty()) {
+      return;
+    }
+    if (argLines.size() == 1) {
+      out.add(argLines.get(0) + (trailingComma ? "," : ""));
+      return;
+    }
+    for (int i = 0; i < argLines.size(); i++) {
+      String line = argLines.get(i);
+      if (i == argLines.size() - 1 && trailingComma) {
+        line = line + ",";
+      }
+      out.add(line);
+    }
   }
 
   private boolean isFiltermap() {
