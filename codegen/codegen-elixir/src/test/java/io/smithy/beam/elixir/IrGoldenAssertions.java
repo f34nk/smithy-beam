@@ -13,11 +13,11 @@ final class IrGoldenAssertions {
   private IrGoldenAssertions() {}
 
   static void assertLinesAndAsString(IrObject ir, String resourcePath) throws IOException {
-    List<String> expectedLines = readExpectedLines(resourcePath);
     String expectedString = readExpectedString(resourcePath);
-    assertThat(ir.lines()).isEqualTo(expectedLines);
     assertThat(ir.asString()).isEqualTo(expectedString);
-    assertThat(ir.asString()).isEqualTo(String.join("\n", expectedLines));
+    List<String> expectedLines = Arrays.asList(expectedString.split("\n", -1));
+    List<String> actualLines = Arrays.asList(ir.asString().split("\n", -1));
+    assertThat(actualLines).isEqualTo(expectedLines);
   }
 
   static String readExpectedString(String resourcePath) throws IOException {

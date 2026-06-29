@@ -30,10 +30,10 @@ class ElixirIrGoldenIntegrationTest {
   private static final String SERVICE_ID = "smithy.beam.demo.http#HttpService";
   private static final String GET_NAME_OUTPUT_ID = "smithy.beam.demo.http#GetNameOutput";
 
-  private static Model model;
-  private static ServiceShape service;
-  private static StructureShape getNameOutput;
-  private static BeamSettings settings;
+  static Model model;
+  static ServiceShape service;
+  static StructureShape getNameOutput;
+  static BeamSettings settings;
 
   @BeforeAll
   static void setup() {
@@ -46,7 +46,7 @@ class ElixirIrGoldenIntegrationTest {
     settings.edition("2026");
   }
 
-  private static ElixirContext clientContext() {
+  static ElixirContext clientContext() {
     BeamElixirLayout layout =
         new BeamElixirLayout(settings, service.getId().getNamespace(), service);
     SymbolProvider sp =
