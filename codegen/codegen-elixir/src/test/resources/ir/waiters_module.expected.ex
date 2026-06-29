@@ -39,13 +39,7 @@ defmodule WaitableServiceWaiters do
   end
 
   defp wait_until(_step, _acceptors, 0, _delay, _max_delay), do: {:error, :max_attempts_exceeded}
-  defp wait_until(
-    step,
-    acceptors,
-    attempts,
-    delay,
-    max_delay
-  ) do
+  defp wait_until(step, acceptors, attempts, delay, max_delay) do
     result = step.()
     case classify(acceptors, result) do
       :success -> {:ok, result}
@@ -70,10 +64,7 @@ defmodule WaitableServiceWaiters do
     end
   end
 
-  defp matches_acceptor?(
-    acceptor,
-    result
-  ) do
+  defp matches_acceptor?(acceptor, result) do
     case {acceptor, result} do
       {%{matcher: :success, expected: true}, {:ok, _}} -> true
       {%{matcher: :success, expected: false}, {:error, _}} -> true
@@ -91,11 +82,7 @@ defmodule WaitableServiceWaiters do
   defp error_types_match?(%{:__struct__ => struct}, %{:__struct__ => struct}), do: true
   defp error_types_match?(expected, got), do: expected == got
 
-  defp path_string_equals?(
-    path,
-    expected,
-    output
-  ) do
+  defp path_string_equals?(path, expected, output) do
     case path_value(path, output) do
       nil -> false
       value -> string_equals?(value, expected)
@@ -106,20 +93,14 @@ defmodule WaitableServiceWaiters do
 
   defp path_value([], value), do: value
 
-  defp path_value(
-    [key | rest],
-    value
-  ) when is_map(value) do
+  defp path_value([key | rest], value) when is_map(value) do
     case Map.get(value, key) do
       nil -> nil
       next -> path_value(rest, next)
     end
   end
 
-  defp path_value(
-    [key | rest],
-    value
-  ) when is_struct(value) do
+  defp path_value([key | rest], value) when is_struct(value) do
     case Map.get(Map.from_struct(value), key) do
       nil -> nil
       next -> path_value(rest, next)
@@ -128,17 +109,11 @@ defmodule WaitableServiceWaiters do
 
   defp path_value(_path, _value), do: nil
 
-  defp string_equals?(
-    left,
-    right
-  ) when is_atom(left) and is_binary(right) do
+  defp string_equals?(left, right) when is_atom(left) and is_binary(right) do
     String.upcase(Atom.to_string(left)) == String.upcase(right)
   end
 
-  defp string_equals?(
-    left,
-    right
-  ) when is_binary(left) and is_binary(right) do
+  defp string_equals?(left, right) when is_binary(left) and is_binary(right) do
     String.upcase(left) == String.upcase(right)
   end
 

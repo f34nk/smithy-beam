@@ -2,10 +2,7 @@ defmodule RuntimeHelpers do
   @moduledoc "Generated runtime helpers for smithy.beam.demo.labels#LabelService. Do not edit."
 
   @spec parse_labels(String.t(), String.t()) :: {:ok, map()} | {:error, :path_mismatch}
-  def parse_labels(
-    path,
-    template
-  ) do
+  def parse_labels(path, template) do
     case match_segments(segments(path), segments(template), %{}) do
       {:ok, labels} -> {:ok, labels}
 
@@ -19,11 +16,7 @@ defmodule RuntimeHelpers do
   end
 
   defp match_segments([], [], acc), do: {:ok, acc}
-  defp match_segments(
-    [seg | rest_path],
-    [tpl_seg | rest_tpl],
-    acc
-  ) do
+  defp match_segments([seg | rest_path], [tpl_seg | rest_tpl], acc) do
     case label_name(tpl_seg) do
       {:ok, key} ->
         val = URI.decode(seg)

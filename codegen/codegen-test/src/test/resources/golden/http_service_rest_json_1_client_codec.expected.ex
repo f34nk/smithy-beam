@@ -21,10 +21,7 @@ defmodule HttpServiceRestJson1 do
   @doc "Decode HTTP request for smithy.beam.demo.http#GetName."
   @spec decode_get_name_request(%RuntimeTypes.HttpRequest{}, map()) ::
           HttpServiceTypes.GetNameInput.t()
-  def decode_get_name_request(
-    %RuntimeTypes.HttpRequest{query: query, headers: headers, body: body},
-    label_map
-  ) do
+  def decode_get_name_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}, label_map) do
     %Types.GetNameInput{name: uri_decode(Map.get(label_map, "name"))}
   end
 
@@ -70,19 +67,13 @@ defmodule HttpServiceRestJson1 do
   defp decode_query_param(value), do: value
 
   defp prefix_headers_to_list(_prefix, nil), do: []
-  defp prefix_headers_to_list(
-    prefix,
-    map
-  ) when is_map(map) do
+  defp prefix_headers_to_list(prefix, map) when is_map(map) do
     Enum.map(map, fn {k, v} ->
   {prefix <> k, Kernel.to_string(v)}
 end)
   end
 
-  defp prefix_headers_from_list(
-    headers,
-    prefix
-  ) do
+  defp prefix_headers_from_list(headers, prefix) do
     headers
     |> Enum.filter(fn {name, _} -> String.starts_with?(name, prefix) end)
     |> Map.new(fn {name, val} -> {String.slice(name, byte_size(prefix)..-1//1), val} end)
@@ -100,10 +91,7 @@ end)
     end
   end
 
-  defp content_type_matches(
-    headers,
-    expected
-  ) do
+  defp content_type_matches(headers, expected) do
     case List.keyfind(headers, "Content-Type", 0) do
       {_, ct} when ct == expected -> :ok
       {_, ct} when is_binary(ct) -> if(ct_base(ct) == ct_base(expected), do: :ok, else: {:error, {:invalid_content_type, ct}})

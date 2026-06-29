@@ -1,19 +1,12 @@
 @spec list_widgets(map(), PaginatedServiceTypes.ListWidgetsInput.t()) ::
         {:ok, [PaginatedServiceTypes.Widget.t()]} | {:error, term()}
-def list_widgets(
-  config,
-  input
-) do
+def list_widgets(config, input) do
   list_widgets(config, input, [])
 end
 
 @spec list_widgets(map(), PaginatedServiceTypes.ListWidgetsInput.t(), [PaginatedServiceTypes.Widget.t()]) ::
         {:ok, [PaginatedServiceTypes.Widget.t()]} | {:error, term()}
-defp list_widgets(
-  config,
-  input,
-  acc
-) do
+defp list_widgets(config, input, acc) do
   req = PaginatedServiceRestJson1.encode_list_widgets_request(input)
   case RuntimeHttp.dispatch(config, req) do
     {:ok, resp} ->

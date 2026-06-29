@@ -17,11 +17,7 @@ defp client_context_params(config) do
   |> Enum.reduce(%{}, fn map, acc -> Map.merge(acc, map) end)
 end
 
-defp optional_param(
-  config,
-  key,
-  rule_key
-) do
+defp optional_param(config, key, rule_key) do
   case Map.get(config, key) do
     nil -> %{}
 

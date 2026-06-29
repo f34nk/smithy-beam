@@ -21,11 +21,7 @@ defp coalesce([value | _]), do: value
 defp coalesce([]), do: "localhost"
 
 defp build_url(host, path, query) when map_size(query) == 0, do: "https://#{host}#{path}"
-defp build_url(
-  host,
-  path,
-  query
-) do
+defp build_url(host, path, query) do
   params = URI.encode_query(query)
   "https://#{host}#{path}?#{params}"
 end
@@ -49,10 +45,7 @@ end)
 end
 
 defp maybe_add_session_token(headers, nil), do: headers
-defp maybe_add_session_token(
-  headers,
-  token
-) do
+defp maybe_add_session_token(headers, token) do
   if Enum.any?(headers, fn {k, _} -> String.downcase(k) == "x-amz-security-token" end) do
     headers
   else

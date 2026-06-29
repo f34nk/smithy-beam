@@ -7,12 +7,7 @@ def with_retry(fun, opts) do
 end
 
 defp with_retry(fun, 0, _base, _n), do: fun.()
-defp with_retry(
-  fun,
-  attempts,
-  base,
-  n
-) do
+defp with_retry(fun, attempts, base, n) do
   case fun.() do
     {:ok, _} = ok -> ok
     {:error, _} = err ->

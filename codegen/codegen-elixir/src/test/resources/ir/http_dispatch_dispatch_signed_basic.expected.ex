@@ -1,10 +1,6 @@
 @spec dispatch_signed(module(), map(), RuntimeTypes.HttpRequest.t()) ::
         {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}
-defp dispatch_signed(
-  http_client,
-  config,
-  req = %RuntimeTypes.HttpRequest{}
-) do
+defp dispatch_signed(http_client, config, req = %RuntimeTypes.HttpRequest{}) do
   base_url =
     case Map.get(config, :base_url) do
       nil ->

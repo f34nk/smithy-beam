@@ -5,10 +5,7 @@ end
 
 defp resolve_chain(_config, []), do: {:error, :not_found}
 
-defp resolve_chain(
-  config,
-  [provider | rest]
-) do
+defp resolve_chain(config, [provider | rest]) do
   case resolve_provider(provider, config) do
     {:ok, creds} -> {:ok, creds}
 

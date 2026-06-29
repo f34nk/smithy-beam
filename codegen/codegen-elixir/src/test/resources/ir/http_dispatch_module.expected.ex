@@ -5,31 +5,20 @@ defmodule RuntimeHttp do
 
   @spec dispatch(map(), RuntimeTypes.HttpRequest.t()) ::
           {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}
-  def dispatch(
-    config,
-    req
-  ) do
+  def dispatch(config, req) do
     http_client = Map.get(config, :http_client, __MODULE__.ReqClient)
     dispatch(http_client, config, req)
   end
 
   @spec dispatch(module(), map(), RuntimeTypes.HttpRequest.t()) ::
           {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}
-  def dispatch(
-    http_client,
-    config,
-    req = %RuntimeTypes.HttpRequest{}
-  ) do
+  def dispatch(http_client, config, req = %RuntimeTypes.HttpRequest{}) do
     dispatch_signed(http_client, config, req)
   end
 
   @spec dispatch_signed(module(), map(), RuntimeTypes.HttpRequest.t()) ::
           {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}
-  defp dispatch_signed(
-    http_client,
-    config,
-    req = %RuntimeTypes.HttpRequest{}
-  ) do
+  defp dispatch_signed(http_client, config, req = %RuntimeTypes.HttpRequest{}) do
     base_url =
       case Map.get(config, :base_url) do
         nil ->

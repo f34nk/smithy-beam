@@ -9,11 +9,7 @@ defmodule S3Endpoint do
   end
 
   @spec resolve_bucket_url(map(), String.t(), String.t()) :: {String.t(), String.t()}
-  def resolve_bucket_url(
-    config,
-    bucket,
-    key
-  ) do
+  def resolve_bucket_url(config, bucket, key) do
     style = Map.get(config, :s3_addressing_style, :virtual_host)
     region_host = region_host(config)
     key_path = key_path(key)

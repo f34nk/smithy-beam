@@ -16,11 +16,7 @@ defp checksum_digest(body, "CRC32"), do: crc32_hash(body)
 defp checksum_digest(body, "CRC32C"), do: crc32c_hash(body)
 
 defp validate_response_checksum(_body, _headers, []), do: :ok
-defp validate_response_checksum(
-  body,
-  headers,
-  [header_name | rest]
-) do
+defp validate_response_checksum(body, headers, [header_name | rest]) do
   List.keyfind(headers, header_name, 0)
   |> case do
     {_, expected} -> validate_checksum_match(body, header_name, expected)
@@ -28,11 +24,7 @@ defp validate_response_checksum(
   end
 end
 
-defp validate_checksum_match(
-  body,
-  header_name,
-  expected
-) do
+defp validate_checksum_match(body, header_name, expected) do
   algorithm = checksum_algorithm_from_header(header_name)
   computed = checksum_header_encode(checksum_digest(body, algorithm))
   if(computed == expected, do: :ok, else: {:error, {:checksum_mismatch, header_name}})

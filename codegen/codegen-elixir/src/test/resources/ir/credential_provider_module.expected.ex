@@ -17,10 +17,7 @@ defmodule Sigv4testServiceCredentials do
 
   defp resolve_chain(_config, []), do: {:error, :not_found}
 
-  defp resolve_chain(
-    config,
-    [provider | rest]
-  ) do
+  defp resolve_chain(config, [provider | rest]) do
     case resolve_provider(provider, config) do
       {:ok, creds} -> {:ok, creds}
 
@@ -76,21 +73,14 @@ defmodule Sigv4testServiceCredentials do
     end
   end
 
-  defp parse_profile_credentials(
-    contents,
-    profile
-  ) do
+  defp parse_profile_credentials(contents, profile) do
     contents
     |> String.split("\n")
     |> find_profile_section(profile, %{})
   end
 
   defp find_profile_section([], _profile, acc), do: map_to_credentials(acc)
-  defp find_profile_section(
-    [line | rest],
-    profile,
-    acc
-  ) do
+  defp find_profile_section([line | rest], profile, acc) do
     trimmed = String.trim(line)
     cond do
       trimmed == "[" <> profile <> "]" ->
@@ -105,10 +95,7 @@ defmodule Sigv4testServiceCredentials do
   end
 
   defp read_profile_entries([], acc), do: map_to_credentials(acc)
-  defp read_profile_entries(
-    [line | rest],
-    acc
-  ) do
+  defp read_profile_entries([line | rest], acc) do
     trimmed = String.trim(line)
     cond do
       String.starts_with?(trimmed, "[") -> map_to_credentials(acc)
@@ -210,10 +197,7 @@ defmodule Sigv4testServiceCredentials do
     http_get(url, token_headers)
   end
 
-  defp http_get(
-    url,
-    extra_headers
-  ) do
+  defp http_get(url, extra_headers) do
     case :httpc.request(:get, {url, extra_headers}, [], [{:body_format, :binary}]) do
       {:ok, {{_, 200, _}, _resp_headers, body}} -> {:ok, body}
     

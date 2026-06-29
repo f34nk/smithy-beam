@@ -22,10 +22,7 @@ defp decode_event_stream_event(%{:headers => headers, :payload => payload}) do
   decode_event_stream_event_type(event_type, payload)
 end
 
-defp decode_event_stream_event_type(
-  "member",
-  payload
-) do
+defp decode_event_stream_event_type("member", payload) do
   {:member, case Jason.decode!(payload) do
   decoded ->
     %EventStreamRestJsonServiceTypes.MemberEvent{
@@ -33,9 +30,6 @@ defp decode_event_stream_event_type(
     }
 end}
 end
-defp decode_event_stream_event_type(
-  event_type,
-  _payload
-) do
+defp decode_event_stream_event_type(event_type, _payload) do
   raise ArgumentError, "unknown event type: " <> inspect(event_type)
 end
