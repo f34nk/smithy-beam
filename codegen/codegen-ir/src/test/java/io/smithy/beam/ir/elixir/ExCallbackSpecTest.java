@@ -24,6 +24,25 @@ class ExCallbackSpecTest {
   }
 
   @Test
+  void callbackSpecWithDocLinesBeforeCallback() {
+    ExCallbackSpec spec =
+        ExCallbackSpec.callbackSpec(
+            "handle_get_type_closure",
+            List.of("term()", "BasicServiceTypes.GetTypeClosureInput.t()", "term()"),
+            "{:ok, BasicServiceTypes.GetTypeClosureOutput.t()} | {:error, term()}",
+            ExDoc.doc("Get type closure."));
+    assertThat(spec.lines(1))
+        .containsExactly(
+            "  @doc \"Get type closure.\"",
+            "  @callback handle_get_type_closure(",
+            "              term(),",
+            "              BasicServiceTypes.GetTypeClosureInput.t(),",
+            "              term()",
+            "  ) ::",
+            "    {:ok, BasicServiceTypes.GetTypeClosureOutput.t()} | {:error, term()}");
+  }
+
+  @Test
   void callbackSpecAsString() {
     ExCallbackSpec spec =
         ExCallbackSpec.callbackSpec(

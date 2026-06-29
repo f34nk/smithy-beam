@@ -7,6 +7,40 @@ import org.junit.jupiter.api.Test;
 
 class ExModuleTest {
   @Test
+  void moduleRendersCallbackSpecsBeforeFunctions() {
+    ExCallbackSpec callback =
+        ExCallbackSpec.callbackSpec(
+            "handle_get_type_closure",
+            List.of("term()", "Types.GetTypeClosureInput.t()", "term()"),
+            "{:ok, Types.GetTypeClosureOutput.t()} | {:error, term()}");
+    ExFunction callbacksFn =
+        ExFunction.functionWithSpec(
+            "def",
+            "callbacks",
+            ExSpec.functionSpec("callbacks", "", "[{atom(), non_neg_integer()}]"),
+            List.of(
+                ExClause.blockClause(
+                    List.of(),
+                    ExList.list(
+                        ExTuple.tuple(
+                            ExAtom.atom("handle_get_type_closure"), ExInteger.integer(3))))));
+
+    ExModule module =
+        ExModule.module(
+            "BasicServiceBehaviour",
+            List.of(ExModuledoc.moduledoc("Generated behaviour.")),
+            List.of(ExAliasAttr.alias("BasicServiceTypes", "Types")),
+            List.of(callback),
+            List.of(callbacksFn));
+
+    assertThat(module.asString())
+        .contains("alias BasicServiceTypes, as: Types")
+        .contains("@callback handle_get_type_closure(")
+        .contains("def callbacks do")
+        .contains("{:handle_get_type_closure, 3}");
+  }
+
+  @Test
   void moduleAsString() {
     ExFunction decode =
         ExFunction.functionWithSpec(

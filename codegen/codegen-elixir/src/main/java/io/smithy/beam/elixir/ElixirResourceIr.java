@@ -102,6 +102,7 @@ final class ElixirResourceIr {
             ExAliasAttr.alias(delegateMod, server ? "Server" : "Client"),
             ExAliasAttr.alias(typesMod, "Types")),
         List.of(),
+        List.of(),
         entries);
   }
 

@@ -37,7 +37,8 @@ public record ElixirContext(
     String definitionFile,
     List<ExPreambleEntry> typesPreambleEntries,
     List<ExModuleEntry> typesEntries,
-    ElixirClientModuleBuilder clientModuleBuilderOrNull)
+    ElixirClientModuleBuilder clientModuleBuilderOrNull,
+    ElixirBehaviourModuleBuilder behaviourModuleBuilderOrNull)
     implements CodegenContext<BeamSettings, ElixirWriter, ElixirIntegration> {
 
   public ElixirContext(
@@ -68,6 +69,7 @@ public record ElixirContext(
         definitionFile,
         new ArrayList<>(),
         new ArrayList<>(),
+        null,
         null);
   }
 

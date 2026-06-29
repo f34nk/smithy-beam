@@ -7,6 +7,7 @@ public final class ExModule implements IrObject {
   private final String moduleName;
   private final List<ExPreambleEntry> preamble;
   private final List<ExModuleAttribute> attributes;
+  private final List<ExCallbackSpec> callbackSpecs;
   private final List<ExFunction> functions;
   private final List<ExModuleEntry> nestedEntries;
 
@@ -14,11 +15,13 @@ public final class ExModule implements IrObject {
       String moduleName,
       List<ExPreambleEntry> preamble,
       List<ExModuleAttribute> attributes,
+      List<ExCallbackSpec> callbackSpecs,
       List<ExFunction> functions,
       List<ExModuleEntry> nestedEntries) {
     this.moduleName = moduleName;
     this.preamble = List.copyOf(preamble);
     this.attributes = List.copyOf(attributes);
+    this.callbackSpecs = List.copyOf(callbackSpecs);
     this.functions = List.copyOf(functions);
     this.nestedEntries = List.copyOf(nestedEntries);
   }
@@ -28,16 +31,26 @@ public final class ExModule implements IrObject {
       List<ExPreambleEntry> preamble,
       List<ExModuleAttribute> attributes,
       List<ExFunction> functions) {
-    return new ExModule(moduleName, preamble, attributes, functions, List.of());
+    return new ExModule(moduleName, preamble, attributes, List.of(), functions, List.of());
   }
 
   public static ExModule module(
       String moduleName,
       List<ExPreambleEntry> preamble,
       List<ExModuleAttribute> attributes,
+      List<ExCallbackSpec> callbackSpecs,
+      List<ExFunction> functions) {
+    return new ExModule(moduleName, preamble, attributes, callbackSpecs, functions, List.of());
+  }
+
+  public static ExModule module(
+      String moduleName,
+      List<ExPreambleEntry> preamble,
+      List<ExModuleAttribute> attributes,
+      List<ExCallbackSpec> callbackSpecs,
       List<ExFunction> functions,
       List<ExModuleEntry> nestedEntries) {
-    return new ExModule(moduleName, preamble, attributes, functions, nestedEntries);
+    return new ExModule(moduleName, preamble, attributes, callbackSpecs, functions, nestedEntries);
   }
 
   public String moduleName() {
@@ -50,6 +63,10 @@ public final class ExModule implements IrObject {
 
   public List<ExModuleAttribute> attributes() {
     return attributes;
+  }
+
+  public List<ExCallbackSpec> callbackSpecs() {
+    return callbackSpecs;
   }
 
   public List<ExFunction> functions() {
@@ -69,6 +86,9 @@ public final class ExModule implements IrObject {
     }
     for (ExModuleAttribute attribute : attributes) {
       out.addAll(attribute.lines(indent + 1));
+    }
+    for (ExCallbackSpec callback : callbackSpecs) {
+      out.addAll(callback.lines(indent + 1));
     }
     if (!functions.isEmpty()) {
       out.add("");

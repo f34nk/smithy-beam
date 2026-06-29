@@ -64,6 +64,7 @@ final class ElixirHttpDispatchIr {
         List.of(
             ExAliasAttr.alias(runtimeMod, RUNTIME_TYPES),
             ExAliasAttr.alias(helpersModule, "RuntimeHelpers")),
+        List.of(),
         functions,
         List.of(reqClientModule()));
   }

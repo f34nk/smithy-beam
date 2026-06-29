@@ -65,6 +65,7 @@ final class ElixirClientIr {
         preamble,
         List.of(ExAliasAttr.alias(typesModuleName, "Types")),
         List.of(),
+        List.of(),
         entries);
   }
 

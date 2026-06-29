@@ -56,7 +56,7 @@ final class ElixirRuntimeTypesIr {
                       ExClause.inlineClause(List.of(), ExVar.var("@endpoint_rule_set")))));
         });
 
-    return ExModule.module(moduleName, preamble, List.of(), functions, entries);
+    return ExModule.module(moduleName, preamble, List.of(), List.of(), functions, entries);
   }
 
   private static ExNestedModule httpRequestModule() {

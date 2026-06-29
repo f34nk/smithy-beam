@@ -60,6 +60,7 @@ final class ElixirCredentialProviderIr {
         moduleName,
         List.of(ExModuledoc.moduledoc("false")),
         List.of(),
+        List.of(),
         credentialFunctions(),
         entries);
   }
