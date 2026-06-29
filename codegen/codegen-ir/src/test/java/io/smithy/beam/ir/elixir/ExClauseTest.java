@@ -87,16 +87,13 @@ class ExClauseTest {
             ExAtom.atom("ok"));
     assertThat(clause.lines(0, "defp", "string_equals?", false))
         .containsExactly(
-            "defp string_equals?(",
-            "  left,",
-            "  right",
-            ") when is_atom(left) and is_binary(right) do",
+            "defp string_equals?(left, right) when is_atom(left) and is_binary(right) do",
             "  :ok",
             "end");
   }
 
   @Test
-  void multiArgFunctionHeadBreaksAcrossLines() {
+  void multiArgFunctionHeadStaysOnOneLine() {
     ExClause clause =
         ExClause.blockClause(
             List.of(
@@ -109,10 +106,7 @@ class ExClauseTest {
             ExAtom.atom("ok"));
     assertThat(clause.lines(1, "def", "decode_get_type_closure_request", false))
         .containsExactly(
-            "  def decode_get_type_closure_request(",
-            "    %RuntimeTypes.HttpRequest{query: query, headers: headers, body: body},",
-            "    label_map",
-            "  ) do",
+            "  def decode_get_type_closure_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}, label_map) do",
             "    :ok",
             "  end");
   }

@@ -9,22 +9,6 @@ public final class ExClause implements IrObject {
   private final List<ExExpr> body;
   private final boolean inlineDo;
   private final boolean forceBlockBody;
-  private final boolean singleLineMultiArgHead;
-
-  public ExClause(
-      List<ExPattern> patterns,
-      List<ExGuard> guards,
-      List<ExExpr> body,
-      boolean inlineDo,
-      boolean forceBlockBody,
-      boolean singleLineMultiArgHead) {
-    this.patterns = List.copyOf(patterns);
-    this.guards = List.copyOf(guards);
-    this.body = List.copyOf(body);
-    this.inlineDo = inlineDo;
-    this.forceBlockBody = forceBlockBody;
-    this.singleLineMultiArgHead = singleLineMultiArgHead;
-  }
 
   public ExClause(
       List<ExPattern> patterns,
@@ -32,7 +16,11 @@ public final class ExClause implements IrObject {
       List<ExExpr> body,
       boolean inlineDo,
       boolean forceBlockBody) {
-    this(patterns, guards, body, inlineDo, forceBlockBody, false);
+    this.patterns = List.copyOf(patterns);
+    this.guards = List.copyOf(guards);
+    this.body = List.copyOf(body);
+    this.inlineDo = inlineDo;
+    this.forceBlockBody = forceBlockBody;
   }
 
   public ExClause(List<ExPattern> patterns, List<ExGuard> guards, List<ExExpr> body) {
@@ -64,7 +52,7 @@ public final class ExClause implements IrObject {
   }
 
   public static ExClause blockClauseSingleLineHead(List<ExPattern> patterns, ExExpr... body) {
-    return new ExClause(patterns, List.of(), List.of(body), false, true, true);
+    return blockClause(patterns, body);
   }
 
   public List<ExPattern> patterns() {
@@ -106,8 +94,6 @@ public final class ExClause implements IrObject {
       ExStructPattern structPattern = (ExStructPattern) patterns.get(0);
       out.addAll(
           structPattern.functionHeadLines(indent, keyword, name, whenClauseText(), true));
-    } else if (shouldBreakMultiArgHead()) {
-      out.addAll(buildBrokenMultiArgHead(indent, keyword, name));
     } else {
       out.add(IrObject.indent(indent) + buildBlockHead(keyword, name) + " do");
     }
@@ -141,29 +127,6 @@ public final class ExClause implements IrObject {
     return patterns.size() == 1
         && patterns.get(0) instanceof ExStructPattern structPattern
         && structPattern.breaksFunctionHead();
-  }
-
-  private boolean shouldBreakMultiArgHead() {
-    if (singleLineMultiArgHead) {
-      return false;
-    }
-    return patterns.size() > 1;
-  }
-
-  private List<String> buildBrokenMultiArgHead(int indent, String keyword, String name) {
-    List<String> out = new ArrayList<>();
-    out.add(IrObject.indent(indent) + keyword + " " + name + "(");
-    for (int i = 0; i < patterns.size(); i++) {
-      String suffix = (i < patterns.size() - 1) ? "," : "";
-      out.add(IrObject.indent(indent + 1) + patterns.get(i).asString() + suffix);
-    }
-    String close = IrObject.indent(indent) + ")";
-    if (!guards.isEmpty()) {
-      close += " " + whenClauseText();
-    }
-    close += " do";
-    out.add(close);
-    return out;
   }
 
   private String buildInlineHead(String keyword, String name) {
