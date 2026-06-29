@@ -77,6 +77,25 @@ class ExClauseTest {
   }
 
   @Test
+  void multipleGuardsJoinWithAnd() {
+    ExClause clause =
+        ExClause.blockClause(
+            List.of(ExVarPattern.var("left"), ExVarPattern.var("right")),
+            List.of(
+                ExGuard.guard("is_atom", ExVar.var("left")),
+                ExGuard.guard("is_binary", ExVar.var("right"))),
+            ExAtom.atom("ok"));
+    assertThat(clause.lines(0, "defp", "string_equals?", false))
+        .containsExactly(
+            "defp string_equals?(",
+            "  left,",
+            "  right",
+            ") when is_atom(left) and is_binary(right) do",
+            "  :ok",
+            "end");
+  }
+
+  @Test
   void multiArgFunctionHeadBreaksAcrossLines() {
     ExClause clause =
         ExClause.blockClause(
