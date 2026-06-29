@@ -127,7 +127,6 @@ final class ElixirAwsJsonIr {
   }
 
   static void emitServerCodecModule(ElixirContext ctx, ServiceShape service, ShapeId protocol) {
-    ElixirCodecEmission.emitRuntimeHelpersIfNeeded(ctx, service, true);
     ExModule module = buildServerCodecModule(ctx, service, protocol);
     ElixirCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service, protocol), module);
   }

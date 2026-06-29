@@ -98,7 +98,6 @@ final class ElixirRestJsonIr {
   }
 
   static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
-    ElixirCodecEmission.emitRuntimeHelpersIfNeeded(ctx, service, true);
     ExModule module = buildServerCodecModule(ctx, service);
     ElixirCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service), module);
   }
