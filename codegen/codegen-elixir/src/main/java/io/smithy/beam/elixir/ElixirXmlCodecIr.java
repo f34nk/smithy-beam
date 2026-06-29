@@ -170,7 +170,7 @@ final class ElixirXmlCodecIr {
                     "Enum",
                     "flat_map",
                     ExVar.var("content"),
-                    ExOp.prefix("&", ExCallLocal.callLocal("collect_text", ExVar.var("_"))))),
+                    ExOp.prefix("&", ExCapturedBlock.capturedBlock("collect_text/1")))),
             ExClause.inlineClause(List.of(W), ExList.list())));
   }
 
