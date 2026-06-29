@@ -49,7 +49,7 @@ final class ElixirCredentialProviderIr {
     entries.add(ExTypeDef.alias("client_config", "map()"));
     entries.add(new ExBlankLine());
     entries.add(
-        ExTypeDef.structureType(
+        ExTypeDef.mapType(
             "aws_credentials",
             List.of(
                 "required(:access_key_id) => String.t()",
