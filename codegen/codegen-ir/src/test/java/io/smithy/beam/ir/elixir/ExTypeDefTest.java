@@ -42,4 +42,22 @@ class ExTypeDefTest {
     assertThat(out).contains("count: BasicServiceTypes.basic_integer() | nil");
     assertThat(out).contains("}");
   }
+
+  @Test
+  void mapTypeAsString() {
+    String out =
+        ExTypeDef.mapType(
+                "aws_credentials",
+                java.util.List.of(
+                    "required(:access_key_id) => String.t()",
+                    "required(:secret_access_key) => String.t()",
+                    "optional(:session_token) => String.t() | nil"))
+            .asString();
+
+    assertThat(out).contains("@type aws_credentials :: %{");
+    assertThat(out).doesNotContain("%__MODULE__");
+    assertThat(out).contains("required(:access_key_id) => String.t(),");
+    assertThat(out).contains("optional(:session_token) => String.t() | nil");
+    assertThat(out).contains("}");
+  }
 }
