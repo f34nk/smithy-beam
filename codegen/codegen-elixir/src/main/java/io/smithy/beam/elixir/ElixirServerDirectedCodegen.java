@@ -95,7 +95,8 @@ final class ElixirServerDirectedCodegen
         new java.util.ArrayList<>(),
         new java.util.ArrayList<>(),
         null,
-        new ElixirBehaviourModuleBuilder());
+        new ElixirBehaviourModuleBuilder(),
+        new ElixirServerModuleBuilder());
   }
 
   @Override
@@ -222,14 +223,7 @@ final class ElixirServerDirectedCodegen
     Symbol opSym = sp.toSymbol(op);
     String handler = "handle_" + opSym.getName();
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            ctx.definitionFile(),
-            writer -> {
-              writer.pushOperationBodySection();
-              ElixirHandlerDiscoveryEmitter.emitOperationDispatch(writer, handler);
-              writer.popState();
-            });
+    ElixirHandlerDiscoveryEmitter.emitOperationDispatch(ctx, handler);
 
     ElixirBehaviourEmitter.emitOperationCallback(ctx, op, sp);
   }

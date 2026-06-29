@@ -8,16 +8,27 @@ public final class ExFor implements ExExpr {
   private final ExPattern generatorPattern;
   private final ExExpr generatorExpr;
   private final List<ExForFilter> filters;
+  private final ExExpr intoExprOrNull;
+
+  public ExFor(
+      ExExpr expression,
+      ExPattern generatorPattern,
+      ExExpr generatorExpr,
+      List<ExForFilter> filters,
+      ExExpr intoExprOrNull) {
+    this.expression = expression;
+    this.generatorPattern = generatorPattern;
+    this.generatorExpr = generatorExpr;
+    this.filters = List.copyOf(filters);
+    this.intoExprOrNull = intoExprOrNull;
+  }
 
   public ExFor(
       ExExpr expression,
       ExPattern generatorPattern,
       ExExpr generatorExpr,
       List<ExForFilter> filters) {
-    this.expression = expression;
-    this.generatorPattern = generatorPattern;
-    this.generatorExpr = generatorExpr;
-    this.filters = List.copyOf(filters);
+    this(expression, generatorPattern, generatorExpr, filters, null);
   }
 
   public static ExFor forExpr(ExExpr expression, ExPattern generatorPattern, ExExpr generatorExpr) {
@@ -30,6 +41,15 @@ public final class ExFor implements ExExpr {
       ExExpr generatorExpr,
       ExForFilter... filters) {
     return new ExFor(expression, generatorPattern, generatorExpr, List.of(filters));
+  }
+
+  public static ExFor forIntoExpr(
+      ExExpr expression,
+      ExPattern generatorPattern,
+      ExExpr generatorExpr,
+      ExExpr intoExpr,
+      ExForFilter... filters) {
+    return new ExFor(expression, generatorPattern, generatorExpr, List.of(filters), intoExpr);
   }
 
   public ExExpr expression() {
@@ -48,9 +68,16 @@ public final class ExFor implements ExExpr {
     return filters;
   }
 
+  public ExExpr intoExprOrNull() {
+    return intoExprOrNull;
+  }
+
   @Override
   public List<String> lines(int indent) {
-    if (expression.lines().size() == 1 && filters.size() <= 1) {
+    if (expression.lines().size() == 1
+        && filters.size() <= 1
+        && intoExprOrNull == null
+        && generatorExpr.lines().size() == 1) {
       StringBuilder sb = new StringBuilder("for ");
       sb.append(generatorPattern.asString());
       sb.append(" <- ");
@@ -68,19 +95,23 @@ public final class ExFor implements ExExpr {
     List<String> out = new ArrayList<>();
     out.add(IrObject.indent(indent) + "for " + generatorPattern.asString() + " <-");
     if (generatorExpr.lines().size() == 1) {
-      out.add(IrObject.indent(indent + 1) + generatorExpr.asString() + ",");
+      String suffix = (filters.isEmpty() && intoExprOrNull == null) ? " do" : ",";
+      out.add(IrObject.indent(indent + 1) + generatorExpr.asString() + suffix);
     } else {
       out.addAll(generatorExpr.lines(indent + 1));
       String last = out.get(out.size() - 1);
-      out.set(out.size() - 1, last + ",");
+      String suffix = (filters.isEmpty() && intoExprOrNull == null) ? " do" : ",";
+      out.set(out.size() - 1, last + suffix);
     }
     for (int i = 0; i < filters.size(); i++) {
       ExForFilter filter = filters.get(i);
-      String suffix = (i < filters.size() - 1) ? "," : " do";
+      boolean lastFilter = i == filters.size() - 1;
+      String suffix = (lastFilter && intoExprOrNull == null) ? " do" : ",";
       out.add(IrObject.indent(indent + 1) + filter.filter().asString() + suffix);
     }
-    if (filters.isEmpty()) {
-      out.set(out.size() - 1, out.get(out.size() - 1).replace(",", " do"));
+    if (intoExprOrNull != null) {
+      out.add(
+          IrObject.indent(indent + 1) + "into: " + intoExprOrNull.asString() + " do");
     }
     if (expression.lines().size() == 1) {
       out.add(IrObject.indent(indent + 1) + expression.asString());
