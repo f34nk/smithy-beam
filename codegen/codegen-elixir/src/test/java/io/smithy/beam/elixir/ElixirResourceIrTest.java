@@ -85,6 +85,63 @@ class ElixirResourceIrTest {
     }
   }
 
+  @Test
+  void serverModuleMatchesResourceLifecycleExpectations() {
+    Model model = resourceLifecycleModel();
+    ServiceShape service =
+        model.expectShape(
+            ShapeId.from("smithy.beam.demo.resource_lifecycle#ResourceLifecycleService"),
+            ServiceShape.class);
+    ResourceShape organization =
+        model.expectShape(
+            ShapeId.from("smithy.beam.demo.resource_lifecycle#Organization"), ResourceShape.class);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    BeamElixirLayout layout =
+        new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+    SymbolProvider sp =
+        SymbolProvider.cache(
+            new ElixirSymbolProvider(
+                settings,
+                model,
+                service,
+                layout.serverModuleFile(),
+                ElixirSymbolProvider.toModuleName(layout.serverModuleName()),
+                BeamCodegenKind.SERVER));
+    ElixirContext ctx =
+        new ElixirContext(
+            model,
+            settings,
+            sp,
+            new MockManifest(),
+            new WriterDelegator<>(new MockManifest(), sp, ElixirWriter.factory("server")),
+            List.of(),
+            service,
+            BeamHttpBindings.from(model),
+            null,
+            null,
+            ElixirSymbolProvider.toModuleName(layout.serverModuleName()),
+            layout.serverModuleFile());
+    BeamResourceIndex index = BeamResourceIndex.of(model);
+    String delegateMod = ElixirSymbolProvider.toModuleName(layout.serverModuleName());
+    String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+    ExModule module =
+        ElixirResourceIr.serverModule(ctx, organization, index, layout, delegateMod, typesMod);
+    String org = module.asString();
+    assertThat(org).contains("defmodule OrganizationResource do");
+    assertThat(org).contains("alias ResourceLifecycleServiceServer, as: Server");
+    assertThat(org).doesNotContain("@type client_config");
+    assertThat(org).contains("def handle_read(");
+    assertThat(org).contains("Server.handle_get_organization(ctx,");
+    assertThat(org).contains("Top-level organization resource.");
+    for (ExFunction fn : module.nestedEntries().stream()
+        .filter(ExFunction.class::isInstance)
+        .map(ExFunction.class::cast)
+        .toList()) {
+      ElixirIrTestSupport.assertStructural(fn);
+    }
+  }
+
   private static Model resourceLifecycleModel() {
     String idl =
         """
