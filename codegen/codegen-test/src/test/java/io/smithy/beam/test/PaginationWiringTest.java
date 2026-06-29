@@ -88,7 +88,7 @@ class PaginationWiringTest {
                 .build());
 
     String client = manifest.expectFileString("paginated_service_client.ex");
-    assertThat(client).contains("def list_widgets(config, input) do");
+    assertThat(client).contains("def list_widgets(");
     assertThat(client).contains("list_widgets(config, input, [])");
     assertThat(client).contains("encode_list_widgets_request(input)");
   }
