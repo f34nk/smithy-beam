@@ -9,6 +9,7 @@ public sealed interface ExExpr extends IrObject
         ExCall,
         ExCallLocal,
         ExDotCall,
+        ExRemoteCall,
         ExMap,
         ExStruct,
         ExExprBlock,

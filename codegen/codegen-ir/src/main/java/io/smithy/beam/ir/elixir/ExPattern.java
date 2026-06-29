@@ -11,4 +11,5 @@ public sealed interface ExPattern extends IrObject
         ExListPattern,
         ExConsPattern,
         ExStringPattern,
+        ExPinPattern,
         ExTuplePattern {}
