@@ -1,5 +1,6 @@
 package io.smithy.beam.ir.elixir;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public interface IrObject {
@@ -13,7 +14,16 @@ public interface IrObject {
   List<String> lines();
 
   default List<String> lines(int indent) {
-    return lines();
+    if (indent == 0) {
+      return lines();
+    }
+    List<String> raw = lines();
+    List<String> out = new ArrayList<>(raw.size());
+    String prefix = indent(indent);
+    for (String line : raw) {
+      out.add(prefix + line);
+    }
+    return out;
   }
 
   default String asString() {
