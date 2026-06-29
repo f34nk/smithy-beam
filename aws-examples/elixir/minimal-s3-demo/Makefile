@@ -5,6 +5,8 @@ export AWS_DEFAULT_REGION=us-east-1
 export AWS_ENDPOINT=http://localhost:$(HOST_PORT)
 export TF_VAR_endpoint=http://localhost:$(HOST_PORT)
 export HEX_HOME := $(shell pwd)/.hex
+export HEX_HTTP_CONCURRENCY := 1
+export HEX_HTTP_TIMEOUT := 120
 
 .PHONY: clean
 clean:
