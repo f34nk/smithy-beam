@@ -39,7 +39,6 @@ public final class ExTypesModule implements IrObject {
       out.addAll(item.lines(indent + 1));
     }
     for (ExModuleEntry entry : entries) {
-      out.add("");
       out.addAll(entry.lines(indent + 1));
     }
     out.add(IrObject.indent(indent) + "end");
