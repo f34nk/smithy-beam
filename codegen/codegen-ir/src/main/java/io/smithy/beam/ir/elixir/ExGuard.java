@@ -27,6 +27,20 @@ public final class ExGuard implements IrObject {
     return new ExGuard(expr.asString());
   }
 
+  public static String whenClause(List<ExGuard> guards) {
+    if (guards.isEmpty()) {
+      return null;
+    }
+    StringBuilder sb = new StringBuilder("when ");
+    for (int i = 0; i < guards.size(); i++) {
+      if (i > 0) {
+        sb.append(" and ");
+      }
+      sb.append(guards.get(i).asString());
+    }
+    return sb.toString();
+  }
+
   public String function() {
     return functionOrNull;
   }

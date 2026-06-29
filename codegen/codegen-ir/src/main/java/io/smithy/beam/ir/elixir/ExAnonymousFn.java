@@ -121,14 +121,9 @@ public final class ExAnonymousFn implements ExExpr {
       sb.append(patterns.get(i).asString());
     }
     List<ExGuard> guards = clause.guards();
-    if (!guards.isEmpty()) {
-      sb.append(" when ");
-      for (int i = 0; i < guards.size(); i++) {
-        if (i > 0) {
-          sb.append(", ");
-        }
-        sb.append(guards.get(i).asString());
-      }
+    String when = ExGuard.whenClause(guards);
+    if (when != null) {
+      sb.append(' ').append(when);
     }
     return sb.toString();
   }
