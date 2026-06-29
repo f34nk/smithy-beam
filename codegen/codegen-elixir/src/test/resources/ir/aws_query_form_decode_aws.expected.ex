@@ -19,7 +19,7 @@ defp indexed_form_values(
   prefix
 ) do
   values =
-params
+    params
     |> Enum.filter(fn {k, _} -> String.starts_with?(k, prefix) end)
     |> Enum.sort_by(fn {k, _} -> String.to_integer(String.replace_prefix(k, prefix, "")) end)
     |> Enum.map(fn {_, v} -> v end)

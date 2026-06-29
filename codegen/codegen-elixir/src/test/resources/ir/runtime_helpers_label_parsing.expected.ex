@@ -23,7 +23,7 @@ defp match_segments(
 ) do
   case label_name(tpl_seg) do
     {:ok, key} ->
-      val = URI.decode(seg),
+      val = URI.decode(seg)
       match_segments(rest_path, rest_tpl, Map.put(acc, key, val))
 
     _ when seg == tpl_seg -> match_segments(rest_path, rest_tpl, acc)

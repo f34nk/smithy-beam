@@ -70,17 +70,22 @@ defmodule WaitableServiceWaiters do
     end
   end
 
-  defp matches_acceptor?(_acceptor, _result), do: case {acceptor, result} do
-  {%{matcher: :success, expected: true}, {:ok, _}} -> true
-  {%{matcher: :success, expected: false}, {:error, _}} -> true
-  {%{matcher: :errorType, expected: expected}, {:error, got}} ->
-    error_types_match?(expected, got)
-  {%{matcher: :output, path: path, comparator: :stringEquals, expected: expected}, {:ok, output}} ->
-    path_string_equals?(path, expected, output)
-  {%{matcher: :inputOutput, path: path, comparator: :stringEquals, expected: expected}, {:ok, output}} ->
-    path_string_equals?(path, expected, output)
-  _ -> false
-end
+  defp matches_acceptor?(
+    acceptor,
+    result
+  ) do
+    case {acceptor, result} do
+      {%{matcher: :success, expected: true}, {:ok, _}} -> true
+      {%{matcher: :success, expected: false}, {:error, _}} -> true
+      {%{matcher: :errorType, expected: expected}, {:error, got}} ->
+        error_types_match?(expected, got)
+      {%{matcher: :output, path: path, comparator: :stringEquals, expected: expected}, {:ok, output}} ->
+        path_string_equals?(path, expected, output)
+      {%{matcher: :inputOutput, path: path, comparator: :stringEquals, expected: expected}, {:ok, output}} ->
+        path_string_equals?(path, expected, output)
+      _ -> false
+    end
+  end
 
   defp error_types_match?(expected, _got) when is_binary(expected), do: true
   defp error_types_match?(%{:__struct__ => struct}, %{:__struct__ => struct}), do: true
@@ -126,14 +131,14 @@ end
   defp string_equals?(
     left,
     right
-  ) when is_atom(left), is_binary(right) do
+  ) when is_atom(left) and is_binary(right) do
     String.upcase(Atom.to_string(left)) == String.upcase(right)
   end
 
   defp string_equals?(
     left,
     right
-  ) when is_binary(left), is_binary(right) do
+  ) when is_binary(left) and is_binary(right) do
     String.upcase(left) == String.upcase(right)
   end
 

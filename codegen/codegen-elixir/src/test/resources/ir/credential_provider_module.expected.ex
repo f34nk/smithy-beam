@@ -231,7 +231,7 @@ defmodule Sigv4testServiceCredentials do
   end
   @type client_config :: map()
 
-  @type aws_credentials :: %__MODULE__{
+  @type aws_credentials :: %{
           required(:access_key_id) => String.t(),
           required(:secret_access_key) => String.t(),
           optional(:session_token) => String.t() | nil

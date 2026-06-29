@@ -9,7 +9,7 @@ defmodule RuntimeHttp do
     config,
     req
   ) do
-    http_client = Map.get(config, :http_client, __MODULE__.ReqClient),
+    http_client = Map.get(config, :http_client, __MODULE__.ReqClient)
     dispatch(http_client, config, req)
   end
 

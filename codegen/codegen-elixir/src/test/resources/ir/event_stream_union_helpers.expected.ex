@@ -11,14 +11,14 @@ def decode_event_stream(body) when is_binary(body) do
 end
 
 defp encode_event_stream_event({:member, value}) do
-  payload = Jason.encode!(%{"value" => Map.get(value, :value)}),
-  headers = encode_event_headers("member"),
+  payload = Jason.encode!(%{"value" => Map.get(value, :value)})
+  headers = encode_event_headers("member")
   AwsEventStream.frame(headers, payload)
 end
 defp encode_event_stream_event({:unknown, _}), do: raise ArgumentError, "unknown event"
 
 defp decode_event_stream_event(%{:headers => headers, :payload => payload}) do
-  event_type = header_value(headers, ":event-type"),
+  event_type = header_value(headers, ":event-type")
   decode_event_stream_event_type(event_type, payload)
 end
 
