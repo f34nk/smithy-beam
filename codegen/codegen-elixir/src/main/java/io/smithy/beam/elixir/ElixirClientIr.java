@@ -108,7 +108,7 @@ final class ElixirClientIr {
     return ExFunction.functionWithSpec(
         "def",
         "default_config",
-        ExSpec.functionSpec("default_config", "()", "map()"),
+        ExSpec.functionSpec("default_config", "", "map()"),
         List.of(ExClause.blockClause(List.of(), ExMap.map(entries.toArray(ExMapEntry[]::new)))));
   }
 }
