@@ -20,6 +20,7 @@ class ExTypesModuleTest {
                 ExNestedModule.nestedModule(
                     "BasicItem",
                     List.of(),
+                    List.of(),
                     List.of(ExDefstruct.defstruct(List.of(":name", ":count"))),
                     List.of())));
 

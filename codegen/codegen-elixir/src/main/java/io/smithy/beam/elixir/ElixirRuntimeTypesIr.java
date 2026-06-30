@@ -62,6 +62,7 @@ final class ElixirRuntimeTypesIr {
     return ExNestedModule.nestedModule(
         "HttpRequest",
         List.of(),
+        List.of(),
         List.of(
             ExDefstruct.defstructKeywords(
                 List.of(
@@ -78,6 +79,7 @@ final class ElixirRuntimeTypesIr {
   private static ExNestedModule httpResponseModule() {
     return ExNestedModule.nestedModule(
         "HttpResponse",
+        List.of(),
         List.of(),
         List.of(
             ExDefstruct.defstructKeywords(

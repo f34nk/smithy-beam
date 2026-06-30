@@ -209,6 +209,7 @@ final class ElixirHttpDispatchIr {
         "ReqClient",
         List.of(ExModuledoc.moduledoc("false")),
         List.of(),
+        List.of(),
         List.of(
             ExFunction.functionWithSpec(
                 "def",

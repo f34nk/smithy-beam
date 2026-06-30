@@ -6,16 +6,19 @@ import java.util.List;
 public final class ExNestedModule implements ExModuleEntry {
   private final String name;
   private final List<ExPreambleEntry> preamble;
+  private final List<ExModuleAssignAttr> attributes;
   private final List<ExModuleEntry> entries;
   private final List<ExFunction> functions;
 
   public ExNestedModule(
       String name,
       List<ExPreambleEntry> preamble,
+      List<ExModuleAssignAttr> attributes,
       List<ExModuleEntry> entries,
       List<ExFunction> functions) {
     this.name = name;
     this.preamble = List.copyOf(preamble);
+    this.attributes = List.copyOf(attributes);
     this.entries = List.copyOf(entries);
     this.functions = List.copyOf(functions);
   }
@@ -23,9 +26,10 @@ public final class ExNestedModule implements ExModuleEntry {
   public static ExNestedModule nestedModule(
       String name,
       List<ExPreambleEntry> preamble,
+      List<ExModuleAssignAttr> attributes,
       List<ExModuleEntry> entries,
       List<ExFunction> functions) {
-    return new ExNestedModule(name, preamble, entries, functions);
+    return new ExNestedModule(name, preamble, attributes, entries, functions);
   }
 
   public String name() {
@@ -34,6 +38,10 @@ public final class ExNestedModule implements ExModuleEntry {
 
   public List<ExPreambleEntry> preamble() {
     return preamble;
+  }
+
+  public List<ExModuleAssignAttr> attributes() {
+    return attributes;
   }
 
   public List<ExModuleEntry> entries() {
@@ -52,6 +60,9 @@ public final class ExNestedModule implements ExModuleEntry {
     for (ExPreambleEntry item : preamble) {
       out.addAll(item.lines(indent + 1));
     }
+    for (ExModuleAssignAttr attr : attributes) {
+      out.addAll(attr.lines(indent + 1));
+    }
     for (ExModuleEntry entry : entries) {
       if (!(entry instanceof ExBlankLine)) {
         out.add("");
@@ -59,7 +70,7 @@ public final class ExNestedModule implements ExModuleEntry {
       out.addAll(entry.lines(indent + 1));
     }
     for (int i = 0; i < functions.size(); i++) {
-      if (i > 0 || !entries.isEmpty()) {
+      if (i > 0 || !entries.isEmpty() || !attributes.isEmpty()) {
         out.add("");
       }
       out.addAll(functions.get(i).lines(indent + 1));

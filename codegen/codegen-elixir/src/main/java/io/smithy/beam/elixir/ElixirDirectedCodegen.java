@@ -419,7 +419,7 @@ final class ElixirDirectedCodegen
               valuesFunction,
               ExSpec.functionSpec("values", "", "[t()]"),
               List.of(ExClause.inlineClause(List.of(), ExList.list()))));
-      return ExNestedModule.nestedModule(symbol.getName(), preamble, entries, functions);
+      return ExNestedModule.nestedModule(symbol.getName(), preamble, List.of(), entries, functions);
     }
 
     String atomVariants = atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
@@ -467,7 +467,7 @@ final class ElixirDirectedCodegen
             ExSpec.functionSpec("values", "", "[t()]"),
             List.of(ExClause.inlineClause(List.of(), valuesList))));
 
-    return ExNestedModule.nestedModule(symbol.getName(), preamble, entries, functions);
+    return ExNestedModule.nestedModule(symbol.getName(), preamble, List.of(), entries, functions);
   }
 
   static ExNestedModule buildIntEnumNestedModule(IntEnumShape shape, Symbol symbol) {
@@ -509,7 +509,7 @@ final class ElixirDirectedCodegen
               valuesFunction,
               ExSpec.functionSpec("values", "", "[t()]"),
               List.of(ExClause.inlineClause(List.of(), ExList.list()))));
-      return ExNestedModule.nestedModule(symbol.getName(), preamble, entries, functions);
+      return ExNestedModule.nestedModule(symbol.getName(), preamble, List.of(), entries, functions);
     }
 
     String atomVariants = atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
@@ -557,7 +557,7 @@ final class ElixirDirectedCodegen
             ExSpec.functionSpec("values", "", "[t()]"),
             List.of(ExClause.inlineClause(List.of(), valuesList))));
 
-    return ExNestedModule.nestedModule(symbol.getName(), preamble, entries, functions);
+    return ExNestedModule.nestedModule(symbol.getName(), preamble, List.of(), entries, functions);
   }
 
   private static List<ExPreambleEntry> enumModuledoc(Shape shape, boolean stringEnum) {
@@ -644,7 +644,7 @@ final class ElixirDirectedCodegen
         .ifPresentOrElse(
             doc -> preamble.add(ExModuledoc.moduledoc(doc)),
             () -> preamble.add(ExModuledoc.moduledoc("structure " + shape.getId().getName())));
-    return ExNestedModule.nestedModule(symbol.getName(), preamble, entries, List.of());
+    return ExNestedModule.nestedModule(symbol.getName(), preamble, List.of(), entries, List.of());
   }
 
   @Override
@@ -722,6 +722,6 @@ final class ElixirDirectedCodegen
                         List.of(ExVarPattern.var("e")),
                         ExCallLocal.callLocal("inspect", ExVar.var("e"))))));
 
-    return ExNestedModule.nestedModule(modName, preamble, entries, functions);
+    return ExNestedModule.nestedModule(modName, preamble, List.of(), entries, functions);
   }
 }
