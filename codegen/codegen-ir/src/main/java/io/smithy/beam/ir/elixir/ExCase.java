@@ -47,11 +47,7 @@ public final class ExCase implements ExExpr {
   List<String> matchLines(ExPattern pattern, int indent) {
     List<String> out = new ArrayList<>();
     out.add(
-        IrObject.indent(indent)
-            + pattern.asString()
-            + " = case "
-            + scrutinee.asString()
-            + " do");
+        IrObject.indent(indent) + pattern.asString() + " = case " + scrutinee.asString() + " do");
     appendBranchLines(out, indent + 1, blankBetweenBranches);
     out.add(IrObject.indent(indent) + "end");
     return out;

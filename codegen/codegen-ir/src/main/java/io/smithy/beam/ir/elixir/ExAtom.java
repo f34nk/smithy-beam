@@ -1,6 +1,5 @@
 package io.smithy.beam.ir.elixir;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public final class ExAtom implements ExExpr {

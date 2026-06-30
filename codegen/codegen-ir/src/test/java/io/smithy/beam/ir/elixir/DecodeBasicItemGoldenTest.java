@@ -69,7 +69,8 @@ class DecodeBasicItemGoldenTest {
         "BasicItem",
         ExMapEntry.entry(
             ExAtom.atom("name"),
-            ExCall.call("Map", "get", ExVar.var("map"), ExString.string("name"), ExAtom.atom("nil"))),
+            ExCall.call(
+                "Map", "get", ExVar.var("map"), ExString.string("name"), ExAtom.atom("nil"))),
         ExMapEntry.entry(
             ExAtom.atom("count"),
             ExCall.call(

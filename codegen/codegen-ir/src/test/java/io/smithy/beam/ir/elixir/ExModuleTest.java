@@ -47,8 +47,7 @@ class ExModuleTest {
             "def",
             "decode_basic_item",
             ExSpec.functionSpec("decode_basic_item", "nil | map()", "nil | BasicItem.t()"),
-            List.of(
-                ExClause.inlineClause(List.of(ExAtomPattern.atom("nil")), ExAtom.atom("nil"))));
+            List.of(ExClause.inlineClause(List.of(ExAtomPattern.atom("nil")), ExAtom.atom("nil"))));
 
     ExModule module =
         ExModule.module(

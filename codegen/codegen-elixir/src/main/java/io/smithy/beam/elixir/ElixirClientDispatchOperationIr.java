@@ -14,8 +14,8 @@ import io.smithy.beam.ir.elixir.ExClause;
 import io.smithy.beam.ir.elixir.ExExpr;
 import io.smithy.beam.ir.elixir.ExExprBlock;
 import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExMapUpdate;
 import io.smithy.beam.ir.elixir.ExMapEntry;
+import io.smithy.beam.ir.elixir.ExMapUpdate;
 import io.smithy.beam.ir.elixir.ExMatch;
 import io.smithy.beam.ir.elixir.ExNilPattern;
 import io.smithy.beam.ir.elixir.ExOp;
@@ -89,13 +89,11 @@ final class ElixirClientDispatchOperationIr {
     List<ExExpr> body = new ArrayList<>();
     if (hasItems) {
       body.add(
-          ExMatch.match(
-              ExVarPattern.var("new_acc"), ExOp.op("++", ExVar.var("acc"), itemsExpr)));
+          ExMatch.match(ExVarPattern.var("new_acc"), ExOp.op("++", ExVar.var("acc"), itemsExpr)));
     } else {
       body.add(
           ExMatch.match(
-              ExVarPattern.var("new_acc"),
-              ExList.cons(ExVar.var("output"), ExVar.var("acc"))));
+              ExVarPattern.var("new_acc"), ExList.cons(ExVar.var("output"), ExVar.var("acc"))));
     }
     ExExpr undefinedSuccess =
         hasItems
@@ -104,8 +102,7 @@ final class ElixirClientDispatchOperationIr {
                 ExAtom.atom("ok"), ExCall.call("Enum", "reverse", ExVar.var("new_acc")));
     ExExpr nextInput =
         ExMapUpdate.mapUpdate(
-            ExVar.var("input"),
-            ExMapEntry.entry(ExAtom.atom(inputToken), ExVar.var("next_token")));
+            ExVar.var("input"), ExMapEntry.entry(ExAtom.atom(inputToken), ExVar.var("next_token")));
     ExExpr recurse =
         ExCallLocal.callLocal(
             opName, ExVar.var("config"), ExVar.var("next_input"), ExVar.var("new_acc"));
@@ -130,9 +127,7 @@ final class ElixirClientDispatchOperationIr {
       return ExStructAccess.structAccess(ExVar.var(rootVar), fieldName(sp, path.get(0)));
     }
     ExExpr[] keys =
-        path.stream()
-            .map(m -> (ExExpr) ExAtom.atom(fieldName(sp, m)))
-            .toArray(ExExpr[]::new);
+        path.stream().map(m -> (ExExpr) ExAtom.atom(fieldName(sp, m))).toArray(ExExpr[]::new);
     return ExCall.call("Kernel", "get_in", ExVar.var(rootVar), ExList.list(keys));
   }
 
@@ -221,12 +216,9 @@ final class ElixirClientDispatchOperationIr {
         ExCall.call(
             ctx.runtimeHttpModule(), "dispatch", ExVar.var("config"), dispatchRequestVar(ctx)),
         ExCaseBranch.branch(
-            ExTuplePattern.tuple(
-                ExAtomPattern.atom("ok"), ExVarPattern.var("resp")),
-            successExpr),
+            ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("resp")), successExpr),
         ExCaseBranch.branch(
-            ExTuplePattern.tuple(
-                ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
+            ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
             ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason"))));
   }
 
@@ -256,22 +248,19 @@ final class ElixirClientDispatchOperationIr {
     boolean hasItems = BeamClientPaginationSupport.hasItemsMember(pi);
     ExExpr itemsExpr =
         hasItems
-            ? buildItemsAccessExpr(
-                "output", output, pi.getItemsMemberPath(), ctx.ctx().model(), sp)
+            ? buildItemsAccessExpr("output", output, pi.getItemsMemberPath(), ctx.ctx().model(), sp)
             : null;
 
     return ExCase.caseExpr(
         decodeCall,
         ExCaseBranch.branch(
-            ExTuplePattern.tuple(
-                ExAtomPattern.atom("ok"), ExVarPattern.var("output")),
+            ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("output")),
             ExExprBlock.block(
                 buildAccumulationAndRecursion(
                         ctx.opName(), hasItems, itemsExpr, outputTokenExpr, inputToken)
                     .toArray(ExExpr[]::new))),
         ExCaseBranch.branch(
-            ExTuplePattern.tuple(
-                ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
+            ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
             ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason"))));
   }
 
@@ -280,8 +269,7 @@ final class ElixirClientDispatchOperationIr {
     body.add(
         ExMatch.match(
             ExVarPattern.var("retry_opts"),
-            ExCall.call(
-                "Map", "get", ExVar.var("config"), ExAtom.atom("retry"), ExList.list())));
+            ExCall.call("Map", "get", ExVar.var("config"), ExAtom.atom("retry"), ExList.list())));
     body.add(
         ExCall.call(
             ctx.retryModule(),

@@ -1,9 +1,10 @@
 package io.smithy.beam.elixir;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.smithy.beam.ir.elixir.ExModule;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
-import static org.assertj.core.api.Assertions.assertThat;
 
 class ElixirRuntimeTypesIrTest {
 
@@ -25,7 +26,8 @@ class ElixirRuntimeTypesIrTest {
   @Test
   void runtimeTypesModuleAppendsEndpointRuleSet() {
     ExModule module =
-        ElixirRuntimeTypesIr.runtimeTypesModule("RuntimeTypes", Optional.of("{\"region\":\"us-east-1\"}"));
+        ElixirRuntimeTypesIr.runtimeTypesModule(
+            "RuntimeTypes", Optional.of("{\"region\":\"us-east-1\"}"));
     String output = module.asString();
     assertThat(output)
         .contains("@type endpoint_rule_set :: map()")

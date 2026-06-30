@@ -63,14 +63,12 @@ class ElixirEnumHelperIrTest {
             layout.typesModuleFile(),
             ElixirSymbolProvider.toModuleName(layout.typesModuleName()),
             BeamCodegenKind.TYPES);
-    basicStringShape =
-        model.expectShape(ShapeId.from("com.example#BasicString"), EnumShape.class);
+    basicStringShape = model.expectShape(ShapeId.from("com.example#BasicString"), EnumShape.class);
   }
 
   @Test
   void enumDecodeEncodeAsStringMatchesGolden() throws IOException {
-    List<ExFunction> functions =
-        ElixirEnumHelperIr.enumDecodeEncode(basicStringShape, provider);
+    List<ExFunction> functions = ElixirEnumHelperIr.enumDecodeEncode(basicStringShape, provider);
     assertThat(functions).hasSize(2);
     ElixirIrTestSupport.assertStructural(functions.get(0));
     ElixirIrTestSupport.assertStructural(functions.get(1));

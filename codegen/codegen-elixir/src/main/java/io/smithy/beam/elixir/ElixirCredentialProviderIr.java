@@ -17,9 +17,9 @@ import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExList;
 import io.smithy.beam.ir.elixir.ExListPattern;
 import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
 import io.smithy.beam.ir.elixir.ExModuleEntry;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExNil;
 import io.smithy.beam.ir.elixir.ExNilPattern;
 import io.smithy.beam.ir.elixir.ExPipeline;
@@ -74,8 +74,7 @@ final class ElixirCredentialProviderIr {
             ExClause.blockClause(
                 List.of(ExVarPattern.var("config")),
                 ExCase.caseExpr(
-                    ExCall.call(
-                        "Map", "get", ExVar.var("config"), ExAtom.atom("credentials")),
+                    ExCall.call("Map", "get", ExVar.var("config"), ExAtom.atom("credentials")),
                     List.of(
                         ExCaseBranch.branch(
                             ExNilPattern.nil(),
@@ -161,9 +160,7 @@ final class ElixirCredentialProviderIr {
     for (BeamCredentialProviderKind kind : BeamCredentialProviders.defaultChain()) {
       clauses.add(
           ExClause.inlineClause(
-              List.of(
-                  ExAtomPattern.atom(elixirProviderAtom(kind)),
-                  ExVarPattern.var("config")),
+              List.of(ExAtomPattern.atom(elixirProviderAtom(kind)), ExVarPattern.var("config")),
               ExCallLocal.callLocal(
                   "resolve_from_" + elixirProviderSuffix(kind), ExVar.var("config"))));
     }
@@ -275,14 +272,11 @@ final class ElixirCredentialProviderIr {
         List.of(
             ExClause.inlineClause(
                 List.of(
-                    ExListPattern.list(),
-                    ExVarPattern.var("_profile"),
-                    ExVarPattern.var("acc")),
+                    ExListPattern.list(), ExVarPattern.var("_profile"), ExVarPattern.var("acc")),
                 ExCallLocal.callLocal("map_to_credentials", ExVar.var("acc"))),
             ExClause.blockClause(
                 List.of(
-                    ExConsPattern.consPattern(
-                        ExVarPattern.var("line"), ExVarPattern.var("rest")),
+                    ExConsPattern.consPattern(ExVarPattern.var("line"), ExVarPattern.var("rest")),
                     ExVarPattern.var("profile"),
                     ExVarPattern.var("acc")),
                 ExCapturedBlock.capturedBlock(
@@ -309,8 +303,7 @@ final class ElixirCredentialProviderIr {
                 ExCallLocal.callLocal("map_to_credentials", ExVar.var("acc"))),
             ExClause.blockClause(
                 List.of(
-                    ExConsPattern.consPattern(
-                        ExVarPattern.var("line"), ExVarPattern.var("rest")),
+                    ExConsPattern.consPattern(ExVarPattern.var("line"), ExVarPattern.var("rest")),
                     ExVarPattern.var("acc")),
                 ExCapturedBlock.capturedBlock(
                     """
@@ -421,8 +414,7 @@ final class ElixirCredentialProviderIr {
                         ExCaseBranch.branch(
                             ExTuplePattern.tuple(
                                 ExAtomPattern.atom("ok"), ExVarPattern.var("body")),
-                            ExCallLocal.callLocal(
-                                "decode_json_credentials", ExVar.var("body"))),
+                            ExCallLocal.callLocal("decode_json_credentials", ExVar.var("body"))),
                         ExCaseBranch.branch(
                             ExTuplePattern.tuple(
                                 ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
@@ -500,9 +492,7 @@ final class ElixirCredentialProviderIr {
   }
 
   private static List<ExFunction> sharedHelperFunctions() {
-    return List.of(
-        envSessionToken(),
-        homeDirectory());
+    return List.of(envSessionToken(), homeDirectory());
   }
 
   private static ExFunction envSessionToken() {

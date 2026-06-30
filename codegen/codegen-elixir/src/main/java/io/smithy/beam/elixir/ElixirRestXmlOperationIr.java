@@ -11,7 +11,6 @@ import io.smithy.beam.ir.elixir.ExCallLocal;
 import io.smithy.beam.ir.elixir.ExCase;
 import io.smithy.beam.ir.elixir.ExCaseBranch;
 import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExListPattern;
 import io.smithy.beam.ir.elixir.ExExpr;
 import io.smithy.beam.ir.elixir.ExExprBlock;
 import io.smithy.beam.ir.elixir.ExFunction;
@@ -19,6 +18,7 @@ import io.smithy.beam.ir.elixir.ExIfInList;
 import io.smithy.beam.ir.elixir.ExInteger;
 import io.smithy.beam.ir.elixir.ExIntegerPattern;
 import io.smithy.beam.ir.elixir.ExList;
+import io.smithy.beam.ir.elixir.ExListPattern;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMapEntry;
 import io.smithy.beam.ir.elixir.ExMapFieldPattern;
@@ -27,7 +27,6 @@ import io.smithy.beam.ir.elixir.ExMatch;
 import io.smithy.beam.ir.elixir.ExNilPattern;
 import io.smithy.beam.ir.elixir.ExOp;
 import io.smithy.beam.ir.elixir.ExPattern;
-import io.smithy.beam.ir.elixir.ExPipeCase;
 import io.smithy.beam.ir.elixir.ExPipeline;
 import io.smithy.beam.ir.elixir.ExSpec;
 import io.smithy.beam.ir.elixir.ExString;
@@ -83,9 +82,7 @@ final class ElixirRestXmlOperationIr {
     ExMapPattern bodyPattern =
         ExMapPattern.map(ExMapFieldPattern.field(ExAtom.atom("body"), ExVarPattern.var("body")));
     List<ExPattern> patterns =
-        labels.isEmpty()
-            ? List.of(bodyPattern)
-            : List.of(ExVarPattern.var("labels"), bodyPattern);
+        labels.isEmpty() ? List.of(bodyPattern) : List.of(ExVarPattern.var("labels"), bodyPattern);
 
     List<ExMapEntry> structFields = new ArrayList<>();
     for (HttpBinding lb : labels) {
@@ -94,10 +91,7 @@ final class ElixirRestXmlOperationIr {
           ExMapEntry.entry(
               ExAtom.atom(field),
               ExCall.call(
-                  "Map",
-                  "get",
-                  ExVar.var("labels"),
-                  ExString.string(lb.getLocationName()))));
+                  "Map", "get", ExVar.var("labels"), ExString.string(lb.getLocationName()))));
     }
     if (!payloadMembers.isEmpty()) {
       HttpBinding payload = payloadMembers.get(0);
@@ -117,8 +111,7 @@ final class ElixirRestXmlOperationIr {
     }
 
     ExExpr body =
-        ExTuple.tuple(
-            ExAtom.atom("ok"), ExStruct.struct("Types." + inputStruct, structFields));
+        ExTuple.tuple(ExAtom.atom("ok"), ExStruct.struct("Types." + inputStruct, structFields));
 
     ExSpec spec =
         labels.isEmpty()
@@ -132,7 +125,10 @@ final class ElixirRestXmlOperationIr {
                 "{:ok, " + inputType + "} | {:error, term()}");
 
     return ExFunction.functionWithSpec(
-        "def", "decode_" + opName + "_request", spec, List.of(ExClause.blockClause(patterns, body)));
+        "def",
+        "decode_" + opName + "_request",
+        spec,
+        List.of(ExClause.blockClause(patterns, body)));
   }
 
   static ExFunction buildDecodeResponse(
@@ -155,8 +151,8 @@ final class ElixirRestXmlOperationIr {
     ExClause successClause =
         ExClause.blockClause(
             List.of(successPattern),
-            buildDecodeResponseSuccessBody(model, op, httpIndex, sp, typesMod, output).toArray(
-                ExExpr[]::new));
+            buildDecodeResponseSuccessBody(model, op, httpIndex, sp, typesMod, output)
+                .toArray(ExExpr[]::new));
 
     List<ExClause> clauses = new ArrayList<>();
     clauses.add(successClause);
@@ -171,9 +167,7 @@ final class ElixirRestXmlOperationIr {
               ExTuple.tuple(
                   ExAtom.atom("error"),
                   ExTuple.tuple(
-                      ExAtom.atom("unknown_error"),
-                      ExVar.var("status"),
-                      ExVar.var("body")))));
+                      ExAtom.atom("unknown_error"), ExVar.var("status"), ExVar.var("body")))));
     } else {
       clauses.add(
           ExClause.blockClauseSingleLineHead(
@@ -191,7 +185,9 @@ final class ElixirRestXmlOperationIr {
 
     ExSpec spec =
         ExSpec.functionSpec(
-            "decode_" + opName + "_response", "map()", "{:ok, " + outputType + "} | {:error, term()}");
+            "decode_" + opName + "_response",
+            "map()",
+            "{:ok, " + outputType + "} | {:error, term()}");
 
     return ExFunction.functionWithSpec("def", "decode_" + opName + "_response", spec, clauses);
   }
@@ -239,9 +235,7 @@ final class ElixirRestXmlOperationIr {
     clauses.add(
         ExClause.blockClause(
             List.of(
-                ExVarPattern.var("status"),
-                ExVarPattern.var("_headers"),
-                ExVarPattern.var("body")),
+                ExVarPattern.var("status"), ExVarPattern.var("_headers"), ExVarPattern.var("body")),
             ExTuple.tuple(
                 ExAtom.atom("error"),
                 ExTuple.tuple(
@@ -249,11 +243,10 @@ final class ElixirRestXmlOperationIr {
 
     ExSpec spec =
         ExSpec.functionSpec(
-            "decode_" + opName + "_response_error",
-            "integer(), map(), term()",
-            "{:error, term()}");
+            "decode_" + opName + "_response_error", "integer(), map(), term()", "{:error, term()}");
 
-    return ExFunction.functionWithSpec("defp", "decode_" + opName + "_response_error", spec, clauses);
+    return ExFunction.functionWithSpec(
+        "defp", "decode_" + opName + "_response_error", spec, clauses);
   }
 
   static ExFunction buildEncodeRequest(
@@ -343,7 +336,8 @@ final class ElixirRestXmlOperationIr {
     ElixirHttpChecksumIr.requestChecksumHeadersExpr(model, op, sp, "headers").ifPresent(body::add);
 
     List<ExMapEntry> requestFields = new ArrayList<>();
-    requestFields.add(ExMapEntry.entry(ExAtom.atom("method"), ExString.string(httpTrait.getMethod())));
+    requestFields.add(
+        ExMapEntry.entry(ExAtom.atom("method"), ExString.string(httpTrait.getMethod())));
     requestFields.add(ExMapEntry.entry(ExAtom.atom("path"), ExVar.var("path")));
     requestFields.add(ExMapEntry.entry(ExAtom.atom("query"), ExVar.var("query")));
     requestFields.add(ExMapEntry.entry(ExAtom.atom("headers"), ExVar.var("headers")));
@@ -382,8 +376,7 @@ final class ElixirRestXmlOperationIr {
     int successCode = httpIndex.getResponseCode(op);
     List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
 
-    ExSpec spec =
-        ExSpec.functionSpec("encode_" + opName + "_response", outputType, "map()");
+    ExSpec spec = ExSpec.functionSpec("encode_" + opName + "_response", outputType, "map()");
 
     return ExFunction.functionWithSpec(
         "def",
@@ -393,7 +386,15 @@ final class ElixirRestXmlOperationIr {
             ExClause.blockClause(
                 List.of(ExVarPattern.var("output")),
                 buildEncodeResponseBodyExprs(
-                        model, output, op, httpIndex, respPayload, successCode, sp, typesMod, runtimeMod)
+                        model,
+                        output,
+                        op,
+                        httpIndex,
+                        respPayload,
+                        successCode,
+                        sp,
+                        typesMod,
+                        runtimeMod)
                     .toArray(ExExpr[]::new))));
   }
 
@@ -448,16 +449,13 @@ final class ElixirRestXmlOperationIr {
               ExCaseBranch.branch(
                   ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("root")),
                   ExTuple.tuple(
-                      ExAtom.atom("ok"),
-                      decodeStructureExpr(model, output, "root", sp, typesMod))),
+                      ExAtom.atom("ok"), decodeStructureExpr(model, output, "root", sp, typesMod))),
               ExCaseBranch.branch(
                   ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
                   ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason")))));
     } else {
       body.add(
-          ExTuple.tuple(
-              ExAtom.atom("ok"),
-              ExStruct.struct("Types." + structName(sp, output))));
+          ExTuple.tuple(ExAtom.atom("ok"), ExStruct.struct("Types." + structName(sp, output))));
     }
     return body;
   }
@@ -491,11 +489,7 @@ final class ElixirRestXmlOperationIr {
                 ExVarPattern.var("body"),
                 ExOp.op(
                     "||",
-                    ExCall.call(
-                        "Map",
-                        "get",
-                        ExVar.var("output"),
-                        ExAtom.atom(field)),
+                    ExCall.call("Map", "get", ExVar.var("output"), ExAtom.atom(field)),
                     ExString.string(""))));
       } else {
         String rootElement = BeamXmlBindingIndex.payloadRootElementName(member, target);
@@ -510,10 +504,11 @@ final class ElixirRestXmlOperationIr {
         entries.add(
             ExMapEntry.entry(
                 ExString.string(wireName),
-                ExStructAccess.structAccess(
-                    ExVar.var("output"), fieldName(sp, member))));
+                ExStructAccess.structAccess(ExVar.var("output"), fieldName(sp, member))));
       }
-      body.add(ExMatch.match(ExVarPattern.var("member_map"), ExMap.map(entries.toArray(ExMapEntry[]::new))));
+      body.add(
+          ExMatch.match(
+              ExVarPattern.var("member_map"), ExMap.map(entries.toArray(ExMapEntry[]::new))));
       body.add(
           ExMatch.match(
               ExVarPattern.var("body"),
@@ -562,9 +557,7 @@ final class ElixirRestXmlOperationIr {
       payloadCaseBody =
           ExCallLocal.callLocal(
               "encode_xml",
-              ExMap.map(
-                  ExMapEntry.entry(
-                      ExString.string(rootElement), ExVar.var("payload_value"))),
+              ExMap.map(ExMapEntry.entry(ExString.string(rootElement), ExVar.var("payload_value"))),
               ExCallLocal.callLocal("xml_namespace"));
     }
 
@@ -590,8 +583,7 @@ final class ElixirRestXmlOperationIr {
       if (memberTarget instanceof StructureShape structure) {
         blockExprs.add(
             ExMatch.match(
-                ExVarPattern.var("inner_map"),
-                buildStructureMap(model, structure, "v", sp)));
+                ExVarPattern.var("inner_map"), buildStructureMap(model, structure, "v", sp)));
         innerValue = ExVar.var("inner_map");
       } else {
         innerValue = ExVar.var("v");
@@ -607,7 +599,9 @@ final class ElixirRestXmlOperationIr {
       branches.add(
           ExCaseBranch.branch(
               ExTuplePattern.tuple(ExAtomPattern.atom(tag), ExVarPattern.var("v")),
-              blockExprs.size() == 1 ? blockExprs.get(0) : ExExprBlock.block(blockExprs.toArray(ExExpr[]::new))));
+              blockExprs.size() == 1
+                  ? blockExprs.get(0)
+                  : ExExprBlock.block(blockExprs.toArray(ExExpr[]::new))));
     }
     branches.add(ExCaseBranch.branch(ExNilPattern.nil(), ExString.string("")));
     return ExCase.caseExpr(ExVar.var("payload_value"), branches.toArray(ExCaseBranch[]::new));
@@ -663,9 +657,7 @@ final class ElixirRestXmlOperationIr {
       payloadCaseBody =
           ExCallLocal.callLocal(
               "encode_xml",
-              ExMap.map(
-                  ExMapEntry.entry(
-                      ExString.string(rootElement), ExVar.var("payload_value"))),
+              ExMap.map(ExMapEntry.entry(ExString.string(rootElement), ExVar.var("payload_value"))),
               ExCallLocal.callLocal("xml_namespace"));
     }
 
@@ -747,8 +739,7 @@ final class ElixirRestXmlOperationIr {
                         ExCall.call("Kernel", "is_nil", ExVar.var("x")))))));
   }
 
-  private static List<ExExpr> buildIdempotencyTokenExprs(
-      StructureShape input, SymbolProvider sp) {
+  private static List<ExExpr> buildIdempotencyTokenExprs(StructureShape input, SymbolProvider sp) {
     List<ExExpr> exprs = new ArrayList<>();
     for (MemberShape member : input.members()) {
       if (!member.hasTrait(IdempotencyTokenTrait.class)) {
@@ -776,8 +767,7 @@ final class ElixirRestXmlOperationIr {
   private static ExExpr payloadBodyDecodeExpr(
       Model model, Shape target, String rootElement, SymbolProvider sp, String typesMod) {
     return ExCase.caseExpr(
-        ExCallLocal.callLocal(
-            "parse_xml_root", ExVar.var("body"), ExString.string(rootElement)),
+        ExCallLocal.callLocal("parse_xml_root", ExVar.var("body"), ExString.string(rootElement)),
         ExCaseBranch.branch(
             ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("root")),
             payloadDecodeExpr(model, target, "root", sp, typesMod)),
@@ -877,8 +867,7 @@ final class ElixirRestXmlOperationIr {
             ExCallLocal.callLocal("element_content", ExVar.var(xmlVar))),
         ExCaseBranch.branch(ExNilPattern.nil(), nextArm),
         ExCaseBranch.branch(
-            ExVarPattern.var("element"),
-            ExTuple.tuple(ExAtom.atom(tag), valueExpr)));
+            ExVarPattern.var("element"), ExTuple.tuple(ExAtom.atom(tag), valueExpr)));
   }
 
   private static ExExpr decodeUnionMemberValue(
@@ -924,8 +913,7 @@ final class ElixirRestXmlOperationIr {
       String wireName = BeamXmlBindingIndex.memberElementName(member);
       entries.add(
           ExMapEntry.entry(
-              ExString.string(wireName),
-              ExStructAccess.structAccess(ExVar.var(varName), field)));
+              ExString.string(wireName), ExStructAccess.structAccess(ExVar.var(varName), field)));
     }
     return ExMap.map(entries.toArray(ExMapEntry[]::new));
   }

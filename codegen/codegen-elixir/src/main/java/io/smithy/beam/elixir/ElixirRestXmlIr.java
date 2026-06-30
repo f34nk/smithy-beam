@@ -6,9 +6,9 @@ import io.smithy.beam.core.BeamS3CustomizationIndex;
 import io.smithy.beam.core.BeamXmlBindingIndex;
 import io.smithy.beam.ir.elixir.ExAliasAttr;
 import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
 import io.smithy.beam.ir.elixir.ExModuleAttribute;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -95,9 +95,7 @@ final class ElixirRestXmlIr {
         moduleName,
         List.of(
             ExModuledoc.moduledoc(
-                "Server REST-XML codecs for "
-                    + service.getId()
-                    + " (generated). Do not edit.")),
+                "Server REST-XML codecs for " + service.getId() + " (generated). Do not edit.")),
         List.of(
             ExAliasAttr.alias(runtimeMod, "RuntimeTypes"), ExAliasAttr.alias(typesMod, "Types")),
         functions);

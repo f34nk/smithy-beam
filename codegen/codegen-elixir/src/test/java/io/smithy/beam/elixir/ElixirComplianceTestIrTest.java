@@ -45,12 +45,7 @@ class ElixirComplianceTestIrTest {
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     provider =
         new ElixirSymbolProvider(
-            settings,
-            model,
-            service,
-            layout.typesModuleFile(),
-            typesMod,
-            BeamCodegenKind.CLIENT);
+            settings, model, service, layout.typesModuleFile(), typesMod, BeamCodegenKind.CLIENT);
   }
 
   @Test

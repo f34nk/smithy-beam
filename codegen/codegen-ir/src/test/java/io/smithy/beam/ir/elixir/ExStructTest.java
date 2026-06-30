@@ -24,8 +24,14 @@ class ExStructTest {
     ExStruct struct =
         ExStruct.struct(
             "BasicItem",
-            ExMapEntry.entry(ExAtom.atom("name"), ExCall.call("Map", "get", ExVar.var("map"), ExString.string("name"), ExAtom.atom("nil"))),
-            ExMapEntry.entry(ExAtom.atom("count"), ExCall.call("Map", "get", ExVar.var("map"), ExString.string("count"), ExAtom.atom("nil"))));
+            ExMapEntry.entry(
+                ExAtom.atom("name"),
+                ExCall.call(
+                    "Map", "get", ExVar.var("map"), ExString.string("name"), ExAtom.atom("nil"))),
+            ExMapEntry.entry(
+                ExAtom.atom("count"),
+                ExCall.call(
+                    "Map", "get", ExVar.var("map"), ExString.string("count"), ExAtom.atom("nil"))));
     assertThat(struct.asString(1))
         .isEqualTo(
             "  %BasicItem{\n"

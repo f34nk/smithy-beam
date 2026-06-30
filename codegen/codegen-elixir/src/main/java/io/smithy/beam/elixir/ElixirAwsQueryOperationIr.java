@@ -101,9 +101,7 @@ final class ElixirAwsQueryOperationIr {
         "encode_" + opName + "_request",
         ExDoc.doc("Encode AWS Query request for " + op.getId() + "."),
         spec,
-        List.of(
-            ExClause.blockClause(
-                List.of(inputPattern), body.toArray(ExExpr[]::new))));
+        List.of(ExClause.blockClause(List.of(inputPattern), body.toArray(ExExpr[]::new))));
   }
 
   static ExFunction buildFlattenQueryInput(
@@ -172,11 +170,7 @@ final class ElixirAwsQueryOperationIr {
   }
 
   static ExFunction buildServerDecodeRequest(
-      Model model,
-      OperationShape op,
-      SymbolProvider sp,
-      String typesMod,
-      String runtimeMod) {
+      Model model, OperationShape op, SymbolProvider sp, String typesMod, String runtimeMod) {
     String opName = sp.toSymbol(op).getName();
     StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
     String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
@@ -192,8 +186,7 @@ final class ElixirAwsQueryOperationIr {
             ExPipeline.pipeChain(
                 ExVar.var("body"),
                 ExCallLocal.callLocal("parse_query_params"),
-                ExCallLocal.callLocal(
-                    "parse_" + recordName(sp.toSymbol(input)) + "_input")));
+                ExCallLocal.callLocal("parse_" + recordName(sp.toSymbol(input)) + "_input")));
 
     return ExFunction.functionWithDocAndSpec(
         "def",
@@ -225,8 +218,7 @@ final class ElixirAwsQueryOperationIr {
         ExSpec.functionSpec(
             "encode_" + opName + "_response", outputType, "%" + runtimeMod + ".HttpResponse{}");
     ExStructPattern pattern =
-        new ExStructPattern(
-            "Types." + outputStruct, outputFieldPatterns(output, sp), "output");
+        new ExStructPattern("Types." + outputStruct, outputFieldPatterns(output, sp), "output");
 
     List<ExExpr> body = new ArrayList<>();
     body.add(
@@ -309,8 +301,7 @@ final class ElixirAwsQueryOperationIr {
                 ExStruct.struct("Types." + structName(sp, input), fields))));
   }
 
-  static ExFunction buildOutputToResultMap(
-      Model model, SymbolProvider sp, StructureShape output) {
+  static ExFunction buildOutputToResultMap(Model model, SymbolProvider sp, StructureShape output) {
     String outputRecord = recordName(sp.toSymbol(output));
     List<ExMapEntry> entries = new ArrayList<>();
     for (MemberShape member : output.members()) {
@@ -318,16 +309,14 @@ final class ElixirAwsQueryOperationIr {
       String element = BeamXmlDecoder.memberElementName(member);
       entries.add(
           ExMapEntry.entry(
-              ExString.string(element),
-              ExStructAccess.structAccess(ExVar.var("output"), field)));
+              ExString.string(element), ExStructAccess.structAccess(ExVar.var("output"), field)));
     }
     return ExFunction.defpFunction(
         outputRecord + "_to_result_map",
         List.of(
             ExClause.inlineClause(
                 List.of(
-                    new ExStructPattern(
-                        "Types." + structName(sp, output), List.of(), "output")),
+                    new ExStructPattern("Types." + structName(sp, output), List.of(), "output")),
                 ExMap.map(entries.toArray(ExMapEntry[]::new)))));
   }
 
@@ -350,8 +339,7 @@ final class ElixirAwsQueryOperationIr {
         String field = fieldName(sp, member);
         String wireKey = queryFormKey(member, ec2Query);
         memberCalls.add(
-            ExCallLocal.callLocal(
-                "flatten_member", ExString.string(wireKey), ExVar.var(field)));
+            ExCallLocal.callLocal("flatten_member", ExString.string(wireKey), ExVar.var(field)));
       }
       body =
           ExPipeline.pipeChain(
@@ -375,12 +363,14 @@ final class ElixirAwsQueryOperationIr {
           unwrap,
           ExCaseBranch.branch(
               ExTuplePattern.tuple(ExAtomPattern.atom("ok"), W),
-              ExTuple.tuple(ExAtom.atom("ok"), ExStruct.struct("Types." + outputStruct, List.of()))),
+              ExTuple.tuple(
+                  ExAtom.atom("ok"), ExStruct.struct("Types." + outputStruct, List.of()))),
           ExCaseBranch.branch(
               ExTuplePattern.tuple(
                   ExAtomPattern.atom("error"),
                   ExTuplePattern.tuple(ExAtomPattern.atom("missing_result"), W)),
-              ExTuple.tuple(ExAtom.atom("ok"), ExStruct.struct("Types." + outputStruct, List.of()))),
+              ExTuple.tuple(
+                  ExAtom.atom("ok"), ExStruct.struct("Types." + outputStruct, List.of()))),
           ExCaseBranch.branch(
               ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
               ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason"))));

@@ -8,7 +8,8 @@ public final class ExTypesModule implements IrObject {
   private final List<ExPreambleEntry> preamble;
   private final List<ExModuleEntry> entries;
 
-  public ExTypesModule(String moduleName, List<ExPreambleEntry> preamble, List<ExModuleEntry> entries) {
+  public ExTypesModule(
+      String moduleName, List<ExPreambleEntry> preamble, List<ExModuleEntry> entries) {
     this.moduleName = moduleName;
     this.preamble = List.copyOf(preamble);
     this.entries = List.copyOf(entries);

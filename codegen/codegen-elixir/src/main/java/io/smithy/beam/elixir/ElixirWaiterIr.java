@@ -6,7 +6,6 @@ import io.smithy.beam.core.BeamWaiterIndex;
 import io.smithy.beam.core.BeamWaiterPaths;
 import io.smithy.beam.ir.elixir.ExAnonymousFn;
 import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
 import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExCallLocal;
 import io.smithy.beam.ir.elixir.ExCapturedBlock;
@@ -26,17 +25,14 @@ import io.smithy.beam.ir.elixir.ExMapEntry;
 import io.smithy.beam.ir.elixir.ExMapFieldPattern;
 import io.smithy.beam.ir.elixir.ExMapPattern;
 import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExNil;
-import io.smithy.beam.ir.elixir.ExNilPattern;
 import io.smithy.beam.ir.elixir.ExOp;
 import io.smithy.beam.ir.elixir.ExSpec;
 import io.smithy.beam.ir.elixir.ExString;
 import io.smithy.beam.ir.elixir.ExStruct;
-import io.smithy.beam.ir.elixir.ExStructPattern;
 import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
 import io.smithy.beam.ir.elixir.ExVar;
 import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
@@ -69,8 +65,7 @@ final class ElixirWaiterIr {
     return ExModule.module(
         moduleName,
         List.of(
-            ExModuledoc.moduledoc(
-                "Generated waiters for " + service.getId() + " (generated).")),
+            ExModuledoc.moduledoc("Generated waiters for " + service.getId() + " (generated).")),
         List.of(),
         functions);
   }
@@ -137,8 +132,7 @@ final class ElixirWaiterIr {
       entries.add(ExMapEntry.entry(ExAtom.atom("matcher"), ExAtom.atom("success")));
       entries.add(
           ExMapEntry.entry(
-              ExAtom.atom("expected"),
-              ExCapturedBlock.capturedBlock(expected ? "true" : "false")));
+              ExAtom.atom("expected"), ExCapturedBlock.capturedBlock(expected ? "true" : "false")));
     } else if (acceptor.errorTypeName().isPresent()) {
       String errorType = acceptor.errorTypeName().get();
       entries.add(ExMapEntry.entry(ExAtom.atom("matcher"), ExAtom.atom("errorType")));
@@ -146,11 +140,9 @@ final class ElixirWaiterIr {
         String exception = sp.toSymbol(acceptor.resolvedError().get()).getName();
         entries.add(
             ExMapEntry.entry(
-                ExAtom.atom("expected"),
-                ExStruct.struct(typesMod + "." + exception, List.of())));
+                ExAtom.atom("expected"), ExStruct.struct(typesMod + "." + exception, List.of())));
       } else {
-        entries.add(
-            ExMapEntry.entry(ExAtom.atom("expected"), ExString.string(errorType)));
+        entries.add(ExMapEntry.entry(ExAtom.atom("expected"), ExString.string(errorType)));
       }
     } else if (acceptor.pathMatcher().isPresent()) {
       BeamWaiterIndex.PathMatcherInfo pathMatcher = acceptor.pathMatcher().get();
@@ -270,8 +262,7 @@ final class ElixirWaiterIr {
         "classify",
         List.of(
             ExClause.inlineClause(
-                List.of(ExListPattern.list(), ExVarPattern.var("_result")),
-                ExAtom.atom("retry")),
+                List.of(ExListPattern.list(), ExVarPattern.var("_result")), ExAtom.atom("retry")),
             ExClause.blockClauseSingleLineHead(
                 List.of(
                     ExConsPattern.consPattern(
@@ -368,8 +359,7 @@ final class ElixirWaiterIr {
         List.of(
             ExClause.blockClause(
                 List.of(
-                    ExConsPattern.consPattern(
-                        ExVarPattern.var("key"), ExVarPattern.var("rest")),
+                    ExConsPattern.consPattern(ExVarPattern.var("key"), ExVarPattern.var("rest")),
                     ExVarPattern.var("value")),
                 List.of(ExGuard.guard("is_map", ExVar.var("value"))),
                 ExCapturedBlock.capturedBlock(
@@ -386,8 +376,7 @@ final class ElixirWaiterIr {
         List.of(
             ExClause.blockClause(
                 List.of(
-                    ExConsPattern.consPattern(
-                        ExVarPattern.var("key"), ExVarPattern.var("rest")),
+                    ExConsPattern.consPattern(ExVarPattern.var("key"), ExVarPattern.var("rest")),
                     ExVarPattern.var("value")),
                 List.of(ExGuard.guard("is_struct", ExVar.var("value"))),
                 ExCapturedBlock.capturedBlock(
@@ -403,8 +392,7 @@ final class ElixirWaiterIr {
         "path_value",
         List.of(
             ExClause.inlineClause(
-                List.of(ExVarPattern.var("_path"), ExVarPattern.var("_value")),
-                ExNil.nil())));
+                List.of(ExVarPattern.var("_path"), ExVarPattern.var("_value")), ExNil.nil())));
   }
 
   private static ExFunction stringEqualsAtomBinary() {
@@ -418,7 +406,8 @@ final class ElixirWaiterIr {
                     ExGuard.guard("is_binary", ExVar.var("right"))),
                 ExOp.op(
                     "==",
-                    ExCall.call("String", "upcase", ExCall.call("Atom", "to_string", ExVar.var("left"))),
+                    ExCall.call(
+                        "String", "upcase", ExCall.call("Atom", "to_string", ExVar.var("left"))),
                     ExCall.call("String", "upcase", ExVar.var("right"))))));
   }
 

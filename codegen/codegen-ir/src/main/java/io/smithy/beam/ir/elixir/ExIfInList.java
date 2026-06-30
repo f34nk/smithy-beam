@@ -26,11 +26,7 @@ public final class ExIfInList implements ExExpr {
   @Override
   public List<String> lines(int indent) {
     String singleLine =
-        "if("
-            + condition.asString()
-            + ", do: "
-            + doExpr.asString()
-            + ", else: nil)";
+        "if(" + condition.asString() + ", do: " + doExpr.asString() + ", else: nil)";
     if (forceSingleLine || singleLine.length() <= SINGLE_LINE_LIMIT) {
       return List.of(IrObject.indent(indent) + singleLine);
     }

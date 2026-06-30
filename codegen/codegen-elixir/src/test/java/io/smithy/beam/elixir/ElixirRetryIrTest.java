@@ -38,7 +38,8 @@ class ElixirRetryIrTest {
   void retryModuleMatchesGolden() throws IOException {
     Model model = retryModel();
     ServiceShape service = model.expectShape(RETRY_SERVICE, ServiceShape.class);
-    ExModule module = ElixirRetryIr.retryModule(testContext(model, service), service, model, sp(model, service));
+    ExModule module =
+        ElixirRetryIr.retryModule(testContext(model, service), service, model, sp(model, service));
     assertThat(module.asString()).isEqualTo(readExpectedString("ir/retry_module.expected.ex"));
   }
 

@@ -2,7 +2,6 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.elixir.ExAnonymousFn;
 import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExCallLocal;
@@ -74,11 +73,7 @@ final class ElixirStructureHelperIr {
                   sp,
                   httpIndex,
                   member,
-                  ExCall.call(
-                      "Map",
-                      "get",
-                      ExVar.var("map"),
-                      ExString.string(wireKey)))));
+                  ExCall.call("Map", "get", ExVar.var("map"), ExString.string(wireKey)))));
     }
     return ExFunction.defpFunction(
         "decode_" + helperName,
@@ -111,8 +106,7 @@ final class ElixirStructureHelperIr {
             ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
             ExClause.blockClause(
                 List.of(
-                    ExStructPattern.structFunctionHead(
-                        "record", "Types." + structName, List.of())),
+                    ExStructPattern.structFunctionHead("record", "Types." + structName, List.of())),
                 ExPipeline.pipeline(
                     "_map",
                     new ExMap(entries),
@@ -190,11 +184,7 @@ final class ElixirStructureHelperIr {
       String recordVar) {
     String field = fieldName(member);
     return encodeFieldValue(
-        model,
-        sp,
-        httpIndex,
-        member,
-        ExStructAccess.structAccess(ExVar.var(recordVar), field));
+        model, sp, httpIndex, member, ExStructAccess.structAccess(ExVar.var(recordVar), field));
   }
 
   private static io.smithy.beam.ir.elixir.ExExpr encodeFieldValue(

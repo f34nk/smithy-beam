@@ -75,9 +75,7 @@ final class ElixirXmlCodecIr {
         List.of(
             ExClause.blockClause(
                 List.of(
-                    ExVarPattern.var("parent"),
-                    ExNilPattern.nil(),
-                    ExVarPattern.var("item_name")),
+                    ExVarPattern.var("parent"), ExNilPattern.nil(), ExVarPattern.var("item_name")),
                 childListPipeline(ExVar.var("parent"))),
             ExClause.blockClause(
                 List.of(
@@ -103,8 +101,7 @@ final class ElixirXmlCodecIr {
               ExClause.inlineClause(
                   List.of(),
                   ExMap.map(
-                      ExMapEntry.entry(
-                          ExAtom.atom("uri"), ExString.string(namespaceUri.get()))))));
+                      ExMapEntry.entry(ExAtom.atom("uri"), ExString.string(namespaceUri.get()))))));
     }
     return ExFunction.defpFunction(
         "xml_namespace", List.of(ExClause.inlineClause(List.of(), ExMap.map())));
@@ -135,8 +132,7 @@ final class ElixirXmlCodecIr {
     ExAnonymousFn rejectFn =
         ExAnonymousFn.compactFn(
             ExClause.inlineClause(
-                List.of(ExVarPattern.var("x")),
-                ExCall.call("Kernel", "is_nil", ExVar.var("x"))));
+                List.of(ExVarPattern.var("x")), ExCall.call("Kernel", "is_nil", ExVar.var("x"))));
     return ExPipeline.pipeChain(
         root,
         ExCallLocal.callLocal("element_content"),
@@ -181,12 +177,7 @@ final class ElixirXmlCodecIr {
             ExClause.inlineClause(
                 List.of(
                     ExTuplePattern.tuple(
-                        ExAtomPattern.atom("xmlText"),
-                        W,
-                        W,
-                        W,
-                        ExVarPattern.var("text"),
-                        W)),
+                        ExAtomPattern.atom("xmlText"), W, W, W, ExVarPattern.var("text"), W)),
                 ExList.list(ExVar.var("text"))),
             ExClause.inlineClause(
                 List.of(ExVarPattern.var("text")),
@@ -202,18 +193,7 @@ final class ElixirXmlCodecIr {
             ExClause.inlineClause(
                 List.of(
                     ExTuplePattern.tuple(
-                        ExAtomPattern.atom("xmlElement"),
-                        W,
-                        W,
-                        W,
-                        W,
-                        W,
-                        W,
-                        W,
-                        W,
-                        W,
-                        W,
-                        W)),
+                        ExAtomPattern.atom("xmlElement"), W, W, W, W, W, W, W, W, W, W, W)),
                 ExAtom.atom("true")),
             ExClause.inlineClause(List.of(W), ExAtom.atom("false"))));
   }
@@ -244,8 +224,7 @@ final class ElixirXmlCodecIr {
                         ExList.list(ExVar.var("element")),
                         ExAtom.atom("xmerl_xmlns"),
                         ExList.list(),
-                        ExList.list(
-                            ExTuple.tuple(ExAtom.atom("prolog"), ExAtom.atom("false")))),
+                        ExList.list(ExTuple.tuple(ExAtom.atom("prolog"), ExAtom.atom("false")))),
                     ExCallLocal.callLocal(":erlang.iolist_to_binary")))));
   }
 
@@ -288,8 +267,7 @@ final class ElixirXmlCodecIr {
   private static ExFunction buildXmlChild() {
     ExFor mapChildFor =
         ExFor.forExpr(
-            ExCallLocal.callLocal(
-                "build_xml_element", ExVar.var("k"), ExVar.var("v"), ExMap.map()),
+            ExCallLocal.callLocal("build_xml_element", ExVar.var("k"), ExVar.var("v"), ExMap.map()),
             ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v")),
             ExCall.call("Map", "to_list", ExVar.var("value")),
             ExForFilter.filter(ExOp.op("!=", ExVar.var("v"), ExAtom.atom("nil"))));
@@ -368,7 +346,8 @@ final class ElixirXmlCodecIr {
             ExClause.blockClause(
                 List.of(ExVarPattern.var("body"), ExVarPattern.var("root_name")),
                 ExCase.caseExpr(
-                    ExCallLocal.callLocal("parse_xml_root", ExVar.var("body"), ExVar.var("root_name")),
+                    ExCallLocal.callLocal(
+                        "parse_xml_root", ExVar.var("body"), ExVar.var("root_name")),
                     ExCaseBranch.branch(
                         ExTuplePattern.tuple(ExAtomPattern.atom("ok"), W), ExNil.nil()),
                     ExCaseBranch.branch(
@@ -405,8 +384,7 @@ final class ElixirXmlCodecIr {
             W,
             W,
             W);
-    ExTuplePattern sixTuple =
-        ExTuplePattern.tuple(W, W, ExVarPattern.var("content"), W, W, W);
+    ExTuplePattern sixTuple = ExTuplePattern.tuple(W, W, ExVarPattern.var("content"), W, W, W);
     ExConsPattern headList = ExConsPattern.consPattern(ExVarPattern.var("h"), W);
 
     return ExFunction.defpFunction(
@@ -418,8 +396,7 @@ final class ElixirXmlCodecIr {
                 List.of(ExGuard.guard("is_list", ExVar.var("content"))),
                 ExVar.var("content")),
             ExClause.inlineClause(
-                List.of(headList),
-                ExCallLocal.callLocal("element_content", ExVar.var("h"))),
+                List.of(headList), ExCallLocal.callLocal("element_content", ExVar.var("h"))),
             ExClause.inlineClause(List.of(W), ExList.list())));
   }
 
@@ -448,8 +425,7 @@ final class ElixirXmlCodecIr {
 
   private static ExFunction isElement() {
     ExTuplePattern xmlElement =
-        ExTuplePattern.tuple(
-            ExAtomPattern.atom("xmlElement"), W, W, W, W, W, W, W, W, W, W, W);
+        ExTuplePattern.tuple(ExAtomPattern.atom("xmlElement"), W, W, W, W, W, W, W, W, W, W, W);
     ExTuplePattern sixTuple = ExTuplePattern.tuple(W, W, ExVarPattern.var("content"), W, W, W);
     return ExFunction.defpFunction(
         "is_element",
@@ -477,8 +453,7 @@ final class ElixirXmlCodecIr {
             W,
             W,
             W);
-    ExTuplePattern sixTupleName =
-        ExTuplePattern.tuple(ExVarPattern.var("name"), W, W, W, W, W);
+    ExTuplePattern sixTupleName = ExTuplePattern.tuple(ExVarPattern.var("name"), W, W, W, W, W);
 
     return ExFunction.defpFunction(
         "element_name",

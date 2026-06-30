@@ -35,8 +35,7 @@ import software.amazon.smithy.model.traits.EndpointTrait;
 final class ElixirHostLabelIr {
   private ElixirHostLabelIr() {}
 
-  static List<ExFunction> buildHostFunctions(
-      Model model, ServiceShape service, SymbolProvider sp) {
+  static List<ExFunction> buildHostFunctions(Model model, ServiceShape service, SymbolProvider sp) {
     List<ExFunction> functions = new ArrayList<>();
     functions.add(splitBaseUrl());
     BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
@@ -89,7 +88,8 @@ final class ElixirHostLabelIr {
       fields.add(ExStructFieldPattern.fieldPattern(field, ExVarPattern.var(field)));
     }
 
-    io.smithy.beam.ir.elixir.ExExpr prefixExpr = buildHostPrefixExpression(hostPrefix, hostLabels, sp);
+    io.smithy.beam.ir.elixir.ExExpr prefixExpr =
+        buildHostPrefixExpression(hostPrefix, hostLabels, sp);
 
     return ExFunction.defpFunction(
         "build_host",
@@ -109,8 +109,7 @@ final class ElixirHostLabelIr {
                             ExString.string(""))),
                     ExMatch.match(
                         ExTuplePattern.tuple(
-                            ExVarPattern.var("_scheme"),
-                            ExVarPattern.var("authority")),
+                            ExVarPattern.var("_scheme"), ExVarPattern.var("authority")),
                         ExCallLocal.callLocal("split_base_url", ExVar.var("base_url"))),
                     ExMatch.match(ExVarPattern.var("prefix"), prefixExpr),
                     ExOp.op("<>", ExVar.var("prefix"), ExVar.var("authority"))))));
@@ -133,11 +132,7 @@ final class ElixirHostLabelIr {
         String field =
             labelFields.getOrDefault(
                 segment.getContent(), BeamNameUtils.toSnakeCase(segment.getContent()));
-        part =
-            ExCall.call(
-                "URI",
-                "encode",
-                ExCall.call("Kernel", "to_string", ExVar.var(field)));
+        part = ExCall.call("URI", "encode", ExCall.call("Kernel", "to_string", ExVar.var(field)));
       } else {
         part = ExString.string(segment.getContent());
       }

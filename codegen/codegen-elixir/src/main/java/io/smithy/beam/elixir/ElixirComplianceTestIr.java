@@ -45,7 +45,6 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.node.ObjectNode;
-import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
@@ -90,8 +89,7 @@ final class ElixirComplianceTestIr {
     for (BeamHttpComplianceTests.OperationRequestTests binding : requestBindings) {
       OperationShape operation = binding.operation();
       Symbol opSym = sp.toSymbol(operation);
-      StructureShape input =
-          model.expectShape(operation.getInputShape(), StructureShape.class);
+      StructureShape input = model.expectShape(operation.getInputShape(), StructureShape.class);
       List<HttpBinding> labels =
           httpIndex.getRequestBindings(operation, HttpBinding.Location.LABEL);
 
@@ -99,14 +97,7 @@ final class ElixirComplianceTestIr {
           BeamHttpComplianceTests.clientRequestTests(binding.cases(), protocol)) {
         tests.add(
             clientRequestTest(
-                model,
-                testCase,
-                opSym,
-                input,
-                clientCodecMod,
-                sp,
-                encodeWithConfig,
-                structNameFn));
+                model, testCase, opSym, input, clientCodecMod, sp, encodeWithConfig, structNameFn));
       }
       for (BeamHttpComplianceTests.HttpRequestTestCase testCase :
           BeamHttpComplianceTests.serverRequestTests(binding.cases(), protocol)) {
@@ -130,35 +121,20 @@ final class ElixirComplianceTestIr {
       StructureShape outputShape =
           binding
               .errorShape()
-              .orElseGet(
-                  () -> model.expectShape(operation.getOutputShape(), StructureShape.class));
+              .orElseGet(() -> model.expectShape(operation.getOutputShape(), StructureShape.class));
       boolean errorCase = binding.errorShape().isPresent();
 
       for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
           BeamHttpComplianceTests.clientResponseTests(binding.cases(), protocol)) {
         tests.add(
             clientResponseTest(
-                model,
-                testCase,
-                opSym,
-                outputShape,
-                clientCodecMod,
-                sp,
-                errorCase,
-                structNameFn));
+                model, testCase, opSym, outputShape, clientCodecMod, sp, errorCase, structNameFn));
       }
       for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
           BeamHttpComplianceTests.serverResponseTests(binding.cases(), protocol)) {
         tests.add(
             serverResponseTest(
-                model,
-                testCase,
-                opSym,
-                outputShape,
-                serverCodecMod,
-                sp,
-                errorCase,
-                structNameFn));
+                model, testCase, opSym, outputShape, serverCodecMod, sp, errorCase, structNameFn));
       }
     }
     tests.addAll(assertionHelperFunctions());
@@ -186,15 +162,13 @@ final class ElixirComplianceTestIr {
       boolean encodeWithConfig,
       Function<StructureShape, String> structNameFn) {
     ExExpr inputLiteral =
-        ElixirComplianceLiteralIr.structLiteral(
-            model, input, testCase.params(), sp, structNameFn);
+        ElixirComplianceLiteralIr.structLiteral(model, input, testCase.params(), sp, structNameFn);
     ExExpr encodeCall =
         encodeWithConfig
             ? ExCall.call(
                 codecMod,
                 "encode_" + opSym.getName() + "_request",
-                ExMap.map(
-                    ExMapEntry.entry(ExAtom.atom("region"), ExString.string("us-east-1"))),
+                ExMap.map(ExMapEntry.entry(ExAtom.atom("region"), ExString.string("us-east-1"))),
                 inputLiteral)
             : ExCall.call(codecMod, "encode_" + opSym.getName() + "_request", inputLiteral);
 
@@ -270,19 +244,14 @@ final class ElixirComplianceTestIr {
             ExMapEntry.entry(
                 ExAtom.atom("headers"),
                 ExCallLocal.callLocal(
-                    "headers_to_list",
-                    ElixirComplianceLiteralIr.headersMap(testCase.headers()))),
+                    "headers_to_list", ElixirComplianceLiteralIr.headersMap(testCase.headers()))),
             ExMapEntry.entry(
-                ExAtom.atom("body"),
-                ElixirComplianceLiteralIr.optionalBinary(testCase.body())));
+                ExAtom.atom("body"), ElixirComplianceLiteralIr.optionalBinary(testCase.body())));
 
     ExExpr decodeCall;
     if (labels.isEmpty()) {
       decodeCall =
-          ExCall.call(
-              codecMod,
-              "decode_" + opSym.getName() + "_request",
-              ExVar.var("request"));
+          ExCall.call(codecMod, "decode_" + opSym.getName() + "_request", ExVar.var("request"));
     } else {
       decodeCall =
           ExCall.call(
@@ -296,8 +265,7 @@ final class ElixirComplianceTestIr {
     body.add(structAssign("request", requestStruct));
     body.add(ExBlankBodyLine.blankLine());
     body.add(ExMatch.match(ExVarPattern.var("input"), decodeCall));
-    body.addAll(
-        assertMemberAsserts(model, input, testCase.params(), sp, "input", structNameFn));
+    body.addAll(assertMemberAsserts(model, input, testCase.params(), sp, "input", structNameFn));
 
     return new ExFunction(
         "test",
@@ -323,15 +291,12 @@ final class ElixirComplianceTestIr {
             ExMapEntry.entry(
                 ExAtom.atom("headers"),
                 ExCallLocal.callLocal(
-                    "headers_to_list",
-                    ElixirComplianceLiteralIr.headersMap(testCase.headers()))),
+                    "headers_to_list", ElixirComplianceLiteralIr.headersMap(testCase.headers()))),
             ExMapEntry.entry(
-                ExAtom.atom("body"),
-                ElixirComplianceLiteralIr.optionalBinary(testCase.body())));
+                ExAtom.atom("body"), ElixirComplianceLiteralIr.optionalBinary(testCase.body())));
 
     ExExpr decodeCall =
-        ExCall.call(
-            codecMod, "decode_" + opSym.getName() + "_response", ExVar.var("response"));
+        ExCall.call(codecMod, "decode_" + opSym.getName() + "_response", ExVar.var("response"));
 
     List<ExExpr> body = new ArrayList<>();
     body.add(structAssign("response", responseStruct));
@@ -372,8 +337,7 @@ final class ElixirComplianceTestIr {
     List<ExExpr> body = new ArrayList<>();
     body.add(
         ExMatch.match(
-            ExVarPattern.var("response"),
-            ExCall.call(codecMod, encodeFn, outputLiteral)));
+            ExVarPattern.var("response"), ExCall.call(codecMod, encodeFn, outputLiteral)));
     body.add(
         ExMacroCall.assertExpr(
             ExOp.op(
@@ -437,9 +401,7 @@ final class ElixirComplianceTestIr {
   }
 
   static ExExpr labelMapExpr(
-      BeamHostLabelIndex hostLabelIndex,
-      OperationShape operation,
-      ObjectNode params) {
+      BeamHostLabelIndex hostLabelIndex, OperationShape operation, ObjectNode params) {
     return ElixirComplianceLiteralIr.labelMap(hostLabelIndex, operation, params);
   }
 
@@ -461,8 +423,7 @@ final class ElixirComplianceTestIr {
                     ExAnonymousFn.compactFn(
                         ExClause.blockClause(
                             List.of(
-                                ExTuplePattern.tuple(
-                                    ExVarPattern.var("k"), ExVarPattern.var("v"))),
+                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v"))),
                             ExTuple.tuple(ExVar.var("k"), ExVar.var("v"))))))));
   }
 
@@ -473,8 +434,7 @@ final class ElixirComplianceTestIr {
             ExClause.inlineClause(List.of(ExListPattern.list()), ExMap.map()),
             ExClause.blockClause(
                 List.of(
-                    ExConsPattern.consPattern(
-                        ExVarPattern.var("param"), ExVarPattern.var("rest"))),
+                    ExConsPattern.consPattern(ExVarPattern.var("param"), ExVarPattern.var("rest"))),
                 ExCall.call(
                     "Map",
                     "merge",
@@ -491,14 +451,11 @@ final class ElixirComplianceTestIr {
                 ExCase.caseExpr(
                     ExCapturedBlock.capturedBlock("String.split(param, \"=\", parts: 2)"),
                     ExCaseBranch.branch(
-                        ExListPattern.list(
-                            ExVarPattern.var("key"), ExVarPattern.var("value")),
-                        ExMap.map(
-                            ExMapEntry.entry(ExVar.var("key"), ExVar.var("value")))),
+                        ExListPattern.list(ExVarPattern.var("key"), ExVarPattern.var("value")),
+                        ExMap.map(ExMapEntry.entry(ExVar.var("key"), ExVar.var("value")))),
                     ExCaseBranch.branch(
                         ExListPattern.list(ExVarPattern.var("key")),
-                        ExMap.map(
-                            ExMapEntry.entry(ExVar.var("key"), ExString.string(""))))))));
+                        ExMap.map(ExMapEntry.entry(ExVar.var("key"), ExString.string(""))))))));
   }
 
   private static ExFunction assertHeaders() {

@@ -18,8 +18,8 @@ import io.smithy.beam.ir.elixir.ExGuard;
 import io.smithy.beam.ir.elixir.ExInteger;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExOp;
 import io.smithy.beam.ir.elixir.ExPattern;
 import io.smithy.beam.ir.elixir.ExPinPattern;
@@ -162,7 +162,8 @@ final class ElixirRouterIr {
             ExVarPattern.var("_"),
             ExTuple.tuple(
                 ExAtom.atom("error"),
-                ExTuple.tuple(ExAtom.atom("not_found"), ExString.string("POST"), ExString.string("/")))));
+                ExTuple.tuple(
+                    ExAtom.atom("not_found"), ExString.string("POST"), ExString.string("/")))));
 
     ExCase targetCase =
         ExCase.caseExpr(
@@ -254,7 +255,8 @@ final class ElixirRouterIr {
             ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExAtomPattern.atom("path_mismatch")),
             ExTuple.tuple(
                 ExAtom.atom("error"),
-                ExTuple.tuple(ExAtom.atom("not_found"), ExString.string(method), ExVar.var("path")))));
+                ExTuple.tuple(
+                    ExAtom.atom("not_found"), ExString.string(method), ExVar.var("path")))));
   }
 
   private static ExExprBlock literalRouteBody(String codecMod, String opName, String handlerFn) {
@@ -301,10 +303,7 @@ final class ElixirRouterIr {
       } else {
         next = ExStringPattern.string(seg.value());
       }
-      current =
-          current == null
-              ? next
-              : ExBinaryConcatPattern.concat(current, next);
+      current = current == null ? next : ExBinaryConcatPattern.concat(current, next);
     }
     return current == null ? ExStringPattern.string("") : current;
   }

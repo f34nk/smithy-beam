@@ -36,10 +36,7 @@ public final class ExFor implements ExExpr {
   }
 
   public static ExFor forExpr(
-      ExExpr expression,
-      ExPattern generatorPattern,
-      ExExpr generatorExpr,
-      ExForFilter... filters) {
+      ExExpr expression, ExPattern generatorPattern, ExExpr generatorExpr, ExForFilter... filters) {
     return new ExFor(expression, generatorPattern, generatorExpr, List.of(filters));
   }
 
@@ -110,8 +107,7 @@ public final class ExFor implements ExExpr {
       out.add(IrObject.indent(indent + 1) + filter.filter().asString() + suffix);
     }
     if (intoExprOrNull != null) {
-      out.add(
-          IrObject.indent(indent + 1) + "into: " + intoExprOrNull.asString() + " do");
+      out.add(IrObject.indent(indent + 1) + "into: " + intoExprOrNull.asString() + " do");
     }
     if (expression.lines().size() == 1) {
       out.add(IrObject.indent(indent + 1) + expression.asString());

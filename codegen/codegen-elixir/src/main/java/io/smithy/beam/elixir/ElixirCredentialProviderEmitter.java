@@ -24,7 +24,6 @@ public final class ElixirCredentialProviderEmitter {
 
     ctx.writerDelegator()
         .useFileWriter(
-            layout.credentialsModuleFile(),
-            writer -> writer.write("$L", module.asString()));
+            layout.credentialsModuleFile(), writer -> writer.write("$L", module.asString()));
   }
 }

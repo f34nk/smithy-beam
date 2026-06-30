@@ -45,8 +45,7 @@ class ElixirClientPaginationIrTest {
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     String itemType =
         ElixirTopDown.structureSpecType(
-            typesMod,
-            BeamClientPaginationSupport.itemsElementSymbol(model, sp, pi).orElseThrow());
+            typesMod, BeamClientPaginationSupport.itemsElementSymbol(model, sp, pi).orElseThrow());
     String successReturnType = "[" + itemType + "]";
 
     List<ExFunction> functions =
@@ -62,8 +61,7 @@ class ElixirClientPaginationIrTest {
     assertThat(renderFunctions(functions))
         .isEqualTo(readExpectedString("ir/client_pagination_list_widgets.expected.ex"));
 
-    ExCallLocal arity2Call =
-        (ExCallLocal) functions.get(0).clauses().get(0).body().get(0);
+    ExCallLocal arity2Call = (ExCallLocal) functions.get(0).clauses().get(0).body().get(0);
     assertThat(arity2Call.function()).isEqualTo("list_widgets");
     assertThat(arity2Call.args().get(2)).isInstanceOf(ExList.class);
 

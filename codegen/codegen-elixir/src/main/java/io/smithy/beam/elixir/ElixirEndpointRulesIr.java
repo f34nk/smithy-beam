@@ -4,7 +4,6 @@ import io.smithy.beam.core.BeamContextParamsIndex;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.ir.elixir.ExAliasAttr;
 import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
 import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExCallLocal;
 import io.smithy.beam.ir.elixir.ExCapturedBlock;
@@ -15,8 +14,8 @@ import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExList;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExNilPattern;
 import io.smithy.beam.ir.elixir.ExPipeline;
 import io.smithy.beam.ir.elixir.ExSpec;
@@ -45,8 +44,7 @@ final class ElixirEndpointRulesIr {
     return ExModule.module(
         endpointsModule,
         List.of(
-            ExModuledoc.moduledoc(
-                "Generated endpoint rule resolver for Smithy service clients.")),
+            ExModuledoc.moduledoc("Generated endpoint rule resolver for Smithy service clients.")),
         List.of(ExAliasAttr.alias(runtimeMod, "RuntimeTypes")),
         functions);
   }
@@ -55,7 +53,8 @@ final class ElixirEndpointRulesIr {
     return ExFunction.functionWithSpec(
         "def",
         "resolve",
-        ExSpec.functionSpec("resolve", "map(), map()", "{:ok, %{url: String.t()}} | {:error, term()}"),
+        ExSpec.functionSpec(
+            "resolve", "map(), map()", "{:ok, %{url: String.t()}} | {:error, term()}"),
         List.of(
             ExClause.blockClauseSingleLineHead(
                 List.of(ExVarPattern.var("config"), ExVarPattern.var("params")),
@@ -95,8 +94,7 @@ final class ElixirEndpointRulesIr {
             ExClause.blockClause(
                 List.of(ExVarPattern.var("config")),
                 ExCase.caseExpr(
-                    ExCall.call(
-                        "Map", "get", ExVar.var("config"), ExAtom.atom("region")),
+                    ExCall.call("Map", "get", ExVar.var("config"), ExAtom.atom("region")),
                     List.of(
                         ExCaseBranch.branch(ExNilPattern.nil(), ExMap.map()),
                         ExCaseBranch.branch(

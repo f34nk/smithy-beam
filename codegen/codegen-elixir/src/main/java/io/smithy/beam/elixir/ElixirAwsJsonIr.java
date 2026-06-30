@@ -5,8 +5,8 @@ import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.ir.elixir.ExAliasAttr;
 import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -139,8 +139,7 @@ final class ElixirAwsJsonIr {
     return contentType;
   }
 
-  static List<ExFunction> sharedCodecHelpers(
-      Model model, ServiceShape service, SymbolProvider sp) {
+  static List<ExFunction> sharedCodecHelpers(Model model, ServiceShape service, SymbolProvider sp) {
     return ElixirRestJsonIr.sharedCodecHelpers(model, service, sp);
   }
 
@@ -222,14 +221,7 @@ final class ElixirAwsJsonIr {
               model, op, httpIndex, sp, typesMod, runtimeMod, eventStreamModule));
       functions.add(
           ElixirAwsJsonOperationIr.buildEncodeResponse(
-              model,
-              op,
-              httpIndex,
-              sp,
-              typesMod,
-              runtimeMod,
-              contentType,
-              eventStreamModule));
+              model, op, httpIndex, sp, typesMod, runtimeMod, contentType, eventStreamModule));
     }
     functions.addAll(sharedCodecHelpers(model, service, sp));
     return functions;

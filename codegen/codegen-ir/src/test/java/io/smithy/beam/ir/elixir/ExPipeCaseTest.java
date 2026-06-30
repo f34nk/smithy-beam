@@ -9,7 +9,12 @@ class ExPipeCaseTest {
   void pipeCaseAsString() {
     ExPipeCase pipeCase =
         ExPipeCase.pipeCase(
-            ExCall.call("List", "keyfind", ExVar.var("headers"), ExString.string("X-Request-Tag"), ExInteger.integer(0)),
+            ExCall.call(
+                "List",
+                "keyfind",
+                ExVar.var("headers"),
+                ExString.string("X-Request-Tag"),
+                ExInteger.integer(0)),
             ExCaseBranch.branch(ExAtomPattern.atom("ok"), ExVar.var("v")),
             ExCaseBranch.branch(ExAtomPattern.atom("nil"), ExAtom.atom("nil")));
     assertThat(pipeCase.asString())

@@ -24,6 +24,7 @@ import io.smithy.beam.ir.elixir.ExIntegerPattern;
 import io.smithy.beam.ir.elixir.ExList;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMapEntry;
+import io.smithy.beam.ir.elixir.ExMapUpdate;
 import io.smithy.beam.ir.elixir.ExMatch;
 import io.smithy.beam.ir.elixir.ExNilPattern;
 import io.smithy.beam.ir.elixir.ExOp;
@@ -37,7 +38,6 @@ import io.smithy.beam.ir.elixir.ExStruct;
 import io.smithy.beam.ir.elixir.ExStructAccess;
 import io.smithy.beam.ir.elixir.ExStructFieldPattern;
 import io.smithy.beam.ir.elixir.ExStructPattern;
-import io.smithy.beam.ir.elixir.ExMapUpdate;
 import io.smithy.beam.ir.elixir.ExTuple;
 import io.smithy.beam.ir.elixir.ExTuplePattern;
 import io.smithy.beam.ir.elixir.ExVar;
@@ -48,7 +48,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -117,8 +116,7 @@ final class ElixirRestJsonOperationIr {
     body.addAll(buildIdempotencyTokenExprs(input, typesMod, sp));
     body.add(
         ExMatch.match(
-            ExVarPattern.var("path"),
-            buildPathExpression(uriTemplate, labels, sp, "input")));
+            ExVarPattern.var("path"), buildPathExpression(uriTemplate, labels, sp, "input")));
     body.addAll(buildQueryExprs(queries, sp));
     body.addAll(buildQueryParamsExprs(queryParams, sp));
     body.addAll(buildRequestHeadersExprs(model, op, headers, prefixHeaders, sp, "input"));
@@ -133,8 +131,7 @@ final class ElixirRestJsonOperationIr {
       String field = fieldName(sp, payload.getMember());
       body.add(
           ExMatch.match(
-              ExVarPattern.var("stream"),
-              ExStructAccess.structAccess(ExVar.var("input"), field)));
+              ExVarPattern.var("stream"), ExStructAccess.structAccess(ExVar.var("input"), field)));
       body.add(ExMatch.match(ExVarPattern.var("body"), ExString.string("")));
     }
 
@@ -145,9 +142,7 @@ final class ElixirRestJsonOperationIr {
               ExCallLocal.callLocal("build_host", ExVar.var("input"), ExVar.var("config"))));
     }
 
-    body.add(
-        buildHttpRequestStruct(
-            runtimeMod, method, streamingRequestPayload, hasHostLabels));
+    body.add(buildHttpRequestStruct(runtimeMod, method, streamingRequestPayload, hasHostLabels));
 
     ExSpec spec =
         encodeWithConfig
@@ -272,22 +267,18 @@ final class ElixirRestJsonOperationIr {
       successFields.add(
           ExStructFieldPattern.fieldPattern("status", ExIntegerPattern.integer(successCode)));
     }
-    successFields.add(
-        ExStructFieldPattern.fieldPattern("headers", ExVarPattern.var("headers")));
+    successFields.add(ExStructFieldPattern.fieldPattern("headers", ExVarPattern.var("headers")));
     successFields.add(ExStructFieldPattern.fieldPattern("body", ExVarPattern.var("body")));
     if (streamingResponsePayload) {
-      successFields.add(
-          ExStructFieldPattern.fieldPattern("stream", ExVarPattern.var("stream")));
+      successFields.add(ExStructFieldPattern.fieldPattern("stream", ExVarPattern.var("stream")));
     }
 
     List<ExGuard> successGuards = new ArrayList<>();
     if (!respCode.isEmpty()) {
       successGuards.add(
-          ExGuard.exprGuard(
-              ExOp.op(">=", ExVar.var("http_status"), ExInteger.integer(200))));
+          ExGuard.exprGuard(ExOp.op(">=", ExVar.var("http_status"), ExInteger.integer(200))));
       successGuards.add(
-          ExGuard.exprGuard(
-              ExOp.op("<", ExVar.var("http_status"), ExInteger.integer(300))));
+          ExGuard.exprGuard(ExOp.op("<", ExVar.var("http_status"), ExInteger.integer(300))));
     }
 
     List<ExExpr> successBody = new ArrayList<>();
@@ -304,18 +295,19 @@ final class ElixirRestJsonOperationIr {
                           ExVar.var("headers"),
                           ExString.string(expectedContentType)))),
               buildDecodeResponseSuccessBody(
-                  model,
-                  op,
-                  httpIndex,
-                  sp,
-                  typesMod,
-                  outputStruct,
-                  respHeaders,
-                  respPrefixHeaders,
-                  respDoc,
-                  respPayload,
-                  respCode,
-                  streamingResponsePayload).toArray(ExExpr[]::new)));
+                      model,
+                      op,
+                      httpIndex,
+                      sp,
+                      typesMod,
+                      outputStruct,
+                      respHeaders,
+                      respPrefixHeaders,
+                      respDoc,
+                      respPayload,
+                      respCode,
+                      streamingResponsePayload)
+                  .toArray(ExExpr[]::new)));
     } else {
       successBody.addAll(
           buildDecodeResponseSuccessBody(
@@ -417,9 +409,7 @@ final class ElixirRestJsonOperationIr {
               ExTuple.tuple(
                   ExAtom.atom("error"),
                   ExTuple.tuple(
-                      ExAtom.atom("unknown_error"),
-                      ExVar.var("status"),
-                      ExVar.var("body")))));
+                      ExAtom.atom("unknown_error"), ExVar.var("status"), ExVar.var("body")))));
 
       clauses.add(
           new ExClause(
@@ -427,18 +417,15 @@ final class ElixirRestJsonOperationIr {
                   ExVarPattern.var("status"),
                   ExVarPattern.var("_headers"),
                   ExVarPattern.var("body")),
-              List.of(ExGuard.exprGuard(ExOp.op(">=", ExVar.var("status"), ExInteger.integer(400)))),
+              List.of(
+                  ExGuard.exprGuard(ExOp.op(">=", ExVar.var("status"), ExInteger.integer(400)))),
               List.of(
                   ExMatch.match(
                       ExVarPattern.var("decoded"),
                       ExCallLocal.callLocal("decode_json_body", ExVar.var("body"))),
                   ExMatch.match(
                       ExVarPattern.var("error_type"),
-                      ExCall.call(
-                          "Map",
-                          "get",
-                          ExVar.var("decoded"),
-                          ExString.string("__type"))),
+                      ExCall.call("Map", "get", ExVar.var("decoded"), ExString.string("__type"))),
                   ExCase.caseExpr(
                       ExVar.var("error_type"), typeBranches.toArray(ExCaseBranch[]::new))),
               false,
@@ -453,9 +440,7 @@ final class ElixirRestJsonOperationIr {
               ExTuple.tuple(
                   ExAtom.atom("error"),
                   ExTuple.tuple(
-                      ExAtom.atom("unknown_error"),
-                      ExVar.var("status"),
-                      ExVar.var("body")))));
+                      ExAtom.atom("unknown_error"), ExVar.var("status"), ExVar.var("body")))));
     }
 
     return ExFunction.defpFunction("decode_" + opName + "_response_error", clauses);
@@ -482,8 +467,7 @@ final class ElixirRestJsonOperationIr {
     List<ExStructFieldPattern> patternFields = new ArrayList<>();
     for (HttpBinding binding : concat(respHeaders, respPrefixHeaders, respDoc, respPayload)) {
       String field = fieldName(sp, binding.getMember());
-      patternFields.add(
-          ExStructFieldPattern.fieldPattern(field, ExVarPattern.var(field)));
+      patternFields.add(ExStructFieldPattern.fieldPattern(field, ExVarPattern.var(field)));
     }
 
     return ExFunction.functionWithDocAndSpec(
@@ -493,9 +477,9 @@ final class ElixirRestJsonOperationIr {
         ExSpec.functionSpec("encode_" + opName + "_response", outputType, "map()"),
         List.of(
             ExClause.blockClause(
-                List.of(
-                    new ExStructPattern("Types." + outputStruct, patternFields, "output")),
-                buildEncodeResponseBodyExprs(model, op, httpIndex, sp, "output").toArray(ExExpr[]::new))));
+                List.of(new ExStructPattern("Types." + outputStruct, patternFields, "output")),
+                buildEncodeResponseBodyExprs(model, op, httpIndex, sp, "output")
+                    .toArray(ExExpr[]::new))));
   }
 
   static ExFunction buildErrorResponseEncoder(
@@ -527,8 +511,7 @@ final class ElixirRestJsonOperationIr {
     body.add(ElixirJsonCodecIr.rejectNilMapPipeline("body_map", bodyEntries));
     body.add(
         ExMatch.match(
-            ExVarPattern.var("body"),
-            ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
+            ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
     body.add(
         ExMatch.match(
             ExVarPattern.var("headers"),
@@ -575,8 +558,7 @@ final class ElixirRestJsonOperationIr {
       String field = fieldName(sp, hb.getMember());
       body.add(
           ExMatch.match(
-              ExVarPattern.var(field),
-              headerValuePipeCase("headers", hb.getLocationName())));
+              ExVarPattern.var(field), headerValuePipeCase("headers", hb.getLocationName())));
     }
 
     List<ExMapEntry> structFields = new ArrayList<>();
@@ -598,8 +580,7 @@ final class ElixirRestJsonOperationIr {
       String field = fieldName(sp, db.getMember());
       structFields.add(
           ExMapEntry.entry(
-              ExAtom.atom(field),
-              decodeDocumentFieldExpr(model, sp, httpIndex, db.getMember())));
+              ExAtom.atom(field), decodeDocumentFieldExpr(model, sp, httpIndex, db.getMember())));
     }
     for (HttpBinding pb : respPayload) {
       String field = fieldName(sp, pb.getMember());
@@ -615,9 +596,7 @@ final class ElixirRestJsonOperationIr {
     }
 
     ExExpr success =
-        ExTuple.tuple(
-            ExAtom.atom("ok"),
-            ExStruct.struct("Types." + outputStruct, structFields));
+        ExTuple.tuple(ExAtom.atom("ok"), ExStruct.struct("Types." + outputStruct, structFields));
     body.add(ExMatch.match(ExVarPattern.var("result"), success));
     body.add(ElixirHttpChecksumIr.responseChecksumGuardExpr(model, op, ExVar.var("result")));
     return body;
@@ -660,10 +639,7 @@ final class ElixirRestJsonOperationIr {
               ExCallLocal.callLocal(
                   "decode_query_param",
                   ExCall.call(
-                      "Map",
-                      "get",
-                      ExVar.var("query"),
-                      ExString.string(qb.getLocationName())))));
+                      "Map", "get", ExVar.var("query"), ExString.string(qb.getLocationName())))));
     }
     for (HttpBinding qp : queryParams) {
       String field = fieldName(sp, qp.getMember());
@@ -689,8 +665,7 @@ final class ElixirRestJsonOperationIr {
       String field = fieldName(sp, db.getMember());
       fields.add(
           ExMapEntry.entry(
-              ExAtom.atom(field),
-              decodeDocumentFieldExpr(model, sp, httpIndex, db.getMember())));
+              ExAtom.atom(field), decodeDocumentFieldExpr(model, sp, httpIndex, db.getMember())));
     }
     for (HttpBinding pb : reqPayload) {
       String field = fieldName(sp, pb.getMember());
@@ -744,18 +719,11 @@ final class ElixirRestJsonOperationIr {
       List<MemberShape> docMemberShapes = respDoc.stream().map(HttpBinding::getMember).toList();
       List<ExMapEntry> entries =
           ElixirJsonCodecIr.bodyMapEntries(
-              model,
-              httpIndex,
-              sp,
-              "Types",
-              docMemberShapes,
-              recordVar,
-              "event_stream");
+              model, httpIndex, sp, "Types", docMemberShapes, recordVar, "event_stream");
       body.add(ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries));
       body.add(
           ExMatch.match(
-              ExVarPattern.var("body"),
-              ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
+              ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
     } else {
       body.add(ExMatch.match(ExVarPattern.var("body"), ExString.string("")));
     }
@@ -767,8 +735,7 @@ final class ElixirRestJsonOperationIr {
               ExVarPattern.var("headers"),
               ExList.cons(
                   ExTuple.tuple(
-                      ExString.string("Content-Type"),
-                      ExString.string(responseContentType)),
+                      ExString.string("Content-Type"), ExString.string(responseContentType)),
                   ExVar.var("extra_headers"))));
     } else {
       body.add(
@@ -776,8 +743,7 @@ final class ElixirRestJsonOperationIr {
               ExVarPattern.var("headers"),
               ExList.list(
                   ExTuple.tuple(
-                      ExString.string("Content-Type"),
-                      ExString.string(responseContentType)))));
+                      ExString.string("Content-Type"), ExString.string(responseContentType)))));
     }
 
     for (HttpBinding ph : respPrefixHeaders) {
@@ -892,8 +858,7 @@ final class ElixirRestJsonOperationIr {
               ExVarPattern.var("headers"),
               ExList.list(
                   ExTuple.tuple(
-                      ExString.string("Content-Type"),
-                      ExString.string(requestContentType)))));
+                      ExString.string("Content-Type"), ExString.string(requestContentType)))));
     } else {
       exprs.addAll(extraHeadersPipeline(sp, recordVar, headers));
       exprs.add(
@@ -901,8 +866,7 @@ final class ElixirRestJsonOperationIr {
               ExVarPattern.var("headers"),
               ExList.cons(
                   ExTuple.tuple(
-                      ExString.string("Content-Type"),
-                      ExString.string(requestContentType)),
+                      ExString.string("Content-Type"), ExString.string(requestContentType)),
                   ExVar.var("extra_headers"))));
     }
     for (HttpBinding ph : prefixHeaders) {
@@ -1008,18 +972,11 @@ final class ElixirRestJsonOperationIr {
       List<MemberShape> docMemberShapes = docMembers.stream().map(HttpBinding::getMember).toList();
       List<ExMapEntry> entries =
           ElixirJsonCodecIr.bodyMapEntries(
-              model,
-              httpIndex,
-              sp,
-              "Types",
-              docMemberShapes,
-              recordVar,
-              eventStreamModule);
+              model, httpIndex, sp, "Types", docMemberShapes, recordVar, eventStreamModule);
       exprs.add(ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries));
       exprs.add(
           ExMatch.match(
-              ExVarPattern.var("body"),
-              ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
+              ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
     } else {
       exprs.add(ExMatch.match(ExVarPattern.var("body"), ExString.string("")));
     }
@@ -1103,8 +1060,7 @@ final class ElixirRestJsonOperationIr {
             appendPathSegment(
                 expr,
                 ExCallLocal.callLocal(
-                    "uri_encode",
-                    ExStructAccess.structAccess(ExVar.var(inputVar), field)));
+                    "uri_encode", ExStructAccess.structAccess(ExVar.var(inputVar), field)));
       } else {
         expr = appendPathSegment(expr, ExString.string("{" + labelName + "}"));
       }
@@ -1126,28 +1082,18 @@ final class ElixirRestJsonOperationIr {
             ExString.string(locationName),
             ExInteger.integer(0)),
         ExCaseBranch.branch(
-            ExTuplePattern.tuple(ExVarPattern.var("_"), ExVarPattern.var("v")),
-            ExVar.var("v")),
+            ExTuplePattern.tuple(ExVarPattern.var("_"), ExVarPattern.var("v")), ExVar.var("v")),
         ExCaseBranch.branch(ExNilPattern.nil(), ExAtom.atom("nil")));
   }
 
   private static ExExpr decodeDocumentFieldExpr(
       Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member) {
-    ExExpr raw =
-        ExCall.call(
-            "Map",
-            "get",
-            ExVar.var("decoded"),
-            ExString.string(jsonKey(member)));
+    ExExpr raw = ExCall.call("Map", "get", ExVar.var("decoded"), ExString.string(jsonKey(member)));
     return ElixirJsonCodecIr.decodeJsonExpr(model, sp, httpIndex, member, raw);
   }
 
   private static ExTuple buildErrorTuple(
-      String typesMod,
-      String modName,
-      Model model,
-      StructureShape errShape,
-      SymbolProvider sp) {
+      String typesMod, String modName, Model model, StructureShape errShape, SymbolProvider sp) {
     List<ExMapEntry> fields = new ArrayList<>();
     for (MemberShape member : errShape.members()) {
       if (member.getMemberName().equals("__beam_error_kind")) {
@@ -1158,10 +1104,7 @@ final class ElixirRestJsonOperationIr {
           ExMapEntry.entry(
               ExAtom.atom(field),
               ExCall.call(
-                  "Map",
-                  "get",
-                  ExVar.var("decoded"),
-                  ExString.string(member.getMemberName()))));
+                  "Map", "get", ExVar.var("decoded"), ExString.string(member.getMemberName()))));
     }
     return ExTuple.tuple(
         ExAtom.atom("error"),

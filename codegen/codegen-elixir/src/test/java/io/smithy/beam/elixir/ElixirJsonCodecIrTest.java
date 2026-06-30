@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
-import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -90,8 +89,7 @@ class ElixirJsonCodecIrTest {
         model.expectShape(ShapeId.from("com.example#BasicItem"), StructureShape.class);
     List<MemberShape> members =
         List.of(
-            basicItem.getMember("name").orElseThrow(),
-            basicItem.getMember("count").orElseThrow());
+            basicItem.getMember("name").orElseThrow(), basicItem.getMember("count").orElseThrow());
     List<ExMapEntry> entries =
         ElixirJsonCodecIr.bodyMapEntries(
             model, httpIndex, provider, "Types", members, "record", "event_stream");

@@ -21,7 +21,6 @@ public final class ElixirWaiterEmitter {
     ExModule module =
         ElixirWaiterIr.waitersModule(ctx, service, index, ctx.symbolProvider(), ctx.model());
     ctx.writerDelegator()
-        .useFileWriter(
-            layout.waitersModuleFile(), writer -> writer.write("$L", module.asString()));
+        .useFileWriter(layout.waitersModuleFile(), writer -> writer.write("$L", module.asString()));
   }
 }

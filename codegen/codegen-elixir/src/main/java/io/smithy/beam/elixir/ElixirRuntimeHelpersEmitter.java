@@ -29,8 +29,7 @@ public final class ElixirRuntimeHelpersEmitter {
 
     ctx.writerDelegator()
         .useFileWriter(
-            layout.runtimeHelpersModuleFile(),
-            writer -> writer.write("$L", module.asString()));
+            layout.runtimeHelpersModuleFile(), writer -> writer.write("$L", module.asString()));
   }
 
   static boolean serviceHasLabelBindings(Model model, ServiceShape service) {

@@ -13,8 +13,8 @@ import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExInteger;
 import io.smithy.beam.ir.elixir.ExIntegerPattern;
 import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExSpec;
 import io.smithy.beam.ir.elixir.ExStructPattern;
 import io.smithy.beam.ir.elixir.ExTuplePattern;
@@ -135,7 +135,8 @@ final class ElixirRetryIr {
               ExCapturedBlock.capturedBlock("true")));
     }
     clauses.add(
-        ExClause.inlineClause(List.of(ExVarPattern.var("_")), ExCapturedBlock.capturedBlock("false")));
+        ExClause.inlineClause(
+            List.of(ExVarPattern.var("_")), ExCapturedBlock.capturedBlock("false")));
     return ExFunction.defFunction("should_retry?", clauses);
   }
 

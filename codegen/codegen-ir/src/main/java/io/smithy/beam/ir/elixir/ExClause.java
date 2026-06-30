@@ -43,7 +43,8 @@ public final class ExClause implements IrObject {
     return inlineClause(patterns, List.of(), body);
   }
 
-  public static ExClause blockClause(List<ExPattern> patterns, List<ExGuard> guards, ExExpr... body) {
+  public static ExClause blockClause(
+      List<ExPattern> patterns, List<ExGuard> guards, ExExpr... body) {
     return new ExClause(patterns, guards, List.of(body), false, true);
   }
 
@@ -92,8 +93,7 @@ public final class ExClause implements IrObject {
     List<String> out = new ArrayList<>();
     if (shouldBreakStructFunctionHead()) {
       ExStructPattern structPattern = (ExStructPattern) patterns.get(0);
-      out.addAll(
-          structPattern.functionHeadLines(indent, keyword, name, whenClauseText(), true));
+      out.addAll(structPattern.functionHeadLines(indent, keyword, name, whenClauseText(), true));
     } else {
       out.add(IrObject.indent(indent) + buildBlockHead(keyword, name) + " do");
     }

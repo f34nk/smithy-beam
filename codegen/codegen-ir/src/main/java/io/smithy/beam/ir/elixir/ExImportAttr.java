@@ -29,7 +29,12 @@ public final class ExImportAttr implements ExModuleAttribute {
       return List.of(IrObject.indent(indent) + "import " + module);
     }
     return List.of(
-        IrObject.indent(indent) + "import " + module + ", only: [" + String.join(", ", functions) + "]");
+        IrObject.indent(indent)
+            + "import "
+            + module
+            + ", only: ["
+            + String.join(", ", functions)
+            + "]");
   }
 
   @Override

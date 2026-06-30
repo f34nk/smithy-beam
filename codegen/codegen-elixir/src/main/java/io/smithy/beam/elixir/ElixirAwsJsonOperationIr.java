@@ -51,14 +51,11 @@ final class ElixirAwsJsonOperationIr {
     String inputStruct = sp.toSymbol(input).getName();
     String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
     String httpRequestType = "%" + runtimeMod + ".HttpRequest{}";
-    List<MemberShape> members =
-        ElixirJsonCodecIr.documentMembers(httpIndex, op, input, true);
+    List<MemberShape> members = ElixirJsonCodecIr.documentMembers(httpIndex, op, input, true);
     String amzTarget = targetPrefix + "." + op.getId().getName();
 
-    ExSpec spec =
-        ExSpec.functionSpec("encode_" + opName + "_request", inputType, httpRequestType);
-    ExStructPattern inputPattern =
-        new ExStructPattern("Types." + inputStruct, List.of(), "input");
+    ExSpec spec = ExSpec.functionSpec("encode_" + opName + "_request", inputType, httpRequestType);
+    ExStructPattern inputPattern = new ExStructPattern("Types." + inputStruct, List.of(), "input");
 
     List<ExExpr> body = new ArrayList<>();
     body.add(
@@ -68,8 +65,7 @@ final class ElixirAwsJsonOperationIr {
                 model, httpIndex, sp, typesMod, members, "input", eventStreamModule)));
     body.add(
         ExMatch.match(
-            ExVarPattern.var("body"),
-            ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
+            ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
     body.add(buildAwsJsonHttpRequestExpr(runtimeMod, amzTarget, contentType));
 
     return ExFunction.functionWithDocAndSpec(
@@ -92,8 +88,7 @@ final class ElixirAwsJsonOperationIr {
     StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
     String outputStruct = sp.toSymbol(output).getName();
     String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
-    List<MemberShape> members =
-        ElixirJsonCodecIr.documentMembers(httpIndex, op, output, false);
+    List<MemberShape> members = ElixirJsonCodecIr.documentMembers(httpIndex, op, output, false);
 
     ExSpec spec =
         ExSpec.functionSpec(
@@ -129,8 +124,7 @@ final class ElixirAwsJsonOperationIr {
                   "Types." + outputStruct,
                   ExMapEntry.entry(
                       ExAtom.atom(fieldName),
-                      ExCall.call(
-                          eventStreamModule, "decode_" + helper, ExVar.var("body"))))));
+                      ExCall.call(eventStreamModule, "decode_" + helper, ExVar.var("body"))))));
     } else {
       successBody.addAll(ElixirJsonCodecIr.decodedBodyPrelude());
       successBody.add(
@@ -170,8 +164,7 @@ final class ElixirAwsJsonOperationIr {
     StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
     String inputStruct = sp.toSymbol(input).getName();
     String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
-    List<MemberShape> members =
-        ElixirJsonCodecIr.documentMembers(httpIndex, op, input, true);
+    List<MemberShape> members = ElixirJsonCodecIr.documentMembers(httpIndex, op, input, true);
 
     ExSpec spec = ExSpec.functionSpec("decode_" + opName + "_request", "map()", inputType);
     ExStructPattern pattern =
@@ -219,13 +212,10 @@ final class ElixirAwsJsonOperationIr {
     StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
     String outputStruct = sp.toSymbol(output).getName();
     String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
-    List<MemberShape> members =
-        ElixirJsonCodecIr.documentMembers(httpIndex, op, output, false);
+    List<MemberShape> members = ElixirJsonCodecIr.documentMembers(httpIndex, op, output, false);
 
-    ExSpec spec =
-        ExSpec.functionSpec("encode_" + opName + "_response", outputType, "map()");
-    ExStructPattern pattern =
-        new ExStructPattern("Types." + outputStruct, List.of(), "output");
+    ExSpec spec = ExSpec.functionSpec("encode_" + opName + "_response", outputType, "map()");
+    ExStructPattern pattern = new ExStructPattern("Types." + outputStruct, List.of(), "output");
 
     List<ExExpr> body = new ArrayList<>();
     body.add(
@@ -235,14 +225,12 @@ final class ElixirAwsJsonOperationIr {
                 model, httpIndex, sp, typesMod, members, "output", eventStreamModule)));
     body.add(
         ExMatch.match(
-            ExVarPattern.var("body"),
-            ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
+            ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
     body.add(
         ExMatch.match(
             ExVarPattern.var("headers"),
             ExList.list(
-                ExTuple.tuple(
-                    ExString.string("Content-Type"), ExString.string(contentType)))));
+                ExTuple.tuple(ExString.string("Content-Type"), ExString.string(contentType)))));
     body.add(
         ExMap.map(
             ExMapEntry.entry(ExAtom.atom("status"), ExInteger.integer(200)),
@@ -278,10 +266,8 @@ final class ElixirAwsJsonOperationIr {
         ExMapEntry.entry(
             ExAtom.atom("headers"),
             ExList.list(
-                ExTuple.tuple(
-                    ExString.string("Content-Type"), ExString.string(contentType)),
-                ExTuple.tuple(
-                    ExString.string("X-Amz-Target"), ExString.string(amzTarget)))),
+                ExTuple.tuple(ExString.string("Content-Type"), ExString.string(contentType)),
+                ExTuple.tuple(ExString.string("X-Amz-Target"), ExString.string(amzTarget)))),
         ExMapEntry.entry(ExAtom.atom("body"), ExVar.var("body")));
   }
 }

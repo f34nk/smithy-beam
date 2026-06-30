@@ -10,8 +10,7 @@ class ExPipelineTest {
     ExPipeline pipeline =
         ExPipeline.pipeline(
             "query",
-            ExMap.map(
-                ExMapEntry.entry(ExString.string("verbose"), ExVar.var("input.verbose"))),
+            ExMap.map(ExMapEntry.entry(ExString.string("verbose"), ExVar.var("input.verbose"))),
             ExCapturedBlock.capturedBlock("Enum.reject(fn {_, v} -> is_nil(v) end)"),
             ExCapturedBlock.capturedBlock("Map.new()"));
     assertThat(pipeline.asString())

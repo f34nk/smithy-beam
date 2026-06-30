@@ -45,7 +45,8 @@ public final class ExCall implements ExExpr {
       List<String> out = new ArrayList<>();
       out.add(IrObject.indent(indent) + "Enum.filter_map(");
       out.add(IrObject.indent(indent + 1) + args.get(0).asString() + ",");
-      List<String> funLines = new ArrayList<>(((ExAnonymousFn) args.get(1)).inlineClauseLines(indent + 1));
+      List<String> funLines =
+          new ArrayList<>(((ExAnonymousFn) args.get(1)).inlineClauseLines(indent + 1));
       out.addAll(funLines);
       out.add(IrObject.indent(indent) + ")");
       return out;

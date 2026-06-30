@@ -6,11 +6,11 @@ import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExBehaviourAttr;
 import io.smithy.beam.ir.elixir.ExComment;
 import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
 import io.smithy.beam.ir.elixir.ExModuleAssignAttr;
 import io.smithy.beam.ir.elixir.ExModuleAttribute;
 import io.smithy.beam.ir.elixir.ExModuleEntry;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExPreambleEntry;
 import io.smithy.beam.ir.elixir.ExTuple;
 import io.smithy.beam.ir.elixir.ExVar;
@@ -43,16 +43,13 @@ final class ElixirServerIr {
             ExAliasAttr.alias(behaviourMod, "Behaviour"),
             ExModuleAssignAttr.assign("default_impl", ExVar.var(implMod)),
             ExModuleAssignAttr.assign(
-                "handlers_key",
-                ExTuple.tuple(ExVar.var(serverMod), ExAtom.atom("handlers"))));
+                "handlers_key", ExTuple.tuple(ExVar.var(serverMod), ExAtom.atom("handlers"))));
     List<ExFunction> functions = new ArrayList<>(operationFunctions);
     functions.addAll(discoveryFunctions);
     List<ExModuleEntry> epilogue =
         List.of(
             ExComment.comment(
-                "Call "
-                    + serverMod
-                    + ".init_handlers/0 during application start before dispatch."),
+                "Call " + serverMod + ".init_handlers/0 during application start before dispatch."),
             ExComment.comment("Default impl module: " + implMod + "."));
     return ExModule.module(serverMod, preamble, attributes, List.of(), functions, epilogue);
   }

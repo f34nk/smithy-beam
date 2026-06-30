@@ -83,12 +83,7 @@ class ElixirIrGoldenIntegrationTest {
         StreamSupport.stream(getNameOutput.members().spliterator(), false).toList();
     ExNestedModule nested =
         ElixirDirectedCodegen.buildStructureNestedModule(
-            getNameOutput,
-            sp.toSymbol(getNameOutput),
-            ctx,
-            sp,
-            NullableIndex.of(model),
-            members);
+            getNameOutput, sp.toSymbol(getNameOutput), ctx, sp, NullableIndex.of(model), members);
     IrGoldenAssertions.assertLinesAndAsString(
         nested, "ir/golden/get_name_output_structure.expected.ex");
   }

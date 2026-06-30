@@ -44,8 +44,7 @@ class ExPatternTest {
                     ExStructFieldPattern.fieldPattern("headers", ExVarPattern.var("headers")),
                     ExStructFieldPattern.fieldPattern("body", ExVarPattern.var("body")))
                 .asString())
-        .isEqualTo(
-            "%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}");
+        .isEqualTo("%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}");
   }
 
   @Test
@@ -66,14 +65,10 @@ class ExPatternTest {
             ExStructFieldPattern.fieldPattern("headers", ExVarPattern.var("headers")),
             ExStructFieldPattern.fieldPattern("body", ExVarPattern.var("body")));
     assertThat(pattern.breaksFunctionHead()).isTrue();
-    assertThat(
-            pattern.functionHeadLines(1, "def", "decode_response", null, true))
+    assertThat(pattern.functionHeadLines(1, "def", "decode_response", null, true))
         .containsExactly(
             "  def decode_response(%RuntimeTypes.HttpResponse{",
-            "    status: 200,",
-            "    headers: headers,",
-            "    body: body",
-            "  }) do");
+            "    status: 200,", "    headers: headers,", "    body: body", "  }) do");
   }
 
   @Test

@@ -63,8 +63,7 @@ public final class ExTypeDef implements ExModuleEntry {
 
   private static ExTypeDef fieldStructureType(
       String name, List<String> fieldLines, boolean moduleStruct) {
-    return new ExTypeDef(
-        name, "", List.of(), List.of(), List.copyOf(fieldLines), moduleStruct);
+    return new ExTypeDef(name, "", List.of(), List.of(), List.copyOf(fieldLines), moduleStruct);
   }
 
   public String name() {

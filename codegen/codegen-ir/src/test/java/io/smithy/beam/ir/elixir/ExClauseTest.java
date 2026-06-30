@@ -9,14 +9,19 @@ class ExClauseTest {
   private static ExStruct basicItemStruct() {
     return ExStruct.struct(
         "BasicItem",
-        ExMapEntry.entry(ExAtom.atom("name"), ExCall.call("Map", "get", ExVar.var("map"), ExString.string("name"), ExAtom.atom("nil"))),
-        ExMapEntry.entry(ExAtom.atom("count"), ExCall.call("Map", "get", ExVar.var("map"), ExString.string("count"), ExAtom.atom("nil"))));
+        ExMapEntry.entry(
+            ExAtom.atom("name"),
+            ExCall.call(
+                "Map", "get", ExVar.var("map"), ExString.string("name"), ExAtom.atom("nil"))),
+        ExMapEntry.entry(
+            ExAtom.atom("count"),
+            ExCall.call(
+                "Map", "get", ExVar.var("map"), ExString.string("count"), ExAtom.atom("nil"))));
   }
 
   @Test
   void inlineAtomClauseLines() {
-    ExClause clause =
-        ExClause.inlineClause(List.of(ExAtomPattern.atom("nil")), ExAtom.atom("nil"));
+    ExClause clause = ExClause.inlineClause(List.of(ExAtomPattern.atom("nil")), ExAtom.atom("nil"));
     assertThat(clause.lines(0, "def", "decode_basic_item", true))
         .containsExactly("def decode_basic_item(:nil), do: :nil");
   }
@@ -107,7 +112,6 @@ class ExClauseTest {
     assertThat(clause.lines(1, "def", "decode_get_type_closure_request", false))
         .containsExactly(
             "  def decode_get_type_closure_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}, label_map) do",
-            "    :ok",
-            "  end");
+            "    :ok", "  end");
   }
 }

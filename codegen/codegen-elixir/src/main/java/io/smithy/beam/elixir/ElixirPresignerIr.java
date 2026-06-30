@@ -11,8 +11,8 @@ import io.smithy.beam.ir.elixir.ExInteger;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMapEntry;
 import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExSpec;
 import io.smithy.beam.ir.elixir.ExString;
 import io.smithy.beam.ir.elixir.ExTuple;
@@ -29,8 +29,7 @@ final class ElixirPresignerIr {
 
   private ElixirPresignerIr() {}
 
-  static ExModule presignerModule(
-      ElixirContext ctx, ServiceShape service, String sigv4ModuleName) {
+  static ExModule presignerModule(ElixirContext ctx, ServiceShape service, String sigv4ModuleName) {
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
     String moduleName = ElixirSymbolProvider.toModuleName(layout.presignerModuleName());
@@ -58,8 +57,7 @@ final class ElixirPresignerIr {
                     ExVarPattern.var("request")),
                 ExMatch.match(
                     ExVarPattern.var("credentials"),
-                    ExCall.call(
-                        "Map", "fetch!", ExVar.var("config"), ExAtom.atom("credentials"))),
+                    ExCall.call("Map", "fetch!", ExVar.var("config"), ExAtom.atom("credentials"))),
                 ExMatch.match(
                     ExVarPattern.var("region"),
                     ExCall.call(
@@ -70,8 +68,7 @@ final class ElixirPresignerIr {
                         ExString.string("us-east-1"))),
                 ExMatch.match(
                     ExVarPattern.var("service"),
-                    ExCall.call(
-                        "Map", "fetch!", ExVar.var("config"), ExAtom.atom("signing_name"))),
+                    ExCall.call("Map", "fetch!", ExVar.var("config"), ExAtom.atom("signing_name"))),
                 ExMatch.match(
                     ExVarPattern.var("expires"),
                     ExCall.call(

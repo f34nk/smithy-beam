@@ -1,17 +1,17 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.ir.elixir.ExBlankLine;
+import io.smithy.beam.ir.elixir.ExClause;
 import io.smithy.beam.ir.elixir.ExDefstruct;
 import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
 import io.smithy.beam.ir.elixir.ExModuleEntry;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExNestedModule;
 import io.smithy.beam.ir.elixir.ExPreambleEntry;
 import io.smithy.beam.ir.elixir.ExSourceLine;
 import io.smithy.beam.ir.elixir.ExSpec;
 import io.smithy.beam.ir.elixir.ExTypeDef;
-import io.smithy.beam.ir.elixir.ExClause;
 import io.smithy.beam.ir.elixir.ExVar;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,8 +52,7 @@ final class ElixirRuntimeTypesIr {
                   "def",
                   "endpoint_rule_set",
                   ExSpec.functionSpec("endpoint_rule_set", "", "endpoint_rule_set()"),
-                  List.of(
-                      ExClause.inlineClause(List.of(), ExVar.var("@endpoint_rule_set")))));
+                  List.of(ExClause.inlineClause(List.of(), ExVar.var("@endpoint_rule_set")))));
         });
 
     return ExModule.module(moduleName, preamble, List.of(), List.of(), functions, entries);

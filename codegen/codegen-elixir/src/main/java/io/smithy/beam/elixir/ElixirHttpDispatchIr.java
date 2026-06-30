@@ -15,8 +15,8 @@ import io.smithy.beam.ir.elixir.ExClause;
 import io.smithy.beam.ir.elixir.ExExprBlock;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExNestedModule;
 import io.smithy.beam.ir.elixir.ExSpec;
 import io.smithy.beam.ir.elixir.ExStructFieldPattern;
@@ -52,8 +52,7 @@ final class ElixirHttpDispatchIr {
     functions.add(dispatchArity2());
     functions.add(dispatchArity3());
     functions.add(
-        dispatchSigned(
-            sigv4, endpointRules, configVar, endpointsModule, credentialsModule));
+        dispatchSigned(sigv4, endpointRules, configVar, endpointsModule, credentialsModule));
     functions.add(ElixirHostLabelIr.splitBaseUrl());
 
     return ExModule.module(
@@ -158,7 +157,9 @@ final class ElixirHttpDispatchIr {
       sb.append("    _ -> config\n  end\n\n");
     }
     sb.append("base_url =\n  case Map.get(").append(configVar).append(", :base_url) do\n");
-    sb.append("    nil ->\n      case Map.get(").append(configVar).append(", :endpoint_prefix) do\n");
+    sb.append("    nil ->\n      case Map.get(")
+        .append(configVar)
+        .append(", :endpoint_prefix) do\n");
     sb.append("        nil -> \"\"\n");
     if (endpointRules) {
       sb.append("        _ ->\n          case ")
@@ -167,7 +168,9 @@ final class ElixirHttpDispatchIr {
           .append(configVar)
           .append(", %{}) do\n");
       sb.append("            {:ok, %{url: url}} -> url\n");
-      sb.append("            _ -> RuntimeHelpers.resolve_base_url(").append(configVar).append(")\n");
+      sb.append("            _ -> RuntimeHelpers.resolve_base_url(")
+          .append(configVar)
+          .append(")\n");
       sb.append("          end\n");
     } else {
       sb.append("        _ -> RuntimeHelpers.resolve_base_url(").append(configVar).append(")\n");
@@ -176,7 +179,8 @@ final class ElixirHttpDispatchIr {
     sb.append("    url ->\n      url\n");
     sb.append("  end\n\n");
     sb.append("{scheme, default_authority} = split_base_url(base_url)\n\n");
-    sb.append("authority =\n  case req.host do\n    nil -> default_authority\n    host -> host\n  end\n\n");
+    sb.append(
+        "authority =\n  case req.host do\n    nil -> default_authority\n    host -> host\n  end\n\n");
     sb.append("url = scheme <> authority <> req.path\n");
     sb.append("req_opts = [\n");
     sb.append("  method: String.downcase(req.method) |> String.to_atom(),\n");
@@ -233,10 +237,8 @@ final class ElixirHttpDispatchIr {
                                             "%{status: status, headers: headers, body: body}"))),
                                 ExCaseBranch.branch(
                                     ExTuplePattern.tuple(
-                                        ExAtomPattern.atom("error"),
-                                        ExVarPattern.var("reason")),
-                                    ExTuple.tuple(
-                                        ExAtom.atom("error"), ExVar.var("reason")))),
+                                        ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
+                                    ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason")))),
                             true))))));
   }
 }

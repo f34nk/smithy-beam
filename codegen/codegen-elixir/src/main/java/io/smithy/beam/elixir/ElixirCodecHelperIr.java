@@ -15,7 +15,6 @@ import io.smithy.beam.ir.elixir.ExGuard;
 import io.smithy.beam.ir.elixir.ExIf;
 import io.smithy.beam.ir.elixir.ExList;
 import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMapEntry;
 import io.smithy.beam.ir.elixir.ExNil;
 import io.smithy.beam.ir.elixir.ExNilPattern;
 import io.smithy.beam.ir.elixir.ExOp;
@@ -51,9 +50,7 @@ final class ElixirCodecHelperIr {
             ExClause.inlineClause(
                 List.of(ExVarPattern.var("value")),
                 ExCall.call(
-                    "URI",
-                    "encode",
-                    ExCall.call("Kernel", "to_string", ExVar.var("value"))))));
+                    "URI", "encode", ExCall.call("Kernel", "to_string", ExVar.var("value"))))));
   }
 
   public static ExFunction uriDecode() {
@@ -73,12 +70,9 @@ final class ElixirCodecHelperIr {
             ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
             ExClause.inlineClause(List.of(ExVarPattern.var("true")), ExVar.var("true")),
             ExClause.inlineClause(List.of(ExVarPattern.var("false")), ExVar.var("false")),
-            ExClause.inlineClause(
-                List.of(ExStringPattern.string("true")), ExVar.var("true")),
-            ExClause.inlineClause(
-                List.of(ExStringPattern.string("false")), ExVar.var("false")),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("value")), ExVar.var("value"))));
+            ExClause.inlineClause(List.of(ExStringPattern.string("true")), ExVar.var("true")),
+            ExClause.inlineClause(List.of(ExStringPattern.string("false")), ExVar.var("false")),
+            ExClause.inlineClause(List.of(ExVarPattern.var("value")), ExVar.var("value"))));
   }
 
   public static ExFunction prefixHeadersToList() {
@@ -86,7 +80,8 @@ final class ElixirCodecHelperIr {
         "prefix_headers_to_list",
         List.of(
             ExClause.inlineClause(
-                List.of(ExVarPattern.var("_prefix"), ExNilPattern.nil()), ExCapturedBlock.capturedBlock("[]")),
+                List.of(ExVarPattern.var("_prefix"), ExNilPattern.nil()),
+                ExCapturedBlock.capturedBlock("[]")),
             ExClause.blockClause(
                 List.of(ExVarPattern.var("prefix"), ExVarPattern.var("map")),
                 List.of(ExGuard.guard("is_map", ExVar.var("map"))),
@@ -97,17 +92,10 @@ final class ElixirCodecHelperIr {
                     ExAnonymousFn.fn(
                         ExClause.clause(
                             List.of(
-                                ExTuplePattern.tuple(
-                                    ExVarPattern.var("k"), ExVarPattern.var("v"))),
+                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v"))),
                             ExTuple.tuple(
-                                ExOp.op(
-                                    "<>",
-                                    ExVar.var("prefix"),
-                                    ExVar.var("k")),
-                                ExCall.call(
-                                    "Kernel",
-                                    "to_string",
-                                    ExVar.var("v")))))))));
+                                ExOp.op("<>", ExVar.var("prefix"), ExVar.var("k")),
+                                ExCall.call("Kernel", "to_string", ExVar.var("v")))))))));
   }
 
   public static ExFunction prefixHeadersFromList() {
@@ -167,13 +155,11 @@ final class ElixirCodecHelperIr {
                     ExAnonymousFn.fn(
                         ExClause.clause(
                             List.of(
-                                ExTuplePattern.tuple(
-                                    ExVarPattern.var("k"), ExNilPattern.nil())),
+                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExNilPattern.nil())),
                             ExTuple.tuple(ExVar.var("k"), ExAtom.atom("nil"))),
                         ExClause.clause(
                             List.of(
-                                ExTuplePattern.tuple(
-                                    ExVarPattern.var("k"), ExVarPattern.var("v"))),
+                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v"))),
                             ExTuple.tuple(ExVar.var("k"), ExVar.var("v"))))))));
   }
 
@@ -206,9 +192,7 @@ final class ElixirCodecHelperIr {
                 List.of(ExVarPattern.var("v")),
                 List.of(ExGuard.guard("is_number", ExVar.var("v"))),
                 ExCall.call(
-                    "DateTime",
-                    "from_unix!",
-                    ExCall.call("Kernel", "trunc", ExVar.var("v"))))));
+                    "DateTime", "from_unix!", ExCall.call("Kernel", "trunc", ExVar.var("v"))))));
   }
 
   public static ExFunction decodeTimestampDateTime() {
@@ -220,9 +204,7 @@ final class ElixirCodecHelperIr {
                 List.of(ExVarPattern.var("v")),
                 List.of(ExGuard.guard("is_number", ExVar.var("v"))),
                 ExCall.call(
-                    "DateTime",
-                    "from_unix!",
-                    ExCall.call("Kernel", "trunc", ExVar.var("v")))),
+                    "DateTime", "from_unix!", ExCall.call("Kernel", "trunc", ExVar.var("v")))),
             ExClause.blockClause(
                 List.of(ExVarPattern.var("v")),
                 List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
@@ -284,7 +266,9 @@ final class ElixirCodecHelperIr {
                         ExCapturedBlock.capturedBlock("0")),
                     ExCaseBranch.branch(
                         ExTuplePattern.tuple(ExVarPattern.var("_"), ExVarPattern.var("ct")),
-                        List.of(ExGuard.exprGuard(ExOp.op("==", ExVar.var("ct"), ExVar.var("expected")))),
+                        List.of(
+                            ExGuard.exprGuard(
+                                ExOp.op("==", ExVar.var("ct"), ExVar.var("expected")))),
                         ExAtom.atom("ok")),
                     ExCaseBranch.branch(
                         ExTuplePattern.tuple(ExVarPattern.var("_"), ExVarPattern.var("ct")),
@@ -298,15 +282,13 @@ final class ElixirCodecHelperIr {
                             ExTuple.tuple(
                                 ExAtom.atom("error"),
                                 ExTuple.tuple(
-                                    ExAtom.atom("invalid_content_type"),
-                                    ExVar.var("ct"))))),
+                                    ExAtom.atom("invalid_content_type"), ExVar.var("ct"))))),
                     ExCaseBranch.branch(
                         ExVarPattern.var("_"),
                         ExTuple.tuple(
                             ExAtom.atom("error"),
                             ExTuple.tuple(
-                                ExAtom.atom("invalid_content_type"),
-                                ExAtom.atom("nil"))))))));
+                                ExAtom.atom("invalid_content_type"), ExAtom.atom("nil"))))))));
   }
 
   public static ExFunction ctBase() {
@@ -318,8 +300,7 @@ final class ElixirCodecHelperIr {
                 ExCase.caseExpr(
                     ExCall.call("String", "split", ExVar.var("ct"), ExString.string(";")),
                     ExCaseBranch.branch(
-                        ExConsPattern.consPattern(
-                            ExVarPattern.var("base"), ExVarPattern.var("_")),
+                        ExConsPattern.consPattern(ExVarPattern.var("base"), ExVarPattern.var("_")),
                         ExVar.var("base")),
                     ExCaseBranch.branch(ExVarPattern.var("_"), ExVar.var("ct"))))));
   }
@@ -356,11 +337,9 @@ final class ElixirCodecHelperIr {
             ExCall.call("IO", "iodata_to_binary", ExVar.var("v"))));
     if (variant == ToBinaryVariant.REST_JSON) {
       clauses.add(
-          ExClause.inlineClause(
-              List.of(ExVarPattern.var("true")), ExString.string("true")));
+          ExClause.inlineClause(List.of(ExVarPattern.var("true")), ExString.string("true")));
       clauses.add(
-          ExClause.inlineClause(
-              List.of(ExVarPattern.var("false")), ExString.string("false")));
+          ExClause.inlineClause(List.of(ExVarPattern.var("false")), ExString.string("false")));
       clauses.add(
           ExClause.inlineClause(
               List.of(ExVarPattern.var("v")),
@@ -488,13 +467,11 @@ final class ElixirCodecHelperIr {
                     ExAnonymousFn.fn(
                         ExClause.clause(
                             List.of(
-                                ExTuplePattern.tuple(
-                                    ExVarPattern.var("k"), ExNilPattern.nil())),
+                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExNilPattern.nil())),
                             ExTuple.tuple(ExVar.var("k"), ExAtom.atom("nil"))),
                         ExClause.clause(
                             List.of(
-                                ExTuplePattern.tuple(
-                                    ExVarPattern.var("k"), ExVarPattern.var("v"))),
+                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v"))),
                             ExTuple.tuple(ExVar.var("k"), ExVar.var("v"))))))));
   }
 }

@@ -20,8 +20,8 @@ import io.smithy.beam.ir.elixir.ExListPattern;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMapEntry;
 import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExNil;
 import io.smithy.beam.ir.elixir.ExNilPattern;
 import io.smithy.beam.ir.elixir.ExOp;
@@ -77,8 +77,7 @@ final class ElixirSigV4Ir {
                     ExVarPattern.var("request")),
                 ExMatch.match(
                     ExVarPattern.var("credentials"),
-                    ExCall.call(
-                        "Map", "fetch!", ExVar.var("config"), ExAtom.atom("credentials"))),
+                    ExCall.call("Map", "fetch!", ExVar.var("config"), ExAtom.atom("credentials"))),
                 ExMatch.match(
                     ExVarPattern.var("region"),
                     ExCall.call(
@@ -89,8 +88,7 @@ final class ElixirSigV4Ir {
                         ExString.string("us-east-1"))),
                 ExMatch.match(
                     ExVarPattern.var("service"),
-                    ExCall.call(
-                        "Map", "fetch!", ExVar.var("config"), ExAtom.atom("signing_name"))),
+                    ExCall.call("Map", "fetch!", ExVar.var("config"), ExAtom.atom("signing_name"))),
                 ExMatch.match(
                     ExVarPattern.var("unsigned"),
                     ExCall.call(
@@ -122,13 +120,10 @@ final class ElixirSigV4Ir {
     ExPipeline queryOptsPipeline =
         ExPipeline.pipeline(
             "query_opts",
-            ExCapturedBlock.capturedBlock(
-                "[{:ttl, ttl}, {:uri_encode_path, service != \"s3\"}]"),
+            ExCapturedBlock.capturedBlock("[{:ttl, ttl}, {:uri_encode_path, service != \"s3\"}]"),
             List.of(
                 ExCall.call(
-                    "Kernel",
-                    "++",
-                    ExCallLocal.callLocal("body_digest_option", ExVar.var("opts"))),
+                    "Kernel", "++", ExCallLocal.callLocal("body_digest_option", ExVar.var("opts"))),
                 ExCall.call(
                     "Kernel",
                     "++",
@@ -144,9 +139,7 @@ final class ElixirSigV4Ir {
         "def",
         "presign",
         ExSpec.functionSpec(
-            "presign",
-            "HttpRequest.t(), map(), String.t(), String.t(), map()",
-            PRESIGN_RESULT),
+            "presign", "HttpRequest.t(), map(), String.t(), String.t(), map()", PRESIGN_RESULT),
         List.of(
             ExClause.blockClauseSingleLineHead(
                 List.of(
@@ -158,10 +151,7 @@ final class ElixirSigV4Ir {
                 ExMatch.match(
                     ExVarPattern.var("access_key_id"),
                     ExCall.call(
-                        "Map",
-                        "fetch!",
-                        ExVar.var("credentials"),
-                        ExAtom.atom("access_key_id"))),
+                        "Map", "fetch!", ExVar.var("credentials"), ExAtom.atom("access_key_id"))),
                 ExMatch.match(
                     ExVarPattern.var("secret_access_key"),
                     ExCall.call(
@@ -173,8 +163,7 @@ final class ElixirSigV4Ir {
                     ExVarPattern.var("datetime"), ExCall.call(":calendar", "universal_time")),
                 ExMatch.match(
                     ExVarPattern.var("host"),
-                    ExCallLocal.callLocal(
-                        "resolve_host", ExVar.var("request"), ExVar.var("opts"))),
+                    ExCallLocal.callLocal("resolve_host", ExVar.var("request"), ExVar.var("opts"))),
                 ExMatch.match(
                     ExVarPattern.var("url"),
                     ExCallLocal.callLocal(
@@ -227,10 +216,7 @@ final class ElixirSigV4Ir {
                 ExMatch.match(
                     ExVarPattern.var("access_key_id"),
                     ExCall.call(
-                        "Map",
-                        "fetch!",
-                        ExVar.var("credentials"),
-                        ExAtom.atom("access_key_id"))),
+                        "Map", "fetch!", ExVar.var("credentials"), ExAtom.atom("access_key_id"))),
                 ExMatch.match(
                     ExVarPattern.var("secret_access_key"),
                     ExCall.call(
@@ -242,8 +228,7 @@ final class ElixirSigV4Ir {
                     ExVarPattern.var("datetime"), ExCall.call(":calendar", "universal_time")),
                 ExMatch.match(
                     ExVarPattern.var("host"),
-                    ExCallLocal.callLocal(
-                        "resolve_host", ExVar.var("request"), ExVar.var("opts"))),
+                    ExCallLocal.callLocal("resolve_host", ExVar.var("request"), ExVar.var("opts"))),
                 ExMatch.match(
                     ExVarPattern.var("url"),
                     ExCallLocal.callLocal(
@@ -263,10 +248,7 @@ final class ElixirSigV4Ir {
                         "maybe_add_session_token",
                         ExVar.var("headers0"),
                         ExCall.call(
-                            "Map",
-                            "get",
-                            ExVar.var("credentials"),
-                            ExAtom.atom("session_token")))),
+                            "Map", "get", ExVar.var("credentials"), ExAtom.atom("session_token")))),
                 ExMatch.match(
                     ExVarPattern.var("sign_opts"),
                     ExCall.call(
@@ -288,21 +270,18 @@ final class ElixirSigV4Ir {
                         ExCallLocal.callLocal("to_bin", ExVar.var("service")),
                         ExVar.var("datetime"),
                         ExCallLocal.callLocal(
-                            "to_bin",
-                            ExStructAccess.structAccess(ExVar.var("request"), "method")),
+                            "to_bin", ExStructAccess.structAccess(ExVar.var("request"), "method")),
                         ExCallLocal.callLocal("to_bin", ExVar.var("url")),
                         ExCallLocal.callLocal("to_erl_headers", ExVar.var("headers1")),
                         ExCallLocal.callLocal(
-                            "to_bin",
-                            ExStructAccess.structAccess(ExVar.var("request"), "body")),
+                            "to_bin", ExStructAccess.structAccess(ExVar.var("request"), "body")),
                         ExVar.var("sign_opts"))),
                 ExStructUpdate.structUpdate(
                     ExVar.var("request"),
                     "HttpRequest",
                     ExMapEntry.entry(
                         ExAtom.atom("headers"),
-                        ExCallLocal.callLocal(
-                            "from_erl_headers", ExVar.var("signed_headers")))))));
+                        ExCallLocal.callLocal("from_erl_headers", ExVar.var("signed_headers")))))));
   }
 
   static List<ExFunction> helperFunctions() {
@@ -383,8 +362,7 @@ final class ElixirSigV4Ir {
                     ExList.list(
                         ExStructAccess.structAccess(ExVar.var("request"), "host"),
                         ExCall.call("Map", "get", ExVar.var("opts"), ExAtom.atom("host")),
-                        ExCall.call(
-                            "Map", "get", ExVar.var("opts"), ExAtom.atom("endpoint_host")),
+                        ExCall.call("Map", "get", ExVar.var("opts"), ExAtom.atom("endpoint_host")),
                         ExCallLocal.callLocal(
                             "header_host",
                             ExStructAccess.structAccess(ExVar.var("request"), "headers")))))));
@@ -395,9 +373,7 @@ final class ElixirSigV4Ir {
         "coalesce",
         List.of(
             ExClause.inlineClause(
-                List.of(
-                    ExConsPattern.consPattern(
-                        ExNilPattern.nil(), ExVarPattern.var("rest"))),
+                List.of(ExConsPattern.consPattern(ExNilPattern.nil(), ExVarPattern.var("rest"))),
                 ExCallLocal.callLocal("coalesce", ExVar.var("rest"))),
             ExClause.inlineClause(
                 List.of(
@@ -406,11 +382,9 @@ final class ElixirSigV4Ir {
                 ExCallLocal.callLocal("coalesce", ExVar.var("rest"))),
             ExClause.inlineClause(
                 List.of(
-                    ExConsPattern.consPattern(
-                        ExVarPattern.var("value"), ExVarPattern.var("_"))),
+                    ExConsPattern.consPattern(ExVarPattern.var("value"), ExVarPattern.var("_"))),
                 ExVar.var("value")),
-            ExClause.inlineClause(
-                List.of(ExListPattern.list()), ExString.string("localhost"))));
+            ExClause.inlineClause(List.of(ExListPattern.list()), ExString.string("localhost"))));
   }
 
   private static ExFunction buildUrl() {
@@ -419,9 +393,7 @@ final class ElixirSigV4Ir {
         List.of(
             ExClause.clause(
                 List.of(
-                    ExVarPattern.var("host"),
-                    ExVarPattern.var("path"),
-                    ExVarPattern.var("query")),
+                    ExVarPattern.var("host"), ExVarPattern.var("path"), ExVarPattern.var("query")),
                 List.of(
                     ExGuard.exprGuard(
                         ExOp.op(
@@ -431,9 +403,7 @@ final class ElixirSigV4Ir {
                 ExCapturedBlock.capturedBlock("\"https://#{host}#{path}\"")),
             ExClause.blockClause(
                 List.of(
-                    ExVarPattern.var("host"),
-                    ExVarPattern.var("path"),
-                    ExVarPattern.var("query")),
+                    ExVarPattern.var("host"), ExVarPattern.var("path"), ExVarPattern.var("query")),
                 ExMatch.match(
                     ExVarPattern.var("params"),
                     ExCall.call("URI", "encode_query", ExVar.var("query"))),
@@ -470,14 +440,12 @@ final class ElixirSigV4Ir {
                         ExClause.inlineClause(
                             List.of(
                                 ExTuplePattern.tuple(
-                                    ExStringPattern.string("host"),
-                                    ExVarPattern.var("value"))),
+                                    ExStringPattern.string("host"), ExVarPattern.var("value"))),
                             ExVar.var("value")),
                         ExClause.inlineClause(
                             List.of(
                                 ExTuplePattern.tuple(
-                                    ExStringPattern.string("Host"),
-                                    ExVarPattern.var("value"))),
+                                    ExStringPattern.string("Host"), ExVarPattern.var("value"))),
                             ExVar.var("value")),
                         ExClause.inlineClause(List.of(ExVarPattern.var("_")), ExNil.nil()))))));
   }
@@ -506,8 +474,7 @@ final class ElixirSigV4Ir {
                                     ExString.string("x-amz-security-token"))))),
                     ExVar.var("headers"),
                     ExList.cons(
-                        ExTuple.tuple(
-                            ExString.string("x-amz-security-token"), ExVar.var("token")),
+                        ExTuple.tuple(ExString.string("x-amz-security-token"), ExVar.var("token")),
                         ExVar.var("headers"))))));
   }
 
@@ -599,8 +566,7 @@ final class ElixirSigV4Ir {
                     ExAnonymousFn.compactFn(
                         ExClause.inlineClause(
                             List.of(
-                                ExTuplePattern.tuple(
-                                    ExVarPattern.var("k"), ExVarPattern.var("v"))),
+                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v"))),
                             ExTuple.tuple(
                                 ExCallLocal.callLocal("to_bin", ExVar.var("k")),
                                 ExCallLocal.callLocal("to_bin", ExVar.var("v")))))))));
@@ -619,8 +585,7 @@ final class ElixirSigV4Ir {
                     ExAnonymousFn.compactFn(
                         ExClause.inlineClause(
                             List.of(
-                                ExTuplePattern.tuple(
-                                    ExVarPattern.var("k"), ExVarPattern.var("v"))),
+                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v"))),
                             ExTuple.tuple(
                                 ExCall.call("Kernel", "to_string", ExVar.var("k")),
                                 ExCall.call("Kernel", "to_string", ExVar.var("v")))))))));

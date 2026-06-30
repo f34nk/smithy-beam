@@ -6,8 +6,8 @@ import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamXmlBindingIndex;
 import io.smithy.beam.ir.elixir.ExAliasAttr;
 import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -89,9 +89,7 @@ final class ElixirAwsQueryIr {
         moduleName,
         List.of(
             ExModuledoc.moduledoc(
-                "Server AWS Query codecs for "
-                    + service.getId()
-                    + " (generated). Do not edit.")),
+                "Server AWS Query codecs for " + service.getId() + " (generated). Do not edit.")),
         List.of(
             ExAliasAttr.alias(runtimeMod, "RuntimeTypes"), ExAliasAttr.alias(typesMod, "Types")),
         functions);
@@ -166,8 +164,7 @@ final class ElixirAwsQueryIr {
     functions.add(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
     for (OperationShape op : operations) {
       functions.add(
-          ElixirAwsQueryOperationIr.buildServerDecodeRequest(
-              model, op, sp, typesMod, runtimeMod));
+          ElixirAwsQueryOperationIr.buildServerDecodeRequest(model, op, sp, typesMod, runtimeMod));
       functions.add(
           ElixirAwsQueryOperationIr.buildServerEncodeResponse(
               model, service, op, sp, typesMod, runtimeMod, ec2Query));

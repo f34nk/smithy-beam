@@ -21,7 +21,6 @@ public final class ElixirEndpointRulesEmitter {
 
     ctx.writerDelegator()
         .useFileWriter(
-            layout.endpointsModuleFile(),
-            writer -> writer.write("$L", module.asString()));
+            layout.endpointsModuleFile(), writer -> writer.write("$L", module.asString()));
   }
 }

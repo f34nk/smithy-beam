@@ -14,10 +14,7 @@ class ExDefstructTest {
 
   @Test
   void largeDefstructMultiline() {
-    String out =
-        ExDefstruct.defstruct(
-                List.of(":a", ":b", ":c", ":d", ":e"))
-            .asString();
+    String out = ExDefstruct.defstruct(List.of(":a", ":b", ":c", ":d", ":e")).asString();
     assertThat(out).contains("defstruct [");
     assertThat(out).contains("  :a,");
     assertThat(out).contains("  :e");

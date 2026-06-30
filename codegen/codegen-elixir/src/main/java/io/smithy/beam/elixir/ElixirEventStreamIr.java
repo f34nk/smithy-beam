@@ -22,8 +22,8 @@ import io.smithy.beam.ir.elixir.ExMapEntry;
 import io.smithy.beam.ir.elixir.ExMapFieldPattern;
 import io.smithy.beam.ir.elixir.ExMapPattern;
 import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExPipeline;
 import io.smithy.beam.ir.elixir.ExString;
 import io.smithy.beam.ir.elixir.ExStringPattern;
@@ -70,9 +70,7 @@ final class ElixirEventStreamIr {
         moduleName,
         List.of(
             ExModuledoc.moduledoc(
-                "Generated Amazon Event Stream helpers for "
-                    + service.getId()
-                    + " (generated).")),
+                "Generated Amazon Event Stream helpers for " + service.getId() + " (generated).")),
         List.of(ExAliasAttr.alias(typesMod)),
         functions);
   }
@@ -115,8 +113,7 @@ final class ElixirEventStreamIr {
                             List.of(
                                 ExTuplePattern.tuple(
                                     ExVarPattern.var("key"), ExVarPattern.var("value"))),
-                            ExCapturedBlock.capturedBlock(
-                                "if key == name, do: value")))))));
+                            ExCapturedBlock.capturedBlock("if key == name, do: value")))))));
   }
 
   static ExFunction unionEncodeList(UnionShape union, SymbolProvider sp) {
@@ -163,9 +160,7 @@ final class ElixirEventStreamIr {
     }
     clauses.add(
         ExClause.inlineClause(
-            List.of(
-                ExTuplePattern.tuple(
-                    ExAtomPattern.atom("unknown"), ExVarPattern.var("_"))),
+            List.of(ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("_"))),
             ExCapturedBlock.capturedBlock("raise ArgumentError, \"unknown event\"")));
     return ExFunction.defpFunction("encode_" + helper + "_event", clauses);
   }
@@ -178,7 +173,8 @@ final class ElixirEventStreamIr {
             ExClause.blockClause(
                 List.of(
                     ExMapPattern.map(
-                        ExMapFieldPattern.field(ExAtom.atom("headers"), ExVarPattern.var("headers")),
+                        ExMapFieldPattern.field(
+                            ExAtom.atom("headers"), ExVarPattern.var("headers")),
                         ExMapFieldPattern.field(
                             ExAtom.atom("payload"), ExVarPattern.var("payload")))),
                 ExExprBlock.block(
@@ -217,8 +213,7 @@ final class ElixirEventStreamIr {
     String eventType = member.getMemberName();
     Shape target = model.expectShape(member.getTarget());
     return ExClause.blockClause(
-        List.of(
-            ExTuplePattern.tuple(ExAtomPattern.atom(tag), ExVarPattern.var("value"))),
+        List.of(ExTuplePattern.tuple(ExAtomPattern.atom(tag), ExVarPattern.var("value"))),
         ExExprBlock.block(
             ExMatch.match(
                 ExVarPattern.var("payload"),
@@ -274,11 +269,7 @@ final class ElixirEventStreamIr {
       entries.add(
           ExMapEntry.entry(
               ExString.string(wireKey),
-              ExCall.call(
-                  "Map",
-                  "get",
-                  ExVar.var(valueVar),
-                  ExAtom.atom(fieldName))));
+              ExCall.call("Map", "get", ExVar.var(valueVar), ExAtom.atom(fieldName))));
     }
     return ExCall.call("Jason", "encode!", ExMap.map(entries.toArray(ExMapEntry[]::new)));
   }

@@ -54,8 +54,7 @@ class ElixirBehaviourIrTest {
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
     List<ExCallbackSpec> callbacks =
         operations.stream().map(op -> ElixirBehaviourIr.operationCallback(ctx, op, sp)).toList();
-    ExModule module =
-        ElixirBehaviourIr.behaviourModule(layout, service, callbacks, operations, sp);
+    ExModule module = ElixirBehaviourIr.behaviourModule(layout, service, callbacks, operations, sp);
     String source = module.asString();
     assertThat(source).contains("defmodule BasicServiceBehaviour do");
     assertThat(source).contains("alias BasicServiceTypes, as: Types");

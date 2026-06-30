@@ -134,11 +134,7 @@ final class ElixirJsonCodecIr {
                 ExCall.call(eventStreamModule, "decode_" + helper, ExVar.var("body"))));
       } else {
         ExExpr raw =
-            ExCall.call(
-                "Map",
-                "get",
-                ExVar.var("decoded"),
-                ExString.string(jsonKey(member)));
+            ExCall.call("Map", "get", ExVar.var("decoded"), ExString.string(jsonKey(member)));
         fields.add(
             ExMapEntry.entry(
                 ExAtom.atom(fieldName), decodeJsonExpr(model, sp, httpIndex, member, raw)));
@@ -240,9 +236,7 @@ final class ElixirJsonCodecIr {
             "reject",
             ExAnonymousFn.compactFn(
                 ExClause.inlineClause(
-                    List.of(
-                        ExTuplePattern.tuple(
-                            ExVarPattern.var("_"), ExVarPattern.var("v"))),
+                    List.of(ExTuplePattern.tuple(ExVarPattern.var("_"), ExVarPattern.var("v"))),
                     ExCall.call("Kernel", "is_nil", ExVar.var("v"))))),
         ExCall.call("Map", "new"));
   }

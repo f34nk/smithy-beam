@@ -27,11 +27,7 @@ public final class ExFunction implements IrObject, ExModuleEntry {
   }
 
   public ExFunction(
-      String keyword,
-      String name,
-      ExDoc docOrNull,
-      ExSpec specOrNull,
-      List<ExClause> clauses) {
+      String keyword, String name, ExDoc docOrNull, ExSpec specOrNull, List<ExClause> clauses) {
     this(keyword, name, docOrNull, specOrNull, null, clauses);
   }
 

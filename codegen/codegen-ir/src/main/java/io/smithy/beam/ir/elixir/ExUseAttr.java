@@ -29,8 +29,7 @@ public final class ExUseAttr implements ExModuleAttribute {
 
   @Override
   public List<String> lines(int indent) {
-    String line =
-        optionsOrNull == null ? "use " + module : "use " + module + ", " + optionsOrNull;
+    String line = optionsOrNull == null ? "use " + module : "use " + module + ", " + optionsOrNull;
     return List.of(IrObject.indent(indent) + line);
   }
 

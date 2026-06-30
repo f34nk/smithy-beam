@@ -6,14 +6,14 @@ import io.smithy.beam.core.BeamSigV4Index;
 import io.smithy.beam.ir.elixir.ExAliasAttr;
 import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExBlankLine;
-import io.smithy.beam.ir.elixir.ExComment;
 import io.smithy.beam.ir.elixir.ExClause;
+import io.smithy.beam.ir.elixir.ExComment;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
 import io.smithy.beam.ir.elixir.ExModuleEntry;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExPreambleEntry;
 import io.smithy.beam.ir.elixir.ExSpec;
 import io.smithy.beam.ir.elixir.ExString;
@@ -79,8 +79,7 @@ final class ElixirClientIr {
                     + "endpoint, transport, and protocol live in future runtime modules.")));
   }
 
-  static List<ExFunction> serviceFunctions(
-      ServiceShape service, Model model, SymbolProvider sp) {
+  static List<ExFunction> serviceFunctions(ServiceShape service, Model model, SymbolProvider sp) {
     List<ExFunction> functions = new ArrayList<>();
     BeamAwsServiceMetadata.from(service)
         .ifPresent(meta -> functions.add(defaultConfigFunction(meta, model, sp, service)));
@@ -94,10 +93,8 @@ final class ElixirClientIr {
     List<ExMapEntry> entries = new ArrayList<>();
     entries.add(ExMapEntry.entry(ExAtom.atom("region"), ExString.string("us-east-1")));
     entries.add(
-        ExMapEntry.entry(
-            ExAtom.atom("endpoint_prefix"), ExString.string(meta.endpointPrefix())));
-    entries.add(
-        ExMapEntry.entry(ExAtom.atom("signing_name"), ExString.string(meta.signingName())));
+        ExMapEntry.entry(ExAtom.atom("endpoint_prefix"), ExString.string(meta.endpointPrefix())));
+    entries.add(ExMapEntry.entry(ExAtom.atom("signing_name"), ExString.string(meta.signingName())));
     for (OperationShape op : unsignedOps) {
       Symbol opSym = sp.toSymbol(op);
       entries.add(

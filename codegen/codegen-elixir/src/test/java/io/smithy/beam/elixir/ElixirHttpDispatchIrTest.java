@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExModule;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,8 +25,7 @@ class ElixirHttpDispatchIrTest {
     Model model = httpDispatchModel();
     ServiceShape service =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
-    ExModule module =
-        ElixirHttpDispatchIr.httpDispatchModule(testContext(model, service), service);
+    ExModule module = ElixirHttpDispatchIr.httpDispatchModule(testContext(model, service), service);
     assertThat(module.asString())
         .isEqualTo(readExpectedString("ir/http_dispatch_module.expected.ex"));
   }

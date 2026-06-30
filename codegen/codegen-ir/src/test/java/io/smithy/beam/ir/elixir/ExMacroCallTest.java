@@ -7,10 +7,7 @@ import org.junit.jupiter.api.Test;
 class ExMacroCallTest {
   @Test
   void assertExprLines() {
-    assertThat(
-            ExMacroCall.assertExpr(
-                    ExOp.op("==", ExVar.var("x"), ExInteger.integer(1)))
-                .lines(1))
+    assertThat(ExMacroCall.assertExpr(ExOp.op("==", ExVar.var("x"), ExInteger.integer(1))).lines(1))
         .containsExactly("  assert x == 1");
   }
 }

@@ -3,8 +3,8 @@ package io.smithy.beam.elixir;
 import io.smithy.beam.ir.elixir.ExCapturedBlock;
 import io.smithy.beam.ir.elixir.ExClause;
 import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExSpec;
 import io.smithy.beam.ir.elixir.ExString;
 import io.smithy.beam.ir.elixir.ExStringPattern;
@@ -22,10 +22,7 @@ final class ElixirS3EndpointIr {
     functions.add(resolveBucketUrl());
     functions.addAll(helperFunctions());
     return ExModule.module(
-        "S3Endpoint",
-        List.of(ExModuledoc.moduledoc("false")),
-        List.of(),
-        functions);
+        "S3Endpoint", List.of(ExModuledoc.moduledoc("false")), List.of(), functions);
   }
 
   static ExFunction regionHost() {
@@ -82,8 +79,7 @@ final class ElixirS3EndpointIr {
         List.of(
             ExClause.inlineClause(List.of(ExStringPattern.string("")), ExString.string("")),
             ExClause.inlineClause(
-                List.of(ExVarPattern.var("key")),
-                ExCapturedBlock.capturedBlock("\"/#{key}\""))));
+                List.of(ExVarPattern.var("key")), ExCapturedBlock.capturedBlock("\"/#{key}\""))));
   }
 
   private static ExFunction virtualHost() {
@@ -120,8 +116,7 @@ final class ElixirS3EndpointIr {
         "split_base_url",
         List.of(
             ExClause.inlineClause(
-                List.of(ExStringPattern.string("")),
-                ExCapturedBlock.capturedBlock("{\"\", \"\"}")),
+                List.of(ExStringPattern.string("")), ExCapturedBlock.capturedBlock("{\"\", \"\"}")),
             ExClause.blockClause(
                 List.of(ExVarPattern.var("base_url")),
                 ExCapturedBlock.capturedBlock(

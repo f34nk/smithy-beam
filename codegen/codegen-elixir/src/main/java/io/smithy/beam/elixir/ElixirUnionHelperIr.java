@@ -42,8 +42,7 @@ final class ElixirUnionHelperIr {
       branches.add(
           ExCaseBranch.branch(
               singletonListPattern(
-                  ExTuplePattern.tuple(
-                      ExStringPattern.string(wireKey), ExVarPattern.var("v"))),
+                  ExTuplePattern.tuple(ExStringPattern.string(wireKey), ExVarPattern.var("v"))),
               ExTuple.tuple(ExAtom.atom(tag), ExVar.var("v"))));
     }
     branches.add(
@@ -72,16 +71,12 @@ final class ElixirUnionHelperIr {
       String tag = unionTagForMember(sp, member);
       clauses.add(
           ExClause.inlineClause(
-              List.of(
-                  ExTuplePattern.tuple(
-                      ExAtomPattern.atom(tag), ExVarPattern.var("v"))),
+              List.of(ExTuplePattern.tuple(ExAtomPattern.atom(tag), ExVarPattern.var("v"))),
               ExMap.map(ExMapEntry.entry(ExString.string(wireKey), ExVar.var("v")))));
     }
     clauses.add(
         ExClause.inlineClause(
-            List.of(
-                ExTuplePattern.tuple(
-                    ExAtomPattern.atom("unknown"), ExVarPattern.var("k"))),
+            List.of(ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("k"))),
             List.of(ExGuard.guard("is_binary", ExVar.var("k"))),
             ExMap.map(ExMapEntry.entry(ExVar.var("k"), ExAtom.atom("nil")))));
     clauses.add(ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")));

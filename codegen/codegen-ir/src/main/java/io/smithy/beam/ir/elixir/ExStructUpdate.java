@@ -14,7 +14,8 @@ public final class ExStructUpdate implements ExExpr {
     this.fields = List.copyOf(fields);
   }
 
-  public static ExStructUpdate structUpdate(ExExpr struct, String moduleName, ExMapEntry... fields) {
+  public static ExStructUpdate structUpdate(
+      ExExpr struct, String moduleName, ExMapEntry... fields) {
     return new ExStructUpdate(struct, moduleName, List.of(fields));
   }
 

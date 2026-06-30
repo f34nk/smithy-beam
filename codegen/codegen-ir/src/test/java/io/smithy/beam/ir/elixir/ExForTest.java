@@ -15,7 +15,10 @@ class ExForTest {
             ExMap.map(),
             ExForFilter.filter(
                 ExCallLocal.callLocal(
-                    "function_exported?", ExVar.var("impl"), ExVar.var("fun"), ExInteger.integer(3))));
+                    "function_exported?",
+                    ExVar.var("impl"),
+                    ExVar.var("fun"),
+                    ExInteger.integer(3))));
     assertThat(comprehension.lines(1))
         .containsExactly(
             "  for {fun, 3} <-",

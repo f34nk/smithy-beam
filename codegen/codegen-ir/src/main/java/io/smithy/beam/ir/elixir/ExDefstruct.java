@@ -36,8 +36,7 @@ public final class ExDefstruct implements ExModuleEntry {
       return defstructKeywordLines(indent);
     }
     if (fields.size() <= MULTILINE_THRESHOLD) {
-      return List.of(
-          IrObject.indent(indent) + "defstruct [" + String.join(", ", fields) + "]");
+      return List.of(IrObject.indent(indent) + "defstruct [" + String.join(", ", fields) + "]");
     }
     List<String> out = new ArrayList<>();
     out.add(IrObject.indent(indent) + "defstruct [");

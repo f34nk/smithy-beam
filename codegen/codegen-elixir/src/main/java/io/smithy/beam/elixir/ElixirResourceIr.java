@@ -17,9 +17,9 @@ import io.smithy.beam.ir.elixir.ExExpr;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExMapEntry;
 import io.smithy.beam.ir.elixir.ExMapUpdate;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
 import io.smithy.beam.ir.elixir.ExModuleEntry;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExPattern;
 import io.smithy.beam.ir.elixir.ExPreambleEntry;
 import io.smithy.beam.ir.elixir.ExSpec;
@@ -80,12 +80,10 @@ final class ElixirResourceIr {
     List<HelperBinding> bindings = collectBindings(index, sp, resource);
     List<ExFunction> functions = new ArrayList<>();
     for (HelperBinding binding : bindings) {
-      functions.add(
-          helperFunction(index, sp, resource, binding, delegateMod, typesMod, server));
+      functions.add(helperFunction(index, sp, resource, binding, delegateMod, typesMod, server));
     }
     List<ExPreambleEntry> preamble = new ArrayList<>();
-    BeamDocumentation.forShape(resource)
-        .ifPresent(doc -> preamble.add(ExModuledoc.moduledoc(doc)));
+    BeamDocumentation.forShape(resource).ifPresent(doc -> preamble.add(ExModuledoc.moduledoc(doc)));
     if (preamble.isEmpty()) {
       preamble.add(ExModuledoc.moduledoc("Lifecycle helpers for " + resource.getId() + "."));
     }
@@ -186,16 +184,10 @@ final class ElixirResourceIr {
         helper,
         doc,
         ExSpec.functionSpec(
-            helper,
-            String.join(", ", specParams),
-            "{:ok, " + outType + "} | {:error, term()}"),
+            helper, String.join(", ", specParams), "{:ok, " + outType + "} | {:error, term()}"),
         List.of(
             ExClause.inlineClause(
-                patterns,
-                ExCall.call(
-                    delegateAlias,
-                    opHandler,
-                    callArgs.toArray(ExExpr[]::new)))));
+                patterns, ExCall.call(delegateAlias, opHandler, callArgs.toArray(ExExpr[]::new)))));
   }
 
   private static String identifierType(
@@ -212,17 +204,13 @@ final class ElixirResourceIr {
       ExMapEntry[] updates =
           plan.identifierArgs().stream()
               .map(
-                  arg ->
-                      ExMapEntry.entry(
-                          ExAtom.atom(arg.fieldName()), ExVar.var(arg.paramName())))
+                  arg -> ExMapEntry.entry(ExAtom.atom(arg.fieldName()), ExVar.var(arg.paramName())))
               .toArray(ExMapEntry[]::new);
       return ExMapUpdate.mapUpdate(ExVar.var("input"), updates);
     }
     ExMapEntry[] fields =
         plan.identifierArgs().stream()
-            .map(
-                arg ->
-                    ExMapEntry.entry(ExAtom.atom(arg.fieldName()), ExVar.var(arg.paramName())))
+            .map(arg -> ExMapEntry.entry(ExAtom.atom(arg.fieldName()), ExVar.var(arg.paramName())))
             .toArray(ExMapEntry[]::new);
     return ExStruct.struct(typesMod + "." + plan.inputSymbol().getName(), fields);
   }

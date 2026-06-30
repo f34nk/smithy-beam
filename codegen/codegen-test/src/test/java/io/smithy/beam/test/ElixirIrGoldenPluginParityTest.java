@@ -53,8 +53,7 @@ class ElixirIrGoldenPluginParityTest {
   @Test
   void clientPluginCodecModuleMatchesIrGolden() throws IOException {
     MockManifest manifest = runClientPlugin(loadModel());
-    String emitted =
-        stripTrailingNewline(manifest.expectFileString("http_service_rest_json_1.ex"));
+    String emitted = stripTrailingNewline(manifest.expectFileString("http_service_rest_json_1.ex"));
     assertThat(emitted)
         .isEqualTo(readGolden("golden/http_service_rest_json_1_client_codec.expected.ex"));
   }

@@ -2,7 +2,6 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
-import io.smithy.beam.core.BeamDocumentation.DocTarget;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamMemberNullability;
@@ -21,8 +20,8 @@ import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExInteger;
 import io.smithy.beam.ir.elixir.ExIntegerPattern;
 import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModuleEntry;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExNestedModule;
 import io.smithy.beam.ir.elixir.ExPreambleEntry;
 import io.smithy.beam.ir.elixir.ExSpec;
@@ -203,16 +202,14 @@ final class ElixirDirectedCodegen
     }
   }
 
-  private static ExTypeDef scalarTypeAlias(
-      Shape shape, Symbol sym, List<ExComment> docPreamble) {
+  private static ExTypeDef scalarTypeAlias(Shape shape, Symbol sym, List<ExComment> docPreamble) {
     String baseType = sym.getProperty("baseType", String.class).orElse("any()");
     List<ExComment> preamble = new ArrayList<>(docPreamble);
     if (shape instanceof BigDecimalShape) {
       preamble.add(ExComment.comment("Decimal.t()"));
     } else if (shape instanceof BlobShape
         && sym.getProperty("streamingBlob", Boolean.class).orElse(false)) {
-      preamble.add(
-          ExComment.comment("Streaming payload; framing deferred to protocol layer."));
+      preamble.add(ExComment.comment("Streaming payload; framing deferred to protocol layer."));
     }
     return ExTypeDef.alias(sym.getName(), baseType, preamble);
   }
@@ -292,8 +289,7 @@ final class ElixirDirectedCodegen
                 elementType = elementType + " | nil";
               }
               ctx.addTypesEntry(
-                  ExTypeDef.alias(
-                      sym.getName(), "[" + elementType + "]", shapeDocComments(s)));
+                  ExTypeDef.alias(sym.getName(), "[" + elementType + "]", shapeDocComments(s)));
             });
   }
 
@@ -373,9 +369,7 @@ final class ElixirDirectedCodegen
   public void generateEnumShape(GenerateEnumDirective<ElixirContext, BeamSettings> directive) {
     EnumShape shape = directive.expectEnumShape();
     Symbol symbol = directive.symbolProvider().toSymbol(shape);
-    directive
-        .context()
-        .addTypesEntry(buildEnumNestedModule(shape, symbol));
+    directive.context().addTypesEntry(buildEnumNestedModule(shape, symbol));
   }
 
   @Override
@@ -383,9 +377,7 @@ final class ElixirDirectedCodegen
       GenerateIntEnumDirective<ElixirContext, BeamSettings> directive) {
     IntEnumShape shape = directive.expectIntEnumShape();
     Symbol symbol = directive.symbolProvider().toSymbol(shape);
-    directive
-        .context()
-        .addTypesEntry(buildIntEnumNestedModule(shape, symbol));
+    directive.context().addTypesEntry(buildIntEnumNestedModule(shape, symbol));
   }
 
   static ExNestedModule buildEnumNestedModule(EnumShape shape, Symbol symbol) {
@@ -430,8 +422,7 @@ final class ElixirDirectedCodegen
       return ExNestedModule.nestedModule(symbol.getName(), preamble, entries, functions);
     }
 
-    String atomVariants =
-        atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
+    String atomVariants = atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
     entries.add(ExTypeDef.alias("t", atomVariants + " | {:unknown, String.t()}"));
 
     List<ExClause> fromClauses = new ArrayList<>();
@@ -443,8 +434,7 @@ final class ElixirDirectedCodegen
     }
     fromClauses.add(
         ExClause.inlineClause(
-            List.of(ExVarPattern.var("v")),
-            ExTuple.tuple(ExAtom.atom("unknown"), ExVar.var("v"))));
+            List.of(ExVarPattern.var("v")), ExTuple.tuple(ExAtom.atom("unknown"), ExVar.var("v"))));
     functions.add(
         ExFunction.functionWithSpec(
             "def",
@@ -457,20 +447,15 @@ final class ElixirDirectedCodegen
       Map.Entry<String, String> entry = members.get(i);
       toClauses.add(
           ExClause.inlineClause(
-              List.of(ExAtomPattern.atom(atoms.get(i))),
-              ExString.string(entry.getValue())));
+              List.of(ExAtomPattern.atom(atoms.get(i))), ExString.string(entry.getValue())));
     }
     toClauses.add(
         ExClause.inlineClause(
-            List.of(
-                ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("v"))),
+            List.of(ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("v"))),
             ExVar.var("v")));
     functions.add(
         ExFunction.functionWithSpec(
-            "def",
-            toFunction,
-            ExSpec.functionSpec(toFunction, "t()", "String.t()"),
-            toClauses));
+            "def", toFunction, ExSpec.functionSpec(toFunction, "t()", "String.t()"), toClauses));
 
     ExList valuesList =
         ExList.list(
@@ -527,8 +512,7 @@ final class ElixirDirectedCodegen
       return ExNestedModule.nestedModule(symbol.getName(), preamble, entries, functions);
     }
 
-    String atomVariants =
-        atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
+    String atomVariants = atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
     entries.add(ExTypeDef.alias("t", atomVariants + " | {:unknown, integer()}"));
 
     List<ExClause> fromClauses = new ArrayList<>();
@@ -540,8 +524,7 @@ final class ElixirDirectedCodegen
     }
     fromClauses.add(
         ExClause.inlineClause(
-            List.of(ExVarPattern.var("v")),
-            ExTuple.tuple(ExAtom.atom("unknown"), ExVar.var("v"))));
+            List.of(ExVarPattern.var("v")), ExTuple.tuple(ExAtom.atom("unknown"), ExVar.var("v"))));
     functions.add(
         ExFunction.functionWithSpec(
             "def",
@@ -554,20 +537,15 @@ final class ElixirDirectedCodegen
       Map.Entry<String, Integer> entry = members.get(i);
       toClauses.add(
           ExClause.inlineClause(
-              List.of(ExAtomPattern.atom(atoms.get(i))),
-              ExInteger.integer(entry.getValue())));
+              List.of(ExAtomPattern.atom(atoms.get(i))), ExInteger.integer(entry.getValue())));
     }
     toClauses.add(
         ExClause.inlineClause(
-            List.of(
-                ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("v"))),
+            List.of(ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("v"))),
             ExVar.var("v")));
     functions.add(
         ExFunction.functionWithSpec(
-            "def",
-            toFunction,
-            ExSpec.functionSpec(toFunction, "t()", "integer()"),
-            toClauses));
+            "def", toFunction, ExSpec.functionSpec(toFunction, "t()", "integer()"), toClauses));
 
     ExList valuesList =
         ExList.list(
@@ -613,16 +591,14 @@ final class ElixirDirectedCodegen
             .map(
                 m -> {
                   Symbol memberSym = sp.toSymbol(m);
-                  String tag =
-                      ":" + memberSym.getProperty("unionTag", String.class).orElseThrow();
+                  String tag = ":" + memberSym.getProperty("unionTag", String.class).orElseThrow();
                   String memberType = renderElixirType(ctx, memberSym);
                   return "{" + tag + ", " + memberType + "}";
                 })
             .collect(Collectors.toList());
     variants.add("{:unknown, String.t()}");
 
-    BeamDocumentation.forShape(shape)
-        .ifPresent(doc -> ctx.addTypesEntry(ExTypedoc.typedoc(doc)));
+    BeamDocumentation.forShape(shape).ifPresent(doc -> ctx.addTypesEntry(ExTypedoc.typedoc(doc)));
     ctx.addTypesEntry(ExTypeDef.unionType(symbol.getName(), variants));
   }
 
@@ -633,11 +609,9 @@ final class ElixirDirectedCodegen
     SymbolProvider sp = directive.symbolProvider();
     NullableIndex nullableIndex = NullableIndex.of(directive.model());
     Symbol symbol = sp.toSymbol(shape);
-    List<MemberShape> members =
-        StreamSupport.stream(shape.members().spliterator(), false).toList();
+    List<MemberShape> members = StreamSupport.stream(shape.members().spliterator(), false).toList();
 
-    ctx.addTypesEntry(
-        buildStructureNestedModule(shape, symbol, ctx, sp, nullableIndex, members));
+    ctx.addTypesEntry(buildStructureNestedModule(shape, symbol, ctx, sp, nullableIndex, members));
   }
 
   static ExNestedModule buildStructureNestedModule(
@@ -682,8 +656,7 @@ final class ElixirDirectedCodegen
     BeamRetryIndex.RetryInfo retryInfo = BeamRetryIndex.forError(shape).orElseThrow();
 
     ctx.addTypesEntry(
-        ExComment.comment(
-            "Error shape: " + shape.getId() + " (" + errorTrait.getValue() + ")"));
+        ExComment.comment("Error shape: " + shape.getId() + " (" + errorTrait.getValue() + ")"));
     ctx.addTypesEntry(
         buildErrorNestedModule(
             shape,

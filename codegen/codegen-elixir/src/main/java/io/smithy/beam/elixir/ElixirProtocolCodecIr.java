@@ -45,10 +45,10 @@ final class ElixirProtocolCodecIr {
       case ShapeId id when BeamProtocolIds.REST_JSON_1.equals(id) ->
           ElixirRestJsonIr.emitServerCodecModule(ctx, service);
       case ShapeId id when BeamProtocolIds.AWS_JSON_1_0.equals(id)
-          || BeamProtocolIds.AWS_JSON_1_1.equals(id) ->
+              || BeamProtocolIds.AWS_JSON_1_1.equals(id) ->
           ElixirAwsJsonIr.emitServerCodecModule(ctx, service, id);
       case ShapeId id when BeamProtocolIds.AWS_QUERY.equals(id)
-          || BeamProtocolIds.EC2_QUERY.equals(id) ->
+              || BeamProtocolIds.EC2_QUERY.equals(id) ->
           ElixirAwsQueryIr.emitServerCodecModule(ctx, service, id);
       case ShapeId id when BeamProtocolIds.REST_XML.equals(id) ->
           ElixirRestXmlIr.emitServerCodecModule(ctx, service);

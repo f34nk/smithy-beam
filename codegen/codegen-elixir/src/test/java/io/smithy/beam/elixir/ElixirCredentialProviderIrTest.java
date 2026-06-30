@@ -32,8 +32,7 @@ class ElixirCredentialProviderIrTest {
     String combined =
         ElixirCredentialProviderIr.credentialFunctions().stream()
             .filter(
-                fn ->
-                    fn.name().startsWith("resolve_chain") || fn.name().equals("resolve_provider"))
+                fn -> fn.name().startsWith("resolve_chain") || fn.name().equals("resolve_provider"))
             .map(ExFunction::asString)
             .collect(Collectors.joining("\n\n"));
     assertThat(combined).isEqualTo(readExpectedString("ir/credential_provider_chain.expected.ex"));

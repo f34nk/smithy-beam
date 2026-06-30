@@ -88,8 +88,7 @@ final class ElixirAwsQueryHelperIr {
 
   private static ExFunction flattenMember(boolean ec2Query) {
     String listSuffix = ec2Query ? "." : ".member.";
-    ExExpr listBody =
-        ExCall.call("List", "flatten", flattenMemberListComprehension(listSuffix));
+    ExExpr listBody = ExCall.call("List", "flatten", flattenMemberListComprehension(listSuffix));
     ExExpr mapBody = ExCall.call("List", "flatten", flattenMemberMapComprehension());
 
     return ExFunction.defpFunction(
@@ -123,8 +122,7 @@ final class ElixirAwsQueryHelperIr {
     return ExFor.forExpr(
         ExOp.op(
             "++",
-            ExCallLocal.callLocal(
-                "flatten_member", flattenMemberEntryKey(".key"), ExVar.var("k")),
+            ExCallLocal.callLocal("flatten_member", flattenMemberEntryKey(".key"), ExVar.var("k")),
             ExCallLocal.callLocal(
                 "flatten_member", flattenMemberEntryKey(".value"), ExVar.var("v"))),
         ExTuplePattern.tuple(
@@ -219,8 +217,7 @@ final class ElixirAwsQueryHelperIr {
                 List.of(ExVarPattern.var("params"), ExVarPattern.var("key")),
                 ExMatch.match(
                     ExVarPattern.var("prefix"),
-                    ExBinaryTemplate.binaryTemplate(
-                        ExVar.var("key"), ExString.string(".member."))),
+                    ExBinaryTemplate.binaryTemplate(ExVar.var("key"), ExString.string(".member."))),
                 ExCallLocal.callLocal(
                     "indexed_form_values", ExVar.var("params"), ExVar.var("prefix")))));
   }
@@ -243,11 +240,7 @@ final class ElixirAwsQueryHelperIr {
         ExAnonymousFn.compactFn(
             ExClause.inlineClause(
                 List.of(ExTuplePattern.tuple(ExVarPattern.var("k"), W)),
-                ExCall.call(
-                    "String",
-                    "starts_with?",
-                    ExVar.var("k"),
-                    ExVar.var("prefix"))));
+                ExCall.call("String", "starts_with?", ExVar.var("k"), ExVar.var("prefix"))));
     ExAnonymousFn sortFn =
         ExAnonymousFn.compactFn(
             ExClause.inlineClause(
@@ -305,19 +298,7 @@ final class ElixirAwsQueryHelperIr {
 
   private static ExFunction unwrapQueryResult() {
     ExTuplePattern xmlElementPattern =
-        ExTuplePattern.tuple(
-            ExAtomPattern.atom("xmlElement"),
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W);
+        ExTuplePattern.tuple(ExAtomPattern.atom("xmlElement"), W, W, W, W, W, W, W, W, W, W, W);
 
     ExCase resultLookup =
         ExCase.caseExpr(
@@ -325,8 +306,7 @@ final class ElixirAwsQueryHelperIr {
                 "query_result_element", ExVar.var("root"), ExVar.var("result_name")),
             ExCaseBranch.branch(ExNilPattern.nil(), errorMissingResult()),
             ExCaseBranch.branch(
-                ExVarPattern.var("result"),
-                ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("result"))));
+                ExVarPattern.var("result"), ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("result"))));
 
     ExCase scanCase =
         ExCase.caseExpr(
@@ -341,7 +321,8 @@ final class ElixirAwsQueryHelperIr {
                     ExMatch.match(
                         ExVarPattern.var("root"), normalizeXmlElementBody(ExVar.var("xml"))),
                     resultLookup)),
-            ExCaseBranch.branch(W, ExTuple.tuple(ExAtom.atom("error"), ExAtom.atom("xml_parse_error"))));
+            ExCaseBranch.branch(
+                W, ExTuple.tuple(ExAtom.atom("error"), ExAtom.atom("xml_parse_error"))));
 
     return ExFunction.defpFunction(
         "unwrap_query_result",
@@ -446,21 +427,8 @@ final class ElixirAwsQueryHelperIr {
 
   private static ExFunction isElement() {
     ExTuplePattern xmlElement =
-        ExTuplePattern.tuple(
-            ExAtomPattern.atom("xmlElement"),
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W);
-    ExTuplePattern sixTuple =
-        ExTuplePattern.tuple(W, W, ExVarPattern.var("content"), W, W, W);
+        ExTuplePattern.tuple(ExAtomPattern.atom("xmlElement"), W, W, W, W, W, W, W, W, W, W, W);
+    ExTuplePattern sixTuple = ExTuplePattern.tuple(W, W, ExVarPattern.var("content"), W, W, W);
 
     return ExFunction.defpFunction(
         "is_element",
@@ -488,8 +456,7 @@ final class ElixirAwsQueryHelperIr {
             W,
             W,
             W);
-    ExTuplePattern sixTupleName =
-        ExTuplePattern.tuple(ExVarPattern.var("name"), W, W, W, W, W);
+    ExTuplePattern sixTupleName = ExTuplePattern.tuple(ExVarPattern.var("name"), W, W, W, W, W);
 
     return ExFunction.defpFunction(
         "element_name",
@@ -594,8 +561,7 @@ final class ElixirAwsQueryHelperIr {
     ExAnonymousFn rejectFn =
         ExAnonymousFn.compactFn(
             ExClause.inlineClause(
-                List.of(ExVarPattern.var("x")),
-                ExCall.call("Kernel", "is_nil", ExVar.var("x"))));
+                List.of(ExVarPattern.var("x")), ExCall.call("Kernel", "is_nil", ExVar.var("x"))));
 
     ExPipeline childPipeline =
         ExPipeline.pipeChain(
@@ -687,9 +653,7 @@ final class ElixirAwsQueryHelperIr {
     ExCase responseLookup =
         ExCase.caseExpr(
             ExCallLocal.callLocal(
-                "query_result_element",
-                ExVar.var("xml"),
-                ExString.string(responseElement)),
+                "query_result_element", ExVar.var("xml"), ExString.string(responseElement)),
             ExCaseBranch.branch(W, unknownQueryError()),
             ExCaseBranch.branch(ExVarPattern.var("error_response"), errorLookup));
 
@@ -749,25 +713,11 @@ final class ElixirAwsQueryHelperIr {
 
   private static ExCase scanAndLookup(ExCase lookup) {
     ExTuplePattern xmlElementPattern =
-        ExTuplePattern.tuple(
-            ExAtomPattern.atom("xmlElement"),
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W);
+        ExTuplePattern.tuple(ExAtomPattern.atom("xmlElement"), W, W, W, W, W, W, W, W, W, W, W);
 
     return ExCase.caseExpr(
         ExCall.call(
-            ":xmerl_scan",
-            "string",
-            ExCall.call(":erlang", "binary_to_list", ExVar.var("body"))),
+            ":xmerl_scan", "string", ExCall.call(":erlang", "binary_to_list", ExVar.var("body"))),
         ExCaseBranch.branch(
             ExTuplePattern.tuple(
                 ExTuplePattern.tuple(xmlElementPattern, ExVarPattern.var("xml")), W),

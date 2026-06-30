@@ -10,7 +10,6 @@ import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
-import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamResourceIndex;
@@ -195,9 +194,7 @@ final class ElixirClientDirectedCodegen
               builder.serviceFunctions(),
               builder.operationFunctions());
       ctx.writerDelegator()
-          .useFileWriter(
-              ctx.definitionFile(),
-              writer -> writer.write("$L", module.asString()));
+          .useFileWriter(ctx.definitionFile(), writer -> writer.write("$L", module.asString()));
       if (ctx.protocolCodegen() != null) {
         List<OperationShape> operations =
             ElixirTopDown.containedOperationsSorted(ctx.model(), service);
@@ -250,7 +247,8 @@ final class ElixirClientDirectedCodegen
             ? BeamClientPaginationSupport.requirePaginationInfo(ctx.model(), ctx.service(), op)
             : null;
 
-    String successReturnType = successReturnType(paginated, paginationInfo, ctx, sp, typesModuleName, outSym);
+    String successReturnType =
+        successReturnType(paginated, paginationInfo, ctx, sp, typesModuleName, outSym);
     ExDoc doc = operationDoc(op, ctx);
 
     if (paginated) {

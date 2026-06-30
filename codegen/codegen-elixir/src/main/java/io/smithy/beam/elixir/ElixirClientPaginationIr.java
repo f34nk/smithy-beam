@@ -77,8 +77,7 @@ final class ElixirClientPaginationIr {
         ExFunction.functionWithSpec(
             "defp",
             opName,
-            ExSpec.functionSpec(
-                opName, "map(), " + inType + ", " + successReturnType, specOutput),
+            ExSpec.functionSpec(opName, "map(), " + inType + ", " + successReturnType, specOutput),
             List.of(
                 paginatedArity3Clause(
                     ctx, service, op, wrapWithRetry, retryModule, pageBody, sp, opName)));
@@ -96,10 +95,7 @@ final class ElixirClientPaginationIr {
       SymbolProvider sp,
       String opName) {
     List<ExPattern> patterns =
-        List.of(
-            ExVarPattern.var("config"),
-            ExVarPattern.var("input"),
-            ExVarPattern.var("acc"));
+        List.of(ExVarPattern.var("config"), ExVarPattern.var("input"), ExVarPattern.var("acc"));
     if (wrapWithRetry) {
       return ExClause.blockClause(
           patterns,
@@ -135,8 +131,7 @@ final class ElixirClientPaginationIr {
     body.add(
         ExMatch.match(
             ExVarPattern.var("retry_opts"),
-            ExCall.call(
-                "Map", "get", ExVar.var("config"), ExAtom.atom("retry"), ExList.list())));
+            ExCall.call("Map", "get", ExVar.var("config"), ExAtom.atom("retry"), ExList.list())));
     ExCase retryCase =
         ExCase.caseExpr(
             ExCall.call(
@@ -147,15 +142,13 @@ final class ElixirClientPaginationIr {
                         List.of(), ExExprBlock.block(pageBody.toArray(ExExpr[]::new)))),
                 ExVar.var("retry_opts")),
             ExCaseBranch.branch(
-                ExTuplePattern.tuple(
-                    ExAtomPattern.atom("ok"), ExVarPattern.var("output")),
+                ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("output")),
                 ExExprBlock.block(
                     ElixirClientDispatchOperationIr.buildAccumulationAndRecursion(
                             opName, hasItems, itemsExpr, outputTokenExpr, inputToken)
                         .toArray(ExExpr[]::new))),
             ExCaseBranch.branch(
-                ExTuplePattern.tuple(
-                    ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
+                ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
                 ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason"))));
     body.add(retryCase);
     return body;

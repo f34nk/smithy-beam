@@ -94,9 +94,7 @@ class ElixirHttpChecksumIrTest {
 
     ExExpr guarded =
         ElixirHttpChecksumIr.responseChecksumGuardExpr(
-            model,
-            flexible,
-            ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("output")));
+            model, flexible, ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("output")));
     assertThat(exprAsString(guarded))
         .isEqualTo(readExpectedString("ir/http_checksum_response_guard.expected.ex"));
   }

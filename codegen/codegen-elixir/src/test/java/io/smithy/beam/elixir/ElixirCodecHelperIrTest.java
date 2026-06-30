@@ -114,8 +114,7 @@ class ElixirCodecHelperIrTest {
   @Test
   void encodeTimestampDateTimeAsStringMatchGolden() throws IOException {
     assertGolden(
-        ElixirCodecHelperIr.encodeTimestampDateTime(),
-        "ir/encode_timestamp_date_time.expected.ex");
+        ElixirCodecHelperIr.encodeTimestampDateTime(), "ir/encode_timestamp_date_time.expected.ex");
   }
 
   @Test
@@ -128,8 +127,7 @@ class ElixirCodecHelperIrTest {
   @Test
   void decodeTimestampDateTimeAsStringMatchGolden() throws IOException {
     assertGolden(
-        ElixirCodecHelperIr.decodeTimestampDateTime(),
-        "ir/decode_timestamp_date_time.expected.ex");
+        ElixirCodecHelperIr.decodeTimestampDateTime(), "ir/decode_timestamp_date_time.expected.ex");
   }
 
   @Test

@@ -23,7 +23,6 @@ public final class ElixirSigV4Emitter {
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
     ExModule module = ElixirSigV4Ir.sigV4Module(ctx, service);
     ctx.writerDelegator()
-        .useFileWriter(
-            layout.sigv4ModuleFile(), writer -> writer.write("$L", module.asString()));
+        .useFileWriter(layout.sigv4ModuleFile(), writer -> writer.write("$L", module.asString()));
   }
 }

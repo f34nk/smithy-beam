@@ -18,9 +18,8 @@ import io.smithy.beam.ir.elixir.ExGuard;
 import io.smithy.beam.ir.elixir.ExListPattern;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
-import io.smithy.beam.ir.elixir.ExNilPattern;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExOp;
 import io.smithy.beam.ir.elixir.ExPipeline;
 import io.smithy.beam.ir.elixir.ExSpec;
@@ -77,10 +76,7 @@ final class ElixirRuntimeHelpersIr {
                     ExMatch.match(
                         ExVarPattern.var("prefix"),
                         ExCall.call(
-                            "Map",
-                            "fetch!",
-                            ExVar.var("config"),
-                            ExAtom.atom("endpoint_prefix"))),
+                            "Map", "fetch!", ExVar.var("config"), ExAtom.atom("endpoint_prefix"))),
                     ExMatch.match(
                         ExVarPattern.var("region"),
                         ExCall.call(
@@ -135,10 +131,7 @@ final class ElixirRuntimeHelpersIr {
         "match_segments",
         List.of(
             ExClause.inlineClause(
-                List.of(
-                    ExListPattern.list(),
-                    ExListPattern.list(),
-                    ExVarPattern.var("acc")),
+                List.of(ExListPattern.list(), ExListPattern.list(), ExVarPattern.var("acc")),
                 ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("acc"))),
             ExClause.blockClause(
                 List.of(
@@ -151,8 +144,7 @@ final class ElixirRuntimeHelpersIr {
                     ExCallLocal.callLocal("label_name", ExVar.var("tpl_seg")),
                     List.of(
                         ExCaseBranch.branch(
-                            ExTuplePattern.tuple(
-                                ExAtomPattern.atom("ok"), ExVarPattern.var("key")),
+                            ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("key")),
                             ExExprBlock.block(
                                 ExMatch.match(
                                     ExVarPattern.var("val"),
@@ -200,8 +192,7 @@ final class ElixirRuntimeHelpersIr {
                         ExString.string("}"),
                         ExCapturedBlock.capturedBlock("parts: 2")),
                     ExCaseBranch.branch(
-                        ExListPattern.list(
-                            ExVarPattern.var("label"), ExStringPattern.string("")),
+                        ExListPattern.list(ExVarPattern.var("label"), ExStringPattern.string("")),
                         ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("label"))),
                     ExCaseBranch.branch(ExVarPattern.var("_"), ExAtom.atom("error")))),
             ExClause.inlineClause(List.of(ExVarPattern.var("_")), ExAtom.atom("error"))));

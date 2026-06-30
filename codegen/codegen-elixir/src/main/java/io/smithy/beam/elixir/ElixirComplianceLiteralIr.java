@@ -90,17 +90,14 @@ final class ElixirComplianceLiteralIr {
   }
 
   static ExExpr labelMap(
-      BeamHostLabelIndex hostLabelIndex,
-      OperationShape operation,
-      ObjectNode params) {
+      BeamHostLabelIndex hostLabelIndex, OperationShape operation, ObjectNode params) {
     List<ExMapEntry> entries = new ArrayList<>();
     for (MemberShape member : hostLabelIndex.hostLabelMembers(operation)) {
       String memberName = member.getMemberName();
       if (params.getMember(memberName).isPresent()) {
         String field = BeamNameUtils.toSnakeCase(memberName);
         entries.add(
-            ExMapEntry.entry(
-                ExAtom.atom(field), scalarValue(params.expectMember(memberName))));
+            ExMapEntry.entry(ExAtom.atom(field), scalarValue(params.expectMember(memberName))));
       }
     }
     if (entries.isEmpty()) {
@@ -148,8 +145,7 @@ final class ElixirComplianceLiteralIr {
         .getMembers()
         .forEach(
             (key, node) ->
-                entries.add(
-                    ExMapEntry.entry(ExString.string(key.getValue()), scalarValue(node))));
+                entries.add(ExMapEntry.entry(ExString.string(key.getValue()), scalarValue(node))));
     return ExMap.map(entries.toArray(ExMapEntry[]::new));
   }
 
@@ -173,7 +169,8 @@ final class ElixirComplianceLiteralIr {
     return ExString.string(value.toString());
   }
 
-  private static String enumAtom(Shape enumShape, String memberName, SymbolProvider symbolProvider) {
+  private static String enumAtom(
+      Shape enumShape, String memberName, SymbolProvider symbolProvider) {
     Symbol symbol = symbolProvider.toSymbol(enumShape);
     Map<String, String> byMember =
         symbol.getProperty("enumAtomByMember", Map.class).orElse(Map.of());

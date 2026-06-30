@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamRetryIndex;
 import io.smithy.beam.ir.elixir.ExModule;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -10,7 +11,6 @@ import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.StructureShape;
-import io.smithy.beam.core.BeamRetryIndex;
 
 /**
  * Generates a {@code <Service>Retry} helper that optionally retries operation calls when the
@@ -30,8 +30,7 @@ public final class ElixirRetryEmitter {
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
     ExModule module = ElixirRetryIr.retryModule(ctx, service, ctx.model(), ctx.symbolProvider());
     ctx.writerDelegator()
-        .useFileWriter(
-            layout.retryModuleFile(), writer -> writer.write("$L", module.asString()));
+        .useFileWriter(layout.retryModuleFile(), writer -> writer.write("$L", module.asString()));
   }
 
   private static List<StructureShape> retryableErrors(Model model, ServiceShape service) {

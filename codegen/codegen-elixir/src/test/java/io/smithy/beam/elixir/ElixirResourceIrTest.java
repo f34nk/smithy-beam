@@ -77,10 +77,11 @@ class ElixirResourceIrTest {
                     .contains(
                         "%ResourceLifecycleServiceTypes.GetOrganizationInput{org_id: org_id}"));
     assertThat(org).contains("Top-level organization resource.");
-    for (ExFunction fn : module.nestedEntries().stream()
-        .filter(ExFunction.class::isInstance)
-        .map(ExFunction.class::cast)
-        .toList()) {
+    for (ExFunction fn :
+        module.nestedEntries().stream()
+            .filter(ExFunction.class::isInstance)
+            .map(ExFunction.class::cast)
+            .toList()) {
       ElixirIrTestSupport.assertStructural(fn);
     }
   }
@@ -134,10 +135,11 @@ class ElixirResourceIrTest {
     assertThat(org).contains("def handle_read(");
     assertThat(org).contains("Server.handle_get_organization(ctx,");
     assertThat(org).contains("Top-level organization resource.");
-    for (ExFunction fn : module.nestedEntries().stream()
-        .filter(ExFunction.class::isInstance)
-        .map(ExFunction.class::cast)
-        .toList()) {
+    for (ExFunction fn :
+        module.nestedEntries().stream()
+            .filter(ExFunction.class::isInstance)
+            .map(ExFunction.class::cast)
+            .toList()) {
       ElixirIrTestSupport.assertStructural(fn);
     }
   }

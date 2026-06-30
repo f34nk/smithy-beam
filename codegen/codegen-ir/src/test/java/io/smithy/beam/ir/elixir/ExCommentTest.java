@@ -7,8 +7,7 @@ import org.junit.jupiter.api.Test;
 class ExCommentTest {
   @Test
   void singleLineLines() {
-    assertThat(ExComment.comment("Generated codec.").lines())
-        .containsExactly("# Generated codec.");
+    assertThat(ExComment.comment("Generated codec.").lines()).containsExactly("# Generated codec.");
   }
 
   @Test

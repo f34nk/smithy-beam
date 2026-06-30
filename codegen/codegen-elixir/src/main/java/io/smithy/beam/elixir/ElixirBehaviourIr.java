@@ -11,8 +11,8 @@ import io.smithy.beam.ir.elixir.ExExpr;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExInteger;
 import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExPreambleEntry;
 import io.smithy.beam.ir.elixir.ExSpec;
 import io.smithy.beam.ir.elixir.ExTuple;
@@ -47,8 +47,7 @@ final class ElixirBehaviourIr {
         List.of(callbacksFunction(operations, sp)));
   }
 
-  static ExCallbackSpec operationCallback(
-      ElixirContext ctx, OperationShape op, SymbolProvider sp) {
+  static ExCallbackSpec operationCallback(ElixirContext ctx, OperationShape op, SymbolProvider sp) {
     Symbol opSym = sp.toSymbol(op);
     StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
     StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
@@ -72,8 +71,7 @@ final class ElixirBehaviourIr {
     List<ExExpr> entries = new ArrayList<>();
     for (OperationShape op : operations) {
       String name = sp.toSymbol(op).getName();
-      entries.add(
-          ExTuple.tuple(ExAtom.atom("handle_" + name), ExInteger.integer(3)));
+      entries.add(ExTuple.tuple(ExAtom.atom("handle_" + name), ExInteger.integer(3)));
     }
     return ExFunction.functionWithSpec(
         "def",

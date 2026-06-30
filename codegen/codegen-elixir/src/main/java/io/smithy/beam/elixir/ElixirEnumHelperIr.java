@@ -73,9 +73,7 @@ final class ElixirEnumHelperIr {
     }
     clauses.add(
         ExClause.inlineClause(
-            List.of(
-                ExTuplePattern.tuple(
-                    ExAtomPattern.atom("unknown"), ExVarPattern.var("v"))),
+            List.of(ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("v"))),
             List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
             ExVar.var("v")));
     clauses.add(ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")));
@@ -113,9 +111,7 @@ final class ElixirEnumHelperIr {
     }
     clauses.add(
         ExClause.inlineClause(
-            List.of(
-                ExTuplePattern.tuple(
-                    ExAtomPattern.atom("unknown"), ExVarPattern.var("v"))),
+            List.of(ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("v"))),
             List.of(ExGuard.guard("is_integer", ExVar.var("v"))),
             ExVar.var("v")));
     clauses.add(ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")));

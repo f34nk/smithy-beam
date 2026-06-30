@@ -2,7 +2,6 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.elixir.ExAnonymousFn;
 import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExAtomPattern;
 import io.smithy.beam.ir.elixir.ExBinaryTemplate;
@@ -109,8 +108,7 @@ final class ElixirHttpChecksumIr {
     return Optional.of(ExExprBlock.block(exprs.toArray(ExExpr[]::new)));
   }
 
-  static ExExpr responseChecksumGuardExpr(
-      Model model, OperationShape op, ExExpr successExpr) {
+  static ExExpr responseChecksumGuardExpr(Model model, OperationShape op, ExExpr successExpr) {
     BeamHttpChecksumIndex checksumIndex = BeamHttpChecksumIndex.of(model);
     List<BeamHttpChecksumIndex.ChecksumBinding> bindings = checksumIndex.responseChecksums(op);
     if (bindings.isEmpty()) {
@@ -132,8 +130,7 @@ final class ElixirHttpChecksumIr {
             ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
             ExTuple.tuple(
                 ExAtom.atom("error"),
-                ExTuple.tuple(
-                    ExAtom.atom("checksum_validation_failed"), ExVar.var("reason")))));
+                ExTuple.tuple(ExAtom.atom("checksum_validation_failed"), ExVar.var("reason")))));
   }
 
   static List<ExFunction> checksumHelperFunctions() {
@@ -223,14 +220,14 @@ final class ElixirHttpChecksumIr {
         "validate_response_checksum",
         List.of(
             ExClause.inlineClause(
-                List.of(ExVarPattern.var("_body"), ExVarPattern.var("_headers"), ExListPattern.list()),
+                List.of(
+                    ExVarPattern.var("_body"), ExVarPattern.var("_headers"), ExListPattern.list()),
                 ExAtom.atom("ok")),
             ExClause.blockClause(
                 List.of(
                     ExVarPattern.var("body"),
                     ExVarPattern.var("headers"),
-                    ExListPattern.cons(
-                        ExVarPattern.var("header_name"), ExVarPattern.var("rest"))),
+                    ExListPattern.cons(ExVarPattern.var("header_name"), ExVarPattern.var("rest"))),
                 ExPipeCase.pipeCase(
                     ExCall.call(
                         "List",
@@ -315,8 +312,7 @@ final class ElixirHttpChecksumIr {
     if (cb.usesCryptoHash()) {
       return ExMatch.match(
           ExVarPattern.var(checksumVar),
-          ExCall.call(
-              ":crypto", "hash", ExAtom.atom(cb.algorithmErlangAtom()), ExVar.var("body")));
+          ExCall.call(":crypto", "hash", ExAtom.atom(cb.algorithmErlangAtom()), ExVar.var("body")));
     }
     return ExMatch.match(
         ExVarPattern.var(checksumVar),

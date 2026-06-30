@@ -36,7 +36,8 @@ class ElixirEndpointRulesIrTest {
         ElixirEndpointRulesIr.mergeParamsFunctions(clientContextKeys).stream()
             .map(ExFunction::asString)
             .collect(Collectors.joining("\n\n"));
-    assertThat(combined).isEqualTo(readExpectedString("ir/endpoint_rules_merge_params.expected.ex"));
+    assertThat(combined)
+        .isEqualTo(readExpectedString("ir/endpoint_rules_merge_params.expected.ex"));
   }
 
   @Test

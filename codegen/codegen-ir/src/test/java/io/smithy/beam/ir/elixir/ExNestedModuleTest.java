@@ -15,10 +15,7 @@ class ExNestedModuleTest {
             List.of(
                 ExDefstruct.defstruct(List.of(":name", ":count")),
                 ExTypeDef.structureType(
-                    "t",
-                    List.of(
-                        "name: basic_string() | nil",
-                        "count: basic_integer() | nil"))),
+                    "t", List.of("name: basic_string() | nil", "count: basic_integer() | nil"))),
             List.of());
     assertThat(nested.asString())
         .contains("defmodule BasicItem do")

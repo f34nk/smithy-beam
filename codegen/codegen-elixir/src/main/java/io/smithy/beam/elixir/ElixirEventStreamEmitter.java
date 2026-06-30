@@ -35,7 +35,8 @@ public final class ElixirEventStreamEmitter {
     return ElixirEventStreamIr.helperName(sp, union);
   }
 
-  static String unionTagForMember(SymbolProvider sp, software.amazon.smithy.model.shapes.MemberShape member) {
+  static String unionTagForMember(
+      SymbolProvider sp, software.amazon.smithy.model.shapes.MemberShape member) {
     return ElixirUnionHelperIr.unionTagForMember(sp, member);
   }
 }

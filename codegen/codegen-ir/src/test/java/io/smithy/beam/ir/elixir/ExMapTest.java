@@ -23,7 +23,6 @@ class ExMapTest {
         ExMap.map(
             ExMapEntry.entry(ExString.string("a"), ExVar.var("a")),
             ExMapEntry.entry(ExString.string("b"), ExVar.var("b")));
-    assertThat(map.asString())
-        .isEqualTo("%{\n  \"a\" => a,\n  \"b\" => b\n}");
+    assertThat(map.asString()).isEqualTo("%{\n  \"a\" => a,\n  \"b\" => b\n}");
   }
 }

@@ -13,8 +13,7 @@ class ExBehaviourAttrTest {
 
   @Test
   void moduleAssignAttrLines() {
-    assertThat(
-            ExModuleAssignAttr.assign("default_impl", ExVar.var("BasicServiceImpl")).lines(1))
+    assertThat(ExModuleAssignAttr.assign("default_impl", ExVar.var("BasicServiceImpl")).lines(1))
         .containsExactly("  @default_impl BasicServiceImpl");
     assertThat(
             ExModuleAssignAttr.assign(

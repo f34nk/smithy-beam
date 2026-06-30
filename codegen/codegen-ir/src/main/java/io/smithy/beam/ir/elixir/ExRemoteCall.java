@@ -31,7 +31,8 @@ public final class ExRemoteCall implements ExExpr {
 
   @Override
   public List<String> lines() {
-    StringBuilder sb = new StringBuilder(module.asString()).append('.').append(function).append('(');
+    StringBuilder sb =
+        new StringBuilder(module.asString()).append('.').append(function).append('(');
     for (int i = 0; i < args.size(); i++) {
       if (i > 0) {
         sb.append(", ");

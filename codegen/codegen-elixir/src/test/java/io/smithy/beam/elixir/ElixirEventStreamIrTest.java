@@ -35,7 +35,8 @@ class ElixirEventStreamIrTest {
             ShapeId.from("smithy.beam.test.eventstream#EventStreamRestJsonService"),
             ServiceShape.class);
     eventStreamUnion =
-        model.expectShape(ShapeId.from("smithy.beam.test.eventstream#EventStream"), UnionShape.class);
+        model.expectShape(
+            ShapeId.from("smithy.beam.test.eventstream#EventStream"), UnionShape.class);
     BeamSettings settings = new BeamSettings();
     settings.edition("2026");
     provider =
@@ -71,8 +72,7 @@ class ElixirEventStreamIrTest {
     }
     String combined =
         functions.stream().map(ExFunction::asString).collect(Collectors.joining("\n\n"));
-    assertThat(combined)
-        .isEqualTo(readExpectedString("ir/event_stream_union_helpers.expected.ex"));
+    assertThat(combined).isEqualTo(readExpectedString("ir/event_stream_union_helpers.expected.ex"));
   }
 
   @Test
@@ -86,8 +86,7 @@ class ElixirEventStreamIrTest {
     BeamSettings settings = new BeamSettings();
     settings.edition("2026");
     return ElixirSymbolProvider.toModuleName(
-        new io.smithy.beam.core.BeamElixirLayout(
-                settings, service.getId().getNamespace(), service)
+        new io.smithy.beam.core.BeamElixirLayout(settings, service.getId().getNamespace(), service)
             .typesModuleName());
   }
 

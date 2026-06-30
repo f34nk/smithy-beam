@@ -3,8 +3,8 @@ package io.smithy.beam.elixir;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.ir.elixir.ExAliasAttr;
 import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuledoc;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -84,9 +84,7 @@ final class ElixirRestJsonIr {
         moduleName,
         List.of(
             ExModuledoc.moduledoc(
-                "Server REST JSON 1 codecs for "
-                    + service.getId()
-                    + " (generated). Do not edit.")),
+                "Server REST JSON 1 codecs for " + service.getId() + " (generated). Do not edit.")),
         List.of(
             ExAliasAttr.alias(runtimeMod, "RuntimeTypes"), ExAliasAttr.alias(typesMod, "Types")),
         functions);
@@ -239,8 +237,7 @@ final class ElixirRestJsonIr {
       for (ShapeId errorId : op.getErrors()) {
         if (emittedErrorEncoders.add(errorId)) {
           functions.add(
-              ElixirRestJsonOperationIr.buildErrorResponseEncoder(
-                  model, errorId, sp, typesMod));
+              ElixirRestJsonOperationIr.buildErrorResponseEncoder(model, errorId, sp, typesMod));
         }
       }
     }
@@ -251,8 +248,7 @@ final class ElixirRestJsonIr {
     return functions;
   }
 
-  static List<ExFunction> sharedCodecHelpers(
-      Model model, ServiceShape service, SymbolProvider sp) {
+  static List<ExFunction> sharedCodecHelpers(Model model, ServiceShape service, SymbolProvider sp) {
     List<ExFunction> functions = new ArrayList<>();
     functions.addAll(structureHelperFunctions(model, service, sp));
     functions.addAll(enumHelperFunctions(model, service, sp));

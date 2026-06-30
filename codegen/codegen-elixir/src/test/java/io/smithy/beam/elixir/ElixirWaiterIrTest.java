@@ -45,12 +45,7 @@ class ElixirWaiterIrTest {
     typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     provider =
         new ElixirSymbolProvider(
-            settings,
-            model,
-            service,
-            layout.typesModuleFile(),
-            typesMod,
-            BeamCodegenKind.CLIENT);
+            settings, model, service, layout.typesModuleFile(), typesMod, BeamCodegenKind.CLIENT);
   }
 
   @Test
@@ -120,8 +115,7 @@ class ElixirWaiterIrTest {
 
   @Test
   void waitersModuleMatchesGolden() throws IOException {
-    ExModule module =
-        ElixirWaiterIr.waitersModule(testContext(), service, index, provider, model);
+    ExModule module = ElixirWaiterIr.waitersModule(testContext(), service, index, provider, model);
     assertThat(module.asString()).isEqualTo(readExpectedString("ir/waiters_module.expected.ex"));
   }
 
