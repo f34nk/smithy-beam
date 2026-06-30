@@ -68,9 +68,12 @@ defmodule HttpServiceRestJson1 do
 
   defp prefix_headers_to_list(_prefix, nil), do: []
   defp prefix_headers_to_list(prefix, map) when is_map(map) do
-    Enum.map(map, fn {k, v} ->
-  {prefix <> k, Kernel.to_string(v)}
-end)
+    Enum.map(
+      map,
+      fn {k, v} ->
+        {prefix <> k, Kernel.to_string(v)}
+      end
+    )
   end
 
   defp prefix_headers_from_list(headers, prefix) do
@@ -116,32 +119,41 @@ end)
 
   defp decode_sparse_map(nil), do: :nil
   defp decode_sparse_map(map) when is_map(map) do
-    Map.new(map, fn
-  {k, nil} ->
-    {k, :nil};
-  {k, v} ->
-    {k, v}
-end)
+    Map.new(
+      map,
+      fn
+        {k, nil} ->
+          {k, :nil};
+        {k, v} ->
+          {k, v}
+      end
+    )
   end
 
   defp encode_sparse_list(nil), do: :nil
   defp encode_sparse_list(list) when is_list(list) do
-    Enum.map(list, fn
-  nil ->
-    :nil;
-  v ->
-    v
-end)
+    Enum.map(
+      list,
+      fn
+        nil ->
+          :nil;
+        v ->
+          v
+      end
+    )
   end
 
   defp encode_sparse_map(nil), do: :nil
   defp encode_sparse_map(map) when is_map(map) do
-    Map.new(map, fn
-  {k, nil} ->
-    {k, :nil};
-  {k, v} ->
-    {k, v}
-end)
+    Map.new(
+      map,
+      fn
+        {k, nil} ->
+          {k, :nil};
+        {k, v} ->
+          {k, v}
+      end
+    )
   end
 
   defp encode_timestamp_epoch_seconds(dt = %DateTime{}), do: DateTime.to_unix(dt)

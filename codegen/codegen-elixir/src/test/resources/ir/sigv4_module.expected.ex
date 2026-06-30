@@ -97,14 +97,17 @@ defmodule Sigv4testServiceSigv4 do
   end
 
   defp header_host(headers) do
-    Enum.find_value(headers, fn
-  {"host", value} ->
-    value;
-  {"Host", value} ->
-    value;
-  _ ->
-    nil
-end)
+    Enum.find_value(
+      headers,
+      fn
+        {"host", value} ->
+          value;
+        {"Host", value} ->
+          value;
+        _ ->
+          nil
+      end
+    )
   end
 
   defp maybe_add_session_token(headers, nil), do: headers

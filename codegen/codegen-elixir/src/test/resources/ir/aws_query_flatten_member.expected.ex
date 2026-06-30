@@ -3,12 +3,14 @@ defp flatten_member(key, value) when is_list(value) do
   List.flatten(for {i, v} <- Enum.with_index(value, 1), v != :nil do flatten_member(<<key, ".member.", Integer.to_string(i)>>, v) end)
 end
 defp flatten_member(key, value) when is_map(value) do
-  List.flatten(for {i, {k, v}} <-
-  Enum.with_index(Map.to_list(value), 1),
-  k != :nil,
-  v != :nil do
-  flatten_member(<<key, ".entry.", Integer.to_string(i), ".key">>, k) ++ flatten_member(<<key, ".entry.", Integer.to_string(i), ".value">>, v)
-end)
+  List.flatten(
+    for {i, {k, v}} <-
+      Enum.with_index(Map.to_list(value), 1),
+      k != :nil,
+      v != :nil do
+      flatten_member(<<key, ".entry.", Integer.to_string(i), ".key">>, k) ++ flatten_member(<<key, ".entry.", Integer.to_string(i), ".value">>, v)
+    end
+  )
 end
 defp flatten_member(key, value), do: [{key, value}]
 
