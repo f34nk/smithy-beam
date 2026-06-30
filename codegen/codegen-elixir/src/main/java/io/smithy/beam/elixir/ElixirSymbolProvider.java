@@ -177,9 +177,13 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
   @Override
   public Symbol enumShape(EnumShape shape) {
+    int memberCount = shape.getEnumValues().size();
+    boolean stringBacked = memberCount > settings.elixirEnumStringThreshold();
     return namedModule(shape).toBuilder()
         .putProperty("enumAtoms", new ArrayList<>(enumAtomNames.get(shape.getId()).values()))
         .putProperty("enumAtomByMember", enumAtomNames.get(shape.getId()))
+        .putProperty("enumStringBacked", stringBacked)
+        .putProperty("enumMemberCount", memberCount)
         .putProperty("fromValueFunction", toFunctionName("from_string"))
         .putProperty("toValueFunction", toFunctionName("to_string"))
         .putProperty("valuesFunction", toFunctionName("values"))
@@ -332,6 +336,10 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
   String toEnumAtomName(Shape enumShape, String memberName) {
     return enumAtomNames.get(enumShape.getId()).get(memberName);
+  }
+
+  static boolean isStringBackedEnum(Symbol symbol) {
+    return symbol.getProperty("enumStringBacked", Boolean.class).orElse(false);
   }
 
   static String toSnakeCase(String name) {

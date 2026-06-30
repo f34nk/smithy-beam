@@ -374,6 +374,66 @@ class ElixirSymbolProviderTest {
       List<?> atoms = sym.expectProperty("enumAtoms", List.class);
       assertThat(atoms).map(Object::toString).containsExactlyInAnyOrder("low", "high");
     }
+
+    @Test
+    void smallEnumIsNotStringBacked() {
+      Symbol sym =
+          provider.toSymbol(
+              model.expectShape(ShapeId.from("com.example#TestStatus"), EnumShape.class));
+      assertThat(sym.getProperty("enumStringBacked", Boolean.class)).contains(false);
+      assertThat(sym.getProperty("enumMemberCount", Integer.class)).contains(2);
+      assertThat(ElixirSymbolProvider.isStringBackedEnum(sym)).isFalse();
+    }
+
+    @Test
+    void largeEnumIsStringBacked() {
+      StringBuilder idl = new StringBuilder();
+      idl.append(
+          """
+                $version: "2"
+                namespace com.large
+
+                service LargeService {
+                    operations: [LargeOp]
+                }
+
+                operation LargeOp {
+                    input: LargeInput
+                    output: LargeOutput
+                }
+
+                structure LargeInput {
+                    status: LargeStatus
+                }
+
+                structure LargeOutput {}
+
+                enum LargeStatus {
+                """);
+      for (int i = 0; i < 129; i++) {
+        idl.append("    MEMBER_").append(i).append("\n");
+      }
+      idl.append("}\n");
+
+      Model largeModel =
+          Model.assembler().addUnparsedModel("large.smithy", idl.toString()).assemble().unwrap();
+      ServiceShape largeService =
+          largeModel.expectShape(ShapeId.from("com.large#LargeService"), ServiceShape.class);
+      ElixirSymbolProvider largeProvider =
+          new ElixirSymbolProvider(
+              testSettings(),
+              largeModel,
+              largeService,
+              DEF_FILE,
+              MODULE_NAMESPACE,
+              BeamCodegenKind.TYPES);
+      Symbol sym =
+          largeProvider.toSymbol(
+              largeModel.expectShape(ShapeId.from("com.large#LargeStatus"), EnumShape.class));
+      assertThat(sym.getProperty("enumStringBacked", Boolean.class)).contains(true);
+      assertThat(sym.getProperty("enumMemberCount", Integer.class)).contains(129);
+      assertThat(ElixirSymbolProvider.isStringBackedEnum(sym)).isTrue();
+    }
   }
 
   // ── Member symbols ────────────────────────────────────────────────────────
