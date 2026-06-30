@@ -95,6 +95,59 @@ class ElixirEnumHelperIrTest {
     assertThat(functions).hasSize(2);
   }
 
+  @Test
+  void stringBackedEnumDecodeEncodeAsStringMatchesGolden() throws IOException {
+    String idl =
+        """
+                $version: "2"
+                namespace com.large
+
+                service LargeService {
+                    operations: [LargeOp]
+                }
+
+                operation LargeOp {
+                    input: LargeInput
+                    output: LargeOutput
+                }
+
+                structure LargeInput {
+                    status: LargeStatus
+                }
+
+                structure LargeOutput {}
+
+                enum LargeStatus {
+                    ALPHA
+                    BETA
+                    GAMMA
+                }
+                """;
+    Model model = Model.assembler().addUnparsedModel("large.smithy", idl).assemble().unwrap();
+    ServiceShape service =
+        model.expectShape(ShapeId.from("com.large#LargeService"), ServiceShape.class);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    settings.elixirEnumStringThreshold(0);
+    BeamElixirLayout layout =
+        new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+    ElixirSymbolProvider largeProvider =
+        new ElixirSymbolProvider(
+            settings,
+            model,
+            service,
+            layout.typesModuleFile(),
+            ElixirSymbolProvider.toModuleName(layout.typesModuleName()),
+            BeamCodegenKind.TYPES);
+    EnumShape largeStatus =
+        model.expectShape(ShapeId.from("com.large#LargeStatus"), EnumShape.class);
+    List<ExFunction> functions = ElixirEnumHelperIr.enumDecodeEncode(largeStatus, largeProvider);
+    assertThat(functions).hasSize(2);
+    String combined = functions.get(0).asString() + "\n\n" + functions.get(1).asString();
+    assertThat(combined)
+        .isEqualTo(readExpectedString("ir/enum_decode_encode_string_backed.expected.ex"));
+  }
+
   private static Model model() {
     String idl =
         """

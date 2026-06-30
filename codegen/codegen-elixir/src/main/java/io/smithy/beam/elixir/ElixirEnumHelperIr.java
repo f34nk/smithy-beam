@@ -3,6 +3,7 @@ package io.smithy.beam.elixir;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExAtomPattern;
+import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExClause;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExGuard;
@@ -18,6 +19,7 @@ import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.shapes.EnumShape;
 import software.amazon.smithy.model.shapes.IntEnumShape;
@@ -29,6 +31,10 @@ final class ElixirEnumHelperIr {
   private ElixirEnumHelperIr() {}
 
   static List<ExFunction> enumDecodeEncode(EnumShape shape, SymbolProvider sp) {
+    Symbol symbol = sp.toSymbol(shape);
+    if (ElixirSymbolProvider.isStringBackedEnum(symbol)) {
+      return stringBackedDecodeEncode(shape, symbol);
+    }
     String helperName = helperName(shape);
     return List.of(decodeEnum(shape, sp, helperName), encodeEnum(shape, sp, helperName));
   }
@@ -78,6 +84,27 @@ final class ElixirEnumHelperIr {
             ExVar.var("v")));
     clauses.add(ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")));
     return ExFunction.defpFunction("encode_" + helperName, clauses);
+  }
+
+  private static List<ExFunction> stringBackedDecodeEncode(EnumShape shape, Symbol symbol) {
+    String helperName = helperName(shape);
+    String typesModule = "Types." + symbol.getName();
+    return List.of(
+        ExFunction.defpFunction(
+            "decode_" + helperName,
+            List.of(
+                ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
+                ExClause.inlineClause(
+                    List.of(ExVarPattern.var("v")),
+                    List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
+                    ExCall.call(typesModule, "from_string", ExVar.var("v"))))),
+        ExFunction.defpFunction(
+            "encode_" + helperName,
+            List.of(
+                ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
+                ExClause.inlineClause(
+                    List.of(ExVarPattern.var("v")),
+                    ExCall.call(typesModule, "to_string", ExVar.var("v"))))));
   }
 
   private static ExFunction decodeIntEnum(
