@@ -369,7 +369,9 @@ final class ElixirDirectedCodegen
   public void generateEnumShape(GenerateEnumDirective<ElixirContext, BeamSettings> directive) {
     EnumShape shape = directive.expectEnumShape();
     Symbol symbol = directive.symbolProvider().toSymbol(shape);
-    directive.context().addTypesEntry(buildEnumNestedModule(shape, symbol));
+    directive
+        .context()
+        .addTypesEntry(buildEnumNestedModule(shape, symbol, directive.settings()));
   }
 
   @Override
@@ -380,7 +382,11 @@ final class ElixirDirectedCodegen
     directive.context().addTypesEntry(buildIntEnumNestedModule(shape, symbol));
   }
 
-  static ExNestedModule buildEnumNestedModule(EnumShape shape, Symbol symbol) {
+  static ExNestedModule buildEnumNestedModule(
+      EnumShape shape, Symbol symbol, BeamSettings settings) {
+    if (ElixirSymbolProvider.isStringBackedEnum(symbol)) {
+      return ElixirStringBackedEnumIr.build(shape, symbol);
+    }
     List<String> atoms = expectStringListProperty(symbol, "enumAtoms");
     String fromFunction = symbol.expectProperty("fromValueFunction", String.class);
     String toFunction = symbol.expectProperty("toValueFunction", String.class);
