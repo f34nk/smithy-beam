@@ -189,6 +189,10 @@ public final class BeamComplianceLiterals {
       return elixirMap(objectNode);
     }
     if (target instanceof EnumShape enumShape && value instanceof StringNode stringNode) {
+      Symbol symbol = symbolProvider.toSymbol(enumShape);
+      if (symbol.getProperty("enumStringBacked", Boolean.class).orElse(false)) {
+        return elixirString(stringNode.getValue());
+      }
       return ":" + enumAtom(enumShape, stringNode.getValue(), symbolProvider);
     }
     if (target instanceof IntEnumShape intEnumShape && value instanceof NumberNode numberNode) {

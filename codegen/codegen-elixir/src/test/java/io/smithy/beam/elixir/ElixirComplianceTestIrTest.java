@@ -15,8 +15,12 @@ import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.node.StringNode;
+import software.amazon.smithy.model.shapes.EnumShape;
+import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
+import software.amazon.smithy.model.shapes.StructureShape;
 
 class ElixirComplianceTestIrTest {
   private static final ShapeId SERVICE =
@@ -60,6 +64,65 @@ class ElixirComplianceTestIrTest {
     for (ExFunction fn : module.functions()) {
       ElixirIrTestSupport.assertStructural(fn);
     }
+  }
+
+  @Test
+  void stringBackedEnumLiteralEmitsWireString() {
+    String idl =
+        """
+                $version: "2"
+                namespace com.large
+
+                service LargeService {
+                    operations: [LargeOp]
+                }
+
+                operation LargeOp {
+                    input: LargeInput
+                    output: LargeOutput
+                }
+
+                structure LargeInput {
+                    status: LargeStatus
+                }
+
+                structure LargeOutput {}
+
+                enum LargeStatus {
+                    ALPHA
+                    BETA
+                    GAMMA
+                }
+                """;
+    Model largeModel =
+        Model.assembler().addUnparsedModel("large.smithy", idl).assemble().unwrap();
+    ServiceShape largeService =
+        largeModel.expectShape(ShapeId.from("com.large#LargeService"), ServiceShape.class);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    settings.elixirEnumStringThreshold(0);
+    BeamElixirLayout layout =
+        new BeamElixirLayout(settings, largeService.getId().getNamespace(), largeService);
+    ElixirSymbolProvider largeProvider =
+        new ElixirSymbolProvider(
+            settings,
+            largeModel,
+            largeService,
+            layout.typesModuleFile(),
+            ElixirSymbolProvider.toModuleName(layout.typesModuleName()),
+            BeamCodegenKind.TYPES);
+    StructureShape input =
+        largeModel.expectShape(ShapeId.from("com.large#LargeInput"), StructureShape.class);
+    MemberShape statusMember = input.getMember("status").orElseThrow();
+    assertThat(
+            ElixirComplianceLiteralIr.memberValue(
+                largeModel,
+                statusMember,
+                StringNode.from("ALPHA"),
+                largeProvider,
+                shape -> "Types." + largeProvider.toSymbol(shape).getName())
+                .asString())
+        .isEqualTo("\"ALPHA\"");
   }
 
   private static ElixirContext testContext() {

@@ -128,6 +128,10 @@ final class ElixirComplianceLiteralIr {
       return elixirMap(objectNode);
     }
     if (target instanceof EnumShape enumShape && value instanceof StringNode stringNode) {
+      Symbol sym = sp.toSymbol(enumShape);
+      if (ElixirSymbolProvider.isStringBackedEnum(sym)) {
+        return ExString.string(stringNode.getValue());
+      }
       return ExAtom.atom(enumAtom(enumShape, stringNode.getValue(), sp));
     }
     if (target instanceof IntEnumShape intEnumShape && value instanceof NumberNode numberNode) {
