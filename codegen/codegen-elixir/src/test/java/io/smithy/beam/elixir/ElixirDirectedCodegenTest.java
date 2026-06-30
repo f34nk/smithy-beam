@@ -431,6 +431,70 @@ class ElixirDirectedCodegenTest {
     assertThat(content).contains("b: boolean()");
   }
 
+  @Test
+  void scalarAliasGoldenIncludesStreamingBlobCommentAndDecimalHint() {
+    Model scalarModel =
+        Model.assembler()
+            .addUnparsedModel(
+                "scalar_alias_golden.smithy",
+                """
+                        $version: "2"
+                        namespace com.scalaralias
+
+                        use smithy.api#streaming
+
+                        service ScalarAliasService {
+                            operations: [GetScalarBundle]
+                        }
+
+                        @readonly
+                        operation GetScalarBundle {
+                            output: ScalarBundle
+                        }
+
+                        structure ScalarBundle {
+                            @default("")
+                            payload: SaStreamingBlob
+                            price: SaDecimal
+                        }
+
+                        @streaming
+                        blob SaStreamingBlob
+                        bigDecimal SaDecimal
+                        """)
+            .assemble()
+            .unwrap();
+
+    MockManifest manifest = new MockManifest();
+    ObjectNode pluginSettings =
+        ObjectNode.builder()
+            .withMember("service", "com.scalaralias#ScalarAliasService")
+            .withMember("edition", "2026")
+            .build();
+    new ElixirTypeGeneration()
+        .generate(
+            PluginContext.builder()
+                .model(scalarModel)
+                .fileManifest(manifest)
+                .settings(pluginSettings)
+                .build());
+
+    ServiceShape service =
+        scalarModel.expectShape(
+            ShapeId.from("com.scalaralias#ScalarAliasService"), ServiceShape.class);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    BeamElixirLayout layout =
+        new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+    String content = manifest.expectFileString(layout.typesModuleFile());
+
+    assertThat(content)
+        .contains("# Streaming payload; framing deferred to protocol layer.")
+        .contains("@type sa_streaming_blob :: binary()")
+        .contains("# Decimal.t()")
+        .contains("@type sa_decimal :: Decimal.t()");
+  }
+
   private static int countOccurrences(String haystack, String needle) {
     int count = 0;
     int index = 0;

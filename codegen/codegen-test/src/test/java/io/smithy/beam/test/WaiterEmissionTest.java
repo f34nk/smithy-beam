@@ -92,8 +92,10 @@ class WaiterEmissionTest {
     assertThat(waiters).contains("def wait_bucket_exists");
     assertThat(waiters).contains("WaitableServiceClient.head_bucket(client, input)");
     assertThat(waiters).contains("state: :success");
-    assertThat(waiters).contains("matcher: :success, expected: true");
-    assertThat(waiters).contains("matcher: :errorType, expected: %WaitableServiceTypes.NotFound{}");
+    assertThat(waiters).contains("matcher: :success");
+    assertThat(waiters).contains("expected: true");
+    assertThat(waiters).contains("matcher: :errorType");
+    assertThat(waiters).contains("expected: %WaitableServiceTypes.NotFound{}");
     assertThat(waiters).contains("error_types_match?(expected, got)");
     assertThat(waiters).contains("Process.sleep(delay)");
   }

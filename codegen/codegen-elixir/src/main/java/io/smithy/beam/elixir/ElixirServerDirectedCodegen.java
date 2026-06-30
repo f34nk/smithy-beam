@@ -6,10 +6,10 @@ import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
-import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.ir.elixir.ExModule;
 import java.util.List;
 import java.util.Optional;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -91,7 +91,12 @@ final class ElixirServerDirectedCodegen
         protocolCodegen,
         resolvedProtocolTraitId,
         serverModuleName,
-        definitionFile);
+        definitionFile,
+        new java.util.ArrayList<>(),
+        new java.util.ArrayList<>(),
+        null,
+        new ElixirBehaviourModuleBuilder(),
+        new ElixirServerModuleBuilder());
   }
 
   @Override
@@ -108,8 +113,6 @@ final class ElixirServerDirectedCodegen
 
     String ns = service.getId().getNamespace();
     BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns, service);
-    String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-    String behaviourMod = ElixirSymbolProvider.toModuleName(layout.behaviourModuleName());
     String runtimeTypesModule = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
 
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(ctx.model(), service);
@@ -119,38 +122,6 @@ final class ElixirServerDirectedCodegen
         .useFileWriter(
             layout.runtimeTypesModuleFile(),
             w -> ElixirRuntimeTypesEmitter.writeBody(w, runtimeTypesModule, Optional.empty()));
-
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.serverModuleFile(),
-            writer -> {
-              writer.pushModuleHeaderSection();
-              writer.write("defmodule $L do", ctx.moduleName());
-              writer.popState();
-
-              writer.indent();
-
-              writer.pushGeneratedDocumentationSection();
-              writer.openBlock("@moduledoc \"\"\"");
-              writer.write("Generated Elixir server dispatcher for $L.", service.getId());
-              writer.write("");
-              writer.write("Discovers impl callbacks at startup via init_handlers/0.");
-              writer.closeBlock("\"\"\"");
-              writer.popState();
-
-              writer.pushModuleHeaderSection();
-              writer.write("@behaviour $L", behaviourMod);
-              writer.popState();
-
-              writer.pushDependenciesSection();
-              writer.write("alias $L", typesModuleName);
-              writer.write("alias $L", behaviourMod);
-              writer.popState();
-
-              writer.pushProtocolHookSection();
-              writer.write("# Handler discovery and dispatch helpers.");
-              writer.popState();
-            });
   }
 
   @Override
@@ -162,16 +133,7 @@ final class ElixirServerDirectedCodegen
   @Override
   public void customizeAfterIntegrations(
       CustomizeDirective<ElixirContext, BeamSettings> directive) {
-    ElixirContext ctx = directive.context();
-    ctx.writerDelegator()
-        .useFileWriter(
-            ctx.definitionFile(),
-            writer -> {
-              writer.dedent();
-              writer.pushModuleHeaderSection();
-              writer.write("end");
-              writer.popState();
-            });
+    // Server module is written as a single ExModule in generateService.
   }
 
   @Override
@@ -179,25 +141,7 @@ final class ElixirServerDirectedCodegen
     ElixirContext ctx = directive.context();
     ServiceShape service = directive.shape();
 
-    if (ctx.protocolCodegen() != null
-        && BeamProtocolIds.REST_JSON_1.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirRestJson1Emitter.emitServerCodecModule(ctx, service);
-    } else if (ctx.protocolCodegen() != null
-        && BeamProtocolIds.REST_XML.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirRestXmlEmitter.emitServerCodecModule(ctx, service);
-    } else if (ctx.protocolCodegen() != null
-        && BeamProtocolIds.AWS_JSON_1_0.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirAwsJson10Emitter.emitServerCodecModule(ctx, service);
-    } else if (ctx.protocolCodegen() != null
-        && BeamProtocolIds.AWS_JSON_1_1.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirAwsJson11Emitter.emitServerCodecModule(ctx, service);
-    } else if (ctx.protocolCodegen() != null
-        && BeamProtocolIds.AWS_QUERY.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirAwsQueryEmitter.emitServerCodecModule(ctx, service);
-    } else if (ctx.protocolCodegen() != null
-        && BeamProtocolIds.EC2_QUERY.equals(ctx.protocolCodegen().protocolTraitId())) {
-      ElixirEc2QueryEmitter.emitServerCodecModule(ctx, service);
-    }
+    ElixirProtocolCodecIr.emitServerCodec(ctx, service);
 
     ElixirRouterEmitter.emit(ctx, service);
     ElixirComplianceTestEmitter.emit(ctx, service);
@@ -212,20 +156,20 @@ final class ElixirServerDirectedCodegen
     ElixirBehaviourEmitter.finishService(ctx, operations, directive.symbolProvider());
     ElixirHandlerDiscoveryEmitter.emitDiscoveryHelpers(ctx, layout);
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            ctx.definitionFile(),
-            writer -> {
-              writer.pushOperationBodySection();
-              writer.write(
-                  "# Call $L.init_handlers/0 during application start before dispatch.",
-                  ctx.moduleName());
-              writer.write(
-                  "# Default impl module: $L.",
-                  ElixirSymbolProvider.toModuleName(layout.implModuleName()));
-              writer.write("");
-              writer.popState();
-            });
+    ElixirServerModuleBuilder builder = ctx.serverModuleBuilderOrNull();
+    if (builder != null) {
+      String behaviourMod = ElixirSymbolProvider.toModuleName(layout.behaviourModuleName());
+      String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+      ExModule module =
+          ElixirServerIr.serverModule(
+              layout,
+              service,
+              behaviourMod,
+              typesMod,
+              builder.operationFunctions(),
+              builder.discoveryFunctions());
+      ElixirCodecEmission.writeModule(ctx, ctx.definitionFile(), module);
+    }
   }
 
   @Override
@@ -236,14 +180,7 @@ final class ElixirServerDirectedCodegen
     Symbol opSym = sp.toSymbol(op);
     String handler = "handle_" + opSym.getName();
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            ctx.definitionFile(),
-            writer -> {
-              writer.pushOperationBodySection();
-              ElixirHandlerDiscoveryEmitter.emitOperationDispatch(writer, handler);
-              writer.popState();
-            });
+    ElixirHandlerDiscoveryEmitter.emitOperationDispatch(ctx, handler);
 
     ElixirBehaviourEmitter.emitOperationCallback(ctx, op, sp);
   }

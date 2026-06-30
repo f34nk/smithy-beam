@@ -4,6 +4,9 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.ir.elixir.ExModuleEntry;
+import io.smithy.beam.ir.elixir.ExPreambleEntry;
+import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.build.FileManifest;
 import software.amazon.smithy.codegen.core.CodegenContext;
@@ -31,8 +34,54 @@ public record ElixirContext(
     BeamProtocolCodegen protocolCodegen,
     ShapeId resolvedProtocolTraitId,
     String moduleName,
-    String definitionFile)
+    String definitionFile,
+    List<ExPreambleEntry> typesPreambleEntries,
+    List<ExModuleEntry> typesEntries,
+    ElixirClientModuleBuilder clientModuleBuilderOrNull,
+    ElixirBehaviourModuleBuilder behaviourModuleBuilderOrNull,
+    ElixirServerModuleBuilder serverModuleBuilderOrNull)
     implements CodegenContext<BeamSettings, ElixirWriter, ElixirIntegration> {
+
+  public ElixirContext(
+      Model model,
+      BeamSettings settings,
+      SymbolProvider symbolProvider,
+      FileManifest fileManifest,
+      WriterDelegator<ElixirWriter> writerDelegator,
+      List<ElixirIntegration> integrations,
+      ServiceShape service,
+      BeamHttpBindings httpBindings,
+      BeamProtocolCodegen protocolCodegen,
+      ShapeId resolvedProtocolTraitId,
+      String moduleName,
+      String definitionFile) {
+    this(
+        model,
+        settings,
+        symbolProvider,
+        fileManifest,
+        writerDelegator,
+        integrations,
+        service,
+        httpBindings,
+        protocolCodegen,
+        resolvedProtocolTraitId,
+        moduleName,
+        definitionFile,
+        new ArrayList<>(),
+        new ArrayList<>(),
+        null,
+        null,
+        null);
+  }
+
+  public void addTypesPreambleEntry(ExPreambleEntry entry) {
+    typesPreambleEntries.add(entry);
+  }
+
+  public void addTypesEntry(ExModuleEntry entry) {
+    typesEntries.add(entry);
+  }
 
   public boolean hasWireProtocol() {
     return BeamProtocolSupport.hasWireCodegen(

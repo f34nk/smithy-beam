@@ -1,4 +1,6 @@
 export HEX_HOME := $(shell pwd)/.hex
+export HEX_HTTP_CONCURRENCY := 1
+export HEX_HTTP_TIMEOUT := 120
 
 .PHONY: clean
 clean:

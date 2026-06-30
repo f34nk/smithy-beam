@@ -64,16 +64,16 @@ class ElixirClientPluginTest {
   private static void assertClientStubHeaderOrder(String clientSource) {
     assertThat(clientSource).contains("defmodule BasicServiceClient do");
     assertThat(clientSource).contains("@moduledoc \"\"\"");
-    assertThat(clientSource).contains("alias BasicServiceTypes");
+    assertThat(clientSource).contains("alias BasicServiceTypes, as: Types");
     assertThat(clientSource)
         .contains(
-            "@spec get_type_closure(client_config(), BasicServiceTypes.GetTypeClosureInput.t())");
-    assertThat(clientSource).contains("def get_type_closure(config, input) do");
+            "@spec get_type_closure(map(), BasicServiceTypes.GetTypeClosureInput.t())");
+    assertThat(clientSource).contains("def get_type_closure(");
     assertThat(clientSource).contains("RuntimeHttp.dispatch");
     assertThat(clientSource).contains("@type client_config :: map()");
     int moduleIndex = clientSource.indexOf("defmodule BasicServiceClient do");
     int moduledocIndex = clientSource.indexOf("@moduledoc \"\"\"");
-    int aliasIndex = clientSource.indexOf("alias BasicServiceTypes");
+    int aliasIndex = clientSource.indexOf("alias BasicServiceTypes, as: Types");
     int specIndex = clientSource.indexOf("@spec get_type_closure");
     assertThat(moduleIndex).isLessThan(moduledocIndex);
     assertThat(moduledocIndex).isLessThan(aliasIndex);
@@ -202,13 +202,14 @@ class ElixirClientPluginTest {
     assertThat(manifest.expectFileString("runtime_http.ex"))
         .contains("defmodule RuntimeHttp do")
         .contains("http_client = Map.get(config, :http_client, __MODULE__.ReqClient)")
-        .contains("def dispatch(http_client, config, %RuntimeTypes.HttpRequest{} = req) do")
+        .contains("req = %RuntimeTypes.HttpRequest{}")
+        .contains("dispatch_signed(http_client, config, req)")
         .contains("case http_client.request(req_opts) do");
     assertThat(manifest.expectFileString("demo_rest_json_client.ex"))
-        .contains("# HTTP request bindings for smithy.beam.demo.protocoljson#DescribeItem:")
-        .contains("#   id @ LABEL")
-        .contains("#   requestTag @ HEADER")
-        .contains("#   verbose @ QUERY");
+        .contains("HTTP request bindings for smithy.beam.demo.protocoljson#DescribeItem:")
+        .contains("  id @ LABEL")
+        .contains("  requestTag @ HEADER")
+        .contains("  verbose @ QUERY");
   }
 
   @Test
@@ -238,7 +239,7 @@ class ElixirClientPluginTest {
     assertThat(codec).contains("decode_query_param(");
     assertThat(manifest.expectFileString("runtime_helpers.ex"))
         .contains("defmodule RuntimeHelpers do")
-        .contains("def parse_labels(path, template)");
+        .contains("case match_segments(segments(path), segments(template), %{}) do");
     assertThat(codec).contains("def decode_describe_item_request(");
     assertThat(codec).contains("label_map");
     assertThat(codec).doesNotContain("RuntimeHelpers.parse_labels(");
@@ -276,9 +277,9 @@ class ElixirClientPluginTest {
 
     String org = manifest.expectFileString("organization_resource.ex");
     assertThat(org).contains("defmodule OrganizationResource do");
-    assertThat(org).contains("ResourceLifecycleServiceClient.get_organization(");
+    assertThat(org).contains("Client.get_organization(config,");
     assertThat(org).contains("org_id: org_id");
-    assertThat(org).contains("ResourceLifecycleServiceClient.create_organization(config, input)");
+    assertThat(org).contains("Client.create_organization(config, input)");
     assertThat(org).doesNotContain("%{input | }");
     assertThat(org).contains("Top-level organization resource.");
 

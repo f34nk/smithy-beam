@@ -10,6 +10,32 @@ import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamRetryIndex;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.ir.elixir.ExAtom;
+import io.smithy.beam.ir.elixir.ExAtomPattern;
+import io.smithy.beam.ir.elixir.ExCallLocal;
+import io.smithy.beam.ir.elixir.ExClause;
+import io.smithy.beam.ir.elixir.ExComment;
+import io.smithy.beam.ir.elixir.ExDefexception;
+import io.smithy.beam.ir.elixir.ExDefstruct;
+import io.smithy.beam.ir.elixir.ExFunction;
+import io.smithy.beam.ir.elixir.ExInteger;
+import io.smithy.beam.ir.elixir.ExIntegerPattern;
+import io.smithy.beam.ir.elixir.ExList;
+import io.smithy.beam.ir.elixir.ExModuledoc;
+import io.smithy.beam.ir.elixir.ExModuleEntry;
+import io.smithy.beam.ir.elixir.ExNestedModule;
+import io.smithy.beam.ir.elixir.ExPreambleEntry;
+import io.smithy.beam.ir.elixir.ExSpec;
+import io.smithy.beam.ir.elixir.ExString;
+import io.smithy.beam.ir.elixir.ExStringPattern;
+import io.smithy.beam.ir.elixir.ExStructPattern;
+import io.smithy.beam.ir.elixir.ExTuple;
+import io.smithy.beam.ir.elixir.ExTuplePattern;
+import io.smithy.beam.ir.elixir.ExTypeDef;
+import io.smithy.beam.ir.elixir.ExTypedoc;
+import io.smithy.beam.ir.elixir.ExTypesModule;
+import io.smithy.beam.ir.elixir.ExVar;
+import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -32,25 +58,14 @@ import software.amazon.smithy.model.traits.SparseTrait;
 /**
  * DirectedCodegen implementation for the Elixir types generator.
  *
- * <p>All types land in a single defmodule block in one .ex file. The block is opened in
- * customizeBeforeShapeGeneration and closed in customizeAfterIntegrations. All generate* methods
- * write inside the open block via the shared WriterDelegator writer instance.
- *
- * <p>CodegenDirector call order: 1. customizeBeforeShapeGeneration -- open defmodule, write
- * scalar/list/map aliases 2. generate* methods (enums first, then unions, then structures) 3.
- * customizeBeforeIntegrations 4. integration.customize() calls 5. customizeAfterIntegrations --
- * close defmodule with "end" 6. flushWriters
- *
- * <p>generateService is a stub reserved for client/server generation. Resource helpers are emitted
- * by client/server DirectedCodegen classes.
+ * <p>All types land in a single defmodule block in one .ex file composed as {@link ExTypesModule}
+ * and emitted once from {@link #customizeAfterIntegrations}.
  *
  * <p>Constraint traits do not narrow generated types; see {@link
  * io.smithy.beam.core.BeamConstraintPolicy}.
  */
 final class ElixirDirectedCodegen
     implements DirectedCodegen<ElixirContext, BeamSettings, ElixirIntegration> {
-
-  // ── Factory methods ──────────────────────────────────────────────────────
 
   @Override
   public SymbolProvider createSymbolProvider(
@@ -98,14 +113,6 @@ final class ElixirDirectedCodegen
         definitionFile);
   }
 
-  // ── Customization hooks ──────────────────────────────────────────────────
-
-  /**
-   * Opens the top-level defmodule block and writes scalar, list, and map type aliases for shapes in
-   * the service closure. Must run before any generate* method because the module opener must be the
-   * first line of the file. The defmodule stays open; customizeAfterIntegrations writes the closing
-   * end.
-   */
   @Override
   public void customizeBeforeShapeGeneration(
       CustomizeDirective<ElixirContext, BeamSettings> directive) {
@@ -115,52 +122,32 @@ final class ElixirDirectedCodegen
     Set<Shape> closure = new Walker(model).walkShapes(directive.service());
     Set<ShapeId> preambleAliasesEmitted = new LinkedHashSet<>();
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            ctx.definitionFile(),
-            writer -> {
-              writer.write("defmodule $L do", ctx.moduleName());
-              writer.indent();
-
-              writer.pushGeneratedDocumentationSection();
-              BeamDocumentation.forShape(directive.service())
-                  .ifPresentOrElse(
-                      doc -> ElixirFormat.writeDocAttribute(writer, "@moduledoc", doc),
-                      () -> {
-                        BeamElixirLayout layout =
-                            new BeamElixirLayout(
-                                ctx.settings(),
-                                ctx.service().getId().getNamespace(),
-                                ctx.service());
-                        String modelName =
-                            ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-                        writer.openBlock("@moduledoc \"\"\"");
-                        ElixirFormat.writeHeredocBody(
-                            writer,
-                            List.of(
-                                "Type definitions for the " + modelName + " model.",
-                                "",
-                                "Named after the model namespace per the baseline spec."));
-                        writer.closeBlock("\"\"\"");
-                      });
-              writer.popState();
-
-              writeScalarAliases(writer, model, closure, sp, preambleAliasesEmitted);
-              writeListAliases(writer, model, closure, sp, ctx, preambleAliasesEmitted);
-              writeMapAliases(writer, model, closure, sp, ctx, preambleAliasesEmitted);
-
-              assertPreambleAliasCoverage(closure, sp, preambleAliasesEmitted);
+    BeamDocumentation.forShape(directive.service())
+        .ifPresentOrElse(
+            doc -> ctx.addTypesPreambleEntry(ExModuledoc.moduledoc(doc)),
+            () -> {
+              BeamElixirLayout layout =
+                  new BeamElixirLayout(
+                      ctx.settings(), ctx.service().getId().getNamespace(), ctx.service());
+              String modelName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+              ctx.addTypesPreambleEntry(
+                  ExModuledoc.moduledoc(
+                      "Type definitions for the "
+                          + modelName
+                          + " model.\n\nNamed after the model namespace per the baseline spec."));
             });
+
+    writeScalarAliases(ctx, model, closure, sp, preambleAliasesEmitted);
+    writeListAliases(ctx, model, closure, sp, preambleAliasesEmitted);
+    writeMapAliases(ctx, model, closure, sp, preambleAliasesEmitted);
+
+    assertPreambleAliasCoverage(closure, sp, preambleAliasesEmitted);
   }
 
   static boolean isPreludeShape(Shape shape) {
     return shape.getId().getNamespace().equals("smithy.api");
   }
 
-  /**
-   * Returns true when a closure shape receives its {@code @type} alias from the preamble pass
-   * rather than a {@code generate*} callback (enums, unions, and structures are excluded).
-   */
   static boolean receivesPreambleTypeAlias(Shape shape) {
     if (shape instanceof EnumShape || shape instanceof IntEnumShape) {
       return false;
@@ -186,10 +173,6 @@ final class ElixirDirectedCodegen
     return receivesPreambleTypeAlias(shape) && !isPreludeShape(shape);
   }
 
-  /**
-   * Shape ids that must receive exactly one preamble {@code @type} alias for the given closure.
-   * Scalars whose alias name equals the underlying built-in type are excluded.
-   */
   static Set<ShapeId> expectedPreambleAliasShapeIds(
       Set<Shape> closure, SymbolProvider symbolProvider) {
     return closure.stream()
@@ -220,31 +203,57 @@ final class ElixirDirectedCodegen
     }
   }
 
+  private static ExTypeDef scalarTypeAlias(
+      Shape shape, Symbol sym, List<ExComment> docPreamble) {
+    String baseType = sym.getProperty("baseType", String.class).orElse("any()");
+    List<ExComment> preamble = new ArrayList<>(docPreamble);
+    if (shape instanceof BigDecimalShape) {
+      preamble.add(ExComment.comment("Decimal.t()"));
+    } else if (shape instanceof BlobShape
+        && sym.getProperty("streamingBlob", Boolean.class).orElse(false)) {
+      preamble.add(
+          ExComment.comment("Streaming payload; framing deferred to protocol layer."));
+    }
+    return ExTypeDef.alias(sym.getName(), baseType, preamble);
+  }
+
+  private static List<ExComment> shapeDocComments(Shape shape) {
+    return BeamDocumentation.forShape(shape)
+        .map(ElixirDirectedCodegen::docToComments)
+        .orElse(List.of());
+  }
+
+  private static List<ExComment> docToComments(String doc) {
+    List<ExComment> comments = new ArrayList<>();
+    for (String line : doc.split("\n", -1)) {
+      comments.add(ExComment.comment(line));
+    }
+    return comments;
+  }
+
   private void writeScalarAliases(
-      ElixirWriter writer,
+      ElixirContext ctx,
       Model model,
       Set<Shape> closure,
       SymbolProvider sp,
       Set<ShapeId> preambleAliasesEmitted) {
-    writeElixirTypeAliases(writer, model.getBlobShapes(), closure, sp, preambleAliasesEmitted);
-    writeElixirTypeAliases(writer, model.getBooleanShapes(), closure, sp, preambleAliasesEmitted);
-    writeElixirTypeAliases(writer, model.getStringShapes(), closure, sp, preambleAliasesEmitted);
-    writeElixirTypeAliases(writer, model.getByteShapes(), closure, sp, preambleAliasesEmitted);
-    writeElixirTypeAliases(writer, model.getShortShapes(), closure, sp, preambleAliasesEmitted);
-    writeElixirTypeAliases(writer, model.getIntegerShapes(), closure, sp, preambleAliasesEmitted);
-    writeElixirTypeAliases(writer, model.getLongShapes(), closure, sp, preambleAliasesEmitted);
-    writeElixirTypeAliases(writer, model.getFloatShapes(), closure, sp, preambleAliasesEmitted);
-    writeElixirTypeAliases(writer, model.getDoubleShapes(), closure, sp, preambleAliasesEmitted);
-    writeElixirTypeAliases(
-        writer, model.getBigIntegerShapes(), closure, sp, preambleAliasesEmitted);
-    writeElixirTypeAliases(
-        writer, model.getBigDecimalShapes(), closure, sp, preambleAliasesEmitted);
-    writeElixirTypeAliases(writer, model.getTimestampShapes(), closure, sp, preambleAliasesEmitted);
-    writeElixirTypeAliases(writer, model.getDocumentShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getBlobShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getBooleanShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getStringShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getByteShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getShortShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getIntegerShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getLongShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getFloatShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getDoubleShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getBigIntegerShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getBigDecimalShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getTimestampShapes(), closure, sp, preambleAliasesEmitted);
+    writeElixirTypeAliases(ctx, model.getDocumentShapes(), closure, sp, preambleAliasesEmitted);
   }
 
   private <S extends Shape> void writeElixirTypeAliases(
-      ElixirWriter writer,
+      ElixirContext ctx,
       Set<S> shapes,
       Set<Shape> closure,
       SymbolProvider sp,
@@ -260,35 +269,15 @@ final class ElixirDirectedCodegen
                 return;
               }
               recordPreambleAlias(s, preambleAliasesEmitted);
-              String baseType = sym.getProperty("baseType", String.class).orElse("any()");
-              if (s instanceof BlobShape
-                  && sym.getProperty("streamingBlob", Boolean.class).orElse(false)) {
-                writer.write("# Streaming payload; framing deferred to protocol layer.");
-              }
-              BeamDocumentation.forShape(s)
-                  .ifPresent(
-                      doc -> {
-                        writer.pushGeneratedDocumentationSection();
-                        writer.write("# $L", s.getId().getName());
-                        for (String line : doc.split("\n", -1)) {
-                          if (line.isEmpty()) {
-                            writer.write("#");
-                          } else {
-                            writer.write("# $L", line);
-                          }
-                        }
-                        writer.popState();
-                      });
-              writer.write("@type $L :: $L", sym.getName(), baseType);
+              ctx.addTypesEntry(scalarTypeAlias(s, sym, shapeDocComments(s)));
             });
   }
 
   private void writeListAliases(
-      ElixirWriter writer,
+      ElixirContext ctx,
       Model model,
       Set<Shape> closure,
       SymbolProvider sp,
-      ElixirContext ctx,
       Set<ShapeId> preambleAliasesEmitted) {
     model.getListShapes().stream()
         .filter(closure::contains)
@@ -298,34 +287,21 @@ final class ElixirDirectedCodegen
               recordPreambleAlias(s, preambleAliasesEmitted);
               Symbol sym = sp.toSymbol(s);
               Symbol memberSym = sp.toSymbol(s.getMember());
-              String memberType = renderElixirType(ctx, memberSym);
+              String elementType = renderElixirType(ctx, memberSym);
               if (s.hasTrait(SparseTrait.ID)) {
-                memberType = memberType + " | nil";
+                elementType = elementType + " | nil";
               }
-              BeamDocumentation.forShape(s)
-                  .ifPresent(
-                      doc -> {
-                        writer.pushGeneratedDocumentationSection();
-                        writer.write("# $L", s.getId().getName());
-                        for (String line : doc.split("\n", -1)) {
-                          if (line.isEmpty()) {
-                            writer.write("#");
-                          } else {
-                            writer.write("# $L", line);
-                          }
-                        }
-                        writer.popState();
-                      });
-              writer.write("@type $L :: [$L]", sym.getName(), memberType);
+              ctx.addTypesEntry(
+                  ExTypeDef.alias(
+                      sym.getName(), "[" + elementType + "]", shapeDocComments(s)));
             });
   }
 
   private void writeMapAliases(
-      ElixirWriter writer,
+      ElixirContext ctx,
       Model model,
       Set<Shape> closure,
       SymbolProvider sp,
-      ElixirContext ctx,
       Set<ShapeId> preambleAliasesEmitted) {
     model.getMapShapes().stream()
         .filter(closure::contains)
@@ -341,25 +317,15 @@ final class ElixirDirectedCodegen
               if (s.hasTrait(SparseTrait.ID)) {
                 valueType = valueType + " | nil";
               }
-              BeamDocumentation.forShape(s)
-                  .ifPresent(
-                      doc -> {
-                        writer.pushGeneratedDocumentationSection();
-                        writer.write("# $L", s.getId().getName());
-                        for (String line : doc.split("\n", -1)) {
-                          if (line.isEmpty()) {
-                            writer.write("#");
-                          } else {
-                            writer.write("# $L", line);
-                          }
-                        }
-                        writer.popState();
-                      });
-              writer.write("@type $L :: %{$L => $L}", sym.getName(), keyType, valueType);
+              ctx.addTypesEntry(
+                  ExTypeDef.alias(
+                      sym.getName(),
+                      "%{" + keyType + " => " + valueType + "}",
+                      shapeDocComments(s)));
             });
   }
 
-  private String renderElixirType(ElixirContext ctx, Symbol symbol) {
+  private static String renderElixirType(ElixirContext ctx, Symbol symbol) {
     boolean builtIn = symbol.getProperty("builtIn", Boolean.class).orElse(false);
     if (builtIn) {
       return symbol.getName();
@@ -377,253 +343,264 @@ final class ElixirDirectedCodegen
     // No action required for the types-only baseline.
   }
 
-  /**
-   * Closes the defmodule block opened in customizeBeforeShapeGeneration. Runs after all generate*
-   * methods and all integration.customize() calls.
-   */
   @Override
   public void customizeAfterIntegrations(
       CustomizeDirective<ElixirContext, BeamSettings> directive) {
     ElixirContext ctx = directive.context();
+    ExTypesModule module =
+        ExTypesModule.typesModule(ctx.moduleName(), ctx.typesPreambleEntries(), ctx.typesEntries());
     ctx.writerDelegator()
         .useFileWriter(
             ctx.definitionFile(),
             writer -> {
-              writer.dedent();
-              writer.write("end");
+              writer.pushGeneratedDocumentationSection();
+              writer.write("$L", module.asString());
+              writer.popState();
             });
   }
 
-  // ── Service / Resource / Operation stubs ─────────────────────────────────
-
-  /**
-   * Types pass: service clients and servers are emitted by {@link ElixirClientDirectedCodegen} and
-   * {@link ElixirServerDirectedCodegen}.
-   */
   @Override
   public void generateService(GenerateServiceDirective<ElixirContext, BeamSettings> directive) {
     // Client/server passes own service emission.
   }
 
-  /** Types pass: resource helpers are emitted by client/server DirectedCodegen classes. */
   @Override
   public void generateResource(GenerateResourceDirective<ElixirContext, BeamSettings> directive) {
     // Client/server passes own resource emission.
   }
 
-  // ── Type generation ──────────────────────────────────────────────────────
-
-  /**
-   * Generates a nested defmodule for a Smithy enum shape.
-   *
-   * <p>Output format: defmodule BasicStatus do
-   *
-   * @moduledoc "String enum. Unknown values are represented as {:unknown, String.t()}."
-   * @type t :: :active | :inactive | :pending | {:unknown, String.t()}
-   * @spec from_string(String.t()) :: t() def from_string("ACTIVE"), do: :active ... def
-   *     from_string(v), do: {:unknown, v}
-   * @spec to_string(t()) :: String.t() def to_string(:active), do: "ACTIVE" ... def
-   *     to_string({:unknown, v}), do: v
-   * @spec values() :: [t()] def values, do: [:active, :inactive, :pending] end
-   */
   @Override
   public void generateEnumShape(GenerateEnumDirective<ElixirContext, BeamSettings> directive) {
     EnumShape shape = directive.expectEnumShape();
-    ElixirContext ctx = directive.context();
-    SymbolProvider sp = directive.symbolProvider();
-    Symbol symbol = sp.toSymbol(shape);
+    Symbol symbol = directive.symbolProvider().toSymbol(shape);
+    directive
+        .context()
+        .addTypesEntry(buildEnumNestedModule(shape, symbol));
+  }
+
+  @Override
+  public void generateIntEnumShape(
+      GenerateIntEnumDirective<ElixirContext, BeamSettings> directive) {
+    IntEnumShape shape = directive.expectIntEnumShape();
+    Symbol symbol = directive.symbolProvider().toSymbol(shape);
+    directive
+        .context()
+        .addTypesEntry(buildIntEnumNestedModule(shape, symbol));
+  }
+
+  static ExNestedModule buildEnumNestedModule(EnumShape shape, Symbol symbol) {
     List<String> atoms = expectStringListProperty(symbol, "enumAtoms");
     String fromFunction = symbol.expectProperty("fromValueFunction", String.class);
     String toFunction = symbol.expectProperty("toValueFunction", String.class);
     String valuesFunction = symbol.expectProperty("valuesFunction", String.class);
     List<Map.Entry<String, String>> members = new ArrayList<>(shape.getEnumValues().entrySet());
 
+    List<ExPreambleEntry> preamble = enumModuledoc(shape, true);
+    List<ExModuleEntry> entries = new ArrayList<>();
+    List<ExFunction> functions = new ArrayList<>();
+
     if (atoms.isEmpty()) {
-      ctx.writerDelegator()
-          .useFileWriter(
-              ctx.definitionFile(),
-              writer -> {
-                writer.write("");
-                writer.openBlock("defmodule $L do", symbol.getName());
-                writer.pushGeneratedDocumentationSection();
-                BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ELIXIR_MODuledoc);
-                if (BeamDocumentation.forShape(shape).isEmpty()) {
-                  writer.write(
-                      "@moduledoc \"String enum. Unknown values are represented as {:unknown, String.t()}.\"");
-                }
-                writer.write("");
-                writer.popState();
-                writer.write("@type t :: {:unknown, String.t()}");
-                writer.write("");
-                writer.write("@spec $L(String.t()) :: t()", fromFunction);
-                writer.write("def $L(v), do: {:unknown, v}", fromFunction);
-                writer.write("");
-                writer.write("@spec $L(t()) :: String.t()", toFunction);
-                writer.write("def $L({:unknown, v}), do: v", toFunction);
-                writer.write("");
-                writer.write("@spec values() :: [t()]");
-                writer.write("def $L, do: []", valuesFunction);
-                writer.closeBlock("end");
-              });
-      return;
+      entries.add(ExTypeDef.alias("t", "{:unknown, String.t()}"));
+      functions.add(
+          ExFunction.functionWithSpec(
+              "def",
+              fromFunction,
+              ExSpec.functionSpec(fromFunction, "String.t()", "t()"),
+              List.of(
+                  ExClause.inlineClause(
+                      List.of(ExVarPattern.var("v")),
+                      ExTuple.tuple(ExAtom.atom("unknown"), ExVar.var("v"))))));
+      functions.add(
+          ExFunction.functionWithSpec(
+              "def",
+              toFunction,
+              ExSpec.functionSpec(toFunction, "t()", "String.t()"),
+              List.of(
+                  ExClause.inlineClause(
+                      List.of(
+                          ExTuplePattern.tuple(
+                              ExAtomPattern.atom("unknown"), ExVarPattern.var("v"))),
+                      ExVar.var("v")))));
+      functions.add(
+          ExFunction.functionWithSpec(
+              "def",
+              valuesFunction,
+              ExSpec.functionSpec("values", "", "[t()]"),
+              List.of(ExClause.inlineClause(List.of(), ExList.list()))));
+      return ExNestedModule.nestedModule(symbol.getName(), preamble, entries, functions);
     }
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            ctx.definitionFile(),
-            writer -> {
-              writer.write("");
-              writer.openBlock("defmodule $L do", symbol.getName());
-              writer.pushGeneratedDocumentationSection();
-              BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ELIXIR_MODuledoc);
-              if (BeamDocumentation.forShape(shape).isEmpty()) {
-                writer.write(
-                    "@moduledoc \"String enum. Unknown values are represented as {:unknown, String.t()}.\"");
-              }
-              writer.write("");
-              writer.popState();
+    String atomVariants =
+        atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
+    entries.add(ExTypeDef.alias("t", atomVariants + " | {:unknown, String.t()}"));
 
-              String atomVariants =
-                  atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
-              writer.write("@type t :: $L | {:unknown, String.t()}", atomVariants);
-              writer.write("");
+    List<ExClause> fromClauses = new ArrayList<>();
+    for (int i = 0; i < members.size(); i++) {
+      Map.Entry<String, String> entry = members.get(i);
+      fromClauses.add(
+          ExClause.inlineClause(
+              List.of(ExStringPattern.string(entry.getValue())), ExAtom.atom(atoms.get(i))));
+    }
+    fromClauses.add(
+        ExClause.inlineClause(
+            List.of(ExVarPattern.var("v")),
+            ExTuple.tuple(ExAtom.atom("unknown"), ExVar.var("v"))));
+    functions.add(
+        ExFunction.functionWithSpec(
+            "def",
+            fromFunction,
+            ExSpec.functionSpec(fromFunction, "String.t()", "t()"),
+            fromClauses));
 
-              writer.write("@spec $L(String.t()) :: t()", fromFunction);
-              for (int i = 0; i < members.size(); i++) {
-                Map.Entry<String, String> entry = members.get(i);
-                String atom = ":" + atoms.get(i);
-                writer.write("def $L($S), do: $L", fromFunction, entry.getValue(), atom);
-              }
-              writer.write("def $L(v), do: {:unknown, v}", fromFunction);
-              writer.write("");
+    List<ExClause> toClauses = new ArrayList<>();
+    for (int i = 0; i < members.size(); i++) {
+      Map.Entry<String, String> entry = members.get(i);
+      toClauses.add(
+          ExClause.inlineClause(
+              List.of(ExAtomPattern.atom(atoms.get(i))),
+              ExString.string(entry.getValue())));
+    }
+    toClauses.add(
+        ExClause.inlineClause(
+            List.of(
+                ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("v"))),
+            ExVar.var("v")));
+    functions.add(
+        ExFunction.functionWithSpec(
+            "def",
+            toFunction,
+            ExSpec.functionSpec(toFunction, "t()", "String.t()"),
+            toClauses));
 
-              writer.write("@spec $L(t()) :: String.t()", toFunction);
-              for (int i = 0; i < members.size(); i++) {
-                Map.Entry<String, String> entry = members.get(i);
-                String atom = ":" + atoms.get(i);
-                writer.write("def $L($L), do: $S", toFunction, atom, entry.getValue());
-              }
-              writer.write("def $L({:unknown, v}), do: v", toFunction);
-              writer.write("");
+    ExList valuesList =
+        ExList.list(
+            atoms.stream().map(ExAtom::atom).toArray(io.smithy.beam.ir.elixir.ExExpr[]::new));
+    functions.add(
+        ExFunction.functionWithSpec(
+            "def",
+            valuesFunction,
+            ExSpec.functionSpec("values", "", "[t()]"),
+            List.of(ExClause.inlineClause(List.of(), valuesList))));
 
-              String valuesList =
-                  atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(", "));
-              writer.write("@spec values() :: [t()]");
-              writer.write("def $L, do: [$L]", valuesFunction, valuesList);
-
-              writer.closeBlock("end");
-            });
+    return ExNestedModule.nestedModule(symbol.getName(), preamble, entries, functions);
   }
 
-  /**
-   * Generates a nested defmodule for a Smithy intEnum shape.
-   *
-   * <p>Output format mirrors generateEnumShape but uses integer() instead of String.t() and
-   * from_integer/to_integer instead of from_string/to_string.
-   */
-  @Override
-  public void generateIntEnumShape(
-      GenerateIntEnumDirective<ElixirContext, BeamSettings> directive) {
-    IntEnumShape shape = directive.expectIntEnumShape();
-    ElixirContext ctx = directive.context();
-    SymbolProvider sp = directive.symbolProvider();
-    Symbol symbol = sp.toSymbol(shape);
+  static ExNestedModule buildIntEnumNestedModule(IntEnumShape shape, Symbol symbol) {
     List<String> atoms = expectStringListProperty(symbol, "enumAtoms");
     String fromFunction = symbol.expectProperty("fromValueFunction", String.class);
     String toFunction = symbol.expectProperty("toValueFunction", String.class);
     String valuesFunction = symbol.expectProperty("valuesFunction", String.class);
     List<Map.Entry<String, Integer>> members = new ArrayList<>(shape.getEnumValues().entrySet());
 
+    List<ExPreambleEntry> preamble = enumModuledoc(shape, false);
+    List<ExModuleEntry> entries = new ArrayList<>();
+    List<ExFunction> functions = new ArrayList<>();
+
     if (atoms.isEmpty()) {
-      ctx.writerDelegator()
-          .useFileWriter(
-              ctx.definitionFile(),
-              writer -> {
-                writer.write("");
-                writer.openBlock("defmodule $L do", symbol.getName());
-                writer.pushGeneratedDocumentationSection();
-                BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ELIXIR_MODuledoc);
-                if (BeamDocumentation.forShape(shape).isEmpty()) {
-                  writer.write(
-                      "@moduledoc \"Integer enum. Unknown values are represented as {:unknown, integer()}.\"");
-                }
-                writer.write("");
-                writer.popState();
-                writer.write("@type t :: {:unknown, integer()}");
-                writer.write("");
-                writer.write("@spec $L(integer()) :: t()", fromFunction);
-                writer.write("def $L(v), do: {:unknown, v}", fromFunction);
-                writer.write("");
-                writer.write("@spec $L(t()) :: integer()", toFunction);
-                writer.write("def $L({:unknown, v}), do: v", toFunction);
-                writer.write("");
-                writer.write("@spec values() :: [t()]");
-                writer.write("def $L, do: []", valuesFunction);
-                writer.closeBlock("end");
-              });
-      return;
+      entries.add(ExTypeDef.alias("t", "{:unknown, integer()}"));
+      functions.add(
+          ExFunction.functionWithSpec(
+              "def",
+              fromFunction,
+              ExSpec.functionSpec(fromFunction, "integer()", "t()"),
+              List.of(
+                  ExClause.inlineClause(
+                      List.of(ExVarPattern.var("v")),
+                      ExTuple.tuple(ExAtom.atom("unknown"), ExVar.var("v"))))));
+      functions.add(
+          ExFunction.functionWithSpec(
+              "def",
+              toFunction,
+              ExSpec.functionSpec(toFunction, "t()", "integer()"),
+              List.of(
+                  ExClause.inlineClause(
+                      List.of(
+                          ExTuplePattern.tuple(
+                              ExAtomPattern.atom("unknown"), ExVarPattern.var("v"))),
+                      ExVar.var("v")))));
+      functions.add(
+          ExFunction.functionWithSpec(
+              "def",
+              valuesFunction,
+              ExSpec.functionSpec("values", "", "[t()]"),
+              List.of(ExClause.inlineClause(List.of(), ExList.list()))));
+      return ExNestedModule.nestedModule(symbol.getName(), preamble, entries, functions);
     }
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            ctx.definitionFile(),
-            writer -> {
-              writer.write("");
-              writer.openBlock("defmodule $L do", symbol.getName());
-              writer.pushGeneratedDocumentationSection();
-              BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ELIXIR_MODuledoc);
-              if (BeamDocumentation.forShape(shape).isEmpty()) {
-                writer.write(
-                    "@moduledoc \"Integer enum. Unknown values are represented as {:unknown, integer()}.\"");
-              }
-              writer.write("");
-              writer.popState();
+    String atomVariants =
+        atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
+    entries.add(ExTypeDef.alias("t", atomVariants + " | {:unknown, integer()}"));
 
-              String atomVariants =
-                  atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
-              writer.write("@type t :: $L | {:unknown, integer()}", atomVariants);
-              writer.write("");
+    List<ExClause> fromClauses = new ArrayList<>();
+    for (int i = 0; i < members.size(); i++) {
+      Map.Entry<String, Integer> entry = members.get(i);
+      fromClauses.add(
+          ExClause.inlineClause(
+              List.of(ExIntegerPattern.integer(entry.getValue())), ExAtom.atom(atoms.get(i))));
+    }
+    fromClauses.add(
+        ExClause.inlineClause(
+            List.of(ExVarPattern.var("v")),
+            ExTuple.tuple(ExAtom.atom("unknown"), ExVar.var("v"))));
+    functions.add(
+        ExFunction.functionWithSpec(
+            "def",
+            fromFunction,
+            ExSpec.functionSpec(fromFunction, "integer()", "t()"),
+            fromClauses));
 
-              writer.write("@spec $L(integer()) :: t()", fromFunction);
-              for (int i = 0; i < members.size(); i++) {
-                Map.Entry<String, Integer> entry = members.get(i);
-                String atom = ":" + atoms.get(i);
-                writer.write("def $L($L), do: $L", fromFunction, entry.getValue(), atom);
-              }
-              writer.write("def $L(v), do: {:unknown, v}", fromFunction);
-              writer.write("");
+    List<ExClause> toClauses = new ArrayList<>();
+    for (int i = 0; i < members.size(); i++) {
+      Map.Entry<String, Integer> entry = members.get(i);
+      toClauses.add(
+          ExClause.inlineClause(
+              List.of(ExAtomPattern.atom(atoms.get(i))),
+              ExInteger.integer(entry.getValue())));
+    }
+    toClauses.add(
+        ExClause.inlineClause(
+            List.of(
+                ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("v"))),
+            ExVar.var("v")));
+    functions.add(
+        ExFunction.functionWithSpec(
+            "def",
+            toFunction,
+            ExSpec.functionSpec(toFunction, "t()", "integer()"),
+            toClauses));
 
-              writer.write("@spec $L(t()) :: integer()", toFunction);
-              for (int i = 0; i < members.size(); i++) {
-                Map.Entry<String, Integer> entry = members.get(i);
-                String atom = ":" + atoms.get(i);
-                writer.write("def $L($L), do: $L", toFunction, atom, entry.getValue());
-              }
-              writer.write("def $L({:unknown, v}), do: v", toFunction);
-              writer.write("");
+    ExList valuesList =
+        ExList.list(
+            atoms.stream().map(ExAtom::atom).toArray(io.smithy.beam.ir.elixir.ExExpr[]::new));
+    functions.add(
+        ExFunction.functionWithSpec(
+            "def",
+            valuesFunction,
+            ExSpec.functionSpec("values", "", "[t()]"),
+            List.of(ExClause.inlineClause(List.of(), valuesList))));
 
-              String valuesList =
-                  atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(", "));
-              writer.write("@spec values() :: [t()]");
-              writer.write("def $L, do: [$L]", valuesFunction, valuesList);
-
-              writer.closeBlock("end");
-            });
+    return ExNestedModule.nestedModule(symbol.getName(), preamble, entries, functions);
   }
 
-  private List<String> expectStringListProperty(Symbol symbol, String propertyName) {
+  private static List<ExPreambleEntry> enumModuledoc(Shape shape, boolean stringEnum) {
+    List<ExPreambleEntry> preamble = new ArrayList<>();
+    BeamDocumentation.forShape(shape)
+        .ifPresentOrElse(
+            doc -> preamble.add(ExModuledoc.moduledoc(doc)),
+            () ->
+                preamble.add(
+                    ExModuledoc.moduledoc(
+                        stringEnum
+                            ? "String enum. Unknown values are represented as {:unknown, String.t()}."
+                            : "Integer enum. Unknown values are represented as {:unknown, integer()}.")));
+    return preamble;
+  }
+
+  private static List<String> expectStringListProperty(Symbol symbol, String propertyName) {
     List<?> values = symbol.expectProperty(propertyName, List.class);
     return values.stream().map(String.class::cast).toList();
   }
 
-  /**
-   * Generates an @type alias for a Smithy union shape.
-   *
-   * <p>Output format:
-   *
-   * @type basic_union :: {:text, basic_string()} | {:number, basic_integer()} | {:flag,
-   *     basic_boolean()} | {:unknown, String.t()}
-   */
   @Override
   public void generateUnion(GenerateUnionDirective<ElixirContext, BeamSettings> directive) {
     UnionShape shape = directive.shape();
@@ -631,40 +608,24 @@ final class ElixirDirectedCodegen
     SymbolProvider sp = directive.symbolProvider();
     Symbol symbol = sp.toSymbol(shape);
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            ctx.definitionFile(),
-            writer -> {
-              writer.pushGeneratedDocumentationSection();
-              BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ELIXIR_TYPEDOC);
-              writer.popState();
+    List<String> variants =
+        shape.members().stream()
+            .map(
+                m -> {
+                  Symbol memberSym = sp.toSymbol(m);
+                  String tag =
+                      ":" + memberSym.getProperty("unionTag", String.class).orElseThrow();
+                  String memberType = renderElixirType(ctx, memberSym);
+                  return "{" + tag + ", " + memberType + "}";
+                })
+            .collect(Collectors.toList());
+    variants.add("{:unknown, String.t()}");
 
-              List<String> variants =
-                  shape.members().stream()
-                      .map(
-                          m -> {
-                            Symbol memberSym = sp.toSymbol(m);
-                            String tag =
-                                ":" + memberSym.getProperty("unionTag", String.class).orElseThrow();
-                            String memberType = renderElixirType(ctx, memberSym);
-                            return "{" + tag + ", " + memberType + "}";
-                          })
-                      .collect(Collectors.toList());
-              variants.add("{:unknown, String.t()}");
-
-              ElixirFormat.writeUnionType(writer, symbol.getName(), variants);
-            });
+    BeamDocumentation.forShape(shape)
+        .ifPresent(doc -> ctx.addTypesEntry(ExTypedoc.typedoc(doc)));
+    ctx.addTypesEntry(ExTypeDef.unionType(symbol.getName(), variants));
   }
 
-  /**
-   * Generates a nested defmodule for a Smithy structure shape.
-   *
-   * <p>Output format: defmodule BasicItem do
-   *
-   * @moduledoc "structure BasicItem"
-   * @type t :: %__MODULE__{ name: BasicTypes.basic_string(), count: BasicTypes.basic_integer() |
-   *     nil } defstruct [:name, :count] end
-   */
   @Override
   public void generateStructure(GenerateStructureDirective<ElixirContext, BeamSettings> directive) {
     StructureShape shape = directive.shape();
@@ -672,37 +633,46 @@ final class ElixirDirectedCodegen
     SymbolProvider sp = directive.symbolProvider();
     NullableIndex nullableIndex = NullableIndex.of(directive.model());
     Symbol symbol = sp.toSymbol(shape);
+    List<MemberShape> members =
+        StreamSupport.stream(shape.members().spliterator(), false).toList();
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            ctx.definitionFile(),
-            writer -> {
-              writer.write("");
-              writer.openBlock("defmodule $L do", symbol.getName());
-              writer.pushGeneratedDocumentationSection();
-              BeamDocumentation.elixirStructureModuledoc(shape)
-                  .ifPresentOrElse(
-                      doc -> ElixirFormat.writeDocAttribute(writer, "@moduledoc", doc),
-                      () -> writer.write("@moduledoc \"structure $L\"", shape.getId().getName()));
-              writer.write("");
-              writer.popState();
-
-              writeStructureTypeAndDefstruct(
-                  writer,
-                  ctx,
-                  sp,
-                  nullableIndex,
-                  shape,
-                  StreamSupport.stream(shape.members().spliterator(), false).toList());
-
-              writer.closeBlock("end");
-            });
+    ctx.addTypesEntry(
+        buildStructureNestedModule(shape, symbol, ctx, sp, nullableIndex, members));
   }
 
-  /**
-   * Emits a nested {@code defexception} module for {@code @error} structures with fault kind and
-   * retryable metadata in {@code @moduledoc}.
-   */
+  static ExNestedModule buildStructureNestedModule(
+      StructureShape shape,
+      Symbol symbol,
+      ElixirContext ctx,
+      SymbolProvider sp,
+      NullableIndex ni,
+      List<MemberShape> members) {
+    List<ExModuleEntry> entries = new ArrayList<>();
+    List<String> fieldLines = new ArrayList<>();
+    List<String> defstructFields = new ArrayList<>();
+    for (MemberShape member : members) {
+      Symbol memberSym = sp.toSymbol(member);
+      String fieldName =
+          memberSym
+              .getProperty("fieldName", String.class)
+              .orElse(BeamNameUtils.toSnakeCase(member.getMemberName()));
+      String typeStr = renderElixirType(ctx, memberSym);
+      if (BeamMemberNullability.isMemberNullable(ni, shape, member)) {
+        typeStr = typeStr + " | nil";
+      }
+      fieldLines.add(fieldName + ": " + typeStr);
+      defstructFields.add(":" + fieldName);
+    }
+    entries.add(ExTypeDef.structureType("t", fieldLines));
+    entries.add(ExDefstruct.defstruct(defstructFields));
+    List<ExPreambleEntry> preamble = new ArrayList<>();
+    BeamDocumentation.elixirStructureModuledoc(shape)
+        .ifPresentOrElse(
+            doc -> preamble.add(ExModuledoc.moduledoc(doc)),
+            () -> preamble.add(ExModuledoc.moduledoc("structure " + shape.getId().getName())));
+    return ExNestedModule.nestedModule(symbol.getName(), preamble, entries, List.of());
+  }
+
   @Override
   public void generateError(GenerateErrorDirective<ElixirContext, BeamSettings> directive) {
     ElixirContext ctx = directive.context();
@@ -710,77 +680,75 @@ final class ElixirDirectedCodegen
     String modName = ctx.symbolProvider().toSymbol(shape).getName();
     ErrorTrait errorTrait = shape.expectTrait(ErrorTrait.class);
     BeamRetryIndex.RetryInfo retryInfo = BeamRetryIndex.forError(shape).orElseThrow();
-    boolean isRetryable = retryInfo.retryable();
-    boolean isThrottling = retryInfo.throttling();
 
-    String typesFile =
-        new BeamElixirLayout(ctx.settings(), ctx.service().getId().getNamespace(), ctx.service())
-            .typesModuleFile();
-
-    ctx.writerDelegator()
-        .useFileWriter(
-            typesFile,
-            writer -> {
-              writer.write("");
-              writer.write("# Error shape: $L ($L)", shape.getId(), errorTrait.getValue());
-              writer.write("defmodule $L do", modName);
-              writer.indent();
-              writer.pushGeneratedDocumentationSection();
-              BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ELIXIR_MODuledoc);
-              if (BeamDocumentation.forShape(shape).isEmpty()) {
-                writer.write(
-                    "@moduledoc \"Error from $L (fault: $L, retryable: $L).\"",
-                    shape.getId(),
-                    errorTrait.getValue(),
-                    isRetryable);
-              }
-              writer.write("");
-              writer.popState();
-              List<String> exceptionFields = new ArrayList<>();
-              for (MemberShape member : shape.members()) {
-                Symbol memberSym = ctx.symbolProvider().toSymbol(member);
-                String fieldName =
-                    memberSym
-                        .getProperty("fieldName", String.class)
-                        .orElse(BeamNameUtils.toSnakeCase(member.getMemberName()));
-                exceptionFields.add(fieldName + ": nil");
-              }
-              exceptionFields.add("__beam_error_kind: :" + errorTrait.getValue());
-              ElixirFormat.writeDefexception(writer, exceptionFields);
-              writer.write("");
-              writer.write("def retryable(%__MODULE__{}), do: $L", isRetryable);
-              writer.write("def throttling(%__MODULE__{}), do: $L", isThrottling);
-              writer.write("@impl true");
-              writer.write("def message(e), do: inspect(e)");
-              writer.dedent();
-              writer.write("end");
-            });
+    ctx.addTypesEntry(
+        ExComment.comment(
+            "Error shape: " + shape.getId() + " (" + errorTrait.getValue() + ")"));
+    ctx.addTypesEntry(
+        buildErrorNestedModule(
+            shape,
+            modName,
+            errorTrait,
+            retryInfo.retryable(),
+            retryInfo.throttling(),
+            ctx.symbolProvider()));
   }
 
-  private void writeStructureTypeAndDefstruct(
-      ElixirWriter writer,
-      ElixirContext ctx,
-      SymbolProvider sp,
-      NullableIndex nullableIndex,
+  static ExNestedModule buildErrorNestedModule(
       StructureShape shape,
-      List<MemberShape> members) {
+      String modName,
+      ErrorTrait errorTrait,
+      boolean isRetryable,
+      boolean isThrottling,
+      SymbolProvider sp) {
+    List<ExPreambleEntry> preamble = new ArrayList<>();
+    BeamDocumentation.forShape(shape)
+        .ifPresentOrElse(
+            doc -> preamble.add(ExModuledoc.moduledoc(doc)),
+            () ->
+                preamble.add(
+                    ExModuledoc.moduledoc(
+                        "Error from "
+                            + shape.getId()
+                            + " (fault: "
+                            + errorTrait.getValue()
+                            + ", retryable: "
+                            + isRetryable
+                            + ").")));
 
-    List<String> fieldLines = new ArrayList<>();
-    for (MemberShape member : members) {
+    List<String> exceptionFields = new ArrayList<>();
+    for (MemberShape member : shape.members()) {
       Symbol memberSym = sp.toSymbol(member);
-      String fieldName = memberSym.getProperty("fieldName", String.class).orElseThrow();
-      String fullType = renderElixirType(ctx, memberSym);
-      boolean nullable = BeamMemberNullability.isMemberNullable(nullableIndex, shape, member);
-      String typeExpr = nullable ? fullType + " | nil" : fullType;
-      fieldLines.add(fieldName + ": " + typeExpr);
+      String fieldName =
+          memberSym
+              .getProperty("fieldName", String.class)
+              .orElse(BeamNameUtils.toSnakeCase(member.getMemberName()));
+      exceptionFields.add(fieldName + ": nil");
     }
-    ElixirFormat.writeStructureType(writer, fieldLines);
-    writer.write("");
+    exceptionFields.add("__beam_error_kind: :" + errorTrait.getValue());
 
-    List<String> fields =
-        members.stream()
-            .map(m -> ":" + sp.toSymbol(m).getProperty("fieldName", String.class).orElseThrow())
-            .collect(Collectors.toList());
-    ElixirFormat.writeDefstruct(writer, fields);
+    List<ExModuleEntry> entries = List.of(ExDefexception.defexception(exceptionFields));
+    List<ExFunction> functions =
+        List.of(
+            ExFunction.defFunction(
+                "retryable",
+                List.of(
+                    ExClause.inlineClause(
+                        List.of(ExStructPattern.struct("__MODULE__", List.of())),
+                        ExAtom.atom(isRetryable ? "true" : "false")))),
+            ExFunction.defFunction(
+                "throttling",
+                List.of(
+                    ExClause.inlineClause(
+                        List.of(ExStructPattern.struct("__MODULE__", List.of())),
+                        ExAtom.atom(isThrottling ? "true" : "false")))),
+            ExFunction.defFunctionWithImpl(
+                "message",
+                List.of(
+                    ExClause.inlineClause(
+                        List.of(ExVarPattern.var("e")),
+                        ExCallLocal.callLocal("inspect", ExVar.var("e"))))));
+
+    return ExNestedModule.nestedModule(modName, preamble, entries, functions);
   }
 }

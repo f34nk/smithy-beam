@@ -1,0 +1,1 @@
+defp headers_set(name, value, headers), do: List.keystore(name, 0, headers, {name, value})

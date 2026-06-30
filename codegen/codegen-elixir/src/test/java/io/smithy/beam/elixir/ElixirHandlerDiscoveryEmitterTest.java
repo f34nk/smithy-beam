@@ -55,11 +55,10 @@ class ElixirHandlerDiscoveryEmitterTest {
                 .build());
 
     String source = manifest.expectFileString("basic_service_server.ex");
-    int resolveStart = source.indexOf("  defp resolve_impl(impl) do");
-    int initSpecStart = source.indexOf("  @spec init_handlers()", resolveStart);
-    int initStart = source.indexOf("  def init_handlers do", initSpecStart);
-    int dispatchStart =
-        source.indexOf("  defp dispatch_handler(fun, ctx, input, meta) do", initStart);
+    int resolveStart = source.indexOf("defp resolve_impl");
+    int initSpecStart = source.indexOf("@spec init_handlers()", resolveStart);
+    int initStart = source.indexOf("def init_handlers do", initSpecStart);
+    int dispatchStart = source.indexOf("defp dispatch_handler", initStart);
     assertThat(resolveStart).isGreaterThan(-1);
     assertThat(initSpecStart).isGreaterThan(resolveStart);
     assertThat(initStart).isGreaterThan(initSpecStart);
@@ -73,8 +72,7 @@ class ElixirHandlerDiscoveryEmitterTest {
 
     assertThat(source.substring(initStart, dispatchStart).trim())
         .startsWith("def init_handlers do");
-    assertThat(source.substring(dispatchStart))
-        .contains("defp dispatch_handler(fun, ctx, input, meta) do");
+    assertThat(source.substring(dispatchStart)).contains("defp dispatch_handler");
     assertThat(source).doesNotContain("    def init_handlers do");
     assertThat(source).doesNotContain("      defp dispatch_handler");
   }

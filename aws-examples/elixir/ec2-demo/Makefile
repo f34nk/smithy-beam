@@ -4,6 +4,9 @@ export AWS_SECRET_ACCESS_KEY=dummy
 export AWS_DEFAULT_REGION=us-east-1
 export AWS_ENDPOINT=http://localhost:$(HOST_PORT)
 export TF_VAR_endpoint=$(AWS_ENDPOINT)
+export HEX_HOME := $(shell pwd)/.hex
+export HEX_HTTP_CONCURRENCY := 1
+export HEX_HTTP_TIMEOUT := 120
 
 YELLOW=\033[1;33m
 NC=\033[0m
