@@ -51,15 +51,14 @@ test/unit:
 	#
 	mix test
 
-.PHONY: demo
-demo: build
-	#
-	# TODO: fix compilation
-	#
-
 # .PHONY: demo
-# demo: build compile
-# 	make docker/start && make docker/wait && make terraform && make run && make docker/stop
+# demo: build
+# 	#
+# 	# TODO: fix compilation
+# 	#
+
+.PHONY: demo
+demo: build compile
 
 .PHONY: run
 run:
