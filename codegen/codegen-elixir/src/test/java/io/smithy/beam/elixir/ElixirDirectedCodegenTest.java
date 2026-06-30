@@ -126,6 +126,64 @@ class ElixirDirectedCodegenTest {
   }
 
   @Test
+  void stringBackedEnumUsesWireStringTypeLine() {
+    String idl =
+        """
+                $version: "2"
+                namespace com.large
+
+                service LargeService {
+                    operations: [LargeOp]
+                }
+
+                operation LargeOp {
+                    input: LargeInput
+                    output: LargeOutput
+                }
+
+                structure LargeInput {
+                    status: LargeStatus
+                }
+
+                structure LargeOutput {}
+
+                enum LargeStatus {
+                    ALPHA
+                    BETA
+                    GAMMA
+                }
+                """;
+    Model largeModel =
+        Model.assembler().addUnparsedModel("large_enum.smithy", idl).assemble().unwrap();
+    ServiceShape service =
+        largeModel.expectShape(ShapeId.from("com.large#LargeService"), ServiceShape.class);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    settings.elixirEnumStringThreshold(0);
+    BeamElixirLayout layout =
+        new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+    MockManifest manifest = new MockManifest();
+    ObjectNode pluginSettings =
+        ObjectNode.builder()
+            .withMember("service", "com.large#LargeService")
+            .withMember("edition", "2026")
+            .withMember("elixirEnumStringThreshold", 0)
+            .build();
+    PluginContext context =
+        PluginContext.builder()
+            .model(largeModel)
+            .fileManifest(manifest)
+            .settings(pluginSettings)
+            .build();
+    new ElixirTypeGeneration().generate(context);
+    String content = manifest.expectFileString(layout.typesModuleFile());
+    String line = enumTypeLine(content, "LargeStatus");
+    assertThat(line.strip()).isEqualTo("@type t :: String.t() | {:unknown, String.t()}");
+    assertThat(content).contains("@wire_values").contains("def valid?");
+    assertThat(content).doesNotContain(":alpha");
+  }
+
+  @Test
   void intEnumUnknownVariantIsLastOnTypeLine() {
     String line = enumTypeLine(generateTypes(), "OrderPriority");
     assertThat(line.strip()).endsWith("{:unknown, integer()}");

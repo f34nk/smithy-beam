@@ -153,7 +153,7 @@ Erlang record field names use snake_case; codec pattern variables use Inaka Came
 | [bigDecimal](https://smithy.io/2.0/spec/simple-types.html#bigdecimal) | `Decimal.t()` |
 | [timestamp](https://smithy.io/2.0/spec/simple-types.html#timestamp) | `DateTime.t()` |
 | [document](https://smithy.io/2.0/spec/simple-types.html#document) | `any()` |
-| [enum](https://smithy.io/2.0/spec/simple-types.html#enum) | nested defmodule with `@type t :: :a \| {:unknown, String.t()}` |
+| [enum](https://smithy.io/2.0/spec/simple-types.html#enum) | nested defmodule; small enums: `@type t :: :a \| {:unknown, String.t()}`; large enums (above `elixirEnumStringThreshold`, default 128): `@type t :: String.t() \| {:unknown, String.t()}` with `@wire_values` / `valid?/1` |
 | [intEnum](https://smithy.io/2.0/spec/simple-types.html#intenum) | nested defmodule with `@type t :: :a \| {:unknown, integer()}` |
 | [list](https://smithy.io/2.0/spec/aggregate-types.html#list) | `[member_type()]` |
 | [map](https://smithy.io/2.0/spec/aggregate-types.html#map) | `%{key_type() => value_type()}` |
