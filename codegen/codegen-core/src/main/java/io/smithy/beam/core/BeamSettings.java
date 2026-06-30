@@ -22,7 +22,9 @@ import software.amazon.smithy.model.shapes.ShapeId;
  * protocol from the sole @protocolDefinition trait on the service, or emit stub-only output when
  * none is present. "name" -- optional snake_case stem for service-scoped module and file names.
  * When unset, derived from the service shape id (honoring rename maps). Must not include role
- * suffixes such as "_client" or "_types".
+ * suffixes such as "_client" or "_types". "elixirEnumStringThreshold" -- optional member count
+ * above which Elixir string enums emit wire-string representation instead of atom unions (default
+ * 128).
  */
 public final class BeamSettings {
 
@@ -33,6 +35,7 @@ public final class BeamSettings {
   private String packageVersion;
   private ShapeId protocol;
   private String name;
+  private Integer elixirEnumStringThreshold;
 
   public BeamSettings() {}
 
@@ -90,6 +93,14 @@ public final class BeamSettings {
 
   public String name() {
     return name;
+  }
+
+  public void elixirEnumStringThreshold(Integer threshold) {
+    this.elixirEnumStringThreshold = threshold;
+  }
+
+  public int elixirEnumStringThreshold() {
+    return elixirEnumStringThreshold != null ? elixirEnumStringThreshold : 128;
   }
 
   public ShapeId resolveService(Model model) {
