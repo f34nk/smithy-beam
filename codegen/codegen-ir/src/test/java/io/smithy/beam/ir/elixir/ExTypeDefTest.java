@@ -2,6 +2,7 @@ package io.smithy.beam.ir.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ExTypeDefTest {
@@ -59,5 +60,19 @@ class ExTypeDefTest {
     assertThat(out).contains("required(:access_key_id) => String.t(),");
     assertThat(out).contains("optional(:session_token) => String.t() | nil");
     assertThat(out).contains("}");
+  }
+
+  @Test
+  void isModuleStructType_true_forStructureType() {
+    ExTypeDef typeDef = ExTypeDef.structureType("t", List.of("name: String.t()"));
+    assertThat(typeDef.isModuleStructType()).isTrue();
+    assertThat(typeDef.structureFieldLines()).containsExactly("name: String.t()");
+  }
+
+  @Test
+  void isModuleStructType_false_forAlias() {
+    ExTypeDef typeDef = ExTypeDef.alias("foo", "String.t()");
+    assertThat(typeDef.isModuleStructType()).isFalse();
+    assertThat(typeDef.structureFieldLines()).isEmpty();
   }
 }

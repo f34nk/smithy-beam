@@ -78,6 +78,14 @@ public final class ExTypeDef implements ExModuleEntry {
     return preamble;
   }
 
+  public boolean isModuleStructType() {
+    return structureFieldLinesOrNull != null && moduleStruct;
+  }
+
+  public List<String> structureFieldLines() {
+    return structureFieldLinesOrNull != null ? structureFieldLinesOrNull : List.of();
+  }
+
   @Override
   public List<String> lines(int indent) {
     List<String> out = new ArrayList<>();
