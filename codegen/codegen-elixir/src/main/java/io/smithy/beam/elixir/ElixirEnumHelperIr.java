@@ -5,6 +5,7 @@ import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExAtomPattern;
 import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExCallLocal;
+import io.smithy.beam.ir.elixir.ExCapturedBlock;
 import io.smithy.beam.ir.elixir.ExCase;
 import io.smithy.beam.ir.elixir.ExCaseBranch;
 import io.smithy.beam.ir.elixir.ExClause;
@@ -38,12 +39,20 @@ final class ElixirEnumHelperIr {
 
   static List<ExFunction> enumDecodeEncode(EnumShape shape, SymbolProvider sp) {
     String helperName = helperName(shape);
-    return List.of(decodeEnum(shape, sp, helperName), encodeEnum(shape, sp, helperName));
+    return List.of(
+        decodeEnum(shape, sp, helperName),
+        encodeEnum(shape, sp, helperName),
+        enumListDecode(helperName),
+        enumListEncode(helperName));
   }
 
   static List<ExFunction> intEnumDecodeEncode(IntEnumShape shape, SymbolProvider sp) {
     String helperName = helperName(shape);
-    return List.of(decodeIntEnum(shape, sp, helperName), encodeIntEnum(shape, sp, helperName));
+    return List.of(
+        decodeIntEnum(shape, sp, helperName),
+        encodeIntEnum(shape, sp, helperName),
+        enumListDecode(helperName),
+        enumListEncode(helperName));
   }
 
   private static ExFunction decodeEnum(EnumShape shape, SymbolProvider sp, String helperName) {
@@ -142,6 +151,30 @@ final class ElixirEnumHelperIr {
             ExVar.var("v")));
     clauses.add(ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")));
     return ExFunction.defpFunction("encode_" + helperName, clauses);
+  }
+
+  private static ExFunction enumListDecode(String helperName) {
+    return ExFunction.defpFunction(
+        "decode_" + helperName + "_list",
+        List.of(
+            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("list")),
+                List.of(ExGuard.guard("is_list", ExVar.var("list"))),
+                ExCapturedBlock.capturedBlock(
+                    "Enum.map(list, fn v -> decode_" + helperName + "(v) end)"))));
+  }
+
+  private static ExFunction enumListEncode(String helperName) {
+    return ExFunction.defpFunction(
+        "encode_" + helperName + "_list",
+        List.of(
+            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("list")),
+                List.of(ExGuard.guard("is_list", ExVar.var("list"))),
+                ExCapturedBlock.capturedBlock(
+                    "Enum.map(list, fn v -> encode_" + helperName + "(v) end)"))));
   }
 
   private static String helperName(Shape shape) {

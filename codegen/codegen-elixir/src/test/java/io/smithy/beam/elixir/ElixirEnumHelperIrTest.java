@@ -69,10 +69,19 @@ class ElixirEnumHelperIrTest {
   @Test
   void enumDecodeEncodeAsStringMatchesGolden() throws IOException {
     List<ExFunction> functions = ElixirEnumHelperIr.enumDecodeEncode(basicStringShape, provider);
-    assertThat(functions).hasSize(2);
+    assertThat(functions).hasSize(4);
     ElixirIrTestSupport.assertStructural(functions.get(0));
     ElixirIrTestSupport.assertStructural(functions.get(1));
-    String combined = functions.get(0).asString() + "\n\n" + functions.get(1).asString();
+    ElixirIrTestSupport.assertStructural(functions.get(2));
+    ElixirIrTestSupport.assertStructural(functions.get(3));
+    String combined =
+        functions.get(0).asString()
+            + "\n\n"
+            + functions.get(1).asString()
+            + "\n\n"
+            + functions.get(2).asString()
+            + "\n\n"
+            + functions.get(3).asString();
     assertThat(combined)
         .isEqualTo(readExpectedString("ir/enum_decode_encode_basic_string.expected.ex"));
   }
@@ -83,7 +92,7 @@ class ElixirEnumHelperIrTest {
     ServiceShape service =
         model.expectShape(ShapeId.from("com.example#StringService"), ServiceShape.class);
     List<ExFunction> functions = ElixirRestJsonIr.enumHelperFunctions(model, service, provider);
-    assertThat(functions).hasSize(2);
+    assertThat(functions).hasSize(4);
   }
 
   @Test
@@ -92,7 +101,7 @@ class ElixirEnumHelperIrTest {
     ServiceShape service =
         model.expectShape(ShapeId.from("com.example#StringService"), ServiceShape.class);
     List<ExFunction> functions = ElixirRestXmlIr.enumHelperFunctions(model, service, provider);
-    assertThat(functions).hasSize(2);
+    assertThat(functions).hasSize(4);
   }
 
   private static Model model() {
