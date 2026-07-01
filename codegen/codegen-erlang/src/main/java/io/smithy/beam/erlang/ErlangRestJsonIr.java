@@ -26,6 +26,7 @@ import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.EnumShape;
 import software.amazon.smithy.model.shapes.IntEnumShape;
+import software.amazon.smithy.model.shapes.MapShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
@@ -257,6 +258,16 @@ final class ErlangRestJsonIr {
     return functions;
   }
 
+  static List<ErlFunction> mapHelperFunctions(
+      Model model, ServiceShape service, SymbolProvider sp) {
+    List<ErlFunction> functions = new ArrayList<>();
+    HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+    for (MapShape map : ErlangRestJsonSupport.reachableTypedMapShapes(model, service)) {
+      functions.addAll(ErlangMapHelperIr.mapDecodeEncode(model, httpIndex, map, sp));
+    }
+    return functions;
+  }
+
   static List<ErlFunction> privateCodecHelpers(Model model, ServiceShape service) {
     List<ErlFunction> functions = new ArrayList<>();
     functions.add(ErlangCodecHelperIr.toBinary(ErlangCodecHelperIr.ToBinaryVariant.REST_JSON));
@@ -330,6 +341,7 @@ final class ErlangRestJsonIr {
     functions.addAll(structureHelperFunctions(model, service, sp));
     functions.addAll(enumHelperFunctions(model, service, sp));
     functions.addAll(unionHelperFunctions(model, service, sp));
+    functions.addAll(mapHelperFunctions(model, service, sp));
     functions.addAll(privateCodecHelpers(model, service));
     if (encodeWithConfig) {
       functions.addAll(ErlangHostLabelIr.buildHostFunctions(model, service, sp));
@@ -359,6 +371,7 @@ final class ErlangRestJsonIr {
     functions.addAll(structureHelperFunctions(model, service, sp));
     functions.addAll(enumHelperFunctions(model, service, sp));
     functions.addAll(unionHelperFunctions(model, service, sp));
+    functions.addAll(mapHelperFunctions(model, service, sp));
     functions.addAll(privateCodecHelpers(model, service));
     return functions;
   }

@@ -111,6 +111,19 @@ final class ErlangRestJsonSupport {
     }
   }
 
+  static List<MapShape> reachableTypedMapShapes(Model model, ServiceShape service) {
+    Set<ShapeId> emitted = new LinkedHashSet<>();
+    List<MapShape> shapes = new ArrayList<>();
+    for (Shape shape : new Walker(model).walkShapes(service)) {
+      if (shape instanceof MapShape mapShape
+          && ErlangMapHelperIr.mapNeedsTypedHelper(model, mapShape)
+          && emitted.add(mapShape.getId())) {
+        shapes.add(mapShape);
+      }
+    }
+    return shapes;
+  }
+
   static List<UnionShape> reachableUnionShapes(Model model, ServiceShape service) {
     BeamEventStreamIndex eventStreamIndex = BeamEventStreamIndex.of(model);
     Set<ShapeId> emitted = new LinkedHashSet<>();

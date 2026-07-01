@@ -205,6 +205,7 @@ final class ErlangAwsJsonIr {
     functions.addAll(ErlangRestJsonIr.structureHelperFunctions(model, service, sp));
     functions.addAll(ErlangRestJsonIr.enumHelperFunctions(model, service, sp));
     functions.addAll(ErlangRestJsonIr.unionHelperFunctions(model, service, sp));
+    functions.addAll(ErlangRestJsonIr.mapHelperFunctions(model, service, sp));
     functions.addAll(ErlangRestJsonIr.privateCodecHelpers(model, service));
     return functions;
   }
