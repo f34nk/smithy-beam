@@ -1,4 +1,4 @@
-export HOST_PORT=4579
+export HOST_PORT=4000
 export AWS_ACCESS_KEY_ID=dummy
 export AWS_SECRET_ACCESS_KEY=dummy
 export AWS_DEFAULT_REGION=us-east-1

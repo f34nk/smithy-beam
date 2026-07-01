@@ -150,17 +150,26 @@ docker/start:
 		--name $(CONTAINER_NAME) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-p 4566:4566 \
-		-p 4576:4566 \
-		-p 4577:4566 \
-		-p 4578:4566 \
-		-p 4579:4566 \
-		-p 4580:4566 \
-		-p 4581:4566 \
-		-p 4582:4566 \
-		-p 4583:4566 \
-		-p 4584:4566 \
-		-p 4585:4566 \
-		-p 4586:4566 \
+		-p 3000:4566 \
+		-p 3001:4566 \
+		-p 3002:4566 \
+		-p 3003:4566 \
+		-p 3004:4566 \
+		-p 3005:4566 \
+		-p 3006:4566 \
+		-p 3007:4566 \
+		-p 3008:4566 \
+		-p 3009:4566 \
+		-p 4000:4566 \
+		-p 4001:4566 \
+		-p 4002:4566 \
+		-p 4003:4566 \
+		-p 4004:4566 \
+		-p 4005:4566 \
+		-p 4006:4566 \
+		-p 4007:4566 \
+		-p 4008:4566 \
+		-p 4009:4566 \
 		-e SERVICES=s3,sqs,dynamodb,firehose,kinesis,lambda,apigateway,cloudformation,cloudwatch,ec2,iam,logs,redshift,route53,events,sns,sts,sm,es,elasticache,secretsmanager,stepfunctions,s3control \
 		localstack/localstack
 	make docker/wait
