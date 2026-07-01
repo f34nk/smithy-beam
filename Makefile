@@ -2,7 +2,7 @@ X := $(shell find aws-examples examples baseline -maxdepth 3 -name Makefile -typ
 EXAMPLES := $(foreach x,$(X),$(x)/)
 EXAMPLES_COUNT := $(words $(EXAMPLES))
 
-PARALLEL_JOBS := 10
+PARALLEL_JOBS := 5
 CONTAINER_NAME = examples-stack
 
 .PHONY: all
@@ -101,6 +101,15 @@ _demo:
 	#
 	# Build $(DEMO)
 	#
+	@case "$(DEMO)" in \
+		aws-examples/*) \
+			PORT=$$(grep -m1 '^export HOST_PORT=' "$(DEMO)/Makefile" 2>/dev/null | cut -d= -f2); \
+			if [ -n "$$PORT" ] && ! curl -sf "http://localhost:$$PORT/_localstack/health" >/dev/null 2>&1; then \
+				echo "ERROR: LocalStack not reachable at http://localhost:$$PORT for $(DEMO)"; \
+				echo "Port may be in use by another process. Check: lsof -i :$$PORT"; \
+				exit 1; \
+			fi ;; \
+	esac
 	cd $(DEMO) && make clean && time make demo
 
 .PHONY: _aws-examples
