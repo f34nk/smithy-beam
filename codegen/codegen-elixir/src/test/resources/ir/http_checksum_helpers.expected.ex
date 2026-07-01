@@ -6,9 +6,17 @@ defp md5_hash(body), do: :crypto.hash(:md5, body)
 
 defp sha256_hash(body), do: :crypto.hash(:sha256, body)
 
-defp crc32_hash(body), do: <<:erlang.crc32(body) :: "32-big-unsigned-integer">>
+defp crc32_hash(body), do: :binary.encode_unsigned(:erlang.crc32(body), :big)
 
 defp crc32c_hash(body), do: :crypto.hash(:crc32c, body)
+
+defp crc64nvme_hash(_body), do: Kernel.raise(:ArgumentError, {:unsupported_checksum_algorithm, :crc64nvme})
+
+defp xxhash64_hash(_body), do: Kernel.raise(:ArgumentError, {:unsupported_checksum_algorithm, :xxhash64})
+
+defp xxhash3_hash(_body), do: Kernel.raise(:ArgumentError, {:unsupported_checksum_algorithm, :xxhash3})
+
+defp xxhash128_hash(_body), do: Kernel.raise(:ArgumentError, {:unsupported_checksum_algorithm, :xxhash128})
 
 defp checksum_digest(body, "MD5"), do: md5_hash(body)
 defp checksum_digest(body, "SHA256"), do: sha256_hash(body)

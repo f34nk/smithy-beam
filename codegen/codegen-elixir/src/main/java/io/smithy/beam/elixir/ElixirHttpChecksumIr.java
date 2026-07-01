@@ -141,6 +141,10 @@ final class ElixirHttpChecksumIr {
         sha256Hash(),
         crc32Hash(),
         crc32cHash(),
+        crc64nvmeHash(),
+        xxhash64Hash(),
+        xxhash3Hash(),
+        xxhash128Hash(),
         checksumDigest(),
         validateResponseChecksum(),
         validateChecksumMatch(),
@@ -181,11 +185,11 @@ final class ElixirHttpChecksumIr {
         List.of(
             ExClause.inlineClause(
                 List.of(ExVarPattern.var("body")),
-                ExBinaryTemplate.binaryTemplate(
-                    ExOp.op(
-                        "::",
-                        ExCall.call(":erlang", "crc32", ExVar.var("body")),
-                        ExString.string("32-big-unsigned-integer"))))));
+                ExCall.call(
+                    ":binary",
+                    "encode_unsigned",
+                    ExCall.call(":erlang", "crc32", ExVar.var("body")),
+                    ExAtom.atom("big")))));
   }
 
   private static ExFunction crc32cHash() {
@@ -195,6 +199,36 @@ final class ElixirHttpChecksumIr {
             ExClause.inlineClause(
                 List.of(ExVarPattern.var("body")),
                 ExCall.call(":crypto", "hash", ExAtom.atom("crc32c"), ExVar.var("body")))));
+  }
+
+  private static ExFunction crc64nvmeHash() {
+    return stubHashFunction("crc64nvme_hash", "crc64nvme");
+  }
+
+  private static ExFunction xxhash64Hash() {
+    return stubHashFunction("xxhash64_hash", "xxhash64");
+  }
+
+  private static ExFunction xxhash3Hash() {
+    return stubHashFunction("xxhash3_hash", "xxhash3");
+  }
+
+  private static ExFunction xxhash128Hash() {
+    return stubHashFunction("xxhash128_hash", "xxhash128");
+  }
+
+  private static ExFunction stubHashFunction(String name, String algorithm) {
+    return ExFunction.defpFunction(
+        name,
+        List.of(
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("_body")),
+                ExCall.call(
+                    "Kernel",
+                    "raise",
+                    ExAtom.atom("ArgumentError"),
+                    ExTuple.tuple(
+                        ExAtom.atom("unsupported_checksum_algorithm"), ExAtom.atom(algorithm))))));
   }
 
   private static ExFunction checksumDigest() {
