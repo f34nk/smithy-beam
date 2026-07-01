@@ -41,4 +41,37 @@ class BeamElixirLayoutTest {
     assertThat(layout.typesModuleFile()).isEqualTo("aws_lambda_types.ex");
     assertThat(layout.sigv4ModuleFile()).isEqualTo("aws_lambda_sigv4.ex");
   }
+
+  @Test
+  void nestedTypesDirectory_defaultsToTypes() {
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    ServiceShape service =
+        ServiceShape.builder()
+            .id(ShapeId.from("com.example#Ec2"))
+            .version("1")
+            .build();
+    BeamElixirLayout layout =
+        new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+
+    assertThat(layout.nestedTypesDirectory()).isEqualTo("types");
+  }
+
+  @Test
+  void nestedTypeModuleFile_usesSnakeCaseUnderTypesDirectory() {
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    settings.name("ec2");
+    ServiceShape service =
+        ServiceShape.builder()
+            .id(ShapeId.from("com.example#Ec2"))
+            .version("1")
+            .build();
+    BeamElixirLayout layout =
+        new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+
+    assertThat(layout.nestedTypeModuleFile("Instance")).isEqualTo("types/instance.ex");
+    assertThat(layout.nestedTypeModuleFile("RunInstancesRequest"))
+        .isEqualTo("types/run_instances_request.ex");
+  }
 }
