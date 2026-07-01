@@ -63,6 +63,19 @@ final class ElixirRestJsonSupport {
     return shapes;
   }
 
+  static List<MapShape> reachableTypedMapShapes(Model model, ServiceShape service) {
+    Set<ShapeId> emitted = new LinkedHashSet<>();
+    List<MapShape> shapes = new ArrayList<>();
+    for (Shape shape : new Walker(model).walkShapes(service)) {
+      if (shape instanceof MapShape mapShape
+          && ElixirMapHelperIr.mapNeedsTypedHelper(model, mapShape)
+          && emitted.add(mapShape.getId())) {
+        shapes.add(mapShape);
+      }
+    }
+    return shapes;
+  }
+
   static void collectStructureHelperTargets(
       Model model,
       ServiceShape service,

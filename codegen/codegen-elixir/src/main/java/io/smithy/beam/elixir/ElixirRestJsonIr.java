@@ -14,6 +14,7 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.EnumShape;
 import software.amazon.smithy.model.shapes.IntEnumShape;
+import software.amazon.smithy.model.shapes.MapShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
@@ -139,6 +140,15 @@ final class ElixirRestJsonIr {
     return functions;
   }
 
+  static List<ExFunction> mapHelperFunctions(Model model, ServiceShape service, SymbolProvider sp) {
+    List<ExFunction> functions = new ArrayList<>();
+    HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+    for (MapShape map : ElixirRestJsonSupport.reachableTypedMapShapes(model, service)) {
+      functions.addAll(ElixirMapHelperIr.mapDecodeEncode(model, httpIndex, map, sp));
+    }
+    return functions;
+  }
+
   static List<ExFunction> privateCodecHelpers(Model model, ServiceShape service) {
     List<ExFunction> functions = new ArrayList<>();
     functions.add(ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.REST_JSON));
@@ -209,6 +219,7 @@ final class ElixirRestJsonIr {
     functions.addAll(structureHelperFunctions(model, service, sp));
     functions.addAll(enumHelperFunctions(model, service, sp));
     functions.addAll(unionHelperFunctions(model, service, sp));
+    functions.addAll(mapHelperFunctions(model, service, sp));
     functions.addAll(privateCodecHelpers(model, service));
     if (encodeWithConfig) {
       functions.addAll(ElixirHostLabelIr.buildHostFunctions(model, service, sp));
@@ -244,6 +255,7 @@ final class ElixirRestJsonIr {
     functions.addAll(structureHelperFunctions(model, service, sp));
     functions.addAll(enumHelperFunctions(model, service, sp));
     functions.addAll(unionHelperFunctions(model, service, sp));
+    functions.addAll(mapHelperFunctions(model, service, sp));
     functions.addAll(privateCodecHelpers(model, service));
     return functions;
   }
@@ -253,6 +265,7 @@ final class ElixirRestJsonIr {
     functions.addAll(structureHelperFunctions(model, service, sp));
     functions.addAll(enumHelperFunctions(model, service, sp));
     functions.addAll(unionHelperFunctions(model, service, sp));
+    functions.addAll(mapHelperFunctions(model, service, sp));
     functions.addAll(privateCodecHelpers(model, service));
     return functions;
   }
