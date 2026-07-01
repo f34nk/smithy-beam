@@ -192,6 +192,11 @@ final class ErlangAwsQueryIr {
       functions.add(decodeResponse(model, service, op, sp, ec2Query));
     }
     functions.add(flattenQueryInput(model, httpIndex, sp, inputShapes(model, service), ec2Query));
+    functions.add(
+        ErlangAwsQueryOperationIr.buildFlattenStructure(
+            sp,
+            ErlangAwsQueryOperationIr.nestedQueryStructures(model, inputShapes(model, service)),
+            ec2Query));
     functions.addAll(queryHelpers(ec2Query));
     functions.addAll(xmlHelpers(ec2Query));
     return functions;

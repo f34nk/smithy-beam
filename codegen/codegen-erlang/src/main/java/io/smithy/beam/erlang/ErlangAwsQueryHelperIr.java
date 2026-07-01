@@ -43,7 +43,7 @@ final class ErlangAwsQueryHelperIr {
   private static final ErlVarPattern W = ErlVarPattern.varPattern("_");
 
   static List<ErlFunction> queryHelperFunctions(boolean ec2Query) {
-    return List.of(flattenMember(ec2Query), flattenStructure(), enc());
+    return List.of(flattenMember(ec2Query), enc());
   }
 
   static List<ErlFunction> xmlHelperFunctions(boolean ec2Query) {
@@ -402,19 +402,6 @@ final class ErlangAwsQueryHelperIr {
         ErlBinaryText.text(".entry."),
         ErlBinaryExpr.expr(ErlCallLocal.callLocal("integer_to_binary", ErlVar.var("I")), "binary"),
         ErlBinaryText.text(suffix));
-  }
-
-  private static ErlFunction flattenStructure() {
-    return ErlFunction.function(
-        "flatten_structure",
-        2,
-        List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("_Key"), ErlAtomPattern.atomPattern("undefined")),
-                ErlList.list()),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("_Key"), ErlVarPattern.varPattern("_Value")),
-                ErlList.list())));
   }
 
   private static ErlFunction enc() {
