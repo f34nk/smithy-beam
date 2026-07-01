@@ -169,6 +169,7 @@ docker/start:
 		-p 3007:4566 \
 		-p 3008:4566 \
 		-p 3009:4566 \
+		-p 3010:4566 \
 		-p 4000:4566 \
 		-p 4001:4566 \
 		-p 4002:4566 \
@@ -179,6 +180,7 @@ docker/start:
 		-p 4007:4566 \
 		-p 4008:4566 \
 		-p 4009:4566 \
+		-p 4010:4566 \
 		-e SERVICES=s3,sqs,dynamodb,firehose,kinesis,lambda,apigateway,cloudformation,cloudwatch,ec2,iam,logs,redshift,route53,events,sns,sts,sm,es,elasticache,secretsmanager,stepfunctions,s3control \
 		localstack/localstack
 	make docker/wait
