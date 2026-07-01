@@ -1,0 +1,6 @@
+_build
+deps
+lib/generated
+.smithy
+build/
+model/*.json
