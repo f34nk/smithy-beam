@@ -73,6 +73,38 @@ public final class ExNestedModule implements ExModuleEntry {
     return size;
   }
 
+  public boolean isEnumModule() {
+    if (hasDefstruct()) {
+      return false;
+    }
+    for (ExModuleEntry entry : entries) {
+      if (entry instanceof ExDefexception) {
+        return false;
+      }
+    }
+    boolean hasTypeAlias =
+        entries.stream().anyMatch(e -> e instanceof ExTypeDef td && "t".equals(td.name()));
+    return hasTypeAlias && !functions.isEmpty();
+  }
+
+  public int enumModuleSizeEstimate() {
+    if (!isEnumModule()) {
+      return 0;
+    }
+    int size = 0;
+    for (ExModuleEntry entry : entries) {
+      if (entry instanceof ExTypeDef td) {
+        size += td.body().length();
+      }
+    }
+    for (ExFunction fn : functions) {
+      for (String line : fn.lines(0)) {
+        size += line.length();
+      }
+    }
+    return size;
+  }
+
   public ExTypesModule asTopLevelModule(String parentModuleName) {
     List<ExModuleEntry> body = new ArrayList<>(entries);
     body.addAll(functions);

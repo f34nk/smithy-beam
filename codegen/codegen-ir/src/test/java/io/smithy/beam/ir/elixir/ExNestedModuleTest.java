@@ -2,6 +2,10 @@ package io.smithy.beam.ir.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.smithy.beam.ir.elixir.ExClause;
+import io.smithy.beam.ir.elixir.ExFunction;
+import io.smithy.beam.ir.elixir.ExVar;
+import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -76,5 +80,76 @@ class ExNestedModuleTest {
         .contains("defstruct [:name, :count]")
         .contains("@type t :: %__MODULE__{")
         .contains("end");
+  }
+
+  @Test
+  void isEnumModule_true_forEnumWithTypeAliasAndFunctions() {
+    ExNestedModule nested =
+        ExNestedModule.nestedModule(
+            "OrderStatus",
+            List.of(),
+            List.of(ExTypeDef.alias("t", ":pending | :shipped | {:unknown, String.t()}")),
+            List.of(
+                ExFunction.defFunction(
+                    "from",
+                    List.of(
+                        ExClause.inlineClause(
+                            List.of(ExVarPattern.var("v")), ExVar.var("v"))))));
+
+    assertThat(nested.isEnumModule()).isTrue();
+    assertThat(nested.enumModuleSizeEstimate()).isGreaterThan(0);
+  }
+
+  @Test
+  void isEnumModule_false_forStructureWithDefstruct() {
+    ExNestedModule nested =
+        ExNestedModule.nestedModule(
+            "BasicItem",
+            List.of(),
+            List.of(
+                ExDefstruct.defstruct(List.of(":name")),
+                ExTypeDef.structureType("t", List.of("name: String.t() | nil"))),
+            List.of());
+
+    assertThat(nested.isEnumModule()).isFalse();
+    assertThat(nested.enumModuleSizeEstimate()).isZero();
+  }
+
+  @Test
+  void isEnumModule_false_forTypeAliasWithoutFunctions() {
+    ExNestedModule nested =
+        ExNestedModule.nestedModule(
+            "OrderStatus",
+            List.of(),
+            List.of(ExTypeDef.alias("t", ":pending | :shipped")),
+            List.of());
+
+    assertThat(nested.isEnumModule()).isFalse();
+    assertThat(nested.enumModuleSizeEstimate()).isZero();
+  }
+
+  @Test
+  void enumModuleSizeEstimate_growsWithTypeAliasAndFunctions() {
+    String longBody =
+        ":v0 | :v1 | :v2 | :v3 | :v4 | :v5 | :v6 | :v7 | :v8 | :v9 | {:unknown, String.t()}";
+    ExNestedModule nested =
+        ExNestedModule.nestedModule(
+            "LargeStatus",
+            List.of(),
+            List.of(ExTypeDef.alias("t", longBody)),
+            List.of(
+                ExFunction.defFunction(
+                    "from",
+                    List.of(
+                        ExClause.inlineClause(
+                            List.of(ExVarPattern.var("v")), ExVar.var("v")))),
+                ExFunction.defFunction(
+                    "to",
+                    List.of(
+                        ExClause.inlineClause(
+                            List.of(ExVarPattern.var("v")), ExVar.var("v"))))));
+
+    assertThat(nested.isEnumModule()).isTrue();
+    assertThat(nested.enumModuleSizeEstimate()).isGreaterThan(50);
   }
 }
