@@ -44,6 +44,41 @@ public final class ExNestedModule implements ExModuleEntry {
     return functions;
   }
 
+  public boolean hasDefstruct() {
+    for (ExModuleEntry entry : entries) {
+      if (entry instanceof ExDefstruct) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public int defstructLiteralSizeEstimate() {
+    if (!hasDefstruct()) {
+      return 0;
+    }
+    int size = 0;
+    for (ExModuleEntry entry : entries) {
+      if (entry instanceof ExDefstruct defstruct) {
+        for (String field : defstruct.fields()) {
+          size += field.length();
+        }
+      }
+      if (entry instanceof ExTypeDef typeDef && typeDef.isModuleStructType()) {
+        for (String line : typeDef.structureFieldLines()) {
+          size += line.length();
+        }
+      }
+    }
+    return size;
+  }
+
+  public ExTypesModule asTopLevelModule(String parentModuleName) {
+    List<ExModuleEntry> body = new ArrayList<>(entries);
+    body.addAll(functions);
+    return ExTypesModule.typesModule(parentModuleName + "." + name, preamble, body);
+  }
+
   @Override
   public List<String> lines(int indent) {
     List<String> out = new ArrayList<>();
