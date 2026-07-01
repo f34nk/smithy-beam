@@ -17,6 +17,7 @@ import io.smithy.beam.ir.elixir.ExComment;
 import io.smithy.beam.ir.elixir.ExDefexception;
 import io.smithy.beam.ir.elixir.ExDefstruct;
 import io.smithy.beam.ir.elixir.ExFunction;
+import io.smithy.beam.ir.elixir.ExGuard;
 import io.smithy.beam.ir.elixir.ExInteger;
 import io.smithy.beam.ir.elixir.ExIntegerPattern;
 import io.smithy.beam.ir.elixir.ExList;
@@ -57,8 +58,10 @@ import software.amazon.smithy.model.traits.SparseTrait;
 /**
  * DirectedCodegen implementation for the Elixir types generator.
  *
- * <p>All types land in a single defmodule block in one .ex file composed as {@link ExTypesModule}
- * and emitted once from {@link #customizeAfterIntegrations}.
+ * <p>Types are composed as {@link ExTypesModule} and emitted from {@link
+ * #customizeAfterIntegrations} via {@link ElixirTypesEmission}. By default all types stay in one
+ * file; when {@link BeamSettings#typesDefstructSplitThreshold} is lowered, only oversized structure
+ * modules are written to separate files under the default {@code types/} directory.
  *
  * <p>Constraint traits do not narrow generated types; see {@link
  * io.smithy.beam.core.BeamConstraintPolicy}.
@@ -342,17 +345,7 @@ final class ElixirDirectedCodegen
   @Override
   public void customizeAfterIntegrations(
       CustomizeDirective<ElixirContext, BeamSettings> directive) {
-    ElixirContext ctx = directive.context();
-    ExTypesModule module =
-        ExTypesModule.typesModule(ctx.moduleName(), ctx.typesPreambleEntries(), ctx.typesEntries());
-    ctx.writerDelegator()
-        .useFileWriter(
-            ctx.definitionFile(),
-            writer -> {
-              writer.pushGeneratedDocumentationSection();
-              writer.write("$L", module.asString());
-              writer.popState();
-            });
+    ElixirTypesEmission.emit(directive.context());
   }
 
   @Override
@@ -433,8 +426,10 @@ final class ElixirDirectedCodegen
               List.of(ExStringPattern.string(entry.getValue())), ExAtom.atom(atoms.get(i))));
     }
     fromClauses.add(
-        ExClause.inlineClause(
-            List.of(ExVarPattern.var("v")), ExTuple.tuple(ExAtom.atom("unknown"), ExVar.var("v"))));
+        ExClause.blockClause(
+            List.of(ExVarPattern.var("v")),
+            List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
+            ElixirEnumHelperIr.enumStringDecodeFallbackBody(fromFunction)));
     functions.add(
         ExFunction.functionWithSpec(
             "def",

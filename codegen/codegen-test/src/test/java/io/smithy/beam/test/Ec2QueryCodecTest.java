@@ -111,6 +111,8 @@ class Ec2QueryCodecTest {
     MockManifest manifest = runElixirClient(loadModel());
     String codec = manifest.expectFileString(findEc2QueryElixirCodec(manifest));
     assertThat(codec).contains("def encode_describe_instances_request(");
+    assertThat(codec).contains("instance_id: _instance_id");
+    assertThat(codec).contains("flatten_member(\"InstanceId\", instance_id)");
     assertThat(codec).contains("def decode_describe_instances_response(");
     assertThat(codec).contains("\"Action\"");
     assertThat(codec).contains("\"DescribeInstances\"");
@@ -118,9 +120,16 @@ class Ec2QueryCodecTest {
     assertThat(codec).contains("\"2020-07-02\"");
     assertThat(codec).contains("\"InstanceId\"");
     assertThat(codec).contains("application/x-www-form-urlencoded");
+    assertThat(codec).contains("Enum.reject(fn {_, v} -> Kernel.is_nil(v) end)");
     assertThat(codec).contains("unwrap_query_result(");
     assertThat(codec).contains("\"DescribeInstancesResponse\"");
-    assertThat(codec).contains("<<key, \".\", Integer.to_string(i)>>");
+    assertThat(codec).contains("xml_child_struct_list(");
+    assertThat(codec).contains("xml_child_list(result, \"InstanceIds\", \"member\")");
+    assertThat(codec).contains("end_: xml_child_text(");
+    assertThat(codec).contains("{v, i} <- Enum.with_index(value, 1)");
+    assertThat(codec).contains("key <> \".\" <> Integer.to_string(i)");
+    assertThat(codec).contains("when is_struct(value) do");
+    assertThat(codec).contains("defp flatten_structure(");
     assertThat(codec).doesNotContain(".member.");
   }
 

@@ -37,6 +37,14 @@ public final class BeamElixirLayout {
     return typesModuleName() + ".ex";
   }
 
+  public String nestedTypesDirectory() {
+    return "types";
+  }
+
+  public String nestedTypeModuleFile(String nestedShapeName) {
+    return nestedTypesDirectory() + "/" + BeamNameUtils.toSnakeCase(nestedShapeName) + ".ex";
+  }
+
   public String clientModuleFile() {
     return clientModuleName() + ".ex";
   }

@@ -3,7 +3,6 @@ export AWS_ACCESS_KEY_ID=dummy
 export AWS_SECRET_ACCESS_KEY=dummy
 export AWS_DEFAULT_REGION=us-east-1
 export AWS_ENDPOINT=http://localhost:$(HOST_PORT)
-export TF_VAR_endpoint=$(AWS_ENDPOINT)
 export HEX_HOME := $(shell pwd)/.hex
 export HEX_HTTP_CONCURRENCY := 1
 export HEX_HTTP_TIMEOUT := 120
@@ -31,7 +30,7 @@ build: copy
 	smithy build
 	mkdir -p lib/generated
 	cp -r build/smithy/source/elixir-*-codegen/* lib/generated/
-	tree lib/generated
+	tree -a lib/generated
 
 .PHONY: compile
 compile:
@@ -52,14 +51,7 @@ test/unit:
 	mix test
 
 .PHONY: demo
-demo: build
-	#
-	# TODO: fix compilation
-	#
-
-# .PHONY: demo
-# demo: build compile
-# 	make docker/start && make docker/wait && make terraform && make run && make docker/stop
+demo: build compile test run
 
 .PHONY: run
 run:
@@ -72,12 +64,3 @@ run:
 clean:
 	rm -rf lib/generated _build deps .smithy build/ *.dump *.json.*
 	rm -rf model/*.json
-	rm -rf rm -rf terraform/.terraform* terraform/terraform.*
-
-.PHONY: terraform
-terraform:
-	#
-	# Create infrastructure
-	#
-	@echo "AWS_DEFAULT_REGION is $$AWS_DEFAULT_REGION"
-	cd terraform && terraform init && terraform apply -auto-approve

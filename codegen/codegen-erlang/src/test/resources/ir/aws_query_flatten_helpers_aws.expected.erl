@@ -9,11 +9,6 @@ flatten_member(Key, Value) when is_tuple(Value) ->
 flatten_member(Key, Value) ->
     [{Key, Value}].
 
-flatten_structure(_Key, undefined) ->
-    [];
-flatten_structure(_Key, _Value) ->
-    [].
-
 enc(V) when is_boolean(V) ->
     atom_to_binary(V, utf8);
 enc(V) when is_integer(V) ->

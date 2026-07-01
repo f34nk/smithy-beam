@@ -146,6 +146,11 @@ final class ElixirAwsQueryIr {
     functions.add(
         ElixirAwsQueryOperationIr.buildFlattenQueryInput(
             model, httpIndex, sp, inputShapes(model, service), ec2Query));
+    functions.add(
+        ElixirAwsQueryOperationIr.buildFlattenStructure(
+            sp,
+            ElixirAwsQueryOperationIr.nestedQueryStructures(model, inputShapes(model, service)),
+            ec2Query));
     functions.addAll(ElixirAwsQueryHelperIr.queryHelperFunctions(ec2Query));
     functions.addAll(ElixirAwsQueryHelperIr.xmlHelperFunctions(ec2Query));
     return functions;

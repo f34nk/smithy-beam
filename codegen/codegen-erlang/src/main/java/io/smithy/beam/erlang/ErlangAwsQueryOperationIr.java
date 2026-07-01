@@ -7,6 +7,9 @@ import io.smithy.beam.core.BeamXmlDecoder;
 import io.smithy.beam.ir.erlang.ErlAtom;
 import io.smithy.beam.ir.erlang.ErlAtomPattern;
 import io.smithy.beam.ir.erlang.ErlBinary;
+import io.smithy.beam.ir.erlang.ErlBinaryExpr;
+import io.smithy.beam.ir.erlang.ErlBinaryTemplate;
+import io.smithy.beam.ir.erlang.ErlBinaryText;
 import io.smithy.beam.ir.erlang.ErlCall;
 import io.smithy.beam.ir.erlang.ErlCallLocal;
 import io.smithy.beam.ir.erlang.ErlCase;
@@ -33,8 +36,12 @@ import io.smithy.beam.ir.erlang.ErlTuple;
 import io.smithy.beam.ir.erlang.ErlTuplePattern;
 import io.smithy.beam.ir.erlang.ErlVar;
 import io.smithy.beam.ir.erlang.ErlVarPattern;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -125,6 +132,83 @@ final class ErlangAwsQueryOperationIr {
       clauses.add(buildFlattenInputClause(model, httpIndex, sp, input, ec2Query));
     }
     return ErlFunction.function("flatten_query_input", 1, clauses);
+  }
+
+  static ErlFunction buildFlattenStructure(
+      SymbolProvider sp, Set<StructureShape> structures, boolean ec2Query) {
+    List<ErlClause> clauses = new ArrayList<>();
+    for (StructureShape structure : structures) {
+      clauses.add(buildFlattenStructureClause(sp, structure, ec2Query));
+    }
+    clauses.add(
+        ErlClause.blockClause(
+            List.of(
+                ErlVarPattern.varPattern("_WirePrefix"), ErlAtomPattern.atomPattern("undefined")),
+            ErlList.list()));
+    clauses.add(
+        ErlClause.blockClause(
+            List.of(ErlVarPattern.varPattern("_WirePrefix"), ErlVarPattern.varPattern("_Value")),
+            ErlList.list()));
+    return ErlFunction.function("flatten_structure", 2, clauses);
+  }
+
+  static Set<StructureShape> nestedQueryStructures(Model model, List<StructureShape> inputs) {
+    Set<StructureShape> nested = new LinkedHashSet<>();
+    Deque<StructureShape> queue = new ArrayDeque<>(inputs);
+    while (!queue.isEmpty()) {
+      StructureShape shape = queue.removeFirst();
+      for (MemberShape member : shape.members()) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof StructureShape structureShape) {
+          if (nested.add(structureShape)) {
+            queue.addLast(structureShape);
+          }
+        } else if (target instanceof ListShape listShape) {
+          Shape listMember = model.expectShape(listShape.getMember().getTarget());
+          if (listMember instanceof StructureShape structureShape) {
+            if (nested.add(structureShape)) {
+              queue.addLast(structureShape);
+            }
+          }
+        }
+      }
+    }
+    return nested;
+  }
+
+  private static ErlClause buildFlattenStructureClause(
+      SymbolProvider sp, StructureShape structure, boolean ec2Query) {
+    String record = recordName(sp.toSymbol(structure));
+    List<ErlRecordFieldPattern> fieldPatterns = new ArrayList<>();
+    for (MemberShape member : structure.members()) {
+      String field = memberFieldName(sp, member);
+      fieldPatterns.add(
+          ErlRecordFieldPattern.fieldPattern(field, ErlVarPattern.varPattern(toBindingVar(field))));
+    }
+    ErlRecordPattern pattern = new ErlRecordPattern(record, fieldPatterns);
+
+    ErlExpr body;
+    if (structure.members().isEmpty()) {
+      body = ErlList.list();
+    } else {
+      List<ErlExpr> appendArgs = new ArrayList<>();
+      for (MemberShape member : structure.members()) {
+        String field = memberFieldName(sp, member);
+        String wireKey = queryFormKey(member, ec2Query);
+        appendArgs.add(
+            ErlCallLocal.callLocal(
+                "flatten_member",
+                flattenStructureMemberKey(wireKey),
+                ErlVar.var(toBindingVar(field))));
+      }
+      body = ErlCall.call("lists", "append", ErlList.list(appendArgs.toArray(ErlExpr[]::new)));
+    }
+    return ErlClause.clause(List.of(ErlVarPattern.varPattern("WirePrefix"), pattern), body);
+  }
+
+  private static ErlBinaryTemplate flattenStructureMemberKey(String wireKey) {
+    return ErlBinaryTemplate.binaryTemplate(
+        ErlBinaryExpr.expr(ErlVar.var("WirePrefix"), true), ErlBinaryText.text("." + wireKey));
   }
 
   private static ErlClause buildFlattenInputClause(

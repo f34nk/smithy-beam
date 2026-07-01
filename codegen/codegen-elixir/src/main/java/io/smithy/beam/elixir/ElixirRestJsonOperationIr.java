@@ -467,7 +467,7 @@ final class ElixirRestJsonOperationIr {
     List<ExStructFieldPattern> patternFields = new ArrayList<>();
     for (HttpBinding binding : concat(respHeaders, respPrefixHeaders, respDoc, respPayload)) {
       String field = fieldName(sp, binding.getMember());
-      patternFields.add(ExStructFieldPattern.fieldPattern(field, ExVarPattern.var(field)));
+      patternFields.add(ExStructFieldPattern.fieldPattern(field, ExVarPattern.unusedVar(field)));
     }
 
     return ExFunction.functionWithDocAndSpec(
@@ -500,7 +500,7 @@ final class ElixirRestJsonOperationIr {
         continue;
       }
       String field = fieldName(sp, member);
-      patternFields.add(ExStructFieldPattern.fieldPattern(field, ExVarPattern.var(field)));
+      patternFields.add(ExStructFieldPattern.fieldPattern(field, ExVarPattern.unusedVar(field)));
       bodyEntries.add(
           ExMapEntry.entry(
               ExString.string(member.getMemberName()),

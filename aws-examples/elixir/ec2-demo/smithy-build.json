@@ -23,7 +23,9 @@
     "elixir-client-codegen": {
       "service": "com.amazonaws.ec2#AmazonEC2",
       "edition": "2026",
-      "name": "ec2"
+      "name": "ec2",
+      "typesDefstructSplitThreshold": 256,
+      "typesEnumSplitThreshold": 256
     }
   }
 }

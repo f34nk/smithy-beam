@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -153,7 +154,7 @@ class ErlangAwsQueryIrTest {
     assertThat(text).contains("flatten_member(Key, Value) when is_map(Value) ->");
     assertThat(text).contains("flatten_member(Key, Value) when is_list(Value) ->");
     assertThat(text).contains("flatten_member(Key, Value) when is_tuple(Value) ->");
-    assertThat(text).contains("flatten_structure(_Key, _Value) ->");
+    assertThat(text).contains("flatten_structure(Key, Value)");
   }
 
   @Test
@@ -181,6 +182,88 @@ class ErlangAwsQueryIrTest {
     for (ErlFunction fn : ErlangAwsQueryIr.serverXmlEncodeHelpers(true)) {
       assertStructural(fn);
     }
+  }
+
+  @Test
+  void flattenStructureUsesWirePrefixForStructuresWithKeyField() {
+    Model model = tagFlattenModel();
+    ServiceShape service =
+        model.expectShape(
+            ShapeId.from("smithy.beam.test.tagflatten#QueryService"), ServiceShape.class);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    BeamErlangLayout layout =
+        new BeamErlangLayout(settings, service.getId().getNamespace(), service);
+    ErlangSymbolProvider provider =
+        new ErlangSymbolProvider(
+            settings, model, service, layout.clientModuleFile(), BeamCodegenKind.CLIENT);
+    StructureShape tag =
+        model.expectShape(ShapeId.from("smithy.beam.test.tagflatten#Tag"), StructureShape.class);
+
+    ErlFunction fn = ErlangAwsQueryOperationIr.buildFlattenStructure(provider, Set.of(tag), true);
+    assertStructural(fn);
+
+    String text = fn.asString();
+    assertThat(text).contains("flatten_structure(WirePrefix, #tag{key = Key, value = Value})");
+    assertThat(text).contains("<<WirePrefix/binary, \".Key\">>, Key");
+    assertThat(text).doesNotContain("flatten_structure(Key, #tag{key = Key");
+  }
+
+  private static Model tagFlattenModel() {
+    String idl =
+        """
+                $version: "2"
+                namespace smithy.beam.test.tagflatten
+
+                use aws.protocols#ec2Query
+                use aws.protocols#ec2QueryName
+                use aws.api#service
+                use smithy.api#http
+                use smithy.api#xmlNamespace
+
+                @ec2Query
+                @xmlNamespace(uri: "https://tagflattentest.amazonaws.com/doc/2020-01-01/")
+                @service(sdkId: "TagFlattenTest", endpointPrefix: "tagflattentest")
+                service QueryService {
+                    version: "2020-01-01"
+                    operations: [RunInstances]
+                }
+
+                @http(method: "POST", uri: "/")
+                operation RunInstances {
+                    input: RunInstancesInput
+                }
+
+                structure RunInstancesInput {
+                    @ec2QueryName("TagSpecification")
+                    tagSpecifications: TagSpecificationList
+                }
+
+                list TagSpecificationList {
+                    member: TagSpecification
+                }
+
+                structure TagSpecification {
+                    @ec2QueryName("ResourceType")
+                    resourceType: String
+                    @ec2QueryName("Tag")
+                    tags: TagList
+                }
+
+                list TagList {
+                    member: Tag
+                }
+
+                structure Tag {
+                    key: String
+                    value: String
+                }
+                """;
+    return Model.assembler()
+        .addUnparsedModel("tag_flatten_fixture.smithy", idl)
+        .discoverModels()
+        .assemble()
+        .unwrap();
   }
 
   private static Model loadFixtureModel() {

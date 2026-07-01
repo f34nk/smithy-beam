@@ -1,21 +1,21 @@
 defp flatten_member(_key, nil), do: []
 defp flatten_member(key, value) when is_list(value) do
-  List.flatten(for {i, v} <- Enum.with_index(value, 1), v != :nil do flatten_member(<<key, ".member.", Integer.to_string(i)>>, v) end)
+  List.flatten(for {v, i} <- Enum.with_index(value, 1), v != :nil do flatten_member(key <> ".member." <> Integer.to_string(i), v) end)
+end
+defp flatten_member(key, value) when is_struct(value) do
+  flatten_structure(key, value)
 end
 defp flatten_member(key, value) when is_map(value) do
   List.flatten(
-    for {i, {k, v}} <-
+    for {{k, v}, i} <-
       Enum.with_index(Map.to_list(value), 1),
       k != :nil,
       v != :nil do
-      flatten_member(<<key, ".entry.", Integer.to_string(i), ".key">>, k) ++ flatten_member(<<key, ".entry.", Integer.to_string(i), ".value">>, v)
+      flatten_member(key <> ".entry." <> Integer.to_string(i) <> ".key", k) ++ flatten_member(key <> ".entry." <> Integer.to_string(i) <> ".value", v)
     end
   )
 end
 defp flatten_member(key, value), do: [{key, value}]
-
-defp flatten_structure(_key, nil), do: []
-defp flatten_structure(_key, _value), do: []
 
 defp enc(value) when is_boolean(value), do: Atom.to_string(value)
 defp enc(value) when is_integer(value), do: Integer.to_string(value)

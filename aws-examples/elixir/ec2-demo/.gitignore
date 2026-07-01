@@ -4,5 +4,3 @@ lib/generated
 .smithy
 build/
 model/*.json
-terraform/.terraform*
-terraform/.terraform.*

@@ -147,24 +147,6 @@ create_demo_security_group(Config, VpcId) ->
                 {error, IngressReason} ->
                     erlang:error({authorize_security_group_ingress_failed, IngressReason})
             end,
-            io:format("--- AuthorizeSecurityGroupEgress ---~n"),
-            EgressInput = #authorize_security_group_egress_input{
-                group_id = SgId,
-                ip_permissions = [
-                    #ip_permission{
-                        ip_protocol = <<"-1">>,
-                        from_port = 0,
-                        to_port = 0,
-                        ip_ranges = [#ip_range{cidr_ip = <<"0.0.0.0/0">>}]
-                    }
-                ]
-            },
-            case ec2_client:authorize_security_group_egress(Config, EgressInput) of
-                {ok, _} ->
-                    io:format("SUCCESS: All-traffic egress rule~n~n");
-                {error, EgressReason} ->
-                    erlang:error({authorize_security_group_egress_failed, EgressReason})
-            end,
             SgId;
         {ok, _} ->
             erlang:error({assertion_failed, create_security_group_returned_no_group_id});

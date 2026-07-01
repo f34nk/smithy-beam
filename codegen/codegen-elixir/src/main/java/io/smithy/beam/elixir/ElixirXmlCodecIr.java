@@ -170,7 +170,7 @@ final class ElixirXmlCodecIr {
             ExClause.inlineClause(List.of(W), ExList.list())));
   }
 
-  private static ExFunction collectText() {
+  static ExFunction collectText() {
     return ExFunction.defpFunction(
         "collect_text",
         List.of(

@@ -109,7 +109,7 @@ _aws-examples:
 
 # Usage: make aws-examples
 .PHONY: aws-examples
-aws-examples: docker/stop docker/start _aws-examples docker/stop
+aws-examples: docker/restart _aws-examples docker/stop
 
 # Usage: make examples
 .PHONY: examples
@@ -185,3 +185,6 @@ docker/wait:
 	done; \
 	echo "LocalStack did not become ready in time"; \
 	exit 1
+
+.PHONY: docker/restart
+docker/restart: docker/stop docker/start
