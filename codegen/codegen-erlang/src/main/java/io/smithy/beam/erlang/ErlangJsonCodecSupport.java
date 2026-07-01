@@ -109,14 +109,15 @@ final class ErlangJsonCodecSupport {
         String helperName = structureHelperName(sp, element);
         return "decode_" + helperName + "_list(" + raw + ")";
       }
+      if (element instanceof EnumShape || element instanceof IntEnumShape) {
+        String helperName = structureHelperName(sp, element);
+        return "decode_" + helperName + "_list(" + raw + ")";
+      }
       String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
       return helper + "(" + raw + ")";
     }
-    if (target instanceof MapShape) {
-      if (target.hasTrait(SparseTrait.class)) {
-        return "decode_sparse_map(" + raw + ")";
-      }
-      return raw;
+    if (target instanceof MapShape mapShape) {
+      return ErlangMapHelperIr.mapDecodeExpr(model, sp, httpIndex, mapShape, raw);
     }
     return raw;
   }
@@ -151,16 +152,17 @@ final class ErlangJsonCodecSupport {
         String helperName = structureHelperName(sp, element);
         return "encode_" + helperName + "_list(" + binding + ")";
       }
+      if (element instanceof EnumShape || element instanceof IntEnumShape) {
+        String helperName = structureHelperName(sp, element);
+        return "encode_" + helperName + "_list(" + binding + ")";
+      }
       if (target.hasTrait(SparseTrait.class)) {
         return "encode_sparse_list(" + binding + ")";
       }
       return binding;
     }
-    if (target instanceof MapShape) {
-      if (target.hasTrait(SparseTrait.class)) {
-        return "encode_sparse_map(" + binding + ")";
-      }
-      return binding;
+    if (target instanceof MapShape mapShape) {
+      return ErlangMapHelperIr.mapEncodeExpr(model, sp, httpIndex, mapShape, binding);
     }
     return binding;
   }
@@ -350,14 +352,15 @@ final class ErlangJsonCodecSupport {
         String helperName = structureHelperName(sp, element);
         return ErlCallLocal.callLocal("decode_" + helperName + "_list", raw);
       }
+      if (element instanceof EnumShape || element instanceof IntEnumShape) {
+        String helperName = structureHelperName(sp, element);
+        return ErlCallLocal.callLocal("decode_" + helperName + "_list", raw);
+      }
       String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
       return ErlCallLocal.callLocal(helper, raw);
     }
-    if (target instanceof MapShape) {
-      if (target.hasTrait(SparseTrait.class)) {
-        return ErlCallLocal.callLocal("decode_sparse_map", raw);
-      }
-      return raw;
+    if (target instanceof MapShape mapShape) {
+      return ErlangMapHelperIr.mapDecodeExpr(model, sp, httpIndex, mapShape, raw);
     }
     return raw;
   }
@@ -392,16 +395,18 @@ final class ErlangJsonCodecSupport {
         String helperName = structureHelperName(sp, element);
         return ErlCallLocal.callLocal("encode_" + helperName + "_list", ErlVar.var(bindingVar));
       }
+      if (element instanceof EnumShape || element instanceof IntEnumShape) {
+        String helperName = structureHelperName(sp, element);
+        return ErlCallLocal.callLocal("encode_" + helperName + "_list", ErlVar.var(bindingVar));
+      }
       if (target.hasTrait(SparseTrait.class)) {
         return ErlCallLocal.callLocal("encode_sparse_list", ErlVar.var(bindingVar));
       }
       return ErlVar.var(bindingVar);
     }
-    if (target instanceof MapShape) {
-      if (target.hasTrait(SparseTrait.class)) {
-        return ErlCallLocal.callLocal("encode_sparse_map", ErlVar.var(bindingVar));
-      }
-      return ErlVar.var(bindingVar);
+    if (target instanceof MapShape mapShape) {
+      return ErlangMapHelperIr.mapEncodeExpr(
+          model, sp, httpIndex, mapShape, ErlVar.var(bindingVar));
     }
     return ErlVar.var(bindingVar);
   }
