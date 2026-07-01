@@ -8,8 +8,8 @@ import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExBlankLine;
 import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExExpr;
 import io.smithy.beam.ir.elixir.ExComment;
+import io.smithy.beam.ir.elixir.ExExpr;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMapEntry;
@@ -96,14 +96,16 @@ final class ElixirClientIr {
     baseEntries.add(ExMapEntry.entry(ExAtom.atom("region"), ExString.string("us-east-1")));
     baseEntries.add(
         ExMapEntry.entry(ExAtom.atom("endpoint_prefix"), ExString.string(meta.endpointPrefix())));
-    baseEntries.add(ExMapEntry.entry(ExAtom.atom("signing_name"), ExString.string(meta.signingName())));
+    baseEntries.add(
+        ExMapEntry.entry(ExAtom.atom("signing_name"), ExString.string(meta.signingName())));
 
     if (unsignedOps.isEmpty()) {
       return ExFunction.functionWithSpec(
           "def",
           "default_config",
           ExSpec.functionSpec("default_config", "", "map()"),
-          List.of(ExClause.blockClause(List.of(), ExMap.map(baseEntries.toArray(ExMapEntry[]::new)))));
+          List.of(
+              ExClause.blockClause(List.of(), ExMap.map(baseEntries.toArray(ExMapEntry[]::new)))));
     }
 
     List<ExMapEntry> unsignedEntries = new ArrayList<>();

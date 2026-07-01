@@ -528,11 +528,7 @@ class ElixirDirectedCodegenTest {
             .withMember("edition", "2026")
             .build();
     PluginContext context =
-        PluginContext.builder()
-            .model(kindModel)
-            .fileManifest(manifest)
-            .settings(settings)
-            .build();
+        PluginContext.builder().model(kindModel).fileManifest(manifest).settings(settings).build();
     new ElixirTypeGeneration().generate(context);
 
     ServiceShape service =

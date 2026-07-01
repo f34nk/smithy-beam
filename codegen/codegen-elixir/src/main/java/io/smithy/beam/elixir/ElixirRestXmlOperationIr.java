@@ -486,8 +486,7 @@ final class ElixirRestXmlOperationIr {
 
     ExExpr success =
         ExTuple.tuple(
-            ExAtom.atom("ok"),
-            ExStruct.struct("Types." + structName(sp, output), structFields));
+            ExAtom.atom("ok"), ExStruct.struct("Types." + structName(sp, output), structFields));
     body.add(ElixirHttpChecksumIr.responseChecksumGuardExpr(model, op, success));
     return body;
   }
@@ -517,7 +516,11 @@ final class ElixirRestXmlOperationIr {
   }
 
   private static List<ExExpr> buildMembersFromXmlExprs(
-      Model model, Iterable<MemberShape> members, String xmlVar, SymbolProvider sp, String typesMod) {
+      Model model,
+      Iterable<MemberShape> members,
+      String xmlVar,
+      SymbolProvider sp,
+      String typesMod) {
     List<ExExpr> exprs = new ArrayList<>();
     for (MemberShape member : members) {
       exprs.add(buildMemberFromXmlExpr(model, member, xmlVar, sp, typesMod));

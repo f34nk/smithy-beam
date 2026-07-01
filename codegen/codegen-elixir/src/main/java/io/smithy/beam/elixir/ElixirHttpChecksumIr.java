@@ -4,7 +4,6 @@ import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExBinaryTemplate;
 import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExCallLocal;
 import io.smithy.beam.ir.elixir.ExCase;
