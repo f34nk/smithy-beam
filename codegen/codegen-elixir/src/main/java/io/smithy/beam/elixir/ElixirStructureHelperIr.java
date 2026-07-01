@@ -163,14 +163,14 @@ final class ElixirStructureHelperIr {
       if (element instanceof StructureShape) {
         return ExCallLocal.callLocal("decode_" + helperName(element) + "_list", raw);
       }
+      if (element instanceof EnumShape || element instanceof IntEnumShape) {
+        return ExCallLocal.callLocal("decode_" + helperName(element) + "_list", raw);
+      }
       String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
       return ExCallLocal.callLocal(helper, raw);
     }
-    if (target instanceof MapShape) {
-      if (target.hasTrait(SparseTrait.class)) {
-        return ExCallLocal.callLocal("decode_sparse_map", raw);
-      }
-      return raw;
+    if (target instanceof MapShape mapShape) {
+      return ElixirMapHelperIr.mapDecodeExpr(model, sp, httpIndex, mapShape, raw);
     }
     return raw;
   }
@@ -212,16 +212,16 @@ final class ElixirStructureHelperIr {
       if (element instanceof StructureShape) {
         return ExCallLocal.callLocal("encode_" + helperName(element) + "_list", binding);
       }
+      if (element instanceof EnumShape || element instanceof IntEnumShape) {
+        return ExCallLocal.callLocal("encode_" + helperName(element) + "_list", binding);
+      }
       if (target.hasTrait(SparseTrait.class)) {
         return ExCallLocal.callLocal("encode_sparse_list", binding);
       }
       return binding;
     }
-    if (target instanceof MapShape) {
-      if (target.hasTrait(SparseTrait.class)) {
-        return ExCallLocal.callLocal("encode_sparse_map", binding);
-      }
-      return binding;
+    if (target instanceof MapShape mapShape) {
+      return ElixirMapHelperIr.mapEncodeExpr(model, sp, httpIndex, mapShape, binding);
     }
     return binding;
   }
