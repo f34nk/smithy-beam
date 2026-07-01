@@ -13,16 +13,20 @@ final class ElixirTypesEmission {
   private ElixirTypesEmission() {}
 
   static void emit(ElixirContext ctx) {
-    writeTypesModules(ctx, ctx.settings().typesDefstructSplitThreshold());
+    writeTypesModules(
+        ctx,
+        ctx.settings().typesDefstructSplitThreshold(),
+        ctx.settings().typesEnumSplitThreshold());
   }
 
-  static void writeTypesModules(ElixirContext ctx, int defstructSplitThreshold) {
+  static void writeTypesModules(
+      ElixirContext ctx, int defstructSplitThreshold, int enumSplitThreshold) {
     List<ExModuleEntry> rootEntries = new ArrayList<>();
     List<ExNestedModule> splitModules = new ArrayList<>();
 
     for (ExModuleEntry entry : ctx.typesEntries()) {
       if (entry instanceof ExNestedModule nested) {
-        if (nested.defstructLiteralSizeEstimate() > defstructSplitThreshold) {
+        if (shouldSplitNestedModule(nested, defstructSplitThreshold, enumSplitThreshold)) {
           splitModules.add(nested);
         } else {
           rootEntries.add(entry);
@@ -53,6 +57,12 @@ final class ElixirTypesEmission {
       ExTypesModule topLevel = nested.asTopLevelModule(ctx.moduleName());
       writeTypesFile(ctx, file, topLevel);
     }
+  }
+
+  private static boolean shouldSplitNestedModule(
+      ExNestedModule nested, int defstructSplitThreshold, int enumSplitThreshold) {
+    return nested.defstructLiteralSizeEstimate() > defstructSplitThreshold
+        || nested.enumModuleSizeEstimate() > enumSplitThreshold;
   }
 
   private static void writeTypesFile(ElixirContext ctx, String file, ExTypesModule module) {
