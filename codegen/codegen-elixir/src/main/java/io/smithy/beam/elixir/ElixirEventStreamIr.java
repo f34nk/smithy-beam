@@ -131,7 +131,7 @@ final class ElixirEventStreamIr {
                     "Enum",
                     "map",
                     ExVar.var("events"),
-                    ExCapturedBlock.capturedBlock("&#encode_" + helper + "_event/1")))));
+                    ExCapturedBlock.capturedBlock("&encode_" + helper + "_event/1")))));
   }
 
   static ExFunction unionDecodeList(UnionShape union, SymbolProvider sp) {

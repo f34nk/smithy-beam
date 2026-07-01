@@ -4,7 +4,7 @@ defmodule EventStreamRestJsonServiceEventStream do
 
   @doc "Encodes a list of event stream events into framed binaries."
   def encode_event_stream(events) when is_list(events) do
-    Enum.map(events, &#encode_event_stream_event/1)
+    Enum.map(events, &encode_event_stream_event/1)
   end
 
   @doc "Decodes an event stream body into tagged events."
