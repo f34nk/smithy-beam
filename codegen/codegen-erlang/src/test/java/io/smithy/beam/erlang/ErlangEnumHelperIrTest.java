@@ -73,6 +73,22 @@ class ErlangEnumHelperIrTest {
         .isEqualTo(readExpectedString("ir/enum_encode_color.expected.erl"));
   }
 
+  @Test
+  void decodeColorListMatchesGolden() throws IOException {
+    ErlFunction decode = ErlangEnumHelperIr.enumDecodeEncode(colorShape, provider).get(2);
+    assertStructural(decode);
+    assertThat(decode.asString())
+        .isEqualTo(readExpectedString("ir/enum_decode_color_list.expected.erl"));
+  }
+
+  @Test
+  void encodeColorListMatchesGolden() throws IOException {
+    ErlFunction encode = ErlangEnumHelperIr.enumDecodeEncode(colorShape, provider).get(3);
+    assertStructural(encode);
+    assertThat(encode.asString())
+        .isEqualTo(readExpectedString("ir/enum_encode_color_list.expected.erl"));
+  }
+
   private static void assertStructural(ErlFunction fn) {
     assertThat(fn.name()).isNotBlank();
     assertThat(fn.clauses()).isNotEmpty();

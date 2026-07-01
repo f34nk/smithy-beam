@@ -4,11 +4,14 @@ import io.smithy.beam.ir.erlang.ErlAtom;
 import io.smithy.beam.ir.erlang.ErlAtomPattern;
 import io.smithy.beam.ir.erlang.ErlBinary;
 import io.smithy.beam.ir.erlang.ErlBinaryPattern;
+import io.smithy.beam.ir.erlang.ErlCallLocal;
 import io.smithy.beam.ir.erlang.ErlClause;
 import io.smithy.beam.ir.erlang.ErlFunction;
 import io.smithy.beam.ir.erlang.ErlGuard;
 import io.smithy.beam.ir.erlang.ErlInteger;
 import io.smithy.beam.ir.erlang.ErlIntegerPattern;
+import io.smithy.beam.ir.erlang.ErlListComprehension;
+import io.smithy.beam.ir.erlang.ErlOp;
 import io.smithy.beam.ir.erlang.ErlTuple;
 import io.smithy.beam.ir.erlang.ErlTuplePattern;
 import io.smithy.beam.ir.erlang.ErlVar;
@@ -28,12 +31,20 @@ final class ErlangEnumHelperIr {
 
   static List<ErlFunction> enumDecodeEncode(EnumShape shape, SymbolProvider sp) {
     String helperName = helperName(sp, shape);
-    return List.of(decodeEnum(shape, sp, helperName), encodeEnum(shape, sp, helperName));
+    return List.of(
+        decodeEnum(shape, sp, helperName),
+        encodeEnum(shape, sp, helperName),
+        enumListDecode(helperName),
+        enumListEncode(helperName));
   }
 
   static List<ErlFunction> intEnumDecodeEncode(IntEnumShape shape, SymbolProvider sp) {
     String helperName = helperName(sp, shape);
-    return List.of(decodeIntEnum(shape, sp, helperName), encodeIntEnum(shape, sp, helperName));
+    return List.of(
+        decodeIntEnum(shape, sp, helperName),
+        encodeIntEnum(shape, sp, helperName),
+        enumListDecode(helperName),
+        enumListEncode(helperName));
   }
 
   private static ErlFunction decodeEnum(EnumShape shape, SymbolProvider sp, String helperName) {
@@ -130,6 +141,42 @@ final class ErlangEnumHelperIr {
         ErlClause.clause(
             List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")));
     return ErlFunction.function("encode_" + helperName, 1, clauses);
+  }
+
+  private static ErlFunction enumListDecode(String helperName) {
+    return ErlFunction.function(
+        "decode_" + helperName + "_list",
+        1,
+        List.of(
+            ErlClause.clause(
+                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
+            ErlClause.clause(
+                List.of(ErlAtomPattern.atomPattern("null")), ErlAtom.atom("undefined")),
+            ErlClause.clause(
+                List.of(ErlVarPattern.varPattern("List")),
+                List.of(ErlGuard.guard("is_list", ErlVar.var("List"))),
+                ErlListComprehension.comprehensionWithFilters(
+                    ErlCallLocal.callLocal("decode_" + helperName, ErlVar.var("V")),
+                    ErlVarPattern.varPattern("V"),
+                    ErlVar.var("List"),
+                    List.of(ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("null")))))));
+  }
+
+  private static ErlFunction enumListEncode(String helperName) {
+    return ErlFunction.function(
+        "encode_" + helperName + "_list",
+        1,
+        List.of(
+            ErlClause.clause(
+                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
+            ErlClause.clause(
+                List.of(ErlVarPattern.varPattern("List")),
+                List.of(ErlGuard.guard("is_list", ErlVar.var("List"))),
+                ErlListComprehension.comprehensionWithFilters(
+                    ErlCallLocal.callLocal("encode_" + helperName, ErlVar.var("V")),
+                    ErlVarPattern.varPattern("V"),
+                    ErlVar.var("List"),
+                    List.of(ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))))));
   }
 
   private static String helperName(SymbolProvider sp, Shape shape) {
