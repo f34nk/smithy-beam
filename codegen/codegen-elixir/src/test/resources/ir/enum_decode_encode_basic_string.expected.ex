@@ -5,7 +5,10 @@ defp decode_basic_string(v) when is_binary(v) do
   if normalized == v do
     {:unknown, v}
   else
-    decode_basic_string(normalized)
+    case decode_basic_string(normalized) do
+      {:unknown, _} -> {:unknown, v}
+      result -> result
+    end
   end
 end
 defp decode_basic_string(nil), do: :nil

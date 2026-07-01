@@ -5,6 +5,8 @@ import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExAtomPattern;
 import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExCallLocal;
+import io.smithy.beam.ir.elixir.ExCase;
+import io.smithy.beam.ir.elixir.ExCaseBranch;
 import io.smithy.beam.ir.elixir.ExClause;
 import io.smithy.beam.ir.elixir.ExExpr;
 import io.smithy.beam.ir.elixir.ExFunction;
@@ -74,7 +76,12 @@ final class ElixirEnumHelperIr {
       ExIf.ifBlock(
           ExOp.op("==", ExVar.var("normalized"), ExVar.var("v")),
           ExTuple.tuple(ExAtom.atom("unknown"), ExVar.var("v")),
-          ExCallLocal.callLocal(decodeFunctionName, ExVar.var("normalized")))
+          ExCase.caseExpr(
+              ExCallLocal.callLocal(decodeFunctionName, ExVar.var("normalized")),
+              ExCaseBranch.branch(
+                  ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("_")),
+                  ExTuple.tuple(ExAtom.atom("unknown"), ExVar.var("v"))),
+              ExCaseBranch.branch(ExVarPattern.var("result"), ExVar.var("result"))))
     };
   }
 
