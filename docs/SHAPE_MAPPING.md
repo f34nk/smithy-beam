@@ -42,7 +42,9 @@ with the following BEAM-specific exceptions called out explicitly.
 - Enum/intEnum unknown variants MUST be represented in the generated type
   surface. Client and server plugins emit serializers and deserializers that
   preserve unknown enum values on the wire when the service declares a
-  supported protocol trait (for example `@restJson1`).
+  supported protocol trait (for example `@restJson1`). Elixir enum decode
+  helpers normalize underscore wire values before matching known variants and
+  return the original wire value when normalization does not match.
 - Union unknown variants MUST be represented in the generated type surface.
   Wire round-trip for unions follows the same protocol rules as other aggregate
   shapes when the service declares a supported protocol trait on client or
@@ -73,6 +75,11 @@ with the following BEAM-specific exceptions called out explicitly.
   `protocol` setting produce stub-only client and server output with no wire
   modules. The types plugin never resolves protocol traits and never emits wire
   modules.
+  Optional `typesDefstructSplitThreshold` and `typesEnumSplitThreshold` settings
+  (Elixir types emission only) write oversized nested structure or enum modules
+  to separate files under `types/` when size estimates exceed the configured
+  positive integers. When unset, all nested modules remain in the single types
+  file.
 - [Erlang](https://www.erlang.org/doc/reference_manual/introduction.html#reserved-words) and [Elixir](https://hexdocs.pm/elixir/syntax-reference.html#reserved-words) reserved words MUST be escaped automatically in the initial generator. 
   The generator must never reject a Smithy model only because a shape, member, enum
   member, union member, module, or generated function name conflicts with an
@@ -167,6 +174,14 @@ encoding.
 
 All types are placed inside a top-level `defmodule <ModuleName> do ... end`.
 Enums and structures generate nested defmodules inside the top-level module.
+When `typesDefstructSplitThreshold` or `typesEnumSplitThreshold` is set and a
+nested module exceeds the threshold, that module is emitted as a separate file
+under `types/` while the root types module keeps preamble aliases and smaller
+nested modules.
+
+Generated Elixir type aliases that would shadow built-in typespec names (for
+example `string` or `mfa`) are emitted as qualified references instead of bare
+alias names.
 
 ### Naming Convention (Elixir)
 

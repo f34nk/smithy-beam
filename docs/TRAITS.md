@@ -33,7 +33,10 @@ A separate column is used for each language to indicate support status with a ch
 - Dedicated operation input shapes use `NullableIndex` CLIENT mode so `@clientOptional` and `@default` affect generated member optionality.
 - `@input` and `@output` are applied by the model transformer when dedicated operation shapes are synthesized.
 - Erlang keywords and colliding shape names are escaped consistently across types, client, and server output through the shared symbol provider.
+- Elixir type aliases that would shadow built-in typespec names are emitted as qualified references through a shared builtin-types registry.
 - Service `rename` maps change generated type identifiers, module filenames, and codec record names for operation input and output shapes.
+- Elixir enum decode helpers normalize underscore wire values before matching known variants and preserve the original wire value when normalization does not match.
+- `@httpChecksum` request and response checksum headers are computed and validated when the trait is present. CRC32, CRC32C, MD5, and SHA256 are implemented; CRC64NVME and XXHash variants emit explicit unsupported stubs at runtime.
 
 ---
 
@@ -122,7 +125,7 @@ AWS-specific protocol traits.
 | [`aws.protocols#restJson1`](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html#aws-protocols-restjson1-trait) | ✅ | ✅ |
 | [`aws.protocols#restXml`](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html#aws-protocols-restxml-trait) | ✅ | ✅ |
 | [`aws.protocols#awsQueryCompatible`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsquerycompatible-trait) | ❌ | ❌ |
-| [`aws.protocols#httpChecksum`](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ✅ | ✅ |
+| [`aws.protocols#httpChecksum`](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ⚠️ | ⚠️ |
 | [`aws.protocols#awsQueryError`](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html#aws-protocols-awsqueryerror-trait) | ➖ | ➖ |
 | [`aws.protocols#ec2QueryName`](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html#aws-protocols-ec2queryname-trait) | ✅ | ✅ |
 

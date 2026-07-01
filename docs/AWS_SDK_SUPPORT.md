@@ -22,7 +22,7 @@ Output from `erlang-types-codegen` and `elixir-types-codegen`.
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Scalar, list, and map aliases | ✅ | Named shapes in the service closure become type aliases in one types file per service name. |
-| Enum and intEnum modules | ✅ | Nested Elixir modules with conversion helpers; Erlang atom unions with unknown wire preservation. |
+| Enum and intEnum modules | ✅ | Nested Elixir modules with conversion helpers; Erlang atom unions with unknown wire preservation. Elixir enum decode normalizes underscore wire values before matching known variants and preserves the original wire value when normalization does not match. |
 | Union type aliases | ✅ | Tagged tuple unions with an unknown variant. |
 | Structure records and structs | ✅ | Erlang `-record` and `-type`; Elixir nested modules with `@type t` and `defstruct`. |
 | Error shape types | ✅ | `@error` structures become typed records (Erlang) or `defexception` modules (Elixir) with fault kind metadata. |
@@ -31,6 +31,8 @@ Output from `erlang-types-codegen` and `elixir-types-codegen`.
 | Sparse collections | ✅ | `@sparse` widens list element and map value types to include `undefined` (Erlang) or `nil` (Elixir). REST JSON codecs encode and decode sparse nulls on the wire. |
 | Streaming blob metadata | ✅ | `@streaming` blob payloads encode and decode on the wire in REST JSON 1 codecs. Event-stream unions are handled separately (see Amazon Event Stream). |
 | Erlang reserved-word escaping | ✅ | Erlang keywords and colliding identifiers are escaped in types output; client and server codecs use the same escaped record names. |
+| Elixir builtin typespec shadow detection | ✅ | Generated Elixir type aliases that would shadow built-in typespec names (for example `string`, `mfa`) are emitted as qualified references instead. |
+| Elixir oversized module splitting | ✅ | Optional `typesDefstructSplitThreshold` and `typesEnumSplitThreshold` settings write oversized nested structure or enum modules to separate files under `types/`. |
 | Service shape rename maps | ✅ | Rename targets flow into types output, module filenames, and operation record names in codecs. |
 
 ---
@@ -64,6 +66,7 @@ Output from `erlang-client-codegen` and `elixir-client-codegen`.
 | Request compression | ✅ | `@requestCompression` members are compressed on encode when configured in the model. |
 | Streaming | ✅ | REST JSON 1 codecs encode and decode `@streaming` blob payloads on the wire. `@streaming` event-stream unions use generated event stream helpers (see Amazon Event Stream). |
 | Waiters | ✅ | `@waitable` operations get generated waiter helpers that poll until success, failure, or timeout. |
+| Unsigned payload default config | ✅ | Generated `default_config/0` seeds per-operation unsigned payload entries only when the model declares `@unsignedPayload`. |
 
 ---
 
@@ -97,9 +100,9 @@ Protocol selection reads the sole `@protocolDefinition` trait on the selected se
 | [AWS restJson1 protocol](https://smithy.io/2.0/aws/protocols/aws-restjson1-protocol.html) | ✅ | Request encoding, client response decoding, server request decoding, server response encoding, routing, and wired client pagination for Erlang and Elixir when the service carries `@restJson1`. Codecs honor `@jsonName`, `@httpQueryParams`, `@httpPrefixHeaders`, `@httpResponseCode`, `@httpError`, `@timestampFormat`, `@mediaType`, `@hostLabel`, `@idempotencyToken`, sparse collection nulls, and `@streaming` blob payloads. |
 | [AWS JSON 1.0 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_0-protocol.html) | ✅ | Client and server codecs plus router dispatch for POST / with X-Amz-Target and content type application/x-amz-json-1.0 (Erlang and Elixir). |
 | [AWS JSON 1.1 protocol](https://smithy.io/2.0/aws/protocols/aws-json-1_1-protocol.html) | ✅ | Client and server codecs plus router dispatch for POST / with X-Amz-Target and content type application/x-amz-json-1.1 (Erlang and Elixir). Same wire rules as JSON 1.0. |
-| [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ✅ | Form-urlencoded request encoding and XML response decoding for Erlang and Elixir clients and servers. |
-| [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ✅ | EC2 Query name mapping and form encoding with XML response decoding. |
-| [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ✅ | HTTP-bound request and response encoding with XML payload members. Honors `@xmlName`, `@xmlAttribute`, `@xmlFlattened`, and `@xmlNamespace` in generated codecs. |
+| [AWS Query protocol](https://smithy.io/2.0/aws/protocols/aws-query-protocol.html) | ✅ | Form-urlencoded request encoding and XML response decoding for Erlang and Elixir clients and servers. Elixir codecs emit per-shape flatten helpers for nested structure encoding and normalize underscore enum wire values before matching known variants. |
+| [AWS EC2 Query protocol](https://smithy.io/2.0/aws/protocols/aws-ec2-query-protocol.html) | ✅ | EC2 Query name mapping and form encoding with XML response decoding. Elixir enum decode applies the same underscore wire normalization as AWS Query. |
+| [AWS restXml protocol](https://smithy.io/2.0/aws/protocols/aws-restxml-protocol.html) | ✅ | HTTP-bound request and response encoding with XML payload members. Honors `@xmlName`, `@xmlAttribute`, `@xmlFlattened`, and `@xmlNamespace` in generated codecs. Elixir client codecs decode header-bound response fields, normalize list-shaped HTTP header values, and encode enum request headers with wire helpers. |
 | Custom protocols via `@protocolDefinition` | ⚠️ | Protocol traits are discovered and validated at codegen time. `BeamProtocolResolver` walks the service closure and fails with one aggregated diagnostic when shapes are unsupported for the selected protocol (for example event streams or `bigDecimal`). Additional protocols register via ErlangIntegration/ElixirIntegration or codegen-core SPI. |
 | [HTTP Protocol Compliance Tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) | ⚠️ | Emits test modules from `@httpRequestTests` and `@httpResponseTests` when the model defines those traits for the configured service. |
 
@@ -161,7 +164,7 @@ Core AWS service traits and metadata.
 |---------|--------|-------|
 | [Service Trait (`aws.api#service`)](https://smithy.io/2.0/aws/aws-core.html#aws-api-service-trait) | ✅ | `sdkId`, `endpointPrefix`, and signing name flow into generated `default_config/0` and `resolve_base_url/1` when the trait is present. |
 | [Endpoint Discovery](https://smithy.io/2.0/aws/aws-core.html#aws-api-clientendpointdiscovery-trait) | ❌ | Not implemented. |
-| [HTTP Checksum (`aws.protocols#httpChecksum`)](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ✅ | Request and response checksum headers are computed and validated in generated codecs when the trait is present. |
+| [HTTP Checksum (`aws.protocols#httpChecksum`)](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ⚠️ | Request and response checksum headers are computed and validated in generated codecs when the trait is present. CRC32, CRC32C, MD5, and SHA256 are implemented. CRC64NVME and XXHash variants emit explicit unsupported stubs at runtime. |
 | [ARN References (`aws.api#arnReference`)](https://smithy.io/2.0/aws/aws-core.html#aws-api-arnreference-trait) | ➖ | Server-side resource modeling metadata. |
 | [ARN Templates (`aws.api#arn`)](https://smithy.io/2.0/aws/aws-core.html#aws-api-arn-trait) | ➖ | Server-side resource modeling metadata. |
 | [Control Plane / Data Plane](https://smithy.io/2.0/aws/aws-core.html#aws-api-controlplane-trait) | ➖ | Service classification metadata. |

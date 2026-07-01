@@ -3,6 +3,53 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-07-01
+
+### Added
+- Elixir types emission can split large enum and defstruct modules into nested files when size thresholds are exceeded, with layout helpers and settings to control the split.
+- Elixir AWS Query codecs emit per-shape flatten helpers for nested structure encoding, and enum decode normalizes underscore wire values before matching known variants.
+- Built-in Elixir typespec shadow detection through a shared builtin-types registry, including mfa in the allowed surface.
+
+### Fixed
+- Elixir REST-XML client codecs now decode header-bound response fields, normalize list-shaped HTTP header values, and encode enum request headers with wire helpers so large REST-XML services such as S3 run correctly against LocalStack.
+- Elixir checksum helpers cover newer algorithms with explicit unsupported stubs and a simpler CRC32 encoding path; event stream encoders use valid capture syntax; default client config merges unsigned payload entries only when needed.
+- Single-field defexception modules render on one line; the aws-examples demo runner verifies LocalStack on the bound port before starting and runs fewer jobs in parallel.
+- Unknown enum values keep their original wire form after normalization fallback fails; unused struct field pattern variables in encode functions are prefixed to avoid warnings.
+
+### Changed
+- EC2 Elixir demo infrastructure is created programmatically for query codec validation; LocalStack test ports map one host port per aws-example target.
+
+## 2026-06-30
+
+### Changed
+- Elixir IR output breaks remote calls across lines when argument lists grow long, matching mix-format-style layout for multiline invocations.
+
+## 2026-06-29
+
+### Added
+- Completed Elixir codegen migration to structural IR: client, server, router, behaviour, resource, compliance test, and runtime modules now compose through ExModule trees instead of string templates.
+- ExTypeDef.mapType for plain map typespecs and shared guard formatting in the Elixir IR layer.
+
+### Fixed
+- Elixir IR rendering for indented capture blocks, multiline when clauses, comma placement between expression blocks, and blank lines between type aliases and nested modules.
+- Function parameters and heads render on one line where appropriate; aws_credentials typespec emits as a plain map.
+
+## 2026-06-28
+
+### Added
+- Elixir protocol codec modules for REST JSON, REST XML, AWS Query, and AWS JSON RPC now emit through dedicated IR composers, with shared codec write helpers and function collectors for module assembly.
+- Runtime support modules for HTTP dispatch, credentials, endpoints, SigV4, presigning, retry, waiters, event streams, and S3 endpoints migrated to structural IR emitters.
+
+## 2026-06-27
+
+### Added
+- Elixir structural IR foundation in codegen-ir: expression, pattern, guard, clause, function, module, and types-module nodes with golden tests and factory conventions.
+- Shared Elixir codec helper IR for enums, host labels, structure and union helpers, and cross-protocol reuse between REST XML and AWS Query.
+- Erlang IR migration finished for client, server, waiters, retry, credentials, endpoints, SigV4, and remaining protocol codec operation bodies.
+
+### Fixed
+- Empty HTTP binding header lists are omitted from generated request codecs; edoc comment emission restored in Erlang IR output.
+
 ## 2026-06-26
 
 ### Added
