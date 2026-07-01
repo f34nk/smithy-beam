@@ -24,6 +24,10 @@ public final class ExDefexception implements ExModuleEntry {
       return List.of(IrObject.indent(indent) + "defexception []");
     }
     List<String> out = new ArrayList<>();
+    if (keywordFields.size() == 1) {
+      out.add(IrObject.indent(indent) + "defexception " + keywordFields.get(0));
+      return out;
+    }
     out.add(IrObject.indent(indent) + "defexception " + keywordFields.get(0) + ",");
     for (int i = 1; i < keywordFields.size(); i++) {
       String suffix = (i < keywordFields.size() - 1) ? "," : "";
