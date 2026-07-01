@@ -22,15 +22,12 @@ import software.amazon.smithy.model.shapes.ShapeId;
  * protocol from the sole @protocolDefinition trait on the service, or emit stub-only output when
  * none is present. "name" -- optional snake_case stem for service-scoped module and file names.
  * When unset, derived from the service shape id (honoring rename maps). Must not include role
- * suffixes such as "_client" or "_types".
- * "typesDefstructSplitThreshold" -- optional positive integer. When a nested
- * structure module defstruct literal estimate exceeds this value, Elixir types
- * emission writes that module to a separate file under the default "types/"
- * directory. Defaults to no splitting.
- * "typesEnumSplitThreshold" -- optional positive integer. When a nested enum
- * or int enum module size estimate exceeds this value, Elixir types emission
- * writes that module to a separate file under the default "types/" directory.
- * Defaults to no splitting.
+ * suffixes such as "_client" or "_types". "typesDefstructSplitThreshold" -- optional positive
+ * integer. When a nested structure module defstruct literal estimate exceeds this value, Elixir
+ * types emission writes that module to a separate file under the default "types/" directory.
+ * Defaults to no splitting. "typesEnumSplitThreshold" -- optional positive integer. When a nested
+ * enum or int enum module size estimate exceeds this value, Elixir types emission writes that
+ * module to a separate file under the default "types/" directory. Defaults to no splitting.
  */
 public final class BeamSettings {
 
@@ -107,9 +104,7 @@ public final class BeamSettings {
   }
 
   public int typesDefstructSplitThreshold() {
-    return typesDefstructSplitThreshold != null
-        ? typesDefstructSplitThreshold
-        : Integer.MAX_VALUE;
+    return typesDefstructSplitThreshold != null ? typesDefstructSplitThreshold : Integer.MAX_VALUE;
   }
 
   public void typesEnumSplitThreshold(Integer typesEnumSplitThreshold) {

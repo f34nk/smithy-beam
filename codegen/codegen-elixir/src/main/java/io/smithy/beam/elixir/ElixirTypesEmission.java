@@ -45,13 +45,11 @@ final class ElixirTypesEmission {
     }
 
     ExTypesModule rootModule =
-        ExTypesModule.typesModule(
-            ctx.moduleName(), ctx.typesPreambleEntries(), rootEntries);
+        ExTypesModule.typesModule(ctx.moduleName(), ctx.typesPreambleEntries(), rootEntries);
     writeTypesFile(ctx, ctx.definitionFile(), rootModule);
 
     BeamElixirLayout layout =
-        new BeamElixirLayout(
-            ctx.settings(), ctx.service().getId().getNamespace(), ctx.service());
+        new BeamElixirLayout(ctx.settings(), ctx.service().getId().getNamespace(), ctx.service());
     for (ExNestedModule nested : splitModules) {
       String file = layout.nestedTypeModuleFile(nested.name());
       ExTypesModule topLevel = nested.asTopLevelModule(ctx.moduleName());

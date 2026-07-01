@@ -2,10 +2,6 @@ package io.smithy.beam.ir.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -93,8 +89,7 @@ class ExNestedModuleTest {
                 ExFunction.defFunction(
                     "from",
                     List.of(
-                        ExClause.inlineClause(
-                            List.of(ExVarPattern.var("v")), ExVar.var("v"))))));
+                        ExClause.inlineClause(List.of(ExVarPattern.var("v")), ExVar.var("v"))))));
 
     assertThat(nested.isEnumModule()).isTrue();
     assertThat(nested.enumModuleSizeEstimate()).isGreaterThan(0);
@@ -140,14 +135,11 @@ class ExNestedModuleTest {
             List.of(
                 ExFunction.defFunction(
                     "from",
-                    List.of(
-                        ExClause.inlineClause(
-                            List.of(ExVarPattern.var("v")), ExVar.var("v")))),
+                    List.of(ExClause.inlineClause(List.of(ExVarPattern.var("v")), ExVar.var("v")))),
                 ExFunction.defFunction(
                     "to",
                     List.of(
-                        ExClause.inlineClause(
-                            List.of(ExVarPattern.var("v")), ExVar.var("v"))))));
+                        ExClause.inlineClause(List.of(ExVarPattern.var("v")), ExVar.var("v"))))));
 
     assertThat(nested.isEnumModule()).isTrue();
     assertThat(nested.enumModuleSizeEstimate()).isGreaterThan(50);

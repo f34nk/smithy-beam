@@ -47,10 +47,7 @@ class BeamElixirLayoutTest {
     BeamSettings settings = new BeamSettings();
     settings.edition("2026");
     ServiceShape service =
-        ServiceShape.builder()
-            .id(ShapeId.from("com.example#Ec2"))
-            .version("1")
-            .build();
+        ServiceShape.builder().id(ShapeId.from("com.example#Ec2")).version("1").build();
     BeamElixirLayout layout =
         new BeamElixirLayout(settings, service.getId().getNamespace(), service);
 
@@ -63,10 +60,7 @@ class BeamElixirLayoutTest {
     settings.edition("2026");
     settings.name("ec2");
     ServiceShape service =
-        ServiceShape.builder()
-            .id(ShapeId.from("com.example#Ec2"))
-            .version("1")
-            .build();
+        ServiceShape.builder().id(ShapeId.from("com.example#Ec2")).version("1").build();
     BeamElixirLayout layout =
         new BeamElixirLayout(settings, service.getId().getNamespace(), service);
 
