@@ -4,12 +4,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.ir.elixir.ExClause;
 import io.smithy.beam.ir.elixir.ExDefstruct;
+import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExNestedModule;
 import io.smithy.beam.ir.elixir.ExTypeDef;
-import java.util.List;
+import io.smithy.beam.ir.elixir.ExVar;
+import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -24,7 +30,7 @@ class ElixirTypesEmissionTest {
   void monolithicWhenNoDefstructExceedsThreshold() {
     MockManifest manifest = new MockManifest();
     ElixirContext ctx = contextWithEntries(manifest, "FooTypes", "foo_types.ex");
-    ElixirTypesEmission.writeTypesModules(ctx, Integer.MAX_VALUE);
+    ElixirTypesEmission.writeTypesModules(ctx, Integer.MAX_VALUE, Integer.MAX_VALUE);
     ctx.writerDelegator().flushWriters();
 
     String root = manifest.expectFileString("foo_types.ex");
@@ -38,7 +44,7 @@ class ElixirTypesEmissionTest {
   void keepsSmallDefstructNested_inCentralFile() {
     MockManifest manifest = new MockManifest();
     ElixirContext ctx = contextWithEntries(manifest, "FooTypes", "foo_types.ex");
-    ElixirTypesEmission.writeTypesModules(ctx, 50);
+    ElixirTypesEmission.writeTypesModules(ctx, 50, Integer.MAX_VALUE);
     ctx.writerDelegator().flushWriters();
 
     String root = manifest.expectFileString("foo_types.ex");
@@ -50,7 +56,7 @@ class ElixirTypesEmissionTest {
   void splitsOnlyOversizedDefstructModules() {
     MockManifest manifest = new MockManifest();
     ElixirContext ctx = contextWithEntries(manifest, "FooTypes", "foo_types.ex");
-    ElixirTypesEmission.writeTypesModules(ctx, 50);
+    ElixirTypesEmission.writeTypesModules(ctx, 50, Integer.MAX_VALUE);
     ctx.writerDelegator().flushWriters();
 
     String root = manifest.expectFileString("foo_types.ex");
@@ -66,6 +72,55 @@ class ElixirTypesEmissionTest {
     assertThat(large).doesNotContain("defmodule LargeShape do");
   }
 
+  @Test
+  void keepsSmallEnumNested_inCentralFile() {
+    MockManifest manifest = new MockManifest();
+    ElixirContext ctx = contextWithEntries(manifest, "FooTypes", "foo_types.ex");
+    ctx.addTypesEntry(smallEnum("SmallStatus"));
+    ElixirTypesEmission.writeTypesModules(ctx, Integer.MAX_VALUE, 50);
+    ctx.writerDelegator().flushWriters();
+
+    String root = manifest.expectFileString("foo_types.ex");
+    assertThat(root).contains("defmodule SmallStatus do");
+    assertThat(getFilePaths(manifest)).containsExactly("foo_types.ex");
+  }
+
+  @Test
+  void splitsOnlyOversizedEnumModules() {
+    MockManifest manifest = new MockManifest();
+    ElixirContext ctx = contextWithEnumEntries(manifest, "FooTypes", "foo_types.ex");
+    ElixirTypesEmission.writeTypesModules(ctx, Integer.MAX_VALUE, 50);
+    ctx.writerDelegator().flushWriters();
+
+    String root = manifest.expectFileString("foo_types.ex");
+    assertThat(root).contains("defmodule FooTypes do");
+    assertThat(root).contains("defmodule SmallStatus do");
+    assertThat(root).doesNotContain("defmodule LargeStatus do");
+
+    String large = manifest.expectFileString("types/large_status.ex");
+    assertThat(large).contains("defmodule FooTypes.LargeStatus do");
+    assertThat(large).contains("@type t ::");
+    assertThat(large).contains("def from(");
+    assertThat(large).doesNotContain("defmodule LargeStatus do");
+  }
+
+  @Test
+  void splitsStructuresAndEnumsIndependently() {
+    MockManifest manifest = new MockManifest();
+    ElixirContext ctx = contextWithEntries(manifest, "FooTypes", "foo_types.ex");
+    ctx.addTypesEntry(largeEnum("LargeStatus"));
+    ElixirTypesEmission.writeTypesModules(ctx, 50, 50);
+    ctx.writerDelegator().flushWriters();
+
+    assertThat(manifest.getFileString("types/large_shape.ex")).isPresent();
+    assertThat(manifest.getFileString("types/large_status.ex")).isPresent();
+
+    String root = manifest.expectFileString("foo_types.ex");
+    assertThat(root).contains("defmodule SmallShape do");
+    assertThat(root).doesNotContain("defmodule LargeShape do");
+    assertThat(root).doesNotContain("defmodule LargeStatus do");
+  }
+
   private static ElixirContext contextWithEntries(
       MockManifest manifest, String moduleName, String typesFile) {
     BeamSettings settings = new BeamSettings();
@@ -73,9 +128,7 @@ class ElixirTypesEmissionTest {
     settings.name("foo");
     ShapeId serviceId = ShapeId.from("com.example#ExampleService");
     Model model =
-        Model.builder()
-            .addShape(ServiceShape.builder().id(serviceId).version("1").build())
-            .build();
+        Model.builder().addShape(ServiceShape.builder().id(serviceId).version("1").build()).build();
     ServiceShape service = model.expectShape(serviceId, ServiceShape.class);
     SymbolProvider sp =
         SymbolProvider.cache(
@@ -120,8 +173,7 @@ class ElixirTypesEmissionTest {
 
   private static ExNestedModule largeStructure(String name) {
     String longField =
-        "payload: "
-            + "VeryLongNamespace.VeryLongServiceTypes.AnotherNestedType.t() | nil";
+        "payload: " + "VeryLongNamespace.VeryLongServiceTypes.AnotherNestedType.t() | nil";
     return ExNestedModule.nestedModule(
         name,
         List.of(),
@@ -129,6 +181,42 @@ class ElixirTypesEmissionTest {
             ExDefstruct.defstruct(List.of(":payload")),
             ExTypeDef.structureType("t", List.of(longField))),
         List.of());
+  }
+
+  private static ElixirContext contextWithEnumEntries(
+      MockManifest manifest, String moduleName, String typesFile) {
+    ElixirContext ctx = contextWithEntries(manifest, moduleName, typesFile);
+    ctx.addTypesEntry(smallEnum("SmallStatus"));
+    ctx.addTypesEntry(largeEnum("LargeStatus"));
+    return ctx;
+  }
+
+  private static ExNestedModule smallEnum(String name) {
+    return ExNestedModule.nestedModule(
+        name,
+        List.of(),
+        List.of(ExTypeDef.alias("t", ":open | :closed")),
+        List.of(
+            ExFunction.defFunction(
+                "from",
+                List.of(ExClause.inlineClause(List.of(ExVarPattern.var("v")), ExVar.var("v"))))));
+  }
+
+  private static ExNestedModule largeEnum(String name) {
+    String longBody =
+        IntStream.range(0, 20).mapToObj(i -> ":v" + i).collect(Collectors.joining(" | "))
+            + " | {:unknown, String.t()}";
+    return ExNestedModule.nestedModule(
+        name,
+        List.of(),
+        List.of(ExTypeDef.alias("t", longBody)),
+        List.of(
+            ExFunction.defFunction(
+                "from",
+                List.of(ExClause.inlineClause(List.of(ExVarPattern.var("v")), ExVar.var("v")))),
+            ExFunction.defFunction(
+                "to",
+                List.of(ExClause.inlineClause(List.of(ExVarPattern.var("v")), ExVar.var("v"))))));
   }
 
   private static List<String> getFilePaths(MockManifest manifest) {
