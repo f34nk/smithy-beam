@@ -786,6 +786,7 @@ class ElixirSymbolProviderTest {
                     float Float
                     integer Integer
                     boolean Boolean
+                    string String
                     """;
       model = Model.assembler().addUnparsedModel("aws_primitive.smithy", idl).assemble().unwrap();
       ServiceShape service =
@@ -817,6 +818,15 @@ class ElixirSymbolProviderTest {
       Symbol sym = provider.toSymbol(model.expectShape(ShapeId.from("com.awsprimitive#Boolean")));
       assertThat(sym.getName()).isEqualTo("boolean()");
       assertThat(sym.getProperty("builtIn", Boolean.class)).contains(true);
+    }
+
+    @Test
+    void stringShapeResolvesToBuiltinString() {
+      Symbol sym = provider.toSymbol(model.expectShape(ShapeId.from("com.awsprimitive#String")));
+      assertThat(sym.getName()).isEqualTo("String.t()");
+      assertThat(sym.getDefinitionFile()).isEmpty();
+      assertThat(sym.getProperty("builtIn", Boolean.class)).contains(true);
+      assertThat(sym.getProperty("baseType")).isEmpty();
     }
   }
 
