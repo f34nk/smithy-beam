@@ -424,11 +424,12 @@ class ElixirDirectedCodegenTest {
     assertThat(content).doesNotContain("@type float ::");
     assertThat(content).doesNotContain("@type integer ::");
     assertThat(content).doesNotContain("@type boolean ::");
+    assertThat(content).doesNotContain("@type string ::");
     assertThat(content).contains("@type double :: float()");
-    assertThat(content).contains("@type string :: String.t()");
     assertThat(content).contains("f: float()");
     assertThat(content).contains("i: integer()");
     assertThat(content).contains("b: boolean()");
+    assertThat(content).contains("s: String.t()");
   }
 
   @Test
@@ -493,6 +494,60 @@ class ElixirDirectedCodegenTest {
         .contains("@type sa_streaming_blob :: binary()")
         .contains("# Decimal.t()")
         .contains("@type sa_decimal :: Decimal.t()");
+  }
+
+  @Test
+  void enumFromStringNormalizesUnderscoreWireValues() {
+    String idl =
+        """
+                $version: "2"
+                namespace com.instancekind
+
+                service InstanceKindService {
+                    operations: [GetKind]
+                }
+
+                operation GetKind {
+                    output: KindOutput
+                }
+
+                structure KindOutput {
+                    kind: InstanceKind
+                }
+
+                enum InstanceKind {
+                    t2Micro = "t2.micro"
+                }
+                """;
+    Model kindModel =
+        Model.assembler().addUnparsedModel("instance_kind.smithy", idl).assemble().unwrap();
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "com.instancekind#InstanceKindService")
+            .withMember("edition", "2026")
+            .build();
+    PluginContext context =
+        PluginContext.builder()
+            .model(kindModel)
+            .fileManifest(manifest)
+            .settings(settings)
+            .build();
+    new ElixirTypeGeneration().generate(context);
+
+    ServiceShape service =
+        kindModel.expectShape(
+            ShapeId.from("com.instancekind#InstanceKindService"), ServiceShape.class);
+    BeamSettings beamSettings = new BeamSettings();
+    beamSettings.edition("2026");
+    String content =
+        manifest.getFiles().stream()
+            .map(path -> manifest.expectFileString(path))
+            .reduce("", String::concat);
+
+    assertThat(content).contains("def from_string(\"t2.micro\"), do: :t2micro");
+    assertThat(content).contains("String.replace(v, \"_\", \".\")");
+    assertThat(content).contains("from_string(normalized)");
   }
 
   private static int countOccurrences(String haystack, String needle) {

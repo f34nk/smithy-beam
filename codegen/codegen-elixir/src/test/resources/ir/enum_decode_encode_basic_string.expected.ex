@@ -1,6 +1,13 @@
 defp decode_basic_string("FOO"), do: :foo
 defp decode_basic_string("BAR"), do: :bar
-defp decode_basic_string(v) when is_binary(v), do: {:unknown, v}
+defp decode_basic_string(v) when is_binary(v) do
+  normalized = String.replace(v, "_", ".")
+  if normalized == v do
+    {:unknown, v}
+  else
+    decode_basic_string(normalized)
+  end
+end
 defp decode_basic_string(nil), do: :nil
 
 defp encode_basic_string(:foo), do: "FOO"
