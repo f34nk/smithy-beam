@@ -13,6 +13,10 @@ public final class ExVarPattern implements ExPattern {
     return new ExVarPattern(name);
   }
 
+  public static ExVarPattern unusedVar(String name) {
+    return new ExVarPattern("_" + name);
+  }
+
   public String name() {
     return name;
   }
