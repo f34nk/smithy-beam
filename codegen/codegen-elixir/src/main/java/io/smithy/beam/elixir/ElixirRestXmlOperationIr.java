@@ -38,14 +38,18 @@ import io.smithy.beam.ir.elixir.ExVar;
 import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.BlobShape;
+import software.amazon.smithy.model.shapes.EnumShape;
+import software.amazon.smithy.model.shapes.IntEnumShape;
 import software.amazon.smithy.model.shapes.ListShape;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -331,7 +335,7 @@ final class ElixirRestXmlOperationIr {
     }
 
     body.addAll(buildQueryExprs(queries, sp));
-    body.addAll(buildRequestHeadersExprs(headers, sp, "input"));
+    body.addAll(buildRequestHeadersExprs(model, headers, sp, "input"));
     body.addAll(buildRequestBodyExprs(model, payloadMembers, httpTrait.getMethod(), sp, typesMod));
     ElixirHttpChecksumIr.requestChecksumHeadersExpr(model, op, sp, "headers").ifPresent(body::add);
 
@@ -405,59 +409,179 @@ final class ElixirRestXmlOperationIr {
       SymbolProvider sp,
       String typesMod,
       StructureShape output) {
+    List<HttpBinding> respHeaders = httpIndex.getResponseBindings(op, HttpBinding.Location.HEADER);
+    List<HttpBinding> respPrefixHeaders =
+        httpIndex.getResponseBindings(op, HttpBinding.Location.PREFIX_HEADERS);
     List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
+    Set<String> httpBoundMembers = new LinkedHashSet<>();
+    for (HttpBinding binding : concat(respHeaders, respPrefixHeaders, respPayload)) {
+      httpBoundMembers.add(binding.getMember().getMemberName());
+    }
+    List<MemberShape> xmlBodyMembers =
+        output.members().stream()
+            .filter(member -> !httpBoundMembers.contains(member.getMemberName()))
+            .toList();
+
     List<ExExpr> body = new ArrayList<>();
+    for (HttpBinding hb : respHeaders) {
+      body.add(headerBindingDecodeExpr(model, sp, hb));
+    }
+    for (HttpBinding ph : respPrefixHeaders) {
+      String field = fieldName(sp, ph.getMember());
+      body.add(
+          ExMatch.match(
+              ExVarPattern.var(field),
+              ExCallLocal.callLocal(
+                  "prefix_headers_from_list",
+                  ExVar.var("headers"),
+                  ExString.string(ph.getLocationName()))));
+    }
 
     if (!respPayload.isEmpty()) {
       HttpBinding pb = respPayload.get(0);
       MemberShape member = pb.getMember();
       Shape target = model.expectShape(member.getTarget());
       String field = fieldName(sp, member);
-      String outputStruct = structName(sp, output);
       if (target instanceof BlobShape || target instanceof StringShape) {
-        ExExpr success =
-            ExTuple.tuple(
-                ExAtom.atom("ok"),
-                ExStruct.struct(
-                    "Types." + outputStruct,
-                    ExMapEntry.entry(ExAtom.atom(field), ExVar.var("body"))));
-        body.add(ElixirHttpChecksumIr.responseChecksumGuardExpr(model, op, success));
+        body.add(ExMatch.match(ExVarPattern.var(field), ExVar.var("body")));
       } else {
         String rootElement = BeamXmlBindingIndex.payloadRootElementName(member, target);
-        ExExpr decoded = payloadDecodeExpr(model, target, "root", sp, typesMod);
         body.add(
-            ExCase.caseExpr(
-                ExCallLocal.callLocal(
-                    "parse_xml_root", ExVar.var("body"), ExString.string(rootElement)),
-                ExCaseBranch.branch(
-                    ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("root")),
-                    ExTuple.tuple(
-                        ExAtom.atom("ok"),
-                        ExStruct.struct(
-                            "Types." + outputStruct,
-                            ExMapEntry.entry(ExAtom.atom(field), decoded)))),
-                ExCaseBranch.branch(
-                    ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
-                    ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason")))));
+            ExMatch.match(
+                ExVarPattern.var(field),
+                payloadBodyDecodeExpr(model, target, rootElement, sp, typesMod)));
       }
-    } else if (!output.members().isEmpty()) {
+    } else if (!xmlBodyMembers.isEmpty()) {
       String rootElement = BeamXmlBindingIndex.shapeElementName(output);
       body.add(
-          ExCase.caseExpr(
-              ExCallLocal.callLocal(
-                  "parse_xml_root", ExVar.var("body"), ExString.string(rootElement)),
-              ExCaseBranch.branch(
-                  ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("root")),
-                  ExTuple.tuple(
-                      ExAtom.atom("ok"), decodeStructureExpr(model, output, "root", sp, typesMod))),
-              ExCaseBranch.branch(
-                  ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
-                  ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason")))));
-    } else {
-      body.add(
-          ExTuple.tuple(ExAtom.atom("ok"), ExStruct.struct("Types." + structName(sp, output))));
+          ExMatch.match(
+              ExVarPattern.var("parsed"),
+              ExCase.caseExpr(
+                  ExCallLocal.callLocal(
+                      "parse_xml_root", ExVar.var("body"), ExString.string(rootElement)),
+                  ExCaseBranch.branch(
+                      ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("root")),
+                      ExVar.var("root")),
+                  ExCaseBranch.branch(
+                      ExTuplePattern.tuple(ExAtomPattern.atom("error"), W), ExAtom.atom("nil")))));
+      body.addAll(buildMembersFromXmlExprs(model, xmlBodyMembers, "parsed", sp, typesMod));
     }
+
+    List<ExMapEntry> structFields = new ArrayList<>();
+    Set<String> boundFields = new LinkedHashSet<>();
+    for (HttpBinding hb : concat(respHeaders, respPrefixHeaders, respPayload)) {
+      String field = fieldName(sp, hb.getMember());
+      if (boundFields.add(field)) {
+        structFields.add(ExMapEntry.entry(ExAtom.atom(field), ExVar.var(field)));
+      }
+    }
+    if (respPayload.isEmpty() && !xmlBodyMembers.isEmpty()) {
+      for (MemberShape member : xmlBodyMembers) {
+        String field = fieldName(sp, member);
+        if (boundFields.add(field)) {
+          structFields.add(ExMapEntry.entry(ExAtom.atom(field), ExVar.var(field)));
+        }
+      }
+    }
+
+    ExExpr success =
+        ExTuple.tuple(
+            ExAtom.atom("ok"),
+            ExStruct.struct("Types." + structName(sp, output), structFields));
+    body.add(ElixirHttpChecksumIr.responseChecksumGuardExpr(model, op, success));
     return body;
+  }
+
+  @SafeVarargs
+  private static List<HttpBinding> concat(List<HttpBinding>... lists) {
+    List<HttpBinding> result = new ArrayList<>();
+    for (List<HttpBinding> list : lists) {
+      result.addAll(list);
+    }
+    return result;
+  }
+
+  private static ExMatch headerBindingDecodeExpr(
+      Model model, SymbolProvider sp, HttpBinding binding) {
+    String field = fieldName(sp, binding.getMember());
+    ExExpr headerValue =
+        ExCallLocal.callLocal(
+            "header_value", ExVar.var("headers"), ExString.string(binding.getLocationName()));
+    Shape target = model.expectShape(binding.getMember().getTarget());
+    ExExpr value = headerValue;
+    if (target instanceof EnumShape || target instanceof IntEnumShape) {
+      String helperName = BeamNameUtils.toSnakeCase(target.getId().getName());
+      value = ExCallLocal.callLocal("decode_" + helperName, headerValue);
+    }
+    return ExMatch.match(ExVarPattern.var(field), value);
+  }
+
+  private static List<ExExpr> buildMembersFromXmlExprs(
+      Model model, Iterable<MemberShape> members, String xmlVar, SymbolProvider sp, String typesMod) {
+    List<ExExpr> exprs = new ArrayList<>();
+    for (MemberShape member : members) {
+      exprs.add(buildMemberFromXmlExpr(model, member, xmlVar, sp, typesMod));
+    }
+    return exprs;
+  }
+
+  private static ExMatch buildMemberFromXmlExpr(
+      Model model, MemberShape member, String xmlVar, SymbolProvider sp, String typesMod) {
+    String field = fieldName(sp, member);
+    Shape target = model.expectShape(member.getTarget());
+    if (BeamXmlBindingIndex.isXmlAttribute(member)) {
+      return ExMatch.match(
+          ExVarPattern.var(field),
+          ExCase.caseExpr(
+              ExVar.var(xmlVar),
+              ExCaseBranch.branch(ExNilPattern.nil(), ExAtom.atom("nil")),
+              ExCaseBranch.branch(
+                  W,
+                  ExCallLocal.callLocal(
+                      "xml_attribute",
+                      ExVar.var(xmlVar),
+                      ExString.string(BeamXmlBindingIndex.memberElementName(member))))));
+    }
+    if (target instanceof ListShape listShape) {
+      return ExMatch.match(
+          ExVarPattern.var(field),
+          ExCase.caseExpr(
+              ExVar.var(xmlVar),
+              ExCaseBranch.branch(ExNilPattern.nil(), ExAtom.atom("nil")),
+              ExCaseBranch.branch(
+                  W, decodeListFieldFromXml(model, member, listShape, xmlVar, sp, typesMod))));
+    }
+    if (target instanceof StructureShape nested) {
+      String element = BeamXmlBindingIndex.memberElementName(member);
+      String nestedVar = field + "_xml";
+      return ExMatch.match(
+          ExVarPattern.var(field),
+          ExCase.caseExpr(
+              ExVar.var(xmlVar),
+              ExCaseBranch.branch(ExNilPattern.nil(), ExAtom.atom("nil")),
+              ExCaseBranch.branch(
+                  W,
+                  ExCase.caseExpr(
+                      ExCallLocal.callLocal(
+                          "find_element",
+                          ExString.string(element),
+                          ExCallLocal.callLocal("element_content", ExVar.var(xmlVar))),
+                      ExCaseBranch.branch(ExNilPattern.nil(), ExAtom.atom("nil")),
+                      ExCaseBranch.branch(
+                          ExVarPattern.var(nestedVar),
+                          decodeStructureExpr(model, nested, nestedVar, sp, typesMod))))));
+    }
+    return ExMatch.match(
+        ExVarPattern.var(field),
+        ExCase.caseExpr(
+            ExVar.var(xmlVar),
+            ExCaseBranch.branch(ExNilPattern.nil(), ExAtom.atom("nil")),
+            ExCaseBranch.branch(
+                W,
+                ExCallLocal.callLocal(
+                    "xml_child_text",
+                    ExVar.var(xmlVar),
+                    ExString.string(BeamXmlBindingIndex.memberElementName(member))))));
   }
 
   private static List<ExExpr> buildEncodeResponseBodyExprs(
@@ -687,7 +811,7 @@ final class ElixirRestXmlOperationIr {
   }
 
   private static List<ExExpr> buildRequestHeadersExprs(
-      List<HttpBinding> headers, SymbolProvider sp, String recordVar) {
+      Model model, List<HttpBinding> headers, SymbolProvider sp, String recordVar) {
     if (headers.isEmpty()) {
       return List.of(
           ExMatch.match(
@@ -697,7 +821,7 @@ final class ElixirRestXmlOperationIr {
                       ExString.string("Content-Type"), ExString.string(DEFAULT_CONTENT_TYPE)))));
     }
     List<ExExpr> exprs = new ArrayList<>();
-    exprs.addAll(extraHeadersPipeline(sp, recordVar, headers));
+    exprs.addAll(extraHeadersPipeline(model, sp, recordVar, headers));
     exprs.add(
         ExMatch.match(
             ExVarPattern.var("headers"),
@@ -708,23 +832,31 @@ final class ElixirRestXmlOperationIr {
     return exprs;
   }
 
+  private static ExExpr encodeBindingWireValueExpr(
+      Model model, SymbolProvider sp, MemberShape member, ExExpr valueExpr, boolean queryValues) {
+    Shape target = model.expectShape(member.getTarget());
+    if (target instanceof EnumShape || target instanceof IntEnumShape) {
+      String helperName = BeamNameUtils.toSnakeCase(target.getId().getName());
+      return ExCallLocal.callLocal("encode_" + helperName, valueExpr);
+    }
+    if (queryValues) {
+      return ExCallLocal.callLocal("encode_query_value", valueExpr);
+    }
+    return ExCall.call("Kernel", "to_string", valueExpr);
+  }
+
   private static List<ExExpr> extraHeadersPipeline(
-      SymbolProvider sp, String recordVar, List<HttpBinding> headers) {
+      Model model, SymbolProvider sp, String recordVar, List<HttpBinding> headers) {
     List<ExExpr> entries = new ArrayList<>();
     for (HttpBinding hb : headers) {
       String field = fieldName(sp, hb.getMember());
+      ExExpr fieldValue = ExStructAccess.structAccess(ExVar.var(recordVar), field);
       entries.add(
           ExIfInList.ifInList(
-              ExOp.op(
-                  "!=",
-                  ExStructAccess.structAccess(ExVar.var(recordVar), field),
-                  ExAtom.atom("nil")),
+              ExOp.op("!=", fieldValue, ExAtom.atom("nil")),
               ExTuple.tuple(
                   ExString.string(hb.getLocationName()),
-                  ExCall.call(
-                      "Kernel",
-                      "to_string",
-                      ExStructAccess.structAccess(ExVar.var(recordVar), field)))));
+                  encodeBindingWireValueExpr(model, sp, hb.getMember(), fieldValue, false))));
     }
     return List.of(
         ExPipeline.pipeline(

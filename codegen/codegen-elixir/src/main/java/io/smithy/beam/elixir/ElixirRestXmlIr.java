@@ -127,6 +127,8 @@ final class ElixirRestXmlIr {
     return List.of(
         ElixirCodecHelperIr.prefixHeadersToList(),
         ElixirCodecHelperIr.prefixHeadersFromList(),
+        ElixirCodecHelperIr.headerValue(),
+        ElixirCodecHelperIr.headerValueRaw(),
         ElixirCodecHelperIr.generateUuid(),
         ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY),
         ElixirCodecHelperIr.encodeQueryValueXmlQuery());

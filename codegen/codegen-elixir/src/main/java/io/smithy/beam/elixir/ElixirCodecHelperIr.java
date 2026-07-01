@@ -13,6 +13,7 @@ import io.smithy.beam.ir.elixir.ExConsPattern;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExGuard;
 import io.smithy.beam.ir.elixir.ExIf;
+import io.smithy.beam.ir.elixir.ExInteger;
 import io.smithy.beam.ir.elixir.ExList;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExNil;
@@ -321,6 +322,41 @@ final class ElixirCodecHelperIr {
                     ExCapturedBlock.capturedBlock("0"),
                     ExVar.var("headers"),
                     ExTuple.tuple(ExVar.var("name"), ExVar.var("value"))))));
+  }
+
+  public static ExFunction headerValue() {
+    return ExFunction.defpFunction(
+        "header_value",
+        List.of(
+            ExClause.blockClause(
+                List.of(ExVarPattern.var("headers"), ExVarPattern.var("name")),
+                ExCase.caseExpr(
+                    ExCall.call(
+                        "List",
+                        "keyfind",
+                        ExVar.var("headers"),
+                        ExVar.var("name"),
+                        ExInteger.integer(0)),
+                    ExCaseBranch.branch(
+                        ExTuplePattern.tuple(ExVarPattern.var("_"), ExVarPattern.var("v")),
+                        ExCallLocal.callLocal("header_value_raw", ExVar.var("v"))),
+                    ExCaseBranch.branch(ExNilPattern.nil(), ExAtom.atom("nil"))))));
+  }
+
+  public static ExFunction headerValueRaw() {
+    ExVarPattern tail = ExVarPattern.var("_");
+    return ExFunction.defpFunction(
+        "header_value_raw",
+        List.of(
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("v")),
+                List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
+                ExVar.var("v")),
+            ExClause.inlineClause(
+                List.of(ExConsPattern.consPattern(ExVarPattern.var("v"), tail)),
+                List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
+                ExVar.var("v")),
+            ExClause.inlineClause(List.of(ExVarPattern.var("v")), ExVar.var("v"))));
   }
 
   public static ExFunction toBinary(ToBinaryVariant variant) {
