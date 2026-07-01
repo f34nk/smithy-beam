@@ -41,11 +41,11 @@ run() ->
     PutInput = #put_item_input{
         table_name = ?TABLE_NAME,
         item = #{
-            ?HASH_KEY => #{<<"S">> => ItemKey},
-            <<"Name">> => #{<<"S">> => <<"John Doe">>},
-            <<"Age">> => #{<<"N">> => <<"30">>},
-            <<"Active">> => #{<<"BOOL">> => true},
-            <<"Tags">> => #{<<"SS">> => [<<"erlang">>, <<"dynamodb">>, <<"smithy">>]}
+            ?HASH_KEY => {s, ItemKey},
+            <<"Name">> => {s, <<"John Doe">>},
+            <<"Age">> => {n, <<"30">>},
+            <<"Active">> => {bool, true},
+            <<"Tags">> => {ss, [<<"erlang">>, <<"dynamodb">>, <<"smithy">>]}
         }
     },
     case dynamodb_client:put_item(Config, PutInput) of
@@ -61,14 +61,14 @@ run() ->
     GetInput = #get_item_input{
         table_name = ?TABLE_NAME,
         key = #{
-            ?HASH_KEY => #{<<"S">> => ItemKey}
+            ?HASH_KEY => {s, ItemKey}
         }
     },
     case dynamodb_client:get_item(Config, GetInput) of
         {ok, #get_item_output{item = Item}} when is_map(Item) ->
             io:format("SUCCESS: Retrieved item~n"),
-            Name = maps:get(<<"S">>, maps:get(<<"Name">>, Item, #{}), <<>>),
-            Age  = maps:get(<<"N">>, maps:get(<<"Age">>,  Item, #{}), <<>>),
+            Name = attribute_string(maps:get(<<"Name">>, Item, undefined)),
+            Age  = attribute_number(maps:get(<<"Age">>, Item, undefined)),
             case {Name, Age} of
                 {<<"John Doe">>, <<"30">>} ->
                     io:format("SUCCESS: Item attributes match (Name=~s, Age=~s)~n", [Name, Age]);
@@ -89,10 +89,10 @@ run() ->
     PutInput2 = #put_item_input{
         table_name = ?TABLE_NAME,
         item = #{
-            ?HASH_KEY => #{<<"S">> => ItemKey2},
-            <<"Name">> => #{<<"S">> => <<"Jane Smith">>},
-            <<"Age">> => #{<<"N">> => <<"25">>},
-            <<"Active">> => #{<<"BOOL">> => false}
+            ?HASH_KEY => {s, ItemKey2},
+            <<"Name">> => {s, <<"Jane Smith">>},
+            <<"Age">> => {n, <<"25">>},
+            <<"Active">> => {bool, false}
         }
     },
     case dynamodb_client:put_item(Config, PutInput2) of
@@ -135,7 +135,7 @@ run() ->
     DeleteInput = #delete_item_input{
         table_name = ?TABLE_NAME,
         key = #{
-            ?HASH_KEY => #{<<"S">> => ItemKey}
+            ?HASH_KEY => {s, ItemKey}
         }
     },
     case dynamodb_client:delete_item(Config, DeleteInput) of
@@ -163,7 +163,7 @@ run() ->
     DeleteInput2 = #delete_item_input{
         table_name = ?TABLE_NAME,
         key = #{
-            ?HASH_KEY => #{<<"S">> => ItemKey2}
+            ?HASH_KEY => {s, ItemKey2}
         }
     },
     case dynamodb_client:delete_item(Config, DeleteInput2) of
@@ -263,16 +263,22 @@ print_item(Item) when is_map(Item) ->
         Item
     ).
 
+attribute_string({s, V}) -> V;
+attribute_string(_) -> <<>>.
+
+attribute_number({n, V}) -> V;
+attribute_number(_) -> <<>>.
+
 %% Format DynamoDB attribute value for display
-format_attribute_value(#{<<"S">> := V}) -> io_lib:format("~s", [V]);
-format_attribute_value(#{<<"N">> := V}) -> io_lib:format("~s", [V]);
-format_attribute_value(#{<<"BOOL">> := true}) -> "true";
-format_attribute_value(#{<<"BOOL">> := false}) -> "false";
-format_attribute_value(#{<<"SS">> := V}) -> io_lib:format("~p", [V]);
-format_attribute_value(#{<<"NS">> := V}) -> io_lib:format("~p", [V]);
-format_attribute_value(#{<<"L">> := V}) -> io_lib:format("~p", [V]);
-format_attribute_value(#{<<"M">> := V}) -> io_lib:format("~p", [V]);
-format_attribute_value(#{<<"NULL">> := true}) -> "null";
-format_attribute_value(#{<<"B">> := _}) -> "<binary>";
-format_attribute_value(#{<<"BS">> := _}) -> "<binary set>";
+format_attribute_value({s, V}) -> io_lib:format("~s", [V]);
+format_attribute_value({n, V}) -> io_lib:format("~s", [V]);
+format_attribute_value({bool, true}) -> "true";
+format_attribute_value({bool, false}) -> "false";
+format_attribute_value({ss, V}) -> io_lib:format("~p", [V]);
+format_attribute_value({ns, V}) -> io_lib:format("~p", [V]);
+format_attribute_value({l, V}) -> io_lib:format("~p", [V]);
+format_attribute_value({m, V}) -> io_lib:format("~p", [V]);
+format_attribute_value({null, true}) -> "null";
+format_attribute_value({b, _}) -> "<binary>";
+format_attribute_value({bs, _}) -> "<binary set>";
 format_attribute_value(Other) -> io_lib:format("~p", [Other]).
