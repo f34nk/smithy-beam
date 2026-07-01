@@ -18,7 +18,8 @@ defmodule Demo.MixProject do
   defp deps do
     [
       {:jason, "~> 1.4"},
-      {:req, "~> 0.5"}
+      {:req, "~> 0.5"},
+      {:aws_signature, "~> 0.3.2"}
     ]
   end
 end

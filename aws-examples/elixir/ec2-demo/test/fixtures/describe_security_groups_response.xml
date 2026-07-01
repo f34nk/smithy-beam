@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DescribeSecurityGroupsResponse xmlns="http://ec2.amazonaws.com/doc/2016-11-15/">
+  <requestId>test-request-id</requestId>
+  <securityGroupInfo>
+    <item>
+      <groupId>sg-12345678</groupId>
+      <groupName>default</groupName>
+      <groupDescription>default VPC security group</groupDescription>
+    </item>
+  </securityGroupInfo>
+</DescribeSecurityGroupsResponse>

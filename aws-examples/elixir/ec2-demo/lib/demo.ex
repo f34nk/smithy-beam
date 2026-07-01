@@ -53,7 +53,7 @@ defmodule Demo do
     IO.puts("--- DescribeVpcs ---")
 
     case Ec2Client.describe_vpcs(config, %DescribeVpcsInput{}) do
-      {:ok, %{vpcs: vpcs}} when is_list(vpcs) and vpcs != [] ->
+      {:ok, vpcs} when is_list(vpcs) and vpcs != [] ->
         IO.puts("SUCCESS: Found #{length(vpcs)} VPC(s)")
         Enum.each(vpcs, fn %Vpc{vpc_id: id, cidr_block: cidr} ->
           IO.puts("    - #{id} (#{cidr})")
@@ -73,7 +73,7 @@ defmodule Demo do
     IO.puts("--- DescribeSecurityGroups ---")
 
     case Ec2Client.describe_security_groups(config, %DescribeSecurityGroupsInput{}) do
-      {:ok, %{security_groups: sgs}} when is_list(sgs) and sgs != [] ->
+      {:ok, sgs} when is_list(sgs) and sgs != [] ->
         IO.puts("SUCCESS: Found #{length(sgs)} Security Group(s)")
         Enum.each(sgs, fn sg ->
           IO.puts("    - #{sg.group_id} (#{sg.group_name})")
@@ -125,7 +125,7 @@ defmodule Demo do
     input = %DescribeInstancesInput{instance_ids: [instance_id]}
 
     case Ec2Client.describe_instances(config, input) do
-      {:ok, %{reservations: reservations}} ->
+      {:ok, reservations} when is_list(reservations) ->
         instances = instances_from_reservations(reservations)
         described_ids = Enum.map(instances, & &1.instance_id)
 
@@ -185,7 +185,7 @@ defmodule Demo do
           _ -> "unknown"
         end
 
-      IO.puts("    - #{id} (#{type}, #{state_name})")
+      IO.puts("    - #{id} (#{Ec2Types.InstanceType.to_string(type)}, #{state_name})")
     end)
   end
 

@@ -31,7 +31,7 @@ build: copy
 	smithy build
 	mkdir -p lib/generated
 	cp -r build/smithy/source/elixir-*-codegen/* lib/generated/
-	tree lib/generated
+	tree -a lib/generated
 
 .PHONY: compile
 compile:
@@ -52,14 +52,7 @@ test/unit:
 	mix test
 
 .PHONY: demo
-demo: build
-	#
-	# TODO: fix compilation
-	#
-
-# .PHONY: demo
-# demo: build compile
-# 	make docker/start && make docker/wait && make terraform && make run && make docker/stop
+demo: build compile test terraform run
 
 .PHONY: run
 run:
