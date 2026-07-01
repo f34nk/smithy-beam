@@ -29,6 +29,7 @@ import io.smithy.beam.ir.elixir.ExNilPattern;
 import io.smithy.beam.ir.elixir.ExOp;
 import io.smithy.beam.ir.elixir.ExPipeline;
 import io.smithy.beam.ir.elixir.ExString;
+import io.smithy.beam.ir.elixir.ExStringPattern;
 import io.smithy.beam.ir.elixir.ExTuple;
 import io.smithy.beam.ir.elixir.ExTuplePattern;
 import io.smithy.beam.ir.elixir.ExVar;
@@ -42,7 +43,7 @@ final class ElixirAwsQueryHelperIr {
   private static final ExVarPattern W = ExVarPattern.var("_");
 
   static List<ExFunction> queryHelperFunctions(boolean ec2Query) {
-    return List.of(flattenMember(ec2Query), flattenStructure(), enc());
+    return List.of(flattenMember(ec2Query), enc());
   }
 
   static List<ExFunction> xmlHelperFunctions(boolean ec2Query) {
@@ -53,8 +54,44 @@ final class ElixirAwsQueryHelperIr {
     functions.addAll(awsQueryXmlElementHelpers());
     functions.add(awsQueryXmlChildStructList());
     functions.add(awsQueryXmlChildList());
+    functions.addAll(decodeXmlTextHelpers());
     functions.add(decodeQueryError(ec2Query));
     return functions;
+  }
+
+  private static List<ExFunction> decodeXmlTextHelpers() {
+    return List.of(decodeXmlBoolean(), decodeXmlInteger(), decodeXmlFloat());
+  }
+
+  private static ExFunction decodeXmlBoolean() {
+    return ExFunction.defpFunction(
+        "decode_xml_boolean",
+        List.of(
+            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExNil.nil()),
+            ExClause.inlineClause(List.of(ExStringPattern.string("true")), ExAtom.atom("true")),
+            ExClause.inlineClause(List.of(ExStringPattern.string("false")), ExAtom.atom("false"))));
+  }
+
+  private static ExFunction decodeXmlInteger() {
+    return ExFunction.defpFunction(
+        "decode_xml_integer",
+        List.of(
+            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExNil.nil()),
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("text")),
+                List.of(ExGuard.guard("is_binary", ExVar.var("text"))),
+                ExCall.call("String", "to_integer", ExVar.var("text")))));
+  }
+
+  private static ExFunction decodeXmlFloat() {
+    return ExFunction.defpFunction(
+        "decode_xml_float",
+        List.of(
+            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExNil.nil()),
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("text")),
+                List.of(ExGuard.guard("is_binary", ExVar.var("text"))),
+                ExCall.call("String", "to_float", ExVar.var("text")))));
   }
 
   static List<ExFunction> serverDecodeHelpers(boolean ec2Query) {
@@ -82,6 +119,7 @@ final class ElixirAwsQueryHelperIr {
         isElement(),
         awsQueryElementName(),
         xmlChildText(),
+        ElixirXmlCodecIr.collectText(),
         ElixirXmlCodecIr.elementText(),
         ElixirXmlCodecIr.isElementString());
   }
@@ -102,6 +140,10 @@ final class ElixirAwsQueryHelperIr {
                 listBody),
             ExClause.blockClause(
                 List.of(ExVarPattern.var("key"), ExVarPattern.var("value")),
+                List.of(ExGuard.guard("is_struct", ExVar.var("value"))),
+                ExCallLocal.callLocal("flatten_structure", ExVar.var("key"), ExVar.var("value"))),
+            ExClause.blockClause(
+                List.of(ExVarPattern.var("key"), ExVarPattern.var("value")),
                 List.of(ExGuard.guard("is_map", ExVar.var("value"))),
                 mapBody),
             ExClause.inlineClause(
@@ -113,7 +155,7 @@ final class ElixirAwsQueryHelperIr {
     return ExFor.forExpr(
         ExCallLocal.callLocal(
             "flatten_member", flattenMemberIndexedKey(listSuffix), ExVar.var("v")),
-        ExTuplePattern.tuple(ExVarPattern.var("i"), ExVarPattern.var("v")),
+        ExTuplePattern.tuple(ExVarPattern.var("v"), ExVarPattern.var("i")),
         ExCall.call("Enum", "with_index", ExVar.var("value"), ExInteger.integer(1)),
         ExForFilter.filter(ExOp.op("!=", ExVar.var("v"), ExAtom.atom("nil"))));
   }
@@ -126,8 +168,8 @@ final class ElixirAwsQueryHelperIr {
             ExCallLocal.callLocal(
                 "flatten_member", flattenMemberEntryKey(".value"), ExVar.var("v"))),
         ExTuplePattern.tuple(
-            ExVarPattern.var("i"),
-            ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v"))),
+            ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v")),
+            ExVarPattern.var("i")),
         ExCall.call(
             "Enum",
             "with_index",
@@ -137,29 +179,21 @@ final class ElixirAwsQueryHelperIr {
         ExForFilter.filter(ExOp.op("!=", ExVar.var("v"), ExAtom.atom("nil"))));
   }
 
-  private static ExBinaryTemplate flattenMemberIndexedKey(String listSuffix) {
-    return ExBinaryTemplate.binaryTemplate(
-        ExVar.var("key"),
-        ExString.string(listSuffix),
+  private static ExExpr flattenMemberIndexedKey(String listSuffix) {
+    return ExOp.op(
+        "<>",
+        ExOp.op("<>", ExVar.var("key"), ExString.string(listSuffix)),
         ExCall.call("Integer", "to_string", ExVar.var("i")));
   }
 
-  private static ExBinaryTemplate flattenMemberEntryKey(String suffix) {
-    return ExBinaryTemplate.binaryTemplate(
-        ExVar.var("key"),
-        ExString.string(".entry."),
-        ExCall.call("Integer", "to_string", ExVar.var("i")),
+  private static ExExpr flattenMemberEntryKey(String suffix) {
+    return ExOp.op(
+        "<>",
+        ExOp.op(
+            "<>",
+            ExOp.op("<>", ExVar.var("key"), ExString.string(".entry.")),
+            ExCall.call("Integer", "to_string", ExVar.var("i"))),
         ExString.string(suffix));
-  }
-
-  private static ExFunction flattenStructure() {
-    return ExFunction.defpFunction(
-        "flatten_structure",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("_key"), ExNilPattern.nil()), ExList.list()),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("_key"), ExVarPattern.var("_value")), ExList.list())));
   }
 
   private static ExFunction enc() {
@@ -297,9 +331,6 @@ final class ElixirAwsQueryHelperIr {
   }
 
   private static ExFunction unwrapQueryResult() {
-    ExTuplePattern xmlElementPattern =
-        ExTuplePattern.tuple(ExAtomPattern.atom("xmlElement"), W, W, W, W, W, W, W, W, W, W, W);
-
     ExCase resultLookup =
         ExCase.caseExpr(
             ExCallLocal.callLocal(
@@ -315,8 +346,7 @@ final class ElixirAwsQueryHelperIr {
                 "string",
                 ExCall.call(":erlang", "binary_to_list", ExVar.var("body"))),
             ExCaseBranch.branch(
-                ExTuplePattern.tuple(
-                    ExTuplePattern.tuple(xmlElementPattern, ExVarPattern.var("xml")), W),
+                ExTuplePattern.tuple(ExVarPattern.var("xml"), W),
                 ExExprBlock.block(
                     ExMatch.match(
                         ExVarPattern.var("root"), normalizeXmlElementBody(ExVar.var("xml"))),
@@ -712,15 +742,11 @@ final class ElixirAwsQueryHelperIr {
   }
 
   private static ExCase scanAndLookup(ExCase lookup) {
-    ExTuplePattern xmlElementPattern =
-        ExTuplePattern.tuple(ExAtomPattern.atom("xmlElement"), W, W, W, W, W, W, W, W, W, W, W);
-
     return ExCase.caseExpr(
         ExCall.call(
             ":xmerl_scan", "string", ExCall.call(":erlang", "binary_to_list", ExVar.var("body"))),
         ExCaseBranch.branch(
-            ExTuplePattern.tuple(
-                ExTuplePattern.tuple(xmlElementPattern, ExVarPattern.var("xml")), W),
+            ExTuplePattern.tuple(ExVarPattern.var("xml"), W),
             ExExprBlock.block(
                 ExMatch.match(ExVarPattern.var("root"), normalizeXmlElementBody(ExVar.var("xml"))),
                 lookup)),

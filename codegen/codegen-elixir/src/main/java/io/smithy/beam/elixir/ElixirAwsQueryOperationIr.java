@@ -35,17 +35,31 @@ import io.smithy.beam.ir.elixir.ExTuple;
 import io.smithy.beam.ir.elixir.ExTuplePattern;
 import io.smithy.beam.ir.elixir.ExVar;
 import io.smithy.beam.ir.elixir.ExVarPattern;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
+import software.amazon.smithy.model.shapes.BigIntegerShape;
+import software.amazon.smithy.model.shapes.BooleanShape;
+import software.amazon.smithy.model.shapes.ByteShape;
+import software.amazon.smithy.model.shapes.DoubleShape;
+import software.amazon.smithy.model.shapes.EnumShape;
+import software.amazon.smithy.model.shapes.FloatShape;
+import software.amazon.smithy.model.shapes.IntEnumShape;
+import software.amazon.smithy.model.shapes.IntegerShape;
 import software.amazon.smithy.model.shapes.ListShape;
+import software.amazon.smithy.model.shapes.LongShape;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
+import software.amazon.smithy.model.shapes.ShortShape;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.traits.XmlNameTrait;
 
@@ -74,7 +88,7 @@ final class ElixirAwsQueryOperationIr {
         ExSpec.functionSpec(
             "encode_" + opName + "_request", inputType, "%" + runtimeMod + ".HttpRequest{}");
     ExStructPattern inputPattern =
-        new ExStructPattern("Types." + inputStruct, inputFieldPatterns(input, sp), "input");
+        new ExStructPattern("Types." + inputStruct, inputFieldPatterns(input, sp, true), "input");
 
     List<ExExpr> body = new ArrayList<>();
     body.add(
@@ -115,6 +129,45 @@ final class ElixirAwsQueryOperationIr {
       clauses.add(buildFlattenInputClause(model, httpIndex, sp, input, ec2Query));
     }
     return ExFunction.defpFunction("flatten_query_input", clauses);
+  }
+
+  static ExFunction buildFlattenStructure(
+      SymbolProvider sp, Set<StructureShape> structures, boolean ec2Query) {
+    List<ExClause> clauses = new ArrayList<>();
+    for (StructureShape structure : structures) {
+      clauses.add(buildFlattenStructureClause(sp, structure, ec2Query));
+    }
+    clauses.add(
+        ExClause.inlineClause(
+            List.of(ExVarPattern.var("_wire_prefix"), ExNilPattern.nil()), ExList.list()));
+    clauses.add(
+        ExClause.inlineClause(
+            List.of(ExVarPattern.var("_wire_prefix"), ExVarPattern.var("_value")), ExList.list()));
+    return ExFunction.defpFunction("flatten_structure", clauses);
+  }
+
+  static Set<StructureShape> nestedQueryStructures(Model model, List<StructureShape> inputs) {
+    Set<StructureShape> nested = new LinkedHashSet<>();
+    Deque<StructureShape> queue = new ArrayDeque<>(inputs);
+    while (!queue.isEmpty()) {
+      StructureShape shape = queue.removeFirst();
+      for (MemberShape member : shape.members()) {
+        Shape target = model.expectShape(member.getTarget());
+        if (target instanceof StructureShape structureShape) {
+          if (nested.add(structureShape)) {
+            queue.addLast(structureShape);
+          }
+        } else if (target instanceof ListShape listShape) {
+          Shape listMember = model.expectShape(listShape.getMember().getTarget());
+          if (listMember instanceof StructureShape structureShape) {
+            if (nested.add(structureShape)) {
+              queue.addLast(structureShape);
+            }
+          }
+        }
+      }
+    }
+    return nested;
   }
 
   static ExFunction buildDecodeResponse(
@@ -218,7 +271,8 @@ final class ElixirAwsQueryOperationIr {
         ExSpec.functionSpec(
             "encode_" + opName + "_response", outputType, "%" + runtimeMod + ".HttpResponse{}");
     ExStructPattern pattern =
-        new ExStructPattern("Types." + outputStruct, outputFieldPatterns(output, sp), "output");
+        new ExStructPattern(
+            "Types." + outputStruct, outputFieldPatterns(output, sp, true), "output");
 
     List<ExExpr> body = new ArrayList<>();
     body.add(
@@ -328,7 +382,7 @@ final class ElixirAwsQueryOperationIr {
       boolean ec2Query) {
     List<MemberShape> members = documentMembers(httpIndex, input);
     ExStructPattern pattern =
-        new ExStructPattern("Types." + structName(sp, input), inputFieldPatterns(input, sp));
+        new ExStructPattern("Types." + structName(sp, input), inputFieldPatterns(input, sp, false));
 
     ExExpr body;
     if (members.isEmpty()) {
@@ -346,6 +400,30 @@ final class ElixirAwsQueryOperationIr {
               ExList.list(memberCalls.toArray(ExExpr[]::new)), ExCall.call("List", "flatten"));
     }
     return ExClause.blockClause(List.of(pattern), body);
+  }
+
+  private static ExClause buildFlattenStructureClause(
+      SymbolProvider sp, StructureShape structure, boolean ec2Query) {
+    ExStructPattern pattern =
+        new ExStructPattern(
+            "Types." + structName(sp, structure), inputFieldPatterns(structure, sp, false));
+    List<ExExpr> memberCalls = new ArrayList<>();
+    for (MemberShape member : structure.members()) {
+      String field = fieldName(sp, member);
+      String wireKey = queryFormKey(member, ec2Query);
+      ExExpr memberKey =
+          ExOp.op(
+              "<>",
+              ExOp.op("<>", ExVar.var("wire_prefix"), ExString.string(".")),
+              ExString.string(wireKey));
+      memberCalls.add(ExCallLocal.callLocal("flatten_member", memberKey, ExVar.var(field)));
+    }
+    ExExpr body =
+        memberCalls.isEmpty()
+            ? ExList.list()
+            : ExPipeline.pipeChain(
+                ExList.list(memberCalls.toArray(ExExpr[]::new)), ExCall.call("List", "flatten"));
+    return ExClause.blockClause(List.of(ExVarPattern.var("wire_prefix"), pattern), body);
   }
 
   private static ExExpr buildDecodeSuccessBody(
@@ -394,19 +472,10 @@ final class ElixirAwsQueryOperationIr {
       String field = fieldName(sp, member);
       Shape target = model.expectShape(member.getTarget());
       if (target instanceof ListShape listShape) {
-        String element = BeamXmlDecoder.memberElementName(member);
-        String itemElement =
-            listShape.getMember().hasTrait(XmlNameTrait.class)
-                ? BeamXmlDecoder.memberElementName(listShape.getMember())
-                : BeamXmlBindingIndex.listItemElementName(member, listShape, model);
         fields.add(
             ExMapEntry.entry(
                 ExAtom.atom(field),
-                ExCallLocal.callLocal(
-                    "xml_child_list",
-                    ExVar.var(resultVar),
-                    ExString.string(element),
-                    ExString.string(itemElement))));
+                buildDecodeListFieldExpr(model, member, listShape, resultVar, sp, ec2Query)));
       } else if (target instanceof StructureShape nested) {
         String element = BeamXmlDecoder.memberElementName(member);
         String nestedVar = xmlVarForElement(element);
@@ -424,12 +493,7 @@ final class ElixirAwsQueryOperationIr {
                         buildDecodeStructureExpr(model, nested, nestedVar, sp, ec2Query)))));
       } else {
         fields.add(
-            ExMapEntry.entry(
-                ExAtom.atom(field),
-                ExCallLocal.callLocal(
-                    "xml_child_text",
-                    ExVar.var(resultVar),
-                    ExString.string(BeamXmlDecoder.memberElementName(member)))));
+            ExMapEntry.entry(ExAtom.atom(field), decodeXmlChildText(model, sp, member, resultVar)));
       }
     }
     return fields;
@@ -442,19 +506,10 @@ final class ElixirAwsQueryOperationIr {
       String field = fieldName(sp, member);
       Shape target = model.expectShape(member.getTarget());
       if (target instanceof ListShape listShape) {
-        String element = BeamXmlDecoder.memberElementName(member);
-        String itemElement =
-            listShape.getMember().hasTrait(XmlNameTrait.class)
-                ? BeamXmlDecoder.memberElementName(listShape.getMember())
-                : BeamXmlBindingIndex.listItemElementName(member, listShape, model);
         fields.add(
             ExMapEntry.entry(
                 ExAtom.atom(field),
-                ExCallLocal.callLocal(
-                    "xml_child_list",
-                    ExVar.var(xmlVar),
-                    ExString.string(element),
-                    ExString.string(itemElement))));
+                buildDecodeListFieldExpr(model, member, listShape, xmlVar, sp, ec2Query)));
       } else if (target instanceof StructureShape nested) {
         String element = BeamXmlDecoder.memberElementName(member);
         String nestedVar = xmlVarForElement(element);
@@ -472,15 +527,41 @@ final class ElixirAwsQueryOperationIr {
                         buildDecodeStructureExpr(model, nested, nestedVar, sp, ec2Query)))));
       } else {
         fields.add(
-            ExMapEntry.entry(
-                ExAtom.atom(field),
-                ExCallLocal.callLocal(
-                    "xml_child_text",
-                    ExVar.var(xmlVar),
-                    ExString.string(BeamXmlDecoder.memberElementName(member)))));
+            ExMapEntry.entry(ExAtom.atom(field), decodeXmlChildText(model, sp, member, xmlVar)));
       }
     }
     return ExStruct.struct("Types." + structName(sp, structure), fields);
+  }
+
+  private static ExExpr buildDecodeListFieldExpr(
+      Model model,
+      MemberShape member,
+      ListShape listShape,
+      String xmlVar,
+      SymbolProvider sp,
+      boolean ec2Query) {
+    String element = BeamXmlDecoder.memberElementName(member);
+    String itemElement =
+        listShape.getMember().hasTrait(XmlNameTrait.class)
+            ? BeamXmlDecoder.memberElementName(listShape.getMember())
+            : BeamXmlBindingIndex.listItemElementName(member, listShape, model);
+    Shape listMember = model.expectShape(listShape.getMember().getTarget());
+    if (listMember instanceof StructureShape nested) {
+      return ExCallLocal.callLocal(
+          "xml_child_struct_list",
+          ExVar.var(xmlVar),
+          ExString.string(element),
+          ExString.string(itemElement),
+          ExAnonymousFn.fn(
+              ExClause.inlineClause(
+                  List.of(ExVarPattern.var("item")),
+                  buildDecodeStructureExpr(model, nested, "item", sp, ec2Query))));
+    }
+    return ExCallLocal.callLocal(
+        "xml_child_list",
+        ExVar.var(xmlVar),
+        ExString.string(element),
+        ExString.string(itemElement));
   }
 
   private static ExStruct buildHttpRequestStruct(String runtimeMod, ExExpr body) {
@@ -500,7 +581,7 @@ final class ElixirAwsQueryOperationIr {
     return ExAnonymousFn.compactFn(
         ExClause.inlineClause(
             List.of(ExTuplePattern.tuple(W, ExVarPattern.var("v"))),
-            ExOp.op("!=", ExVar.var("v"), ExAtom.atom("nil"))));
+            ExCall.call("Kernel", "is_nil", ExVar.var("v"))));
   }
 
   private static ExAnonymousFn encodePairsFn() {
@@ -514,25 +595,27 @@ final class ElixirAwsQueryOperationIr {
     return ExAnonymousFn.compactFn(
         ExClause.inlineClause(
             List.of(ExTuplePattern.tuple(W, ExVarPattern.var("v"))),
-            ExOp.op("!=", ExVar.var("v"), ExAtom.atom("nil"))));
+            ExCall.call("Kernel", "is_nil", ExVar.var("v"))));
   }
 
   private static List<ExStructFieldPattern> inputFieldPatterns(
-      StructureShape input, SymbolProvider sp) {
+      StructureShape input, SymbolProvider sp, boolean unused) {
     List<ExStructFieldPattern> fields = new ArrayList<>();
     for (MemberShape member : input.members()) {
       String field = fieldName(sp, member);
-      fields.add(ExStructFieldPattern.fieldPattern(field, ExVarPattern.var(field)));
+      ExVarPattern var = unused ? ExVarPattern.unusedVar(field) : ExVarPattern.var(field);
+      fields.add(ExStructFieldPattern.fieldPattern(field, var));
     }
     return fields;
   }
 
   private static List<ExStructFieldPattern> outputFieldPatterns(
-      StructureShape output, SymbolProvider sp) {
+      StructureShape output, SymbolProvider sp, boolean unused) {
     List<ExStructFieldPattern> fields = new ArrayList<>();
     for (MemberShape member : output.members()) {
       String field = fieldName(sp, member);
-      fields.add(ExStructFieldPattern.fieldPattern(field, ExVarPattern.var(field)));
+      ExVarPattern var = unused ? ExVarPattern.unusedVar(field) : ExVarPattern.var(field);
+      fields.add(ExStructFieldPattern.fieldPattern(field, var));
     }
     return fields;
   }
@@ -552,12 +635,16 @@ final class ElixirAwsQueryOperationIr {
     return sp.toSymbol(shape).getName();
   }
 
+  private static String shapeName(SymbolProvider sp, Shape shape) {
+    return sp.toSymbol(shape).getName();
+  }
+
   private static String recordName(Symbol symbol) {
     return symbol.getName().replace("()", "");
   }
 
   private static String fieldName(SymbolProvider sp, MemberShape member) {
-    return BeamNameUtils.toSnakeCase(member.getMemberName());
+    return sp.toSymbol(member).getProperty("fieldName", String.class).orElseThrow();
   }
 
   private static String xmlVarForElement(String element) {
@@ -565,6 +652,55 @@ final class ElixirAwsQueryOperationIr {
       return "nested_xml";
     }
     return BeamNameUtils.toSnakeCase(element) + "_xml";
+  }
+
+  private static ExExpr decodeXmlChildText(
+      Model model, SymbolProvider sp, MemberShape member, String xmlVar) {
+    ExExpr text =
+        ExCallLocal.callLocal(
+            "xml_child_text",
+            ExVar.var(xmlVar),
+            ExString.string(BeamXmlDecoder.memberElementName(member)));
+    return decodeXmlTextValue(model, sp, member, text);
+  }
+
+  private static ExExpr decodeXmlTextValue(
+      Model model, SymbolProvider sp, MemberShape member, ExExpr textExpr) {
+    Shape target = model.expectShape(member.getTarget());
+    if (target instanceof BooleanShape) {
+      return ExCallLocal.callLocal("decode_xml_boolean", textExpr);
+    }
+    if (target instanceof EnumShape enumShape) {
+      return decodeXmlTextWithConversion(
+          textExpr,
+          ExCall.call("Types." + shapeName(sp, enumShape), "from_string", ExVar.var("text")));
+    }
+    if (target instanceof IntEnumShape intEnumShape) {
+      return decodeXmlTextWithConversion(
+          textExpr,
+          ExCall.call(
+              "Types." + shapeName(sp, intEnumShape),
+              "from_integer",
+              ExCall.call("String", "to_integer", ExVar.var("text"))));
+    }
+    if (target instanceof ByteShape
+        || target instanceof ShortShape
+        || target instanceof IntegerShape
+        || target instanceof LongShape
+        || target instanceof BigIntegerShape) {
+      return ExCallLocal.callLocal("decode_xml_integer", textExpr);
+    }
+    if (target instanceof FloatShape || target instanceof DoubleShape) {
+      return ExCallLocal.callLocal("decode_xml_float", textExpr);
+    }
+    return textExpr;
+  }
+
+  private static ExExpr decodeXmlTextWithConversion(ExExpr textExpr, ExExpr convertedExpr) {
+    return ExCase.caseExpr(
+        textExpr,
+        ExCaseBranch.branch(ExNilPattern.nil(), ExNil.nil()),
+        ExCaseBranch.branch(ExVarPattern.var("text"), convertedExpr));
   }
 
   private static String operationWireName(OperationShape operation, ServiceShape service) {
