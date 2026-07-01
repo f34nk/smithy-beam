@@ -6,7 +6,9 @@ import io.smithy.beam.core.BeamSigV4Index;
 import io.smithy.beam.ir.elixir.ExAliasAttr;
 import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExBlankLine;
+import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExClause;
+import io.smithy.beam.ir.elixir.ExExpr;
 import io.smithy.beam.ir.elixir.ExComment;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExMap;
@@ -90,22 +92,40 @@ final class ElixirClientIr {
       BeamAwsServiceMetadata meta, Model model, SymbolProvider sp, ServiceShape service) {
     BeamSigV4Index sigv4Index = BeamSigV4Index.of(model, service);
     List<OperationShape> unsignedOps = sigv4Index.operationsWithUnsignedPayload(model, service);
-    List<ExMapEntry> entries = new ArrayList<>();
-    entries.add(ExMapEntry.entry(ExAtom.atom("region"), ExString.string("us-east-1")));
-    entries.add(
+    List<ExMapEntry> baseEntries = new ArrayList<>();
+    baseEntries.add(ExMapEntry.entry(ExAtom.atom("region"), ExString.string("us-east-1")));
+    baseEntries.add(
         ExMapEntry.entry(ExAtom.atom("endpoint_prefix"), ExString.string(meta.endpointPrefix())));
-    entries.add(ExMapEntry.entry(ExAtom.atom("signing_name"), ExString.string(meta.signingName())));
+    baseEntries.add(ExMapEntry.entry(ExAtom.atom("signing_name"), ExString.string(meta.signingName())));
+
+    if (unsignedOps.isEmpty()) {
+      return ExFunction.functionWithSpec(
+          "def",
+          "default_config",
+          ExSpec.functionSpec("default_config", "", "map()"),
+          List.of(ExClause.blockClause(List.of(), ExMap.map(baseEntries.toArray(ExMapEntry[]::new)))));
+    }
+
+    List<ExMapEntry> unsignedEntries = new ArrayList<>();
     for (OperationShape op : unsignedOps) {
       Symbol opSym = sp.toSymbol(op);
-      entries.add(
+      unsignedEntries.add(
           ExMapEntry.entry(
               ExTuple.tuple(ExAtom.atom("unsigned_payload"), ExAtom.atom(opSym.getName())),
               ExAtom.atom("true")));
     }
+
+    ExExpr body =
+        ExCall.call(
+            "Map",
+            "merge",
+            ExMap.map(baseEntries.toArray(ExMapEntry[]::new)),
+            ExMap.map(unsignedEntries.toArray(ExMapEntry[]::new)));
+
     return ExFunction.functionWithSpec(
         "def",
         "default_config",
         ExSpec.functionSpec("default_config", "", "map()"),
-        List.of(ExClause.blockClause(List.of(), ExMap.map(entries.toArray(ExMapEntry[]::new)))));
+        List.of(ExClause.blockClause(List.of(), body)));
   }
 }
