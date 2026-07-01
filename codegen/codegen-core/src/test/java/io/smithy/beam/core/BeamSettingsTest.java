@@ -143,4 +143,17 @@ class BeamSettingsTest {
     BeamSettings settings = new BeamSettings();
     assertThat(settings.name()).isNull();
   }
+
+  @Test
+  void typesDefstructSplitThreshold_defaultsToMaxValue_whenNotSet() {
+    BeamSettings settings = new BeamSettings();
+    assertThat(settings.typesDefstructSplitThreshold()).isEqualTo(Integer.MAX_VALUE);
+  }
+
+  @Test
+  void typesDefstructSplitThreshold_roundTrips_whenSet() {
+    BeamSettings settings = new BeamSettings();
+    settings.typesDefstructSplitThreshold(8192);
+    assertThat(settings.typesDefstructSplitThreshold()).isEqualTo(8192);
+  }
 }

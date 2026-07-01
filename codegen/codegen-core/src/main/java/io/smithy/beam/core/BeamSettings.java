@@ -23,6 +23,10 @@ import software.amazon.smithy.model.shapes.ShapeId;
  * none is present. "name" -- optional snake_case stem for service-scoped module and file names.
  * When unset, derived from the service shape id (honoring rename maps). Must not include role
  * suffixes such as "_client" or "_types".
+ * "typesDefstructSplitThreshold" -- optional positive integer. When a nested
+ * structure module defstruct literal estimate exceeds this value, Elixir types
+ * emission writes that module to a separate file under the default "types/"
+ * directory. Defaults to no splitting.
  */
 public final class BeamSettings {
 
@@ -33,6 +37,7 @@ public final class BeamSettings {
   private String packageVersion;
   private ShapeId protocol;
   private String name;
+  private Integer typesDefstructSplitThreshold;
 
   public BeamSettings() {}
 
@@ -90,6 +95,16 @@ public final class BeamSettings {
 
   public String name() {
     return name;
+  }
+
+  public void typesDefstructSplitThreshold(Integer typesDefstructSplitThreshold) {
+    this.typesDefstructSplitThreshold = typesDefstructSplitThreshold;
+  }
+
+  public int typesDefstructSplitThreshold() {
+    return typesDefstructSplitThreshold != null
+        ? typesDefstructSplitThreshold
+        : Integer.MAX_VALUE;
   }
 
   public ShapeId resolveService(Model model) {
