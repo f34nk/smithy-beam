@@ -156,4 +156,17 @@ class BeamSettingsTest {
     settings.typesDefstructSplitThreshold(8192);
     assertThat(settings.typesDefstructSplitThreshold()).isEqualTo(8192);
   }
+
+  @Test
+  void typesEnumSplitThreshold_defaultsToMaxValue_whenNotSet() {
+    BeamSettings settings = new BeamSettings();
+    assertThat(settings.typesEnumSplitThreshold()).isEqualTo(Integer.MAX_VALUE);
+  }
+
+  @Test
+  void typesEnumSplitThreshold_roundTrips_whenSet() {
+    BeamSettings settings = new BeamSettings();
+    settings.typesEnumSplitThreshold(4096);
+    assertThat(settings.typesEnumSplitThreshold()).isEqualTo(4096);
+  }
 }

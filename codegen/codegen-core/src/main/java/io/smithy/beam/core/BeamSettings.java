@@ -27,6 +27,10 @@ import software.amazon.smithy.model.shapes.ShapeId;
  * structure module defstruct literal estimate exceeds this value, Elixir types
  * emission writes that module to a separate file under the default "types/"
  * directory. Defaults to no splitting.
+ * "typesEnumSplitThreshold" -- optional positive integer. When a nested enum
+ * or int enum module size estimate exceeds this value, Elixir types emission
+ * writes that module to a separate file under the default "types/" directory.
+ * Defaults to no splitting.
  */
 public final class BeamSettings {
 
@@ -38,6 +42,7 @@ public final class BeamSettings {
   private ShapeId protocol;
   private String name;
   private Integer typesDefstructSplitThreshold;
+  private Integer typesEnumSplitThreshold;
 
   public BeamSettings() {}
 
@@ -105,6 +110,14 @@ public final class BeamSettings {
     return typesDefstructSplitThreshold != null
         ? typesDefstructSplitThreshold
         : Integer.MAX_VALUE;
+  }
+
+  public void typesEnumSplitThreshold(Integer typesEnumSplitThreshold) {
+    this.typesEnumSplitThreshold = typesEnumSplitThreshold;
+  }
+
+  public int typesEnumSplitThreshold() {
+    return typesEnumSplitThreshold != null ? typesEnumSplitThreshold : Integer.MAX_VALUE;
   }
 
   public ShapeId resolveService(Model model) {
