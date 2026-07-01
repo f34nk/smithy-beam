@@ -18,6 +18,7 @@ public final class BeamElixirBuiltinTypes {
           "list",
           "map",
           "maybe_improper_list",
+          "mfa",
           "module",
           "nil",
           "non_neg_integer",
