@@ -227,9 +227,9 @@ Endpoint rules engine for dynamic endpoint resolution.
 | [`@contextParam`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ➖ | Model metadata for rule parameters; operation input binding is not generated yet. |
 | [`@staticContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ➖ | Model metadata for rule parameters; static values are not merged into generated resolvers yet. |
 | [`@clientContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ✅ | Client config keys are merged into rule evaluation parameters. |
-| [Authentication Scheme Validators](https://smithy.io/2.0/aws/rules-engine/auth-schemes.html) | ⚠️ | Delegated to aws_endpoint_rules runtime when rules reference auth schemes. |
-| [AWS Rules Engine Built-ins](https://smithy.io/2.0/aws/rules-engine/built-ins.html) | ⚠️ | Delegated to aws_endpoint_rules runtime. |
-| [AWS Rules Engine Library Functions](https://smithy.io/2.0/aws/rules-engine/library-functions.html) | ⚠️ | Delegated to aws_endpoint_rules runtime. |
+| [Authentication Scheme Validators](https://smithy.io/2.0/aws/rules-engine/auth-schemes.html) | ⚠️ | Delegated to [aws_endpoint_rules](https://github.com/f34nk/smithy-beam/blob/v3/codegen/codegen-erlang/src/main/resources/aws_endpoint_rules.erl#L4) runtime when rules reference auth schemes. |
+| [AWS Rules Engine Built-ins](https://smithy.io/2.0/aws/rules-engine/built-ins.html) | ⚠️ | Delegated to [aws_endpoint_rules](https://github.com/f34nk/smithy-beam/blob/v3/codegen/codegen-erlang/src/main/resources/aws_endpoint_rules.erl#L4) runtime. |
+| [AWS Rules Engine Library Functions](https://smithy.io/2.0/aws/rules-engine/library-functions.html) | ⚠️ | Delegated to [aws_endpoint_rules](https://github.com/f34nk/smithy-beam/blob/v3/codegen/codegen-erlang/src/main/resources/aws_endpoint_rules.erl#L4) runtime. |
 
 ---
 
