@@ -11,6 +11,7 @@ class BeamElixirBuiltinTypesTest {
     assertThat(BeamElixirBuiltinTypes.shadowsBuiltinTypeName("string")).isTrue();
     assertThat(BeamElixirBuiltinTypes.shadowsBuiltinTypeName("string()")).isTrue();
     assertThat(BeamElixirBuiltinTypes.shadowsBuiltinTypeName("atom")).isTrue();
+    assertThat(BeamElixirBuiltinTypes.shadowsBuiltinTypeName("timeout")).isTrue();
   }
 
   @Test

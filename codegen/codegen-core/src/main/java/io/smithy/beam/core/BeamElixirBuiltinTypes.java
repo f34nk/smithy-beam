@@ -33,6 +33,7 @@ public final class BeamElixirBuiltinTypes {
           "string",
           "struct",
           "term",
+          "timeout",
           "tuple");
 
   private BeamElixirBuiltinTypes() {}
