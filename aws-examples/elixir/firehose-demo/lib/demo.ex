@@ -40,7 +40,7 @@ defmodule Demo do
     UntagDeliveryStreamInput
   }
 
-  @stream_name "firehose-demo-stream"
+  @stream_name "firehose-demo-elixir-stream"
 
   def run do
     IO.puts("\n=== Running Firehose Client Application ===\n")
@@ -102,15 +102,15 @@ defmodule Demo do
       http_endpoint_destination_configuration: %HttpEndpointDestinationConfiguration{
         endpoint_configuration: %HttpEndpointConfiguration{
           url: "http://localhost:9999/firehose",
-          name: "demo-endpoint"
+          name: "demo-endpoint-elixir"
         },
         buffering_hints: %HttpEndpointBufferingHints{
           size_in_m_bs: 1,
           interval_in_seconds: 60
         },
         s3configuration: %S3destinationConfiguration{
-          role_arn: "arn:aws:iam::000000000000:role/firehose-role",
-          bucket_arn: "arn:aws:s3:::firehose-backup-bucket"
+          role_arn: "arn:aws:iam::000000000000:role/firehose-elixir-role",
+          bucket_arn: "arn:aws:s3:::firehose-backup-elixir-bucket"
         },
         request_configuration: %HttpEndpointRequestConfiguration{
           content_encoding: :none

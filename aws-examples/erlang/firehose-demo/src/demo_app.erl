@@ -3,7 +3,7 @@
 
 -include("firehose_types.hrl").
 
--define(STREAM_NAME, <<"firehose-demo-stream">>).
+-define(STREAM_NAME, <<"firehose-demo-erlang-stream">>).
 
 run() ->
     io:format("~n=== Running Firehose Client Application ===~n~n"),
@@ -33,15 +33,15 @@ run() ->
         http_endpoint_destination_configuration = #http_endpoint_destination_configuration{
             endpoint_configuration = #http_endpoint_configuration{
                 url = <<"http://localhost:9999/firehose">>,
-                name = <<"demo-endpoint">>
+                name = <<"demo-endpoint-erlang">>
             },
             buffering_hints = #http_endpoint_buffering_hints{
                 size_in_m_bs = 1,
                 interval_in_seconds = 60
             },
             s3configuration = #s3destination_configuration{
-                role_arn = <<"arn:aws:iam::000000000000:role/firehose-role">>,
-                bucket_arn = <<"arn:aws:s3:::firehose-backup-bucket">>
+                role_arn = <<"arn:aws:iam::000000000000:role/firehose-erlang-role">>,
+                bucket_arn = <<"arn:aws:s3:::firehose-backup-erlang-bucket">>
             },
             request_configuration = #http_endpoint_request_configuration{
                 content_encoding = none
