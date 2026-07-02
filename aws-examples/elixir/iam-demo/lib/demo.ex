@@ -29,10 +29,10 @@ defmodule Demo do
     User
   }
 
-  @user_name "iam-demo-user"
-  @group_name "iam-demo-group"
-  @new_user_name "iam-demo-new-user"
-  @demo_path "/demo/"
+  @user_name "iam-demo-elixir-user"
+  @group_name "iam-demo-elixir-group"
+  @new_user_name "iam-demo-elixir-new-user"
+  @demo_path "/demo/elixir/"
 
   def run do
     IO.puts("\n=== Running IAM Client Application ===\n")

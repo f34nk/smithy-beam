@@ -3,10 +3,10 @@
 
 -include("iam_types.hrl").
 
--define(USER_NAME, <<"iam-demo-user">>).
--define(GROUP_NAME, <<"iam-demo-group">>).
--define(NEW_USER_NAME, <<"iam-demo-new-user">>).
--define(DEMO_PATH, <<"/demo/">>).
+-define(USER_NAME, <<"iam-demo-erlang-user">>).
+-define(GROUP_NAME, <<"iam-demo-erlang-group">>).
+-define(NEW_USER_NAME, <<"iam-demo-erlang-new-user">>).
+-define(DEMO_PATH, <<"/demo/erlang/">>).
 
 run() ->
     io:format("~n=== Running IAM Client Application ===~n~n"),
