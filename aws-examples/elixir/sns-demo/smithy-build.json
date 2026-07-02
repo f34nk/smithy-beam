@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "sources": ["model"],
+  "maven": {
+    "dependencies": [
+      "software.amazon.smithy:smithy-aws-traits:1.70.0",
+      "software.amazon.smithy:smithy-rules-engine:1.70.0",
+      "software.amazon.smithy:smithy-aws-endpoints:1.70.0",
+      "software.amazon.smithy:smithy-aws-smoke-test-model:1.70.0",
+      "software.amazon.smithy:smithy-waiters:1.70.0",
+      "io.smithy.beam:codegen-elixir:0.1.0-SNAPSHOT"
+    ],
+    "repositories": [
+      {
+        "url": "https://repo1.maven.org/maven2"
+      },
+      {
+        "url": "file://${user.home}/.m2/repository"
+      }
+    ]
+  },
+  "plugins": {
+    "elixir-client-codegen": {
+      "service": "com.amazonaws.sns#AmazonSimpleNotificationService",
+      "edition": "2026",
+      "name": "sns",
+      "typesDefstructSplitThreshold": 256,
+      "typesEnumSplitThreshold": 256
+    }
+  }
+}
