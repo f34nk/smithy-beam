@@ -3,9 +3,9 @@
 
 -include("lambda_types.hrl").
 
--define(LAMBDA_FUNCTION_NAME, <<"lambda-demo-function">>).
+-define(LAMBDA_FUNCTION_NAME, <<"lambda-demo-erlang-function">>).
 -define(ALIAS_NAME, <<"demo">>).
--define(LAMBDA_ROLE_ARN, <<"arn:aws:iam::000000000000:role/lambda-demo-role">>).
+-define(LAMBDA_ROLE_ARN, <<"arn:aws:iam::000000000000:role/lambda-demo-erlang-role">>).
 -define(LAMBDA_ZIP_PATH, "terraform/lambda_function.zip").
 
 run() ->
@@ -363,7 +363,7 @@ create_demo_function(Config) ->
         runtime = python39,
         code = #function_code{zip_file = base64:encode(ZipBytes)},
         tags = #{
-            <<"Name">> => <<"lambda-demo-function">>,
+            <<"Name">> => <<"lambda-demo-erlang-function">>,
             <<"Environment">> => <<"demo">>,
             <<"Project">> => <<"smithy-erlang">>
         }

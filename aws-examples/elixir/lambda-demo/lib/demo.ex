@@ -40,9 +40,9 @@ defmodule Demo do
     UpdateFunctionConfigurationOutput
   }
 
-  @function_name "lambda-demo-function"
+  @function_name "lambda-demo-elixir-function"
   @alias_name "demo"
-  @role_arn "arn:aws:iam::000000000000:role/lambda-demo-role"
+  @role_arn "arn:aws:iam::000000000000:role/lambda-demo-elixir-role"
 
   def run do
     IO.puts("\n=== Lambda Demo: Full Function Lifecycle ===\n")
@@ -103,7 +103,7 @@ defmodule Demo do
       runtime: :python39,
       code: %FunctionCode{zip_file: Base.encode64(zip_bytes)},
       tags: %{
-        "Name" => "lambda-demo-function",
+        "Name" => "lambda-demo-elixir-function",
         "Environment" => "demo",
         "Project" => "smithy-elixir"
       }
