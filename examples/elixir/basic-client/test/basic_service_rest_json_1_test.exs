@@ -25,7 +25,7 @@ defmodule BasicServiceRestJson1Test do
 
       req = BasicServiceRestJson1.encode_get_type_closure_request(input)
 
-      assert req.query == %{"verbose" => true}
+      assert req.query == %{"verbose" => "true"}
       assert {"X-Request-Tag", "trace-1"} in req.headers
       assert {"Content-Type", "application/json"} in req.headers
     end
