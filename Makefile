@@ -170,6 +170,7 @@ docker/start:
 		-p 3008:4566 \
 		-p 3009:4566 \
 		-p 3010:4566 \
+		-p 3011:4566 \
 		-p 4000:4566 \
 		-p 4001:4566 \
 		-p 4002:4566 \
@@ -181,7 +182,8 @@ docker/start:
 		-p 4008:4566 \
 		-p 4009:4566 \
 		-p 4010:4566 \
-		-e SERVICES=s3,sqs,dynamodb,firehose,kinesis,lambda,apigateway,cloudformation,cloudwatch,ec2,iam,logs,redshift,route53,events,sns,sts,sm,es,elasticache,secretsmanager,stepfunctions,s3control \
+		-p 4011:4566 \
+		-e SERVICES=apigateway,cloudformation,cloudwatch,dynamodb,ec2,elasticache,es,events,firehose,iam,kinesis,lambda,logs,redshift,route53,s3,s3control,secretsmanager,sm,sns,ssm,sts,stepfunctions \
 		localstack/localstack
 	make docker/wait
 	
@@ -190,8 +192,24 @@ docker/stop:
 	#
 	# Stop LocalStack
 	#
-	docker stop $(CONTAINER_NAME) &> /dev/null || true
-	docker rm $(CONTAINER_NAME) &> /dev/null || true
+	@if docker ps -q -f name=^/$(CONTAINER_NAME)$$ | grep -q .; then \
+		echo "Container $(CONTAINER_NAME) is running, stopping..."; \
+		docker stop $(CONTAINER_NAME); \
+	elif docker ps -aq -f name=^/$(CONTAINER_NAME)$$ | grep -q .; then \
+		echo "Container $(CONTAINER_NAME) is stopped, removing..."; \
+		docker rm $(CONTAINER_NAME) 2>/dev/null || true; \
+	else \
+		echo "Container $(CONTAINER_NAME) is not running."; \
+		exit 0; \
+	fi
+	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do \
+		if ! docker ps -aq -f name=^/$(CONTAINER_NAME)$$ | grep -q .; then \
+			exit 0; \
+		fi; \
+		sleep 1; \
+	done; \
+	echo "Container $(CONTAINER_NAME) did not stop in time"; \
+	exit 1
 
 .PHONY: docker/wait
 docker/wait:
