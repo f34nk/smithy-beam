@@ -23,7 +23,7 @@ defmodule Demo do
     PutObjectInput
   }
 
-  @bucket_name "us-east-1-nonprod-configs"
+  @bucket_name "s3-demo-elixir-configs"
   @config1_key "configs/config1.toml"
   @config1_body "foo = \"bar\""
   @config2_key "configs/config2.toml"

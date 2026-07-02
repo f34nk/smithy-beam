@@ -3,7 +3,7 @@
 
 -include("s3_types.hrl").
 
--define(BUCKET_NAME, <<"us-east-1-nonprod-configs">>).
+-define(BUCKET_NAME, <<"s3-demo-erlang-configs">>).
 -define(CONFIG1_KEY, <<"configs/config1.toml">>).
 -define(CONFIG1_BODY, <<"foo = \"bar\"">>).
 -define(CONFIG2_KEY, <<"configs/config2.toml">>).
