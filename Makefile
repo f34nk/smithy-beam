@@ -183,7 +183,7 @@ docker/start:
 		-p 4009:4566 \
 		-p 4010:4566 \
 		-p 4011:4566 \
-		-e SERVICES=apigateway,cloudformation,cloudwatch,dynamodb,ec2,elasticache,es,events,firehose,iam,kinesis,lambda,logs,redshift,route53,s3,s3control,secretsmanager,sm,sns,ssm,sts,stepfunctions \
+		-e SERVICES=apigateway,cloudformation,cloudwatch,dynamodb,ec2,elasticache,es,events,firehose,iam,kinesis,lambda,logs,redshift,route53,s3,s3control,secretsmanager,sm,sns,sqs,ssm,sts,stepfunctions \
 		localstack/localstack
 	make docker/wait
 	
