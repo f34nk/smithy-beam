@@ -3,7 +3,7 @@
 
 -include("kinesis_types.hrl").
 
--define(STREAM_NAME, <<"kinesis-demo-stream">>).
+-define(STREAM_NAME, <<"kinesis-demo-erlang-stream">>).
 -define(SENT_RECORDS, [
     #{<<"message">> => <<"Hello from Erlang!">>, <<"id">> => 1},
     #{<<"message">> => <<"Kinesis streaming data">>, <<"id">> => 2},

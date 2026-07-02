@@ -32,7 +32,7 @@ defmodule Demo do
     StreamModeDetails
   }
 
-  @stream_name "kinesis-demo-stream"
+  @stream_name "kinesis-demo-elixir-stream"
 
   @sent_records [
     %{"message" => "Hello from Elixir!", "id" => 1},
