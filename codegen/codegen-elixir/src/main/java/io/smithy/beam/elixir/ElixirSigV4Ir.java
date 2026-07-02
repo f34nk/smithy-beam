@@ -290,6 +290,8 @@ final class ElixirSigV4Ir {
         resolveHost(),
         coalesce(),
         buildUrl(),
+        encodeQueryParams(),
+        encodeQueryParamValue(),
         ensureHostHeader(),
         headerHost(),
         maybeAddSessionToken(),
@@ -406,8 +408,52 @@ final class ElixirSigV4Ir {
                     ExVarPattern.var("host"), ExVarPattern.var("path"), ExVarPattern.var("query")),
                 ExMatch.match(
                     ExVarPattern.var("params"),
-                    ExCall.call("URI", "encode_query", ExVar.var("query"))),
+                    ExCallLocal.callLocal("encode_query_params", ExVar.var("query"))),
                 ExCapturedBlock.capturedBlock("\"https://#{host}#{path}?#{params}\""))));
+  }
+
+  private static ExFunction encodeQueryParams() {
+    return ExFunction.defpFunction(
+        "encode_query_params",
+        List.of(
+            ExClause.blockClause(
+                List.of(ExVarPattern.var("query")),
+                ExCapturedBlock.capturedBlock(
+                    "query\n"
+                        + "|> Map.to_list()\n"
+                        + "|> Enum.flat_map(fn\n"
+                        + "  {k, v} when is_list(v) ->\n"
+                        + "    Enum.map(v, fn item -> {k, encode_query_param_value(item)} end)\n"
+                        + "  {k, v} ->\n"
+                        + "    [{k, encode_query_param_value(v)}]\n"
+                        + "end)\n"
+                        + "|> URI.encode_query()"))));
+  }
+
+  private static ExFunction encodeQueryParamValue() {
+    return ExFunction.defpFunction(
+        "encode_query_param_value",
+        List.of(
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("v")),
+                List.of(ExGuard.guard("is_boolean", ExVar.var("v"))),
+                ExCall.call("Atom", "to_string", ExVar.var("v"))),
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("v")),
+                List.of(ExGuard.guard("is_integer", ExVar.var("v"))),
+                ExCall.call("Integer", "to_string", ExVar.var("v"))),
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("v")),
+                List.of(ExGuard.guard("is_float", ExVar.var("v"))),
+                ExCall.call("Float", "to_string", ExVar.var("v"))),
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("v")),
+                List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
+                ExVar.var("v")),
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("v")),
+                List.of(ExGuard.guard("is_atom", ExVar.var("v"))),
+                ExCall.call("Atom", "to_string", ExVar.var("v")))));
   }
 
   private static ExFunction ensureHostHeader() {

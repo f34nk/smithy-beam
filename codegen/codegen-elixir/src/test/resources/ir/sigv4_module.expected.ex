@@ -85,9 +85,27 @@ defmodule Sigv4testServiceSigv4 do
 
   defp build_url(host, path, query) when map_size(query) == 0, do: "https://#{host}#{path}"
   defp build_url(host, path, query) do
-    params = URI.encode_query(query)
+    params = encode_query_params(query)
     "https://#{host}#{path}?#{params}"
   end
+
+  defp encode_query_params(query) do
+    query
+    |> Map.to_list()
+    |> Enum.flat_map(fn
+      {k, v} when is_list(v) ->
+        Enum.map(v, fn item -> {k, encode_query_param_value(item)} end)
+      {k, v} ->
+        [{k, encode_query_param_value(v)}]
+    end)
+    |> URI.encode_query()
+  end
+
+  defp encode_query_param_value(v) when is_boolean(v), do: Atom.to_string(v)
+  defp encode_query_param_value(v) when is_integer(v), do: Integer.to_string(v)
+  defp encode_query_param_value(v) when is_float(v), do: Float.to_string(v)
+  defp encode_query_param_value(v) when is_binary(v), do: v
+  defp encode_query_param_value(v) when is_atom(v), do: Atom.to_string(v)
 
   defp ensure_host_header(headers, host) do
     case header_host(headers) do
