@@ -54,6 +54,7 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.BlobShape;
+import software.amazon.smithy.model.shapes.ListShape;
 import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -117,7 +118,7 @@ final class ElixirRestJsonOperationIr {
     body.add(
         ExMatch.match(
             ExVarPattern.var("path"), buildPathExpression(uriTemplate, labels, sp, "input")));
-    body.addAll(buildQueryExprs(queries, sp));
+    body.addAll(buildQueryExprs(model, queries, sp));
     body.addAll(buildQueryParamsExprs(queryParams, sp));
     body.addAll(buildRequestHeadersExprs(model, op, headers, prefixHeaders, sp, "input"));
     body.addAll(
@@ -797,19 +798,52 @@ final class ElixirRestJsonOperationIr {
     return exprs;
   }
 
-  private static List<ExExpr> buildQueryExprs(List<HttpBinding> queries, SymbolProvider sp) {
+  private static List<ExExpr> buildQueryExprs(
+      Model model, List<HttpBinding> queries, SymbolProvider sp) {
     if (queries.isEmpty()) {
       return List.of(ExMatch.match(ExVarPattern.var("query"), ExMap.map()));
     }
-    List<ExMapEntry> entries = new ArrayList<>();
+    List<ExExpr> parts = new ArrayList<>();
     for (HttpBinding qb : queries) {
-      String field = fieldName(sp, qb.getMember());
-      entries.add(
-          ExMapEntry.entry(
-              ExString.string(qb.getLocationName()),
-              ExStructAccess.structAccess(ExVar.var("input"), field)));
+      parts.add(buildQueryBindingExpr(model, qb, sp));
     }
-    return List.of(ElixirJsonCodecIr.rejectNilMapPipeline("query", entries));
+    ExExpr queryEntries = parts.get(0);
+    for (int i = 1; i < parts.size(); i++) {
+      queryEntries = ExCall.call("Enum", "concat", queryEntries, parts.get(i));
+    }
+    return List.of(
+        ExMatch.match(ExVarPattern.var("query"), ExCall.call("Map", "new", queryEntries)));
+  }
+
+  private static ExExpr buildQueryBindingExpr(Model model, HttpBinding qb, SymbolProvider sp) {
+    String field = fieldName(sp, qb.getMember());
+    ExExpr binding = ExStructAccess.structAccess(ExVar.var("input"), field);
+    String paramName = qb.getLocationName();
+    Shape target = model.expectShape(qb.getMember().getTarget());
+    ExExpr listArg =
+        target instanceof ListShape
+            ? ExCase.caseExpr(
+                binding,
+                ExCaseBranch.branch(ExNilPattern.nil(), ExList.list()),
+                ExCaseBranch.branch(ExVarPattern.var("v"), ExVar.var("v")))
+            : ExList.list(binding);
+    return ExCall.call(
+        "Enum",
+        "flat_map",
+        listArg,
+        ExAnonymousFn.compactFn(
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("v")),
+                ExCase.caseExpr(
+                    ExVar.var("v"),
+                    ExCaseBranch.branch(ExNilPattern.nil(), ExList.list()),
+                    ExCaseBranch.branch(
+                        ExVarPattern.var("item"),
+                        ExList.list(
+                            ExTuple.tuple(
+                                ExString.string(paramName),
+                                ExCallLocal.callLocal(
+                                    "encode_query_value", ExVar.var("item")))))))));
   }
 
   private static List<ExExpr> buildQueryParamsExprs(
