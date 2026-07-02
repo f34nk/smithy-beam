@@ -29,8 +29,8 @@ defmodule Demo do
     UnsubscribeInput
   }
 
-  @topic_name "sns-demo-topic"
-  @test_topic_name "sns-demo-test-topic"
+  @topic_name "sns-demo-elixir-topic"
+  @test_topic_name "sns-demo-elixir-test-topic"
 
   def run do
     IO.puts("\n=== Running SNS Client Application ===\n")

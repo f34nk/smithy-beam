@@ -28,10 +28,10 @@ variable "endpoint" {
 
 # Create an SNS topic for the demo
 resource "aws_sns_topic" "demo" {
-  name = "sns-demo-topic"
+  name = "sns-demo-erlang-topic"
 
   tags = {
-    Name        = "sns-demo-topic"
+    Name        = "sns-demo-erlang-topic"
     Environment = "demo"
     Project     = "smithy-erlang"
   }
@@ -39,12 +39,12 @@ resource "aws_sns_topic" "demo" {
 
 # Create an SQS queue to receive SNS messages
 resource "aws_sqs_queue" "demo" {
-  name                       = "sns-demo-subscriber-queue"
+  name                       = "sns-demo-erlang-subscriber-queue"
   message_retention_seconds  = 345600
   visibility_timeout_seconds = 30
 
   tags = {
-    Name        = "sns-demo-subscriber-queue"
+    Name        = "sns-demo-erlang-subscriber-queue"
     Environment = "demo"
   }
 }

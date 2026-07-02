@@ -3,8 +3,8 @@
 
 -include("sns_types.hrl").
 
--define(TOPIC_NAME, <<"sns-demo-topic">>).
--define(TEST_TOPIC_NAME, <<"sns-demo-test-topic">>).
+-define(TOPIC_NAME, <<"sns-demo-erlang-topic">>).
+-define(TEST_TOPIC_NAME, <<"sns-demo-erlang-test-topic">>).
 
 run() ->
     io:format("~n=== Running SNS Client Application ===~n~n"),
