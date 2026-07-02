@@ -3,7 +3,7 @@
 
 -include("rds_types.hrl").
 
--define(TEST_PARAM_GROUP_NAME, <<"rds-demo-test-param-group">>).
+-define(TEST_PARAM_GROUP_NAME, <<"rds-demo-erlang-test-param-group">>).
 
 run() ->
     io:format("~n=== Running RDS Client Application ===~n~n"),

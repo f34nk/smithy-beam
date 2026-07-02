@@ -39,7 +39,7 @@ defmodule Demo do
     Tag
   }
 
-  @test_param_group_name "rds-demo-test-param-group"
+  @test_param_group_name "rds-demo-elixir-test-param-group"
 
   def run do
     IO.puts("\n=== Running RDS Client Application ===\n")
