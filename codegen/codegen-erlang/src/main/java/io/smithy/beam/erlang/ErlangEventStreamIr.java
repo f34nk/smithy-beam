@@ -264,8 +264,7 @@ final class ErlangEventStreamIr {
     if (structure.members().isEmpty()) {
       return ErlRecord.record(recordName);
     }
-    ErlCall decoded =
-        ErlCall.call("jsone", "decode", ErlVar.var(payloadVar));
+    ErlCall decoded = ErlCall.call("jsone", "decode", ErlVar.var(payloadVar));
     List<ErlRecordField> fields = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String wireKey = jsonKey(member);
