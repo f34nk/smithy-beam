@@ -110,7 +110,7 @@ _demo:
 				exit 1; \
 			fi ;; \
 	esac
-	cd $(DEMO) && make clean && time make demo
+	cd $(DEMO) && time make demo
 
 .PHONY: _aws-examples
 _aws-examples:
@@ -199,7 +199,6 @@ docker/stop:
 		echo "Container $(CONTAINER_NAME) is stopped, removing..."; \
 		docker rm $(CONTAINER_NAME) 2>/dev/null || true; \
 	else \
-		echo "Container $(CONTAINER_NAME) is not running."; \
 		exit 0; \
 	fi
 	@for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do \
