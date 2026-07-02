@@ -3,12 +3,12 @@
 
 -include("ssm_types.hrl").
 
--define(DATABASE_HOST_NAME, <<"/demo/database/host">>).
--define(DATABASE_PORT_NAME, <<"/demo/database/port">>).
--define(DATABASE_NAME_NAME, <<"/demo/database/name">>).
--define(API_KEY_NAME, <<"/demo/api/key">>).
--define(DATABASE_PATH, <<"/demo/database">>).
--define(TEST_PARAM_NAME, <<"/demo/test/param">>).
+-define(DATABASE_HOST_NAME, <<"/demo/erlang/database/host">>).
+-define(DATABASE_PORT_NAME, <<"/demo/erlang/database/port">>).
+-define(DATABASE_NAME_NAME, <<"/demo/erlang/database/name">>).
+-define(API_KEY_NAME, <<"/demo/erlang/api/key">>).
+-define(DATABASE_PATH, <<"/demo/erlang/database">>).
+-define(TEST_PARAM_NAME, <<"/demo/erlang/test/param">>).
 -define(PARAM_VALUE, <<"test-value-from-erlang">>).
 
 run() ->
@@ -76,17 +76,40 @@ setup_infrastructure(Config) ->
     ).
 
 create_parameter(Config, Name, Value, Type, Tags) ->
-    Input = #put_parameter_input{
-        name = Name,
-        value = Value,
-        type = Type,
-        tags = Tags
-    },
+    Input =
+        case parameter_exists(Config, Name) of
+            true ->
+                %% SSM rejects tags and overwrite in the same PutParameter request.
+                #put_parameter_input{
+                    name = Name,
+                    value = Value,
+                    type = Type,
+                    overwrite = true
+                };
+            false ->
+                #put_parameter_input{
+                    name = Name,
+                    value = Value,
+                    type = Type,
+                    tags = Tags
+                }
+        end,
     case ssm_client:put_parameter(Config, Input) of
         {ok, #put_parameter_output{version = Version}} ->
             io:format("SUCCESS: Parameter ~s ready (version ~p)~n", [Name, Version]);
         {error, Reason} ->
             erlang:error({put_parameter_failed, Reason})
+    end.
+
+parameter_exists(Config, Name) ->
+    Input = #get_parameter_input{name = Name, with_decryption = true},
+    case ssm_client:get_parameter(Config, Input) of
+        {ok, _} ->
+            true;
+        {error, #parameter_not_found{}} ->
+            false;
+        {error, Reason} ->
+            erlang:error({get_parameter_failed, Reason})
     end.
 
 describe_parameters(Config) ->

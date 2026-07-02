@@ -31,12 +31,12 @@ defmodule Demo do
     Tag
   }
 
-  @database_host_name "/demo/database/host"
-  @database_port_name "/demo/database/port"
-  @database_name_name "/demo/database/name"
-  @api_key_name "/demo/api/key"
-  @database_path "/demo/database"
-  @test_param_name "/demo/test/param"
+  @database_host_name "/demo/elixir/database/host"
+  @database_port_name "/demo/elixir/database/port"
+  @database_name_name "/demo/elixir/database/name"
+  @api_key_name "/demo/elixir/api/key"
+  @database_path "/demo/elixir/database"
+  @test_param_name "/demo/elixir/test/param"
   @param_value "test-value-from-elixir"
 
   def run do
@@ -106,12 +106,23 @@ defmodule Demo do
   end
 
   defp create_parameter(config, name, value, type, tags) do
-    input = %PutParameterInput{
-      name: name,
-      value: value,
-      type: type,
-      tags: tags
-    }
+    input =
+      if parameter_exists?(config, name) do
+        # SSM rejects tags and overwrite in the same PutParameter request.
+        %PutParameterInput{
+          name: name,
+          value: value,
+          type: type,
+          overwrite: true
+        }
+      else
+        %PutParameterInput{
+          name: name,
+          value: value,
+          type: type,
+          tags: tags
+        }
+      end
 
     case SsmClient.put_parameter(config, input) do
       {:ok, %PutParameterOutput{version: version}} ->
@@ -119,6 +130,19 @@ defmodule Demo do
 
       {:error, reason} ->
         raise("put_parameter_failed: #{inspect(reason)}")
+    end
+  end
+
+  defp parameter_exists?(config, name) do
+    case SsmClient.get_parameter(config, %GetParameterInput{name: name, with_decryption: true}) do
+      {:ok, _} ->
+        true
+
+      {:error, %ParameterNotFound{}} ->
+        false
+
+      {:error, reason} ->
+        raise("get_parameter_failed: #{inspect(reason)}")
     end
   end
 
