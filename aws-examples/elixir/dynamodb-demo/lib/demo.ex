@@ -22,7 +22,7 @@ defmodule Demo do
     ScanInput
   }
 
-  @table_name "example"
+  @table_name "dynamodb-demo-elixir"
   @hash_key "TestTableHashKey"
 
   def run do

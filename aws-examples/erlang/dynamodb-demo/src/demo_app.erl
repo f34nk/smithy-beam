@@ -4,7 +4,7 @@
 -include("dynamodb_types.hrl").
 
 %% Table name and hash key from terraform/main.tf
--define(TABLE_NAME, <<"example">>).
+-define(TABLE_NAME, <<"dynamodb-demo-erlang">>).
 -define(HASH_KEY, <<"TestTableHashKey">>).
 
 run() ->
