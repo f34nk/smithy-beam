@@ -16,6 +16,6 @@ decode_event_stream_event(#{headers := Headers, payload := Payload}) ->
 
 decode_event_stream_event_type(<<"member">>, Payload) ->
     {member, #member_event{
-        value = maps:get(<<"value">>, jsone:decode(Payload, [return_maps]), undefined)
+        value = maps:get(<<"value">>, jsone:decode(Payload), undefined)
     }};
 decode_event_stream_event_type(EventType, _Payload) -> error({bad_event, EventType}).

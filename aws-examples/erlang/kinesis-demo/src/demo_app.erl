@@ -75,7 +75,7 @@ run() ->
     io:format("--- PutRecord (3 records) ---~n"),
     _SequenceNumbers = lists:map(
         fun({Idx, Record}) ->
-            Data = base64:encode(jsx:encode(Record)),
+            Data = base64:encode(jsone:encode(Record)),
             PartitionKey = <<"partition-", (integer_to_binary(Idx))/binary>>,
             PutInput = #put_record_input{
                 stream_name = ?STREAM_NAME,
@@ -136,7 +136,7 @@ run() ->
                 false -> erlang:error({assertion_failed, {expected_count, 3}, {got, length(FetchedRecords)}})
             end,
             DecodedBodies = [
-                jsx:decode(base64:decode(Data), [return_maps])
+                jsone:decode(base64:decode(Data))
                 || #record{data = Data} <- FetchedRecords
             ],
             case DecodedBodies =:= ?SENT_RECORDS of
@@ -145,7 +145,7 @@ run() ->
             end,
             lists:foreach(
                 fun(#record{partition_key = PartKey, sequence_number = SeqNum, data = Data}) ->
-                    DecodedData = try jsx:decode(base64:decode(Data), [return_maps])
+                    DecodedData = try jsone:decode(base64:decode(Data))
                                   catch _:_ -> Data end,
                     io:format("  Record: PartitionKey=~s~n", [PartKey]),
                     io:format("    SequenceNumber: ~s~n", [SeqNum]),

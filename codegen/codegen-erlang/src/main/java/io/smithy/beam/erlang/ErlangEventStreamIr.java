@@ -227,8 +227,7 @@ final class ErlangEventStreamIr {
     if (target instanceof BlobShape || target instanceof StringShape) {
       return ErlVar.var(payloadVar);
     }
-    return ErlCall.call(
-        "jsone", "decode", ErlVar.var(payloadVar), ErlList.list(ErlAtom.atom("return_maps")));
+    return ErlCall.call("jsone", "decode", ErlVar.var(payloadVar));
   }
 
   private static ErlExpr encodeStructurePayload(
@@ -266,8 +265,7 @@ final class ErlangEventStreamIr {
       return ErlRecord.record(recordName);
     }
     ErlCall decoded =
-        ErlCall.call(
-            "jsone", "decode", ErlVar.var(payloadVar), ErlList.list(ErlAtom.atom("return_maps")));
+        ErlCall.call("jsone", "decode", ErlVar.var(payloadVar));
     List<ErlRecordField> fields = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String wireKey = jsonKey(member);

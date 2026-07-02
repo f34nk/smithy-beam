@@ -522,8 +522,8 @@ final class ErlangCredentialProviderIr {
                 List.of(ErlVarPattern.varPattern("Body")),
                 ErlCapturedBlock.capturedBlock(
                     """
-                                case jsx:decode(Body, [return_maps]) of
-                                    #{<<"AccessKeyId">> := Id, <<"SecretAccessKey">> := Secret} = Doc ->
+                                case jsone:try_decode(Body) of
+                                    {ok, #{<<"AccessKeyId">> := Id, <<"SecretAccessKey">> := Secret} = Doc, _} ->
                                         Token = maps:get(<<"Token">>, Doc, undefined),
                                         {ok, #{access_key_id => Id,
                                               secret_access_key => Secret,

@@ -176,7 +176,7 @@ Code generation passes through three phases, following the Smithy guide:
    - [SymbolWriter](https://smithy.io/2.0/guides/building-codegen/decoupling-codegen-with-symbols.html) renders source files from the symbol graph.
    - [SmithyIntegration](https://smithy.io/2.0/guides/building-codegen/making-codegen-pluggable.html#creating-a-smithyintegrations) hooks allow protocol-specific interceptors to modify the output. Language integrations may implement `createProtocolCodegen` to register custom `BeamProtocolCodegen` implementations for protocol traits.
    - Language emitters compose structural IR trees from `codegen-ir` and render them to `.erl`/`.hrl` or `.ex` source text.
-   - Output: generated `.erl`/`.hrl` or `.ex` source files. Consumers maintain their own `rebar.config` or `mix.exs` and declare any third-party OTP or Hex packages (for example `jsx` or `aws_signature`) that generated modules call at runtime.
+   - Output: generated `.erl`/`.hrl` or `.ex` source files. Consumers maintain their own `rebar.config` or `mix.exs` and declare any third-party OTP or Hex packages (for example `jsone` or `aws_signature`) that generated modules call at runtime.
 
 2. **Compile-time** ([rebar3](https://rebar3.org) or [Mix](https://hexdocs.pm/mix/Mix.html) on the developer's machine)
    - `rebar3 compile` or `mix compile` compiles the generated BEAM source.

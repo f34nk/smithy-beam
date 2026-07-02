@@ -7,7 +7,7 @@
         stdlib,
         inets,
         ssl,
-        jsx
+        jsone
     ]},
     {env, []},
     {modules, []},

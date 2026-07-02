@@ -2,6 +2,6 @@
  [{description, "Smithy beam S3 Erlang example"},
   {vsn, "0.1.0"},
   {registered, []},
-  {applications, [kernel, stdlib, jsx, inets, ssl]},
+  {applications, [kernel, stdlib, jsone, inets, ssl]},
   {env, []},
   {modules, []}]}.

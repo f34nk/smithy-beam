@@ -66,10 +66,10 @@ run:
 	#
 	erl \
 	-pa _build/default/lib/demo/ebin \
-	-pa _build/default/lib/jsx/ebin \
+	-pa _build/default/lib/jsone/ebin \
 	-pa _build/default/lib/aws_signature/ebin \
 	-noshell \
-	-eval "application:ensure_all_started(inets), application:ensure_all_started(ssl), application:ensure_all_started(jsx), demo_app:run(), halt()."
+	-eval "application:ensure_all_started(inets), application:ensure_all_started(ssl), application:ensure_all_started(jsone), demo_app:run(), halt()."
 
 .PHONY: clean
 clean:
