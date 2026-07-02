@@ -3,7 +3,7 @@
 
 -include("sqs_types.hrl").
 
--define(QUEUE_NAME, <<"sqs-demo-queue">>).
+-define(QUEUE_NAME, <<"sqs-demo-erlang-queue">>).
 -define(MSG1_BODY, <<"Hello from Erlang! This is message 1.">>).
 -define(MSG2_BODY, <<"Hello from Erlang! This is message 2.">>).
 

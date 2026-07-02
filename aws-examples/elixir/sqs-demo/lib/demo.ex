@@ -28,7 +28,7 @@ defmodule Demo do
     SendMessageOutput
   }
 
-  @queue_name "sqs-demo-queue"
+  @queue_name "sqs-demo-elixir-queue"
   @msg1_body "Hello from Elixir! This is message 1."
   @msg2_body "Hello from Elixir! This is message 2."
 
