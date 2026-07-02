@@ -156,7 +156,7 @@ final class ElixirResourceIr {
       specParams.add("client_config()");
     }
     for (IdentifierArg arg : plan.identifierArgs()) {
-      specParams.add(identifierType(sp, index, arg));
+      specParams.add(identifierType(sp, index, arg, typesMod));
     }
     if (plan.acceptsFullInput()) {
       specParams.add(ElixirTopDown.structureSpecType(typesMod, plan.inputSymbol()));
@@ -191,9 +191,9 @@ final class ElixirResourceIr {
   }
 
   private static String identifierType(
-      SymbolProvider sp, BeamResourceIndex index, IdentifierArg arg) {
+      SymbolProvider sp, BeamResourceIndex index, IdentifierArg arg, String typesMod) {
     Shape shape = index.model().expectShape(arg.shapeId(), Shape.class);
-    return sp.toSymbol(shape).getName();
+    return ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(shape));
   }
 
   private static ExExpr inputExpression(InputPlan plan, String typesMod) {
