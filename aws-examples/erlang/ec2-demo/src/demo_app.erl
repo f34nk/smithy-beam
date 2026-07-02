@@ -4,10 +4,10 @@
 -include("ec2_types.hrl").
 
 -define(DEMO_VPC_CIDR, <<"10.0.0.0/16">>).
--define(DEMO_VPC_NAME, <<"ec2-demo-vpc">>).
+-define(DEMO_VPC_NAME, <<"ec2-demo-erlang-vpc">>).
 -define(DEMO_SUBNET_CIDR, <<"10.0.1.0/24">>).
--define(DEMO_SUBNET_NAME, <<"ec2-demo-subnet">>).
--define(DEMO_SG_NAME, <<"ec2-demo-sg">>).
+-define(DEMO_SUBNET_NAME, <<"ec2-demo-erlang-subnet">>).
+-define(DEMO_SG_NAME, <<"ec2-demo-erlang-sg">>).
 -define(DEMO_SG_DESCRIPTION, <<"Security group for EC2 demo">>).
 
 run() ->
@@ -215,7 +215,7 @@ run_instance(Config, SubnetId, SgId) ->
         tag_specifications = [
             #tag_specification{
                 resource_type = instance,
-                tags = [#tag{key = <<"Name">>, value = <<"ec2-demo-instance">>}]
+                tags = [#tag{key = <<"Name">>, value = <<"ec2-demo-erlang-instance">>}]
             }
         ]
     },

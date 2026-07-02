@@ -33,10 +33,10 @@ defmodule Demo do
   }
 
   @demo_vpc_cidr "10.0.0.0/16"
-  @demo_vpc_name "ec2-demo-vpc"
+  @demo_vpc_name "ec2-demo-elixir-vpc"
   @demo_subnet_cidr "10.0.1.0/24"
-  @demo_subnet_name "ec2-demo-subnet"
-  @demo_sg_name "ec2-demo-sg"
+  @demo_subnet_name "ec2-demo-elixir-subnet"
+  @demo_sg_name "ec2-demo-elixir-sg"
   @demo_sg_description "Security group for EC2 demo"
 
   def run do
@@ -309,7 +309,7 @@ defmodule Demo do
       tag_specifications: [
         %TagSpecification{
           resource_type: :instance,
-          tags: [%Tag{key: "Name", value: "ec2-demo-instance"}]
+          tags: [%Tag{key: "Name", value: "ec2-demo-elixir-instance"}]
         }
       ]
     }
