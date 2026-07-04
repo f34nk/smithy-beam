@@ -2,12 +2,11 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Function;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlFunction;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -29,10 +28,14 @@ class ErlangHostLabelIrTest {
     ErlangSymbolProvider sp =
         new ErlangSymbolProvider(
             settings, model, service, "host_label_types.hrl", BeamCodegenKind.CLIENT);
-    List<ErlFunction> functions = ErlangHostLabelIr.buildHostFunctions(model, service, sp);
+    List<Function> functions = ErlangHostLabelIr.buildHostFunctions(model, service, sp);
     assertThat(functions).hasSize(2);
-    String combined = functions.get(0).asString() + "\n\n" + functions.get(1).asString();
-    assertThat(combined).isEqualTo(readExpectedString("ir/host_label_helpers.expected.erl"));
+    String combined =
+        ErlangRenderer.renderFunction(functions.get(0))
+            + "\n\n"
+            + ErlangRenderer.renderFunction(functions.get(1));
+    assertThat(combined)
+        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/host_label_helpers.expected.erl"));
   }
 
   private static Model hostLabelModel() {
@@ -72,17 +75,5 @@ class ErlangHostLabelIrTest {
         .discoverModels()
         .assemble()
         .unwrap();
-  }
-
-  private static String readExpectedString(String resourcePath) throws IOException {
-    try (InputStream in =
-        ErlangHostLabelIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
-      assertThat(in).as("resource %s", resourcePath).isNotNull();
-      String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-      if (text.endsWith("\n")) {
-        text = text.substring(0, text.length() - 1);
-      }
-      return text;
-    }
   }
 }

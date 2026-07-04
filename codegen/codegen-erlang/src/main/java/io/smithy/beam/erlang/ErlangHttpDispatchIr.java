@@ -1,5 +1,25 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BinaryExpr;
+import io.beam.ir.erlang.BinaryPattern;
+import io.beam.ir.erlang.BinarySegmentExpr;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MapPattern;
+import io.beam.ir.erlang.MapPatternEntry;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.MatchPattern;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TuplePattern;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
 import io.smithy.beam.ir.erlang.ErlAtom;
 import io.smithy.beam.ir.erlang.ErlAtomPattern;
 import io.smithy.beam.ir.erlang.ErlAttribute;
@@ -61,7 +81,7 @@ final class ErlangHttpDispatchIr {
             dispatchArity3(),
             dispatchSigned(
                 sigv4, endpointRules, configVar, helpersMod, endpointsMod, credentialsMod),
-            splitBaseUrl(),
+            splitBaseUrlCodegenIr(),
             mime());
 
     return new ErlModule(
@@ -158,7 +178,76 @@ final class ErlangHttpDispatchIr {
                 ErlExprBlock.block(body.toArray(ErlExpr[]::new)))));
   }
 
-  static ErlFunction splitBaseUrl() {
+  static Function splitBaseUrl() {
+    BinaryExpr schemePrefix =
+        BinaryExpr.of(
+            List.of(
+                BinarySegmentExpr.of(
+                    LocalCallExpr.of("list_to_binary", List.of(Variable.of("Scheme"))),
+                    "binary"),
+                BinarySegmentExpr.literal("://")));
+
+    BinaryExpr authority =
+        BinaryExpr.of(
+            List.of(
+                BinarySegmentExpr.of(
+                    LocalCallExpr.of("list_to_binary", List.of(Variable.of("Host"))),
+                    "binary"),
+                BinarySegmentExpr.of(Variable.of("PortSuffix"), "binary")));
+
+    BinaryExpr portSuffix =
+        BinaryExpr.of(
+            List.of(
+                BinarySegmentExpr.literal(":"),
+                BinarySegmentExpr.of(
+                    LocalCallExpr.of("integer_to_binary", List.of(Variable.of("Port"))),
+                    "binary")));
+
+    CaseExpr portSuffixCase =
+        CaseExpr.of(
+            RemoteCallExpr.of(
+                "maps",
+                "get",
+                List.of(AtomExpr.of("port"), Variable.of("Parts"), AtomExpr.of("undefined"))),
+            List.of(
+                Clause.of(AtomPattern.of("undefined"), BinaryExpr.of("")),
+                Clause.of(VariablePattern.of("Port"), portSuffix)));
+
+    CaseExpr parseCase =
+        CaseExpr.of(
+            RemoteCallExpr.of(
+                "uri_string",
+                "parse",
+                List.of(LocalCallExpr.of("binary_to_list", List.of(Variable.of("BaseUrl"))))),
+            List.of(
+                Clause.of(
+                    MatchPattern.of(
+                        MapPattern.of(
+                            List.of(
+                                MapPatternEntry.of(
+                                    AtomExpr.of("scheme"), VariablePattern.of("Scheme")),
+                                MapPatternEntry.of(
+                                    AtomExpr.of("host"), VariablePattern.of("Host")))),
+                        VariablePattern.of("Parts")),
+                    BlockExpr.newlineSeparated(
+                        List.of(
+                            MatchExpr.bindValue("PortSuffix", portSuffixCase),
+                            TupleExpr.of(List.of(schemePrefix, authority))),
+                        true)),
+                Clause.of(
+                    VariablePattern.of("_"),
+                    TupleExpr.of(List.of(BinaryExpr.of(""), Variable.of("BaseUrl"))))));
+
+    return Function.of(
+        "split_base_url",
+        List.of(
+            FunctionClause.of(
+                List.of(BinaryPattern.of("")),
+                TupleExpr.of(List.of(BinaryExpr.of(""), BinaryExpr.of("")))),
+            FunctionClause.of(List.of(VariablePattern.of("BaseUrl")), parseCase)));
+  }
+
+  private static ErlFunction splitBaseUrlCodegenIr() {
     ErlBinaryTemplate schemePrefix =
         ErlBinaryTemplate.binaryTemplate(
             ErlBinaryExpr.expr(
