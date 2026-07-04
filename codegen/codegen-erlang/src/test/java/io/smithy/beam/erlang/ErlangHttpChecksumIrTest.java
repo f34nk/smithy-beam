@@ -2,13 +2,15 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.Variable;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlFunction;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Disabled;
@@ -23,10 +25,11 @@ import software.amazon.smithy.model.shapes.ShapeId;
 class ErlangHttpChecksumIrTest {
   @Test
   void checksumHelperFunctionsMatchGolden() throws IOException {
-    List<ErlFunction> functions = ErlangHttpChecksumIr.checksumHelperFunctions();
-    assertThat(helpersAsString(functions))
-        .isEqualTo(readExpectedString("ir/http_checksum_helpers.expected.erl"));
-    for (ErlFunction fn : functions) {
+    List<Function> functions = ErlangHttpChecksumIr.checksumHelperFunctions();
+    assertThat(
+            functions.stream().map(ErlangRenderer::renderFunction).collect(Collectors.joining("\n\n")))
+        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/http_checksum_helpers.expected.erl"));
+    for (Function fn : functions) {
       assertThat(fn.name()).isNotBlank();
       assertThat(fn.clauses()).isNotEmpty();
     }
@@ -51,15 +54,18 @@ class ErlangHttpChecksumIrTest {
         new ErlangSymbolProvider(
             settings, model, service, "http_checksum_types.hrl", BeamCodegenKind.CLIENT);
 
-    ErlExpr requiredExpr =
+    Expression requiredExpr =
         ErlangHttpChecksumIr.requestChecksumHeadersExpr(model, required, sp, "Headers")
             .orElseThrow();
-    ErlExpr flexibleExpr =
+    Expression flexibleExpr =
         ErlangHttpChecksumIr.requestChecksumHeadersExpr(model, flexible, sp, "Headers")
             .orElseThrow();
-    String combined = exprAsString(requiredExpr) + "\n\n" + exprAsString(flexibleExpr);
+    String combined =
+        ErlangRenderer.renderExpression(requiredExpr)
+            + "\n\n"
+            + ErlangRenderer.renderExpression(flexibleExpr);
     assertThat(combined)
-        .isEqualTo(readExpectedString("ir/http_checksum_request_headers.expected.erl"));
+        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/http_checksum_request_headers.expected.erl"));
   }
 
   @Test
@@ -78,15 +84,13 @@ class ErlangHttpChecksumIrTest {
         new ErlangSymbolProvider(
             settings, model, service, "http_checksum_types.hrl", BeamCodegenKind.CLIENT);
 
-    ErlExpr guarded =
+    Expression guarded =
         ErlangHttpChecksumIr.responseChecksumGuardExpr(
             model,
             flexible,
-            io.smithy.beam.ir.erlang.ErlTuple.tuple(
-                io.smithy.beam.ir.erlang.ErlAtom.atom("ok"),
-                io.smithy.beam.ir.erlang.ErlVar.var("Output")));
-    assertThat(exprAsString(guarded))
-        .isEqualTo(readExpectedString("ir/http_checksum_response_guard.expected.erl"));
+            TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Output"))));
+    assertThat(ErlangRenderer.renderExpression(guarded))
+        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/http_checksum_response_guard.expected.erl"));
   }
 
   static Model checksumFixtureModel() {
@@ -162,25 +166,5 @@ class ErlangHttpChecksumIrTest {
         .discoverModels()
         .assemble()
         .unwrap();
-  }
-
-  private static String exprAsString(ErlExpr expr) {
-    return String.join("\n", expr.lines());
-  }
-
-  private static String helpersAsString(List<ErlFunction> functions) {
-    return functions.stream().map(ErlFunction::asString).collect(Collectors.joining("\n\n"));
-  }
-
-  private static String readExpectedString(String resourcePath) throws IOException {
-    try (InputStream in =
-        ErlangHttpChecksumIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
-      assertThat(in).as("resource %s", resourcePath).isNotNull();
-      String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-      if (text.endsWith("\n")) {
-        text = text.substring(0, text.length() - 1);
-      }
-      return text;
-    }
   }
 }

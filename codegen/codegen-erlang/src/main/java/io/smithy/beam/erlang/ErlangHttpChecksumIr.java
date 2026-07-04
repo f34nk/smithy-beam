@@ -1,31 +1,31 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BinaryExpr;
+import io.beam.ir.erlang.BinaryPattern;
+import io.beam.ir.erlang.BinarySegmentExpr;
+import io.beam.ir.erlang.BinarySegmentPattern;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.InfixExpr;
+import io.beam.ir.erlang.IsTypeGuard;
+import io.beam.ir.erlang.ListExpr;
+import io.beam.ir.erlang.ListPattern;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TuplePattern;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
+import io.beam.ir.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
-import io.smithy.beam.ir.erlang.ErlBinPattern;
-import io.smithy.beam.ir.erlang.ErlBinary;
-import io.smithy.beam.ir.erlang.ErlBinaryExpr;
-import io.smithy.beam.ir.erlang.ErlBinaryPattern;
-import io.smithy.beam.ir.erlang.ErlBinaryTemplate;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCase;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlConsPattern;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlGuard;
-import io.smithy.beam.ir.erlang.ErlList;
-import io.smithy.beam.ir.erlang.ErlMatch;
-import io.smithy.beam.ir.erlang.ErlNilPattern;
-import io.smithy.beam.ir.erlang.ErlOp;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlTuplePattern;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -50,7 +50,7 @@ final class ErlangHttpChecksumIr {
         .anyMatch(index::hasChecksumBehavior);
   }
 
-  static Optional<ErlExpr> requestChecksumHeadersExpr(
+  static Optional<Expression> requestChecksumHeadersExpr(
       Model model, OperationShape op, SymbolProvider sp, String headersIn) {
     BeamHttpChecksumIndex checksumIndex = BeamHttpChecksumIndex.of(model);
     List<BeamHttpChecksumIndex.ChecksumBinding> bindings = checksumIndex.requestChecksums(op);
@@ -63,31 +63,28 @@ final class ErlangHttpChecksumIr {
     if (algorithmMember.isPresent()) {
       String bindingVar =
           ErlangJsonCodecSupport.toBindingVar(BeamNameUtils.toSnakeCase(algorithmMember.get()));
-      List<ErlClause> clauses = new ArrayList<>();
-      clauses.add(
-          ErlClause.clause(
-              List.of(ErlAtomPattern.atomPattern("undefined")), ErlVar.var(headersIn)));
+      List<Clause> clauses = new ArrayList<>();
+      clauses.add(Clause.of(AtomPattern.of("undefined"), Variable.of(headersIn)));
       for (BeamHttpChecksumIndex.ChecksumBinding binding : bindings) {
         String enumAtom = enumAtomForAlgorithm(model, op, sp, checksumIndex, binding.algorithm());
-        clauses.add(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern(enumAtom)),
-                checksumBranchExpr(binding, headersIn)));
+        clauses.add(Clause.of(AtomPattern.of(enumAtom), checksumBranchExpr(binding, headersIn)));
       }
       clauses.add(
-          ErlClause.clause(
-              List.of(ErlVarPattern.varPattern("Other")),
-              ErlCallLocal.callLocal(
+          Clause.of(
+              VariablePattern.of("Other"),
+              LocalCallExpr.of(
                   "error",
-                  ErlTuple.tuple(
-                      ErlAtom.atom("unsupported_checksum_algorithm"), ErlVar.var("Other")))));
+                  List.of(
+                      TupleExpr.of(
+                          List.of(
+                              AtomExpr.of("unsupported_checksum_algorithm"),
+                              Variable.of("Other")))))));
       return Optional.of(
-          ErlMatch.match(
-              ErlVarPattern.varPattern(headersOut),
-              ErlCase.caseExpr(ErlVar.var(bindingVar), clauses.toArray(ErlClause[]::new))));
+          MatchExpr.bindValue(
+              headersOut, CaseExpr.of(Variable.of(bindingVar), clauses)));
     }
 
-    List<ErlExpr> exprs = new ArrayList<>();
+    List<Expression> exprs = new ArrayList<>();
     String current = headersIn;
     for (int i = 0; i < bindings.size(); i++) {
       BeamHttpChecksumIndex.ChecksumBinding cb = bindings.get(i);
@@ -95,47 +92,55 @@ final class ErlangHttpChecksumIr {
       String next = i == bindings.size() - 1 ? headersOut : headersIn + "Checksum" + i;
       exprs.add(checksumComputationExpr(cb, checksumVar));
       exprs.add(
-          ErlMatch.match(
-              ErlVarPattern.varPattern(next),
-              ErlCallLocal.callLocal(
+          MatchExpr.bindValue(
+              next,
+              LocalCallExpr.of(
                   "headers_set",
-                  ErlBinary.binary(cb.headerName()),
-                  ErlCallLocal.callLocal("checksum_header_encode", ErlVar.var(checksumVar)),
-                  ErlVar.var(current))));
+                  List.of(
+                      BinaryExpr.of(cb.headerName()),
+                      LocalCallExpr.of(
+                          "checksum_header_encode", List.of(Variable.of(checksumVar))),
+                      Variable.of(current)))));
       current = next;
     }
-    return Optional.of(ErlExprBlock.block(exprs.toArray(ErlExpr[]::new)));
+    return Optional.of(BlockExpr.newlineSeparated(exprs, true));
   }
 
-  static ErlExpr responseChecksumGuardExpr(Model model, OperationShape op, ErlExpr successExpr) {
+  static Expression responseChecksumGuardExpr(
+      Model model, OperationShape op, Expression successExpr) {
     BeamHttpChecksumIndex checksumIndex = BeamHttpChecksumIndex.of(model);
     List<BeamHttpChecksumIndex.ChecksumBinding> bindings = checksumIndex.responseChecksums(op);
     if (bindings.isEmpty()) {
       return successExpr;
     }
 
-    List<ErlExpr> headerNames = new ArrayList<>();
+    List<Expression> headerNames = new ArrayList<>();
     for (BeamHttpChecksumIndex.ChecksumBinding binding : bindings) {
-      headerNames.add(ErlBinary.binary(binding.headerName()));
+      headerNames.add(BinaryExpr.of(binding.headerName()));
     }
-    return ErlCase.caseExpr(
-        ErlCallLocal.callLocal(
+    return CaseExpr.of(
+        LocalCallExpr.of(
             "validate_response_checksum",
-            ErlVar.var("Body"),
-            ErlVar.var("Headers"),
-            ErlList.list(headerNames.toArray(ErlExpr[]::new))),
-        ErlClause.clause(List.of(ErlAtomPattern.atomPattern("ok")), successExpr),
-        ErlClause.clause(
             List.of(
-                ErlTuplePattern.tuplePattern(
-                    ErlAtomPattern.atomPattern("error"), ErlVarPattern.varPattern("Reason"))),
-            ErlTuple.tuple(
-                ErlAtom.atom("error"),
-                ErlTuple.tuple(ErlAtom.atom("checksum_validation_failed"), ErlVar.var("Reason")))));
+                Variable.of("Body"),
+                Variable.of("Headers"),
+                ListExpr.of(headerNames))),
+        List.of(
+            Clause.of(AtomPattern.of("ok"), successExpr),
+            Clause.of(
+                TuplePattern.of(
+                    List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
+                TupleExpr.of(
+                    List.of(
+                        AtomExpr.of("error"),
+                        TupleExpr.of(
+                            List.of(
+                                AtomExpr.of("checksum_validation_failed"),
+                                Variable.of("Reason"))))))));
   }
 
-  static List<ErlFunction> checksumHelperFunctions() {
-    List<ErlFunction> functions = new ArrayList<>();
+  static List<Function> checksumHelperFunctions() {
+    List<Function> functions = new ArrayList<>();
     functions.add(ErlangCodecHelperIr.headersSet());
     functions.add(checksumHeaderEncode());
     functions.add(md5Hash());
@@ -152,200 +157,219 @@ final class ErlangHttpChecksumIr {
     return functions;
   }
 
-  private static ErlFunction checksumHeaderEncode() {
-    return ErlFunction.function(
+  private static Function checksumHeaderEncode() {
+    return Function.of(
         "checksum_header_encode",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Data")),
-                List.of(ErlGuard.guard("is_binary", ErlVar.var("Data"))),
-                ErlCall.call("base64", "encode", ErlVar.var("Data")))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Data")),
+                IsTypeGuard.of("binary", Variable.of("Data")),
+                RemoteCallExpr.of("base64", "encode", List.of(Variable.of("Data"))))));
   }
 
-  private static ErlFunction md5Hash() {
-    return ErlFunction.function(
+  private static Function md5Hash() {
+    return Function.of(
         "md5_hash",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Body")),
-                ErlCall.call("crypto", "hash", ErlAtom.atom("md5"), ErlVar.var("Body")))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body")),
+                RemoteCallExpr.of(
+                    "crypto", "hash", List.of(AtomExpr.of("md5"), Variable.of("Body"))))));
   }
 
-  private static ErlFunction sha256Hash() {
-    return ErlFunction.function(
+  private static Function sha256Hash() {
+    return Function.of(
         "sha256_hash",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Body")),
-                ErlCall.call("crypto", "hash", ErlAtom.atom("sha256"), ErlVar.var("Body")))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body")),
+                RemoteCallExpr.of(
+                    "crypto", "hash", List.of(AtomExpr.of("sha256"), Variable.of("Body"))))));
   }
 
-  private static ErlFunction crc32Hash() {
-    return ErlFunction.function(
+  private static Function crc32Hash() {
+    return Function.of(
         "crc32_hash",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Body")),
-                ErlBinaryTemplate.binaryTemplate(
-                    ErlBinaryExpr.expr(
-                        ErlCall.call("erlang", "crc32", ErlVar.var("Body")),
-                        "32/big-unsigned-integer")))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body")),
+                BinaryExpr.of(
+                    List.of(
+                        BinarySegmentExpr.of(
+                            RemoteCallExpr.of("erlang", "crc32", List.of(Variable.of("Body"))),
+                            "32/big-unsigned-integer"))))));
   }
 
-  private static ErlFunction crc32cHash() {
-    return ErlFunction.function(
+  private static Function crc32cHash() {
+    return Function.of(
         "crc32c_hash",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Body")),
-                ErlCall.call("crypto", "hash", ErlAtom.atom("crc32c"), ErlVar.var("Body")))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body")),
+                RemoteCallExpr.of(
+                    "crypto", "hash", List.of(AtomExpr.of("crc32c"), Variable.of("Body"))))));
   }
 
-  private static ErlFunction crc64nvmeHash() {
+  private static Function crc64nvmeHash() {
     return stubHashFunction("crc64nvme_hash", "crc64nvme");
   }
 
-  private static ErlFunction xxhash64Hash() {
+  private static Function xxhash64Hash() {
     return stubHashFunction("xxhash64_hash", "xxhash64");
   }
 
-  private static ErlFunction xxhash3Hash() {
+  private static Function xxhash3Hash() {
     return stubHashFunction("xxhash3_hash", "xxhash3");
   }
 
-  private static ErlFunction xxhash128Hash() {
+  private static Function xxhash128Hash() {
     return stubHashFunction("xxhash128_hash", "xxhash128");
   }
 
-  private static ErlFunction stubHashFunction(String name, String algorithm) {
-    return ErlFunction.function(
+  private static Function stubHashFunction(String name, String algorithm) {
+    return Function.of(
         name,
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("_Body")),
-                ErlCallLocal.callLocal(
+            FunctionClause.of(
+                List.of(VariablePattern.of("_Body")),
+                LocalCallExpr.of(
                     "error",
-                    ErlTuple.tuple(
-                        ErlAtom.atom("unsupported_checksum_algorithm"),
-                        ErlAtom.atom(algorithm))))));
+                    List.of(
+                        TupleExpr.of(
+                            List.of(
+                                AtomExpr.of("unsupported_checksum_algorithm"),
+                                AtomExpr.of(algorithm))))))));
   }
 
-  private static ErlFunction checksumDigest() {
-    return ErlFunction.function(
+  private static Function checksumDigest() {
+    return Function.of(
         "checksum_digest",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Body"), ErlBinaryPattern.binaryPattern("MD5")),
-                ErlCallLocal.callLocal("md5_hash", ErlVar.var("Body"))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Body"), ErlBinaryPattern.binaryPattern("SHA256")),
-                ErlCallLocal.callLocal("sha256_hash", ErlVar.var("Body"))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Body"), ErlBinaryPattern.binaryPattern("CRC32")),
-                ErlCallLocal.callLocal("crc32_hash", ErlVar.var("Body"))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Body"), ErlBinaryPattern.binaryPattern("CRC32C")),
-                ErlCallLocal.callLocal("crc32c_hash", ErlVar.var("Body")))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body"), BinaryPattern.of("MD5")),
+                LocalCallExpr.of("md5_hash", List.of(Variable.of("Body")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body"), BinaryPattern.of("SHA256")),
+                LocalCallExpr.of("sha256_hash", List.of(Variable.of("Body")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body"), BinaryPattern.of("CRC32")),
+                LocalCallExpr.of("crc32_hash", List.of(Variable.of("Body")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body"), BinaryPattern.of("CRC32C")),
+                LocalCallExpr.of("crc32c_hash", List.of(Variable.of("Body"))))));
   }
 
-  private static ErlFunction validateResponseChecksum() {
-    ErlCase checksumMatch =
-        ErlCase.caseExpr(
-            ErlOp.op(
-                "=:=",
-                ErlCallLocal.callLocal(
+  private static Function validateResponseChecksum() {
+    CaseExpr checksumMatch =
+        CaseExpr.of(
+            InfixExpr.of(
+                LocalCallExpr.of(
                     "checksum_header_encode",
-                    ErlCallLocal.callLocal(
-                        "checksum_digest",
-                        ErlVar.var("Body"),
-                        ErlCallLocal.callLocal(
-                            "checksum_algorithm_from_header", ErlVar.var("HeaderName")))),
-                ErlVar.var("Expected")),
-            ErlClause.clause(List.of(ErlAtomPattern.atomPattern("true")), ErlAtom.atom("ok")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("false")),
-                ErlTuple.tuple(
-                    ErlAtom.atom("error"),
-                    ErlTuple.tuple(ErlAtom.atom("checksum_mismatch"), ErlVar.var("HeaderName")))));
+                    List.of(
+                        LocalCallExpr.of(
+                            "checksum_digest",
+                            List.of(
+                                Variable.of("Body"),
+                                LocalCallExpr.of(
+                                    "checksum_algorithm_from_header",
+                                    List.of(Variable.of("HeaderName"))))))),
+                "=:=",
+                Variable.of("Expected")),
+            List.of(
+                Clause.of(AtomPattern.of("true"), AtomExpr.of("ok")),
+                Clause.of(
+                    VariablePattern.of("false"),
+                    TupleExpr.of(
+                        List.of(
+                            AtomExpr.of("error"),
+                            TupleExpr.of(
+                                List.of(
+                                    AtomExpr.of("checksum_mismatch"),
+                                    Variable.of("HeaderName"))))))));
 
-    return ErlFunction.function(
+    return Function.of(
         "validate_response_checksum",
-        3,
         List.of(
-            ErlClause.clause(
+            FunctionClause.of(
                 List.of(
-                    ErlVarPattern.varPattern("_Body"),
-                    ErlVarPattern.varPattern("_Headers"),
-                    ErlNilPattern.nilPattern()),
-                ErlAtom.atom("ok")),
-            ErlClause.clause(
+                    VariablePattern.of("_Body"),
+                    VariablePattern.of("_Headers"),
+                    ListPattern.of(List.of())),
+                AtomExpr.of("ok")),
+            FunctionClause.of(
                 List.of(
-                    ErlVarPattern.varPattern("Body"),
-                    ErlVarPattern.varPattern("Headers"),
-                    ErlConsPattern.consPattern(
-                        ErlVarPattern.varPattern("HeaderName"), ErlVarPattern.varPattern("Rest"))),
-                ErlCase.caseExpr(
-                    ErlCall.call(
+                    VariablePattern.of("Body"),
+                    VariablePattern.of("Headers"),
+                    ListPattern.cons(
+                        VariablePattern.of("HeaderName"), VariablePattern.of("Rest"))),
+                CaseExpr.of(
+                    RemoteCallExpr.of(
                         "proplists",
                         "get_value",
-                        ErlVar.var("HeaderName"),
-                        ErlVar.var("Headers"),
-                        ErlAtom.atom("undefined")),
-                    ErlClause.clause(
-                        List.of(ErlAtomPattern.atomPattern("undefined")),
-                        ErlCallLocal.callLocal(
-                            "validate_response_checksum",
-                            ErlVar.var("Body"),
-                            ErlVar.var("Headers"),
-                            ErlVar.var("Rest"))),
-                    ErlClause.clause(
-                        List.of(ErlVarPattern.varPattern("Expected")), checksumMatch)))));
+                        List.of(
+                            Variable.of("HeaderName"),
+                            Variable.of("Headers"),
+                            AtomExpr.of("undefined"))),
+                    List.of(
+                        Clause.of(
+                            AtomPattern.of("undefined"),
+                            LocalCallExpr.of(
+                                "validate_response_checksum",
+                                List.of(
+                                    Variable.of("Body"),
+                                    Variable.of("Headers"),
+                                    Variable.of("Rest")))),
+                        Clause.of(VariablePattern.of("Expected"), checksumMatch))))));
   }
 
-  private static ErlFunction checksumAlgorithmFromHeader() {
-    return ErlFunction.function(
+  private static Function checksumAlgorithmFromHeader() {
+    return Function.of(
         "checksum_algorithm_from_header",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlBinPattern.binPattern("\"x-amz-checksum-\", Rest/binary")),
-                ErlCallLocal.callLocal(
+            FunctionClause.of(
+                List.of(
+                    BinaryPattern.of(
+                        List.of(
+                            BinarySegmentPattern.literal("x-amz-checksum-"),
+                            BinarySegmentPattern.of(VariablePattern.of("Rest"), "binary")))),
+                LocalCallExpr.of(
                     "list_to_binary",
-                    ErlCall.call(
-                        "string",
-                        "uppercase",
-                        ErlCallLocal.callLocal("binary_to_list", ErlVar.var("Rest")))))));
+                    List.of(
+                        RemoteCallExpr.of(
+                            "string",
+                            "uppercase",
+                            List.of(
+                                LocalCallExpr.of(
+                                    "binary_to_list", List.of(Variable.of("Rest"))))))))));
   }
 
-  private static ErlExpr checksumBranchExpr(
+  private static Expression checksumBranchExpr(
       BeamHttpChecksumIndex.ChecksumBinding cb, String headersVar) {
-    return ErlExprBlock.block(
-        checksumComputationExpr(cb, "Checksum"),
-        ErlCallLocal.callLocal(
-            "headers_set",
-            ErlBinary.binary(cb.headerName()),
-            ErlCallLocal.callLocal("checksum_header_encode", ErlVar.var("Checksum")),
-            ErlVar.var(headersVar)));
+    return BlockExpr.newlineSeparated(
+        List.of(
+            checksumComputationExpr(cb, "Checksum"),
+            LocalCallExpr.of(
+                "headers_set",
+                List.of(
+                    BinaryExpr.of(cb.headerName()),
+                    LocalCallExpr.of(
+                        "checksum_header_encode", List.of(Variable.of("Checksum"))),
+                    Variable.of(headersVar)))),
+        true);
   }
 
-  private static ErlExpr checksumComputationExpr(
+  private static Expression checksumComputationExpr(
       BeamHttpChecksumIndex.ChecksumBinding cb, String checksumVar) {
     if (cb.usesCryptoHash()) {
-      return ErlMatch.match(
-          ErlVarPattern.varPattern(checksumVar),
-          ErlCall.call(
-              "crypto", "hash", ErlAtom.atom(cb.algorithmErlangAtom()), ErlVar.var("Body")));
+      return MatchExpr.bindValue(
+          checksumVar,
+          RemoteCallExpr.of(
+              "crypto",
+              "hash",
+              List.of(AtomExpr.of(cb.algorithmErlangAtom()), Variable.of("Body"))));
     }
-    return ErlMatch.match(
-        ErlVarPattern.varPattern(checksumVar),
-        ErlCallLocal.callLocal(cb.hashHelperName(), ErlVar.var("Body")));
+    return MatchExpr.bindValue(
+        checksumVar, LocalCallExpr.of(cb.hashHelperName(), List.of(Variable.of("Body"))));
   }
 
   @SuppressWarnings("unchecked")
