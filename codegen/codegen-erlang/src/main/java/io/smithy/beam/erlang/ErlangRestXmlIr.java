@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.Function;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamXmlBindingIndex;
@@ -156,9 +157,9 @@ final class ErlangRestXmlIr {
     return ErlangRestXmlOperationIr.buildEncodeResponse(model, op, httpIndex, sp);
   }
 
-  static List<ErlFunction> enumHelperFunctions(
+  static List<Function> enumHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
-    List<ErlFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (EnumShape enumShape : ErlangRestXmlSupport.reachableEnumShapes(model, service)) {
       functions.addAll(ErlangEnumHelperIr.enumDecodeEncode(enumShape, sp));
     }
@@ -168,11 +169,11 @@ final class ErlangRestXmlIr {
     return functions;
   }
 
-  static List<ErlFunction> xmlDecodeHelpers() {
+  static List<Function> xmlDecodeHelpers() {
     return ErlangXmlCodecIr.restXmlDecodeHelpers();
   }
 
-  static List<ErlFunction> xmlEncodeHelpers() {
+  static List<Function> xmlEncodeHelpers() {
     return ErlangXmlCodecIr.restXmlEncodeHelpers();
   }
 

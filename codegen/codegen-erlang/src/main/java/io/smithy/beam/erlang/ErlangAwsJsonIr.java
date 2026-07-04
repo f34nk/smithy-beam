@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.Function;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamProtocolIds;
@@ -199,9 +200,9 @@ final class ErlangAwsJsonIr {
         model, op, httpIndex, sp, contentType, eventStreamModule);
   }
 
-  static List<ErlFunction> sharedCodecHelpers(
+  static List<Function> sharedCodecHelpers(
       Model model, ServiceShape service, SymbolProvider sp) {
-    List<ErlFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     functions.addAll(ErlangRestJsonIr.structureHelperFunctions(model, service, sp));
     functions.addAll(ErlangRestJsonIr.enumHelperFunctions(model, service, sp));
     functions.addAll(ErlangRestJsonIr.unionHelperFunctions(model, service, sp));

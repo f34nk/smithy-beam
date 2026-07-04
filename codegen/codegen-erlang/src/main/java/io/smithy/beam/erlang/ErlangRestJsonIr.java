@@ -1,21 +1,22 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.InfixExpr;
+import io.beam.ir.erlang.IsTypeGuard;
+import io.beam.ir.erlang.ListComprehensionExpr;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamRequestCompressionIndex;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
 import io.smithy.beam.ir.erlang.ErlAttribute;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlClause;
 import io.smithy.beam.ir.erlang.ErlComment;
 import io.smithy.beam.ir.erlang.ErlExportAttribute;
 import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlGuard;
-import io.smithy.beam.ir.erlang.ErlListComprehension;
 import io.smithy.beam.ir.erlang.ErlModule;
-import io.smithy.beam.ir.erlang.ErlOp;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -172,9 +173,9 @@ final class ErlangRestJsonIr {
     return ErlangRestJsonOperationIr.buildErrorDispatch(model, service, op, httpIndex, sp);
   }
 
-  static List<ErlFunction> structureHelperFunctions(
+  static List<Function> structureHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
-    List<ErlFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     Set<StructureShape> structures = new LinkedHashSet<>();
     Set<StructureShape> listElementStructures = new LinkedHashSet<>();
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
@@ -190,56 +191,51 @@ final class ErlangRestJsonIr {
     return functions;
   }
 
-  static List<ErlFunction> buildStructureDecodeEncode(
+  static List<Function> buildStructureDecodeEncode(
       Model model, HttpBindingIndex httpIndex, StructureShape structure, SymbolProvider sp) {
     return ErlangStructureHelperIr.structureDecodeEncode(model, httpIndex, structure, sp);
   }
 
-  static List<ErlFunction> buildStructureListDecodeEncodeFunctions(
+  static List<Function> buildStructureListDecodeEncodeFunctions(
       StructureShape structure, SymbolProvider sp) {
     String helperName = ErlangJsonCodecSupport.structureHelperName(sp, structure);
     return List.of(buildStructureListDecode(helperName), buildStructureListEncode(helperName));
   }
 
-  private static ErlFunction buildStructureListDecode(String helperName) {
-    return ErlFunction.function(
+  private static Function buildStructureListDecode(String helperName) {
+    return Function.of(
         "decode_" + helperName + "_list",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("null")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("List")),
-                List.of(ErlGuard.guard("is_list", ErlVar.var("List"))),
-                ErlListComprehension.comprehensionWithFilters(
-                    ErlCallLocal.callLocal("decode_" + helperName, ErlVar.var("V")),
-                    ErlVarPattern.varPattern("V"),
-                    ErlVar.var("List"),
-                    List.of(ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("null")))))));
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")),
+            FunctionClause.of(List.of(AtomPattern.of("null")), AtomExpr.of("undefined")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("List")),
+                IsTypeGuard.of("list", Variable.of("List")),
+                ListComprehensionExpr.of(
+                    LocalCallExpr.of("decode_" + helperName, List.of(Variable.of("V"))),
+                    VariablePattern.of("V"),
+                    Variable.of("List"),
+                    InfixExpr.of(Variable.of("V"), "=/=", AtomExpr.of("null"))))));
   }
 
-  private static ErlFunction buildStructureListEncode(String helperName) {
-    return ErlFunction.function(
+  private static Function buildStructureListEncode(String helperName) {
+    return Function.of(
         "encode_" + helperName + "_list",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("List")),
-                List.of(ErlGuard.guard("is_list", ErlVar.var("List"))),
-                ErlListComprehension.comprehensionWithFilters(
-                    ErlCallLocal.callLocal("encode_" + helperName, ErlVar.var("V")),
-                    ErlVarPattern.varPattern("V"),
-                    ErlVar.var("List"),
-                    List.of(ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))))));
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("List")),
+                IsTypeGuard.of("list", Variable.of("List")),
+                ListComprehensionExpr.of(
+                    LocalCallExpr.of("encode_" + helperName, List.of(Variable.of("V"))),
+                    VariablePattern.of("V"),
+                    Variable.of("List"),
+                    InfixExpr.of(Variable.of("V"), "=/=", AtomExpr.of("undefined"))))));
   }
 
-  static List<ErlFunction> enumHelperFunctions(
+  static List<Function> enumHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
-    List<ErlFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (EnumShape enumShape : ErlangRestJsonSupport.reachableEnumShapes(model, service)) {
       functions.addAll(ErlangEnumHelperIr.enumDecodeEncode(enumShape, sp));
     }
@@ -249,18 +245,18 @@ final class ErlangRestJsonIr {
     return functions;
   }
 
-  static List<ErlFunction> unionHelperFunctions(
+  static List<Function> unionHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
-    List<ErlFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (UnionShape union : ErlangRestJsonSupport.reachableUnionShapes(model, service)) {
       functions.addAll(ErlangUnionHelperIr.unionDecodeEncode(union, sp));
     }
     return functions;
   }
 
-  static List<ErlFunction> mapHelperFunctions(
+  static List<Function> mapHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
-    List<ErlFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     for (MapShape map : ErlangRestJsonSupport.reachableTypedMapShapes(model, service)) {
       functions.addAll(ErlangMapHelperIr.mapDecodeEncode(model, httpIndex, map, sp));
@@ -268,8 +264,8 @@ final class ErlangRestJsonIr {
     return functions;
   }
 
-  static List<ErlFunction> privateCodecHelpers(Model model, ServiceShape service) {
-    List<ErlFunction> functions = new ArrayList<>();
+  static List<Function> privateCodecHelpers(Model model, ServiceShape service) {
+    List<Function> functions = new ArrayList<>();
     functions.add(ErlangCodecHelperIr.toBinary(ErlangCodecHelperIr.ToBinaryVariant.REST_JSON));
     functions.add(ErlangCodecHelperIr.encodeQueryValueRestJson());
     functions.add(ErlangCodecHelperIr.uriEncode());
