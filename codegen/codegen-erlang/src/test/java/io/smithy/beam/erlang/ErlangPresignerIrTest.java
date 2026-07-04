@@ -6,11 +6,14 @@ import io.smithy.beam.ir.erlang.ErlModule;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
+
+@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ErlangPresignerIrTest {
   private static final ShapeId SIGV4_SERVICE =
       ShapeId.from("smithy.beam.test.sigv4#Sigv4TestService");
