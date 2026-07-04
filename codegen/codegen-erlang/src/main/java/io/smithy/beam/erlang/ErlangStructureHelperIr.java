@@ -106,7 +106,7 @@ final class ErlangStructureHelperIr {
                                     List.of(WildcardPattern.of(), VariablePattern.of("V")),
                                     InfixExpr.of(
                                         Variable.of("V"), "=/=", AtomExpr.of("undefined"))))),
-                        MapExpr.of(entries)))));
+                        MapExpr.of(entries))))));
   }
 
   private static Expression decodeFieldValue(
