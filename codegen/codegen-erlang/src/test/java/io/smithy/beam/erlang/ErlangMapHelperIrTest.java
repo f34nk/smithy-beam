@@ -2,12 +2,10 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.Function;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlFunction;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -70,37 +68,23 @@ class ErlangMapHelperIrTest {
   @Test
   void decodeColorLabelsMatchesGolden() throws IOException {
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-    ErlFunction decode =
+    Function decode =
         ErlangMapHelperIr.mapDecodeEncode(model, httpIndex, colorMapShape, provider).get(0);
     assertStructural(decode);
-    assertThat(decode.asString())
-        .isEqualTo(readExpectedString("ir/map_decode_color_labels.expected.erl"));
+    IrGoldenAssertions.assertGolden(decode, "ir/map_decode_color_labels.expected.erl");
   }
 
   @Test
   void encodeColorLabelsMatchesGolden() throws IOException {
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-    ErlFunction encode =
+    Function encode =
         ErlangMapHelperIr.mapDecodeEncode(model, httpIndex, colorMapShape, provider).get(1);
     assertStructural(encode);
-    assertThat(encode.asString())
-        .isEqualTo(readExpectedString("ir/map_encode_color_labels.expected.erl"));
+    IrGoldenAssertions.assertGolden(encode, "ir/map_encode_color_labels.expected.erl");
   }
 
-  private static void assertStructural(ErlFunction fn) {
+  private static void assertStructural(Function fn) {
     assertThat(fn.name()).isNotBlank();
     assertThat(fn.clauses()).isNotEmpty();
-  }
-
-  private static String readExpectedString(String resourcePath) throws IOException {
-    try (InputStream in =
-        ErlangMapHelperIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
-      assertThat(in).as("resource %s", resourcePath).isNotNull();
-      String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-      if (text.endsWith("\n")) {
-        text = text.substring(0, text.length() - 1);
-      }
-      return text;
-    }
   }
 }
