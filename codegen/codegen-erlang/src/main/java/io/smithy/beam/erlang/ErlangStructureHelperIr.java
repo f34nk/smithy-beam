@@ -1,25 +1,27 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BinaryExpr;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.Fun;
+import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.InfixExpr;
+import io.beam.ir.erlang.IsTypeGuard;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MapEntry;
+import io.beam.ir.erlang.MapExpr;
+import io.beam.ir.erlang.RecordExpr;
+import io.beam.ir.erlang.RecordField;
+import io.beam.ir.erlang.RecordFieldAccessExpr;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
+import io.beam.ir.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
-import io.smithy.beam.ir.erlang.ErlBinary;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlFun;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlGuard;
-import io.smithy.beam.ir.erlang.ErlMap;
-import io.smithy.beam.ir.erlang.ErlMapEntry;
-import io.smithy.beam.ir.erlang.ErlOp;
-import io.smithy.beam.ir.erlang.ErlRecord;
-import io.smithy.beam.ir.erlang.ErlRecordAccess;
-import io.smithy.beam.ir.erlang.ErlRecordField;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -39,7 +41,7 @@ import software.amazon.smithy.model.traits.SparseTrait;
 final class ErlangStructureHelperIr {
   private ErlangStructureHelperIr() {}
 
-  static List<ErlFunction> structureDecodeEncode(
+  static List<Function> structureDecodeEncode(
       Model model, HttpBindingIndex httpIndex, StructureShape structure, SymbolProvider sp) {
     String helperName = ErlangJsonCodecSupport.structureHelperName(sp, structure);
     return List.of(
@@ -47,100 +49,102 @@ final class ErlangStructureHelperIr {
         structureEncode(model, httpIndex, structure, sp, helperName));
   }
 
-  private static ErlFunction structureDecode(
+  private static Function structureDecode(
       Model model,
       HttpBindingIndex httpIndex,
       StructureShape structure,
       SymbolProvider sp,
       String helperName) {
-    List<ErlRecordField> fields = new ArrayList<>();
+    List<RecordField> fields = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
       String wireKey = ErlangJsonCodecSupport.jsonKey(member);
-      ErlExpr raw =
+      Expression raw =
           ErlangCodecHelperIr.mapsGetDefault(
-              ErlBinary.binary(wireKey), ErlVar.var("Map"), ErlAtom.atom("undefined"));
+              BinaryExpr.of(wireKey), Variable.of("Map"), AtomExpr.of("undefined"));
       fields.add(
-          ErlRecordField.field(fieldName, decodeFieldValue(model, sp, httpIndex, member, raw)));
+          RecordField.of(fieldName, decodeFieldValue(model, sp, httpIndex, member, raw)));
     }
-    return ErlFunction.function(
+    return Function.of(
         "decode_" + helperName,
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("null")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Map")),
-                List.of(ErlGuard.guard("is_map", ErlVar.var("Map"))),
-                ErlRecord.record(helperName, fields.toArray(ErlRecordField[]::new)))));
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")),
+            FunctionClause.of(List.of(AtomPattern.of("null")), AtomExpr.of("undefined")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Map")),
+                IsTypeGuard.of("map", Variable.of("Map")),
+                RecordExpr.of(helperName, fields))));
   }
 
-  private static ErlFunction structureEncode(
+  private static Function structureEncode(
       Model model,
       HttpBindingIndex httpIndex,
       StructureShape structure,
       SymbolProvider sp,
       String helperName) {
-    List<ErlMapEntry> entries = new ArrayList<>();
+    List<MapEntry> entries = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String wireKey = ErlangJsonCodecSupport.jsonKey(member);
       entries.add(
-          ErlMapEntry.entry(
-              ErlBinary.binary(wireKey),
+          MapEntry.of(
+              BinaryExpr.of(wireKey),
               encodeFieldValueFromRecord(model, sp, httpIndex, structure, member, "Record")));
     }
-    return ErlFunction.function(
+    return Function.of(
         "encode_" + helperName,
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Record")),
-                ErlCall.call(
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Record")),
+                RemoteCallExpr.of(
                     "maps",
                     "filter",
-                    ErlFun.fun(
-                        ErlClause.clause(
-                            List.of(ErlVarPattern.varPattern("_"), ErlVarPattern.varPattern("V")),
-                            ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))),
-                    ErlMap.map(entries.toArray(ErlMapEntry[]::new))))));
+                    List.of(
+                        Fun.of(
+                            List.of(
+                                FunClause.of(
+                                    List.of(WildcardPattern.of(), VariablePattern.of("V")),
+                                    InfixExpr.of(
+                                        Variable.of("V"), "=/=", AtomExpr.of("undefined"))))),
+                        MapExpr.of(entries)))));
   }
 
-  private static ErlExpr decodeFieldValue(
-      Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member, ErlExpr raw) {
+  private static Expression decodeFieldValue(
+      Model model,
+      SymbolProvider sp,
+      HttpBindingIndex httpIndex,
+      MemberShape member,
+      Expression raw) {
     Shape target = model.expectShape(member.getTarget());
     if (target instanceof EnumShape || target instanceof IntEnumShape) {
       String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
-      return ErlCallLocal.callLocal("decode_" + helperName, raw);
+      return LocalCallExpr.of("decode_" + helperName, List.of(raw));
     }
     if (target instanceof UnionShape union
         && !BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
       String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
-      return ErlCallLocal.callLocal("decode_" + helperName, raw);
+      return LocalCallExpr.of("decode_" + helperName, List.of(raw));
     }
     if (target instanceof StructureShape) {
       String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
-      return ErlCallLocal.callLocal("decode_" + helperName, raw);
+      return LocalCallExpr.of("decode_" + helperName, List.of(raw));
     }
     if (target instanceof TimestampShape) {
       String decodeHelper = timestampDecodeHelper(httpIndex, member);
-      return ErlCallLocal.callLocal(decodeHelper, raw);
+      return LocalCallExpr.of(decodeHelper, List.of(raw));
     }
     if (target instanceof ListShape listShape) {
       Shape element = model.expectShape(listShape.getMember().getTarget());
       if (element instanceof StructureShape) {
         String helperName = ErlangJsonCodecSupport.structureHelperName(sp, element);
-        return ErlCallLocal.callLocal("decode_" + helperName + "_list", raw);
+        return LocalCallExpr.of("decode_" + helperName + "_list", List.of(raw));
       }
       if (element instanceof EnumShape || element instanceof IntEnumShape) {
         String helperName = ErlangJsonCodecSupport.structureHelperName(sp, element);
-        return ErlCallLocal.callLocal("decode_" + helperName + "_list", raw);
+        return LocalCallExpr.of("decode_" + helperName + "_list", List.of(raw));
       }
       String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
-      return ErlCallLocal.callLocal(helper, raw);
+      return LocalCallExpr.of(helper, List.of(raw));
     }
     if (target instanceof MapShape mapShape) {
       return ErlangMapHelperIr.mapDecodeExpr(model, sp, httpIndex, mapShape, raw);
@@ -148,7 +152,7 @@ final class ErlangStructureHelperIr {
     return raw;
   }
 
-  private static ErlExpr encodeFieldValueFromRecord(
+  private static Expression encodeFieldValueFromRecord(
       Model model,
       SymbolProvider sp,
       HttpBindingIndex httpIndex,
@@ -157,46 +161,47 @@ final class ErlangStructureHelperIr {
       String recordVar) {
     String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
     String recordName = ErlangJsonCodecSupport.structureHelperName(sp, parent);
-    ErlExpr binding = ErlRecordAccess.recordAccess(ErlVar.var(recordVar), recordName, fieldName);
+    Expression binding =
+        RecordFieldAccessExpr.of(Variable.of(recordVar), recordName, fieldName);
     return encodeFieldValue(model, sp, httpIndex, member, binding);
   }
 
-  private static ErlExpr encodeFieldValue(
+  private static Expression encodeFieldValue(
       Model model,
       SymbolProvider sp,
       HttpBindingIndex httpIndex,
       MemberShape member,
-      ErlExpr binding) {
+      Expression binding) {
     Shape target = model.expectShape(member.getTarget());
     if (target instanceof EnumShape || target instanceof IntEnumShape) {
       String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
-      return ErlCallLocal.callLocal("encode_" + helperName, binding);
+      return LocalCallExpr.of("encode_" + helperName, List.of(binding));
     }
     if (target instanceof UnionShape union
         && !BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
       String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
-      return ErlCallLocal.callLocal("encode_" + helperName, binding);
+      return LocalCallExpr.of("encode_" + helperName, List.of(binding));
     }
     if (target instanceof StructureShape) {
       String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
-      return ErlCallLocal.callLocal("encode_" + helperName, binding);
+      return LocalCallExpr.of("encode_" + helperName, List.of(binding));
     }
     if (target instanceof TimestampShape) {
       String encodeHelper = timestampEncodeHelper(httpIndex, member);
-      return ErlCallLocal.callLocal(encodeHelper, binding);
+      return LocalCallExpr.of(encodeHelper, List.of(binding));
     }
     if (target instanceof ListShape listShape) {
       Shape element = model.expectShape(listShape.getMember().getTarget());
       if (element instanceof StructureShape) {
         String helperName = ErlangJsonCodecSupport.structureHelperName(sp, element);
-        return ErlCallLocal.callLocal("encode_" + helperName + "_list", binding);
+        return LocalCallExpr.of("encode_" + helperName + "_list", List.of(binding));
       }
       if (element instanceof EnumShape || element instanceof IntEnumShape) {
         String helperName = ErlangJsonCodecSupport.structureHelperName(sp, element);
-        return ErlCallLocal.callLocal("encode_" + helperName + "_list", binding);
+        return LocalCallExpr.of("encode_" + helperName + "_list", List.of(binding));
       }
       if (target.hasTrait(SparseTrait.class)) {
-        return ErlCallLocal.callLocal("encode_sparse_list", binding);
+        return LocalCallExpr.of("encode_sparse_list", List.of(binding));
       }
       return binding;
     }
