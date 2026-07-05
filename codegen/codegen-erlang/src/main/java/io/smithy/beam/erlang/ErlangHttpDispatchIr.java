@@ -214,7 +214,7 @@ final class ErlangHttpDispatchIr {
                                 MapPatternEntry.of(
                                     AtomExpr.of("scheme"), VariablePattern.of("Scheme"), true),
                                 MapPatternEntry.of(
-                                    AtomExpr.of("host"), VariablePattern.of("Host"), true)),
+                                    AtomExpr.of("host"), VariablePattern.of("Host"), true))),
                         VariablePattern.of("Parts")),
                     BlockExpr.commaSeparated(
                         List.of(
@@ -328,8 +328,7 @@ final class ErlangHttpDispatchIr {
                                       List.of(
                                           MapPatternEntry.of(
                                               AtomExpr.of("url"),
-                                              VariablePattern.of("ResolvedUrl"),
-                                              true)))),
+                                              VariablePattern.of("ResolvedUrl"), true))))),
                           Variable.of("ResolvedUrl")),
                       Clause.of(
                           VariablePattern.of("_"),

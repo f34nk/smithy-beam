@@ -364,9 +364,9 @@ final class ErlangWaiterIr {
                     MapPattern.of(
                         List.of(
                             MapPatternEntry.of(
-                                AtomExpr.of("matcher"), AtomPattern.of("success", true)),
+                                AtomExpr.of("matcher"), AtomPattern.of("success"), true),
                             MapPatternEntry.of(
-                                AtomExpr.of("expected"), AtomPattern.of("true")), true)),
+                                AtomExpr.of("expected"), AtomPattern.of("true"), true))),
                     TuplePattern.of(
                         List.of(AtomPattern.of("ok"), VariablePattern.of("_")))),
                 AtomExpr.of("true")),
@@ -375,9 +375,9 @@ final class ErlangWaiterIr {
                     MapPattern.of(
                         List.of(
                             MapPatternEntry.of(
-                                AtomExpr.of("matcher"), AtomPattern.of("success", true)),
+                                AtomExpr.of("matcher"), AtomPattern.of("success"), true),
                             MapPatternEntry.of(
-                                AtomExpr.of("expected"), AtomPattern.of("false")), true)),
+                                AtomExpr.of("expected"), AtomPattern.of("false"), true))),
                     TuplePattern.of(
                         List.of(AtomPattern.of("error"), VariablePattern.of("_")))),
                 AtomExpr.of("true")),
@@ -386,9 +386,9 @@ final class ErlangWaiterIr {
                     MapPattern.of(
                         List.of(
                             MapPatternEntry.of(
-                                AtomExpr.of("matcher"), AtomPattern.of("errorType", true)),
+                                AtomExpr.of("matcher"), AtomPattern.of("errorType"), true),
                             MapPatternEntry.of(
-                                AtomExpr.of("expected"), VariablePattern.of("Expected")), true)),
+                                AtomExpr.of("expected"), VariablePattern.of("Expected"), true))),
                     TuplePattern.of(
                         List.of(AtomPattern.of("error"), VariablePattern.of("Got")))),
                 LocalCallExpr.of(
@@ -399,13 +399,13 @@ final class ErlangWaiterIr {
                     MapPattern.of(
                         List.of(
                             MapPatternEntry.of(
-                                AtomExpr.of("matcher"), AtomPattern.of("output", true)),
+                                AtomExpr.of("matcher"), AtomPattern.of("output"), true),
                             MapPatternEntry.of(
-                                AtomExpr.of("path"), VariablePattern.of("Path", true)),
+                                AtomExpr.of("path"), VariablePattern.of("Path"), true),
                             MapPatternEntry.of(
-                                AtomExpr.of("comparator"), AtomPattern.of("stringEquals", true)),
+                                AtomExpr.of("comparator"), AtomPattern.of("stringEquals"), true),
                             MapPatternEntry.of(
-                                AtomExpr.of("expected"), VariablePattern.of("Expected")), true)),
+                                AtomExpr.of("expected"), VariablePattern.of("Expected"), true))),
                     TuplePattern.of(
                         List.of(AtomPattern.of("ok"), VariablePattern.of("Output")))),
                 LocalCallExpr.of(
@@ -417,13 +417,13 @@ final class ErlangWaiterIr {
                     MapPattern.of(
                         List.of(
                             MapPatternEntry.of(
-                                AtomExpr.of("matcher"), AtomPattern.of("inputOutput", true)),
+                                AtomExpr.of("matcher"), AtomPattern.of("inputOutput"), true),
                             MapPatternEntry.of(
-                                AtomExpr.of("path"), VariablePattern.of("Path", true)),
+                                AtomExpr.of("path"), VariablePattern.of("Path"), true),
                             MapPatternEntry.of(
-                                AtomExpr.of("comparator"), AtomPattern.of("stringEquals", true)),
+                                AtomExpr.of("comparator"), AtomPattern.of("stringEquals"), true),
                             MapPatternEntry.of(
-                                AtomExpr.of("expected"), VariablePattern.of("Expected")), true)),
+                                AtomExpr.of("expected"), VariablePattern.of("Expected"), true))),
                     TuplePattern.of(
                         List.of(AtomPattern.of("ok"), VariablePattern.of("Output")))),
                 LocalCallExpr.of(
