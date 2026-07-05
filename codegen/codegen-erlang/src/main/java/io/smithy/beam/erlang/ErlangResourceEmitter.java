@@ -22,7 +22,7 @@ public final class ErlangResourceEmitter {
     String file = layout.resourceClientModuleFile(resourceSnake);
     ErlModule module =
         ErlangResourceIr.clientModule(ctx, resource, index, layout, layout.clientModuleName());
-    ErlangCodecEmission.writeModule(ctx, file, module);
+    ErlangCodecEmission.writeModule(ctx, file, module.asString());
   }
 
   public static void emitServer(ErlangContext ctx, ResourceShape resource) {
@@ -36,6 +36,6 @@ public final class ErlangResourceEmitter {
     String file = layout.resourceServerModuleFile(resourceSnake);
     ErlModule module =
         ErlangResourceIr.serverModule(ctx, resource, index, layout, layout.serverModuleName());
-    ErlangCodecEmission.writeModule(ctx, file, module);
+    ErlangCodecEmission.writeModule(ctx, file, module.asString());
   }
 }
