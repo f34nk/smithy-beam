@@ -159,7 +159,7 @@ class HttpPrefixHeadersTest {
             .orElse("");
     assertThat(codec).contains("encode_put_object_request(");
     assertThat(codec)
-        .contains("Headers = Headers ++ prefix_headers_to_list(<<\"x-amz-meta-\">>, Metadata)");
+        .contains("Headers = (Headers ++ prefix_headers_to_list(<<\"x-amz-meta-\">>, Metadata))");
     assertThat(codec).contains("prefix_headers_to_list(_Prefix, undefined) ->");
     assertThat(codec).contains("prefix_headers_from_list(Headers, Prefix) ->");
   }
@@ -235,7 +235,7 @@ class HttpPrefixHeadersTest {
             .orElse("");
     assertThat(codec).contains("encode_get_object_response(");
     assertThat(codec)
-        .contains("Headers = Headers ++ prefix_headers_to_list(<<\"x-amz-meta-\">>, Metadata)");
+        .contains("Headers = (Headers ++ prefix_headers_to_list(<<\"x-amz-meta-\">>, Metadata))");
   }
 
   @Test
