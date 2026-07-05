@@ -1,6 +1,5 @@
 package io.smithy.beam.erlang;
 
-import io.beam.ir.erlang.ApplyExpr;
 import io.beam.ir.erlang.AtomExpr;
 import io.beam.ir.erlang.AtomPattern;
 import io.beam.ir.erlang.BinaryExpr;
@@ -504,8 +503,9 @@ final class ErlangHttpDispatchIr {
             TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("Reason"))));
 
     return CaseExpr.of(
-        ApplyExpr.of(
+        RemoteCallExpr.of(
             Variable.of("HttpClient"),
+            AtomExpr.of("request"),
             List.of(
                 LocalCallExpr.of(
                     "binary_to_atom",
