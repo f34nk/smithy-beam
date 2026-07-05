@@ -2,8 +2,9 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlModule;
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.Module;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -62,33 +63,33 @@ class ErlangRuntimeHelpersIrTest {
 
   @Test
   void labelParsingFunctionsMatchGolden() throws IOException {
-    List<ErlFunction> functions = ErlangRuntimeHelpersIr.labelParsingFunctions();
+    List<Function> functions = ErlangRuntimeHelpersIr.labelParsingFunctions();
     assertThat(functions).hasSize(4);
-    for (ErlFunction fn : functions) {
+    for (Function fn : functions) {
       assertThat(fn.name()).isNotBlank();
       assertThat(fn.clauses()).isNotEmpty();
     }
     String combined =
-        functions.stream().map(ErlFunction::asString).collect(Collectors.joining("\n\n"));
+        functions.stream().map(ErlangRenderer::renderFunction).collect(Collectors.joining("\n\n"));
     assertThat(combined)
         .isEqualTo(readExpectedString("ir/runtime_helpers_label_parsing.expected.erl"));
   }
 
   @Test
   void resolveBaseUrlAsStringMatchesGolden() throws IOException {
-    assertThat(ErlangRuntimeHelpersIr.resolveBaseUrl().asString())
-        .isEqualTo(readExpectedString("ir/runtime_helpers_resolve_base_url.expected.erl"));
+    IrGoldenAssertions.assertGolden(
+        ErlangRuntimeHelpersIr.resolveBaseUrl(),
+        "ir/runtime_helpers_resolve_base_url.expected.erl");
   }
 
   @Test
   void labelBindingsModuleMatchesGolden() throws IOException {
     Model model = labelModel();
     ServiceShape service = model.expectShape(ShapeId.from(LABEL_SERVICE), ServiceShape.class);
-    ErlModule module =
+    Module module =
         ErlangRuntimeHelpersIr.runtimeHelpersModule(
             "runtime_helpers", service, model, false, true, false);
-    assertThat(module.asString())
-        .isEqualTo(readExpectedString("ir/runtime_helpers_label_module.expected.erl"));
+    IrGoldenAssertions.assertGolden(module, "ir/runtime_helpers_label_module.expected.erl");
   }
 
   private static String readExpectedString(String resourcePath) throws IOException {
