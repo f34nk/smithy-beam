@@ -1,26 +1,26 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.ir.erlang.ErlFunction;
+import io.beam.ir.erlang.Function;
 import java.util.ArrayList;
 import java.util.List;
 
 final class ErlangServerModuleBuilder {
-  private final List<ErlFunction> operationFunctions = new ArrayList<>();
-  private final List<ErlFunction> discoveryFunctions = new ArrayList<>();
+  private final List<Function> operationFunctions = new ArrayList<>();
+  private final List<Function> discoveryFunctions = new ArrayList<>();
 
-  void addOperationFunction(ErlFunction function) {
+  void addOperationFunction(Function function) {
     operationFunctions.add(function);
   }
 
-  void addDiscoveryFunctions(List<ErlFunction> functions) {
+  void addDiscoveryFunctions(List<Function> functions) {
     discoveryFunctions.addAll(functions);
   }
 
-  List<ErlFunction> operationFunctions() {
+  List<Function> operationFunctions() {
     return operationFunctions;
   }
 
-  List<ErlFunction> discoveryFunctions() {
+  List<Function> discoveryFunctions() {
     return discoveryFunctions;
   }
 }

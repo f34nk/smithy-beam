@@ -1,17 +1,17 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.ir.erlang.ErlCallbackSpec;
+import io.beam.ir.erlang.Callback;
 import java.util.ArrayList;
 import java.util.List;
 
 final class ErlangBehaviourModuleBuilder {
-  private final List<ErlCallbackSpec> callbacks = new ArrayList<>();
+  private final List<Callback> callbacks = new ArrayList<>();
 
-  void addCallback(ErlCallbackSpec callback) {
+  void addCallback(Callback callback) {
     callbacks.add(callback);
   }
 
-  List<ErlCallbackSpec> callbacks() {
+  List<Callback> callbacks() {
     return callbacks;
   }
 }
