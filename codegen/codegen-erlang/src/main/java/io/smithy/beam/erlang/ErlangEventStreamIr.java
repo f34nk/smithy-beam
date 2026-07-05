@@ -182,9 +182,9 @@ final class ErlangEventStreamIr {
                     MapPattern.of(
                         List.of(
                             MapPatternEntry.of(
-                                AtomExpr.of("headers"), VariablePattern.of("Headers")),
+                                AtomExpr.of("headers"), VariablePattern.of("Headers"), true),
                             MapPatternEntry.of(
-                                AtomExpr.of("payload"), VariablePattern.of("Payload"))))),
+                                AtomExpr.of("payload"), VariablePattern.of("Payload"), true)))),
                 BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bindValue(

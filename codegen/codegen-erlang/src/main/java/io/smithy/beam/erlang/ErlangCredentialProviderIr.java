@@ -480,10 +480,11 @@ final class ErlangCredentialProviderIr {
                         MapPattern.of(
                             List.of(
                                 MapPatternEntry.of(
-                                    BinaryExpr.of("aws_access_key_id"), VariablePattern.of("Id")),
+                                    BinaryExpr.of("aws_access_key_id"), VariablePattern.of("Id"), true),
                                 MapPatternEntry.of(
                                     BinaryExpr.of("aws_secret_access_key"),
-                                    VariablePattern.of("Secret")))),
+                                    VariablePattern.of("Secret"),
+                                    true)),
                         VariablePattern.of("Fields"))),
                 credentialsBody),
             FunctionClause.of(
