@@ -2,11 +2,9 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlModule;
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Module;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -22,8 +20,8 @@ class ErlangCredentialProviderIrTest {
 
   @Test
   void resolveMatchesGolden() throws IOException {
-    assertThat(ErlangCredentialProviderIr.resolve().asString())
-        .isEqualTo(readExpectedString("ir/credential_provider_resolve.expected.erl"));
+    IrGoldenAssertions.assertGolden(
+        ErlangCredentialProviderIr.resolve(), "ir/credential_provider_resolve.expected.erl");
   }
 
   @Test
@@ -32,37 +30,27 @@ class ErlangCredentialProviderIrTest {
         ErlangCredentialProviderIr.credentialFunctions().stream()
             .filter(
                 fn -> fn.name().startsWith("resolve_chain") || fn.name().equals("resolve_provider"))
-            .map(ErlFunction::asString)
+            .map(ErlangRenderer::renderFunction)
             .collect(Collectors.joining("\n\n"));
-    assertThat(combined).isEqualTo(readExpectedString("ir/credential_provider_chain.expected.erl"));
+    assertThat(combined)
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString("ir/credential_provider_chain.expected.erl"));
   }
 
   @Test
   void credentialsModuleMatchesGolden() throws IOException {
     ServiceShape service = sigv4Model().expectShape(SIGV4_SERVICE, ServiceShape.class);
-    ErlModule module =
+    Module module =
         ErlangCredentialProviderIr.credentialsModule("sigv4test_service_credentials", service);
-    assertThat(module.asString())
-        .isEqualTo(readExpectedString("ir/credential_provider_module.expected.erl"));
+    IrGoldenAssertions.assertGolden(module, "ir/credential_provider_module.expected.erl");
   }
 
   private static Model sigv4Model() {
     return Model.assembler()
-        .addImport(ErlangCredentialProviderIrTest.class.getResource("/model/sigv4_fixture.smithy"))
+        .addImport(
+            ErlangCredentialProviderIrTest.class.getResource("/model/sigv4_fixture.smithy"))
         .discoverModels()
         .assemble()
         .unwrap();
-  }
-
-  private static String readExpectedString(String resourcePath) throws IOException {
-    try (InputStream in =
-        ErlangCredentialProviderIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
-      assertThat(in).as("resource %s", resourcePath).isNotNull();
-      String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-      if (text.endsWith("\n")) {
-        text = text.substring(0, text.length() - 1);
-      }
-      return text;
-    }
   }
 }

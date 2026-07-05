@@ -2,7 +2,6 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSigV4Metadata;
-import io.smithy.beam.ir.erlang.ErlModule;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
@@ -22,13 +21,9 @@ public final class ErlangCredentialProviderEmitter {
         new BeamErlangLayout(ctx.settings(), service.getId().getNamespace(), service);
     String credentialsModule = layout.credentialsModuleName();
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.credentialsModuleFile(),
-            writer -> {
-              ErlModule module =
-                  ErlangCredentialProviderIr.credentialsModule(credentialsModule, service);
-              writer.write("$L", module.asString());
-            });
+    ErlangCodecEmission.writeModule(
+        ctx,
+        layout.credentialsModuleFile(),
+        ErlangCredentialProviderIr.credentialsModule(credentialsModule, service));
   }
 }

@@ -1,36 +1,35 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BinaryExpr;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.ListExpr;
+import io.beam.ir.erlang.ListPattern;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MapEntry;
+import io.beam.ir.erlang.MapExpr;
+import io.beam.ir.erlang.MapPattern;
+import io.beam.ir.erlang.MapPatternEntry;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.MatchPattern;
+import io.beam.ir.erlang.Module;
+import io.beam.ir.erlang.OpaqueExpr;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.Spec;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TuplePattern;
+import io.beam.ir.erlang.TypeAlias;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
+import io.beam.ir.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamCredentialProviders;
 import io.smithy.beam.core.BeamCredentialProviders.BeamCredentialProviderKind;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
-import io.smithy.beam.ir.erlang.ErlBinary;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCapturedBlock;
-import io.smithy.beam.ir.erlang.ErlCase;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlComment;
-import io.smithy.beam.ir.erlang.ErlConsPattern;
-import io.smithy.beam.ir.erlang.ErlExportAttribute;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlList;
-import io.smithy.beam.ir.erlang.ErlMap;
-import io.smithy.beam.ir.erlang.ErlMapEntry;
-import io.smithy.beam.ir.erlang.ErlMapFieldPattern;
-import io.smithy.beam.ir.erlang.ErlMapPattern;
-import io.smithy.beam.ir.erlang.ErlMatch;
-import io.smithy.beam.ir.erlang.ErlMatchPattern;
-import io.smithy.beam.ir.erlang.ErlModule;
-import io.smithy.beam.ir.erlang.ErlNilPattern;
-import io.smithy.beam.ir.erlang.ErlRemoteCall;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlTuplePattern;
-import io.smithy.beam.ir.erlang.ErlTypeDef;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -43,44 +42,53 @@ final class ErlangCredentialProviderIr {
 
   private ErlangCredentialProviderIr() {}
 
-  static ErlModule credentialsModule(String credentialsModule, ServiceShape service) {
-    return new ErlModule(
+  static Module credentialsModule(String credentialsModule, ServiceShape service) {
+    return Module.of(
         credentialsModule,
+        credentialFunctions(),
+        List.of("Generated AWS credential resolution for " + service.getId() + "."),
+        null,
+        null,
         List.of(
-            ErlComment.comment("Generated AWS credential resolution for " + service.getId() + ".")),
-        List.of(
-            ErlExportAttribute.export(List.of("resolve/1")),
-            clientConfigType(),
-            awsCredentialsType()),
-        credentialFunctions());
+            TypeAlias.of("client_config", "#{binary() => term()}"),
+            TypeAlias.of(
+                "aws_credentials",
+                "#{\n"
+                    + "    access_key_id := binary(),\n"
+                    + "    secret_access_key := binary(),\n"
+                    + "    session_token => binary() | undefined\n"
+                    + "}")),
+        List.of("resolve/1"));
   }
 
-  static ErlFunction resolve() {
-    return ErlFunction.functionWithSpec(
+  static Function resolve() {
+    return Function.of(
         "resolve",
-        1,
-        CLIENT_CONFIG,
-        RESOLVE_RESULT,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Config")),
-                ErlCase.caseExpr(
-                    ErlCall.call(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config")),
+                CaseExpr.of(
+                    RemoteCallExpr.of(
                         "maps",
                         "get",
-                        ErlAtom.atom("credentials"),
-                        ErlVar.var("Config"),
-                        ErlAtom.atom("undefined")),
-                    ErlClause.clause(
-                        List.of(ErlAtomPattern.atomPattern("undefined")),
-                        ErlCallLocal.callLocal("resolve_chain", ErlVar.var("Config"))),
-                    ErlClause.clause(
-                        List.of(ErlVarPattern.varPattern("Creds")),
-                        ErlTuple.tuple(ErlAtom.atom("ok"), ErlVar.var("Creds")))))));
+                        List.of(
+                            AtomExpr.of("credentials"),
+                            Variable.of("Config"),
+                            AtomExpr.of("undefined"))),
+                    List.of(
+                        Clause.of(
+                            AtomPattern.of("undefined"),
+                            LocalCallExpr.of("resolve_chain", List.of(Variable.of("Config")))),
+                        Clause.of(
+                            VariablePattern.of("Creds"),
+                            TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Creds")))))))),
+        Spec.of("resolve(" + CLIENT_CONFIG + ") -> " + RESOLVE_RESULT),
+        null,
+        null);
   }
 
-  static List<ErlFunction> credentialFunctions() {
-    List<ErlFunction> functions = new ArrayList<>();
+  static List<Function> credentialFunctions() {
+    List<Function> functions = new ArrayList<>();
     functions.add(resolve());
     functions.addAll(resolveChainFunctions());
     functions.addAll(envAndProfileFunctions());
@@ -88,96 +96,88 @@ final class ErlangCredentialProviderIr {
     return functions;
   }
 
-  private static ErlTypeDef clientConfigType() {
-    return new ErlTypeDef("client_config", "#{binary() => term()}");
-  }
-
-  private static ErlTypeDef awsCredentialsType() {
-    return new ErlTypeDef(
-        "aws_credentials",
-        "#{\n"
-            + "    access_key_id := binary(),\n"
-            + "    secret_access_key := binary(),\n"
-            + "    session_token => binary() | undefined\n"
-            + "}");
-  }
-
-  private static List<ErlFunction> resolveChainFunctions() {
-    List<ErlFunction> functions = new ArrayList<>();
+  private static List<Function> resolveChainFunctions() {
+    List<Function> functions = new ArrayList<>();
     functions.add(resolveChainArity1());
     functions.addAll(resolveChainArity2AndProvider());
     return functions;
   }
 
-  private static ErlFunction resolveChainArity1() {
-    List<ErlExpr> providers =
+  private static Function resolveChainArity1() {
+    List<Expression> providers =
         BeamCredentialProviders.defaultChain().stream()
-            .map(kind -> ErlAtom.atom(erlangProviderAtom(kind)))
+            .map(kind -> AtomExpr.of(erlangProviderAtom(kind)))
             .collect(Collectors.toList());
-    return ErlFunction.functionWithSpec(
+    return Function.of(
         "resolve_chain",
-        1,
-        CLIENT_CONFIG,
-        RESOLVE_RESULT,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Config")),
-                ErlCallLocal.callLocal(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config")),
+                LocalCallExpr.of(
                     "resolve_chain",
-                    ErlVar.var("Config"),
-                    ErlList.list(providers.toArray(ErlExpr[]::new))))));
+                    List.of(Variable.of("Config"), ListExpr.of(providers))))),
+        Spec.of("resolve_chain(" + CLIENT_CONFIG + ") -> " + RESOLVE_RESULT),
+        null,
+        null);
   }
 
-  private static List<ErlFunction> resolveChainArity2AndProvider() {
-    List<ErlFunction> functions = new ArrayList<>();
+  private static List<Function> resolveChainArity2AndProvider() {
+    List<Function> functions = new ArrayList<>();
     functions.add(
-        ErlFunction.function(
+        Function.of(
             "resolve_chain",
-            2,
             List.of(
-                ErlClause.clause(
-                    List.of(ErlVarPattern.varPattern("_Config"), ErlNilPattern.nilPattern()),
-                    ErlTuple.tuple(ErlAtom.atom("error"), ErlAtom.atom("not_found"))),
-                ErlClause.blockClause(
+                FunctionClause.of(
+                    List.of(VariablePattern.of("_Config"), ListPattern.of(List.of())),
+                    TupleExpr.of(List.of(AtomExpr.of("error"), AtomExpr.of("not_found")))),
+                FunctionClause.of(
                     List.of(
-                        ErlVarPattern.varPattern("Config"),
-                        ErlConsPattern.consPattern(
-                            ErlVarPattern.varPattern("Provider"),
-                            ErlVarPattern.varPattern("Rest"))),
-                    ErlCase.caseExpr(
-                        ErlCallLocal.callLocal(
-                            "resolve_provider", ErlVar.var("Provider"), ErlVar.var("Config")),
-                        ErlClause.clause(
-                            List.of(
-                                ErlTuplePattern.tuplePattern(
-                                    ErlAtomPattern.atomPattern("ok"),
-                                    ErlVarPattern.varPattern("Creds"))),
-                            ErlTuple.tuple(ErlAtom.atom("ok"), ErlVar.var("Creds"))),
-                        ErlClause.clause(
-                            List.of(ErlVarPattern.varPattern("_")),
-                            ErlCallLocal.callLocal(
-                                "resolve_chain", ErlVar.var("Config"), ErlVar.var("Rest"))))))));
+                        VariablePattern.of("Config"),
+                        ListPattern.cons(
+                            VariablePattern.of("Provider"), VariablePattern.of("Rest"))),
+                    CaseExpr.of(
+                        LocalCallExpr.of(
+                            "resolve_provider",
+                            List.of(Variable.of("Provider"), Variable.of("Config"))),
+                        List.of(
+                            Clause.of(
+                                TuplePattern.of(
+                                    List.of(
+                                        AtomPattern.of("ok"), VariablePattern.of("Creds"))),
+                                TupleExpr.of(
+                                    List.of(AtomExpr.of("ok"), Variable.of("Creds")))),
+                            Clause.of(
+                                WildcardPattern.of(),
+                                LocalCallExpr.of(
+                                    "resolve_chain",
+                                    List.of(Variable.of("Config"), Variable.of("Rest")))))))),
+            null,
+            null,
+            null));
     functions.add(resolveProvider());
     return functions;
   }
 
-  private static ErlFunction resolveProvider() {
+  private static Function resolveProvider() {
     List<BeamCredentialProviderKind> chain = BeamCredentialProviders.defaultChain();
-    List<ErlClause> clauses = new ArrayList<>();
+    List<FunctionClause> clauses = new ArrayList<>();
     for (BeamCredentialProviderKind kind : chain) {
       clauses.add(
-          ErlClause.clause(
+          FunctionClause.of(
               List.of(
-                  ErlAtomPattern.atomPattern(erlangProviderAtom(kind)),
-                  ErlVarPattern.varPattern("Config")),
-              ErlCallLocal.callLocal(
-                  "resolve_from_" + erlangProviderSuffix(kind), ErlVar.var("Config"))));
+                  AtomPattern.of(erlangProviderAtom(kind)), VariablePattern.of("Config")),
+              LocalCallExpr.of(
+                  "resolve_from_" + erlangProviderSuffix(kind), List.of(Variable.of("Config")))));
     }
-    return ErlFunction.functionWithSpec(
-        "resolve_provider", 2, "atom(), " + CLIENT_CONFIG, RESOLVE_RESULT, clauses);
+    return Function.of(
+        "resolve_provider",
+        clauses,
+        Spec.of("resolve_provider(atom(), " + CLIENT_CONFIG + ") -> " + RESOLVE_RESULT),
+        null,
+        null);
   }
 
-  private static List<ErlFunction> envAndProfileFunctions() {
+  private static List<Function> envAndProfileFunctions() {
     return List.of(
         resolveFromEnv(),
         resolveFromProfile(),
@@ -192,89 +192,97 @@ final class ErlangCredentialProviderIr {
         optionalCredential());
   }
 
-  private static ErlFunction resolveFromEnv() {
-    return ErlFunction.functionWithSpec(
+  private static Function resolveFromEnv() {
+    return Function.of(
         "resolve_from_env",
-        1,
-        CLIENT_CONFIG,
-        RESOLVE_RESULT,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("_Config")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("_Config")),
+                OpaqueExpr.of(
                     """
-                                case {os:getenv("AWS_ACCESS_KEY_ID"), os:getenv("AWS_SECRET_ACCESS_KEY")} of
-                                    {Id, Secret} when Id =/= false, Secret =/= false ->
-                                        Token = os:getenv("AWS_SESSION_TOKEN"),
-                                        {ok, #{access_key_id => list_to_binary(Id),
-                                              secret_access_key => list_to_binary(Secret),
-                                              session_token => env_session_token(Token)}};
-                                    _ ->
-                                        {error, not_found}
-                                end"""))));
+                    case {os:getenv("AWS_ACCESS_KEY_ID"), os:getenv("AWS_SECRET_ACCESS_KEY")} of
+                        {Id, Secret} when Id =/= false, Secret =/= false ->
+                            Token = os:getenv("AWS_SESSION_TOKEN"),
+                            {ok, #{access_key_id => list_to_binary(Id),
+                                  secret_access_key => list_to_binary(Secret),
+                                  session_token => env_session_token(Token)}};
+                        _ ->
+                            {error, not_found}
+                    end"""
+                        .strip()))),
+        Spec.of("resolve_from_env(" + CLIENT_CONFIG + ") -> " + RESOLVE_RESULT),
+        null,
+        null);
   }
 
-  private static ErlFunction resolveFromProfile() {
-    return ErlFunction.functionWithSpec(
+  private static Function resolveFromProfile() {
+    return Function.of(
         "resolve_from_profile",
-        1,
-        CLIENT_CONFIG,
-        RESOLVE_RESULT,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Config")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config")),
+                OpaqueExpr.of(
                     """
-                                Profile = profile_name(Config),
-                                Path = profile_credentials_path(Config),
-                                case file:read_file(Path) of
-                                    {ok, Contents} ->
-                                        parse_profile_credentials(Contents, Profile);
-                                    {error, _} ->
-                                        {error, not_found}
-                                end"""))));
+                    Profile = profile_name(Config),
+                    Path = profile_credentials_path(Config),
+                    case file:read_file(Path) of
+                        {ok, Contents} ->
+                            parse_profile_credentials(Contents, Profile);
+                        {error, _} ->
+                            {error, not_found}
+                    end"""
+                        .strip()))),
+        Spec.of("resolve_from_profile(" + CLIENT_CONFIG + ") -> " + RESOLVE_RESULT),
+        null,
+        null);
   }
 
-  private static ErlFunction profileName() {
-    return ErlFunction.function(
+  private static Function profileName() {
+    return Function.of(
         "profile_name",
-        1,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Config")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config")),
+                OpaqueExpr.of(
                     """
-                                case maps:get(profile, Config, undefined) of
-                                    undefined ->
-                                        case os:getenv("AWS_PROFILE") of
-                                            false -> <<\"default\">>;
-                                            Name -> list_to_binary(Name)
-                                        end;
-                                    Name -> Name
-                                end"""))));
+                    case maps:get(profile, Config, undefined) of
+                        undefined ->
+                            case os:getenv("AWS_PROFILE") of
+                                false -> <<\"default\">>;
+                                Name -> list_to_binary(Name)
+                            end;
+                        Name -> Name
+                    end"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction profileCredentialsPath() {
-    return ErlFunction.function(
+  private static Function profileCredentialsPath() {
+    return Function.of(
         "profile_credentials_path",
-        1,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Config")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config")),
+                OpaqueExpr.of(
                     """
-                                case maps:get(credentials_path, Config, undefined) of
-                                    undefined ->
-                                        case os:getenv("AWS_SHARED_CREDENTIALS_FILE") of
-                                            false ->
-                                                filename:join([os:getenv("HOME"), <<\".aws/credentials\">>]);
-                                            Path -> list_to_binary(Path)
-                                        end;
-                                    Path -> Path
-                                end"""))));
+                    case maps:get(credentials_path, Config, undefined) of
+                        undefined ->
+                            case os:getenv("AWS_SHARED_CREDENTIALS_FILE") of
+                                false ->
+                                    filename:join([os:getenv("HOME"), <<\".aws/credentials\">>]);
+                                Path -> list_to_binary(Path)
+                            end;
+                        Path -> Path
+                    end"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static List<ErlFunction> ecsAndEc2Functions() {
+  private static List<Function> ecsAndEc2Functions() {
     return List.of(
         resolveFromEcs(),
         resolveFromEc2(),
@@ -284,299 +292,337 @@ final class ErlangCredentialProviderIr {
         httpGet());
   }
 
-  private static ErlFunction resolveFromEcs() {
-    return ErlFunction.functionWithSpec(
+  private static Function resolveFromEcs() {
+    return Function.of(
         "resolve_from_ecs",
-        1,
-        CLIENT_CONFIG,
-        RESOLVE_RESULT,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("_Config")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("_Config")),
+                OpaqueExpr.of(
                     """
-                                case os:getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI") of
-                                    false ->
-                                        case os:getenv("AWS_CONTAINER_CREDENTIALS_FULL_URI") of
-                                            false -> {error, not_found};
-                                            Uri -> fetch_json_credentials(list_to_binary(Uri))
-                                        end;
-                                    Rel ->
-                                        fetch_json_credentials(<<"http://169.254.170.2", Rel/binary>>)
-                                end"""))));
+                    case os:getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI") of
+                        false ->
+                            case os:getenv("AWS_CONTAINER_CREDENTIALS_FULL_URI") of
+                                false -> {error, not_found};
+                                Uri -> fetch_json_credentials(list_to_binary(Uri))
+                            end;
+                        Rel ->
+                            fetch_json_credentials(<<"http://169.254.170.2", Rel/binary>>)
+                    end"""
+                        .strip()))),
+        Spec.of("resolve_from_ecs(" + CLIENT_CONFIG + ") -> " + RESOLVE_RESULT),
+        null,
+        null);
   }
 
-  private static ErlFunction resolveFromEc2() {
-    return ErlFunction.functionWithSpec(
+  private static Function resolveFromEc2() {
+    return Function.of(
         "resolve_from_ec2",
-        1,
-        CLIENT_CONFIG,
-        RESOLVE_RESULT,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("_Config")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("_Config")),
+                OpaqueExpr.of(
                     """
-                                case ec2_metadata_request(<<"/latest/meta-data/iam/security-credentials/">>) of
-                                    {ok, RoleBin} ->
-                                        Role = string:trim(binary_to_list(RoleBin)),
-                                        Path = "/latest/meta-data/iam/security-credentials/" ++ Role,
-                                        case ec2_metadata_request(list_to_binary(Path)) of
-                                            {ok, JsonBin} -> decode_json_credentials(JsonBin);
-                                            {error, Reason} -> {error, Reason}
-                                        end;
-                                    {error, Reason} ->
-                                        {error, Reason}
-                                end"""))));
+                    case ec2_metadata_request(<<"/latest/meta-data/iam/security-credentials/">>) of
+                        {ok, RoleBin} ->
+                            Role = string:trim(binary_to_list(RoleBin)),
+                            Path = "/latest/meta-data/iam/security-credentials/" ++ Role,
+                            case ec2_metadata_request(list_to_binary(Path)) of
+                                {ok, JsonBin} -> decode_json_credentials(JsonBin);
+                                {error, Reason} -> {error, Reason}
+                            end;
+                        {error, Reason} ->
+                            {error, Reason}
+                    end"""
+                        .strip()))),
+        Spec.of("resolve_from_ec2(" + CLIENT_CONFIG + ") -> " + RESOLVE_RESULT),
+        null,
+        null);
   }
 
-  private static ErlFunction envSessionToken() {
-    return ErlFunction.function(
+  private static Function envSessionToken() {
+    return Function.of(
         "env_session_token",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("false")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Token")),
-                ErlCallLocal.callLocal("list_to_binary", ErlVar.var("Token")))));
+            FunctionClause.of(List.of(AtomPattern.of("false")), AtomExpr.of("undefined")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Token")),
+                LocalCallExpr.of("list_to_binary", List.of(Variable.of("Token"))))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction parseProfileCredentials() {
-    return ErlFunction.function(
+  private static Function parseProfileCredentials() {
+    return Function.of(
         "parse_profile_credentials",
-        2,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Contents"), ErlVarPattern.varPattern("Profile")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Contents"), VariablePattern.of("Profile")),
+                OpaqueExpr.of(
                     """
-                                Lines = binary:split(Contents, <<\"\\n\">>, [global]),
-                                case find_profile_section(Lines, Profile, #{}) of
-                                    {ok, Creds} -> {ok, Creds};
-                                    error -> {error, not_found}
-                                end"""))));
+                    Lines = binary:split(Contents, <<\"\\n\">>, [global]),
+                    case find_profile_section(Lines, Profile, #{}) of
+                        {ok, Creds} -> {ok, Creds};
+                        error -> {error, not_found}
+                    end"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction findProfileSection() {
-    return ErlFunction.function(
+  private static Function findProfileSection() {
+    return Function.of(
         "find_profile_section",
-        3,
         List.of(
-            ErlClause.clause(
+            FunctionClause.of(
                 List.of(
-                    ErlNilPattern.nilPattern(),
-                    ErlVarPattern.varPattern("_Profile"),
-                    ErlVarPattern.varPattern("Acc")),
-                ErlCallLocal.callLocal("maps_to_credentials", ErlVar.var("Acc"))),
-            ErlClause.blockClause(
+                    ListPattern.of(List.of()),
+                    VariablePattern.of("_Profile"),
+                    VariablePattern.of("Acc")),
+                LocalCallExpr.of("maps_to_credentials", List.of(Variable.of("Acc")))),
+            FunctionClause.of(
                 List.of(
-                    ErlConsPattern.consPattern(
-                        ErlVarPattern.varPattern("Line"), ErlVarPattern.varPattern("Rest")),
-                    ErlVarPattern.varPattern("Profile"),
-                    ErlVarPattern.varPattern("Acc")),
-                ErlCapturedBlock.capturedBlock(
+                    ListPattern.cons(VariablePattern.of("Line"), VariablePattern.of("Rest")),
+                    VariablePattern.of("Profile"),
+                    VariablePattern.of("Acc")),
+                OpaqueExpr.of(
                     """
-                                        ExpectedHeader = "[" ++ binary_to_list(Profile) ++ "]",
-                                        Trimmed = string:trim(binary_to_list(Line)),
-                                        case Trimmed of
-                                            ExpectedHeader ->
-                                                read_profile_entries(Rest, Acc);
-                                            [$[ | _] ->
-                                                find_profile_section(Rest, Profile, #{});
-                                            _ ->
-                                                if map_size(Acc) > 0 ->
-                                                    maps_to_credentials(Acc);
-                                                true ->
-                                                    find_profile_section(Rest, Profile, Acc)
-                                                end
-                                        end"""))));
+                    ExpectedHeader = "[" ++ binary_to_list(Profile) ++ "]",
+                    Trimmed = string:trim(binary_to_list(Line)),
+                    case Trimmed of
+                        ExpectedHeader ->
+                            read_profile_entries(Rest, Acc);
+                        [$[ | _] ->
+                            find_profile_section(Rest, Profile, #{});
+                        _ ->
+                            if map_size(Acc) > 0 ->
+                                maps_to_credentials(Acc);
+                            true ->
+                                find_profile_section(Rest, Profile, Acc)
+                            end
+                    end"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction readProfileEntries() {
-    return ErlFunction.function(
+  private static Function readProfileEntries() {
+    return Function.of(
         "read_profile_entries",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(ErlNilPattern.nilPattern(), ErlVarPattern.varPattern("Acc")),
-                ErlCallLocal.callLocal("maps_to_credentials", ErlVar.var("Acc"))),
-            ErlClause.blockClause(
+            FunctionClause.of(
+                List.of(ListPattern.of(List.of()), VariablePattern.of("Acc")),
+                LocalCallExpr.of("maps_to_credentials", List.of(Variable.of("Acc")))),
+            FunctionClause.of(
                 List.of(
-                    ErlConsPattern.consPattern(
-                        ErlVarPattern.varPattern("Line"), ErlVarPattern.varPattern("Rest")),
-                    ErlVarPattern.varPattern("Acc")),
-                ErlCapturedBlock.capturedBlock(
+                    ListPattern.cons(VariablePattern.of("Line"), VariablePattern.of("Rest")),
+                    VariablePattern.of("Acc")),
+                OpaqueExpr.of(
                     """
-                                        Trimmed = string:trim(binary_to_list(Line)),
-                                        case Trimmed of
-                                            [$[ | _] -> maps_to_credentials(Acc);
-                                            "" -> read_profile_entries(Rest, Acc);
-                                            Entry ->
-                                                case string:split(Entry, "=", leading) of
-                                                    [Key, Value] ->
-                                                        read_profile_entries(Rest, Acc#{list_to_binary(Key) => list_to_binary(Value)});
-                                                    _ -> read_profile_entries(Rest, Acc)
-                                                end
-                                        end"""))));
+                    Trimmed = string:trim(binary_to_list(Line)),
+                    case Trimmed of
+                        [$[ | _] -> maps_to_credentials(Acc);
+                        "" -> read_profile_entries(Rest, Acc);
+                        Entry ->
+                            case string:split(Entry, "=", leading) of
+                                [Key, Value] ->
+                                    read_profile_entries(Rest, Acc#{list_to_binary(Key) => list_to_binary(Value)});
+                                _ -> read_profile_entries(Rest, Acc)
+                            end
+                    end"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction mapsToCredentials() {
-    return ErlFunction.function(
+  private static Function mapsToCredentials() {
+    Expression credentialsBody =
+        BlockExpr.newlineSeparated(
+            List.of(
+                MatchExpr.bindValue(
+                    "Token",
+                    RemoteCallExpr.of(
+                        "maps",
+                        "get",
+                        List.of(
+                            BinaryExpr.of("aws_session_token"),
+                            Variable.of("Fields"),
+                            AtomExpr.of("undefined")))),
+                TupleExpr.of(
+                    List.of(
+                        AtomExpr.of("ok"),
+                        MapExpr.of(
+                            List.of(
+                                MapEntry.of(
+                                    AtomExpr.of("access_key_id"),
+                                    LocalCallExpr.of(
+                                        "trim_credential", List.of(Variable.of("Id")))),
+                                MapEntry.of(
+                                    AtomExpr.of("secret_access_key"),
+                                    LocalCallExpr.of(
+                                        "trim_credential", List.of(Variable.of("Secret")))),
+                                MapEntry.of(
+                                    AtomExpr.of("session_token"),
+                                    LocalCallExpr.of(
+                                        "optional_credential",
+                                        List.of(Variable.of("Token"))))))))));
+    return Function.of(
         "maps_to_credentials",
-        1,
         List.of(
-            ErlClause.blockClause(
+            FunctionClause.of(
                 List.of(
-                    ErlMatchPattern.matchPattern(
-                        ErlMapPattern.mapPattern(
-                            ErlMapFieldPattern.fieldPattern(
-                                "<<\"aws_access_key_id\">>", ErlVarPattern.varPattern("Id")),
-                            ErlMapFieldPattern.fieldPattern(
-                                "<<\"aws_secret_access_key\">>",
-                                ErlVarPattern.varPattern("Secret"))),
-                        ErlVarPattern.varPattern("Fields"))),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Token"),
-                        ErlCall.call(
-                            "maps",
-                            "get",
-                            ErlBinary.binary("aws_session_token"),
-                            ErlVar.var("Fields"),
-                            ErlAtom.atom("undefined"))),
-                    ErlTuple.tuple(
-                        ErlAtom.atom("ok"),
-                        ErlMap.map(
-                            ErlMapEntry.entry(
-                                ErlAtom.atom("access_key_id"),
-                                ErlCallLocal.callLocal("trim_credential", ErlVar.var("Id"))),
-                            ErlMapEntry.entry(
-                                ErlAtom.atom("secret_access_key"),
-                                ErlCallLocal.callLocal("trim_credential", ErlVar.var("Secret"))),
-                            ErlMapEntry.entry(
-                                ErlAtom.atom("session_token"),
-                                ErlCallLocal.callLocal(
-                                    "optional_credential", ErlVar.var("Token"))))))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("_")),
-                ErlTuple.tuple(ErlAtom.atom("error"), ErlAtom.atom("not_found")))));
+                    MatchPattern.of(
+                        MapPattern.of(
+                            List.of(
+                                MapPatternEntry.of(
+                                    BinaryExpr.of("aws_access_key_id"), VariablePattern.of("Id")),
+                                MapPatternEntry.of(
+                                    BinaryExpr.of("aws_secret_access_key"),
+                                    VariablePattern.of("Secret")))),
+                        VariablePattern.of("Fields"))),
+                credentialsBody),
+            FunctionClause.of(
+                List.of(WildcardPattern.of()),
+                TupleExpr.of(List.of(AtomExpr.of("error"), AtomExpr.of("not_found"))))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction trimCredential() {
-    return ErlFunction.function(
+  private static Function trimCredential() {
+    return Function.of(
         "trim_credential",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Value")),
-                ErlCallLocal.callLocal(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Value")),
+                LocalCallExpr.of(
                     "list_to_binary",
-                    ErlRemoteCall.call(
-                        ErlAtom.atom("string"),
-                        "trim",
-                        ErlCallLocal.callLocal("binary_to_list", ErlVar.var("Value")))))));
+                    List.of(
+                        RemoteCallExpr.of(
+                            "string",
+                            "trim",
+                            List.of(
+                                LocalCallExpr.of(
+                                    "binary_to_list", List.of(Variable.of("Value"))))))))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction optionalCredential() {
-    return ErlFunction.function(
+  private static Function optionalCredential() {
+    return Function.of(
         "optional_credential",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Value")),
-                ErlCallLocal.callLocal("trim_credential", ErlVar.var("Value")))));
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Value")),
+                LocalCallExpr.of("trim_credential", List.of(Variable.of("Value"))))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction fetchJsonCredentials() {
-    return ErlFunction.function(
+  private static Function fetchJsonCredentials() {
+    return Function.of(
         "fetch_json_credentials",
-        1,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Url")),
-                ErlCase.caseExpr(
-                    ErlCallLocal.callLocal("http_get", ErlVar.var("Url"), ErlList.list()),
-                    ErlClause.clause(
-                        List.of(
-                            ErlTuplePattern.tuplePattern(
-                                ErlAtomPattern.atomPattern("ok"),
-                                ErlVarPattern.varPattern("Body"))),
-                        ErlCallLocal.callLocal("decode_json_credentials", ErlVar.var("Body"))),
-                    ErlClause.clause(
-                        List.of(
-                            ErlTuplePattern.tuplePattern(
-                                ErlAtomPattern.atomPattern("error"),
-                                ErlVarPattern.varPattern("Reason"))),
-                        ErlTuple.tuple(ErlAtom.atom("error"), ErlVar.var("Reason")))))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Url")),
+                CaseExpr.of(
+                    LocalCallExpr.of("http_get", List.of(Variable.of("Url"), ListExpr.of(List.of()))),
+                    List.of(
+                        Clause.of(
+                            TuplePattern.of(
+                                List.of(AtomPattern.of("ok"), VariablePattern.of("Body"))),
+                            LocalCallExpr.of(
+                                "decode_json_credentials", List.of(Variable.of("Body")))),
+                        Clause.of(
+                            TuplePattern.of(
+                                List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
+                            TupleExpr.of(
+                                List.of(AtomExpr.of("error"), Variable.of("Reason")))))))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction decodeJsonCredentials() {
-    return ErlFunction.function(
+  private static Function decodeJsonCredentials() {
+    return Function.of(
         "decode_json_credentials",
-        1,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Body")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body")),
+                OpaqueExpr.of(
                     """
-                                case jsone:try_decode(Body) of
-                                    {ok, #{<<"AccessKeyId">> := Id, <<"SecretAccessKey">> := Secret} = Doc, _} ->
-                                        Token = maps:get(<<"Token">>, Doc, undefined),
-                                        {ok, #{access_key_id => Id,
-                                              secret_access_key => Secret,
-                                              session_token => Token}};
-                                    _ ->
-                                        {error, invalid_credentials}
-                                end"""))));
+                    case jsone:try_decode(Body) of
+                        {ok, #{<<"AccessKeyId">> := Id, <<"SecretAccessKey">> := Secret} = Doc, _} ->
+                            Token = maps:get(<<"Token">>, Doc, undefined),
+                            {ok, #{access_key_id => Id,
+                                  secret_access_key => Secret,
+                                  session_token => Token}};
+                        _ ->
+                            {error, invalid_credentials}
+                    end"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction ec2MetadataRequest() {
-    return ErlFunction.function(
+  private static Function ec2MetadataRequest() {
+    return Function.of(
         "ec2_metadata_request",
-        1,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Path")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Path")),
+                OpaqueExpr.of(
                     """
-                                TokenReq = {
-                                    "http://169.254.169.254/latest/api/token",
-                                    [{"X-aws-ec2-metadata-token-ttl-seconds", "60"}],
-                                    put,
-                                    <<>>
-                                },
-                                Headers =
-                                    case httpc:request(put, TokenReq, [{ssl, [{verify, verify_none}]}], []) of
-                                        {ok, {{_, 200, _}, RespHeaders, _}} ->
-                                            case proplists:get_value("x-aws-ec2-metadata-token", RespHeaders) of
-                                                undefined -> [];
-                                                Token -> [{"X-aws-ec2-metadata-token", Token}]
-                                            end;
-                                        _ ->
-                                            []
-                                    end,
-                                Url = "http://169.254.169.254" ++ binary_to_list(Path),
-                                http_get(Url, Headers)"""))));
+                    TokenReq = {
+                        "http://169.254.169.254/latest/api/token",
+                        [{"X-aws-ec2-metadata-token-ttl-seconds", "60"}],
+                        put,
+                        <<>>
+                    },
+                    Headers =
+                        case httpc:request(put, TokenReq, [{ssl, [{verify, verify_none}]}], []) of
+                            {ok, {{_, 200, _}, RespHeaders, _}} ->
+                                case proplists:get_value("x-aws-ec2-metadata-token", RespHeaders) of
+                                    undefined -> [];
+                                    Token -> [{"X-aws-ec2-metadata-token", Token}]
+                                end;
+                            _ ->
+                                []
+                        end,
+                    Url = "http://169.254.169.254" ++ binary_to_list(Path),
+                    http_get(Url, Headers)"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction httpGet() {
-    return ErlFunction.function(
+  private static Function httpGet() {
+    return Function.of(
         "http_get",
-        2,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Url"), ErlVarPattern.varPattern("ExtraHeaders")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Url"), VariablePattern.of("ExtraHeaders")),
+                OpaqueExpr.of(
                     """
-                                Req = {Url, ExtraHeaders, get, <<>>},
-                                case httpc:request(get, Req, [{ssl, [{verify, verify_none}]}], [{body_format, binary}]) of
-                                    {ok, {{_, 200, _}, _, Body}} -> {ok, Body};
-                                    {ok, {{_, _, _}, _, _}} -> {error, http_error};
-                                    {error, Reason} -> {error, Reason}
-                                end"""))));
+                    Req = {Url, ExtraHeaders, get, <<>>},
+                    case httpc:request(get, Req, [{ssl, [{verify, verify_none}]}], [{body_format, binary}]) of
+                        {ok, {{_, 200, _}, _, Body}} -> {ok, Body};
+                        {ok, {{_, _, _}, _, _}} -> {error, http_error};
+                        {error, Reason} -> {error, Reason}
+                    end"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
   private static String erlangProviderAtom(BeamCredentialProviderKind kind) {
