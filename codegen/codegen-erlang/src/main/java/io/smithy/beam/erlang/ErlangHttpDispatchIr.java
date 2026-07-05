@@ -229,11 +229,11 @@ final class ErlangHttpDispatchIr {
                                 MapPatternEntry.of(
                                     AtomExpr.of("host"), VariablePattern.of("Host")))),
                         VariablePattern.of("Parts")),
-                    BlockExpr.newlineSeparated(
+                    BlockExpr.commaSeparated(
                         List.of(
                             MatchExpr.bindValue("PortSuffix", portSuffixCase),
                             TupleExpr.of(List.of(schemePrefix, authority))),
-                        true)),
+                        false)),
                 Clause.of(
                     VariablePattern.of("_"),
                     TupleExpr.of(List.of(BinaryExpr.of(""), Variable.of("BaseUrl"))))));
