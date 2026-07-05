@@ -103,14 +103,14 @@ final class ErlangAwsQueryIr {
       ErlangContext ctx, ServiceShape service, ShapeId protocolTraitId) {
     ErlModule module = buildClientCodecModule(ctx, service, protocolTraitId);
     ErlangCodecEmission.writeModule(
-        ctx, clientCodecFileName(ctx, service, protocolTraitId), module);
+        ctx, clientCodecFileName(ctx, service, protocolTraitId), module.asString());
   }
 
   static void emitServerCodecModule(
       ErlangContext ctx, ServiceShape service, ShapeId protocolTraitId) {
     ErlModule module = buildServerCodecModule(ctx, service, protocolTraitId);
     ErlangCodecEmission.writeModule(
-        ctx, serverCodecFileName(ctx, service, protocolTraitId), module);
+        ctx, serverCodecFileName(ctx, service, protocolTraitId), module.asString());
   }
 
   private static BeamErlangLayout layout(ErlangContext ctx, ServiceShape service) {
@@ -210,7 +210,7 @@ final class ErlangAwsQueryIr {
       Optional<String> serviceNamespace,
       boolean ec2Query) {
     List<ErlFunction> functions = new ArrayList<>();
-    functions.add(ErlangXmlCodecIr.xmlNamespace(serviceNamespace));
+    functions.add(ErlangXmlCodecCodegenIrCompat.xmlNamespace(serviceNamespace));
     for (OperationShape op : operations) {
       functions.add(serverDecodeRequest(model, op, sp, ec2Query));
       functions.add(serverEncodeResponse(model, service, op, sp, ec2Query));
