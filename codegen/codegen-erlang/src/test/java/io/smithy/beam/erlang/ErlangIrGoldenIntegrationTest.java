@@ -75,14 +75,14 @@ class ErlangIrGoldenIntegrationTest {
   void structureTypeHeaderFromSmithyMatchesGolden() throws IOException {
     Header header =
         ErlangTypeDirectedCodegen.buildStructureTypeHeader(model, service, getNameOutput, settings);
-    IrGoldenAssertions.assertGolden(header, "ir/golden/get_name_output_structure.expected.hrl");
+    IrGoldenAssertions.assertGolden(header, "ir/get_name_output_structure.expected.hrl");
   }
 
   @Test
   void clientCodecModuleFromSmithyMatchesGolden() throws IOException {
     Module module = ErlangRestJsonIr.buildClientCodecModule(clientContext(), service);
     IrGoldenAssertions.assertGolden(
-        module, "ir/golden/http_service_rest_json_1_client_codec.expected.erl");
+        module, "ir/http_service_rest_json_1_client_codec.expected.erl");
     for (var fn : module.functions()) {
       assertThat(fn.name()).isNotBlank();
       assertThat(fn.clauses()).isNotEmpty();
