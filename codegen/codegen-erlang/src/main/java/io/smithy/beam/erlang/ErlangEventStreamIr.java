@@ -318,6 +318,8 @@ final class ErlangEventStreamIr {
       return RecordExpr.of(recordName, List.of());
     }
     List<RecordField> fields = new ArrayList<>();
+    Expression decodedPayload =
+        RemoteCallExpr.of("jsone", "decode", List.of(Variable.of(payloadVar)));
     for (MemberShape member : structure.members()) {
       String wireKey = jsonKey(member);
       String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
@@ -328,17 +330,9 @@ final class ErlangEventStreamIr {
                   "maps",
                   "get",
                   List.of(
-                      BinaryExpr.of(wireKey),
-                      Variable.of("Decoded"),
-                      AtomExpr.of("undefined")))));
+                      BinaryExpr.of(wireKey), decodedPayload, AtomExpr.of("undefined")))));
     }
-    return BlockExpr.commaSeparated(
-        List.of(
-            MatchExpr.bindValue(
-                "Decoded",
-                RemoteCallExpr.of("jsone", "decode", List.of(Variable.of(payloadVar)))),
-            RecordExpr.of(recordName, fields)),
-        false);
+    return RecordExpr.of(recordName, fields);
   }
 
   private static String recordName(Symbol symbol) {
