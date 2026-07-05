@@ -6,32 +6,26 @@ to_binary(V) when is_atom(V) -> atom_to_binary(V, utf8);
 to_binary(V) when is_integer(V) -> integer_to_binary(V);
 to_binary(V) when is_float(V) -> float_to_binary(V).
 
-
 encode_query_value(V) when is_boolean(V) -> atom_to_binary(V, utf8);
 encode_query_value(V) when is_integer(V) -> integer_to_binary(V);
 encode_query_value(V) when is_float(V) -> float_to_binary(V);
 encode_query_value(V) when is_binary(V) -> V;
 encode_query_value(V) when is_atom(V) -> atom_to_binary(V, utf8).
 
-
 uri_encode(Value) -> uri_string:quote(Value).
-
 
 uri_decode(Value) when is_binary(Value) -> uri_string:unquote(Value);
 uri_decode(undefined) -> undefined.
-
 
 decode_query_param(undefined) -> undefined;
 decode_query_param(<<"true">>) -> true;
 decode_query_param(<<"false">>) -> false;
 decode_query_param(V) when is_binary(V) -> V.
 
-
 prefix_headers_to_list(_Prefix, undefined) ->
     [];
 prefix_headers_to_list(Prefix, Map) when is_map(Map) ->
     [{<<Prefix/binary, H/binary>>, to_binary(V)} || {H, V} <- maps:to_list(Map)].
-
 
 prefix_headers_from_list(Headers, Prefix) ->
     Map = maps:from_list([
@@ -45,7 +39,6 @@ prefix_headers_from_list(Headers, Prefix) ->
         _ -> Map
     end.
 
-
 decode_json_body(<<>>) ->
     #{};
 decode_json_body(Body) ->
@@ -54,7 +47,6 @@ decode_json_body(Body) ->
         _ -> #{}
     end.
 
-
 content_type_matches(Headers, Expected) ->
     case proplists:get_value(<<"Content-Type">>, Headers, undefined) of
         Expected -> true;
@@ -62,13 +54,11 @@ content_type_matches(Headers, Expected) ->
         _ -> false
     end.
 
-
 ct_base(CT) ->
     case binary:split(CT, <<";">>) of
         [Base | _] -> Base;
         _ -> CT
     end.
-
 
 decode_sparse_list(undefined) ->
     undefined;
@@ -83,11 +73,9 @@ decode_sparse_list(List) when is_list(List) ->
      || V <- List
     ].
 
-
 decode_list(undefined) -> undefined;
 decode_list(null) -> undefined;
 decode_list(List) when is_list(List) -> [V || V <- List, V =/= null].
-
 
 decode_sparse_map(undefined) ->
     undefined;
@@ -100,7 +88,6 @@ decode_sparse_map(Map) when is_map(Map) ->
         Map
     ).
 
-
 encode_sparse_list(undefined) ->
     null;
 encode_sparse_list(List) when is_list(List) ->
@@ -111,7 +98,6 @@ encode_sparse_list(List) when is_list(List) ->
         end
      || V <- List
     ].
-
 
 encode_sparse_map(undefined) ->
     null;
@@ -124,10 +110,8 @@ encode_sparse_map(Map) when is_map(Map) ->
         Map
     ).
 
-
 encode_timestamp_epoch_seconds({Mega, Secs, _Micro}) -> ((Mega * 1000000) + Secs);
 encode_timestamp_epoch_seconds(undefined) -> undefined.
-
 
 encode_timestamp_date_time({Mega, Secs, _Micro}) ->
     EpochSecs = ((Mega * 1000000) + Secs),
@@ -145,7 +129,6 @@ encode_timestamp_date_time({Mega, Secs, _Micro}) ->
 encode_timestamp_date_time(undefined) ->
     undefined.
 
-
 decode_timestamp_epoch_seconds(null) ->
     undefined;
 decode_timestamp_epoch_seconds(undefined) ->
@@ -154,7 +137,6 @@ decode_timestamp_epoch_seconds(V) when is_number(V) ->
     Mega = (V div 1000000),
     Secs = (V rem 1000000),
     {Mega, Secs, 0}.
-
 
 decode_timestamp_date_time(null) ->
     undefined;
@@ -178,6 +160,5 @@ decode_timestamp_date_time(V) when is_binary(V) ->
     catch
         _:_ -> undefined
     end.
-
 
 generate_uuid() -> list_to_binary(uuid:to_string(uuid:v4())).
