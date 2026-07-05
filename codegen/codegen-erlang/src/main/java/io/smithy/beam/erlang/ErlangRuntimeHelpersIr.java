@@ -246,7 +246,7 @@ final class ErlangRuntimeHelpersIr {
                 Clause.of(
                     ListPattern.cons(
                         VariablePattern.of("Label"),
-                        ListPattern.of(List.of())),
+                        ListPattern.of(List.of(BinaryPattern.of("")))),
                     TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Label")))),
                 Clause.of(WildcardPattern.of(), AtomExpr.of("error"))));
 
