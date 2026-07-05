@@ -2,18 +2,16 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Function;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlFunction;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
@@ -23,13 +21,12 @@ import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 
 
-@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ErlangAwsQueryIrTest {
-  private static Model model;
-  private static ServiceShape service;
-  private static OperationShape listUsersOp;
-  private static HttpBindingIndex httpIndex;
-  private static ErlangSymbolProvider provider;
+  static Model model;
+  static ServiceShape service;
+  static OperationShape listUsersOp;
+  static HttpBindingIndex httpIndex;
+  static ErlangSymbolProvider provider;
 
   @BeforeAll
   static void setup() {
@@ -76,19 +73,17 @@ class ErlangAwsQueryIrTest {
 
   @Test
   void encodeListUsersRequestMatchesGolden() throws IOException {
-    ErlFunction fn =
+    Function fn =
         ErlangAwsQueryIr.encodeRequest(model, service, listUsersOp, httpIndex, provider);
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/aws_query_encode_list_users_request.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/aws_query_encode_list_users_request.expected.erl");
   }
 
   @Test
   void decodeListUsersResponseMatchesGolden() throws IOException {
-    ErlFunction fn = ErlangAwsQueryIr.decodeResponse(model, service, listUsersOp, provider, false);
+    Function fn = ErlangAwsQueryIr.decodeResponse(model, service, listUsersOp, provider, false);
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/aws_query_decode_list_users_response.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/aws_query_decode_list_users_response.expected.erl");
   }
 
   @Test
@@ -108,7 +103,7 @@ class ErlangAwsQueryIrTest {
             flattenService,
             layout.clientModuleFile(),
             BeamCodegenKind.CLIENT);
-    ErlFunction fn =
+    Function fn =
         ErlangAwsQueryIr.flattenQueryInput(
             flattenModel,
             HttpBindingIndex.of(flattenModel),
@@ -116,41 +111,35 @@ class ErlangAwsQueryIrTest {
             ErlangAwsQueryIr.inputShapes(flattenModel, flattenService),
             false);
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/aws_query_flatten_query_input.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/aws_query_flatten_query_input.expected.erl");
   }
 
   @Test
   void serverDecodeListUsersRequestMatchesGolden() throws IOException {
-    ErlFunction fn = ErlangAwsQueryIr.serverDecodeRequest(model, listUsersOp, provider, false);
+    Function fn = ErlangAwsQueryIr.serverDecodeRequest(model, listUsersOp, provider, false);
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(
-            readExpectedString("ir/aws_query_server_decode_list_users_request.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/aws_query_server_decode_list_users_request.expected.erl");
   }
 
   @Test
   void serverEncodeListUsersResponseMatchesGolden() throws IOException {
-    ErlFunction fn =
+    Function fn =
         ErlangAwsQueryIr.serverEncodeResponse(model, service, listUsersOp, provider, false);
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(
-            readExpectedString("ir/aws_query_server_encode_list_users_response.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/aws_query_server_encode_list_users_response.expected.erl");
   }
 
   @Test
   void parseListUsersInputMatchesGolden() throws IOException {
     StructureShape input = model.expectShape(listUsersOp.getInputShape(), StructureShape.class);
-    ErlFunction fn = ErlangAwsQueryIr.parseInputFromForm(model, provider, input, false);
+    Function fn = ErlangAwsQueryIr.parseInputFromForm(model, provider, input, false);
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/aws_query_parse_list_users_input.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/aws_query_parse_list_users_input.expected.erl");
   }
 
   @Test
   void queryHelpersAwsContainsMapListAndStructureClauses() {
-    for (ErlFunction fn : ErlangAwsQueryIr.queryHelpers(false)) {
+    for (Function fn : ErlangAwsQueryIr.queryHelpers(false)) {
       assertStructural(fn);
     }
     String text = helpersAsString(ErlangAwsQueryIr.queryHelpers(false));
@@ -162,7 +151,7 @@ class ErlangAwsQueryIrTest {
 
   @Test
   void xmlHelpersAwsContainsListDecodeHelpers() {
-    for (ErlFunction fn : ErlangAwsQueryIr.xmlHelpers(false)) {
+    for (Function fn : ErlangAwsQueryIr.xmlHelpers(false)) {
       assertStructural(fn);
     }
     String text = helpersAsString(ErlangAwsQueryIr.xmlHelpers(false));
@@ -172,17 +161,17 @@ class ErlangAwsQueryIrTest {
 
   @Test
   void serverQueryDecodeHelpersAreStructural() {
-    for (ErlFunction fn : ErlangAwsQueryIr.serverQueryDecodeHelpers(false)) {
+    for (Function fn : ErlangAwsQueryIr.serverQueryDecodeHelpers(false)) {
       assertStructural(fn);
     }
   }
 
   @Test
   void serverXmlEncodeHelpersAreStructural() {
-    for (ErlFunction fn : ErlangAwsQueryIr.serverXmlEncodeHelpers(false)) {
+    for (Function fn : ErlangAwsQueryIr.serverXmlEncodeHelpers(false)) {
       assertStructural(fn);
     }
-    for (ErlFunction fn : ErlangAwsQueryIr.serverXmlEncodeHelpers(true)) {
+    for (Function fn : ErlangAwsQueryIr.serverXmlEncodeHelpers(true)) {
       assertStructural(fn);
     }
   }
@@ -203,10 +192,10 @@ class ErlangAwsQueryIrTest {
     StructureShape tag =
         model.expectShape(ShapeId.from("smithy.beam.test.tagflatten#Tag"), StructureShape.class);
 
-    ErlFunction fn = ErlangAwsQueryOperationIr.buildFlattenStructure(provider, Set.of(tag), true);
+    Function fn = ErlangAwsQueryOperationIr.buildFlattenStructure(provider, Set.of(tag), true);
     assertStructural(fn);
 
-    String text = fn.asString();
+    String text = ErlangRenderer.renderFunction(fn);
     assertThat(text).contains("flatten_structure(WirePrefix, #tag{key = Key, value = Value})");
     assertThat(text).contains("<<WirePrefix/binary, \".Key\">>, Key");
     assertThat(text).doesNotContain("flatten_structure(Key, #tag{key = Key");
@@ -313,7 +302,7 @@ class ErlangAwsQueryIrTest {
         .unwrap();
   }
 
-  private static Model flattenModel() {
+  static Model flattenModel() {
     String idl =
         """
                 $version: "2"
@@ -370,32 +359,23 @@ class ErlangAwsQueryIrTest {
         .orElseThrow();
   }
 
-  private static void assertGolden(List<ErlFunction> functions, String resourcePath)
+  private static void assertGolden(List<Function> functions, String resourcePath)
       throws IOException {
-    assertThat(helpersAsString(functions)).isEqualTo(readExpectedString(resourcePath));
-    for (ErlFunction fn : functions) {
+    assertThat(IrGoldenAssertions.normalizeTrailingNewline(helpersAsString(functions)))
+        .isEqualTo(IrGoldenAssertions.readExpectedString(resourcePath));
+    for (Function fn : functions) {
       assertStructural(fn);
     }
   }
 
-  private static String helpersAsString(List<ErlFunction> functions) {
-    return functions.stream().map(ErlFunction::asString).collect(Collectors.joining("\n\n"));
+  private static String helpersAsString(List<Function> functions) {
+    return functions.stream()
+        .map(ErlangRenderer::renderFunction)
+        .collect(Collectors.joining("\n\n"));
   }
 
-  private static void assertStructural(ErlFunction fn) {
+  private static void assertStructural(Function fn) {
     assertThat(fn.name()).isNotBlank();
     assertThat(fn.clauses()).isNotEmpty();
-  }
-
-  private static String readExpectedString(String resourcePath) throws IOException {
-    try (InputStream in =
-        ErlangAwsQueryIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
-      assertThat(in).as("resource %s", resourcePath).isNotNull();
-      String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-      if (text.endsWith("\n")) {
-        text = text.substring(0, text.length() - 1);
-      }
-      return text;
-    }
   }
 }

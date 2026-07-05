@@ -4,7 +4,6 @@ import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamProtocolIds;
-import io.smithy.beam.ir.erlang.ErlModule;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
@@ -32,9 +31,8 @@ final class ErlangProtocolCodecIr {
       case ShapeId id when BeamProtocolIds.AWS_QUERY.equals(id)
           || BeamProtocolIds.EC2_QUERY.equals(id) -> {
         BeamAwsServiceMetadata.from(service).orElseThrow();
-        ErlModule module = ErlangAwsQueryIr.buildClientCodecModule(ctx, service, id);
-        ErlangCodecEmission.writeModule(
-            ctx, layout.clientCodecModuleName(id) + ".erl", module.asString());
+        Module module = ErlangAwsQueryIr.buildClientCodecModule(ctx, service, id);
+        ErlangCodecEmission.writeModule(ctx, layout.clientCodecModuleName(id) + ".erl", module);
       }
       case ShapeId id when BeamProtocolIds.REST_XML.equals(id) -> {
         Module module = ErlangRestXmlIr.buildClientCodecModule(ctx, service);
@@ -65,9 +63,8 @@ final class ErlangProtocolCodecIr {
       }
       case ShapeId id when BeamProtocolIds.AWS_QUERY.equals(id)
           || BeamProtocolIds.EC2_QUERY.equals(id) -> {
-        ErlModule module = ErlangAwsQueryIr.buildServerCodecModule(ctx, service, id);
-        ErlangCodecEmission.writeModule(
-            ctx, layout.serverCodecModuleName(id) + ".erl", module.asString());
+        Module module = ErlangAwsQueryIr.buildServerCodecModule(ctx, service, id);
+        ErlangCodecEmission.writeModule(ctx, layout.serverCodecModuleName(id) + ".erl", module);
       }
       case ShapeId id when BeamProtocolIds.REST_XML.equals(id) -> {
         Module module = ErlangRestXmlIr.buildServerCodecModule(ctx, service);
