@@ -22,13 +22,9 @@ public final class ErlangSigV4Emitter {
         new BeamErlangLayout(ctx.settings(), service.getId().getNamespace(), service);
     String sigv4Module = layout.sigv4ModuleName();
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.sigv4ModuleFile(),
-            writer ->
-                writer.write(
-                    "$L",
-                    ErlangSigV4Ir.sigV4Module(sigv4Module, layout.runtimeTypesHeaderFile(), service)
-                        .asString()));
+    ErlangCodecEmission.writeModule(
+        ctx,
+        layout.sigv4ModuleFile(),
+        ErlangSigV4Ir.sigV4Module(sigv4Module, layout.runtimeTypesHeaderFile(), service));
   }
 }

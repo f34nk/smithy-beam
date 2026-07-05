@@ -1,28 +1,26 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAttribute;
-import io.smithy.beam.ir.erlang.ErlBinary;
-import io.smithy.beam.ir.erlang.ErlBinaryPattern;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCapturedBlock;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlComment;
-import io.smithy.beam.ir.erlang.ErlConsPattern;
-import io.smithy.beam.ir.erlang.ErlExportAttribute;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlGuard;
-import io.smithy.beam.ir.erlang.ErlInteger;
-import io.smithy.beam.ir.erlang.ErlList;
-import io.smithy.beam.ir.erlang.ErlModule;
-import io.smithy.beam.ir.erlang.ErlNilPattern;
-import io.smithy.beam.ir.erlang.ErlOp;
-import io.smithy.beam.ir.erlang.ErlRecordFieldPattern;
-import io.smithy.beam.ir.erlang.ErlRecordPattern;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlTypeDef;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BinaryExpr;
+import io.beam.ir.erlang.BinaryPattern;
+import io.beam.ir.erlang.ExpressionGuard;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.InfixExpr;
+import io.beam.ir.erlang.IntegerExpr;
+import io.beam.ir.erlang.ListExpr;
+import io.beam.ir.erlang.ListPattern;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.Module;
+import io.beam.ir.erlang.OpaqueExpr;
+import io.beam.ir.erlang.RecordPattern;
+import io.beam.ir.erlang.RecordPatternField;
+import io.beam.ir.erlang.Spec;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TypeAlias;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -36,130 +34,132 @@ final class ErlangSigV4Ir {
 
   private ErlangSigV4Ir() {}
 
-  static ErlModule sigV4Module(
+  static Module sigV4Module(
       String sigV4Mod, String runtimeTypesHeaderFile, ServiceShape service) {
-    return new ErlModule(
+    return Module.of(
         sigV4Mod,
-        List.of(ErlComment.comment("Generated SigV4 signing hook for " + service.getId() + ".")),
-        List.of(
-            new ErlAttribute("include", "\"" + runtimeTypesHeaderFile + "\""),
-            ErlExportAttribute.export(
-                List.of("sign/3", "presign/5", "endpoint_host_from_config/1")),
-            clientConfigType()),
-        sigV4Functions());
+        sigV4Functions(),
+        List.of("Generated SigV4 signing hook for " + service.getId() + "."),
+        null,
+        List.of(runtimeTypesHeaderFile),
+        List.of(TypeAlias.of("client_config", "#{binary() => term()}")),
+        List.of("sign/3", "presign/5", "endpoint_host_from_config/1"));
   }
 
-  static ErlFunction sign() {
-    return ErlFunction.functionWithSpec(
+  static Function sign() {
+    return Function.of(
         "sign",
-        3,
-        SIGN_INPUT,
-        "http_request()",
         List.of(
-            ErlClause.blockClause(
+            FunctionClause.of(
                 List.of(
-                    ErlVarPattern.varPattern("Config"),
-                    ErlVarPattern.varPattern("Operation"),
-                    ErlVarPattern.varPattern("Request")),
-                ErlCapturedBlock.capturedBlock(
+                    VariablePattern.of("Config"),
+                    VariablePattern.of("Operation"),
+                    VariablePattern.of("Request")),
+                OpaqueExpr.of(
                     """
-                                Credentials = maps:get(credentials, Config),
-                                Region = maps:get(region, Config, <<\"us-east-1\">>),
-                                Service = maps:get(signing_name, Config),
-                                Unsigned = maps:get({unsigned_payload, Operation}, Config, false),
-                                Opts = #{
-                                    unsigned_payload => Unsigned,
-                                    endpoint_host => endpoint_host_from_config(Config)
-                                },
-                                sign_request(Request, Credentials, Region, Service, Opts)"""))));
+                    Credentials = maps:get(credentials, Config),
+                    Region = maps:get(region, Config, <<\"us-east-1\">>),
+                    Service = maps:get(signing_name, Config),
+                    Unsigned = maps:get({unsigned_payload, Operation}, Config, false),
+                    Opts = #{
+                        unsigned_payload => Unsigned,
+                        endpoint_host => endpoint_host_from_config(Config)
+                    },
+                    sign_request(Request, Credentials, Region, Service, Opts)"""
+                        .strip()))),
+        Spec.of("sign(" + SIGN_INPUT + ") -> http_request()"),
+        null,
+        null);
   }
 
-  static ErlFunction presign() {
-    return ErlFunction.functionWithSpec(
+  static Function presign() {
+    return Function.of(
         "presign",
-        5,
-        SIGN_REQUEST_INPUT,
-        PRESIGN_RESULT,
         List.of(
-            ErlClause.blockClause(
+            FunctionClause.of(
                 List.of(
-                    ErlVarPattern.varPattern("Request"),
-                    ErlVarPattern.varPattern("Credentials"),
-                    ErlVarPattern.varPattern("Region"),
-                    ErlVarPattern.varPattern("Service"),
-                    ErlVarPattern.varPattern("Opts")),
-                ErlCapturedBlock.capturedBlock(
+                    VariablePattern.of("Request"),
+                    VariablePattern.of("Credentials"),
+                    VariablePattern.of("Region"),
+                    VariablePattern.of("Service"),
+                    VariablePattern.of("Opts")),
+                OpaqueExpr.of(
                     """
-                                AccessKeyId = maps:get(access_key_id, Credentials),
-                                SecretAccessKey = maps:get(secret_access_key, Credentials),
-                                DateTime = calendar:universal_time(),
-                                Host = resolve_host(Request, Opts),
-                                Url = build_url(Host, Request#http_request.path, Request#http_request.query),
-                                Ttl = maps:get(expires, Opts, 900),
-                                QueryOpts =
-                                    [
-                                        {ttl, Ttl},
-                                        {uri_encode_path, Service =/= <<\"s3\">>}
-                                    ]
-                                    ++ body_digest_option(Opts)
-                                    ++ session_token_option(maps:get(session_token, Credentials, undefined)),
-                                try
-                                    {ok, aws_signature:sign_v4_query_params(
-                                        AccessKeyId,
-                                        SecretAccessKey,
-                                        Region,
-                                        Service,
-                                        DateTime,
-                                        Request#http_request.method,
-                                        Url,
-                                        QueryOpts
-                                    )}
-                                catch
-                                    _:Reason ->
-                                        {error, Reason}
-                                end"""))));
+                    AccessKeyId = maps:get(access_key_id, Credentials),
+                    SecretAccessKey = maps:get(secret_access_key, Credentials),
+                    DateTime = calendar:universal_time(),
+                    Host = resolve_host(Request, Opts),
+                    Url = build_url(Host, Request#http_request.path, Request#http_request.query),
+                    Ttl = maps:get(expires, Opts, 900),
+                    QueryOpts =
+                        [
+                            {ttl, Ttl},
+                            {uri_encode_path, Service =/= <<\"s3\">>}
+                        ]
+                        ++ body_digest_option(Opts)
+                        ++ session_token_option(maps:get(session_token, Credentials, undefined)),
+                    try
+                        {ok, aws_signature:sign_v4_query_params(
+                            AccessKeyId,
+                            SecretAccessKey,
+                            Region,
+                            Service,
+                            DateTime,
+                            Request#http_request.method,
+                            Url,
+                            QueryOpts
+                        )}
+                    catch
+                        _:Reason ->
+                            {error, Reason}
+                    end"""
+                        .strip()))),
+        Spec.of("presign(" + SIGN_REQUEST_INPUT + ") -> " + PRESIGN_RESULT),
+        null,
+        null);
   }
 
-  static ErlFunction signRequest() {
-    return ErlFunction.functionWithSpec(
+  static Function signRequest() {
+    return Function.of(
         "sign_request",
-        5,
-        SIGN_REQUEST_INPUT,
-        "http_request()",
         List.of(
-            ErlClause.blockClause(
+            FunctionClause.of(
                 List.of(
-                    ErlVarPattern.varPattern("Request"),
-                    ErlVarPattern.varPattern("Credentials"),
-                    ErlVarPattern.varPattern("Region"),
-                    ErlVarPattern.varPattern("Service"),
-                    ErlVarPattern.varPattern("Opts")),
-                ErlCapturedBlock.capturedBlock(
+                    VariablePattern.of("Request"),
+                    VariablePattern.of("Credentials"),
+                    VariablePattern.of("Region"),
+                    VariablePattern.of("Service"),
+                    VariablePattern.of("Opts")),
+                OpaqueExpr.of(
                     """
-                                AccessKeyId = maps:get(access_key_id, Credentials),
-                                SecretAccessKey = maps:get(secret_access_key, Credentials),
-                                DateTime = calendar:universal_time(),
-                                Host = resolve_host(Request, Opts),
-                                Url = build_url(Host, Request#http_request.path, Request#http_request.query),
-                                Headers0 = ensure_host_header(Request#http_request.headers, Host),
-                                Headers1 = maybe_add_session_token(Headers0, maps:get(session_token, Credentials, undefined)),
-                                SignOpts = sign_options(Service, Opts),
-                                SignedHeaders = aws_signature:sign_v4(
-                                    AccessKeyId,
-                                    SecretAccessKey,
-                                    Region,
-                                    Service,
-                                    DateTime,
-                                    Request#http_request.method,
-                                    Url,
-                                    Headers1,
-                                    Request#http_request.body,
-                                    SignOpts
-                                ),
-                                Request#http_request{headers = SignedHeaders}"""))));
+                    AccessKeyId = maps:get(access_key_id, Credentials),
+                    SecretAccessKey = maps:get(secret_access_key, Credentials),
+                    DateTime = calendar:universal_time(),
+                    Host = resolve_host(Request, Opts),
+                    Url = build_url(Host, Request#http_request.path, Request#http_request.query),
+                    Headers0 = ensure_host_header(Request#http_request.headers, Host),
+                    Headers1 = maybe_add_session_token(Headers0, maps:get(session_token, Credentials, undefined)),
+                    SignOpts = sign_options(Service, Opts),
+                    SignedHeaders = aws_signature:sign_v4(
+                        AccessKeyId,
+                        SecretAccessKey,
+                        Region,
+                        Service,
+                        DateTime,
+                        Request#http_request.method,
+                        Url,
+                        Headers1,
+                        Request#http_request.body,
+                        SignOpts
+                    ),
+                    Request#http_request{headers = SignedHeaders}"""
+                        .strip()))),
+        Spec.of("sign_request(" + SIGN_REQUEST_INPUT + ") -> http_request()"),
+        null,
+        null);
   }
 
-  static List<ErlFunction> helperFunctions() {
+  static List<Function> helperFunctions() {
     return List.of(
         resolveHost(),
         coalesce(),
@@ -175,8 +175,8 @@ final class ErlangSigV4Ir {
         splitBaseUrl());
   }
 
-  private static List<ErlFunction> sigV4Functions() {
-    List<ErlFunction> functions = new ArrayList<>();
+  private static List<Function> sigV4Functions() {
+    List<Function> functions = new ArrayList<>();
     functions.add(sign());
     functions.add(presign());
     functions.add(signRequest());
@@ -184,217 +184,249 @@ final class ErlangSigV4Ir {
     return functions;
   }
 
-  private static ErlTypeDef clientConfigType() {
-    return new ErlTypeDef("client_config", "#{binary() => term()}");
-  }
-
-  private static ErlFunction resolveHost() {
-    return ErlFunction.function(
+  private static Function resolveHost() {
+    return Function.of(
         "resolve_host",
-        2,
         List.of(
-            ErlClause.blockClause(
+            FunctionClause.of(
                 List.of(
-                    ErlRecordPattern.recordPattern(
+                    RecordPattern.bind(
+                        "Req",
                         "http_request",
-                        ErlRecordFieldPattern.fieldPattern(
-                            "host", ErlVarPattern.varPattern("Host")),
-                        ErlRecordFieldPattern.fieldPattern(
-                            "headers", ErlVarPattern.varPattern("Headers"))),
-                    ErlVarPattern.varPattern("Opts")),
-                ErlCapturedBlock.capturedBlock(
+                        List.of(
+                            RecordPatternField.of("host", VariablePattern.of("Host")),
+                            RecordPatternField.of("headers", VariablePattern.of("Headers")))),
+                    VariablePattern.of("Opts")),
+                OpaqueExpr.of(
                     """
-                                coalesce([
-                                    Host,
-                                    maps:get(host, Opts, undefined),
-                                    maps:get(endpoint_host, Opts, undefined),
-                                    header_host(Headers)
-                                ])"""))));
+                    coalesce([
+                        Host,
+                        maps:get(host, Opts, undefined),
+                        maps:get(endpoint_host, Opts, undefined),
+                        header_host(Headers)
+                    ])"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction coalesce() {
-    return ErlFunction.function(
+  private static Function coalesce() {
+    return Function.of(
         "coalesce",
-        1,
         List.of(
-            ErlClause.blockClause(
+            FunctionClause.of(
                 List.of(
-                    ErlConsPattern.consPattern(
-                        ErlVarPattern.varPattern("H"), ErlVarPattern.varPattern("Rest"))),
-                ErlCapturedBlock.capturedBlock(
+                    ListPattern.cons(VariablePattern.of("H"), VariablePattern.of("Rest"))),
+                OpaqueExpr.of(
                     """
-                                        case H of
-                                            undefined -> coalesce(Rest);
-                                            <<>> -> coalesce(Rest);
-                                            Value -> Value
-                                        end""")),
-            ErlClause.clause(List.of(ErlNilPattern.nilPattern()), ErlBinary.binary("localhost"))));
+                    case H of
+                        undefined -> coalesce(Rest);
+                        <<>> -> coalesce(Rest);
+                        Value -> Value
+                    end"""
+                        .strip())),
+            FunctionClause.of(List.of(ListPattern.of(List.of())), BinaryExpr.of("localhost"))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction buildUrl() {
-    return ErlFunction.function(
+  private static Function buildUrl() {
+    return Function.of(
         "build_url",
-        3,
         List.of(
-            ErlClause.blockClause(
+            FunctionClause.of(
                 List.of(
-                    ErlVarPattern.varPattern("Host"),
-                    ErlVarPattern.varPattern("Path"),
-                    ErlVarPattern.varPattern("Query")),
-                ErlCapturedBlock.capturedBlock(
+                    VariablePattern.of("Host"),
+                    VariablePattern.of("Path"),
+                    VariablePattern.of("Query")),
+                OpaqueExpr.of(
                     """
-                                <<\"https://\", Host/binary, Path/binary, (query_suffix(Query))/binary>>"""))));
+                    <<\"https://\", Host/binary, Path/binary, (query_suffix(Query))/binary>>"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction querySuffix() {
-    return ErlFunction.function(
+  private static Function querySuffix() {
+    return Function.of(
         "query_suffix",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Query")),
-                List.of(
-                    ErlGuard.exprGuard(
-                        ErlOp.op(
-                            "=:=",
-                            ErlCallLocal.callLocal("map_size", ErlVar.var("Query")),
-                            ErlInteger.integer(0)))),
-                ErlBinary.binary("")),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Query")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Query")),
+                ExpressionGuard.of(
+                    InfixExpr.of(
+                        LocalCallExpr.of("map_size", List.of(Variable.of("Query"))),
+                        "=:=",
+                        IntegerExpr.of(0))),
+                BinaryExpr.of("")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Query")),
+                OpaqueExpr.of(
                     """
-                                        Params = uri_string:compose_query([{K, V} || {K, V} <- maps:to_list(Query)]),
-                                        <<\"?\", Params/binary>>"""))));
+                    Params = uri_string:compose_query([{K, V} || {K, V} <- maps:to_list(Query)]),
+                    <<\"?\", Params/binary>>"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction ensureHostHeader() {
-    return ErlFunction.function(
+  private static Function ensureHostHeader() {
+    return Function.of(
         "ensure_host_header",
-        2,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Headers"), ErlVarPattern.varPattern("Host")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Headers"), VariablePattern.of("Host")),
+                OpaqueExpr.of(
                     """
-                                case header_host(Headers) of
-                                    undefined -> [{<<\"host\">>, Host} | Headers];
-                                    _ -> Headers
-                                end"""))));
+                    case header_host(Headers) of
+                        undefined -> [{<<\"host\">>, Host} | Headers];
+                        _ -> Headers
+                    end"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction headerHost() {
-    return ErlFunction.function(
+  private static Function headerHost() {
+    return Function.of(
         "header_host",
-        1,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Headers")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Headers")),
+                OpaqueExpr.of(
                     """
-                                proplists:get_value(<<\"host\">>, Headers, proplists:get_value(<<\"Host\">>, Headers))"""))));
+                    proplists:get_value(<<\"host\">>, Headers, proplists:get_value(<<\"Host\">>, Headers))"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction maybeAddSessionToken() {
-    return ErlFunction.function(
+  private static Function maybeAddSessionToken() {
+    return Function.of(
         "maybe_add_session_token",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Headers"), ErlVarPattern.varPattern("undefined")),
-                ErlVar.var("Headers")),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Headers"), ErlVarPattern.varPattern("Token")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Headers"), AtomPattern.of("undefined")),
+                Variable.of("Headers")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Headers"), VariablePattern.of("Token")),
+                OpaqueExpr.of(
                     """
-                                        case proplists:get_value(<<\"x-amz-security-token\">>, Headers) of
-                                            undefined -> [{<<\"x-amz-security-token\">>, Token} | Headers];
-                                            _ -> Headers
-                                        end"""))));
+                    case proplists:get_value(<<\"x-amz-security-token\">>, Headers) of
+                        undefined -> [{<<\"x-amz-security-token\">>, Token} | Headers];
+                        _ -> Headers
+                    end"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction signOptions() {
-    return ErlFunction.function(
+  private static Function signOptions() {
+    return Function.of(
         "sign_options",
-        2,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Service"), ErlVarPattern.varPattern("Opts")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Service"), VariablePattern.of("Opts")),
+                OpaqueExpr.of(
                     """
-                                [{uri_encode_path, Service =/= <<\"s3\">>}] ++ body_digest_option(Opts)"""))));
+                    [{uri_encode_path, Service =/= <<\"s3\">>}] ++ body_digest_option(Opts)"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction bodyDigestOption() {
-    return ErlFunction.function(
+  private static Function bodyDigestOption() {
+    return Function.of(
         "body_digest_option",
-        1,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Opts")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Opts")),
+                OpaqueExpr.of(
                     """
-                                case maps:get(unsigned_payload, Opts, false) of
-                                    true -> [{body_digest, <<\"UNSIGNED-PAYLOAD\">>}];
-                                    false -> []
-                                end"""))));
+                    case maps:get(unsigned_payload, Opts, false) of
+                        true -> [{body_digest, <<\"UNSIGNED-PAYLOAD\">>}];
+                        false -> []
+                    end"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction sessionTokenOption() {
-    return ErlFunction.function(
+  private static Function sessionTokenOption() {
+    return Function.of(
         "session_token_option",
-        1,
         List.of(
-            ErlClause.clause(List.of(ErlVarPattern.varPattern("undefined")), ErlList.list()),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Token")),
-                ErlList.list(ErlTuple.tuple(ErlAtom.atom("session_token"), ErlVar.var("Token"))))));
+            FunctionClause.of(List.of(VariablePattern.of("undefined")), ListExpr.of(List.of())),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Token")),
+                ListExpr.of(
+                    List.of(
+                        TupleExpr.of(
+                            List.of(AtomExpr.of("session_token"), Variable.of("Token"))))))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction endpointHostFromConfig() {
-    return ErlFunction.function(
+  private static Function endpointHostFromConfig() {
+    return Function.of(
         "endpoint_host_from_config",
-        1,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Config")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config")),
+                OpaqueExpr.of(
                     """
-                                case maps:get(base_url, Config, undefined) of
-                                    undefined ->
-                                        case {maps:get(endpoint_prefix, Config, undefined),
-                                              maps:get(region, Config, <<\"us-east-1\">>)} of
-                                            {undefined, _} -> undefined;
-                                            {Prefix, Region} -> <<Prefix/binary, \".\", Region/binary, \".amazonaws.com\">>
-                                        end;
-                                    BaseUrl ->
-                                        {_Scheme, Authority} = split_base_url(BaseUrl),
-                                        Authority
-                                end"""))));
+                    case maps:get(base_url, Config, undefined) of
+                        undefined ->
+                            case {maps:get(endpoint_prefix, Config, undefined),
+                                  maps:get(region, Config, <<\"us-east-1\">>)} of
+                                {undefined, _} -> undefined;
+                                {Prefix, Region} -> <<Prefix/binary, \".\", Region/binary, \".amazonaws.com\">>
+                            end;
+                        BaseUrl ->
+                            {_Scheme, Authority} = split_base_url(BaseUrl),
+                            Authority
+                    end"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction splitBaseUrl() {
-    return ErlFunction.function(
+  private static Function splitBaseUrl() {
+    return Function.of(
         "split_base_url",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlBinaryPattern.binaryPattern("")),
-                ErlTuple.tuple(ErlBinary.binary(""), ErlBinary.binary(""))),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("BaseUrl")),
-                ErlCapturedBlock.capturedBlock(
+            FunctionClause.of(
+                List.of(BinaryPattern.of("")),
+                TupleExpr.of(List.of(BinaryExpr.of(""), BinaryExpr.of("")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("BaseUrl")),
+                OpaqueExpr.of(
                     """
-                                        case uri_string:parse(binary_to_list(BaseUrl)) of
-                                            #{scheme := Scheme, host := Host} = Parts ->
-                                                PortSuffix = case maps:get(port, Parts, undefined) of
-                                                    undefined -> <<>>;
-                                                    Port -> <<\":\", (integer_to_binary(Port))/binary>>
-                                                end,
-                                                {<< (list_to_binary(Scheme))/binary, \"://\">>,
-                                                 << (list_to_binary(Host))/binary, PortSuffix/binary >>};
-                                            _ ->
-                                                {<<>>, BaseUrl}
-                                        end"""))));
+                    case uri_string:parse(binary_to_list(BaseUrl)) of
+                        #{scheme := Scheme, host := Host} = Parts ->
+                            PortSuffix = case maps:get(port, Parts, undefined) of
+                                undefined -> <<>>;
+                                Port -> <<\":\", (integer_to_binary(Port))/binary>>
+                            end,
+                            {<< (list_to_binary(Scheme))/binary, \"://\">>,
+                             << (list_to_binary(Host))/binary, PortSuffix/binary >>};
+                        _ ->
+                            {<<>>, BaseUrl}
+                    end"""
+                        .strip()))),
+        null,
+        null,
+        null);
   }
 }
