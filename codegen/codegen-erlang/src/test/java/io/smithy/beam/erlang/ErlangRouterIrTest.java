@@ -3,7 +3,8 @@ package io.smithy.beam.erlang;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.ir.erlang.ErlModule;
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Module;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
@@ -30,10 +31,10 @@ class ErlangRouterIrTest {
                 io.smithy.beam.core.BeamCodegenKind.SERVER));
     List<software.amazon.smithy.model.shapes.OperationShape> operations =
         ErlangTopDown.containedOperationsSorted(model, service);
-    ErlModule module =
+    Module module =
         ErlangRouterIr.routerModule(
             model, service, layout, ShapeId.from("aws.protocols#restJson1"), operations, sp);
-    String router = module.asString();
+    String router = ErlangRenderer.render(module);
     assertThat(router).contains("-module(basic_service_router).");
     assertThat(router).contains("-export([dispatch/2]).");
     assertThat(router).contains("#http_request{method = Method, path = Path}");
