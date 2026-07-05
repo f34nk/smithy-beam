@@ -204,13 +204,11 @@ final class ErlangRuntimeHelpersIr {
                                 List.of(
                                     Variable.of("RestPath"),
                                     Variable.of("RestTpl"),
-                                    RemoteCallExpr.of(
-                                        "maps",
-                                        "put",
+                                    MapExpr.of(
+                                        Variable.of("Acc"),
                                         List.of(
-                                            Variable.of("Acc"),
-                                            Variable.of("Key"),
-                                            Variable.of("Val")))))),
+                                            MapEntry.of(
+                                                Variable.of("Key"), Variable.of("Val"))))))),
                         false)),
                 Clause.of(AtomPattern.of("error"), segmentMatchCase)));
 
