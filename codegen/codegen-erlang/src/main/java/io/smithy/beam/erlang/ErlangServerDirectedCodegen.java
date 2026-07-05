@@ -9,7 +9,7 @@ import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlModule;
+import io.beam.ir.erlang.Module;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -166,7 +166,7 @@ final class ErlangServerDirectedCodegen
         Symbol sym = sp.toSymbol(op);
         exports.add("handle_" + sym.getName() + "/3");
       }
-      ErlModule module =
+      Module module =
           ErlangServerIr.serverModule(
               layout,
               service,
@@ -174,14 +174,7 @@ final class ErlangServerDirectedCodegen
               exports,
               builder.operationFunctions(),
               builder.discoveryFunctions());
-      ctx.writerDelegator()
-          .useFileWriter(
-              ctx.definitionFile(),
-              writer -> {
-                writer.pushGeneratedDocumentationSection();
-                writer.write("$L", module.asString());
-                writer.popState();
-              });
+      ErlangCodecEmission.writeModule(ctx, ctx.definitionFile(), module);
     }
   }
 
