@@ -14,15 +14,25 @@ final class IrGoldenAssertions {
   private IrGoldenAssertions() {}
 
   static void assertGolden(Function function, String resourcePath) throws IOException {
-    assertThat(ErlangRenderer.renderFunction(function)).isEqualTo(readExpectedString(resourcePath));
+    assertThat(normalizeTrailingNewline(ErlangRenderer.renderFunction(function)))
+        .isEqualTo(readExpectedString(resourcePath));
   }
 
   static void assertGolden(Module module, String resourcePath) throws IOException {
-    assertThat(ErlangRenderer.render(module)).isEqualTo(readExpectedString(resourcePath));
+    assertThat(normalizeTrailingNewline(ErlangRenderer.render(module)))
+        .isEqualTo(readExpectedString(resourcePath));
   }
 
   static void assertGolden(Header header, String resourcePath) throws IOException {
-    assertThat(ErlangRenderer.render(header)).isEqualTo(readExpectedString(resourcePath));
+    assertThat(normalizeTrailingNewline(ErlangRenderer.render(header)))
+        .isEqualTo(readExpectedString(resourcePath));
+  }
+
+  static String normalizeTrailingNewline(String text) {
+    if (text.endsWith("\n")) {
+      return text.substring(0, text.length() - 1);
+    }
+    return text;
   }
 
   static String readExpectedString(String resourcePath) throws IOException {
