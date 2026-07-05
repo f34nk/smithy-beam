@@ -1,5 +1,18 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.Edoc;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.Module;
+import io.beam.ir.erlang.Pattern;
+import io.beam.ir.erlang.RecordExpr;
+import io.beam.ir.erlang.RecordField;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.Spec;
+import io.beam.ir.erlang.TypeAlias;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamResourceIndex;
@@ -7,24 +20,6 @@ import io.smithy.beam.core.BeamResourceInputBuilder;
 import io.smithy.beam.core.BeamResourceInputBuilder.IdentifierArg;
 import io.smithy.beam.core.BeamResourceInputBuilder.InputPlan;
 import io.smithy.beam.core.BeamResourceLifecycle;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAttribute;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlComment;
-import io.smithy.beam.ir.erlang.ErlExportAttribute;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlFunctionDoc;
-import io.smithy.beam.ir.erlang.ErlFunctionSpec;
-import io.smithy.beam.ir.erlang.ErlModule;
-import io.smithy.beam.ir.erlang.ErlPattern;
-import io.smithy.beam.ir.erlang.ErlPreambleEntry;
-import io.smithy.beam.ir.erlang.ErlRecord;
-import io.smithy.beam.ir.erlang.ErlRecordField;
-import io.smithy.beam.ir.erlang.ErlRecordUpdate;
-import io.smithy.beam.ir.erlang.ErlRemoteCall;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +34,7 @@ import software.amazon.smithy.model.shapes.StructureShape;
 final class ErlangResourceIr {
   private ErlangResourceIr() {}
 
-  static ErlModule clientModule(
+  static Module clientModule(
       ErlangContext ctx,
       ResourceShape resource,
       BeamResourceIndex index,
@@ -48,7 +43,7 @@ final class ErlangResourceIr {
     return lifecycleModule(ctx, resource, index, layout, delegateMod, false);
   }
 
-  static ErlModule serverModule(
+  static Module serverModule(
       ErlangContext ctx,
       ResourceShape resource,
       BeamResourceIndex index,
@@ -57,7 +52,7 @@ final class ErlangResourceIr {
     return lifecycleModule(ctx, resource, index, layout, delegateMod, true);
   }
 
-  private static ErlModule lifecycleModule(
+  private static Module lifecycleModule(
       ErlangContext ctx,
       ResourceShape resource,
       BeamResourceIndex index,
@@ -80,30 +75,28 @@ final class ErlangResourceIr {
           (server ? "handle_" : "") + binding.helperName() + "/" + helperArity(plan, server));
     }
 
-    List<ErlPreambleEntry> preamble = new ArrayList<>();
-    preamble.add(ErlComment.comment("Generated resource helpers for " + resource.getId() + "."));
-    BeamDocumentation.forShape(resource).ifPresent(doc -> preamble.add(ErlComment.comment(doc)));
+    List<String> preambleComments = new ArrayList<>();
+    preambleComments.add("Generated resource helpers for " + resource.getId() + ".");
+    BeamDocumentation.forShape(resource).ifPresent(preambleComments::add);
 
-    List<ErlFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (HelperBinding binding : bindings) {
       functions.add(helperFunction(index, sp, resource, binding, delegateMod, server));
     }
 
-    List<io.smithy.beam.ir.erlang.ErlModuleAttribute> attributes = new ArrayList<>();
-    attributes.add(new ErlAttribute("include", "\"" + layout.typesHeaderFile() + "\""));
+    List<TypeAlias> typeAliases = new ArrayList<>();
     if (!server) {
-      attributes.add(
-          new io.smithy.beam.ir.erlang.ErlTypeDef(
-              "client_config",
-              "#{binary() => term()}",
-              List.of(
-                  ErlComment.comment(
-                      "Client configuration is intentionally opaque at this layer; "
-                          + "endpoint, transport, and protocol live in future runtime modules."))));
+      typeAliases.add(ErlangClientIr.clientConfigTypeDef());
     }
-    attributes.add(ErlExportAttribute.export(exports));
 
-    return new ErlModule(mod, preamble, attributes, functions);
+    return Module.of(
+        mod,
+        functions,
+        preambleComments,
+        null,
+        List.of(layout.typesHeaderFile()),
+        typeAliases.isEmpty() ? null : typeAliases,
+        exports);
   }
 
   private record HelperBinding(String helperName, ShapeId operationId) {}
@@ -129,7 +122,7 @@ final class ErlangResourceIr {
     return arity;
   }
 
-  private static ErlFunction helperFunction(
+  private static Function helperFunction(
       BeamResourceIndex index,
       SymbolProvider sp,
       ResourceShape resource,
@@ -144,20 +137,20 @@ final class ErlangResourceIr {
     String helper = server ? "handle_" + binding.helperName() : binding.helperName();
     String opHandler = server ? "handle_" + opSym.getName() : opSym.getName();
 
-    List<ErlPattern> patterns = new ArrayList<>();
+    List<Pattern> patterns = new ArrayList<>();
     if (server) {
-      patterns.add(ErlVarPattern.varPattern("Ctx"));
+      patterns.add(VariablePattern.of("Ctx"));
     } else {
-      patterns.add(ErlVarPattern.varPattern("Config"));
+      patterns.add(VariablePattern.of("Config"));
     }
     for (IdentifierArg arg : plan.identifierArgs()) {
-      patterns.add(ErlVarPattern.varPattern(arg.paramName()));
+      patterns.add(VariablePattern.of(arg.paramName()));
     }
     if (plan.acceptsFullInput()) {
-      patterns.add(ErlVarPattern.varPattern("Input"));
+      patterns.add(VariablePattern.of("Input"));
     }
     if (server) {
-      patterns.add(ErlVarPattern.varPattern("Meta"));
+      patterns.add(VariablePattern.of("Meta"));
     }
 
     List<String> specParams = new ArrayList<>();
@@ -176,33 +169,30 @@ final class ErlangResourceIr {
       specParams.add("term()");
     }
 
-    ErlFunctionDoc doc =
-        BeamDocumentation.forShape(op).map(ErlFunctionDoc::functionDoc).orElse(null);
-
-    List<ErlExpr> callArgs = new ArrayList<>();
+    List<Expression> callArgs = new ArrayList<>();
     if (server) {
-      callArgs.add(ErlVar.var("Ctx"));
+      callArgs.add(Variable.of("Ctx"));
     } else {
-      callArgs.add(ErlVar.var("Config"));
+      callArgs.add(Variable.of("Config"));
     }
     callArgs.add(inputExpression(plan));
     if (server) {
-      callArgs.add(ErlVar.var("Meta"));
+      callArgs.add(Variable.of("Meta"));
     }
 
-    return new ErlFunction(
+    return Function.of(
         helper,
-        patterns.size(),
-        doc,
-        ErlFunctionSpec.functionSpec(
-            helper,
-            String.join(", ", specParams),
-            "{'ok', " + outSym.getName() + "} | {'error', term()}"),
         List.of(
-            ErlClause.clause(
-                patterns,
-                ErlRemoteCall.call(
-                    ErlAtom.atom(delegateMod), opHandler, callArgs.toArray(ErlExpr[]::new)))));
+            FunctionClause.of(patterns, RemoteCallExpr.of(delegateMod, opHandler, callArgs))),
+        Spec.of(
+            helper
+                + "("
+                + String.join(", ", specParams)
+                + ") -> {'ok', "
+                + outSym.getName()
+                + "} | {'error', term()}"),
+        BeamDocumentation.forShape(op).map(Edoc::of).orElse(null),
+        null);
   }
 
   private static String identifierType(
@@ -211,23 +201,23 @@ final class ErlangResourceIr {
     return sp.toSymbol(shape).getName();
   }
 
-  private static ErlExpr inputExpression(InputPlan plan) {
+  private static Expression inputExpression(InputPlan plan) {
     String recordName = recordName(plan.inputSymbol());
     if (plan.acceptsFullInput()) {
       if (plan.identifierArgs().isEmpty()) {
-        return ErlVar.var("Input");
+        return Variable.of("Input");
       }
-      ErlRecordField[] updates =
+      List<RecordField> updates =
           plan.identifierArgs().stream()
-              .map(arg -> ErlRecordField.field(arg.fieldName(), ErlVar.var(arg.paramName())))
-              .toArray(ErlRecordField[]::new);
-      return ErlRecordUpdate.recordUpdate(ErlVar.var("Input"), recordName, updates);
+              .map(arg -> RecordField.of(arg.fieldName(), Variable.of(arg.paramName())))
+              .toList();
+      return RecordExpr.update(Variable.of("Input"), recordName, updates);
     }
-    ErlRecordField[] fields =
+    List<RecordField> fields =
         plan.identifierArgs().stream()
-            .map(arg -> ErlRecordField.field(arg.fieldName(), ErlVar.var(arg.paramName())))
-            .toArray(ErlRecordField[]::new);
-    return ErlRecord.record(recordName, fields);
+            .map(arg -> RecordField.of(arg.fieldName(), Variable.of(arg.paramName())))
+            .toList();
+    return RecordExpr.of(recordName, fields);
   }
 
   private static String recordName(Symbol symbol) {

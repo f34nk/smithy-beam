@@ -4,7 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamResourceIndex;
-import io.smithy.beam.ir.erlang.ErlModule;
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Module;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -54,9 +55,9 @@ class ErlangResourceIrTest {
             layout.clientModuleFile(),
             null);
     BeamResourceIndex index = BeamResourceIndex.of(model);
-    ErlModule module =
+    Module module =
         ErlangResourceIr.clientModule(ctx, organization, index, layout, layout.clientModuleName());
-    String org = module.asString();
+    String org = ErlangRenderer.render(module);
     assertThat(org).contains("-module(organization_resource).");
     assertThat(org).contains("-type client_config() :: #{binary() => term()}.");
     assertThat(org).contains("read/2");
@@ -107,9 +108,9 @@ class ErlangResourceIrTest {
             null,
             null);
     BeamResourceIndex index = BeamResourceIndex.of(model);
-    ErlModule module =
+    Module module =
         ErlangResourceIr.serverModule(ctx, organization, index, layout, layout.serverModuleName());
-    String org = module.asString();
+    String org = ErlangRenderer.render(module);
     assertThat(org).contains("-module(organization_resource).");
     assertThat(org).doesNotContain("-type client_config()");
     assertThat(org).contains("handle_read/3");
