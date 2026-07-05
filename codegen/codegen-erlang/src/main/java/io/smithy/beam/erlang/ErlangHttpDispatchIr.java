@@ -27,6 +27,7 @@ import io.beam.ir.erlang.RecordField;
 import io.beam.ir.erlang.RecordPattern;
 import io.beam.ir.erlang.RecordPatternField;
 import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.StringExpr;
 import io.beam.ir.erlang.TupleExpr;
 import io.beam.ir.erlang.TuplePattern;
 import io.beam.ir.erlang.Variable;
@@ -250,7 +251,7 @@ final class ErlangHttpDispatchIr {
                     List.of(
                         Clause.of(
                             AtomPattern.of("undefined"),
-                            BinaryExpr.of("application/octet-stream")),
+                            StringExpr.of("application/octet-stream")),
                         Clause.of(
                             VariablePattern.of("CT"),
                             LocalCallExpr.of(
