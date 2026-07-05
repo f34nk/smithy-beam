@@ -1,7 +1,35 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BinaryExpr;
+import io.beam.ir.erlang.BinaryPattern;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.Fun;
+import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.InfixExpr;
+import io.beam.ir.erlang.IsTypeGuard;
+import io.beam.ir.erlang.ListComprehensionExpr;
+import io.beam.ir.erlang.ListExpr;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MapEntry;
+import io.beam.ir.erlang.MapExpr;
+import io.beam.ir.erlang.MapPattern;
+import io.beam.ir.erlang.MapPatternEntry;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.Module;
+import io.beam.ir.erlang.RecordExpr;
+import io.beam.ir.erlang.RecordField;
+import io.beam.ir.erlang.RecordFieldAccessExpr;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TuplePattern;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.erlang.*;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -19,7 +47,7 @@ import software.amazon.smithy.model.traits.JsonNameTrait;
 final class ErlangEventStreamIr {
   private ErlangEventStreamIr() {}
 
-  static ErlModule eventStreamModule(
+  static Module eventStreamModule(
       String moduleName,
       String typesHeaderFile,
       ServiceShape service,
@@ -27,55 +55,64 @@ final class ErlangEventStreamIr {
       Model model,
       SymbolProvider sp,
       List<String> exports) {
-    List<ErlFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (UnionShape union : unions) {
       functions.addAll(unionHelpers(model, union, sp));
     }
     functions.add(encodeEventHeaders());
     functions.add(headerValue());
-
-    return new ErlModule(
+    return Module.of(
         moduleName,
-        List.of(
-            ErlComment.comment(
-                "Generated Amazon Event Stream helpers for " + service.getId() + ".")),
-        List.of(
-            new ErlAttribute("include", "\"" + typesHeaderFile + "\""),
-            ErlExportAttribute.export(exports)),
-        functions);
+        functions,
+        List.of("Generated Amazon Event Stream helpers for " + service.getId() + "."),
+        null,
+        List.of(typesHeaderFile),
+        null,
+        exports);
   }
 
-  static ErlFunction encodeEventHeaders() {
-    return ErlFunction.function(
+  static Function encodeEventHeaders() {
+    return Function.of(
         "encode_event_headers",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("EventType")),
-                ErlList.list(
-                    ErlTuple.tuple(ErlBinary.binary(":event-type"), ErlVar.var("EventType")),
-                    ErlTuple.tuple(ErlBinary.binary(":message-type"), ErlBinary.binary("event")),
-                    ErlTuple.tuple(
-                        ErlBinary.binary(":content-type"),
-                        ErlBinary.binary("application/json"))))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("EventType")),
+                ListExpr.of(
+                    List.of(
+                        TupleExpr.of(
+                            List.of(
+                                BinaryExpr.of(":event-type"), Variable.of("EventType"))),
+                        TupleExpr.of(
+                            List.of(
+                                BinaryExpr.of(":message-type"), BinaryExpr.of("event"))),
+                        TupleExpr.of(
+                            List.of(
+                                BinaryExpr.of(":content-type"),
+                                BinaryExpr.of("application/json"))))))),
+        null,
+        null,
+        null);
   }
 
-  static ErlFunction headerValue() {
-    return ErlFunction.function(
+  static Function headerValue() {
+    return Function.of(
         "header_value",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Headers"), ErlVarPattern.varPattern("Name")),
-                ErlCall.call(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Headers"), VariablePattern.of("Name")),
+                RemoteCallExpr.of(
                     "proplists",
                     "get_value",
-                    ErlVar.var("Name"),
-                    ErlVar.var("Headers"),
-                    ErlAtom.atom("undefined")))));
+                    List.of(
+                        Variable.of("Name"),
+                        Variable.of("Headers"),
+                        AtomExpr.of("undefined"))))),
+        null,
+        null,
+        null);
   }
 
-  static List<ErlFunction> unionHelpers(Model model, UnionShape union, SymbolProvider sp) {
+  static List<Function> unionHelpers(Model model, UnionShape union, SymbolProvider sp) {
     return List.of(
         unionEncodeList(union, sp),
         unionDecodeList(union, sp),
@@ -84,198 +121,221 @@ final class ErlangEventStreamIr {
         unionDecodeEventType(model, union, sp));
   }
 
-  static ErlFunction unionEncodeList(UnionShape union, SymbolProvider sp) {
+  static Function unionEncodeList(UnionShape union, SymbolProvider sp) {
     String helper = helperName(sp, union);
-    return ErlFunction.function(
+    return Function.of(
         "encode_" + helper,
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Events")),
-                List.of(ErlGuard.guard("is_list", ErlVar.var("Events"))),
-                ErlListComprehension.comprehension(
-                    ErlCallLocal.callLocal("encode_" + helper + "_event", ErlVar.var("E")),
-                    ErlVarPattern.varPattern("E"),
-                    ErlVar.var("Events")))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Events")),
+                IsTypeGuard.of("list", Variable.of("Events")),
+                ListComprehensionExpr.of(
+                    LocalCallExpr.of("encode_" + helper + "_event", List.of(Variable.of("E"))),
+                    VariablePattern.of("E"),
+                    Variable.of("Events")))),
+        null,
+        null,
+        null);
   }
 
-  static ErlFunction unionDecodeList(UnionShape union, SymbolProvider sp) {
+  static Function unionDecodeList(UnionShape union, SymbolProvider sp) {
     String helper = helperName(sp, union);
-    return ErlFunction.function(
+    return Function.of(
         "decode_" + helper,
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Body")),
-                List.of(ErlGuard.guard("is_binary", ErlVar.var("Body"))),
-                ErlListComprehension.comprehension(
-                    ErlCallLocal.callLocal("decode_" + helper + "_event", ErlVar.var("F")),
-                    ErlVarPattern.varPattern("F"),
-                    ErlRemoteCall.call(
-                        ErlAtom.atom("aws_event_stream"), "decode_frames", ErlVar.var("Body"))))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body")),
+                IsTypeGuard.of("binary", Variable.of("Body")),
+                ListComprehensionExpr.of(
+                    LocalCallExpr.of("decode_" + helper + "_event", List.of(Variable.of("F"))),
+                    VariablePattern.of("F"),
+                    RemoteCallExpr.of(
+                        "aws_event_stream", "decode_frames", List.of(Variable.of("Body")))))),
+        null,
+        null,
+        null);
   }
 
-  static ErlFunction unionEncodeEvent(Model model, UnionShape union, SymbolProvider sp) {
+  static Function unionEncodeEvent(Model model, UnionShape union, SymbolProvider sp) {
     String helper = helperName(sp, union);
-    List<ErlClause> clauses = new ArrayList<>();
+    List<FunctionClause> clauses = new ArrayList<>();
     for (MemberShape member : union.members()) {
       clauses.add(encodeEventClause(model, helper, member, sp));
     }
     clauses.add(
-        ErlClause.clause(
+        FunctionClause.of(
             List.of(
-                ErlTuplePattern.tuplePattern(
-                    ErlAtomPattern.atomPattern("unknown"), ErlVarPattern.varPattern("_"))),
-            ErlCallLocal.callLocal(
-                "error", ErlTuple.tuple(ErlAtom.atom("bad_event"), ErlAtom.atom("unknown")))));
-    return ErlFunction.function("encode_" + helper + "_event", 1, clauses);
+                TuplePattern.of(
+                    List.of(AtomPattern.of("unknown"), VariablePattern.of("_")))),
+            LocalCallExpr.of(
+                "error", List.of(TupleExpr.of(List.of(AtomExpr.of("bad_event"), AtomExpr.of("unknown")))))));
+    return Function.of("encode_" + helper + "_event", clauses, null, null, null);
   }
 
-  static ErlFunction unionDecodeEvent(UnionShape union, SymbolProvider sp) {
+  static Function unionDecodeEvent(UnionShape union, SymbolProvider sp) {
     String helper = helperName(sp, union);
-    return ErlFunction.function(
+    return Function.of(
         "decode_" + helper + "_event",
-        1,
         List.of(
-            ErlClause.blockClause(
+            FunctionClause.of(
                 List.of(
-                    ErlMapPattern.mapPattern(
-                        ErlMapFieldPattern.fieldPattern(
-                            "headers", ErlVarPattern.varPattern("Headers")),
-                        ErlMapFieldPattern.fieldPattern(
-                            "payload", ErlVarPattern.varPattern("Payload")))),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("EventType"),
-                        ErlCallLocal.callLocal(
-                            "header_value",
-                            ErlVar.var("Headers"),
-                            ErlBinary.binary(":event-type"))),
-                    ErlCallLocal.callLocal(
-                        "decode_" + helper + "_event_type",
-                        ErlVar.var("EventType"),
-                        ErlVar.var("Payload"))))));
+                    MapPattern.of(
+                        List.of(
+                            MapPatternEntry.of(
+                                AtomExpr.of("headers"), VariablePattern.of("Headers")),
+                            MapPatternEntry.of(
+                                AtomExpr.of("payload"), VariablePattern.of("Payload"))))),
+                BlockExpr.newlineSeparated(
+                    List.of(
+                        MatchExpr.bindValue(
+                            "EventType",
+                            LocalCallExpr.of(
+                                "header_value",
+                                List.of(
+                                    Variable.of("Headers"), BinaryExpr.of(":event-type")))),
+                        LocalCallExpr.of(
+                            "decode_" + helper + "_event_type",
+                            List.of(Variable.of("EventType"), Variable.of("Payload"))))))),
+        null,
+        null,
+        null);
   }
 
-  static ErlFunction unionDecodeEventType(Model model, UnionShape union, SymbolProvider sp) {
+  static Function unionDecodeEventType(Model model, UnionShape union, SymbolProvider sp) {
     String helper = helperName(sp, union);
-    List<ErlClause> clauses = new ArrayList<>();
+    List<FunctionClause> clauses = new ArrayList<>();
     for (MemberShape member : union.members()) {
       clauses.add(decodeEventTypeClause(model, helper, member, sp));
     }
     clauses.add(
-        ErlClause.clause(
-            List.of(ErlVarPattern.varPattern("EventType"), ErlVarPattern.varPattern("_Payload")),
-            ErlCallLocal.callLocal(
-                "error", ErlTuple.tuple(ErlAtom.atom("bad_event"), ErlVar.var("EventType")))));
-    return ErlFunction.function("decode_" + helper + "_event_type", 2, clauses);
+        FunctionClause.of(
+            List.of(VariablePattern.of("EventType"), VariablePattern.of("_Payload")),
+            LocalCallExpr.of(
+                "error",
+                List.of(
+                    TupleExpr.of(
+                        List.of(AtomExpr.of("bad_event"), Variable.of("EventType")))))));
+    return Function.of("decode_" + helper + "_event_type", clauses, null, null, null);
   }
 
   static String helperName(SymbolProvider sp, UnionShape union) {
     return sp.toSymbol(union).getName().replace("()", "");
   }
 
-  private static ErlClause encodeEventClause(
+  private static FunctionClause encodeEventClause(
       Model model, String helper, MemberShape member, SymbolProvider sp) {
     String tag = ErlangUnionHelperIr.unionTagForMember(sp, member);
     String eventType = member.getMemberName();
     Shape target = model.expectShape(member.getTarget());
-    return ErlClause.blockClause(
-        List.of(
-            ErlTuplePattern.tuplePattern(
-                ErlAtomPattern.atomPattern(tag), ErlVarPattern.varPattern("Value"))),
-        ErlExprBlock.block(
-            ErlMatch.match(
-                ErlVarPattern.varPattern("Payload"),
-                encodeMemberPayload(model, target, "Value", sp)),
-            ErlMatch.match(
-                ErlVarPattern.varPattern("Headers"),
-                ErlCallLocal.callLocal("encode_event_headers", ErlBinary.binary(eventType))),
-            ErlRemoteCall.call(
-                ErlAtom.atom("aws_event_stream"),
-                "frame",
-                ErlVar.var("Headers"),
-                ErlVar.var("Payload"))));
+    return FunctionClause.of(
+        List.of(TuplePattern.of(List.of(AtomPattern.of(tag), VariablePattern.of("Value")))),
+        BlockExpr.newlineSeparated(
+            List.of(
+                MatchExpr.bindValue(
+                    "Payload", encodeMemberPayload(model, target, "Value", sp)),
+                MatchExpr.bindValue(
+                    "Headers",
+                    LocalCallExpr.of(
+                        "encode_event_headers", List.of(BinaryExpr.of(eventType)))),
+                RemoteCallExpr.of(
+                    "aws_event_stream",
+                    "frame",
+                    List.of(Variable.of("Headers"), Variable.of("Payload"))))));
   }
 
-  private static ErlClause decodeEventTypeClause(
+  private static FunctionClause decodeEventTypeClause(
       Model model, String helper, MemberShape member, SymbolProvider sp) {
     String tag = ErlangUnionHelperIr.unionTagForMember(sp, member);
     String eventType = member.getMemberName();
     Shape target = model.expectShape(member.getTarget());
-    return ErlClause.clause(
-        List.of(ErlBinaryPattern.binaryPattern(eventType), ErlVarPattern.varPattern("Payload")),
-        ErlTuple.tuple(ErlAtom.atom(tag), decodeMemberPayload(model, target, "Payload", sp)));
+    return FunctionClause.of(
+        List.of(BinaryPattern.of(eventType), VariablePattern.of("Payload")),
+        TupleExpr.of(
+            List.of(AtomExpr.of(tag), decodeMemberPayload(model, target, "Payload", sp))));
   }
 
-  private static ErlExpr encodeMemberPayload(
+  private static Expression encodeMemberPayload(
       Model model, Shape target, String valueVar, SymbolProvider sp) {
     if (target instanceof StructureShape structure) {
       return encodeStructurePayload(structure, valueVar, sp);
     }
     if (target instanceof BlobShape || target instanceof StringShape) {
-      return ErlVar.var(valueVar);
+      return Variable.of(valueVar);
     }
-    return ErlCall.call("jsone", "encode", ErlVar.var(valueVar));
+    return RemoteCallExpr.of("jsone", "encode", List.of(Variable.of(valueVar)));
   }
 
-  private static ErlExpr decodeMemberPayload(
+  private static Expression decodeMemberPayload(
       Model model, Shape target, String payloadVar, SymbolProvider sp) {
     if (target instanceof StructureShape structure) {
       return decodeStructurePayload(structure, payloadVar, sp);
     }
     if (target instanceof BlobShape || target instanceof StringShape) {
-      return ErlVar.var(payloadVar);
+      return Variable.of(payloadVar);
     }
-    return ErlCall.call("jsone", "decode", ErlVar.var(payloadVar));
+    return RemoteCallExpr.of("jsone", "decode", List.of(Variable.of(payloadVar)));
   }
 
-  private static ErlExpr encodeStructurePayload(
+  private static Expression encodeStructurePayload(
       StructureShape structure, String valueVar, SymbolProvider sp) {
     String recordName = recordName(sp.toSymbol(structure));
     if (structure.members().isEmpty()) {
-      return ErlCall.call("jsone", "encode", ErlMap.map());
+      return RemoteCallExpr.of("jsone", "encode", List.of(MapExpr.of(List.of())));
     }
-    List<ErlMapEntry> entries = new ArrayList<>();
+    List<MapEntry> entries = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String wireKey = jsonKey(member);
       String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
       entries.add(
-          ErlMapEntry.entry(
-              ErlBinary.binary(wireKey),
-              ErlRecordAccess.recordAccess(ErlVar.var(valueVar), recordName, fieldName)));
+          MapEntry.of(
+              BinaryExpr.of(wireKey),
+              RecordFieldAccessExpr.of(Variable.of(valueVar), recordName, fieldName)));
     }
-    return ErlCall.call(
+    return RemoteCallExpr.of(
         "jsone",
         "encode",
-        ErlCall.call(
-            "maps",
-            "filter",
-            ErlFun.fun(
-                ErlClause.clause(
-                    List.of(ErlVarPattern.varPattern("_"), ErlVarPattern.varPattern("V")),
-                    ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))),
-            ErlMap.map(entries.toArray(ErlMapEntry[]::new))));
+        List.of(
+            RemoteCallExpr.of(
+                "maps",
+                "filter",
+                List.of(
+                    Fun.of(
+                        List.of(
+                            FunClause.of(
+                                List.of(
+                                    VariablePattern.of("_"), VariablePattern.of("V")),
+                                InfixExpr.of(
+                                    Variable.of("V"), "=/=", AtomExpr.of("undefined"))))),
+                    MapExpr.of(entries)))));
   }
 
-  private static ErlExpr decodeStructurePayload(
+  private static Expression decodeStructurePayload(
       StructureShape structure, String payloadVar, SymbolProvider sp) {
     String recordName = recordName(sp.toSymbol(structure));
     if (structure.members().isEmpty()) {
-      return ErlRecord.record(recordName);
+      return RecordExpr.of(recordName, List.of());
     }
-    ErlCall decoded = ErlCall.call("jsone", "decode", ErlVar.var(payloadVar));
-    List<ErlRecordField> fields = new ArrayList<>();
+    List<RecordField> fields = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String wireKey = jsonKey(member);
       String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
       fields.add(
-          ErlRecordField.field(
+          RecordField.of(
               fieldName,
-              ErlCall.call(
-                  "maps", "get", ErlBinary.binary(wireKey), decoded, ErlAtom.atom("undefined"))));
+              RemoteCallExpr.of(
+                  "maps",
+                  "get",
+                  List.of(
+                      BinaryExpr.of(wireKey),
+                      Variable.of("Decoded"),
+                      AtomExpr.of("undefined")))));
     }
-    return ErlRecord.record(recordName, fields.toArray(ErlRecordField[]::new));
+    return BlockExpr.newlineSeparated(
+        List.of(
+            MatchExpr.bindValue(
+                "Decoded",
+                RemoteCallExpr.of("jsone", "decode", List.of(Variable.of(payloadVar)))),
+            RecordExpr.of(recordName, fields)));
   }
 
   private static String recordName(Symbol symbol) {
