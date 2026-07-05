@@ -1,183 +1,183 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
-import io.smithy.beam.ir.erlang.ErlAttribute;
-import io.smithy.beam.ir.erlang.ErlBinary;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCase;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlComment;
-import io.smithy.beam.ir.erlang.ErlExportAttribute;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlMacro;
-import io.smithy.beam.ir.erlang.ErlMap;
-import io.smithy.beam.ir.erlang.ErlMapEntry;
-import io.smithy.beam.ir.erlang.ErlMatch;
-import io.smithy.beam.ir.erlang.ErlModule;
-import io.smithy.beam.ir.erlang.ErlRemoteCall;
-import io.smithy.beam.ir.erlang.ErlTypeDef;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BinaryExpr;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MacroExpr;
+import io.beam.ir.erlang.MapEntry;
+import io.beam.ir.erlang.MapExpr;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.Module;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.Spec;
+import io.beam.ir.erlang.TypeAlias;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 final class ErlangEndpointRulesIr {
-  private static final String CLIENT_CONFIG = "client_config()";
-  private static final String ENDPOINT_PARAMS = "endpoint_params()";
-
   private ErlangEndpointRulesIr() {}
 
-  static ErlModule endpointRulesModule(
+  static Module endpointRulesModule(
       String endpointsModule,
       String runtimeTypesHeaderFile,
       ServiceShape service,
       Map<String, String> clientContextKeys) {
-    List<ErlFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     functions.add(resolve());
     functions.addAll(mergeParamsFunctions(clientContextKeys));
-    return new ErlModule(
+    return Module.of(
         endpointsModule,
+        functions,
+        List.of("Generated endpoint rule resolver for " + service.getId() + "."),
+        null,
+        List.of(runtimeTypesHeaderFile),
         List.of(
-            ErlComment.comment("Generated endpoint rule resolver for " + service.getId() + ".")),
-        List.of(
-            new ErlAttribute("include", "\"" + runtimeTypesHeaderFile + "\""),
-            ErlExportAttribute.export(List.of("resolve/2")),
-            clientConfigType(),
-            endpointParamsType()),
-        functions);
+            TypeAlias.of("client_config", "#{binary() => term()}"),
+            TypeAlias.of("endpoint_params", "#{binary() => term()}")),
+        List.of("resolve/2"));
   }
 
-  static ErlFunction resolve() {
-    return ErlFunction.functionWithSpec(
+  static Function resolve() {
+    return Function.of(
         "resolve",
-        2,
-        CLIENT_CONFIG + ", " + ENDPOINT_PARAMS,
-        "{ok, #{url := binary()}} | {error, term()}",
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Config"), ErlVarPattern.varPattern("Params")),
-                ErlRemoteCall.call(
-                    ErlAtom.atom("aws_endpoint_rules"),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config"), VariablePattern.of("Params")),
+                RemoteCallExpr.of(
+                    "aws_endpoint_rules",
                     "evaluate",
-                    ErlMacro.macro("ENDPOINT_RULE_SET"),
-                    ErlCallLocal.callLocal(
-                        "merge_params", ErlVar.var("Config"), ErlVar.var("Params"))))));
+                    List.of(
+                        MacroExpr.of("ENDPOINT_RULE_SET"),
+                        LocalCallExpr.of(
+                            "merge_params",
+                            List.of(Variable.of("Config"), Variable.of("Params"))))))),
+        Spec.of(
+            "resolve(client_config(), endpoint_params()) -> {ok, #{url := binary()}} | {error, term()}"),
+        null,
+        null);
   }
 
-  static List<ErlFunction> mergeParamsFunctions(Map<String, String> clientContextKeys) {
+  static List<Function> mergeParamsFunctions(Map<String, String> clientContextKeys) {
     return List.of(
-        mergeParams(),
-        configToRuleParams(),
-        clientContextParams(clientContextKeys),
-        optionalParam());
+        mergeParams(), configToRuleParams(), clientContextParams(clientContextKeys), optionalParam());
   }
 
-  private static ErlFunction mergeParams() {
-    return ErlFunction.function(
+  private static Function mergeParams() {
+    return Function.of(
         "merge_params",
-        2,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Config"), ErlVarPattern.varPattern("Params")),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("ConfigParams"),
-                        ErlCallLocal.callLocal("config_to_rule_params", ErlVar.var("Config"))),
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("ClientParams"),
-                        ErlCallLocal.callLocal("client_context_params", ErlVar.var("Config"))),
-                    ErlCall.call(
-                        "maps",
-                        "merge",
-                        ErlCall.call(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config"), VariablePattern.of("Params")),
+                BlockExpr.newlineSeparated(
+                    List.of(
+                        MatchExpr.bindValue(
+                            "ConfigParams",
+                            LocalCallExpr.of("config_to_rule_params", List.of(Variable.of("Config")))),
+                        MatchExpr.bindValue(
+                            "ClientParams",
+                            LocalCallExpr.of("client_context_params", List.of(Variable.of("Config")))),
+                        RemoteCallExpr.of(
                             "maps",
                             "merge",
-                            ErlVar.var("ConfigParams"),
-                            ErlVar.var("ClientParams")),
-                        ErlVar.var("Params"))))));
+                            List.of(
+                                RemoteCallExpr.of(
+                                    "maps",
+                                    "merge",
+                                    List.of(Variable.of("ConfigParams"), Variable.of("ClientParams"))),
+                                Variable.of("Params"))))))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction configToRuleParams() {
-    return ErlFunction.function(
+  private static Function configToRuleParams() {
+    return Function.of(
         "config_to_rule_params",
-        1,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Config")),
-                ErlCase.caseExpr(
-                    ErlCall.call(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config")),
+                CaseExpr.of(
+                    RemoteCallExpr.of(
                         "maps",
                         "get",
-                        ErlAtom.atom("region"),
-                        ErlVar.var("Config"),
-                        ErlAtom.atom("undefined")),
-                    ErlClause.clause(
-                        List.of(ErlAtomPattern.atomPattern("undefined")), ErlMap.map()),
-                    ErlClause.clause(
-                        List.of(ErlVarPattern.varPattern("Value")),
-                        ErlMap.map(
-                            ErlMapEntry.entry(
-                                ErlBinary.binary("Region"), ErlVar.var("Value"))))))));
+                        List.of(
+                            AtomExpr.of("region"),
+                            Variable.of("Config"),
+                            AtomExpr.of("undefined"))),
+                    List.of(
+                        Clause.of(AtomPattern.of("undefined"), MapExpr.of(List.of())),
+                        Clause.of(
+                            VariablePattern.of("Value"),
+                            MapExpr.of(
+                                List.of(
+                                    MapEntry.of(BinaryExpr.of("Region"), Variable.of("Value"))))))))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction clientContextParams(Map<String, String> clientContextKeys) {
-    ErlExpr body;
+  private static Function clientContextParams(Map<String, String> clientContextKeys) {
+    Expression body;
     if (clientContextKeys.isEmpty()) {
-      body = ErlMap.map();
+      body = MapExpr.of(List.of());
     } else {
-      List<ErlExpr> mergeArgs = new ArrayList<>();
+      List<Expression> mergeArgs = new ArrayList<>();
       for (Map.Entry<String, String> entry : clientContextKeys.entrySet()) {
         mergeArgs.add(
-            ErlCallLocal.callLocal(
+            LocalCallExpr.of(
                 "optional_param",
-                ErlVar.var("Config"),
-                ErlAtom.atom(entry.getValue()),
-                ErlBinary.binary(entry.getKey())));
+                List.of(
+                    Variable.of("Config"),
+                    AtomExpr.of(entry.getValue()),
+                    BinaryExpr.of(entry.getKey()))));
       }
-      body = ErlCall.call("maps", "merge", mergeArgs.toArray(ErlExpr[]::new));
+      body = RemoteCallExpr.of("maps", "merge", mergeArgs);
     }
-    return ErlFunction.function(
+    return Function.of(
         "client_context_params",
-        1,
-        List.of(ErlClause.clause(List.of(ErlVarPattern.varPattern("Config")), body)));
+        List.of(FunctionClause.of(List.of(VariablePattern.of("Config")), body)),
+        null,
+        null,
+        null);
   }
 
-  private static ErlFunction optionalParam() {
-    return ErlFunction.function(
+  private static Function optionalParam() {
+    return Function.of(
         "optional_param",
-        3,
         List.of(
-            ErlClause.blockClause(
+            FunctionClause.of(
                 List.of(
-                    ErlVarPattern.varPattern("Config"),
-                    ErlVarPattern.varPattern("Key"),
-                    ErlVarPattern.varPattern("RuleKey")),
-                ErlCase.caseExpr(
-                    ErlCall.call(
+                    VariablePattern.of("Config"),
+                    VariablePattern.of("Key"),
+                    VariablePattern.of("RuleKey")),
+                CaseExpr.of(
+                    RemoteCallExpr.of(
                         "maps",
                         "get",
-                        ErlVar.var("Key"),
-                        ErlVar.var("Config"),
-                        ErlAtom.atom("undefined")),
-                    ErlClause.clause(
-                        List.of(ErlAtomPattern.atomPattern("undefined")), ErlMap.map()),
-                    ErlClause.clause(
-                        List.of(ErlVarPattern.varPattern("Value")),
-                        ErlMap.map(
-                            ErlMapEntry.entry(ErlVar.var("RuleKey"), ErlVar.var("Value"))))))));
-  }
-
-  private static ErlTypeDef clientConfigType() {
-    return new ErlTypeDef("client_config", "#{binary() => term()}");
-  }
-
-  private static ErlTypeDef endpointParamsType() {
-    return new ErlTypeDef("endpoint_params", "#{binary() => term()}");
+                        List.of(
+                            Variable.of("Key"),
+                            Variable.of("Config"),
+                            AtomExpr.of("undefined"))),
+                    List.of(
+                        Clause.of(AtomPattern.of("undefined"), MapExpr.of(List.of())),
+                        Clause.of(
+                            VariablePattern.of("Value"),
+                            MapExpr.of(
+                                List.of(
+                                    MapEntry.of(Variable.of("RuleKey"), Variable.of("Value"))))))))),
+        null,
+        null,
+        null);
   }
 }

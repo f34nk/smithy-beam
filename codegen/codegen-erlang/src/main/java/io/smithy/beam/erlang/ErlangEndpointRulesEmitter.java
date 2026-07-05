@@ -3,7 +3,6 @@ package io.smithy.beam.erlang;
 import io.smithy.beam.core.BeamContextParamsIndex;
 import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.ir.erlang.ErlModule;
 import java.util.Map;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
@@ -22,14 +21,10 @@ public final class ErlangEndpointRulesEmitter {
     String endpointsModule = layout.endpointsModuleName();
     Map<String, String> clientContextKeys = BeamContextParamsIndex.clientContextConfigKeys(service);
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.endpointsModuleFile(),
-            writer -> {
-              ErlModule module =
-                  ErlangEndpointRulesIr.endpointRulesModule(
-                      endpointsModule, layout.runtimeTypesHeaderFile(), service, clientContextKeys);
-              writer.write("$L", module.asString());
-            });
+    ErlangCodecEmission.writeModule(
+        ctx,
+        layout.endpointsModuleFile(),
+        ErlangEndpointRulesIr.endpointRulesModule(
+            endpointsModule, layout.runtimeTypesHeaderFile(), service, clientContextKeys));
   }
 }

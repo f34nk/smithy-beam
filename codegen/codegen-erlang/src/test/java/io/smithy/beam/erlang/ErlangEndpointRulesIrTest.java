@@ -2,9 +2,9 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamContextParamsIndex;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlModule;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -23,8 +23,8 @@ class ErlangEndpointRulesIrTest {
 
   @Test
   void resolveMatchesGolden() throws IOException {
-    assertThat(ErlangEndpointRulesIr.resolve().asString())
-        .isEqualTo(readExpectedString("ir/endpoint_rules_resolve.expected.erl"));
+    IrGoldenAssertions.assertGolden(
+        ErlangEndpointRulesIr.resolve(), "ir/endpoint_rules_resolve.expected.erl");
   }
 
   @Test
@@ -33,21 +33,20 @@ class ErlangEndpointRulesIrTest {
     var clientContextKeys = BeamContextParamsIndex.clientContextConfigKeys(service);
     String combined =
         ErlangEndpointRulesIr.mergeParamsFunctions(clientContextKeys).stream()
-            .map(ErlFunction::asString)
+            .map(ErlangRenderer::renderFunction)
             .collect(Collectors.joining("\n\n"));
     assertThat(combined)
-        .isEqualTo(readExpectedString("ir/endpoint_rules_merge_params.expected.erl"));
+        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/endpoint_rules_merge_params.expected.erl"));
   }
 
   @Test
   void endpointRulesModuleMatchesGolden() throws IOException {
     ServiceShape service = endpointModel().expectShape(ENDPOINT_SERVICE, ServiceShape.class);
     var clientContextKeys = BeamContextParamsIndex.clientContextConfigKeys(service);
-    ErlModule module =
+    Module module =
         ErlangEndpointRulesIr.endpointRulesModule(
             "endpoint_rules_service_endpoints", "runtime_types.hrl", service, clientContextKeys);
-    assertThat(module.asString())
-        .isEqualTo(readExpectedString("ir/endpoint_rules_module.expected.erl"));
+    IrGoldenAssertions.assertGolden(module, "ir/endpoint_rules_module.expected.erl");
   }
 
   private static Model endpointModel() {
