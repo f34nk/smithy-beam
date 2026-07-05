@@ -78,7 +78,7 @@ final class ErlangHostLabelIr {
         List.of(
             FunctionClause.of(
                 List.of(RecordPattern.of(inputRecord, fields), VariablePattern.of("Config")),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bindValue(
                             "BaseUrl",
@@ -98,7 +98,7 @@ final class ErlangHostLabelIr {
                             null),
                         MatchExpr.bindValue("Prefix", buildHostPrefixExpression(hostPrefix)),
                         result),
-                    true))));
+                    false))));
   }
 
   private static BinaryExpr buildHostPrefixExpression(SmithyPattern hostPrefix) {
