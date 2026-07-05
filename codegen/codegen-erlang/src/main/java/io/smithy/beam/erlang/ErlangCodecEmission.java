@@ -1,14 +1,19 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.ir.erlang.ErlModule;
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Module;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 final class ErlangCodecEmission {
   private ErlangCodecEmission() {}
 
-  static void writeModule(ErlangContext ctx, String relativeFile, ErlModule module) {
+  static void writeModule(ErlangContext ctx, String relativeFile, Module module) {
+    writeModule(ctx, relativeFile, ErlangRenderer.render(module));
+  }
+
+  static void writeModule(ErlangContext ctx, String relativeFile, String erlangSource) {
     ctx.writerDelegator()
-        .useFileWriter(relativeFile, writer -> writer.write("$L", module.asString()));
+        .useFileWriter(relativeFile, writer -> writer.write("$L", erlangSource));
   }
 
   static void emitRuntimeHelpersIfNeeded(ErlangContext ctx, ServiceShape service, boolean server) {
