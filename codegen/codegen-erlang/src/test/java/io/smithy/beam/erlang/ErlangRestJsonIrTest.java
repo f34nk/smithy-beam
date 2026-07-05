@@ -2,13 +2,12 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.MapEntry;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlMapEntry;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
@@ -107,14 +106,17 @@ class ErlangRestJsonIrTest {
   void structureDecodeEncodeAsStringMatchesGolden() throws IOException {
     Model model = model();
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-    List<ErlFunction> functions =
+    List<Function> functions =
         ErlangRestJsonIr.buildStructureDecodeEncode(model, httpIndex, basicItem, provider);
     assertThat(functions).hasSize(2);
     assertStructural(functions.get(0));
     assertStructural(functions.get(1));
-    String combined = functions.get(0).asString() + "\n\n" + functions.get(1).asString();
+    String combined =
+        ErlangRenderer.renderFunction(functions.get(0))
+            + "\n\n"
+            + ErlangRenderer.renderFunction(functions.get(1));
     assertThat(combined)
-        .isEqualTo(readExpectedString("ir/structure_decode_encode_basic_item.expected.erl"));
+        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/structure_decode_encode_basic_item.expected.erl"));
   }
 
   @Test
@@ -132,21 +134,20 @@ class ErlangRestJsonIrTest {
         new ErlangSymbolProvider(
             settings, model, service, layout.clientModuleFile(), BeamCodegenKind.CLIENT);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-    ErlFunction fn =
+    Function fn =
         ErlangRestJsonIr.encodeRequest(
             model, service, op, httpIndex, sp, false, layout.eventStreamModuleName());
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/rest_json_encode_get_name_request.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/rest_json_encode_get_name_request.expected.erl");
   }
 
   @Test
   void decodedBodyPreludeMatchesGolden() throws IOException {
     String combined =
         ErlangJsonCodecSupport.decodedBodyPrelude().stream()
-            .flatMap(expr -> expr.lines().stream())
+            .map(ErlangRenderer::renderExpression)
             .collect(Collectors.joining("\n"));
-    assertThat(combined).isEqualTo(readExpectedString("ir/json_decoded_body_prelude.expected.erl"));
+    assertThat(combined).isEqualTo(IrGoldenAssertions.readExpectedString("ir/json_decoded_body_prelude.expected.erl"));
   }
 
   @Test
@@ -167,13 +168,16 @@ class ErlangRestJsonIrTest {
                     StructureShape.class)
                 .getMember("count")
                 .orElseThrow());
-    List<ErlMapEntry> entries =
+    List<MapEntry> entries =
         ErlangJsonCodecSupport.bodyMapEntries(
             model, httpIndex, provider, members, HttpBinding.Location.DOCUMENT, "event_stream");
     String combined =
-        entries.stream().map(ErlMapEntry::asString).collect(Collectors.joining(",\n"));
+        entries.stream()
+            .map(entry -> ErlangRenderer.renderExpression(entry.key()) + " => "
+                + ErlangRenderer.renderExpression(entry.value()))
+            .collect(Collectors.joining(",\n"));
     assertThat(combined)
-        .isEqualTo(readExpectedString("ir/json_body_map_entries_basic_item.expected.erl"));
+        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/json_body_map_entries_basic_item.expected.erl"));
   }
 
   @Test
@@ -191,10 +195,10 @@ class ErlangRestJsonIrTest {
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     String combined =
         ErlangRestJsonOperationIr.buildEncodeResponseBodyExprs(model, op, httpIndex, sp).stream()
-            .flatMap(expr -> expr.lines().stream())
+            .map(ErlangRenderer::renderExpression)
             .collect(Collectors.joining("\n"));
     assertThat(combined)
-        .isEqualTo(readExpectedString("ir/rest_json_encode_response_body.expected.erl"));
+        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/rest_json_encode_response_body.expected.erl"));
   }
 
   @Test
@@ -210,10 +214,9 @@ class ErlangRestJsonIrTest {
         new ErlangSymbolProvider(
             settings, model, service, "http_types.hrl", BeamCodegenKind.CLIENT);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-    ErlFunction fn = ErlangRestJsonOperationIr.buildEncodeResponse(model, op, httpIndex, sp);
+    Function fn = ErlangRestJsonOperationIr.buildEncodeResponse(model, op, httpIndex, sp);
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/rest_json_encode_get_name_response.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/rest_json_encode_get_name_response.expected.erl");
   }
 
   @Test
@@ -227,10 +230,10 @@ class ErlangRestJsonIrTest {
     ErlangSymbolProvider sp =
         new ErlangSymbolProvider(
             settings, model, service, "http_types.hrl", BeamCodegenKind.CLIENT);
-    ErlFunction fn = ErlangRestJsonOperationIr.buildErrorResponseEncoder(model, errorId, sp);
+    Function fn = ErlangRestJsonOperationIr.buildErrorResponseEncoder(model, errorId, sp);
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/rest_json_encode_not_found_error_response.expected.erl"));
+    IrGoldenAssertions.assertGolden(
+        fn, "ir/rest_json_encode_not_found_error_response.expected.erl");
   }
 
   @Test
@@ -248,10 +251,9 @@ class ErlangRestJsonIrTest {
         new ErlangSymbolProvider(
             settings, model, service, layout.clientModuleFile(), BeamCodegenKind.CLIENT);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-    ErlFunction fn = ErlangRestJsonIr.decodeResponse(model, service, op, httpIndex, sp, layout);
+    Function fn = ErlangRestJsonIr.decodeResponse(model, service, op, httpIndex, sp, layout);
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/rest_json_decode_get_name_response.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/rest_json_decode_get_name_response.expected.erl");
   }
 
   private static Model httpModel() {
@@ -344,30 +346,21 @@ class ErlangRestJsonIrTest {
 
   @Test
   void structureListDecodeEncodeAsStringMatchesGolden() throws IOException {
-    List<ErlFunction> functions =
+    List<Function> functions =
         ErlangRestJsonIr.buildStructureListDecodeEncodeFunctions(basicItem, provider);
     assertThat(functions).hasSize(2);
     assertStructural(functions.get(0));
     assertStructural(functions.get(1));
-    String combined = functions.get(0).asString() + "\n\n" + functions.get(1).asString();
+    String combined =
+        ErlangRenderer.renderFunction(functions.get(0))
+            + "\n\n"
+            + ErlangRenderer.renderFunction(functions.get(1));
     assertThat(combined)
-        .isEqualTo(readExpectedString("ir/structure_list_decode_encode_item.expected.erl"));
+        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/structure_list_decode_encode_item.expected.erl"));
   }
 
-  private static void assertStructural(ErlFunction fn) {
+  private static void assertStructural(Function fn) {
     assertThat(fn.name()).isNotBlank();
     assertThat(fn.clauses()).isNotEmpty();
-  }
-
-  private static String readExpectedString(String resourcePath) throws IOException {
-    try (InputStream in =
-        ErlangRestJsonIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
-      assertThat(in).as("resource %s", resourcePath).isNotNull();
-      String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-      if (text.endsWith("\n")) {
-        text = text.substring(0, text.length() - 1);
-      }
-      return text;
-    }
   }
 }
