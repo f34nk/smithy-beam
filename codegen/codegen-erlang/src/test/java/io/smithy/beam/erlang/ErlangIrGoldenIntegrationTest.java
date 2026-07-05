@@ -2,13 +2,13 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlModule;
 import io.smithy.beam.ir.erlang.ErlTypeHeader;
 import java.io.IOException;
 import java.net.URL;
@@ -82,11 +82,9 @@ class ErlangIrGoldenIntegrationTest {
 
   @Test
   void clientCodecModuleFromSmithyMatchesGolden() throws IOException {
-    ErlModule module = ErlangRestJsonIr.buildClientCodecModule(clientContext(), service);
-    assertThat(module.asString())
-        .isEqualTo(
-            IrGoldenAssertions.readExpectedString(
-                "ir/golden/http_service_rest_json_1_client_codec.expected.erl"));
+    Module module = ErlangRestJsonIr.buildClientCodecModule(clientContext(), service);
+    IrGoldenAssertions.assertGolden(
+        module, "ir/golden/http_service_rest_json_1_client_codec.expected.erl");
     for (var fn : module.functions()) {
       assertThat(fn.name()).isNotBlank();
       assertThat(fn.clauses()).isNotEmpty();
