@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.ApplyExpr;
 import io.beam.ir.erlang.AtomExpr;
 import io.beam.ir.erlang.AtomPattern;
 import io.beam.ir.erlang.BinaryExpr;
@@ -8,56 +9,29 @@ import io.beam.ir.erlang.BinarySegmentExpr;
 import io.beam.ir.erlang.BlockExpr;
 import io.beam.ir.erlang.CaseExpr;
 import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.Expression;
 import io.beam.ir.erlang.Function;
 import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.ListComprehensionExpr;
+import io.beam.ir.erlang.ListExpr;
+import io.beam.ir.erlang.ListPattern;
 import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MapEntry;
+import io.beam.ir.erlang.MapExpr;
 import io.beam.ir.erlang.MapPattern;
 import io.beam.ir.erlang.MapPatternEntry;
 import io.beam.ir.erlang.MatchExpr;
 import io.beam.ir.erlang.MatchPattern;
+import io.beam.ir.erlang.Module;
+import io.beam.ir.erlang.RecordExpr;
+import io.beam.ir.erlang.RecordField;
+import io.beam.ir.erlang.RecordPattern;
+import io.beam.ir.erlang.RecordPatternField;
 import io.beam.ir.erlang.RemoteCallExpr;
 import io.beam.ir.erlang.TupleExpr;
 import io.beam.ir.erlang.TuplePattern;
 import io.beam.ir.erlang.Variable;
 import io.beam.ir.erlang.VariablePattern;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
-import io.smithy.beam.ir.erlang.ErlAttribute;
-import io.smithy.beam.ir.erlang.ErlBinary;
-import io.smithy.beam.ir.erlang.ErlBinaryExpr;
-import io.smithy.beam.ir.erlang.ErlBinaryPattern;
-import io.smithy.beam.ir.erlang.ErlBinaryTemplate;
-import io.smithy.beam.ir.erlang.ErlBinaryText;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCase;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlComment;
-import io.smithy.beam.ir.erlang.ErlExportAttribute;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlList;
-import io.smithy.beam.ir.erlang.ErlListComprehension;
-import io.smithy.beam.ir.erlang.ErlMap;
-import io.smithy.beam.ir.erlang.ErlMapEntry;
-import io.smithy.beam.ir.erlang.ErlMapFieldPattern;
-import io.smithy.beam.ir.erlang.ErlMapPattern;
-import io.smithy.beam.ir.erlang.ErlMapUpdate;
-import io.smithy.beam.ir.erlang.ErlMatch;
-import io.smithy.beam.ir.erlang.ErlMatchPattern;
-import io.smithy.beam.ir.erlang.ErlModule;
-import io.smithy.beam.ir.erlang.ErlNilPattern;
-import io.smithy.beam.ir.erlang.ErlRecord;
-import io.smithy.beam.ir.erlang.ErlRecordField;
-import io.smithy.beam.ir.erlang.ErlRecordFieldPattern;
-import io.smithy.beam.ir.erlang.ErlRecordPattern;
-import io.smithy.beam.ir.erlang.ErlRemoteCall;
-import io.smithy.beam.ir.erlang.ErlString;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlTuplePattern;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -65,7 +39,7 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 final class ErlangHttpDispatchIr {
   private ErlangHttpDispatchIr() {}
 
-  static ErlModule httpDispatchModule(
+  static Module httpDispatchModule(
       String httpModule,
       String runtimeTypesHeaderFile,
       ServiceShape service,
@@ -75,107 +49,120 @@ final class ErlangHttpDispatchIr {
       String helpersMod,
       String endpointsMod,
       String credentialsMod) {
-    List<ErlFunction> functions =
+    return Module.of(
+        httpModule,
         List.of(
             dispatchArity2(),
             dispatchArity3(),
             dispatchSigned(
                 sigv4, endpointRules, configVar, helpersMod, endpointsMod, credentialsMod),
-            splitBaseUrlCodegenIr(),
-            mime());
-
-    return new ErlModule(
-        httpModule,
+            splitBaseUrl(),
+            mime()),
         List.of(
-            ErlComment.comment("Generated HTTP dispatcher for " + service.getId() + "."),
-            ErlComment.comment("Uses httpc from OTP. Replace via adapter for testing.")),
-        List.of(
-            new ErlAttribute("include", "\"" + runtimeTypesHeaderFile + "\""),
-            ErlExportAttribute.export(List.of("dispatch/2", "dispatch/3"))),
-        functions);
+            "Generated HTTP dispatcher for " + service.getId() + ".",
+            "Uses httpc from OTP. Replace via adapter for testing."),
+        null,
+        List.of(runtimeTypesHeaderFile),
+        null,
+        List.of("dispatch/2", "dispatch/3"));
   }
 
-  static ErlFunction dispatchArity2() {
-    return ErlFunction.function(
+  static Function dispatchArity2() {
+    return Function.of(
         "dispatch",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Config"), ErlVarPattern.varPattern("Request")),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("HttpClient"),
-                        ErlCall.call(
-                            "maps",
-                            "get",
-                            ErlAtom.atom("http_client"),
-                            ErlVar.var("Config"),
-                            ErlAtom.atom("httpc"))),
-                    ErlCallLocal.callLocal(
-                        "dispatch",
-                        ErlVar.var("HttpClient"),
-                        ErlVar.var("Config"),
-                        ErlVar.var("Request"))))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config"), VariablePattern.of("Request")),
+                BlockExpr.commaSeparated(
+                    List.of(
+                        MatchExpr.bindValue(
+                            "HttpClient",
+                            RemoteCallExpr.of(
+                                "maps",
+                                "get",
+                                List.of(
+                                    AtomExpr.of("http_client"),
+                                    Variable.of("Config"),
+                                    AtomExpr.of("httpc")))),
+                        LocalCallExpr.of(
+                            "dispatch",
+                            List.of(
+                                Variable.of("HttpClient"),
+                                Variable.of("Config"),
+                                Variable.of("Request")))),
+                    false))),
+        null,
+        null,
+        null);
   }
 
-  static ErlFunction dispatchArity3() {
-    return ErlFunction.function(
+  static Function dispatchArity3() {
+    return Function.of(
         "dispatch",
-        3,
         List.of(
-            ErlClause.clause(
+            FunctionClause.of(
                 List.of(
-                    ErlVarPattern.varPattern("HttpClient"),
-                    ErlVarPattern.varPattern("Config"),
-                    ErlVarPattern.varPattern("Request")),
-                ErlCallLocal.callLocal(
+                    VariablePattern.of("HttpClient"),
+                    VariablePattern.of("Config"),
+                    VariablePattern.of("Request")),
+                LocalCallExpr.of(
                     "dispatch_signed",
-                    ErlVar.var("HttpClient"),
-                    ErlVar.var("Config"),
-                    ErlVar.var("Request")))));
+                    List.of(
+                        Variable.of("HttpClient"),
+                        Variable.of("Config"),
+                        Variable.of("Request"))))),
+        null,
+        null,
+        null);
   }
 
-  static ErlFunction dispatchSigned(
+  static Function dispatchSigned(
       boolean sigv4,
       boolean endpointRules,
       String configVar,
       String helpersMod,
       String endpointsMod,
       String credentialsMod) {
-    List<ErlExpr> body = new ArrayList<>();
+    List<Expression> body = new ArrayList<>();
     if (sigv4) {
       body.add(sigv4ConfigMatch(credentialsMod));
     }
     body.add(resolveBaseUrlMatch(configVar, helpersMod, endpointsMod, endpointRules));
     body.add(queryStringMatch());
     body.add(
-        ErlMatch.match(
-            ErlTuplePattern.tuplePattern(
-                ErlVarPattern.varPattern("Scheme"), ErlVarPattern.varPattern("DefaultAuthority")),
-            ErlCallLocal.callLocal("split_base_url", ErlVar.var("BaseUrl"))));
-    body.add(authorityMatch());
-    body.add(
-        ErlMatch.match(
-            ErlVarPattern.varPattern("ReqUrl"),
-            ErlBinaryTemplate.binaryTemplate(
-                ErlBinaryExpr.expr(ErlVar.var("Scheme"), true),
-                ErlBinaryExpr.expr(ErlVar.var("Authority"), true),
-                ErlBinaryExpr.expr(ErlVar.var("Path"), true),
-                ErlBinaryExpr.expr(ErlVar.var("QueryStr"), true))));
-    body.add(httpcHeadersMatch());
-    body.add(requestTupleMatch());
-    body.add(httpClientRequestCase());
-
-    return ErlFunction.function(
-        "dispatch_signed",
-        3,
-        List.of(
-            ErlClause.clause(
+        MatchExpr.of(
+            TuplePattern.of(
                 List.of(
-                    ErlVarPattern.varPattern("HttpClient"),
-                    ErlVarPattern.varPattern("Config"),
+                    VariablePattern.of("Scheme"),
+                    VariablePattern.of("DefaultAuthority"))),
+            LocalCallExpr.of("split_base_url", List.of(Variable.of("BaseUrl"))),
+            BlockExpr.newlineSeparated(
+                List.of(
+                    authorityMatch(),
+                    MatchExpr.bindValue(
+                        "ReqUrl",
+                        BinaryExpr.of(
+                            List.of(
+                                BinarySegmentExpr.of(Variable.of("Scheme"), "binary"),
+                                BinarySegmentExpr.of(Variable.of("Authority"), "binary"),
+                                BinarySegmentExpr.of(Variable.of("Path"), "binary"),
+                                BinarySegmentExpr.of(Variable.of("QueryStr"), "binary")))),
+                    httpcHeadersMatch(),
+                    requestTupleMatch(),
+                    httpClientRequestCase()))));
+
+    return Function.of(
+        "dispatch_signed",
+        List.of(
+            FunctionClause.of(
+                List.of(
+                    VariablePattern.of("HttpClient"),
+                    VariablePattern.of("Config"),
                     httpRequestPattern()),
-                ErlExprBlock.block(body.toArray(ErlExpr[]::new)))));
+                BlockExpr.newlineSeparated(body))),
+        null,
+        null,
+        null);
   }
 
   static Function splitBaseUrl() {
@@ -247,290 +234,292 @@ final class ErlangHttpDispatchIr {
             FunctionClause.of(List.of(VariablePattern.of("BaseUrl")), parseCase)));
   }
 
-  private static ErlFunction splitBaseUrlCodegenIr() {
-    ErlBinaryTemplate schemePrefix =
-        ErlBinaryTemplate.binaryTemplate(
-            ErlBinaryExpr.expr(
-                ErlCallLocal.callLocal("list_to_binary", ErlVar.var("Scheme")), "binary"),
-            ErlBinaryText.text("://"));
-    ErlBinaryTemplate authority =
-        ErlBinaryTemplate.binaryTemplate(
-            ErlBinaryExpr.expr(
-                ErlCallLocal.callLocal("list_to_binary", ErlVar.var("Host")), "binary"),
-            ErlBinaryExpr.expr(ErlVar.var("PortSuffix"), true));
-    ErlBinaryTemplate portSuffix =
-        ErlBinaryTemplate.binaryTemplate(
-            ErlBinaryText.text(":"),
-            ErlBinaryExpr.expr(
-                ErlCallLocal.callLocal("integer_to_binary", ErlVar.var("Port")), "binary"));
-
-    ErlCase portSuffixCase =
-        ErlCase.caseExpr(
-            ErlCall.call(
-                "maps",
-                "get",
-                ErlAtom.atom("port"),
-                ErlVar.var("Parts"),
-                ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlBinary.binary("")),
-            ErlClause.clause(List.of(ErlVarPattern.varPattern("Port")), portSuffix));
-
-    ErlCase parseCase =
-        ErlCase.caseExpr(
-            ErlCall.call(
-                "uri_string",
-                "parse",
-                ErlCallLocal.callLocal("binary_to_list", ErlVar.var("BaseUrl"))),
-            ErlClause.clause(
-                List.of(
-                    ErlMatchPattern.matchPattern(
-                        ErlMapPattern.mapPattern(
-                            ErlMapFieldPattern.fieldPattern(
-                                "scheme", ErlVarPattern.varPattern("Scheme")),
-                            ErlMapFieldPattern.fieldPattern(
-                                "host", ErlVarPattern.varPattern("Host"))),
-                        ErlVarPattern.varPattern("Parts"))),
-                ErlExprBlock.block(
-                    ErlMatch.match(ErlVarPattern.varPattern("PortSuffix"), portSuffixCase),
-                    ErlTuple.tuple(schemePrefix, authority))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("_")),
-                ErlTuple.tuple(ErlBinary.binary(""), ErlVar.var("BaseUrl"))));
-
-    return ErlFunction.function(
-        "split_base_url",
-        1,
-        List.of(
-            ErlClause.clause(
-                List.of(ErlBinaryPattern.binaryPattern("")),
-                ErlTuple.tuple(ErlBinary.binary(""), ErlBinary.binary(""))),
-            ErlClause.clause(List.of(ErlVarPattern.varPattern("BaseUrl")), parseCase)));
-  }
-
-  static ErlFunction mime() {
-    return ErlFunction.function(
+  static Function mime() {
+    return Function.of(
         "mime",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Headers")),
-                ErlCase.caseExpr(
-                    ErlCall.call(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Headers")),
+                CaseExpr.of(
+                    RemoteCallExpr.of(
                         "proplists",
                         "get_value",
-                        ErlBinary.binary("Content-Type"),
-                        ErlVar.var("Headers")),
-                    ErlClause.clause(
-                        List.of(ErlAtomPattern.atomPattern("undefined")),
-                        ErlString.string("application/octet-stream")),
-                    ErlClause.clause(
-                        List.of(ErlVarPattern.varPattern("CT")),
-                        ErlCallLocal.callLocal("binary_to_list", ErlVar.var("CT")))))));
+                        List.of(
+                            BinaryExpr.of("Content-Type"),
+                            Variable.of("Headers"))),
+                    List.of(
+                        Clause.of(
+                            AtomPattern.of("undefined"),
+                            BinaryExpr.of("application/octet-stream")),
+                        Clause.of(
+                            VariablePattern.of("CT"),
+                            LocalCallExpr.of(
+                                "binary_to_list", List.of(Variable.of("CT")))))))),
+        null,
+        null,
+        null);
   }
 
-  private static ErlRecordPattern httpRequestPattern() {
-    return ErlRecordPattern.recordPattern(
+  private static RecordPattern httpRequestPattern() {
+    return RecordPattern.bind(
+        "Req",
         "http_request",
-        ErlRecordFieldPattern.fieldPattern("method", ErlVarPattern.varPattern("Method")),
-        ErlRecordFieldPattern.fieldPattern("path", ErlVarPattern.varPattern("Path")),
-        ErlRecordFieldPattern.fieldPattern("query", ErlVarPattern.varPattern("Query")),
-        ErlRecordFieldPattern.fieldPattern("headers", ErlVarPattern.varPattern("Headers")),
-        ErlRecordFieldPattern.fieldPattern("body", ErlVarPattern.varPattern("Body")),
-        ErlRecordFieldPattern.fieldPattern("host", ErlVarPattern.varPattern("Host")));
+        List.of(
+            RecordPatternField.of("method", VariablePattern.of("Method")),
+            RecordPatternField.of("path", VariablePattern.of("Path")),
+            RecordPatternField.of("query", VariablePattern.of("Query")),
+            RecordPatternField.of("headers", VariablePattern.of("Headers")),
+            RecordPatternField.of("body", VariablePattern.of("Body")),
+            RecordPatternField.of("host", VariablePattern.of("Host"))));
   }
 
-  private static ErlMatch sigv4ConfigMatch(String credentialsMod) {
-    return ErlMatch.match(
-        ErlVarPattern.varPattern("Config1"),
-        ErlCase.caseExpr(
-            ErlCall.call(
+  private static MatchExpr sigv4ConfigMatch(String credentialsMod) {
+    return MatchExpr.bindValue(
+        "Config1",
+        CaseExpr.of(
+            RemoteCallExpr.of(
                 "maps",
                 "get",
-                ErlAtom.atom("credentials"),
-                ErlVar.var("Config"),
-                ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")),
-                ErlCase.caseExpr(
-                    ErlCall.call(credentialsMod, "resolve", ErlVar.var("Config")),
-                    ErlClause.clause(
+                List.of(
+                    AtomExpr.of("credentials"),
+                    Variable.of("Config"),
+                    AtomExpr.of("undefined"))),
+            List.of(
+                Clause.of(
+                    AtomPattern.of("undefined"),
+                    CaseExpr.of(
+                        RemoteCallExpr.of(
+                            credentialsMod, "resolve", List.of(Variable.of("Config"))),
                         List.of(
-                            ErlTuplePattern.tuplePattern(
-                                ErlAtomPattern.atomPattern("ok"),
-                                ErlVarPattern.varPattern("Creds"))),
-                        ErlMapUpdate.mapUpdate(
-                            ErlVar.var("Config"),
-                            ErlMapEntry.entry(ErlAtom.atom("credentials"), ErlVar.var("Creds")))),
-                    ErlClause.clause(
-                        List.of(ErlVarPattern.varPattern("_")), ErlVar.var("Config")))),
-            ErlClause.clause(List.of(ErlVarPattern.varPattern("_")), ErlVar.var("Config"))));
+                            Clause.of(
+                                TuplePattern.of(
+                                    List.of(
+                                        AtomPattern.of("ok"),
+                                        VariablePattern.of("Creds"))),
+                                MapExpr.of(
+                                    Variable.of("Config"),
+                                    List.of(
+                                        MapEntry.of(
+                                            AtomExpr.of("credentials"),
+                                            Variable.of("Creds"))))),
+                            Clause.of(
+                                VariablePattern.of("_"), Variable.of("Config"))))),
+                Clause.of(VariablePattern.of("_"), Variable.of("Config")))));
   }
 
-  private static ErlMatch resolveBaseUrlMatch(
+  private static MatchExpr resolveBaseUrlMatch(
       String configVar, String helpersMod, String endpointsMod, boolean endpointRules) {
-    ErlClause endpointPrefixFallback;
+    Clause endpointPrefixFallback;
     if (endpointRules) {
       endpointPrefixFallback =
-          ErlClause.clause(
-              List.of(ErlVarPattern.varPattern("_")),
-              ErlCase.caseExpr(
-                  ErlCall.call(endpointsMod, "resolve", ErlVar.var(configVar), ErlMap.map()),
-                  ErlClause.clause(
-                      List.of(
-                          ErlTuplePattern.tuplePattern(
-                              ErlAtomPattern.atomPattern("ok"),
-                              ErlMapPattern.mapPattern(
-                                  ErlMapFieldPattern.fieldPattern(
-                                      "url", ErlVarPattern.varPattern("ResolvedUrl"))))),
-                      ErlVar.var("ResolvedUrl")),
-                  ErlClause.clause(
-                      List.of(ErlVarPattern.varPattern("_")),
-                      ErlCall.call(helpersMod, "resolve_base_url", ErlVar.var(configVar)))));
+          Clause.of(
+              VariablePattern.of("_"),
+              CaseExpr.of(
+                  RemoteCallExpr.of(
+                      endpointsMod,
+                      "resolve",
+                      List.of(Variable.of(configVar), MapExpr.of(List.of()))),
+                  List.of(
+                      Clause.of(
+                          TuplePattern.of(
+                              List.of(
+                                  AtomPattern.of("ok"),
+                                  MapPattern.of(
+                                      List.of(
+                                          MapPatternEntry.of(
+                                              AtomExpr.of("url"),
+                                              VariablePattern.of("ResolvedUrl")))))),
+                          Variable.of("ResolvedUrl")),
+                      Clause.of(
+                          VariablePattern.of("_"),
+                          RemoteCallExpr.of(
+                              helpersMod,
+                              "resolve_base_url",
+                              List.of(Variable.of(configVar)))))));
     } else {
       endpointPrefixFallback =
-          ErlClause.clause(
-              List.of(ErlVarPattern.varPattern("_")),
-              ErlCall.call(helpersMod, "resolve_base_url", ErlVar.var(configVar)));
+          Clause.of(
+              VariablePattern.of("_"),
+              RemoteCallExpr.of(
+                  helpersMod, "resolve_base_url", List.of(Variable.of(configVar))));
     }
 
-    return ErlMatch.match(
-        ErlVarPattern.varPattern("BaseUrl"),
-        ErlCase.caseExpr(
-            ErlCall.call(
+    return MatchExpr.bindValue(
+        "BaseUrl",
+        CaseExpr.of(
+            RemoteCallExpr.of(
                 "maps",
                 "get",
-                ErlAtom.atom("base_url"),
-                ErlVar.var(configVar),
-                ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")),
-                ErlCase.caseExpr(
-                    ErlCall.call(
-                        "maps",
-                        "get",
-                        ErlAtom.atom("endpoint_prefix"),
-                        ErlVar.var(configVar),
-                        ErlAtom.atom("undefined")),
-                    ErlClause.clause(
-                        List.of(ErlAtomPattern.atomPattern("undefined")), ErlBinary.binary("")),
-                    endpointPrefixFallback)),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("GivenUrl")), ErlVar.var("GivenUrl"))));
-  }
-
-  private static ErlMatch queryStringMatch() {
-    return ErlMatch.match(
-        ErlVarPattern.varPattern("QueryStr"),
-        ErlCase.caseExpr(
-            ErlCall.call("maps", "to_list", ErlVar.var("Query")),
-            ErlClause.clause(List.of(ErlNilPattern.nilPattern()), ErlBinary.binary("")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Pairs")),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Encoded"),
-                        ErlCall.call(
-                            "uri_string",
-                            "compose_query",
-                            ErlListComprehension.comprehension(
-                                ErlTuple.tuple(ErlVar.var("K"), ErlVar.var("V")),
-                                ErlTuplePattern.tuplePattern(
-                                    ErlVarPattern.varPattern("K"), ErlVarPattern.varPattern("V")),
-                                ErlVar.var("Pairs")))),
-                    ErlBinaryTemplate.binaryTemplate(
-                        ErlBinaryText.text("?"),
-                        ErlBinaryExpr.expr(ErlVar.var("Encoded"), true))))));
-  }
-
-  private static ErlMatch authorityMatch() {
-    return ErlMatch.match(
-        ErlVarPattern.varPattern("Authority"),
-        ErlCase.caseExpr(
-            ErlVar.var("Host"),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlVar.var("DefaultAuthority")),
-            ErlClause.clause(List.of(ErlVarPattern.varPattern("_")), ErlVar.var("Host"))));
-  }
-
-  private static ErlMatch httpcHeadersMatch() {
-    return ErlMatch.match(
-        ErlVarPattern.varPattern("HttpcHeaders"),
-        ErlListComprehension.comprehension(
-            ErlTuple.tuple(
-                ErlCallLocal.callLocal("binary_to_list", ErlVar.var("K")),
-                ErlCallLocal.callLocal("binary_to_list", ErlVar.var("V"))),
-            ErlTuplePattern.tuplePattern(
-                ErlVarPattern.varPattern("K"), ErlVarPattern.varPattern("V")),
-            ErlVar.var("Headers")));
-  }
-
-  private static ErlMatch requestTupleMatch() {
-    return ErlMatch.match(
-        ErlVarPattern.varPattern("Req"),
-        ErlCase.caseExpr(
-            ErlVar.var("Body"),
-            ErlClause.clause(
-                List.of(ErlBinaryPattern.binaryPattern("")),
-                ErlTuple.tuple(
-                    ErlCallLocal.callLocal("binary_to_list", ErlVar.var("ReqUrl")),
-                    ErlVar.var("HttpcHeaders"))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("_")),
-                ErlTuple.tuple(
-                    ErlCallLocal.callLocal("binary_to_list", ErlVar.var("ReqUrl")),
-                    ErlVar.var("HttpcHeaders"),
-                    ErlCallLocal.callLocal("mime", ErlVar.var("Headers")),
-                    ErlVar.var("Body")))));
-  }
-
-  private static ErlCase httpClientRequestCase() {
-    ErlMatch binHeadersMatch =
-        ErlMatch.match(
-            ErlVarPattern.varPattern("BinHeaders"),
-            ErlListComprehension.comprehension(
-                ErlTuple.tuple(
-                    ErlCallLocal.callLocal("list_to_binary", ErlVar.var("K")),
-                    ErlCallLocal.callLocal("list_to_binary", ErlVar.var("V"))),
-                ErlTuplePattern.tuplePattern(
-                    ErlVarPattern.varPattern("K"), ErlVarPattern.varPattern("V")),
-                ErlVar.var("RespHeaders")));
-
-    return ErlCase.caseExpr(
-        ErlRemoteCall.call(
-            ErlVar.var("HttpClient"),
-            "request",
-            ErlCallLocal.callLocal(
-                "binary_to_atom",
-                ErlCall.call("string", "lowercase", ErlVar.var("Method")),
-                ErlAtom.atom("utf8")),
-            ErlVar.var("Req"),
-            ErlList.list(),
-            ErlList.list(ErlTuple.tuple(ErlAtom.atom("body_format"), ErlAtom.atom("binary")))),
-        ErlClause.clause(
+                List.of(
+                    AtomExpr.of("base_url"),
+                    Variable.of(configVar),
+                    AtomExpr.of("undefined"))),
             List.of(
-                ErlTuplePattern.tuplePattern(
-                    ErlAtomPattern.atomPattern("ok"),
-                    ErlTuplePattern.tuplePattern(
-                        ErlTuplePattern.tuplePattern(
-                            ErlVarPattern.varPattern("_"),
-                            ErlVarPattern.varPattern("Status"),
-                            ErlVarPattern.varPattern("_")),
-                        ErlVarPattern.varPattern("RespHeaders"),
-                        ErlVarPattern.varPattern("RespBody")))),
-            ErlExprBlock.block(
-                binHeadersMatch,
-                ErlTuple.tuple(
-                    ErlAtom.atom("ok"),
-                    ErlRecord.record(
-                        "http_response",
-                        ErlRecordField.field("status", ErlVar.var("Status")),
-                        ErlRecordField.field("headers", ErlVar.var("BinHeaders")),
-                        ErlRecordField.field("body", ErlVar.var("RespBody")))))),
-        ErlClause.clause(
+                Clause.of(
+                    AtomPattern.of("undefined"),
+                    CaseExpr.of(
+                        RemoteCallExpr.of(
+                            "maps",
+                            "get",
+                            List.of(
+                                AtomExpr.of("endpoint_prefix"),
+                                Variable.of(configVar),
+                                AtomExpr.of("undefined"))),
+                        List.of(
+                            Clause.of(AtomPattern.of("undefined"), BinaryExpr.of("")),
+                            endpointPrefixFallback))),
+                Clause.of(VariablePattern.of("GivenUrl"), Variable.of("GivenUrl")))));
+  }
+
+  private static MatchExpr queryStringMatch() {
+    return MatchExpr.bindValue(
+        "QueryStr",
+        CaseExpr.of(
+            RemoteCallExpr.of("maps", "to_list", List.of(Variable.of("Query"))),
             List.of(
-                ErlTuplePattern.tuplePattern(
-                    ErlAtomPattern.atomPattern("error"), ErlVarPattern.varPattern("Reason"))),
-            ErlTuple.tuple(ErlAtom.atom("error"), ErlVar.var("Reason"))));
+                Clause.of(ListPattern.of(List.of()), BinaryExpr.of("")),
+                Clause.of(
+                    VariablePattern.of("Pairs"),
+                    BlockExpr.commaSeparated(
+                        List.of(
+                            MatchExpr.bindValue(
+                                "Encoded",
+                                RemoteCallExpr.of(
+                                    "uri_string",
+                                    "compose_query",
+                                    List.of(
+                                        ListComprehensionExpr.of(
+                                            TupleExpr.of(
+                                                List.of(
+                                                    Variable.of("K"), Variable.of("V"))),
+                                            TuplePattern.of(
+                                                List.of(
+                                                    VariablePattern.of("K"),
+                                                    VariablePattern.of("V"))),
+                                            Variable.of("Pairs"),
+                                            List.of())))),
+                            BinaryExpr.of(
+                                List.of(
+                                    BinarySegmentExpr.literal("?"),
+                                    BinarySegmentExpr.of(
+                                        Variable.of("Encoded"), "binary")))),
+                        false)))));
+  }
+
+  private static MatchExpr authorityMatch() {
+    return MatchExpr.bindValue(
+        "Authority",
+        CaseExpr.of(
+            Variable.of("Host"),
+            List.of(
+                Clause.of(
+                    AtomPattern.of("undefined"), Variable.of("DefaultAuthority")),
+                Clause.of(VariablePattern.of("_"), Variable.of("Host")))));
+  }
+
+  private static MatchExpr httpcHeadersMatch() {
+    return MatchExpr.bindValue(
+        "HttpcHeaders",
+        ListComprehensionExpr.of(
+            TupleExpr.of(
+                List.of(
+                    LocalCallExpr.of("binary_to_list", List.of(Variable.of("K"))),
+                    LocalCallExpr.of("binary_to_list", List.of(Variable.of("V"))))),
+            TuplePattern.of(
+                List.of(VariablePattern.of("K"), VariablePattern.of("V"))),
+            Variable.of("Headers"),
+            List.of()));
+  }
+
+  private static MatchExpr requestTupleMatch() {
+    return MatchExpr.bindValue(
+        "Req",
+        CaseExpr.of(
+            Variable.of("Body"),
+            List.of(
+                Clause.of(
+                    BinaryPattern.of(""),
+                    TupleExpr.of(
+                        List.of(
+                            LocalCallExpr.of(
+                                "binary_to_list", List.of(Variable.of("ReqUrl"))),
+                            Variable.of("HttpcHeaders")))),
+                Clause.of(
+                    VariablePattern.of("_"),
+                    TupleExpr.of(
+                        List.of(
+                            LocalCallExpr.of(
+                                "binary_to_list", List.of(Variable.of("ReqUrl"))),
+                            Variable.of("HttpcHeaders"),
+                            LocalCallExpr.of("mime", List.of(Variable.of("Headers"))),
+                            Variable.of("Body")))))));
+  }
+
+  private static CaseExpr httpClientRequestCase() {
+    MatchExpr binHeadersMatch =
+        MatchExpr.bindValue(
+            "BinHeaders",
+            ListComprehensionExpr.of(
+                TupleExpr.of(
+                    List.of(
+                        LocalCallExpr.of("list_to_binary", List.of(Variable.of("K"))),
+                        LocalCallExpr.of("list_to_binary", List.of(Variable.of("V"))))),
+                TuplePattern.of(
+                    List.of(VariablePattern.of("K"), VariablePattern.of("V"))),
+                Variable.of("RespHeaders"),
+                List.of()));
+
+    Expression okResponse =
+        TupleExpr.of(
+            List.of(
+                AtomExpr.of("ok"),
+                RecordExpr.of(
+                    "http_response",
+                    List.of(
+                        RecordField.of("status", Variable.of("Status")),
+                        RecordField.of("headers", Variable.of("BinHeaders")),
+                        RecordField.of("body", Variable.of("RespBody"))))));
+
+    Clause okClause =
+        Clause.of(
+            TuplePattern.of(
+                List.of(
+                    AtomPattern.of("ok"),
+                    TuplePattern.of(
+                        List.of(
+                            TuplePattern.of(
+                                List.of(
+                                    VariablePattern.of("_"),
+                                    VariablePattern.of("Status"),
+                                    VariablePattern.of("_"))),
+                            VariablePattern.of("RespHeaders"),
+                            VariablePattern.of("RespBody"))))),
+            BlockExpr.newlineSeparated(List.of(binHeadersMatch, okResponse)));
+
+    Clause errorClause =
+        Clause.of(
+            TuplePattern.of(
+                List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
+            TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("Reason"))));
+
+    return CaseExpr.of(
+        ApplyExpr.of(
+            Variable.of("HttpClient"),
+            List.of(
+                LocalCallExpr.of(
+                    "binary_to_atom",
+                    List.of(
+                        RemoteCallExpr.of(
+                            "string",
+                            "lowercase",
+                            List.of(Variable.of("Method"))),
+                        AtomExpr.of("utf8"))),
+                Variable.of("Req"),
+                ListExpr.of(List.of()),
+                ListExpr.of(
+                    List.of(
+                        TupleExpr.of(
+                            List.of(AtomExpr.of("body_format"), AtomExpr.of("binary"))))))),
+        List.of(okClause, errorClause));
   }
 }

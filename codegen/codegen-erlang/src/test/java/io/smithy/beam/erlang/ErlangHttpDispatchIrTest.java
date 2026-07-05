@@ -3,8 +3,7 @@ package io.smithy.beam.erlang;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.beam.ir.erlang.Function;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlModule;
+import io.beam.ir.erlang.Module;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -26,7 +25,7 @@ class ErlangHttpDispatchIrTest {
     Model model = httpDispatchModel();
     ServiceShape service =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
-    ErlModule module =
+    Module module =
         ErlangHttpDispatchIr.httpDispatchModule(
             "runtime_http",
             "runtime_types.hrl",
@@ -37,8 +36,7 @@ class ErlangHttpDispatchIrTest {
             HELPERS_MOD,
             ENDPOINTS_MOD,
             CREDENTIALS_MOD);
-    assertThat(module.asString())
-        .isEqualTo(readExpectedString("ir/http_dispatch_module.expected.erl"));
+    IrGoldenAssertions.assertGolden(module, "ir/http_dispatch_module.expected.erl");
   }
 
   private static Model httpDispatchModel() {
@@ -89,61 +87,53 @@ class ErlangHttpDispatchIrTest {
 
   @Test
   void mimeAsStringMatchesGolden() throws IOException {
-    ErlFunction fn = ErlangHttpDispatchIr.mime();
-    assertThat(fn.asString()).isEqualTo(readExpectedString("ir/http_dispatch_mime.expected.erl"));
+    IrGoldenAssertions.assertGolden(ErlangHttpDispatchIr.mime(), "ir/http_dispatch_mime.expected.erl");
   }
 
   @Test
   void dispatchArity2AsStringMatchesGolden() throws IOException {
-    ErlFunction fn = ErlangHttpDispatchIr.dispatchArity2();
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/http_dispatch_dispatch_arity2.expected.erl"));
+    IrGoldenAssertions.assertGolden(
+        ErlangHttpDispatchIr.dispatchArity2(), "ir/http_dispatch_dispatch_arity2.expected.erl");
   }
 
   @Test
   void dispatchArity3AsStringMatchesGolden() throws IOException {
-    ErlFunction fn = ErlangHttpDispatchIr.dispatchArity3();
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/http_dispatch_dispatch_arity3.expected.erl"));
+    IrGoldenAssertions.assertGolden(
+        ErlangHttpDispatchIr.dispatchArity3(), "ir/http_dispatch_dispatch_arity3.expected.erl");
   }
 
   @Test
   void dispatchSignedBasicAsStringMatchesGolden() throws IOException {
-    ErlFunction fn =
+    Function fn =
         ErlangHttpDispatchIr.dispatchSigned(
             false, false, "Config", HELPERS_MOD, ENDPOINTS_MOD, CREDENTIALS_MOD);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/http_dispatch_dispatch_signed_basic.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/http_dispatch_dispatch_signed_basic.expected.erl");
   }
 
   @Test
   void dispatchSignedSigv4AsStringMatchesGolden() throws IOException {
-    ErlFunction fn =
+    Function fn =
         ErlangHttpDispatchIr.dispatchSigned(
             true, false, "Config1", HELPERS_MOD, ENDPOINTS_MOD, CREDENTIALS_MOD);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/http_dispatch_dispatch_signed_sigv4.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/http_dispatch_dispatch_signed_sigv4.expected.erl");
   }
 
   @Test
   void dispatchSignedEndpointRulesAsStringMatchesGolden() throws IOException {
-    ErlFunction fn =
+    Function fn =
         ErlangHttpDispatchIr.dispatchSigned(
             false, true, "Config", HELPERS_MOD, ENDPOINTS_MOD, CREDENTIALS_MOD);
-    assertThat(fn.asString())
-        .isEqualTo(
-            readExpectedString("ir/http_dispatch_dispatch_signed_endpoint_rules.expected.erl"));
+    IrGoldenAssertions.assertGolden(
+        fn, "ir/http_dispatch_dispatch_signed_endpoint_rules.expected.erl");
   }
 
   @Test
   void dispatchSignedSigv4EndpointRulesAsStringMatchesGolden() throws IOException {
-    ErlFunction fn =
+    Function fn =
         ErlangHttpDispatchIr.dispatchSigned(
             true, true, "Config1", HELPERS_MOD, ENDPOINTS_MOD, CREDENTIALS_MOD);
-    assertThat(fn.asString())
-        .isEqualTo(
-            readExpectedString(
-                "ir/http_dispatch_dispatch_signed_sigv4_endpoint_rules.expected.erl"));
+    IrGoldenAssertions.assertGolden(
+        fn, "ir/http_dispatch_dispatch_signed_sigv4_endpoint_rules.expected.erl");
   }
 
   private static String readExpectedString(String resourcePath) throws IOException {
