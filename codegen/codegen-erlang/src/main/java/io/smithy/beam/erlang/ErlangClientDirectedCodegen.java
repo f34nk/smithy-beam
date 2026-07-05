@@ -1,9 +1,10 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamClientRetrySupport;
 import io.smithy.beam.core.BeamCodegenKind;
-import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamErlangLayout;
@@ -14,19 +15,8 @@ import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlFunctionDoc;
-import io.smithy.beam.ir.erlang.ErlFunctionSpec;
-import io.smithy.beam.ir.erlang.ErlModule;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -43,7 +33,6 @@ import software.amazon.smithy.codegen.core.directed.GenerateResourceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
-import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.PaginationInfo;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ResourceShape;
@@ -187,17 +176,10 @@ final class ErlangClientDirectedCodegen
       for (OperationShape op : operations) {
         exports.add(sp.toSymbol(op).getName() + "/2");
       }
-      ErlModule module =
+      Module module =
           ErlangClientIr.clientModule(
               layout, service, exports, builder.serviceFunctions(), builder.operationFunctions());
-      ctx.writerDelegator()
-          .useFileWriter(
-              ctx.definitionFile(),
-              writer -> {
-                writer.pushGeneratedDocumentationSection();
-                writer.write("$L", module.asString());
-                writer.popState();
-              });
+      ErlangCodecEmission.writeModule(ctx, ctx.definitionFile(), module);
       if (ctx.protocolCodegen() != null) {
         for (OperationShape op : operations) {
           ctx.writerDelegator()
@@ -245,116 +227,41 @@ final class ErlangClientDirectedCodegen
             ? BeamClientPaginationSupport.requirePaginationInfo(ctx.model(), ctx.service(), op)
             : null;
 
-    String successReturnType = successReturnType(paginated, paginationInfo, ctx, sp, outSym);
-    ErlFunctionDoc doc = operationDoc(op, ctx);
+    String successReturnType =
+        ErlangClientOperationCodegenIrCompat.successReturnType(
+            paginated, paginationInfo, ctx, sp, outSym);
 
     if (paginated) {
       builder.addOperationFunctions(
-          ErlangClientPaginationIr.paginatedOperationFunctions(
-              ctx, ctx.service(), op, layout, wrapWithRetry, retryModule, successReturnType, doc));
+          ErlangClientOperationCodegenIrCompat.paginatedOperationFunctions(
+                  ctx,
+                  ctx.service(),
+                  op,
+                  layout,
+                  wrapWithRetry,
+                  retryModule,
+                  successReturnType,
+                  ErlangClientOperationCodegenIrCompat.operationDoc(op, ctx))
+              .stream()
+              .map(fn -> Function.verbatim(fn.asString()))
+              .toList());
       return;
     }
 
     builder.addOperationFunction(
-        singlePageOperationFunction(
-            ctx,
-            op,
-            layout,
-            opSym,
-            inSym,
-            successReturnType,
-            hasProtocol,
-            wrapWithRetry,
-            retryModule,
-            doc));
-  }
-
-  private static String successReturnType(
-      boolean paginated,
-      PaginationInfo paginationInfo,
-      ErlangContext ctx,
-      SymbolProvider sp,
-      Symbol outSym) {
-    if (paginated && BeamClientPaginationSupport.hasItemsMember(paginationInfo)) {
-      return "["
-          + BeamClientPaginationSupport.itemsElementSymbol(ctx.model(), sp, paginationInfo)
-              .orElseThrow()
-              .getName()
-          + "]";
-    }
-    if (paginated) {
-      return "[" + outSym.getName() + "]";
-    }
-    return outSym.getName();
-  }
-
-  private static ErlFunctionDoc operationDoc(OperationShape op, ErlangContext ctx) {
-    StringBuilder text = new StringBuilder();
-    BeamDocumentation.forShape(op).ifPresent(doc -> text.append(doc).append('\n'));
-    if (ctx.protocolCodegen() != null) {
-      Map<String, HttpBinding> bindings = ctx.httpBindings().requestBindings(op);
-      if (!bindings.isEmpty()) {
-        text.append("HTTP request bindings for ").append(op.getId()).append(':').append('\n');
-        for (Map.Entry<String, HttpBinding> entry : bindings.entrySet()) {
-          HttpBinding binding = entry.getValue();
-          text.append("  ")
-              .append(entry.getKey())
-              .append(" @ ")
-              .append(binding.getLocation())
-              .append('\n');
-        }
-      }
-    }
-    if (text.isEmpty()) {
-      return null;
-    }
-    return ErlFunctionDoc.functionDoc(text.toString().strip());
-  }
-
-  private static ErlFunction singlePageOperationFunction(
-      ErlangContext ctx,
-      OperationShape op,
-      BeamErlangLayout layout,
-      Symbol opSym,
-      Symbol inSym,
-      String successReturnType,
-      boolean hasProtocol,
-      boolean wrapWithRetry,
-      String retryModule,
-      ErlFunctionDoc doc) {
-    String specOutput = "{'ok', " + successReturnType + "} | {'error', term()}";
-    if (!hasProtocol) {
-      return new ErlFunction(
-          opSym.getName(),
-          2,
-          doc,
-          ErlFunctionSpec.functionSpec(
-              opSym.getName(), "client_config(), " + inSym.getName(), specOutput),
-          List.of(
-              ErlClause.clause(
-                  List.of(ErlVarPattern.varPattern("_Config"), ErlVarPattern.varPattern("_Input")),
-                  ErlTuple.tuple(ErlAtom.atom("error"), ErlAtom.atom("not_implemented")))));
-    }
-
-    List<ErlExpr> body =
-        ErlangClientDispatchIr.operationBodyExprs(
-            ctx,
-            op,
-            layout,
-            wrapWithRetry,
-            retryModule,
-            false,
-            ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
-    return new ErlFunction(
-        opSym.getName(),
-        2,
-        doc,
-        ErlFunctionSpec.functionSpec(
-            opSym.getName(), "client_config(), " + inSym.getName(), specOutput),
-        List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Config"), ErlVarPattern.varPattern("Input")),
-                ErlExprBlock.block(body.toArray(ErlExpr[]::new)))));
+        Function.verbatim(
+            ErlangClientOperationCodegenIrCompat.singlePageOperationFunction(
+                    ctx,
+                    op,
+                    layout,
+                    opSym,
+                    inSym,
+                    successReturnType,
+                    hasProtocol,
+                    wrapWithRetry,
+                    retryModule,
+                    ErlangClientOperationCodegenIrCompat.operationDoc(op, ctx))
+                .asString()));
   }
 
   @Override

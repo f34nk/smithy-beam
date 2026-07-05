@@ -92,7 +92,14 @@ final class ErlangResourceIr {
     List<io.smithy.beam.ir.erlang.ErlModuleAttribute> attributes = new ArrayList<>();
     attributes.add(new ErlAttribute("include", "\"" + layout.typesHeaderFile() + "\""));
     if (!server) {
-      attributes.add(ErlangClientIr.clientConfigTypeDef());
+      attributes.add(
+          new io.smithy.beam.ir.erlang.ErlTypeDef(
+              "client_config",
+              "#{binary() => term()}",
+              List.of(
+                  ErlComment.comment(
+                      "Client configuration is intentionally opaque at this layer; "
+                          + "endpoint, transport, and protocol live in future runtime modules."))));
     }
     attributes.add(ErlExportAttribute.export(exports));
 
