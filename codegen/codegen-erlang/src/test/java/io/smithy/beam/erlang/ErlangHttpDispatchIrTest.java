@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.Function;
 import io.smithy.beam.ir.erlang.ErlFunction;
 import io.smithy.beam.ir.erlang.ErlModule;
 import java.io.IOException;
@@ -82,9 +83,8 @@ class ErlangHttpDispatchIrTest {
 
   @Test
   void splitBaseUrlAsStringMatchesGolden() throws IOException {
-    ErlFunction fn = ErlangHttpDispatchIr.splitBaseUrl();
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/http_dispatch_split_base_url.expected.erl"));
+    Function fn = ErlangHttpDispatchIr.splitBaseUrl();
+    IrGoldenAssertions.assertGolden(fn, "ir/http_dispatch_split_base_url.expected.erl");
   }
 
   @Test
