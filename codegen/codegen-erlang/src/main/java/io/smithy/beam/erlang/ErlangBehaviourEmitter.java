@@ -38,6 +38,6 @@ final class ErlangBehaviourEmitter {
     ErlangCodecEmission.writeModule(
         ctx,
         layout.behaviourModuleFile(),
-        ErlangBehaviourIr.behaviourModule(layout, service, builder.callbacks()));
+        ErlangBehaviourIr.behaviourModule(layout, service, builder.callbacks()).asString());
   }
 }
