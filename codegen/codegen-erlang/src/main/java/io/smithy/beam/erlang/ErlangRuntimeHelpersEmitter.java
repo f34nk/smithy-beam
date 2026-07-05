@@ -2,7 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.ir.erlang.ErlModule;
+import io.beam.ir.erlang.Module;
 import java.util.List;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
@@ -29,15 +29,10 @@ public final class ErlangRuntimeHelpersEmitter {
     BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), service.getId().getNamespace());
     String helpersMod = layout.runtimeHelpersModuleName();
 
-    ErlModule module =
+    Module module =
         ErlangRuntimeHelpersIr.runtimeHelpersModule(
             helpersMod, service, ctx.model(), awsMetadata, labelBindings, checksumBindings);
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.runtimeHelpersModuleFile(),
-            writer -> {
-              writer.write("$L", module.asString());
-            });
+    ErlangCodecEmission.writeModule(ctx, layout.runtimeHelpersModuleFile(), module);
   }
 
   static boolean serviceHasLabelBindings(Model model, ServiceShape service) {
