@@ -1,27 +1,25 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BinaryExpr;
+import io.beam.ir.erlang.BinarySegmentExpr;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.MapEntry;
+import io.beam.ir.erlang.MapExpr;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.Module;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.Spec;
+import io.beam.ir.erlang.StringExpr;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
 import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
-import io.smithy.beam.ir.erlang.ErlBinary;
-import io.smithy.beam.ir.erlang.ErlBinaryExpr;
-import io.smithy.beam.ir.erlang.ErlBinaryTemplate;
-import io.smithy.beam.ir.erlang.ErlBinaryText;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCase;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlComment;
-import io.smithy.beam.ir.erlang.ErlExportAttribute;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlMap;
-import io.smithy.beam.ir.erlang.ErlMapEntry;
-import io.smithy.beam.ir.erlang.ErlMatch;
-import io.smithy.beam.ir.erlang.ErlModule;
-import io.smithy.beam.ir.erlang.ErlString;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.List;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
@@ -35,69 +33,80 @@ public final class ErlangAwsEndpointRulesEmitter {
       return;
     }
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            "aws_endpoint_rules.erl",
-            writer -> {
-              writer.write("$L", awsEndpointRulesModule().asString());
-            });
+    ErlangCodecEmission.writeModule(ctx, "aws_endpoint_rules.erl", awsEndpointRulesModule());
   }
 
-  private static ErlModule awsEndpointRulesModule() {
-    return new ErlModule(
+  private static Module awsEndpointRulesModule() {
+    return Module.of(
         "aws_endpoint_rules",
+        List.of(evaluate()),
         List.of(
-            ErlComment.comment(
-                "@doc Temporary stub endpoint rules evaluator emitted by smithy-beam codegen."),
-            ErlComment.comment(
-                "The rule set argument is ignored for now. Endpoint resolution uses a minimal placeholder"),
-            ErlComment.comment("until a full AWS rules engine runtime is available.")),
-        List.of(ErlExportAttribute.export(List.of("evaluate/2"))),
-        List.of(evaluate()));
+            "Temporary stub endpoint rules evaluator emitted by smithy-beam codegen.",
+            "The rule set argument is ignored for now. Endpoint resolution uses a minimal placeholder",
+            "until a full AWS rules engine runtime is available."),
+        null,
+        null,
+        null,
+        List.of("evaluate/2"));
   }
 
-  private static ErlFunction evaluate() {
-    return ErlFunction.functionWithSpec(
+  private static Function evaluate() {
+    return Function.of(
         "evaluate",
-        2,
-        "map(), map()",
-        "{ok, #{url := binary(), headers := map()}} | {error, term()}",
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("_RuleSet"), ErlVarPattern.varPattern("Params")),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Region"),
-                        ErlCall.call(
-                            "maps",
-                            "get",
-                            ErlBinary.binary("Region"),
-                            ErlVar.var("Params"),
-                            ErlCall.call(
+            FunctionClause.of(
+                List.of(VariablePattern.of("_RuleSet"), VariablePattern.of("Params")),
+                BlockExpr.newlineSeparated(
+                    List.of(
+                        MatchExpr.bindValue(
+                            "Region",
+                            RemoteCallExpr.of(
                                 "maps",
                                 "get",
-                                ErlAtom.atom("Region"),
-                                ErlVar.var("Params"),
-                                ErlAtom.atom("undefined")))),
-                    ErlCase.caseExpr(
-                        ErlVar.var("Region"),
-                        ErlClause.clause(
-                            List.of(ErlAtomPattern.atomPattern("undefined")),
-                            ErlTuple.tuple(
-                                ErlAtom.atom("error"),
-                                ErlString.string("Invalid Configuration: Missing Region"))),
-                        ErlClause.clause(
-                            List.of(ErlVarPattern.varPattern("Value")),
-                            ErlTuple.tuple(
-                                ErlAtom.atom("ok"),
-                                ErlMap.map(
-                                    ErlMapEntry.entry(
-                                        ErlAtom.atom("url"),
-                                        ErlBinaryTemplate.binaryTemplate(
-                                            ErlBinaryText.text("https://ec2."),
-                                            ErlBinaryExpr.expr(ErlVar.var("Value"), "binary"),
-                                            ErlBinaryText.text(".amazonaws.com"))),
-                                    ErlMapEntry.entry(
-                                        ErlAtom.atom("headers"), ErlMap.map())))))))));
+                                List.of(
+                                    BinaryExpr.of("Region"),
+                                    Variable.of("Params"),
+                                    RemoteCallExpr.of(
+                                        "maps",
+                                        "get",
+                                        List.of(
+                                            AtomExpr.of("Region"),
+                                            Variable.of("Params"),
+                                            AtomExpr.of("undefined")))))),
+                        CaseExpr.of(
+                            Variable.of("Region"),
+                            List.of(
+                                Clause.of(
+                                    AtomPattern.of("undefined"),
+                                    TupleExpr.of(
+                                        List.of(
+                                            AtomExpr.of("error"),
+                                            StringExpr.of(
+                                                "Invalid Configuration: Missing Region")))),
+                                Clause.of(
+                                    VariablePattern.of("Value"),
+                                    TupleExpr.of(
+                                        List.of(
+                                            AtomExpr.of("ok"),
+                                            MapExpr.of(
+                                                List.of(
+                                                    MapEntry.of(
+                                                        AtomExpr.of("url"),
+                                                        BinaryExpr.of(
+                                                            List.of(
+                                                                BinarySegmentExpr.literal(
+                                                                    "https://ec2."),
+                                                                BinarySegmentExpr.of(
+                                                                    Variable.of("Value"),
+                                                                    "binary"),
+                                                                BinarySegmentExpr.literal(
+                                                                    ".amazonaws.com")))),
+                                                    MapEntry.of(
+                                                        AtomExpr.of("headers"),
+                                                        MapExpr.of(List.of()))))))))))))),
+        Spec.of(
+            "evaluate(map(), map()) -> {ok, #{url := binary(), headers := map()}} | {error, term()}"),
+        null,
+        null);
   }
 }
