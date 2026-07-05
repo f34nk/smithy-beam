@@ -27,7 +27,7 @@ class ErlangXmlCodecIrTest {
         ErlangXmlCodecIr.restXmlEncodeHelpers().stream()
             .map(ErlangRenderer::renderFunction)
             .collect(java.util.stream.Collectors.joining("\n\n"));
-    assertThat(decode + "\n\n" + encode)
+    assertThat(IrGoldenAssertions.normalizeTrailingNewline(decode + "\n\n" + encode))
         .isEqualTo(IrGoldenAssertions.readExpectedString("ir/rest_xml_helpers.expected.erl"));
   }
 }
