@@ -26,20 +26,11 @@ public final class ErlangRetryEmitter {
         new BeamErlangLayout(ctx.settings(), service.getId().getNamespace(), service);
     String retryMod = layout.retryModuleName();
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.retryModuleFile(),
-            writer -> {
-              writer.write(
-                  "$L",
-                  ErlangRetryIr.retryModule(
-                          retryMod,
-                          layout.typesHeaderFile(),
-                          service,
-                          ctx.model(),
-                          ctx.symbolProvider())
-                      .asString());
-            });
+    ErlangCodecEmission.writeModule(
+        ctx,
+        layout.retryModuleFile(),
+        ErlangRetryIr.retryModule(
+            retryMod, layout.typesHeaderFile(), service, ctx.model(), ctx.symbolProvider()));
   }
 
   private static List<StructureShape> retryableErrors(
