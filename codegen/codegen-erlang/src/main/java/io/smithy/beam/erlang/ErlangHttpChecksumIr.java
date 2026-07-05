@@ -103,7 +103,7 @@ final class ErlangHttpChecksumIr {
                       Variable.of(current)))));
       current = next;
     }
-    return Optional.of(BlockExpr.newlineSeparated(exprs, true));
+    return Optional.of(BlockExpr.commaSeparated(exprs, false));
   }
 
   static Expression responseChecksumGuardExpr(
@@ -345,7 +345,7 @@ final class ErlangHttpChecksumIr {
 
   private static Expression checksumBranchExpr(
       BeamHttpChecksumIndex.ChecksumBinding cb, String headersVar) {
-    return BlockExpr.newlineSeparated(
+    return BlockExpr.commaSeparated(
         List.of(
             checksumComputationExpr(cb, "Checksum"),
             LocalCallExpr.of(
@@ -355,7 +355,7 @@ final class ErlangHttpChecksumIr {
                     LocalCallExpr.of(
                         "checksum_header_encode", List.of(Variable.of("Checksum"))),
                     Variable.of(headersVar)))),
-        true);
+        false);
   }
 
   private static Expression checksumComputationExpr(
