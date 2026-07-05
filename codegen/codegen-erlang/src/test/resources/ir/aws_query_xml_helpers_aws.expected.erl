@@ -1,8 +1,8 @@
 unwrap_query_result(Body, ResultName) ->
     try
         {Xml, _} = xmerl_scan:string(binary_to_list(Body)),
-        Root = normalize_xml_element(Xml)
-case query_result_element(Root, ResultName) of
+        Root = normalize_xml_element(Xml),
+        case query_result_element(Root, ResultName) of
             undefined -> {error, {missing_result, ResultName}};
             Result -> {ok, Result}
         end
@@ -140,8 +140,8 @@ xml_child_list(Parent, ListName, ItemName) ->
 decode_query_error(Status, Body) ->
     try
         {Xml, _} = xmerl_scan:string(binary_to_list(Body)),
-        Root = normalize_xml_element(Xml)
-case query_result_element(Root, <<"ErrorResponse">>) of
+        Root = normalize_xml_element(Xml),
+        case query_result_element(Root, <<"ErrorResponse">>) of
             undefined ->
                 {error, {unknown_error, Status, Body}};
             ErrorResponse ->

@@ -89,6 +89,6 @@ class ErlangRestJson1CodecTest {
     String http = manifest.expectFileString("runtime_http.erl");
     assertThat(http).contains("-module(runtime_http).");
     assertThat(http).contains("dispatch_signed(HttpClient, Config, Req = #http_request{");
-    assertThat(http).contains("HttpClient(");
+    assertThat(http).contains("HttpClient:request(");
   }
 }
