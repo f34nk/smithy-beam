@@ -1,175 +1,206 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.ir.erlang.*;
+import io.beam.ir.erlang.ApplyExpr;
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.ExpressionGuard;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.Fun;
+import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.IntegerExpr;
+import io.beam.ir.erlang.IntegerPattern;
+import io.beam.ir.erlang.ListComprehensionExpr;
+import io.beam.ir.erlang.ListComprehensionFilter;
+import io.beam.ir.erlang.ListComprehensionGenerator;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MacroExpr;
+import io.beam.ir.erlang.MapExpr;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.Spec;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TuplePattern;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
+import io.beam.ir.erlang.WildcardPattern;
 import java.util.List;
 
 final class ErlangHandlerDiscoveryIr {
   private ErlangHandlerDiscoveryIr() {}
 
-  static ErlFunction resolveImpl(String behaviourMod) {
-    ErlCase ensureLoadedCase =
-        ErlCase.caseExpr(
-            ErlCall.call("code", "ensure_loaded", ErlVar.var("Impl")),
-            ErlClause.clause(
+  static Function resolveImpl(String behaviourMod) {
+    Expression handlersComprehension =
+        ListComprehensionExpr.of(
+            TupleExpr.of(
                 List.of(
-                    ErlTuplePattern.tuplePattern(
-                        ErlAtomPattern.atomPattern("module"), ErlVarPattern.varPattern("Impl"))),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Callbacks"),
-                        ErlCall.call(behaviourMod, "behaviour_info", ErlAtom.atom("callbacks"))),
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Handlers"),
-                        ErlCall.call(
-                            "maps",
-                            "from_list",
-                            ErlListComprehension.comprehensionQualifiers(
-                                ErlTuple.tuple(
-                                    ErlVar.var("Fun"),
-                                    ErlCallLocal.callLocal(
-                                        "make_handler", ErlVar.var("Impl"), ErlVar.var("Fun"))),
-                                List.of(
-                                    new ErlComprehensionGenerator(
-                                        ErlTuplePattern.tuplePattern(
-                                            ErlVarPattern.varPattern("Fun"),
-                                            ErlIntegerPattern.integerPattern(3)),
-                                        ErlVar.var("Callbacks")),
-                                    new ErlComprehensionFilter(
-                                        ErlCall.call(
-                                            "erlang",
-                                            "function_exported",
-                                            ErlVar.var("Impl"),
-                                            ErlVar.var("Fun"),
-                                            ErlInteger.integer(3))))))),
-                    ErlTuple.tuple(ErlAtom.atom("ok"), ErlVar.var("Handlers")))),
-            ErlClause.blockClause(
-                List.of(
-                    ErlTuplePattern.tuplePattern(
-                        ErlAtomPattern.atomPattern("error"), ErlVarPattern.varPattern("_"))),
-                ErlTuple.tuple(
-                    ErlAtom.atom("error"),
-                    ErlTuple.tuple(ErlAtom.atom("impl_not_loaded"), ErlVar.var("Impl")))));
-
-    return ErlFunction.function(
+                    Variable.of("Fun"),
+                    LocalCallExpr.of(
+                        "make_handler", List.of(Variable.of("Impl"), Variable.of("Fun"))))),
+            List.of(
+                ListComprehensionGenerator.of(
+                    TuplePattern.of(List.of(VariablePattern.of("Fun"), IntegerPattern.of(3))),
+                    Variable.of("Callbacks")),
+                ListComprehensionFilter.of(
+                    RemoteCallExpr.of(
+                        "erlang",
+                        "function_exported",
+                        List.of(Variable.of("Impl"), Variable.of("Fun"), IntegerExpr.of(3))))));
+    Expression successBody =
+        MatchExpr.bind(
+            "Callbacks",
+            RemoteCallExpr.of(behaviourMod, "behaviour_info", List.of(AtomExpr.of("callbacks"))),
+            MatchExpr.bind(
+                "Handlers",
+                RemoteCallExpr.of("maps", "from_list", List.of(handlersComprehension)),
+                TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Handlers")))));
+    return Function.of(
         "resolve_impl",
-        1,
-        List.of(ErlClause.clause(List.of(ErlVarPattern.varPattern("Impl")), ensureLoadedCase)));
+        List.of(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Impl")),
+                CaseExpr.of(
+                    RemoteCallExpr.of("code", "ensure_loaded", List.of(Variable.of("Impl"))),
+                    List.of(
+                        Clause.of(
+                            TuplePattern.of(
+                                List.of(AtomPattern.of("module"), VariablePattern.of("Impl"))),
+                            successBody),
+                        Clause.of(
+                            TuplePattern.of(List.of(AtomPattern.of("error"), WildcardPattern.of())),
+                            TupleExpr.of(
+                                List.of(
+                                    AtomExpr.of("error"),
+                                    TupleExpr.of(
+                                        List.of(
+                                            AtomExpr.of("impl_not_loaded"),
+                                            Variable.of("Impl")))))))))));
   }
 
-  static ErlFunction makeHandler() {
-    return ErlFunction.function(
+  static Function makeHandler() {
+    return Function.of(
         "make_handler",
-        2,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Impl"), ErlVarPattern.varPattern("Fun")),
-                ErlFun.compactFun(
-                    ErlClause.clause(
-                        List.of(
-                            ErlVarPattern.varPattern("Ctx"),
-                            ErlVarPattern.varPattern("Input"),
-                            ErlVarPattern.varPattern("Meta")),
-                        ErlRemoteCall.call(
-                            ErlVar.var("Impl"),
-                            ErlVar.var("Fun"),
-                            ErlVar.var("Ctx"),
-                            ErlVar.var("Input"),
-                            ErlVar.var("Meta")))))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Impl"), VariablePattern.of("Fun")),
+                Fun.of(
+                    List.of(
+                        FunClause.of(
+                            List.of(
+                                VariablePattern.of("Ctx"),
+                                VariablePattern.of("Input"),
+                                VariablePattern.of("Meta")),
+                            RemoteCallExpr.of(
+                                Variable.of("Impl"),
+                                Variable.of("Fun"),
+                                List.of(
+                                    Variable.of("Ctx"),
+                                    Variable.of("Input"),
+                                    Variable.of("Meta")))))))));
   }
 
-  static ErlFunction initHandlers() {
-    ErlCase resolveCase =
-        ErlCase.caseExpr(
-            ErlCallLocal.callLocal("resolve_impl", ErlMacro.macro("DEFAULT_IMPL")),
-            ErlClause.blockClause(
-                List.of(
-                    ErlTuplePattern.tuplePattern(
-                        ErlAtomPattern.atomPattern("ok"), ErlVarPattern.varPattern("Handlers"))),
-                ErlExprBlock.block(
-                    ErlCall.call(
-                        "persistent_term",
-                        "put",
-                        ErlMacro.macro("HANDLERS_KEY"),
-                        ErlVar.var("Handlers")),
-                    ErlAtom.atom("ok"))),
-            ErlClause.blockClause(
-                List.of(
-                    ErlTuplePattern.tuplePattern(
-                        ErlAtomPattern.atomPattern("error"), ErlVarPattern.varPattern("Reason"))),
-                ErlExprBlock.block(
-                    ErlCall.call(
-                        "persistent_term", "put", ErlMacro.macro("HANDLERS_KEY"), ErlMap.map()),
-                    ErlTuple.tuple(ErlAtom.atom("error"), ErlVar.var("Reason")))));
-
-    return ErlFunction.functionWithSpec(
+  static Function initHandlers() {
+    return Function.of(
         "init_handlers",
-        0,
-        ErlFunctionSpec.functionSpec("init_handlers", "", "ok | {error, term()}"),
-        List.of(ErlClause.clause(List.of(), resolveCase)));
+        List.of(
+            FunctionClause.of(
+                List.of(),
+                CaseExpr.of(
+                    LocalCallExpr.of("resolve_impl", List.of(MacroExpr.of("DEFAULT_IMPL"))),
+                    List.of(
+                        Clause.of(
+                            TuplePattern.of(
+                                List.of(AtomPattern.of("ok"), VariablePattern.of("Handlers"))),
+                            MatchExpr.bind(
+                                "_",
+                                RemoteCallExpr.of(
+                                    "persistent_term",
+                                    "put",
+                                    List.of(MacroExpr.of("HANDLERS_KEY"), Variable.of("Handlers"))),
+                                AtomExpr.of("ok"))),
+                        Clause.of(
+                            TuplePattern.of(
+                                List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
+                            MatchExpr.bind(
+                                "_",
+                                RemoteCallExpr.of(
+                                    "persistent_term",
+                                    "put",
+                                    List.of(MacroExpr.of("HANDLERS_KEY"), MapExpr.of(List.of()))),
+                                TupleExpr.of(
+                                    List.of(AtomExpr.of("error"), Variable.of("Reason"))))))))),
+        Spec.of("init_handlers() -> ok | {error, term()}"),
+        null,
+        null);
   }
 
-  static ErlFunction dispatchHandler() {
-    ErlCase lookupCase =
-        ErlCase.caseExpr(
-            ErlCall.call(
-                "maps",
-                "get",
-                ErlVar.var("Fun"),
-                ErlVar.var("Handlers"),
-                ErlAtom.atom("undefined")),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Handler")),
-                List.of(
-                    ErlGuard.guard("is_function", ErlVar.var("Handler"), ErlInteger.integer(3))),
-                ErlApply.apply(
-                    ErlVar.var("Handler"),
-                    ErlVar.var("Ctx"),
-                    ErlVar.var("Input"),
-                    ErlVar.var("Meta"))),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("_")),
-                ErlTuple.tuple(ErlAtom.atom("error"), ErlAtom.atom("not_implemented"))));
-
-    return ErlFunction.function(
+  static Function dispatchHandler() {
+    return Function.of(
         "dispatch_handler",
-        4,
         List.of(
-            ErlClause.clause(
+            FunctionClause.of(
                 List.of(
-                    ErlVarPattern.varPattern("Fun"),
-                    ErlVarPattern.varPattern("Ctx"),
-                    ErlVarPattern.varPattern("Input"),
-                    ErlVarPattern.varPattern("Meta")),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Handlers"),
-                        ErlCall.call(
-                            "persistent_term",
+                    VariablePattern.of("Fun"),
+                    VariablePattern.of("Ctx"),
+                    VariablePattern.of("Input"),
+                    VariablePattern.of("Meta")),
+                MatchExpr.bind(
+                    "Handlers",
+                    RemoteCallExpr.of(
+                        "persistent_term",
+                        "get",
+                        List.of(MacroExpr.of("HANDLERS_KEY"), MapExpr.of(List.of()))),
+                    CaseExpr.of(
+                        RemoteCallExpr.of(
+                            "maps",
                             "get",
-                            ErlMacro.macro("HANDLERS_KEY"),
-                            ErlMap.map())),
-                    lookupCase))));
+                            List.of(
+                                Variable.of("Fun"),
+                                Variable.of("Handlers"),
+                                AtomExpr.of("undefined"))),
+                        List.of(
+                            Clause.of(
+                                VariablePattern.of("Handler"),
+                                ExpressionGuard.of(
+                                    LocalCallExpr.of(
+                                        "is_function",
+                                        List.of(Variable.of("Handler"), IntegerExpr.of(3)))),
+                                ApplyExpr.of(
+                                    Variable.of("Handler"),
+                                    List.of(
+                                        Variable.of("Ctx"),
+                                        Variable.of("Input"),
+                                        Variable.of("Meta")))),
+                            Clause.of(
+                                WildcardPattern.of(),
+                                TupleExpr.of(
+                                    List.of(
+                                        AtomExpr.of("error"),
+                                        AtomExpr.of("not_implemented"))))))))));
   }
 
-  static ErlFunction operationDispatch(String handler) {
-    return ErlFunction.function(
+  static Function operationDispatch(String handler) {
+    return Function.of(
         handler,
-        3,
         List.of(
-            ErlClause.blockClause(
+            FunctionClause.of(
                 List.of(
-                    ErlVarPattern.varPattern("Ctx"),
-                    ErlVarPattern.varPattern("Input"),
-                    ErlVarPattern.varPattern("Meta")),
-                ErlCallLocal.callLocal(
+                    VariablePattern.of("Ctx"),
+                    VariablePattern.of("Input"),
+                    VariablePattern.of("Meta")),
+                LocalCallExpr.of(
                     "dispatch_handler",
-                    ErlAtom.atom(handler),
-                    ErlVar.var("Ctx"),
-                    ErlVar.var("Input"),
-                    ErlVar.var("Meta")))));
+                    List.of(
+                        AtomExpr.of(handler),
+                        Variable.of("Ctx"),
+                        Variable.of("Input"),
+                        Variable.of("Meta"))))));
   }
 
-  static List<ErlFunction> discoveryFunctions(String behaviourMod) {
+  static List<Function> discoveryFunctions(String behaviourMod) {
     return List.of(resolveImpl(behaviourMod), makeHandler(), initHandlers(), dispatchHandler());
   }
 }
