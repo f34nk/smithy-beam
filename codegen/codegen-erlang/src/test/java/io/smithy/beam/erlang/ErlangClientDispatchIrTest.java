@@ -296,7 +296,7 @@ class ErlangClientDispatchIrTest {
 
   private static String renderBody(List<Expression> body) {
     Expression block =
-        body.size() == 1 ? body.get(0) : BlockExpr.newlineSeparated(body, true);
+        body.size() == 1 ? body.get(0) : BlockExpr.commaSeparated(body, false);
     return ErlangRenderer.renderStatement(block);
   }
 

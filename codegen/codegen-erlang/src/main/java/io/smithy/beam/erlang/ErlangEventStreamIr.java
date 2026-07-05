@@ -185,7 +185,7 @@ final class ErlangEventStreamIr {
                                 AtomExpr.of("headers"), VariablePattern.of("Headers")),
                             MapPatternEntry.of(
                                 AtomExpr.of("payload"), VariablePattern.of("Payload"))))),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bindValue(
                             "EventType",
@@ -195,7 +195,8 @@ final class ErlangEventStreamIr {
                                     Variable.of("Headers"), BinaryExpr.of(":event-type")))),
                         LocalCallExpr.of(
                             "decode_" + helper + "_event_type",
-                            List.of(Variable.of("EventType"), Variable.of("Payload"))))))),
+                            List.of(Variable.of("EventType"), Variable.of("Payload")))),
+                    false))),
         null,
         null,
         null);
@@ -229,7 +230,7 @@ final class ErlangEventStreamIr {
     Shape target = model.expectShape(member.getTarget());
     return FunctionClause.of(
         List.of(TuplePattern.of(List.of(AtomPattern.of(tag), VariablePattern.of("Value")))),
-        BlockExpr.newlineSeparated(
+        BlockExpr.commaSeparated(
             List.of(
                 MatchExpr.bindValue(
                     "Payload", encodeMemberPayload(model, target, "Value", sp)),
@@ -240,7 +241,8 @@ final class ErlangEventStreamIr {
                 RemoteCallExpr.of(
                     "aws_event_stream",
                     "frame",
-                    List.of(Variable.of("Headers"), Variable.of("Payload"))))));
+                    List.of(Variable.of("Headers"), Variable.of("Payload")))),
+            false));
   }
 
   private static FunctionClause decodeEventTypeClause(
@@ -330,12 +332,13 @@ final class ErlangEventStreamIr {
                       Variable.of("Decoded"),
                       AtomExpr.of("undefined")))));
     }
-    return BlockExpr.newlineSeparated(
+    return BlockExpr.commaSeparated(
         List.of(
             MatchExpr.bindValue(
                 "Decoded",
                 RemoteCallExpr.of("jsone", "decode", List.of(Variable.of(payloadVar)))),
-            RecordExpr.of(recordName, fields)));
+            RecordExpr.of(recordName, fields)),
+        false);
   }
 
   private static String recordName(Symbol symbol) {

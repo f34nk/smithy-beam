@@ -167,7 +167,7 @@ final class ErlangRouterIr {
       postClauses.add(
           Clause.of(
               BinaryPattern.of(amzTarget),
-              BlockExpr.newlineSeparated(
+              BlockExpr.commaSeparated(
                   List.of(
                       MatchExpr.bind(
                           "Input",
@@ -179,7 +179,7 @@ final class ErlangRouterIr {
                               List.of(
                                   MapExpr.of(List.of()),
                                   Variable.of("Input"),
-                                  MapExpr.of(List.of()))))))));
+                                  MapExpr.of(List.of()))))), false)));
     }
     postClauses.add(
         Clause.of(
@@ -263,7 +263,7 @@ final class ErlangRouterIr {
             Clause.of(
                 TuplePattern.of(
                     List.of(AtomPattern.of("ok"), VariablePattern.of("LabelMap"))),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bind(
                             "Input",
@@ -277,7 +277,7 @@ final class ErlangRouterIr {
                                 List.of(
                                     MapExpr.of(List.of()),
                                     Variable.of("Input"),
-                                    MapExpr.of(List.of()))))))),
+                                    MapExpr.of(List.of()))))), false)),
             Clause.of(
                 TuplePattern.of(
                     List.of(AtomPattern.of("error"), AtomPattern.of("path_mismatch"))),
@@ -292,7 +292,7 @@ final class ErlangRouterIr {
   }
 
   private static Expression literalRouteBody(String codecMod, String opName, String handlerFn) {
-    return BlockExpr.newlineSeparated(
+    return BlockExpr.commaSeparated(
         List.of(
             MatchExpr.bind(
                 "Input",
@@ -302,7 +302,7 @@ final class ErlangRouterIr {
                     Variable.of("Handler"),
                     AtomExpr.of(handlerFn),
                     List.of(
-                        MapExpr.of(List.of()), Variable.of("Input"), MapExpr.of(List.of()))))));
+                        MapExpr.of(List.of()), Variable.of("Input"), MapExpr.of(List.of()))))), false);
   }
 
   private static FunctionClause notFoundClause(int arity) {

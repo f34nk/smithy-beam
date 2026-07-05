@@ -468,7 +468,7 @@ final class ErlangAwsQueryHelperIr {
 
     Expression body =
         TryExpr.of(
-            BlockExpr.newlineSeparated(
+            BlockExpr.commaSeparated(
                 List.of(
                     MatchExpr.of(
                         TuplePattern.of(
@@ -483,7 +483,8 @@ final class ErlangAwsQueryHelperIr {
                             "Root",
                             LocalCallExpr.of(
                                 "normalize_xml_element", List.of(Variable.of("Xml"))))),
-                    resultLookup)),
+                    resultLookup),
+                false),
             List.of(
                 Clause.of(
                     CatchPattern.anyReason("Reason"),
@@ -671,7 +672,7 @@ final class ErlangAwsQueryHelperIr {
 
   private static Expression queryErrorTryBody(Expression resultLookup) {
     return TryExpr.of(
-        BlockExpr.newlineSeparated(
+        BlockExpr.commaSeparated(
             List.of(
                 MatchExpr.of(
                     TuplePattern.of(
@@ -685,7 +686,8 @@ final class ErlangAwsQueryHelperIr {
                         "Root",
                         LocalCallExpr.of(
                             "normalize_xml_element", List.of(Variable.of("Xml"))))),
-                resultLookup)),
+                resultLookup),
+            false),
         List.of(Clause.of(CatchPattern.anyAny(), unknownQueryError())));
   }
 
@@ -737,12 +739,13 @@ final class ErlangAwsQueryHelperIr {
         List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Params"), VariablePattern.of("Key")),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bindValue("Prefix", formListPrefix(".member.")),
                         LocalCallExpr.of(
                             "indexed_form_values",
-                            List.of(Variable.of("Params"), Variable.of("Prefix"))))))));
+                            List.of(Variable.of("Params"), Variable.of("Prefix")))),
+                    false))));
   }
 
   private static Function formListValuesEc2() {
@@ -751,12 +754,13 @@ final class ErlangAwsQueryHelperIr {
         List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Params"), VariablePattern.of("Key")),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bindValue("Prefix", formListPrefix(".")),
                         LocalCallExpr.of(
                             "indexed_form_values",
-                            List.of(Variable.of("Params"), Variable.of("Prefix"))))))));
+                            List.of(Variable.of("Params"), Variable.of("Prefix")))),
+                    false))));
   }
 
   private static Expression formListPrefix(String suffix) {
@@ -804,7 +808,7 @@ final class ErlangAwsQueryHelperIr {
         List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Params"), VariablePattern.of("Prefix")),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bindValue("Entries", entries),
                         CaseExpr.of(
@@ -813,7 +817,8 @@ final class ErlangAwsQueryHelperIr {
                             List.of(
                                 Clause.of(ListPattern.of(List.of()), AtomExpr.of("undefined")),
                                 Clause.of(
-                                    VariablePattern.of("Sorted"), sortedValues))))))));
+                                    VariablePattern.of("Sorted"), sortedValues)))),
+                    false))));
   }
 
   private static Function formIndex() {
@@ -822,7 +827,7 @@ final class ErlangAwsQueryHelperIr {
         List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Key"), VariablePattern.of("Prefix")),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bindValue(
                             "Rest",
@@ -841,7 +846,8 @@ final class ErlangAwsQueryHelperIr {
                                             "byte_size",
                                             List.of(Variable.of("Prefix"))))))),
                         LocalCallExpr.of(
-                            "binary_to_integer", List.of(Variable.of("Rest"))))))));
+                            "binary_to_integer", List.of(Variable.of("Rest")))),
+                    false))));
   }
 
   private static Function wrapAwsQueryResponse() {

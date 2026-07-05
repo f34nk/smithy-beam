@@ -107,7 +107,7 @@ final class ErlangWaiterIr {
                     VariablePattern.of("Client"),
                     VariablePattern.of("Input"),
                     VariablePattern.of("Opts")),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bindValue("Acceptors", ListExpr.of(acceptorMaps)),
                         MatchExpr.bindValue(
@@ -139,7 +139,8 @@ final class ErlangWaiterIr {
                                                     Variable.of("Client"),
                                                     Variable.of("Input")))))),
                                 Variable.of("Acceptors"),
-                                Variable.of("WaitOpts"))))))),
+                                Variable.of("WaitOpts")))),
+                    false))),
         null,
         Edoc.of(
             "Waits using the " + binding.name() + " waiter on " + operation.getId() + "."),
@@ -205,7 +206,7 @@ final class ErlangWaiterIr {
                     VariablePattern.of("Fun"),
                     VariablePattern.of("Acceptors"),
                     VariablePattern.of("Opts")),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bindValue(
                             "MaxAttempts",
@@ -241,7 +242,8 @@ final class ErlangWaiterIr {
                                 Variable.of("Acceptors"),
                                 Variable.of("MaxAttempts"),
                                 Variable.of("MinDelay"),
-                                Variable.of("MaxDelay"))))))),
+                                Variable.of("MaxDelay")))),
+                    false))),
         null,
         null,
         null);
@@ -267,7 +269,7 @@ final class ErlangWaiterIr {
                         List.of(AtomExpr.of("error"), AtomExpr.of("max_attempts_exceeded")))),
                 Clause.of(
                     AtomPattern.of("retry"),
-                    BlockExpr.newlineSeparated(
+                    BlockExpr.commaSeparated(
                         List.of(
                             RemoteCallExpr.of(
                                 "timer", "sleep", List.of(Variable.of("Delay"))),
@@ -288,7 +290,8 @@ final class ErlangWaiterIr {
                                     InfixExpr.of(
                                         Variable.of("Attempts"), "-", IntegerExpr.of(1)),
                                     Variable.of("NextDelay"),
-                                    Variable.of("MaxDelay"))))))));
+                                    Variable.of("MaxDelay")))),
+                        false))));
     return Function.of(
         "wait_until",
         List.of(
@@ -308,10 +311,11 @@ final class ErlangWaiterIr {
                     VariablePattern.of("Attempts"),
                     VariablePattern.of("Delay"),
                     VariablePattern.of("MaxDelay")),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bindValue("Result", LocalCallExpr.of("Fun", List.of())),
-                        pollCase)))),
+                        pollCase),
+                    false))),
         null,
         null,
         null);

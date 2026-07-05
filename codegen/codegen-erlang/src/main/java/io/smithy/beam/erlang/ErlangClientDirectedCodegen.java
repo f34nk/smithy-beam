@@ -353,7 +353,7 @@ final class ErlangClientDirectedCodegen
             false,
             ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
     Expression clauseBody =
-        body.size() == 1 ? body.get(0) : BlockExpr.newlineSeparated(body);
+        body.size() == 1 ? body.get(0) : BlockExpr.commaSeparated(body, false);
     return Function.of(
         opSym.getName(),
         List.of(

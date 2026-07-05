@@ -79,7 +79,7 @@ final class ErlangEndpointRulesIr {
         List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Config"), VariablePattern.of("Params")),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bindValue(
                             "ConfigParams",
@@ -95,7 +95,8 @@ final class ErlangEndpointRulesIr {
                                     "maps",
                                     "merge",
                                     List.of(Variable.of("ConfigParams"), Variable.of("ClientParams"))),
-                                Variable.of("Params"))))))),
+                                Variable.of("Params")))),
+                    false))),
         null,
         null,
         null);

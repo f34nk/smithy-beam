@@ -113,11 +113,12 @@ final class ErlangClientPaginationIr {
             VariablePattern.of("Acc"));
     Expression body =
         wrapWithRetry
-            ? BlockExpr.newlineSeparated(
-                retryWrappedPageBody(ctx, service, op, retryModule, pageBody, sp, opSym))
+            ? BlockExpr.commaSeparated(
+                retryWrappedPageBody(ctx, service, op, retryModule, pageBody, sp, opSym),
+                false)
             : (pageBody.size() == 1
                 ? pageBody.get(0)
-                : BlockExpr.newlineSeparated(pageBody));
+                : BlockExpr.commaSeparated(pageBody, false));
     return FunctionClause.of(patterns, body);
   }
 
@@ -151,7 +152,7 @@ final class ErlangClientPaginationIr {
                     List.of(),
                     pageBody.size() == 1
                         ? pageBody.get(0)
-                        : BlockExpr.newlineSeparated(pageBody))));
+                        : BlockExpr.commaSeparated(pageBody, false))));
     Expression retryCase =
         CaseExpr.of(
             RemoteCallExpr.of(
@@ -160,14 +161,15 @@ final class ErlangClientPaginationIr {
                 Clause.of(
                     TuplePattern.of(
                         List.of(AtomPattern.of("ok"), VariablePattern.of("Output"))),
-                    BlockExpr.newlineSeparated(
+                    BlockExpr.commaSeparated(
                         ErlangClientDispatchOperationIr.buildAccumulationAndRecursion(
                             opSym,
                             hasItems,
                             itemsExpr,
                             outputTokenExpr,
                             inputRecord,
-                            inputToken))),
+                            inputToken),
+                        false)),
                 Clause.of(
                     TuplePattern.of(
                         List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),

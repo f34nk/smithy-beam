@@ -136,7 +136,7 @@ final class ErlangHttpDispatchIr {
                     VariablePattern.of("Scheme"),
                     VariablePattern.of("DefaultAuthority"))),
             LocalCallExpr.of("split_base_url", List.of(Variable.of("BaseUrl"))),
-            BlockExpr.newlineSeparated(
+            BlockExpr.commaSeparated(
                 List.of(
                     authorityMatch(),
                     MatchExpr.bindValue(
@@ -149,7 +149,8 @@ final class ErlangHttpDispatchIr {
                                 BinarySegmentExpr.of(Variable.of("QueryStr"), "binary")))),
                     httpcHeadersMatch(),
                     requestTupleMatch(),
-                    httpClientRequestCase()))));
+                    httpClientRequestCase()),
+                false)));
 
     return Function.of(
         "dispatch_signed",
@@ -159,7 +160,7 @@ final class ErlangHttpDispatchIr {
                     VariablePattern.of("HttpClient"),
                     VariablePattern.of("Config"),
                     httpRequestPattern()),
-                BlockExpr.newlineSeparated(body))),
+                BlockExpr.commaSeparated(body, false))),
         null,
         null,
         null);
@@ -494,7 +495,7 @@ final class ErlangHttpDispatchIr {
                                     VariablePattern.of("_"))),
                             VariablePattern.of("RespHeaders"),
                             VariablePattern.of("RespBody"))))),
-            BlockExpr.newlineSeparated(List.of(binHeadersMatch, okResponse)));
+            BlockExpr.commaSeparated(List.of(binHeadersMatch, okResponse), false));
 
     Clause errorClause =
         Clause.of(

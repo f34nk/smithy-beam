@@ -56,7 +56,7 @@ public final class ErlangAwsEndpointRulesEmitter {
         List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("_RuleSet"), VariablePattern.of("Params")),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bindValue(
                             "Region",
@@ -103,7 +103,7 @@ public final class ErlangAwsEndpointRulesEmitter {
                                                                     ".amazonaws.com")))),
                                                     MapEntry.of(
                                                         AtomExpr.of("headers"),
-                                                        MapExpr.of(List.of()))))))))))))),
+                                                        MapExpr.of(List.of())))))))))), false))),
         Spec.of(
             "evaluate(map(), map()) -> {ok, #{url := binary(), headers := map()}} | {error, term()}"),
         null,

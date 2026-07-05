@@ -125,10 +125,11 @@ final class ErlangClientDispatchOperationIr {
                 undefinedClause,
                 Clause.of(
                     VariablePattern.of("NextToken"),
-                    BlockExpr.newlineSeparated(
+                    BlockExpr.commaSeparated(
                         List.of(
                             MatchExpr.bindValue("NextInput", nextInput),
-                            recurse)))));
+                            recurse),
+                        false))));
     body.add(tokenCase);
     return body;
   }
@@ -289,14 +290,15 @@ final class ErlangClientDispatchOperationIr {
             Clause.of(
                 TuplePattern.of(
                     List.of(AtomPattern.of("ok"), VariablePattern.of("Output"))),
-                BlockExpr.newlineSeparated(
+                BlockExpr.commaSeparated(
                     buildAccumulationAndRecursion(
                         ctx.opSym(),
                         hasItems,
                         itemsExpr,
                         outputTokenExpr,
                         inputRecord,
-                        inputToken))),
+                        inputToken),
+                    false)),
             Clause.of(
                 TuplePattern.of(
                     List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
@@ -310,7 +312,7 @@ final class ErlangClientDispatchOperationIr {
             List.of(
                 FunClause.of(
                     List.of(),
-                    core.size() == 1 ? core.get(0) : BlockExpr.newlineSeparated(core))));
+                    core.size() == 1 ? core.get(0) : BlockExpr.commaSeparated(core, false))));
     return List.of(
         MatchExpr.bindValue(
             "RetryOpts",

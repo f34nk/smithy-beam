@@ -441,7 +441,7 @@ final class ErlangCredentialProviderIr {
 
   private static Function mapsToCredentials() {
     Expression credentialsBody =
-        BlockExpr.newlineSeparated(
+        BlockExpr.commaSeparated(
             List.of(
                 MatchExpr.bindValue(
                     "Token",
@@ -469,7 +469,8 @@ final class ErlangCredentialProviderIr {
                                     AtomExpr.of("session_token"),
                                     LocalCallExpr.of(
                                         "optional_credential",
-                                        List.of(Variable.of("Token"))))))))));
+                                        List.of(Variable.of("Token"))))))))),
+            false);
     return Function.of(
         "maps_to_credentials",
         List.of(

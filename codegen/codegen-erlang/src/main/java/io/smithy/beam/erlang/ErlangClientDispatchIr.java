@@ -28,7 +28,7 @@ final class ErlangClientDispatchIr {
       return;
     }
     Expression block =
-        exprs.size() == 1 ? exprs.get(0) : BlockExpr.newlineSeparated(exprs, true);
+        exprs.size() == 1 ? exprs.get(0) : BlockExpr.commaSeparated(exprs, false);
     writer.write("$L", ErlangRenderer.renderStatement(block));
   }
 }
