@@ -15,11 +15,7 @@ public final class ErlangS3EndpointEmitter {
       return;
     }
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            "s3_endpoint.erl",
-            writer -> {
-              writer.write("$L", ErlangS3EndpointIr.s3EndpointModule(service).asString());
-            });
+    ErlangCodecEmission.writeModule(
+        ctx, "s3_endpoint.erl", ErlangS3EndpointIr.s3EndpointModule(service));
   }
 }
