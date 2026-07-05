@@ -19,15 +19,10 @@ public final class ErlangPresignerEmitter {
     String presignerModule = layout.presignerModuleName();
     String sigv4Module = layout.sigv4ModuleName();
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.presignerModuleFile(),
-            writer -> {
-              writer.write(
-                  "$L",
-                  ErlangPresignerIr.presignerModule(
-                          presignerModule, layout.runtimeTypesHeaderFile(), sigv4Module, service)
-                      .asString());
-            });
+    ErlangCodecEmission.writeModule(
+        ctx,
+        layout.presignerModuleFile(),
+        ErlangPresignerIr.presignerModule(
+            presignerModule, layout.runtimeTypesHeaderFile(), sigv4Module, service));
   }
 }

@@ -2,10 +2,8 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.smithy.beam.ir.erlang.ErlModule;
+import io.beam.ir.erlang.Module;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
@@ -20,17 +18,18 @@ class ErlangPresignerIrTest {
 
   @Test
   void presignUrlMatchesGolden() throws IOException {
-    assertThat(ErlangPresignerIr.presignUrl("sigv4test_service_sigv4").asString())
-        .isEqualTo(readExpectedString("ir/presigner_presign_url.expected.erl"));
+    IrGoldenAssertions.assertGolden(
+        ErlangPresignerIr.presignUrl("sigv4test_service_sigv4"),
+        "ir/presigner_presign_url.expected.erl");
   }
 
   @Test
   void presignerModuleMatchesGolden() throws IOException {
     ServiceShape service = sigv4Model().expectShape(SIGV4_SERVICE, ServiceShape.class);
-    ErlModule module =
+    Module module =
         ErlangPresignerIr.presignerModule(
             "sigv4test_service_presigner", "runtime_types.hrl", "sigv4test_service_sigv4", service);
-    assertThat(module.asString()).isEqualTo(readExpectedString("ir/presigner_module.expected.erl"));
+    IrGoldenAssertions.assertGolden(module, "ir/presigner_module.expected.erl");
   }
 
   private static Model sigv4Model() {
@@ -39,17 +38,5 @@ class ErlangPresignerIrTest {
         .discoverModels()
         .assemble()
         .unwrap();
-  }
-
-  private static String readExpectedString(String resourcePath) throws IOException {
-    try (InputStream in =
-        ErlangPresignerIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
-      assertThat(in).as("resource %s", resourcePath).isNotNull();
-      String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-      if (text.endsWith("\n")) {
-        text = text.substring(0, text.length() - 1);
-      }
-      return text;
-    }
   }
 }
