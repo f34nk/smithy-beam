@@ -178,19 +178,13 @@ final class ErlangXmlCodecIr {
                                     AtomExpr.of("xml_parse_error"),
                                     Variable.of("Reason"))))))));
 
-    return Function.of(
-        "parse_xml_root",
-        2,
-        List.of(
+    return Function.of("parse_xml_root", List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Body"), VariablePattern.of("RootName")), body)));
   }
 
   private static Function xmlElementNamed() {
-    return Function.of(
-        "xml_element_named",
-        2,
-        List.of(
+    return Function.of("xml_element_named", List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Element"), VariablePattern.of("Name")),
                 InfixExpr.of(
@@ -203,10 +197,7 @@ final class ErlangXmlCodecIr {
   }
 
   private static Function elementContent() {
-    return Function.of(
-        "element_content",
-        1,
-        List.of(
+    return Function.of("element_content", List.of(
             FunctionClause.of(
                 List.of(xmlElementTuple(W, 8, "Content", W)), Variable.of("Content")),
             FunctionClause.of(
@@ -234,10 +225,7 @@ final class ErlangXmlCodecIr {
                         "=:=",
                         Variable.of("Name")))));
 
-    return Function.of(
-        "find_element",
-        2,
-        List.of(
+    return Function.of("find_element", List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Name"), VariablePattern.of("Content")),
                 CaseExpr.of(
@@ -250,10 +238,7 @@ final class ErlangXmlCodecIr {
   }
 
   private static Function isElement() {
-    return Function.of(
-        "is_element",
-        1,
-        List.of(
+    return Function.of("is_element", List.of(
             FunctionClause.of(
                 List.of(xmlElementTuple(W, -1, null, W)), AtomExpr.of("true")),
             FunctionClause.of(
@@ -264,10 +249,7 @@ final class ErlangXmlCodecIr {
   }
 
   private static Function elementName() {
-    return Function.of(
-        "element_name",
-        1,
-        List.of(
+    return Function.of("element_name", List.of(
             FunctionClause.of(
                 List.of(xmlElementTuple(VariablePattern.of("Name"), -1, null, W)),
                 IsTypeGuard.of("atom", Variable.of("Name")),
@@ -321,20 +303,14 @@ final class ErlangXmlCodecIr {
                 Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
                 Clause.of(VariablePattern.of("Element"), elementTextCase)));
 
-    return Function.of(
-        "xml_child_text",
-        2,
-        List.of(
+    return Function.of("xml_child_text", List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Parent"), VariablePattern.of("Name")),
                 findElementCase)));
   }
 
   private static Function elementText() {
-    return Function.of(
-        "element_text",
-        1,
-        List.of(
+    return Function.of("element_text", List.of(
             FunctionClause.of(
                 List.of(xmlElementTuple(W, 8, "Content", W)),
                 LocalCallExpr.of("xml_text_values", List.of(Variable.of("Content")))),
@@ -367,10 +343,7 @@ final class ErlangXmlCodecIr {
                     LocalCallExpr.of("binary_to_list", List.of(Variable.of("V")))),
                 Clause.of(W, ListExpr.of(List.of()))));
 
-    return Function.of(
-        "xml_text_values",
-        1,
-        List.of(
+    return Function.of("xml_text_values", List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Content")),
                 RemoteCallExpr.of(
@@ -384,10 +357,7 @@ final class ErlangXmlCodecIr {
   }
 
   private static Function isElementString() {
-    return Function.of(
-        "is_element_string",
-        1,
-        List.of(
+    return Function.of("is_element_string", List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("T")),
                 IsTypeGuard.of("list", Variable.of("T")),
@@ -405,10 +375,7 @@ final class ErlangXmlCodecIr {
   }
 
   private static Function xmlAttribute() {
-    return Function.of(
-        "xml_attribute",
-        2,
-        List.of(
+    return Function.of("xml_attribute", List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Element"), VariablePattern.of("AttrName")),
                 CaseExpr.of(
@@ -484,10 +451,7 @@ final class ErlangXmlCodecIr {
                 ListComprehensionFilter.of(
                     InfixExpr.of(Variable.of("ItemText"), "=/=", BinaryExpr.of("")))));
 
-    return Function.of(
-        "xml_child_list",
-        3,
-        List.of(
+    return Function.of("xml_child_list", List.of(
             FunctionClause.of(
                 List.of(
                     VariablePattern.of("Parent"),
@@ -515,10 +479,7 @@ final class ErlangXmlCodecIr {
     Expression decodeItem =
         ApplyExpr.of(Variable.of("DecodeFun"), List.of(Variable.of("Item")));
 
-    return Function.of(
-        "xml_child_struct_list",
-        4,
-        List.of(
+    return Function.of("xml_child_struct_list", List.of(
             FunctionClause.of(
                 List.of(
                     VariablePattern.of("Parent"),
@@ -612,10 +573,7 @@ final class ErlangXmlCodecIr {
                                             Variable.of("Error"),
                                             BinaryExpr.of("Message"))))))))));
 
-    return Function.of(
-        "decode_rest_xml_error",
-        2,
-        List.of(
+    return Function.of("decode_rest_xml_error", List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Status"), VariablePattern.of("Body")),
                 CaseExpr.of(
@@ -673,10 +631,7 @@ final class ErlangXmlCodecIr {
                         Variable.of("XmlNs"))),
                 LocalCallExpr.of("iolist_to_binary", List.of(exportSimple))));
 
-    return Function.of(
-        "encode_xml",
-        2,
-        List.of(
+    return Function.of("encode_xml", List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("RootMap"), VariablePattern.of("XmlNs")), body)));
   }
@@ -694,19 +649,17 @@ final class ErlangXmlCodecIr {
                     InfixExpr.of(Variable.of("V"), "=/=", AtomExpr.of("undefined")))));
 
     Expression mapBody =
-        BlockExpr.newlineSeparated(
-            List.of(
-                MatchExpr.bind(
-                    "Attrs",
-                    LocalCallExpr.of("xml_namespace_attrs", List.of(Variable.of("XmlNs"))),
-                    MatchExpr.bind(
-                        "Children",
-                        children,
-                        TupleExpr.of(
-                            List.of(
-                                Variable.of("Name"),
-                                Variable.of("Attrs"),
-                                Variable.of("Children")))))));
+        MatchExpr.bind(
+            "Attrs",
+            LocalCallExpr.of("xml_namespace_attrs", List.of(Variable.of("XmlNs"))),
+            MatchExpr.bind(
+                "Children",
+                children,
+                TupleExpr.of(
+                    List.of(
+                        Variable.of("Name"),
+                        Variable.of("Attrs"),
+                        Variable.of("Children")))));
 
     Expression scalarBody =
         TupleExpr.of(
@@ -721,10 +674,7 @@ final class ErlangXmlCodecIr {
                                 LocalCallExpr.of(
                                     "to_binary", List.of(Variable.of("Content")))))))));
 
-    return Function.of(
-        "build_xml_element",
-        3,
-        List.of(
+    return Function.of("build_xml_element", List.of(
             FunctionClause.of(
                 List.of(
                     VariablePattern.of("Name"),
@@ -790,10 +740,7 @@ final class ErlangXmlCodecIr {
                                 LocalCallExpr.of(
                                     "to_binary", List.of(Variable.of("Value")))))))));
 
-    return Function.of(
-        "build_xml_child",
-        2,
-        List.of(
+    return Function.of("build_xml_child", List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Name"), VariablePattern.of("Value")),
                 IsTypeGuard.of("map", Variable.of("Value")),
@@ -823,10 +770,7 @@ final class ErlangXmlCodecIr {
   }
 
   private static Function xmlNamespaceAttrs() {
-    return Function.of(
-        "xml_namespace_attrs",
-        1,
-        List.of(
+    return Function.of("xml_namespace_attrs", List.of(
             FunctionClause.of(
                 List.of(OpaquePattern.of("#{uri := Uri}")),
                 ListExpr.of(List.of(TupleExpr.of(List.of(AtomExpr.of("xmlns"), Variable.of("Uri")))))),
