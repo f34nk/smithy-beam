@@ -13,6 +13,7 @@ import io.beam.ir.erlang.MapEntry;
 import io.beam.ir.erlang.MapExpr;
 import io.beam.ir.erlang.MatchExpr;
 import io.beam.ir.erlang.Module;
+import io.beam.ir.erlang.OpaqueExpr;
 import io.beam.ir.erlang.RemoteCallExpr;
 import io.beam.ir.erlang.Spec;
 import io.beam.ir.erlang.StringExpr;
@@ -70,7 +71,7 @@ public final class ErlangAwsEndpointRulesEmitter {
                                         "maps",
                                         "get",
                                         List.of(
-                                            AtomExpr.of("Region"),
+                                            OpaqueExpr.of("'Region'"),
                                             Variable.of("Params"),
                                             AtomExpr.of("undefined")))))),
                         CaseExpr.of(

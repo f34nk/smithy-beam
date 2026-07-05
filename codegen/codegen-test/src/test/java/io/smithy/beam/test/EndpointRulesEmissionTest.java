@@ -66,6 +66,7 @@ class EndpointRulesEmissionTest {
     assertThat(evaluator).contains("-module(aws_endpoint_rules).");
     assertThat(evaluator).contains("Temporary stub endpoint rules evaluator");
     assertThat(evaluator).contains("evaluate(_RuleSet, Params)");
+    assertThat(evaluator).contains("maps:get('Region', Params, undefined)");
 
     String http = manifest.expectFileString("runtime_http.erl");
     assertThat(http).contains("endpoint_rules_service_endpoints:resolve(Config, #{})");
