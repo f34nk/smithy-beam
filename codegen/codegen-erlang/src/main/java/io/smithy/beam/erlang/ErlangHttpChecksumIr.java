@@ -197,7 +197,8 @@ final class ErlangHttpChecksumIr {
                     List.of(
                         BinarySegmentExpr.of(
                             RemoteCallExpr.of("erlang", "crc32", List.of(Variable.of("Body"))),
-                            "32/big-unsigned-integer"))))));
+                            32,
+                            "big-unsigned-integer"))))));
   }
 
   private static Function crc32cHash() {
