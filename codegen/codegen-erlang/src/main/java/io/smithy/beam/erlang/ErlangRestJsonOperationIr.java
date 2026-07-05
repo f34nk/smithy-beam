@@ -153,7 +153,7 @@ final class ErlangRestJsonOperationIr {
 
     return Function.of(
         "encode_" + opName + "_request",
-        List.of(FunctionClause.of(patterns, BlockExpr.newlineSeparated(body))),
+        List.of(FunctionClause.of(patterns, BlockExpr.commaSeparated(body, false))),
         Spec.of(specText),
         Edoc.of("Encode HTTP request for " + op.getId() + "."),
         null);
@@ -214,7 +214,7 @@ final class ErlangRestJsonOperationIr {
 
     return Function.of(
         "decode_" + opName + "_request",
-        List.of(FunctionClause.of(patterns, BlockExpr.newlineSeparated(body))),
+        List.of(FunctionClause.of(patterns, BlockExpr.commaSeparated(body, false))),
         Spec.of(specText),
         Edoc.of("Decode HTTP request for " + op.getId() + "."),
         null);
@@ -348,9 +348,9 @@ final class ErlangRestJsonOperationIr {
 
     FunctionClause successClause =
         successGuards.isEmpty()
-            ? FunctionClause.of(List.of(successPattern), BlockExpr.newlineSeparated(successBody))
+            ? FunctionClause.of(List.of(successPattern), BlockExpr.commaSeparated(successBody, false))
             : FunctionClause.of(
-                List.of(successPattern), AndGuard.of(successGuards), BlockExpr.newlineSeparated(successBody));
+                List.of(successPattern), AndGuard.of(successGuards), BlockExpr.commaSeparated(successBody, false));
 
     FunctionClause errorClause =
         FunctionClause.of(
@@ -393,10 +393,10 @@ final class ErlangRestJsonOperationIr {
                   IntegerPattern.of(httpStatus),
                   VariablePattern.of("_Hdrs"),
                   VariablePattern.of("Body")),
-              BlockExpr.newlineSeparated(List.of(
+              BlockExpr.commaSeparated(List.of(
                   MatchExpr.bindValue("Decoded", LocalCallExpr.of("decode_json_body", List.of(Variable.of("Body")))),
                   TupleExpr.of(List.of(
-                      AtomExpr.of("error"), buildErrorRecord(recName, model, errShape, sp)))))));
+                      AtomExpr.of("error"), buildErrorRecord(recName, model, errShape, sp)))), false)));
     }
 
     boolean hasTypeDiscriminated =
@@ -439,13 +439,13 @@ final class ErlangRestJsonOperationIr {
                   VariablePattern.of("Body")),
               ExpressionGuard.of(
                   InfixExpr.of(Variable.of("Status"), ">=", IntegerExpr.of(400))),
-              BlockExpr.newlineSeparated(
+              BlockExpr.commaSeparated(
                   List.of(
                       MatchExpr.bindValue("Decoded", LocalCallExpr.of("decode_json_body", List.of(Variable.of("Body")))),
                       MatchExpr.bindValue("ErrorType", RemoteCallExpr.of("maps", "get", List.of(BinaryExpr.of("__type"),
                           Variable.of("Decoded"),
                           AtomExpr.of("undefined")))),
-                      CaseExpr.of(Variable.of("ErrorType"), typeClauses)))));
+                      CaseExpr.of(Variable.of("ErrorType"), typeClauses)), false)));
     } else {
       clauses.add(
           FunctionClause.of(
@@ -489,7 +489,7 @@ final class ErlangRestJsonOperationIr {
         List.of(
             FunctionClause.of(
                 List.of(encodeResponsePattern(model, op, httpIndex, sp, output, outputRecord)),
-                BlockExpr.newlineSeparated(buildEncodeResponseBodyExprs(model, op, httpIndex, sp)))),
+                BlockExpr.commaSeparated(buildEncodeResponseBodyExprs(model, op, httpIndex, sp), false))),
         Spec.of(specText),
         Edoc.of("Encode HTTP response for " + op.getId() + "."),
         null);
@@ -675,7 +675,7 @@ final class ErlangRestJsonOperationIr {
     }
 
     Expression body =
-        BlockExpr.newlineSeparated(
+        BlockExpr.commaSeparated(
             List.of(
                 MatchExpr.bindValue("BodyMap", MapExpr.of(bodyEntries)),
                 MatchExpr.bindValue("Body", RemoteCallExpr.of("jsone", "encode", List.of(Variable.of("BodyMap")))),
@@ -686,7 +686,8 @@ final class ErlangRestJsonOperationIr {
                             TupleExpr.of(List.of(
                                 BinaryExpr.of("Content-Type"),
                                 BinaryExpr.of("application/json")))))),
-                    RecordField.of("body", Variable.of("Body"))))));
+                    RecordField.of("body", Variable.of("Body"))))),
+            false);
 
     return Function.of(
         "encode_" + recName + "_response",
@@ -848,7 +849,7 @@ final class ErlangRestJsonOperationIr {
         TupleExpr.of(
             List.of(AtomExpr.of("ok"), RecordExpr.of(outputRecord, recordFields)));
     body.add(ErlangHttpChecksumIr.responseChecksumGuardExpr(model, op, success));
-    return body.size() == 1 ? body.get(0) : BlockExpr.newlineSeparated(body);
+    return body.size() == 1 ? body.get(0) : BlockExpr.commaSeparated(body, false);
   }
 
   private static RecordExpr buildInputRecord(
@@ -1312,7 +1313,7 @@ final class ErlangRestJsonOperationIr {
                 List.of(
                     Clause.of(
                         AtomPattern.of("true"),
-                        BlockExpr.newlineSeparated(
+                        BlockExpr.commaSeparated(
                             List.of(
                                 MatchExpr.bindValue(
                                     "Compressed",
@@ -1326,7 +1327,7 @@ final class ErlangRestJsonOperationIr {
                                             List.of(
                                                 BinaryExpr.of("Content-Encoding"),
                                                 BinaryExpr.of("gzip"),
-                                                Variable.of("Headers1")))))))),
+                                                Variable.of("Headers1")))))), false)),
                     Clause.of(
                         AtomPattern.of("false"),
                         TupleExpr.of(
