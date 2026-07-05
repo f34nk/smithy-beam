@@ -13,13 +13,10 @@ import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -31,7 +28,6 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
 
-@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ErlangAwsJsonIrTest {
   private static Model model;
   private static ServiceShape service;
@@ -119,8 +115,9 @@ class ErlangAwsJsonIrTest {
   @Test
   void sharedCodecHelpersMatchesGolden() throws IOException {
     List<Function> functions = ErlangAwsJsonIr.sharedCodecHelpers(model, service, provider);
-    assertThat(helpersAsString(functions))
-        .isEqualTo(readExpectedString("ir/aws_json_shared_codec_helpers.expected.erl"));
+    assertThat(IrGoldenAssertions.normalizeTrailingNewline(helpersAsString(functions)))
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString("ir/aws_json_shared_codec_helpers.expected.erl"));
     for (Function fn : functions) {
       assertStructural(fn);
     }
@@ -135,8 +132,8 @@ class ErlangAwsJsonIrTest {
                 use aws.protocols#awsJson1_1
                 use aws.api#service
 
-                @service(sdkId: "Json11")
                 @awsJson1_1
+                @service(sdkId: "Json11", endpointPrefix: "json11")
                 service Json11Service {
                     version: "2026"
                     operations: [GetUser]
@@ -148,15 +145,15 @@ class ErlangAwsJsonIrTest {
                 }
 
                 structure GetUserInput {
-                    userId: String
+                    userName: String
                 }
 
                 structure GetUserOutput {
-                    userId: String
+                    userName: String
                 }
                 """;
     return Model.assembler()
-        .addUnparsedModel("awsjson11.smithy", idl)
+        .addUnparsedModel("aws_json_1_1_fixture.smithy", idl)
         .discoverModels()
         .assemble()
         .unwrap();
@@ -195,17 +192,5 @@ class ErlangAwsJsonIrTest {
   private static void assertStructural(Function fn) {
     assertThat(fn.name()).isNotBlank();
     assertThat(fn.clauses()).isNotEmpty();
-  }
-
-  private static String readExpectedString(String resourcePath) throws IOException {
-    try (InputStream in =
-        ErlangAwsJsonIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
-      assertThat(in).as("resource %s", resourcePath).isNotNull();
-      String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-      if (text.endsWith("\n")) {
-        text = text.substring(0, text.length() - 1);
-      }
-      return text;
-    }
   }
 }
