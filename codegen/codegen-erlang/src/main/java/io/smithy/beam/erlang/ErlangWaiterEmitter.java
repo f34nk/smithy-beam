@@ -2,7 +2,6 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamWaiterIndex;
-import io.smithy.beam.ir.erlang.ErlModule;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /** Generates a {@code <service>_waiters.erl} helper for {@code @waitable} operations. */
@@ -19,20 +18,16 @@ public final class ErlangWaiterEmitter {
     BeamErlangLayout layout =
         new BeamErlangLayout(ctx.settings(), service.getId().getNamespace(), service);
 
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.waitersModuleFile(),
-            writer -> {
-              ErlModule module =
-                  ErlangWaiterIr.waitersModule(
-                      layout.waitersModuleName(),
-                      layout.typesHeaderFile(),
-                      layout.clientModuleName(),
-                      index,
-                      ctx.symbolProvider(),
-                      ctx.model(),
-                      service);
-              writer.write("$L", module.asString());
-            });
+    ErlangCodecEmission.writeModule(
+        ctx,
+        layout.waitersModuleFile(),
+        ErlangWaiterIr.waitersModule(
+            layout.waitersModuleName(),
+            layout.typesHeaderFile(),
+            layout.clientModuleName(),
+            index,
+            ctx.symbolProvider(),
+            ctx.model(),
+            service));
   }
 }
