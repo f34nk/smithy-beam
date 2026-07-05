@@ -780,11 +780,7 @@ final class ErlangXmlCodecIr {
                     List.of(
                         TupleExpr.of(
                             List.of(
-                                InfixExpr.of(
-                                    AtomExpr.of("xmlns:"),
-                                    "++",
-                                    LocalCallExpr.of(
-                                        "binary_to_list", List.of(Variable.of("Prefix")))),
+                                OpaqueExpr.of("'xmlns:' ++ binary_to_list(Prefix)"),
                                 Variable.of("Uri")))))),
             FunctionClause.of(List.of(W), ListExpr.of(List.of()))));
   }

@@ -193,7 +193,7 @@ build_xml_child(Name, Value) ->
 
 
 xml_namespace_attrs(#{uri := Uri}) -> [{xmlns, Uri}];
-xml_namespace_attrs(#{uri := Uri, prefix := Prefix}) -> [{(xmlns: ++ binary_to_list(Prefix)), Uri}];
+xml_namespace_attrs(#{uri := Uri, prefix := Prefix}) -> [{'xmlns:' ++ binary_to_list(Prefix), Uri}];
 xml_namespace_attrs(_) -> [].
 
 
