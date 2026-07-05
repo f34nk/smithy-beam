@@ -168,7 +168,7 @@ class ErlangClientPluginTest {
     assertThat(manifest.expectFileString("runtime_http.erl"))
         .contains("-module(runtime_http).")
         .contains("HttpClient = maps:get(http_client, Config, httpc),")
-        .contains("dispatch_signed(HttpClient, Config, Req = #http_request{");
+        .contains("dispatch_signed(HttpClient, Config, #http_request{method = Method");
     String client = manifest.expectFileString("demo_rest_json_client.erl");
     assertThat(client)
         .contains("describe_item(Config, Input) ->")

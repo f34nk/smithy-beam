@@ -78,6 +78,13 @@ class ErlangHttpDispatchEmitterTest {
   }
 
   @Test
+  void dispatchSignedLeavesReqForHttpClientRequestTuple() {
+    String http = generateHttpModule();
+    assertThat(http).doesNotContain("Req = #http_request{");
+    assertThat(http).contains("Req =\n        case Body of");
+  }
+
+  @Test
   void splitBaseUrlIsNotNestedUnderDispatchSigned() {
     String http = generateHttpModule();
     int dispatchEnd = http.indexOf("end.");

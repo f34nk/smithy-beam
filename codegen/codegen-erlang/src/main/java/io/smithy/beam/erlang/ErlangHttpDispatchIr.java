@@ -262,8 +262,7 @@ final class ErlangHttpDispatchIr {
   }
 
   private static RecordPattern httpRequestPattern() {
-    return RecordPattern.bind(
-        "Req",
+    return RecordPattern.of(
         "http_request",
         List.of(
             RecordPatternField.of("method", VariablePattern.of("Method")),
