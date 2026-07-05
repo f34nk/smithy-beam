@@ -26,11 +26,12 @@ public final class ErlangRouterEmitter {
         ctx,
         layout.routerModuleFile(),
         ErlangRouterIr.routerModule(
-            ctx.model(),
-            service,
-            layout,
-            ctx.resolvedProtocolTraitId(),
-            operations,
-            ctx.symbolProvider()));
+                ctx.model(),
+                service,
+                layout,
+                ctx.resolvedProtocolTraitId(),
+                operations,
+                ctx.symbolProvider())
+            .asString());
   }
 }
