@@ -1,28 +1,30 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Fun;
+import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.InfixExpr;
+import io.beam.ir.erlang.ListExpr;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MapExpr;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.Pattern;
+import io.beam.ir.erlang.RecordExpr;
+import io.beam.ir.erlang.RecordField;
+import io.beam.ir.erlang.RecordFieldAccessExpr;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TuplePattern;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSigV4Metadata;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCase;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFun;
-import io.smithy.beam.ir.erlang.ErlList;
-import io.smithy.beam.ir.erlang.ErlMap;
-import io.smithy.beam.ir.erlang.ErlMatch;
-import io.smithy.beam.ir.erlang.ErlOp;
-import io.smithy.beam.ir.erlang.ErlRecordAccess;
-import io.smithy.beam.ir.erlang.ErlRecordField;
-import io.smithy.beam.ir.erlang.ErlRecordUpdate;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlTuplePattern;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -58,7 +60,7 @@ final class ErlangClientDispatchOperationIr {
       boolean sigv4,
       boolean encodeWithConfig) {}
 
-  static List<ErlExpr> buildDispatchBody(
+  static List<Expression> buildDispatchBody(
       ErlangContext ctx,
       OperationShape op,
       BeamErlangLayout layout,
@@ -68,7 +70,7 @@ final class ErlangClientDispatchOperationIr {
       DispatchBodyMode mode) {
     DispatchContext dispatch =
         buildContext(ctx, op, layout, wrapWithRetry, retryModule, paginated, mode);
-    List<ErlExpr> core = new ArrayList<>();
+    List<Expression> core = new ArrayList<>();
     core.add(buildEncodeRequestMatch(dispatch));
     if (dispatch.sigv4()) {
       core.add(buildSignedRequestMatch(dispatch));
@@ -80,66 +82,69 @@ final class ErlangClientDispatchOperationIr {
     return core;
   }
 
-  static List<ErlExpr> buildAccumulationAndRecursion(
+  static List<Expression> buildAccumulationAndRecursion(
       Symbol opSym,
       boolean hasItems,
-      ErlExpr itemsExpr,
-      ErlExpr outputTokenExpr,
+      Expression itemsExpr,
+      Expression outputTokenExpr,
       String inputRecord,
       String inputToken) {
-    List<ErlExpr> body = new ArrayList<>();
+    List<Expression> body = new ArrayList<>();
     if (hasItems) {
       body.add(
-          ErlMatch.match(
-              ErlVarPattern.varPattern("NewAcc"), ErlOp.op("++", ErlVar.var("Acc"), itemsExpr)));
+          MatchExpr.bindValue(
+              "NewAcc", InfixExpr.of(Variable.of("Acc"), "++", itemsExpr)));
     } else {
       body.add(
-          ErlMatch.match(
-              ErlVarPattern.varPattern("NewAcc"),
-              ErlList.cons(ErlVar.var("Output"), ErlVar.var("Acc"))));
+          MatchExpr.bindValue(
+              "NewAcc",
+              ListExpr.of(List.of(Variable.of("Output")), Variable.of("Acc"))));
     }
-    ErlExpr undefinedSuccess =
+    Expression undefinedSuccess =
         hasItems
-            ? ErlTuple.tuple(ErlAtom.atom("ok"), ErlVar.var("NewAcc"))
-            : ErlTuple.tuple(
-                ErlAtom.atom("ok"), ErlCall.call("lists", "reverse", ErlVar.var("NewAcc")));
-    ErlExpr nextInput =
-        ErlRecordUpdate.recordUpdate(
-            ErlVar.var("Input"),
+            ? TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("NewAcc")))
+            : TupleExpr.of(
+                List.of(
+                    AtomExpr.of("ok"),
+                    RemoteCallExpr.of(
+                        "lists", "reverse", List.of(Variable.of("NewAcc")))));
+    Expression nextInput =
+        RecordExpr.update(
+            Variable.of("Input"),
             inputRecord,
-            ErlRecordField.field(inputToken, ErlVar.var("NextToken")));
-    ErlExpr recurse =
-        ErlCallLocal.callLocal(
-            opSym.getName(), ErlVar.var("Config"), ErlVar.var("NextInput"), ErlVar.var("NewAcc"));
-    ErlClause undefinedClause =
-        hasItems
-            ? ErlClause.blockClause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), undefinedSuccess)
-            : ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), undefinedSuccess);
-    ErlCase tokenCase =
-        ErlCase.caseExpr(
+            List.of(RecordField.of(inputToken, Variable.of("NextToken"))));
+    Expression recurse =
+        LocalCallExpr.of(
+            opSym.getName(),
+            List.of(Variable.of("Config"), Variable.of("NextInput"), Variable.of("NewAcc")));
+    Clause undefinedClause = Clause.of(AtomPattern.of("undefined"), undefinedSuccess);
+    Expression tokenCase =
+        CaseExpr.of(
             outputTokenExpr,
-            undefinedClause,
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("NextToken")),
-                ErlExprBlock.block(
-                    ErlMatch.match(ErlVarPattern.varPattern("NextInput"), nextInput), recurse)));
+            List.of(
+                undefinedClause,
+                Clause.of(
+                    VariablePattern.of("NextToken"),
+                    BlockExpr.newlineSeparated(
+                        List.of(
+                            MatchExpr.bindValue("NextInput", nextInput),
+                            recurse)))));
     body.add(tokenCase);
     return body;
   }
 
-  static ErlExpr buildRecordAccessExpr(
+  static Expression buildRecordAccessExpr(
       String rootVar,
       StructureShape rootShape,
       List<MemberShape> path,
       Model model,
       SymbolProvider sp) {
-    ErlExpr expr = ErlVar.var(rootVar);
+    Expression expr = Variable.of(rootVar);
     Shape container = rootShape;
     for (MemberShape member : path) {
       String record = recordName(sp.toSymbol(container));
       String field = fieldName(sp, member);
-      expr = ErlRecordAccess.recordAccess(expr, record, field);
+      expr = RecordFieldAccessExpr.of(expr, record, field);
       container = model.expectShape(member.getTarget(), Shape.class);
     }
     return expr;
@@ -184,66 +189,70 @@ final class ErlangClientDispatchOperationIr {
         encodeWithConfig);
   }
 
-  private static ErlMatch buildEncodeRequestMatch(DispatchContext ctx) {
-    ErlExpr encodeCall =
+  private static Expression buildEncodeRequestMatch(DispatchContext ctx) {
+    Expression encodeCall =
         ctx.encodeWithConfig()
-            ? ErlCall.call(
+            ? RemoteCallExpr.of(
                 ctx.codecModule(),
                 "encode_" + ctx.opName() + "_request",
-                ErlVar.var("Config"),
-                ErlVar.var("Input"))
-            : ErlCall.call(
-                ctx.codecModule(), "encode_" + ctx.opName() + "_request", ErlVar.var("Input"));
-    return ErlMatch.match(ErlVarPattern.varPattern("Req"), encodeCall);
+                List.of(Variable.of("Config"), Variable.of("Input")))
+            : RemoteCallExpr.of(
+                ctx.codecModule(),
+                "encode_" + ctx.opName() + "_request",
+                List.of(Variable.of("Input")));
+    return MatchExpr.bindValue("Req", encodeCall);
   }
 
-  private static ErlMatch buildSignedRequestMatch(DispatchContext ctx) {
-    ErlCase credentialsCase =
-        ErlCase.caseExpr(
-            ErlCall.call(
+  private static Expression buildSignedRequestMatch(DispatchContext ctx) {
+    Expression credentialsCase =
+        CaseExpr.of(
+            RemoteCallExpr.of(
                 "maps",
                 "get",
-                ErlAtom.atom("credentials"),
-                ErlVar.var("Config"),
-                ErlAtom.atom("undefined")),
-            ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), ErlVar.var("Req")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("_")),
-                ErlCall.call(
-                    ctx.sigv4Module(),
-                    "sign",
-                    ErlVar.var("Config"),
-                    ErlAtom.atom(ctx.opName()),
-                    ErlVar.var("Req"))));
-    return ErlMatch.match(ErlVarPattern.varPattern("SignedReq"), credentialsCase);
-  }
-
-  private static ErlExpr dispatchRequestVar(DispatchContext ctx) {
-    return ctx.sigv4() ? ErlVar.var("SignedReq") : ErlVar.var("Req");
-  }
-
-  private static ErlExpr buildDispatchCase(DispatchContext ctx) {
-    ErlExpr successExpr = buildDecodeSuccessExpr(ctx);
-    ErlCase dispatchCase =
-        ErlCase.caseExpr(
-            ErlCall.call(
-                ctx.runtimeHttpModule(), "dispatch", ErlVar.var("Config"), dispatchRequestVar(ctx)),
-            ErlClause.blockClause(
                 List.of(
-                    ErlTuplePattern.tuplePattern(
-                        ErlAtomPattern.atomPattern("ok"), ErlVarPattern.varPattern("Resp"))),
+                    AtomExpr.of("credentials"),
+                    Variable.of("Config"),
+                    AtomExpr.of("undefined"))),
+            List.of(
+                Clause.of(AtomPattern.of("undefined"), Variable.of("Req")),
+                Clause.of(
+                    VariablePattern.of("_"),
+                    RemoteCallExpr.of(
+                        ctx.sigv4Module(),
+                        "sign",
+                        List.of(
+                            Variable.of("Config"),
+                            AtomExpr.of(ctx.opName()),
+                            Variable.of("Req"))))));
+    return MatchExpr.bindValue("SignedReq", credentialsCase);
+  }
+
+  private static Expression dispatchRequestVar(DispatchContext ctx) {
+    return ctx.sigv4() ? Variable.of("SignedReq") : Variable.of("Req");
+  }
+
+  private static Expression buildDispatchCase(DispatchContext ctx) {
+    Expression successExpr = buildDecodeSuccessExpr(ctx);
+    return CaseExpr.of(
+        RemoteCallExpr.of(
+            ctx.runtimeHttpModule(),
+            "dispatch",
+            List.of(Variable.of("Config"), dispatchRequestVar(ctx))),
+        List.of(
+            Clause.of(
+                TuplePattern.of(
+                    List.of(AtomPattern.of("ok"), VariablePattern.of("Resp"))),
                 successExpr),
-            ErlClause.blockClause(
-                List.of(
-                    ErlTuplePattern.tuplePattern(
-                        ErlAtomPattern.atomPattern("error"), ErlVarPattern.varPattern("Reason"))),
-                ErlTuple.tuple(ErlAtom.atom("error"), ErlVar.var("Reason"))));
-    return dispatchCase;
+            Clause.of(
+                TuplePattern.of(
+                    List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
+                TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("Reason"))))));
   }
 
-  private static ErlExpr buildDecodeSuccessExpr(DispatchContext ctx) {
-    ErlExpr decode =
-        ErlCall.call(ctx.codecModule(), "decode_" + ctx.opName() + "_response", ErlVar.var("Resp"));
+  private static Expression buildDecodeSuccessExpr(DispatchContext ctx) {
+    Expression decode =
+        RemoteCallExpr.of(
+            ctx.codecModule(), "decode_" + ctx.opName() + "_response", List.of(Variable.of("Resp")));
     if (ctx.mode() == DispatchBodyMode.SINGLE_PAGE) {
       return decode;
     }
@@ -253,7 +262,7 @@ final class ErlangClientDispatchOperationIr {
     return buildPaginatedDecodeCase(ctx, decode);
   }
 
-  private static ErlCase buildPaginatedDecodeCase(DispatchContext ctx, ErlExpr decodeCall) {
+  private static Expression buildPaginatedDecodeCase(DispatchContext ctx, Expression decodeCall) {
     PaginationInfo pi =
         BeamClientPaginationSupport.requirePaginationInfo(
             ctx.ctx().model(), ctx.ctx().service(), ctx.op());
@@ -264,44 +273,57 @@ final class ErlangClientDispatchOperationIr {
         ctx.ctx().model().expectShape(ctx.op().getInputShape(), StructureShape.class);
     String inputRecord = recordName(sp.toSymbol(input));
     String inputToken = fieldName(sp, pi.getInputTokenMember());
-    ErlExpr outputTokenExpr =
+    Expression outputTokenExpr =
         buildRecordAccessExpr(
             "Output", output, pi.getOutputTokenMemberPath(), ctx.ctx().model(), sp);
     boolean hasItems = BeamClientPaginationSupport.hasItemsMember(pi);
-    ErlExpr itemsExpr =
+    Expression itemsExpr =
         hasItems
             ? buildRecordAccessExpr(
                 "Output", output, pi.getItemsMemberPath(), ctx.ctx().model(), sp)
             : null;
 
-    return ErlCase.caseExpr(
+    return CaseExpr.of(
         decodeCall,
-        ErlClause.blockClause(
-            List.of(
-                ErlTuplePattern.tuplePattern(
-                    ErlAtomPattern.atomPattern("ok"), ErlVarPattern.varPattern("Output"))),
-            ErlExprBlock.block(
-                buildAccumulationAndRecursion(
-                        ctx.opSym(), hasItems, itemsExpr, outputTokenExpr, inputRecord, inputToken)
-                    .toArray(ErlExpr[]::new))),
-        ErlClause.blockClause(
-            List.of(
-                ErlTuplePattern.tuplePattern(
-                    ErlAtomPattern.atomPattern("error"), ErlVarPattern.varPattern("Reason"))),
-            ErlTuple.tuple(ErlAtom.atom("error"), ErlVar.var("Reason"))));
+        List.of(
+            Clause.of(
+                TuplePattern.of(
+                    List.of(AtomPattern.of("ok"), VariablePattern.of("Output"))),
+                BlockExpr.newlineSeparated(
+                    buildAccumulationAndRecursion(
+                        ctx.opSym(),
+                        hasItems,
+                        itemsExpr,
+                        outputTokenExpr,
+                        inputRecord,
+                        inputToken))),
+            Clause.of(
+                TuplePattern.of(
+                    List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
+                TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("Reason"))))));
   }
 
-  private static List<ErlExpr> buildRetryWrappedBody(DispatchContext ctx, List<ErlExpr> core) {
-    List<ErlExpr> body = new ArrayList<>();
-    body.add(
-        ErlMatch.match(
-            ErlVarPattern.varPattern("RetryOpts"),
-            ErlCall.call(
-                "maps", "get", ErlAtom.atom("retry"), ErlVar.var("Config"), ErlMap.map())));
-    ErlFun retryFun =
-        ErlFun.fun(
-            ErlClause.blockClause(List.of(), ErlExprBlock.block(core.toArray(ErlExpr[]::new))));
-    body.add(ErlCall.call(ctx.retryModule(), "with_retry", retryFun, ErlVar.var("RetryOpts")));
-    return body;
+  private static List<Expression> buildRetryWrappedBody(
+      DispatchContext ctx, List<Expression> core) {
+    Expression retryFun =
+        Fun.of(
+            List.of(
+                FunClause.of(
+                    List.of(),
+                    core.size() == 1 ? core.get(0) : BlockExpr.newlineSeparated(core))));
+    return List.of(
+        MatchExpr.bindValue(
+            "RetryOpts",
+            RemoteCallExpr.of(
+                "maps",
+                "get",
+                List.of(
+                    AtomExpr.of("retry"),
+                    Variable.of("Config"),
+                    MapExpr.of(List.of())))),
+        RemoteCallExpr.of(
+            ctx.retryModule(),
+            "with_retry",
+            List.of(retryFun, Variable.of("RetryOpts"))));
   }
 }

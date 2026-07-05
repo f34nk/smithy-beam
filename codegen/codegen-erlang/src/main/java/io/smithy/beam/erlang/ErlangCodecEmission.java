@@ -13,7 +13,12 @@ final class ErlangCodecEmission {
 
   static void writeModule(ErlangContext ctx, String relativeFile, String erlangSource) {
     ctx.writerDelegator()
-        .useFileWriter(relativeFile, writer -> writer.write("$L", erlangSource));
+        .useFileWriter(
+            relativeFile,
+            writer -> {
+              writer.pushGeneratedDocumentationSection();
+              writer.write("$L", erlangSource);
+            });
   }
 
   static void emitRuntimeHelpersIfNeeded(ErlangContext ctx, ServiceShape service, boolean server) {

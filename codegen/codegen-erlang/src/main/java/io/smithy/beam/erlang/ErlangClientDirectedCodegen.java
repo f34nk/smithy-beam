@@ -1,11 +1,20 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.Edoc;
 import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Expression;
 import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.Module;
+import io.beam.ir.erlang.Spec;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.VariablePattern;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamClientRetrySupport;
 import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamErlangLayout;
@@ -18,6 +27,7 @@ import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -34,6 +44,7 @@ import software.amazon.smithy.codegen.core.directed.GenerateResourceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateServiceDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateStructureDirective;
 import software.amazon.smithy.codegen.core.directed.GenerateUnionDirective;
+import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.knowledge.PaginationInfo;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ResourceShape;
@@ -228,41 +239,130 @@ final class ErlangClientDirectedCodegen
             ? BeamClientPaginationSupport.requirePaginationInfo(ctx.model(), ctx.service(), op)
             : null;
 
-    String successReturnType =
-        ErlangClientOperationCodegenIrCompat.successReturnType(
-            paginated, paginationInfo, ctx, sp, outSym);
+    String successReturnType = successReturnType(paginated, paginationInfo, ctx, sp, outSym);
 
     if (paginated) {
       builder.addOperationFunctions(
-          ErlangClientOperationCodegenIrCompat.paginatedOperationFunctions(
-                  ctx,
-                  ctx.service(),
-                  op,
-                  layout,
-                  wrapWithRetry,
-                  retryModule,
-                  successReturnType,
-                  ErlangClientOperationCodegenIrCompat.operationDoc(op, ctx))
-              .stream()
-              .map(fn -> Function.verbatim(fn.asString()))
-              .toList());
+          ErlangClientPaginationIr.paginatedOperationFunctions(
+              ctx,
+              ctx.service(),
+              op,
+              layout,
+              wrapWithRetry,
+              retryModule,
+              successReturnType,
+              operationDoc(op, ctx)));
       return;
     }
 
     builder.addOperationFunction(
-        Function.verbatim(
-            ErlangClientOperationCodegenIrCompat.singlePageOperationFunction(
-                    ctx,
-                    op,
-                    layout,
-                    opSym,
-                    inSym,
-                    successReturnType,
-                    hasProtocol,
-                    wrapWithRetry,
-                    retryModule,
-                    ErlangClientOperationCodegenIrCompat.operationDoc(op, ctx))
-                .asString()));
+        singlePageOperationFunction(
+            ctx,
+            op,
+            layout,
+            opSym,
+            inSym,
+            successReturnType,
+            hasProtocol,
+            wrapWithRetry,
+            retryModule,
+            operationDoc(op, ctx)));
+  }
+
+  private static String successReturnType(
+      boolean paginated,
+      PaginationInfo paginationInfo,
+      ErlangContext ctx,
+      SymbolProvider sp,
+      Symbol outSym) {
+    if (paginated && BeamClientPaginationSupport.hasItemsMember(paginationInfo)) {
+      return "["
+          + BeamClientPaginationSupport.itemsElementSymbol(ctx.model(), sp, paginationInfo)
+              .orElseThrow()
+              .getName()
+          + "]";
+    }
+    if (paginated) {
+      return "[" + outSym.getName() + "]";
+    }
+    return outSym.getName();
+  }
+
+  private static Edoc operationDoc(OperationShape op, ErlangContext ctx) {
+    StringBuilder text = new StringBuilder();
+    BeamDocumentation.forShape(op).ifPresent(doc -> text.append(doc).append('\n'));
+    if (ctx.protocolCodegen() != null) {
+      Map<String, HttpBinding> bindings = ctx.httpBindings().requestBindings(op);
+      if (!bindings.isEmpty()) {
+        text.append("HTTP request bindings for ").append(op.getId()).append(':').append('\n');
+        for (Map.Entry<String, HttpBinding> entry : bindings.entrySet()) {
+          HttpBinding binding = entry.getValue();
+          text.append("  ")
+              .append(entry.getKey())
+              .append(" @ ")
+              .append(binding.getLocation())
+              .append('\n');
+        }
+      }
+    }
+    if (text.isEmpty()) {
+      return null;
+    }
+    return Edoc.of(text.toString().strip());
+  }
+
+  private static Function singlePageOperationFunction(
+      ErlangContext ctx,
+      OperationShape op,
+      BeamErlangLayout layout,
+      Symbol opSym,
+      Symbol inSym,
+      String successReturnType,
+      boolean hasProtocol,
+      boolean wrapWithRetry,
+      String retryModule,
+      Edoc doc) {
+    String specOutput = "{'ok', " + successReturnType + "} | {'error', term()}";
+    Spec spec =
+        Spec.of(
+            opSym.getName()
+                + "(client_config(), "
+                + inSym.getName()
+                + ") -> "
+                + specOutput);
+    if (!hasProtocol) {
+      return Function.of(
+          opSym.getName(),
+          List.of(
+              FunctionClause.of(
+                  List.of(VariablePattern.of("_Config"), VariablePattern.of("_Input")),
+                  TupleExpr.of(
+                      List.of(AtomExpr.of("error"), AtomExpr.of("not_implemented"))))),
+          spec,
+          doc,
+          null);
+    }
+
+    List<Expression> body =
+        ErlangClientDispatchIr.operationBodyExprs(
+            ctx,
+            op,
+            layout,
+            wrapWithRetry,
+            retryModule,
+            false,
+            ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
+    Expression clauseBody =
+        body.size() == 1 ? body.get(0) : BlockExpr.newlineSeparated(body);
+    return Function.of(
+        opSym.getName(),
+        List.of(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config"), VariablePattern.of("Input")),
+                clauseBody)),
+        spec,
+        doc,
+        null);
   }
 
   @Override

@@ -8,10 +8,13 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCase;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlMatch;
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.RemoteCallExpr;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -210,7 +213,7 @@ class ErlangClientDispatchIrTest {
     Model model = httpModel();
     OperationShape op =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
-    List<ErlExpr> body =
+    List<Expression> body =
         ErlangClientDispatchIr.operationBodyExprs(
             testContext(model, HTTP_SERVICE),
             op,
@@ -229,7 +232,7 @@ class ErlangClientDispatchIrTest {
     Model model = httpModel();
     OperationShape op =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
-    List<ErlExpr> body =
+    List<Expression> body =
         ErlangClientDispatchIr.operationBodyExprs(
             testContext(model, HTTP_SERVICE),
             op,
@@ -238,9 +241,10 @@ class ErlangClientDispatchIrTest {
             "retry_mod",
             false,
             ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
-    assertThat(body.get(0)).isInstanceOf(ErlMatch.class);
-    assertThat(body.get(body.size() - 1)).isInstanceOf(ErlCall.class);
-    assertThat(((ErlCall) body.get(body.size() - 1)).function()).isEqualTo("with_retry");
+    assertThat(body.get(0)).isInstanceOf(MatchExpr.class);
+    assertThat(body.get(body.size() - 1)).isInstanceOf(RemoteCallExpr.class);
+    assertThat(((RemoteCallExpr) body.get(body.size() - 1)).function())
+        .isEqualTo(AtomExpr.of("with_retry"));
     assertThat(renderBody(body))
         .isEqualTo(readExpectedString("ir/client_dispatch_get_name_retry.expected.erl"));
   }
@@ -250,7 +254,7 @@ class ErlangClientDispatchIrTest {
     Model model = sigv4HttpModel();
     OperationShape op =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
-    List<ErlExpr> body =
+    List<Expression> body =
         ErlangClientDispatchIr.operationBodyExprs(
             testContext(model, HTTP_SERVICE),
             op,
@@ -270,7 +274,7 @@ class ErlangClientDispatchIrTest {
     OperationShape op =
         model.expectShape(
             ShapeId.from("smithy.beam.test.paginated#ListWidgets"), OperationShape.class);
-    List<ErlExpr> body =
+    List<Expression> body =
         ErlangClientDispatchIr.operationBodyExprs(
             testContext(model, PAGINATED_SERVICE),
             op,
@@ -284,18 +288,16 @@ class ErlangClientDispatchIrTest {
         .isEqualTo(readExpectedString("ir/client_dispatch_list_widgets_page.expected.erl"));
   }
 
-  private static void assertStructural(List<ErlExpr> body) {
+  private static void assertStructural(List<Expression> body) {
     assertThat(body).isNotEmpty();
-    assertThat(body.get(0)).isInstanceOf(ErlMatch.class);
-    assertThat(body.get(body.size() - 1)).isInstanceOf(ErlExpr.class);
-    ErlExpr dispatch = body.get(body.size() - 1);
-    assertThat(dispatch).isInstanceOf(ErlCase.class);
+    assertThat(body.get(0)).isInstanceOf(MatchExpr.class);
+    assertThat(body.get(body.size() - 1)).isInstanceOf(CaseExpr.class);
   }
 
-  private static String renderBody(List<ErlExpr> body) {
-    ErlangWriter writer = new ErlangWriter("test.erl");
-    ErlangClientDispatchIr.writeExprs(writer, body);
-    return writer.toString().strip();
+  private static String renderBody(List<Expression> body) {
+    Expression block =
+        body.size() == 1 ? body.get(0) : BlockExpr.newlineSeparated(body, true);
+    return ErlangRenderer.renderStatement(block);
   }
 
   private static String readExpectedString(String resourcePath) throws IOException {

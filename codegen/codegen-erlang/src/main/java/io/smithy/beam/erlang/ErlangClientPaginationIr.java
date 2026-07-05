@@ -1,28 +1,29 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.Edoc;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.Fun;
+import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.ListExpr;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MapExpr;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.Pattern;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.Spec;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TuplePattern;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCase;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFun;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlFunctionDoc;
-import io.smithy.beam.ir.erlang.ErlFunctionSpec;
-import io.smithy.beam.ir.erlang.ErlList;
-import io.smithy.beam.ir.erlang.ErlMap;
-import io.smithy.beam.ir.erlang.ErlMatch;
-import io.smithy.beam.ir.erlang.ErlPattern;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlTuplePattern;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
-import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -34,7 +35,7 @@ import software.amazon.smithy.model.shapes.StructureShape;
 final class ErlangClientPaginationIr {
   private ErlangClientPaginationIr() {}
 
-  static List<ErlFunction> paginatedOperationFunctions(
+  static List<Function> paginatedOperationFunctions(
       ErlangContext ctx,
       ServiceShape service,
       OperationShape op,
@@ -42,27 +43,42 @@ final class ErlangClientPaginationIr {
       boolean wrapWithRetry,
       String retryModule,
       String successReturnType,
-      ErlFunctionDoc docOrNull) {
+      Edoc docOrNull) {
     SymbolProvider sp = ctx.symbolProvider();
     Symbol opSym = sp.toSymbol(op);
     StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
     Symbol inSym = sp.toSymbol(input);
     String opName = opSym.getName();
     String specOutput = "{'ok', " + successReturnType + "} | {'error', term()}";
+    Spec spec2 = Spec.of(opName + "(client_config(), " + inSym.getName() + ") -> " + specOutput);
+    Spec spec3 =
+        Spec.of(
+            opName
+                + "(client_config(), "
+                + inSym.getName()
+                + ", "
+                + successReturnType
+                + ") -> "
+                + specOutput);
 
-    ErlFunction arity2 =
-        new ErlFunction(
+    Function arity2 =
+        Function.of(
             opName,
-            2,
-            docOrNull,
-            ErlFunctionSpec.functionSpec(opName, "client_config(), " + inSym.getName(), specOutput),
             List.of(
-                ErlClause.clause(
-                    List.of(ErlVarPattern.varPattern("Config"), ErlVarPattern.varPattern("Input")),
-                    ErlCallLocal.callLocal(
-                        opName, ErlVar.var("Config"), ErlVar.var("Input"), ErlList.list()))));
+                FunctionClause.of(
+                    List.of(
+                        VariablePattern.of("Config"), VariablePattern.of("Input")),
+                    LocalCallExpr.of(
+                        opName,
+                        List.of(
+                            Variable.of("Config"),
+                            Variable.of("Input"),
+                            ListExpr.of(List.of()))))),
+            spec2,
+            docOrNull,
+            null);
 
-    List<ErlExpr> pageBody =
+    List<Expression> pageBody =
         ErlangClientDispatchIr.operationBodyExprs(
             ctx,
             op,
@@ -72,55 +88,45 @@ final class ErlangClientPaginationIr {
             true,
             ErlangClientDispatchOperationIr.DispatchBodyMode.PAGINATED_PAGE);
 
-    List<ErlClause> arity3Clauses =
-        List.of(
-            paginatedArity3Clause(
-                ctx, service, op, wrapWithRetry, retryModule, pageBody, sp, opSym));
+    FunctionClause arity3Clause =
+        paginatedArity3Clause(
+            ctx, service, op, wrapWithRetry, retryModule, pageBody, sp, opSym);
 
-    ErlFunction arity3 =
-        new ErlFunction(
-            opName,
-            3,
-            null,
-            ErlFunctionSpec.functionSpec(
-                opName,
-                "client_config(), " + inSym.getName() + ", " + successReturnType,
-                specOutput),
-            arity3Clauses);
+    Function arity3 = Function.of(opName, List.of(arity3Clause), spec3, null, null);
 
     return List.of(arity2, arity3);
   }
 
-  private static ErlClause paginatedArity3Clause(
+  private static FunctionClause paginatedArity3Clause(
       ErlangContext ctx,
       ServiceShape service,
       OperationShape op,
       boolean wrapWithRetry,
       String retryModule,
-      List<ErlExpr> pageBody,
+      List<Expression> pageBody,
       SymbolProvider sp,
       Symbol opSym) {
-    List<ErlPattern> patterns =
+    List<Pattern> patterns =
         List.of(
-            ErlVarPattern.varPattern("Config"),
-            ErlVarPattern.varPattern("Input"),
-            ErlVarPattern.varPattern("Acc"));
-    if (wrapWithRetry) {
-      return ErlClause.blockClause(
-          patterns,
-          ErlExprBlock.block(
-              retryWrappedPageBody(ctx, service, op, retryModule, pageBody, sp, opSym)
-                  .toArray(ErlExpr[]::new)));
-    }
-    return ErlClause.blockClause(patterns, ErlExprBlock.block(pageBody.toArray(ErlExpr[]::new)));
+            VariablePattern.of("Config"),
+            VariablePattern.of("Input"),
+            VariablePattern.of("Acc"));
+    Expression body =
+        wrapWithRetry
+            ? BlockExpr.newlineSeparated(
+                retryWrappedPageBody(ctx, service, op, retryModule, pageBody, sp, opSym))
+            : (pageBody.size() == 1
+                ? pageBody.get(0)
+                : BlockExpr.newlineSeparated(pageBody));
+    return FunctionClause.of(patterns, body);
   }
 
-  private static List<ErlExpr> retryWrappedPageBody(
+  private static List<Expression> retryWrappedPageBody(
       ErlangContext ctx,
       ServiceShape service,
       OperationShape op,
       String retryModule,
-      List<ErlExpr> pageBody,
+      List<Expression> pageBody,
       SymbolProvider sp,
       Symbol opSym) {
     PaginationInfo pi = BeamClientPaginationSupport.requirePaginationInfo(ctx.model(), service, op);
@@ -128,42 +134,55 @@ final class ErlangClientPaginationIr {
     StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
     String inputRecord = ErlangClientDispatchOperationIr.recordName(sp.toSymbol(input));
     String inputToken = ErlangClientDispatchOperationIr.fieldName(sp, pi.getInputTokenMember());
-    ErlExpr outputTokenExpr =
+    Expression outputTokenExpr =
         ErlangClientDispatchOperationIr.buildRecordAccessExpr(
             "Output", output, pi.getOutputTokenMemberPath(), ctx.model(), sp);
     boolean hasItems = BeamClientPaginationSupport.hasItemsMember(pi);
-    ErlExpr itemsExpr =
+    Expression itemsExpr =
         hasItems
             ? ErlangClientDispatchOperationIr.buildRecordAccessExpr(
                 "Output", output, pi.getItemsMemberPath(), ctx.model(), sp)
             : null;
 
-    List<ErlExpr> body = new ArrayList<>();
-    body.add(
-        ErlMatch.match(
-            ErlVarPattern.varPattern("RetryOpts"),
-            ErlCall.call(
-                "maps", "get", ErlAtom.atom("retry"), ErlVar.var("Config"), ErlMap.map())));
-    ErlFun pageFun =
-        ErlFun.fun(
-            ErlClause.blockClause(List.of(), ErlExprBlock.block(pageBody.toArray(ErlExpr[]::new))));
-    ErlCase retryCase =
-        ErlCase.caseExpr(
-            ErlCall.call(retryModule, "with_retry", pageFun, ErlVar.var("RetryOpts")),
-            ErlClause.blockClause(
+    Expression pageFun =
+        Fun.of(
+            List.of(
+                FunClause.of(
+                    List.of(),
+                    pageBody.size() == 1
+                        ? pageBody.get(0)
+                        : BlockExpr.newlineSeparated(pageBody))));
+    Expression retryCase =
+        CaseExpr.of(
+            RemoteCallExpr.of(
+                retryModule, "with_retry", List.of(pageFun, Variable.of("RetryOpts"))),
+            List.of(
+                Clause.of(
+                    TuplePattern.of(
+                        List.of(AtomPattern.of("ok"), VariablePattern.of("Output"))),
+                    BlockExpr.newlineSeparated(
+                        ErlangClientDispatchOperationIr.buildAccumulationAndRecursion(
+                            opSym,
+                            hasItems,
+                            itemsExpr,
+                            outputTokenExpr,
+                            inputRecord,
+                            inputToken))),
+                Clause.of(
+                    TuplePattern.of(
+                        List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
+                    TupleExpr.of(
+                        List.of(AtomExpr.of("error"), Variable.of("Reason"))))));
+    return List.of(
+        MatchExpr.bindValue(
+            "RetryOpts",
+            RemoteCallExpr.of(
+                "maps",
+                "get",
                 List.of(
-                    ErlTuplePattern.tuplePattern(
-                        ErlAtomPattern.atomPattern("ok"), ErlVarPattern.varPattern("Output"))),
-                ErlExprBlock.block(
-                    ErlangClientDispatchOperationIr.buildAccumulationAndRecursion(
-                            opSym, hasItems, itemsExpr, outputTokenExpr, inputRecord, inputToken)
-                        .toArray(ErlExpr[]::new))),
-            ErlClause.blockClause(
-                List.of(
-                    ErlTuplePattern.tuplePattern(
-                        ErlAtomPattern.atomPattern("error"), ErlVarPattern.varPattern("Reason"))),
-                ErlTuple.tuple(ErlAtom.atom("error"), ErlVar.var("Reason"))));
-    body.add(retryCase);
-    return body;
+                    AtomExpr.of("retry"),
+                    Variable.of("Config"),
+                    MapExpr.of(List.of())))),
+        retryCase);
   }
 }

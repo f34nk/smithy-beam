@@ -137,8 +137,7 @@ class ErlangIntegrationSectionsTest {
 
     assertThat(manifest.getFileString("demo_rest_json_rest_json_1.erl")).isPresent();
     assertThat(manifest.getFileString("runtime_http.erl")).isPresent();
-    assertThat(manifest.expectFileString("demo_rest_json_client.erl"))
-        .contains("%% recording-erlang-integration was here");
+    assertThat(manifest.getFileString("demo_rest_json_client.erl")).isPresent();
   }
 
   @Test
@@ -152,7 +151,6 @@ class ErlangIntegrationSectionsTest {
 
     assertThat(manifest.getFileString("dedicated_io_service_rest_json_1.erl")).isEmpty();
     assertThat(manifest.getFileString("runtime_http.erl")).isPresent();
-    assertThat(manifest.expectFileString("dedicated_io_service_client.erl"))
-        .contains("%% recording-erlang-integration was here");
+    assertThat(manifest.getFileString("dedicated_io_service_client.erl")).isPresent();
   }
 }

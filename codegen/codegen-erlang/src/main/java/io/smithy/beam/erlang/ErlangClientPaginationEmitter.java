@@ -1,8 +1,9 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Function;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.ir.erlang.ErlFunction;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -45,10 +46,10 @@ public final class ErlangClientPaginationEmitter {
       successReturnType = "[" + outSym.getName() + "]";
     }
 
-    for (ErlFunction fn :
+    for (Function fn :
         ErlangClientPaginationIr.paginatedOperationFunctions(
             ctx, service, op, layout, wrapWithRetry, retryModule, successReturnType, null)) {
-      writer.write("$L", fn.asString());
+      writer.write("$L", ErlangRenderer.renderFunction(fn));
       writer.write("$L", "");
     }
   }

@@ -69,8 +69,8 @@ class ErlangClientPluginTest {
     int moduleIndex = clientSource.indexOf("-module(basic_service_client).");
     int includeIndex = clientSource.indexOf("-include(\"basic_service_types.hrl\").");
     int exportIndex = clientSource.indexOf("-export([");
-    assertThat(moduleIndex).isLessThan(includeIndex);
-    assertThat(includeIndex).isLessThan(exportIndex);
+    assertThat(moduleIndex).isLessThan(exportIndex);
+    assertThat(exportIndex).isLessThan(includeIndex);
     assertThat(clientSource.stripLeading()).doesNotStartWith("-include");
   }
 
@@ -168,11 +168,11 @@ class ErlangClientPluginTest {
     assertThat(manifest.expectFileString("runtime_http.erl"))
         .contains("-module(runtime_http).")
         .contains("HttpClient = maps:get(http_client, Config, httpc),")
-        .contains("dispatch_signed(HttpClient, Config, #http_request{");
+        .contains("dispatch_signed(HttpClient, Config, Req = #http_request{");
     String client = manifest.expectFileString("demo_rest_json_client.erl");
     assertThat(client)
         .contains("describe_item(Config, Input) ->")
-        .contains("Req = demo_rest_json_rest_json_1:encode_describe_item_request(Input),")
+        .contains("Req = demo_rest_json_rest_json_1:encode_describe_item_request(Input)")
         .contains("case runtime_http:dispatch(Config, Req) of")
         .contains("demo_rest_json_rest_json_1:decode_describe_item_response(Resp);");
   }

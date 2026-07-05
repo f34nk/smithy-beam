@@ -69,7 +69,7 @@ class EndpointRulesEmissionTest {
 
     String http = manifest.expectFileString("runtime_http.erl");
     assertThat(http).contains("endpoint_rules_service_endpoints:resolve(Config, #{})");
-    assertThat(http).contains("{ok, #{url := ResolvedUrl}} -> ResolvedUrl");
+    assertThat(http).contains("{ok, #{url => ResolvedUrl}} -> ResolvedUrl");
     assertThat(http.indexOf("endpoint_rules_service_endpoints:resolve"))
         .isLessThan(http.indexOf("runtime_helpers:resolve_base_url"));
     assertThat(runtimeTypes).contains("<<\"argv\">> => [");

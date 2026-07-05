@@ -8,7 +8,8 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlFunction;
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Function;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -40,7 +41,7 @@ class ErlangClientPaginationIrTest {
     ErlangContext ctx = testContext(model, PAGINATED_SERVICE);
     BeamErlangLayout layout = layout(model, PAGINATED_SERVICE);
 
-    List<ErlFunction> functions =
+    List<Function> functions =
         ErlangClientPaginationIr.paginatedOperationFunctions(
             ctx, service, op, layout, false, "retry_mod", "[widget()]", null);
 
@@ -53,8 +54,10 @@ class ErlangClientPaginationIrTest {
         .isEqualTo(readExpectedString("ir/client_pagination_list_widgets.expected.erl"));
   }
 
-  private static String renderFunctions(List<ErlFunction> functions) {
-    return functions.stream().map(ErlFunction::asString).collect(Collectors.joining("\n\n"));
+  private static String renderFunctions(List<Function> functions) {
+    return functions.stream()
+        .map(ErlangRenderer::renderFunction)
+        .collect(Collectors.joining("\n\n"));
   }
 
   private static Model paginatedModel() {
