@@ -1,35 +1,33 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
-import io.smithy.beam.ir.erlang.ErlBinPattern;
-import io.smithy.beam.ir.erlang.ErlBinary;
-import io.smithy.beam.ir.erlang.ErlBinaryExpr;
-import io.smithy.beam.ir.erlang.ErlBinaryPattern;
-import io.smithy.beam.ir.erlang.ErlBinaryTemplate;
-import io.smithy.beam.ir.erlang.ErlBinaryText;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCase;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlComment;
-import io.smithy.beam.ir.erlang.ErlConsPattern;
-import io.smithy.beam.ir.erlang.ErlExportAttribute;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlList;
-import io.smithy.beam.ir.erlang.ErlListComprehension;
-import io.smithy.beam.ir.erlang.ErlMap;
-import io.smithy.beam.ir.erlang.ErlMapEntry;
-import io.smithy.beam.ir.erlang.ErlMapUpdate;
-import io.smithy.beam.ir.erlang.ErlMatch;
-import io.smithy.beam.ir.erlang.ErlModule;
-import io.smithy.beam.ir.erlang.ErlNilPattern;
-import io.smithy.beam.ir.erlang.ErlOp;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlTuplePattern;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BinaryExpr;
+import io.beam.ir.erlang.BinaryPattern;
+import io.beam.ir.erlang.BinarySegmentExpr;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.ListPattern;
+import io.beam.ir.erlang.OpaquePattern;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.InfixExpr;
+import io.beam.ir.erlang.ListComprehensionExpr;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MapEntry;
+import io.beam.ir.erlang.MapExpr;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.Module;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TuplePattern;
+import io.beam.ir.erlang.Spec;
+import io.beam.ir.erlang.ListExpr;
+import io.beam.ir.erlang.WildcardPattern;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.model.Model;
@@ -38,14 +36,14 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 final class ErlangRuntimeHelpersIr {
   private ErlangRuntimeHelpersIr() {}
 
-  static ErlModule runtimeHelpersModule(
+  static Module runtimeHelpersModule(
       String moduleName,
       ServiceShape service,
       Model model,
       boolean awsMetadata,
       boolean labelBindings,
       boolean checksumBindings) {
-    List<ErlFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     List<String> exports = new ArrayList<>();
     if (labelBindings) {
       exports.add("parse_labels/2");
@@ -60,175 +58,214 @@ final class ErlangRuntimeHelpersIr {
           List.of("headers_set/3", "checksum_header_encode/1", "sha256_hash/1", "crc32_hash/1"));
       functions.addAll(ErlangHttpChecksumIr.checksumHelperFunctions());
     }
-    return new ErlModule(
+    return new Module(
         moduleName,
+        functions,
         List.of(
-            ErlComment.comment("Generated runtime helpers for " + service.getId() + "."),
-            ErlComment.comment("Do not edit.")),
-        List.of(ErlExportAttribute.export(exports)),
-        functions);
+            "Generated runtime helpers for " + service.getId() + ".",
+            "Do not edit."),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        exports,
+        false,
+        null,
+        null);
   }
 
-  static List<ErlFunction> labelParsingFunctions() {
+  static List<Function> labelParsingFunctions() {
     return List.of(parseLabels(), segments(), matchSegments(), labelName());
   }
 
-  static ErlFunction resolveBaseUrl() {
-    return ErlFunction.functionWithSpec(
+  static Function resolveBaseUrl() {
+    return Function.of(
         "resolve_base_url",
-        1,
-        "map()",
-        "binary()",
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Config")),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Prefix"),
-                        ErlCall.call(
-                            "maps", "get", ErlAtom.atom("endpoint_prefix"), ErlVar.var("Config"))),
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Region"),
-                        ErlCall.call(
-                            "maps",
-                            "get",
-                            ErlAtom.atom("region"),
-                            ErlVar.var("Config"),
-                            ErlBinary.binary("us-east-1"))),
-                    ErlBinaryTemplate.binaryTemplate(
-                        ErlBinaryText.text("https://"),
-                        ErlBinaryExpr.expr(ErlVar.var("Prefix"), true),
-                        ErlBinaryText.text("."),
-                        ErlBinaryExpr.expr(ErlVar.var("Region"), true),
-                        ErlBinaryText.text(".amazonaws.com"))))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config")),
+                BlockExpr.commaSeparated(
+                    List.of(
+                        MatchExpr.bindValue(
+                            "Prefix",
+                            RemoteCallExpr.of(
+                                "maps",
+                                "get",
+                                List.of(
+                                    AtomExpr.of("endpoint_prefix"),
+                                    Variable.of("Config")))),
+                        MatchExpr.bindValue(
+                            "Region",
+                            RemoteCallExpr.of(
+                                "maps",
+                                "get",
+                                List.of(
+                                    AtomExpr.of("region"),
+                                    Variable.of("Config"),
+                                    BinaryExpr.of("us-east-1")))),
+                        BinaryExpr.of(
+                            List.of(
+                                BinarySegmentExpr.literal("https://"),
+                                BinarySegmentExpr.of(Variable.of("Prefix"), "binary"),
+                                BinarySegmentExpr.literal("."),
+                                BinarySegmentExpr.of(Variable.of("Region"), "binary"),
+                                BinarySegmentExpr.literal(".amazonaws.com")))),
+                    false))),
+        Spec.of("resolve_base_url(map()) -> binary()"),
+        null,
+        null);
   }
 
-  static ErlFunction parseLabels() {
-    return ErlFunction.functionWithSpec(
+  static Function parseLabels() {
+    return Function.of(
         "parse_labels",
-        2,
-        "binary(), binary()",
-        "{ok, map()} | {error, path_mismatch}",
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Path"), ErlVarPattern.varPattern("Template")),
-                ErlCase.caseExpr(
-                    ErlCallLocal.callLocal(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Path"), VariablePattern.of("Template")),
+                CaseExpr.of(
+                    LocalCallExpr.of(
                         "match_segments",
-                        ErlCallLocal.callLocal("segments", ErlVar.var("Path")),
-                        ErlCallLocal.callLocal("segments", ErlVar.var("Template")),
-                        ErlMap.map()),
-                    ErlClause.clause(
                         List.of(
-                            ErlTuplePattern.tuplePattern(
-                                ErlAtomPattern.atomPattern("ok"),
-                                ErlVarPattern.varPattern("Labels"))),
-                        ErlTuple.tuple(ErlAtom.atom("ok"), ErlVar.var("Labels"))),
-                    ErlClause.clause(
-                        List.of(ErlAtomPattern.atomPattern("error")),
-                        ErlTuple.tuple(ErlAtom.atom("error"), ErlAtom.atom("path_mismatch")))))));
+                            LocalCallExpr.of("segments", List.of(Variable.of("Path"))),
+                            LocalCallExpr.of("segments", List.of(Variable.of("Template"))),
+                            MapExpr.of(List.of()))),
+                    List.of(
+                        Clause.of(
+                            TuplePattern.of(
+                                List.of(
+                                    AtomPattern.of("ok"), VariablePattern.of("Labels"))),
+                            TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Labels")))),
+                        Clause.of(
+                            AtomPattern.of("error"),
+                            TupleExpr.of(
+                                List.of(
+                                    AtomExpr.of("error"), AtomExpr.of("path_mismatch")))))))),
+        Spec.of("parse_labels(binary(), binary()) -> {ok, map()} | {error, path_mismatch}"),
+        null,
+        null);
   }
 
-  static ErlFunction segments() {
-    return ErlFunction.function(
+  static Function segments() {
+    return Function.of(
         "segments",
-        1,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Path")),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Parts"),
-                        ErlCall.call(
-                            "binary",
-                            "split",
-                            ErlVar.var("Path"),
-                            ErlBinary.binary("/"),
-                            ErlList.list(ErlAtom.atom("global")))),
-                    ErlListComprehension.comprehension(
-                        ErlVar.var("S"),
-                        ErlVarPattern.varPattern("S"),
-                        ErlVar.var("Parts"),
-                        ErlOp.op("=/=", ErlVar.var("S"), ErlBinary.binary("")))))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Path")),
+                BlockExpr.commaSeparated(
+                    List.of(
+                        MatchExpr.bindValue(
+                            "Parts",
+                            RemoteCallExpr.of(
+                                "binary",
+                                "split",
+                                List.of(
+                                    Variable.of("Path"),
+                                    BinaryExpr.of("/"),
+                                    ListExpr.of(List.of(AtomExpr.of("global")))))),
+                        ListComprehensionExpr.of(
+                            Variable.of("S"),
+                            VariablePattern.of("S"),
+                            Variable.of("Parts"),
+                            InfixExpr.of(Variable.of("S"), "=/=", BinaryExpr.of("")))),
+                    false))),
+        null,
+        null,
+        null);
   }
 
-  static ErlFunction matchSegments() {
-    ErlCase segmentMatchCase =
-        ErlCase.caseExpr(
-            ErlOp.op("=:=", ErlVar.var("Seg"), ErlVar.var("TplSeg")),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("true")),
-                ErlCallLocal.callLocal(
-                    "match_segments",
-                    ErlVar.var("RestPath"),
-                    ErlVar.var("RestTpl"),
-                    ErlVar.var("Acc"))),
-            ErlClause.clause(List.of(ErlVarPattern.varPattern("false")), ErlAtom.atom("error")));
-
-    ErlCase labelNameCase =
-        ErlCase.caseExpr(
-            ErlCallLocal.callLocal("label_name", ErlVar.var("TplSeg")),
-            ErlClause.clause(
-                List.of(
-                    ErlTuplePattern.tuplePattern(
-                        ErlAtomPattern.atomPattern("ok"), ErlVarPattern.varPattern("Key"))),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Val"),
-                        ErlCall.call("uri_string", "unquote", ErlVar.var("Seg"))),
-                    ErlCallLocal.callLocal(
+  static Function matchSegments() {
+    Expression segmentMatchCase =
+        CaseExpr.of(
+            InfixExpr.of(Variable.of("Seg"), "=:=", Variable.of("TplSeg")),
+            List.of(
+                Clause.of(
+                    AtomPattern.of("true"),
+                    LocalCallExpr.of(
                         "match_segments",
-                        ErlVar.var("RestPath"),
-                        ErlVar.var("RestTpl"),
-                        ErlMapUpdate.mapUpdate(
-                            ErlVar.var("Acc"),
-                            ErlMapEntry.entry(ErlVar.var("Key"), ErlVar.var("Val")))))),
-            ErlClause.clause(List.of(ErlAtomPattern.atomPattern("error")), segmentMatchCase));
+                        List.of(
+                            Variable.of("RestPath"),
+                            Variable.of("RestTpl"),
+                            Variable.of("Acc")))),
+                Clause.of(AtomPattern.of("false"), AtomExpr.of("error"))));
 
-    return ErlFunction.function(
+    Expression labelNameCase =
+        CaseExpr.of(
+            LocalCallExpr.of("label_name", List.of(Variable.of("TplSeg"))),
+            List.of(
+                Clause.of(
+                    TuplePattern.of(
+                        List.of(AtomPattern.of("ok"), VariablePattern.of("Key"))),
+                    BlockExpr.commaSeparated(
+                        List.of(
+                            MatchExpr.bindValue(
+                                "Val",
+                                RemoteCallExpr.of(
+                                    "uri_string",
+                                    "unquote",
+                                    List.of(Variable.of("Seg")))),
+                            LocalCallExpr.of(
+                                "match_segments",
+                                List.of(
+                                    Variable.of("RestPath"),
+                                    Variable.of("RestTpl"),
+                                    RemoteCallExpr.of(
+                                        "maps",
+                                        "put",
+                                        List.of(
+                                            Variable.of("Acc"),
+                                            Variable.of("Key"),
+                                            Variable.of("Val")))))),
+                        false)),
+                Clause.of(AtomPattern.of("error"), segmentMatchCase)));
+
+    return Function.of(
         "match_segments",
-        3,
         List.of(
-            ErlClause.clause(
+            FunctionClause.of(
                 List.of(
-                    ErlNilPattern.nilPattern(),
-                    ErlNilPattern.nilPattern(),
-                    ErlVarPattern.varPattern("Acc")),
-                ErlTuple.tuple(ErlAtom.atom("ok"), ErlVar.var("Acc"))),
-            ErlClause.blockClause(
+                    ListPattern.of(List.of()),
+                    ListPattern.of(List.of()),
+                    VariablePattern.of("Acc")),
+                TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Acc")))),
+            FunctionClause.of(
                 List.of(
-                    ErlConsPattern.consPattern(
-                        ErlVarPattern.varPattern("Seg"), ErlVarPattern.varPattern("RestPath")),
-                    ErlConsPattern.consPattern(
-                        ErlVarPattern.varPattern("TplSeg"), ErlVarPattern.varPattern("RestTpl")),
-                    ErlVarPattern.varPattern("Acc")),
+                    ListPattern.cons(VariablePattern.of("Seg"), VariablePattern.of("RestPath")),
+                    ListPattern.cons(VariablePattern.of("TplSeg"), VariablePattern.of("RestTpl")),
+                    VariablePattern.of("Acc")),
                 labelNameCase),
-            ErlClause.clause(
-                List.of(
-                    ErlVarPattern.varPattern("_"),
-                    ErlVarPattern.varPattern("_"),
-                    ErlVarPattern.varPattern("_")),
-                ErlAtom.atom("error"))));
+            FunctionClause.of(
+                List.of(WildcardPattern.of(), WildcardPattern.of(), WildcardPattern.of()),
+                AtomExpr.of("error"))),
+        null,
+        null,
+        null);
   }
 
-  static ErlFunction labelName() {
-    ErlCase splitCase =
-        ErlCase.caseExpr(
-            ErlCall.call("binary", "split", ErlVar.var("Rest"), ErlBinary.binary("}")),
-            ErlClause.clause(
-                List.of(
-                    ErlConsPattern.consPattern(
-                        ErlVarPattern.varPattern("Label"),
-                        ErlConsPattern.consPattern(
-                            ErlBinaryPattern.binaryPattern(""), ErlNilPattern.nilPattern()))),
-                ErlTuple.tuple(ErlAtom.atom("ok"), ErlVar.var("Label"))),
-            ErlClause.clause(List.of(ErlVarPattern.varPattern("_")), ErlAtom.atom("error")));
+  static Function labelName() {
+    CaseExpr splitCase =
+        CaseExpr.of(
+            RemoteCallExpr.of(
+                "binary",
+                "split",
+                List.of(Variable.of("Rest"), BinaryExpr.of("}"))),
+            List.of(
+                Clause.of(
+                    ListPattern.cons(
+                        VariablePattern.of("Label"),
+                        ListPattern.of(List.of())),
+                    TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Label")))),
+                Clause.of(WildcardPattern.of(), AtomExpr.of("error"))));
 
-    return ErlFunction.function(
+    return Function.of(
         "label_name",
-        1,
         List.of(
-            ErlClause.clause(List.of(ErlBinPattern.binPattern("\"{\", Rest/binary")), splitCase),
-            ErlClause.clause(List.of(ErlVarPattern.varPattern("_")), ErlAtom.atom("error"))));
+            FunctionClause.of(
+                List.of(OpaquePattern.of("<<\"{\", Rest/binary>>")), splitCase),
+            FunctionClause.of(List.of(WildcardPattern.of()), AtomExpr.of("error"))),
+        null,
+        null,
+        null);
   }
 }
