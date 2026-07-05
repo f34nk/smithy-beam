@@ -443,14 +443,14 @@ final class ErlangWaiterIr {
         List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Expected"), VariablePattern.of("_Got")),
-                IsTypeGuard.of("is_binary", Variable.of("Expected")),
+                IsTypeGuard.of("binary", Variable.of("Expected")),
                 AtomExpr.of("true")),
             FunctionClause.of(
                 List.of(VariablePattern.of("Expected"), VariablePattern.of("Got")),
                 AndGuard.of(
                     List.of(
-                        IsTypeGuard.of("is_tuple", Variable.of("Expected")),
-                        IsTypeGuard.of("is_tuple", Variable.of("Got")))),
+                        IsTypeGuard.of("tuple", Variable.of("Expected")),
+                        IsTypeGuard.of("tuple", Variable.of("Got")))),
                 InfixExpr.of(
                     LocalCallExpr.of(
                         "element", List.of(IntegerExpr.of(1), Variable.of("Expected"))),
@@ -492,7 +492,7 @@ final class ErlangWaiterIr {
         List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Path"), VariablePattern.of("_Value")),
-                IsTypeGuard.of("is_binary", Variable.of("Path")),
+                IsTypeGuard.of("binary", Variable.of("Path")),
                 AtomExpr.of("undefined")),
             FunctionClause.of(
                 List.of(ListPattern.of(List.of()), VariablePattern.of("Value")),
@@ -501,7 +501,7 @@ final class ErlangWaiterIr {
                 List.of(
                     ListPattern.cons(VariablePattern.of("Key"), VariablePattern.of("Rest")),
                     VariablePattern.of("Value")),
-                IsTypeGuard.of("is_map", Variable.of("Value")),
+                IsTypeGuard.of("map", Variable.of("Value")),
                 OpaqueExpr.of(
                     """
                     case maps:get(Key, Value, undefined) of
@@ -515,7 +515,7 @@ final class ErlangWaiterIr {
                     VariablePattern.of("Value")),
                 AndGuard.of(
                     List.of(
-                        IsTypeGuard.of("is_tuple", Variable.of("Value")),
+                        IsTypeGuard.of("tuple", Variable.of("Value")),
                         ExpressionGuard.of(
                             InfixExpr.of(
                                 LocalCallExpr.of("tuple_size", List.of(Variable.of("Value"))),
@@ -568,7 +568,7 @@ final class ErlangWaiterIr {
                 List.of(VariablePattern.of("Record"), VariablePattern.of("Field")),
                 AndGuard.of(
                     List.of(
-                        IsTypeGuard.of("is_tuple", Variable.of("Record")),
+                        IsTypeGuard.of("tuple", Variable.of("Record")),
                         ExpressionGuard.of(
                             InfixExpr.of(
                                 LocalCallExpr.of("tuple_size", List.of(Variable.of("Record"))),
@@ -600,8 +600,8 @@ final class ErlangWaiterIr {
                 List.of(VariablePattern.of("V"), VariablePattern.of("Expected")),
                 AndGuard.of(
                     List.of(
-                        IsTypeGuard.of("is_atom", Variable.of("V")),
-                        IsTypeGuard.of("is_binary", Variable.of("Expected")))),
+                        IsTypeGuard.of("atom", Variable.of("V")),
+                        IsTypeGuard.of("binary", Variable.of("Expected")))),
                 InfixExpr.of(
                     RemoteCallExpr.of(
                         "string",
@@ -617,8 +617,8 @@ final class ErlangWaiterIr {
                 List.of(VariablePattern.of("V"), VariablePattern.of("Expected")),
                 AndGuard.of(
                     List.of(
-                        IsTypeGuard.of("is_binary", Variable.of("V")),
-                        IsTypeGuard.of("is_binary", Variable.of("Expected")))),
+                        IsTypeGuard.of("binary", Variable.of("V")),
+                        IsTypeGuard.of("binary", Variable.of("Expected")))),
                 InfixExpr.of(
                     RemoteCallExpr.of("string", "uppercase", List.of(Variable.of("V"))),
                     "=:=",

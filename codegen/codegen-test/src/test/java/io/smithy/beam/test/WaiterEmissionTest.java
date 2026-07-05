@@ -47,6 +47,8 @@ class WaiterEmissionTest {
     assertThat(waiters).contains("matcher => success, expected => true");
     assertThat(waiters).contains("matcher => errorType, expected => #not_found");
     assertThat(waiters).contains("error_types_match(Expected, Got)");
+    assertThat(waiters).contains("when is_binary(Expected)");
+    assertThat(waiters).doesNotContain("is_is_binary");
     assertThat(waiters).contains("timer:sleep(Delay)");
   }
 
