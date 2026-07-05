@@ -60,14 +60,14 @@ final class ErlangAwsQueryHelperIr {
 
   private static List<ErlFunction> awsQueryXmlElementHelpers() {
     return List.of(
-        ErlangXmlCodecIr.elementContentFunction(),
+        ErlangXmlCodecCodegenIrCompat.elementContentFunction(),
         awsQueryFindElement(),
-        ErlangXmlCodecIr.isElementFunction(),
+        ErlangXmlCodecCodegenIrCompat.isElementFunction(),
         awsQueryElementName(),
-        ErlangXmlCodecIr.xmlChildTextFunction(),
+        ErlangXmlCodecCodegenIrCompat.xmlChildTextFunction(),
         awsQueryElementText(),
         awsQueryXmlTextValues(),
-        ErlangXmlCodecIr.isElementStringFunction());
+        ErlangXmlCodecCodegenIrCompat.isElementStringFunction());
   }
 
   private static ErlFunction awsQueryFindElement() {
@@ -320,7 +320,7 @@ final class ErlangAwsQueryHelperIr {
     if (!ec2Query) {
       functions.add(wrapAwsQueryResponse());
     }
-    functions.addAll(ErlangXmlCodecIr.awsQueryServerEncodeHelpers());
+    functions.addAll(ErlangXmlCodecCodegenIrCompat.awsQueryServerEncodeHelpers());
     return functions;
   }
 
