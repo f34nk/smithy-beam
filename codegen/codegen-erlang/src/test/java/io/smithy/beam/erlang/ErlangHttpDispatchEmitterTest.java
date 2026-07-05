@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.ErlangRenderer;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.build.PluginContext;
@@ -66,6 +67,14 @@ class ErlangHttpDispatchEmitterTest {
                         .build())
                 .build());
     return manifest.expectFileString("runtime_http.erl");
+  }
+
+  @Test
+  void splitBaseUrlRendersValidTuple() {
+    String rendered = ErlangRenderer.renderFunction(ErlangHttpDispatchIr.splitBaseUrl());
+    assertThat(rendered).contains("scheme := Scheme");
+    assertThat(rendered).doesNotContain("scheme => Scheme");
+    assertThat(rendered).doesNotContain("{<<(list_to_binary(Scheme))/binary, \"://\">>, {<<");
   }
 
   @Test
