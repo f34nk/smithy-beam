@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.ErlangRenderer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -14,18 +15,19 @@ class ErlangRuntimeTypesIrTest {
   void runtimeTypesHeaderMatchesResource() throws IOException {
     String expected = loadResource("runtime_types.hrl");
     assertThat(
-            ErlangRuntimeTypesIr.runtimeTypesHeader(
-                    "runtime_types", Optional.empty(), Optional.empty())
-                .asString())
-        .isEqualTo(stripTrailingNewline(expected));
+            ErlangRenderer.render(
+                ErlangRuntimeTypesIr.runtimeTypesHeader(
+                    "runtime_types", Optional.empty(), Optional.empty())))
+        .isEqualTo(expected);
   }
 
   @Test
   void runtimeTypesHeaderAppendsEndpointRuleSetDefine() {
     String map = "#{'argv' => [<<\"us-east-1\">>]}";
     String output =
-        ErlangRuntimeTypesIr.runtimeTypesHeader("runtime_types", Optional.of(map), Optional.empty())
-            .asString();
+        ErlangRenderer.render(
+            ErlangRuntimeTypesIr.runtimeTypesHeader(
+                "runtime_types", Optional.of(map), Optional.empty()));
     assertThat(output)
         .contains("%% @endpointRuleSet embedded at codegen time.")
         .contains("-type endpoint_rule_set() :: map().")
@@ -39,10 +41,4 @@ class ErlangRuntimeTypesIrTest {
     }
   }
 
-  private static String stripTrailingNewline(String text) {
-    if (text.endsWith("\n")) {
-      return text.substring(0, text.length() - 1);
-    }
-    return text;
-  }
 }

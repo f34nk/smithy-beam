@@ -9,7 +9,7 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlTypeHeader;
+import io.beam.ir.erlang.Header;
 import java.io.IOException;
 import java.net.URL;
 import java.util.List;
@@ -73,11 +73,9 @@ class ErlangIrGoldenIntegrationTest {
 
   @Test
   void structureTypeHeaderFromSmithyMatchesGolden() throws IOException {
-    ErlTypeHeader header =
+    Header header =
         ErlangTypeDirectedCodegen.buildStructureTypeHeader(model, service, getNameOutput, settings);
-    assertThat(header.asString())
-        .isEqualTo(
-            IrGoldenAssertions.readExpectedString("ir/golden/get_name_output_structure.expected.hrl"));
+    IrGoldenAssertions.assertGolden(header, "ir/golden/get_name_output_structure.expected.hrl");
   }
 
   @Test

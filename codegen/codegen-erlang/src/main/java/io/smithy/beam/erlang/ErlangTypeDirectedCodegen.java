@@ -1,5 +1,15 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Header;
+import io.beam.ir.erlang.HeaderBlankLine;
+import io.beam.ir.erlang.HeaderComment;
+import io.beam.ir.erlang.HeaderEntry;
+import io.beam.ir.erlang.HeaderRecordEntry;
+import io.beam.ir.erlang.HeaderTypeAliasEntry;
+import io.beam.ir.erlang.RecordDef;
+import io.beam.ir.erlang.TypedField;
+import io.beam.ir.erlang.TypeAlias;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamDocumentation.DocTarget;
@@ -10,12 +20,6 @@ import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamRetryIndex;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlComment;
-import io.smithy.beam.ir.erlang.ErlHeaderEntry;
-import io.smithy.beam.ir.erlang.ErlRecordDef;
-import io.smithy.beam.ir.erlang.ErlRecordFieldDef;
-import io.smithy.beam.ir.erlang.ErlTypeDef;
-import io.smithy.beam.ir.erlang.ErlTypeHeader;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -124,16 +128,18 @@ final class ErlangTypeDirectedCodegen
               BeamDocumentation.forShape(directive.service())
                   .ifPresentOrElse(
                       doc -> BeamDocumentation.writeErlangDoc(writer, doc),
-                      () -> {
-                        writer.write(
-                            "$L",
-                            ErlComment.comment(
-                                    "Record and type definitions for the "
-                                        + ctx.moduleName()
-                                        + " model.")
-                                .asString());
-                        writer.write("$L", ErlComment.comment("").asString());
-                      });
+                      () ->
+                          writer.write(
+                              "$L",
+                              ErlangRenderer.render(
+                                  Header.of(
+                                      List.of(
+                                          "Record and type definitions for the "
+                                              + ctx.moduleName()
+                                              + " model.",
+                                          ""),
+                                      List.of(),
+                                      List.of()))));
               writer.popState();
 
               // Write named scalar type aliases in declaration order:
@@ -274,38 +280,39 @@ final class ErlangTypeDirectedCodegen
                 return;
               }
               recordPreambleAlias(s, preambleAliasesEmitted);
-              List<ErlComment> doc = shapeDocComments(s);
-              writer.write("$L", scalarTypeAlias(s, sym, doc).asString());
+              List<String> doc = shapeDocPreamble(s);
+              writer.write("$L", renderTypeAlias(scalarTypeAlias(s, sym, doc)));
             });
   }
 
-  private static ErlTypeDef scalarTypeAlias(Shape shape, Symbol sym, List<ErlComment> docPreamble) {
+  private static TypeAlias scalarTypeAlias(Shape shape, Symbol sym, List<String> docPreamble) {
     String baseType = sym.getProperty("baseType", String.class).orElse("term()");
-    List<ErlComment> preamble = new ArrayList<>(docPreamble);
+    List<String> preamble = new ArrayList<>(docPreamble);
     if (shape instanceof BigDecimalShape) {
-      preamble.add(ErlComment.comment("decimal:decimal()"));
+      preamble.add("decimal:decimal()");
     } else if (shape instanceof BlobShape
         && sym.getProperty("streamingBlob", Boolean.class).orElse(false)) {
-      preamble.add(ErlComment.comment("streaming payload; framing deferred to protocol layer"));
+      preamble.add("streaming payload; framing deferred to protocol layer");
     }
-    return new ErlTypeDef(sym.getName(), baseType, preamble);
+    return TypeAlias.of(sym.getName(), baseType, preamble);
   }
 
-  private static List<ErlComment> shapeDocComments(Shape shape) {
+  private static String renderTypeAlias(TypeAlias typeAlias) {
+    return ErlangRenderer.render(
+        Header.ofEntries(List.of(new HeaderTypeAliasEntry(typeAlias)), false));
+  }
+
+  private static List<String> shapeDocPreamble(Shape shape) {
     return BeamDocumentation.forShape(shape)
         .map(
             doc -> {
-              List<ErlComment> comments = new ArrayList<>();
+              List<String> comments = new ArrayList<>();
               if (!doc.contains("\n")) {
-                comments.add(ErlComment.comment("@doc " + doc));
+                comments.add("@doc " + doc);
               } else {
-                comments.add(ErlComment.comment("@doc"));
+                comments.add("@doc");
                 for (String line : doc.split("\n", -1)) {
-                  if (line.isEmpty()) {
-                    comments.add(ErlComment.comment(""));
-                  } else {
-                    comments.add(ErlComment.comment(line));
-                  }
+                  comments.add(line);
                 }
               }
               return comments;
@@ -331,9 +338,9 @@ final class ErlangTypeDirectedCodegen
               if (s.hasTrait(SparseTrait.ID)) {
                 elementType = elementType + " | undefined";
               }
-              ErlTypeDef def =
-                  new ErlTypeDef(sym.getName(), "[" + elementType + "]", shapeDocComments(s));
-              writer.write("$L", def.asString());
+              TypeAlias def =
+                  TypeAlias.of(sym.getName(), "[" + elementType + "]", shapeDocPreamble(s));
+              writer.write("$L", renderTypeAlias(def));
             });
   }
 
@@ -356,12 +363,12 @@ final class ErlangTypeDirectedCodegen
               if (s.hasTrait(SparseTrait.ID)) {
                 valueType = valueType + " | undefined";
               }
-              ErlTypeDef def =
-                  new ErlTypeDef(
+              TypeAlias def =
+                  TypeAlias.of(
                       sym.getName(),
                       "#{" + renderErlangType(keySym) + " => " + valueType + "}",
-                      shapeDocComments(s));
-              writer.write("$L", def.asString());
+                      shapeDocPreamble(s));
+              writer.write("$L", renderTypeAlias(def));
             });
   }
 
@@ -447,7 +454,7 @@ final class ErlangTypeDirectedCodegen
                     enumTypeDeclaration(
                         symbol,
                         List.of(),
-                        shapeDocComments(shape),
+                        shapeDocPreamble(shape),
                         shape.getId(),
                         atomByMember,
                         List.copyOf(shape.members())));
@@ -467,7 +474,7 @@ final class ErlangTypeDirectedCodegen
                   enumTypeDeclaration(
                       symbol,
                       atoms,
-                      shapeDocComments(shape),
+                      shapeDocPreamble(shape),
                       shape.getId(),
                       atomByMember,
                       List.copyOf(shape.members())));
@@ -478,28 +485,31 @@ final class ErlangTypeDirectedCodegen
   private static String enumTypeDeclaration(
       Symbol symbol,
       List<String> atoms,
-      List<ErlComment> shapeDoc,
+      List<String> shapeDoc,
       ShapeId shapeId,
       Map<String, String> atomByMember,
       List<MemberShape> members) {
-    List<String> lines = new ArrayList<>();
+    List<HeaderEntry> entries = new ArrayList<>();
     if (atoms.isEmpty()) {
-      lines.addAll(new ErlTypeDef(symbol.getName(), "{unknown, binary()}", shapeDoc).lines());
-      return String.join("\n", lines);
+      entries.add(
+          new HeaderTypeAliasEntry(
+              TypeAlias.of(symbol.getName(), "{unknown, binary()}", shapeDoc)));
+    } else {
+      String variants = String.join(" | ", atoms) + " | {unknown, binary()}";
+      entries.add(
+          new HeaderTypeAliasEntry(TypeAlias.of(symbol.getName(), variants, shapeDoc)));
+      entries.add(new HeaderComment("Wire values for " + shapeId));
+      for (MemberShape member : members) {
+        String wireValue =
+            member
+                .getTrait(EnumValueTrait.class)
+                .flatMap(EnumValueTrait::getStringValue)
+                .orElse(member.getMemberName());
+        String atom = atomByMember.get(member.getMemberName());
+        entries.add(new HeaderComment("  " + atom + " -> <<\"" + wireValue + ">>"));
+      }
     }
-    String variants = String.join(" | ", atoms) + " | {unknown, binary()}";
-    lines.addAll(new ErlTypeDef(symbol.getName(), variants, shapeDoc).lines());
-    lines.addAll(ErlComment.comment("Wire values for " + shapeId).lines());
-    for (MemberShape member : members) {
-      String wireValue =
-          member
-              .getTrait(EnumValueTrait.class)
-              .flatMap(EnumValueTrait::getStringValue)
-              .orElse(member.getMemberName());
-      String atom = atomByMember.get(member.getMemberName());
-      lines.addAll(ErlComment.comment("  " + atom + " -> <<\"" + wireValue + ">>").lines());
-    }
-    return String.join("\n", lines);
+    return ErlangRenderer.render(Header.ofEntries(entries, false));
   }
 
   /**
@@ -527,9 +537,9 @@ final class ErlangTypeDirectedCodegen
                 BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
                 writer.write(
                     "$L",
-                    new ErlTypeDef(
-                            symbol.getName(), "{unknown, integer()}", shapeDocComments(shape))
-                        .asString());
+                    renderTypeAlias(
+                        TypeAlias.of(
+                            symbol.getName(), "{unknown, integer()}", shapeDocPreamble(shape))));
                 writer.popState();
               });
       return;
@@ -544,7 +554,8 @@ final class ErlangTypeDirectedCodegen
               String variants = String.join(" | ", atoms) + " | {unknown, integer()}";
               writer.write(
                   "$L",
-                  new ErlTypeDef(symbol.getName(), variants, shapeDocComments(shape)).asString());
+                  renderTypeAlias(
+                      TypeAlias.of(symbol.getName(), variants, shapeDocPreamble(shape))));
               writer.popState();
             });
   }
@@ -585,7 +596,14 @@ final class ErlangTypeDirectedCodegen
                       .collect(Collectors.toList());
               variants.add("{unknown, binary()}");
 
-              writer.write("$L", ErlTypeDef.unionType(symbol.getName(), variants).asString());
+              writer.write(
+                  "$L",
+                  ErlangRenderer.render(
+                      Header.ofEntries(
+                          List.of(
+                              new HeaderTypeAliasEntry(
+                                  TypeAlias.union(symbol.getName(), variants))),
+                          true)));
               writer.popState();
             });
   }
@@ -600,10 +618,7 @@ final class ErlangTypeDirectedCodegen
   public void generateStructure(GenerateStructureDirective<ErlangContext, BeamSettings> directive) {
     StructureShape shape = directive.shape();
     ErlangContext ctx = directive.context();
-    SymbolProvider sp = directive.symbolProvider();
-    NullableIndex nullableIndex = NullableIndex.of(directive.model());
-    Symbol symbol = sp.toSymbol(shape);
-    String recordName = symbol.getName().replace("()", "");
+    Symbol symbol = ctx.symbolProvider().toSymbol(shape);
     String definitionFile = symbol.getDefinitionFile();
 
     ctx.writerDelegator()
@@ -614,17 +629,17 @@ final class ErlangTypeDirectedCodegen
               BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
               writer.popState();
 
-              ErlTypeHeader header =
+              Header header =
                   buildStructureTypeHeader(
                       directive.model(), directive.service(), shape, directive.settings());
               // Smithy's writer.write(String) runs the string through CodeFormatter, so
               // literal {, }, and $ are treated as template syntax.
               // To bypass the formatter, write the string as a literal format argument.
-              writer.write("$L", header.asString());
+              writer.write("$L", ErlangRenderer.render(header));
             });
   }
 
-  static ErlTypeHeader buildStructureTypeHeader(
+  static Header buildStructureTypeHeader(
       Model model, ServiceShape service, StructureShape shape, BeamSettings settings) {
     BeamErlangLayout layout =
         new BeamErlangLayout(settings, service.getId().getNamespace(), service);
@@ -634,45 +649,45 @@ final class ErlangTypeDirectedCodegen
                 settings, model, service, layout.typesHeaderFile(), BeamCodegenKind.TYPES));
     NullableIndex nullableIndex = NullableIndex.of(model);
     String recordName = sp.toSymbol(shape).getName().replace("()", "");
-    List<ErlHeaderEntry> entries =
+    return Header.ofEntries(
         List.of(
-            buildStructureRecord(shape, sp, nullableIndex, recordName),
-            new ErlTypeDef(recordName, "#" + recordName + "{}"));
-    return ErlTypeHeader.typeHeader(layout.typesModuleName(), List.of(), entries);
+            new HeaderRecordEntry(buildStructureRecord(shape, sp, nullableIndex, recordName)),
+            new HeaderTypeAliasEntry(TypeAlias.of(recordName, "#" + recordName + "{}"))),
+        true);
   }
 
-  static ErlRecordDef buildStructureRecord(
+  static RecordDef buildStructureRecord(
       StructureShape shape, SymbolProvider sp, NullableIndex nullableIndex, String recordName) {
-    List<MemberShape> members = StreamSupport.stream(shape.members().spliterator(), false).toList();
+    List<MemberShape> members =
+        StreamSupport.stream(shape.members().spliterator(), false).toList();
     if (members.isEmpty()) {
-      return new ErlRecordDef(recordName, List.of());
+      return RecordDef.of(recordName, List.of());
     }
-    List<ErlRecordFieldDef> fields = new ArrayList<>();
+    List<TypedField> fields = new ArrayList<>();
     for (MemberShape member : members) {
       Symbol memberSymbol = sp.toSymbol(member);
       String fieldName = memberSymbol.getProperty("fieldName", String.class).orElseThrow();
-      List<ErlComment> preamble = new ArrayList<>();
+      List<String> fieldComments = new ArrayList<>();
       BeamDocumentation.forShape(member)
           .ifPresent(
               doc -> {
-                preamble.add(ErlComment.comment("@doc " + fieldName));
+                fieldComments.add("@doc " + fieldName);
                 for (String line : doc.split("\n", -1)) {
-                  if (line.isEmpty()) {
-                    preamble.add(ErlComment.comment(""));
-                  } else {
-                    preamble.add(ErlComment.comment("  " + line));
-                  }
+                  fieldComments.add(line.isEmpty() ? "" : "  " + line);
                 }
               });
       String memberType = renderErlangType(memberSymbol);
       boolean nullable = BeamMemberNullability.isMemberNullable(nullableIndex, shape, member);
       String typeSpec = nullable ? memberType + " | undefined" : memberType;
-      fields.add(new ErlRecordFieldDef(fieldName, typeSpec, preamble));
+      fields.add(
+          fieldComments.isEmpty()
+              ? TypedField.of(fieldName, typeSpec)
+              : TypedField.of(fieldName, typeSpec, null, fieldComments));
     }
-    return new ErlRecordDef(recordName, fields);
+    return RecordDef.of(recordName, fields);
   }
 
-  static ErlRecordDef buildErrorRecord(
+  static RecordDef buildErrorRecord(
       StructureShape shape,
       SymbolProvider sp,
       NullableIndex ni,
@@ -680,7 +695,7 @@ final class ErlangTypeDirectedCodegen
       boolean isRetryable,
       boolean isThrottling) {
     String recordName = sp.toSymbol(shape).getName().replace("()", "");
-    List<ErlRecordFieldDef> fields = new ArrayList<>();
+    List<TypedField> fields = new ArrayList<>();
     for (MemberShape member : shape.members()) {
       Symbol memberSym = sp.toSymbol(member);
       String fieldName =
@@ -691,20 +706,20 @@ final class ErlangTypeDirectedCodegen
       if (ni.isMemberNullable(member, NullableIndex.CheckMode.CLIENT)) {
         typeStr = typeStr + " | undefined";
       }
-      fields.add(new ErlRecordFieldDef(fieldName, typeStr));
+      fields.add(TypedField.of(fieldName, typeStr));
     }
-    List<ErlComment> meta =
+    List<String> meta =
         List.of(
-            ErlComment.comment(
-                "fault: "
-                    + errorTrait.getValue()
-                    + " | retryable: "
-                    + isRetryable
-                    + " | throttling: "
-                    + isThrottling));
+            "fault: "
+                + errorTrait.getValue()
+                + " | retryable: "
+                + isRetryable
+                + " | throttling: "
+                + isThrottling);
     String kind = errorTrait.getValue().equals("client") ? "client" : "server";
-    fields.add(new ErlRecordFieldDef("'__beam_error_kind'", "client | server", kind, meta));
-    return new ErlRecordDef(recordName, fields);
+    fields.add(
+        TypedField.of("'__beam_error_kind'", "client | server", kind, meta));
+    return RecordDef.of(recordName, fields);
   }
 
   /**
@@ -727,12 +742,15 @@ final class ErlangTypeDirectedCodegen
                     ctx.settings(), ctx.service().getId().getNamespace(), ctx.service())
                 .typesHeaderFile(),
             writer -> {
-              List<String> chunks = new ArrayList<>();
-              for (ErlComment comment : shapeDocComments(shape)) {
-                chunks.add(comment.asString());
+              List<HeaderEntry> entries = new ArrayList<>();
+              for (String comment : shapeDocPreamble(shape)) {
+                entries.add(new HeaderComment(comment));
               }
-              chunks.add("");
-              ErlRecordDef record =
+              entries.add(new HeaderBlankLine());
+              entries.add(
+                  new HeaderComment(
+                      "Error shape: " + shape.getId() + " (" + errorTrait.getValue() + ")"));
+              RecordDef record =
                   buildErrorRecord(
                       shape,
                       ctx.symbolProvider(),
@@ -740,14 +758,10 @@ final class ErlangTypeDirectedCodegen
                       errorTrait,
                       isRetryable,
                       isThrottling);
-              ErlTypeDef type = new ErlTypeDef(recordName, "#" + recordName + "{}");
-              chunks.add(
-                  ErlComment.comment(
-                          "Error shape: " + shape.getId() + " (" + errorTrait.getValue() + ")")
-                      .asString());
-              chunks.add(record.asString());
-              chunks.add(type.asString());
-              writer.write("$L", String.join("\n", chunks));
+              entries.add(new HeaderRecordEntry(record));
+              entries.add(
+                  new HeaderTypeAliasEntry(TypeAlias.of(recordName, "#" + recordName + "{}")));
+              writer.write("$L", ErlangRenderer.render(Header.ofEntries(entries, true)));
             });
   }
 }

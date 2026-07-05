@@ -9,6 +9,7 @@ import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
+import io.beam.ir.erlang.ErlangRenderer;
 import io.beam.ir.erlang.Module;
 import java.util.ArrayList;
 import java.util.List;
@@ -115,11 +116,11 @@ final class ErlangServerDirectedCodegen
             writer ->
                 writer.write(
                     "$L",
-                    ErlangRuntimeTypesIr.runtimeTypesHeader(
+                    ErlangRenderer.render(
+                        ErlangRuntimeTypesIr.runtimeTypesHeader(
                             "runtime_types",
                             Optional.empty(),
-                            Optional.of(service.getId().toString()))
-                        .asString()));
+                            Optional.of(service.getId().toString())))));
 
     List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
     ErlangBehaviourEmitter.beginService(ctx, service, operations);

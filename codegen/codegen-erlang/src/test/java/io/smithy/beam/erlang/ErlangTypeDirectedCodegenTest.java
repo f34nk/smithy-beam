@@ -6,8 +6,13 @@ import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamRetryIndex;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlRecordDef;
-import io.smithy.beam.ir.erlang.ErlTypeDef;
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Header;
+import io.beam.ir.erlang.HeaderRecordEntry;
+import io.beam.ir.erlang.HeaderTypeAliasEntry;
+import io.beam.ir.erlang.RecordDef;
+import io.beam.ir.erlang.TypeAlias;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -627,7 +632,7 @@ class ErlangTypeDirectedCodegenTest {
     ErrorTrait errorTrait = shape.expectTrait(ErrorTrait.class);
     BeamRetryIndex.RetryInfo retryInfo = BeamRetryIndex.forError(shape).orElseThrow();
 
-    ErlRecordDef record =
+    RecordDef record =
         ErlangTypeDirectedCodegen.buildErrorRecord(
             shape,
             symbolProvider,
@@ -635,14 +640,19 @@ class ErlangTypeDirectedCodegenTest {
             errorTrait,
             retryInfo.retryable(),
             retryInfo.throttling());
-    ErlTypeDef type = new ErlTypeDef("er_unavailable", "#er_unavailable{}");
+    TypeAlias type = TypeAlias.of("er_unavailable", "#er_unavailable{}");
 
-    assertThat(record.asString())
+    assertThat(
+            ErlangRenderer.render(
+                Header.ofEntries(List.of(new HeaderRecordEntry(record)), false)))
         .contains("-record(er_unavailable, {")
         .contains("message :: er_string() | undefined,")
         .contains("%% fault: server | retryable: true | throttling: false")
         .contains("'__beam_error_kind' = server :: client | server");
-    assertThat(type.asString()).isEqualTo("-type er_unavailable() :: #er_unavailable{}.");
+    assertThat(
+            ErlangRenderer.render(
+                Header.ofEntries(List.of(new HeaderTypeAliasEntry(type)), false)))
+        .isEqualTo("-type er_unavailable() :: #er_unavailable{}.\n");
   }
 
   private static int countOccurrences(String haystack, String needle) {

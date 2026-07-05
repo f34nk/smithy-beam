@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.ErlangRenderer;
 import io.beam.ir.erlang.Function;
 import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamClientPaginationSupport;
@@ -122,9 +123,9 @@ final class ErlangClientDirectedCodegen
                   BeamEndpointRuleSetEmitter.serializeRuleSetErlangMap(directive.model(), service);
               writer.write(
                   "$L",
-                  ErlangRuntimeTypesIr.runtimeTypesHeader(
-                          "runtime_types", ruleSet, Optional.of(service.getId().toString()))
-                      .asString());
+                  ErlangRenderer.render(
+                      ErlangRuntimeTypesIr.runtimeTypesHeader(
+                          "runtime_types", ruleSet, Optional.of(service.getId().toString()))));
             });
   }
 
