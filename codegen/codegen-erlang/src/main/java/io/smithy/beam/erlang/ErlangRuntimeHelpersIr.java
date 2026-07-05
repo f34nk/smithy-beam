@@ -58,7 +58,7 @@ final class ErlangRuntimeHelpersIr {
           List.of("headers_set/3", "checksum_header_encode/1", "sha256_hash/1", "crc32_hash/1"));
       functions.addAll(ErlangHttpChecksumIr.checksumHelperFunctions());
     }
-    return new Module(
+    return Module.of(
         moduleName,
         functions,
         List.of(
@@ -67,13 +67,7 @@ final class ErlangRuntimeHelpersIr {
         null,
         null,
         null,
-        null,
-        null,
-        null,
-        exports,
-        false,
-        null,
-        null);
+        exports);
   }
 
   static List<Function> labelParsingFunctions() {

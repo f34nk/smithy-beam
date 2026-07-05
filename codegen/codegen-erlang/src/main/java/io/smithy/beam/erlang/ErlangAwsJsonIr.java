@@ -67,7 +67,7 @@ final class ErlangAwsJsonIr {
             contentType,
             eventStreamModule);
 
-    return new Module(
+    return Module.of(
         layout.clientCodecModuleName(protocol),
         functions,
         List.of(
@@ -76,13 +76,7 @@ final class ErlangAwsJsonIr {
         null,
         List.of(layout.typesHeaderFile(), layout.runtimeTypesHeaderFile()),
         null,
-        null,
-        null,
-        null,
-        exports,
-        false,
-        null,
-        null);
+        exports);
   }
 
   static Module buildServerCodecModule(
@@ -107,7 +101,7 @@ final class ErlangAwsJsonIr {
         serverCodecFunctions(
             model, service, operations, httpIndex, sp, contentType, eventStreamModule);
 
-    return new Module(
+    return Module.of(
         layout.serverCodecModuleName(protocol),
         functions,
         List.of(
@@ -120,13 +114,7 @@ final class ErlangAwsJsonIr {
         null,
         List.of(layout.typesHeaderFile(), layout.runtimeTypesHeaderFile()),
         null,
-        null,
-        null,
-        null,
-        exports,
-        false,
-        null,
-        null);
+        exports);
   }
 
   static void emitClientCodecModule(ErlangContext ctx, ServiceShape service, ShapeId protocol) {

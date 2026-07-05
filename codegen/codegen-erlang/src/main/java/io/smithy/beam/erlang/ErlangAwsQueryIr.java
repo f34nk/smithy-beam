@@ -52,7 +52,7 @@ final class ErlangAwsQueryIr {
     List<Function> functions =
         clientCodecFunctions(model, service, operations, httpIndex, sp, ec2Query);
 
-    return new Module(
+    return Module.of(
         layout.clientCodecModuleName(protocolTraitId),
         functions,
         List.of(
@@ -61,13 +61,7 @@ final class ErlangAwsQueryIr {
         null,
         List.of(layout.typesHeaderFile(), layout.runtimeTypesHeaderFile()),
         null,
-        null,
-        null,
-        null,
-        exports,
-        false,
-        null,
-        null);
+        exports);
   }
 
   static Module buildServerCodecModule(
@@ -90,7 +84,7 @@ final class ErlangAwsQueryIr {
     List<Function> functions =
         serverCodecFunctions(model, service, operations, sp, serviceNamespace, ec2Query);
 
-    return new Module(
+    return Module.of(
         layout.serverCodecModuleName(protocolTraitId),
         functions,
         List.of(
@@ -99,13 +93,7 @@ final class ErlangAwsQueryIr {
         null,
         List.of(layout.typesHeaderFile(), layout.runtimeTypesHeaderFile()),
         null,
-        null,
-        null,
-        null,
-        exports,
-        false,
-        null,
-        null);
+        exports);
   }
 
   static void emitClientCodecModule(
