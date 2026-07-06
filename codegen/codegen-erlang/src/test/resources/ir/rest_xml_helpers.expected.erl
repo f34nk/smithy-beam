@@ -147,16 +147,10 @@ decode_rest_xml_error(Status, Body) ->
     case parse_xml_root(Body, <<"ErrorResponse">>) of
         {ok, ErrorResponse} ->
             case find_element(<<"Error">>, element_content(ErrorResponse)) of
-                undefined ->
-                    {error, {unknown_error, Status, Body}};
-                Error ->
-                    {error, {
-                        xml_child_text(Error, <<"Code">>),
-                        xml_child_text(
-                            Error,
-                            <<"Message">>
-                        )
-                    }}
+                undefined -> {error, {unknown_error, Status, Body}};
+                Error -> {error, {xml_child_text(Error, <<"Code">>), xml_child_text(Error,
+                    <<"Message">>
+                )}}
             end;
         {error, _} ->
             {error, {unknown_error, Status, Body}}
@@ -181,12 +175,9 @@ build_xml_child(Name, Values) when is_list(Values) ->
 build_xml_child(Name, Value) ->
     {Name, [], [{text, to_binary(Value)}]}.
 
-xml_namespace_attrs(#{uri := Uri}) ->
-    [{xmlns, Uri}];
-xml_namespace_attrs(#{uri := Uri, prefix := Prefix}) ->
-    [{'xmlns:' ++ binary_to_list(Prefix), Uri}];
-xml_namespace_attrs(_) ->
-    [].
+xml_namespace_attrs(#{uri := Uri}) -> [{xmlns, Uri}];
+xml_namespace_attrs(#{uri := Uri, prefix := Prefix}) -> [{'xmlns:' ++ binary_to_list(Prefix), Uri}];
+xml_namespace_attrs(_) -> [].
 
 encode_query_value(V) when is_integer(V) -> integer_to_binary(V);
 encode_query_value(V) when is_float(V) -> float_to_binary(V, [short]);

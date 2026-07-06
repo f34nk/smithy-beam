@@ -133,16 +133,10 @@ decode_query_error(Status, Body) ->
                 {error, {unknown_error, Status, Body}};
             ErrorResponse ->
                 case find_element(<<"Error">>, element_content(ErrorResponse)) of
-                    undefined ->
-                        {error, {unknown_error, Status, Body}};
-                    Error ->
-                        {error, {
-                            xml_child_text(Error, <<"Code">>),
-                            xml_child_text(
-                                Error,
-                                <<"Message">>
-                            )
-                        }}
+                    undefined -> {error, {unknown_error, Status, Body}};
+                    Error -> {error, {xml_child_text(Error, <<"Code">>), xml_child_text(Error,
+                        <<"Message">>
+                    )}}
                 end
         end
     catch

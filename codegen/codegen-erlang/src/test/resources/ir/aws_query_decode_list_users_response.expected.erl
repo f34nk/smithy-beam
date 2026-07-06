@@ -1,6 +1,5 @@
 %% @doc Decode AWS Query response for smithy.beam.test.awsquery#ListUsers.
--spec decode_list_users_response(#http_response{}) ->
-    {'ok', list_users_output()} | {'error', term()}.
+-spec decode_list_users_response(#http_response{}) -> {'ok', list_users_output()} | {'error', term()}.
 decode_list_users_response(#http_response{status = 200, body = Body}) ->
     case unwrap_query_result(Body, <<"ListUsersResult">>) of
         {ok, Result} ->

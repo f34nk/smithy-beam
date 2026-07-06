@@ -8,11 +8,10 @@ flatten_member(Key, Value) when is_list(Value) ->
     ]);
 flatten_member(Key, Value) when is_map(Value) ->
     lists:append([
-        (flatten_member(<<Key/binary, ".entry.", (integer_to_binary(I))/binary, ".key">>, K) ++
-            flatten_member(
-                <<Key/binary, ".entry.", (integer_to_binary(I))/binary, ".value">>,
-                V
-            ))
+        (flatten_member(<<Key/binary, ".entry.", (integer_to_binary(I))/binary, ".key">>, K) ++ flatten_member(
+            <<Key/binary, ".entry.", (integer_to_binary(I))/binary, ".value">>,
+            V
+        ))
      || {I, {K, V}} <- lists:enumerate(maps:to_list(Value)),
         K =/= undefined,
         V =/= undefined
