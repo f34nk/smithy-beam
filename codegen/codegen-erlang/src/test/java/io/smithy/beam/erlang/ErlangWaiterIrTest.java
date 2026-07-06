@@ -90,8 +90,7 @@ class ErlangWaiterIrTest {
   @Test
   void waitUntilHelpersIncludePollingLoop() {
     List<Function> helpers = ErlangWaiterIr.waitUntilHelperFunctions(model, service, provider);
-    String combined =
-        helpers.stream().map(ErlangRenderer::renderFunction).collect(Collectors.joining("\n\n"));
+    String combined = IrGoldenAssertions.renderFunctions(helpers);
 
     assertThat(combined).contains("wait_until(Fun, Acceptors, Opts) ->");
     assertThat(combined).contains("wait_until(Fun, Acceptors, Attempts, Delay, MaxDelay) ->");

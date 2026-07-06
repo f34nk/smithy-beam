@@ -2,10 +2,8 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.erlang.ErlangRenderer;
 import io.beam.ir.erlang.Module;
 import java.io.IOException;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
@@ -27,11 +25,12 @@ class ErlangCredentialProviderIrTest {
   @Test
   void resolveChainMatchesGolden() throws IOException {
     String combined =
-        ErlangCredentialProviderIr.credentialFunctions().stream()
-            .filter(
-                fn -> fn.name().startsWith("resolve_chain") || fn.name().equals("resolve_provider"))
-            .map(ErlangRenderer::renderFunction)
-            .collect(Collectors.joining("\n\n"));
+        IrGoldenAssertions.renderFunctions(
+            ErlangCredentialProviderIr.credentialFunctions().stream()
+                .filter(
+                    fn ->
+                        fn.name().startsWith("resolve_chain") || fn.name().equals("resolve_provider"))
+                .toList());
     assertThat(combined)
         .isEqualTo(
             IrGoldenAssertions.readExpectedString("ir/credential_provider_chain.expected.erl"));

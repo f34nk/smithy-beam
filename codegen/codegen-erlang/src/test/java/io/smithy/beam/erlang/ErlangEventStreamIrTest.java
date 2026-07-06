@@ -65,8 +65,7 @@ class ErlangEventStreamIrTest {
       assertThat(fn.name()).isNotBlank();
       assertThat(fn.clauses()).isNotEmpty();
     }
-    String combined =
-        functions.stream().map(ErlangRenderer::renderFunction).collect(Collectors.joining("\n\n"));
+    String combined = IrGoldenAssertions.renderFunctions(functions);
     assertThat(combined)
         .isEqualTo(
             IrGoldenAssertions.readExpectedString("ir/event_stream_union_helpers.expected.erl"));

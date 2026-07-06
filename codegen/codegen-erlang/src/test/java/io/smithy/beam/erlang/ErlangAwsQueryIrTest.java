@@ -142,7 +142,7 @@ class ErlangAwsQueryIrTest {
     for (Function fn : ErlangAwsQueryIr.queryHelpers(false)) {
       assertStructural(fn);
     }
-    String text = helpersAsString(ErlangAwsQueryIr.queryHelpers(false));
+    String text = IrGoldenAssertions.renderFunctions(ErlangAwsQueryIr.queryHelpers(false));
     assertThat(text).contains("flatten_member(Key, Value) when is_map(Value) ->");
     assertThat(text).contains("flatten_member(Key, Value) when is_list(Value) ->");
     assertThat(text).contains("flatten_member(Key, Value) when is_tuple(Value) ->");
@@ -154,7 +154,7 @@ class ErlangAwsQueryIrTest {
     for (Function fn : ErlangAwsQueryIr.xmlHelpers(false)) {
       assertStructural(fn);
     }
-    String text = helpersAsString(ErlangAwsQueryIr.xmlHelpers(false));
+    String text = IrGoldenAssertions.renderFunctions(ErlangAwsQueryIr.xmlHelpers(false));
     assertThat(text).contains("xml_child_list(Parent, ListName, ItemName) ->");
     assertThat(text).contains("xml_child_struct_list(Parent, ListName, ItemName, DecodeFun) ->");
   }
@@ -361,17 +361,10 @@ class ErlangAwsQueryIrTest {
 
   private static void assertGolden(List<Function> functions, String resourcePath)
       throws IOException {
-    assertThat(IrGoldenAssertions.normalizeTrailingNewline(helpersAsString(functions)))
-        .isEqualTo(IrGoldenAssertions.readExpectedString(resourcePath));
+    IrGoldenAssertions.assertGoldenFunctions(functions, resourcePath);
     for (Function fn : functions) {
       assertStructural(fn);
     }
-  }
-
-  private static String helpersAsString(List<Function> functions) {
-    return functions.stream()
-        .map(ErlangRenderer::renderFunction)
-        .collect(Collectors.joining("\n\n"));
   }
 
   private static void assertStructural(Function fn) {

@@ -69,8 +69,7 @@ class ErlangRuntimeHelpersIrTest {
       assertThat(fn.name()).isNotBlank();
       assertThat(fn.clauses()).isNotEmpty();
     }
-    String combined =
-        functions.stream().map(ErlangRenderer::renderFunction).collect(Collectors.joining("\n\n"));
+    String combined = IrGoldenAssertions.renderFunctions(functions);
     assertThat(combined)
         .isEqualTo(readExpectedString("ir/runtime_helpers_label_parsing.expected.erl"));
   }

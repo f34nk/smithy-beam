@@ -26,8 +26,7 @@ class ErlangHttpChecksumIrTest {
   @Test
   void checksumHelperFunctionsMatchGolden() throws IOException {
     List<Function> functions = ErlangHttpChecksumIr.checksumHelperFunctions();
-    assertThat(
-            functions.stream().map(ErlangRenderer::renderFunction).collect(Collectors.joining("\n\n")))
+    assertThat(IrGoldenAssertions.renderFunctions(functions))
         .isEqualTo(IrGoldenAssertions.readExpectedString("ir/http_checksum_helpers.expected.erl"));
     for (Function fn : functions) {
       assertThat(fn.name()).isNotBlank();

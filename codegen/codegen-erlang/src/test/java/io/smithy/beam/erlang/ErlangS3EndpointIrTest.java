@@ -26,10 +26,7 @@ class ErlangS3EndpointIrTest {
 
   @Test
   void helperFunctionsMatchGolden() throws IOException {
-    String combined =
-        ErlangS3EndpointIr.helperFunctions().stream()
-            .map(ErlangRenderer::renderFunction)
-            .collect(Collectors.joining("\n\n"));
+    String combined = IrGoldenAssertions.renderFunctions(ErlangS3EndpointIr.helperFunctions());
     assertThat(combined)
         .isEqualTo(IrGoldenAssertions.readExpectedString("ir/s3_endpoint_helpers.expected.erl"));
   }

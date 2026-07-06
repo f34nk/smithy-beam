@@ -31,10 +31,7 @@ class ErlangEndpointRulesIrTest {
   void mergeParamsFunctionsMatchGolden() throws IOException {
     ServiceShape service = endpointModel().expectShape(ENDPOINT_SERVICE, ServiceShape.class);
     var clientContextKeys = BeamContextParamsIndex.clientContextConfigKeys(service);
-    String combined =
-        ErlangEndpointRulesIr.mergeParamsFunctions(clientContextKeys).stream()
-            .map(ErlangRenderer::renderFunction)
-            .collect(Collectors.joining("\n\n"));
+    String combined = IrGoldenAssertions.renderFunctions(ErlangEndpointRulesIr.mergeParamsFunctions(clientContextKeys));
     assertThat(combined)
         .isEqualTo(IrGoldenAssertions.readExpectedString("ir/endpoint_rules_merge_params.expected.erl"));
   }

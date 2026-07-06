@@ -30,10 +30,7 @@ class ErlangSigV4IrTest {
 
   @Test
   void helperFunctionsMatchGolden() throws IOException {
-    String combined =
-        ErlangSigV4Ir.helperFunctions().stream()
-            .map(ErlangRenderer::renderFunction)
-            .collect(Collectors.joining("\n\n"));
+    String combined = IrGoldenAssertions.renderFunctions(ErlangSigV4Ir.helperFunctions());
     assertThat(combined).isEqualTo(IrGoldenAssertions.readExpectedString("ir/sigv4_helpers.expected.erl"));
   }
 

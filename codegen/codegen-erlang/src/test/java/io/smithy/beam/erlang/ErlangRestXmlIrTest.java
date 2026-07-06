@@ -16,21 +16,17 @@ import software.amazon.smithy.model.shapes.ShapeId;
 class ErlangRestXmlIrTest {
   @Test
   void restXmlHelpersMatchGolden() throws IOException {
-    String decode =
-        ErlangRestXmlIr.xmlDecodeHelpers().stream()
-            .map(ErlangRenderer::renderFunction)
-            .collect(java.util.stream.Collectors.joining("\n\n"));
-    String encode =
-        ErlangRestXmlIr.xmlEncodeHelpers().stream()
-            .map(ErlangRenderer::renderFunction)
-            .collect(java.util.stream.Collectors.joining("\n\n"));
     for (Function fn : ErlangRestXmlIr.xmlDecodeHelpers()) {
       assertStructural(fn);
     }
     for (Function fn : ErlangRestXmlIr.xmlEncodeHelpers()) {
       assertStructural(fn);
     }
-    assertThat(IrGoldenAssertions.normalizeTrailingNewline(decode + "\n\n" + encode))
+    String combined =
+        IrGoldenAssertions.renderFunctions(ErlangRestXmlIr.xmlDecodeHelpers())
+            + "\n"
+            + IrGoldenAssertions.renderFunctions(ErlangRestXmlIr.xmlEncodeHelpers());
+    assertThat(IrGoldenAssertions.normalizeTrailingNewline(combined))
         .isEqualTo(IrGoldenAssertions.readExpectedString("ir/rest_xml_helpers.expected.erl"));
   }
 
@@ -58,11 +54,9 @@ class ErlangRestXmlIrTest {
   @Test
   void decodeGetNameResponseMatchesGolden() throws IOException {
     String combined =
-        ErlangRestXmlOperationIr.buildDecodeResponse(
-                sampleModel(), op(), HttpBindingIndex.of(sampleModel()), sp())
-            .stream()
-            .map(ErlangRenderer::renderFunction)
-            .collect(java.util.stream.Collectors.joining("\n\n"));
+        IrGoldenAssertions.renderFunctions(
+            ErlangRestXmlOperationIr.buildDecodeResponse(
+                sampleModel(), op(), HttpBindingIndex.of(sampleModel()), sp()));
     assertThat(IrGoldenAssertions.normalizeTrailingNewline(combined))
         .isEqualTo(
             IrGoldenAssertions.readExpectedString(
@@ -96,9 +90,8 @@ class ErlangRestXmlIrTest {
         ErlangRenderer.renderFunction(
             ErlangRestXmlOperationIr.buildDecodeRequest(model, op, httpIndex, sp));
     String decodeResponse =
-        ErlangRestXmlOperationIr.buildDecodeResponse(model, op, httpIndex, sp).stream()
-            .map(ErlangRenderer::renderFunction)
-            .collect(java.util.stream.Collectors.joining("\n\n"));
+        IrGoldenAssertions.renderFunctions(
+            ErlangRestXmlOperationIr.buildDecodeResponse(model, op, httpIndex, sp));
     String encodeResponse =
         ErlangRenderer.renderFunction(
             ErlangRestXmlOperationIr.buildEncodeResponse(model, op, httpIndex, sp));

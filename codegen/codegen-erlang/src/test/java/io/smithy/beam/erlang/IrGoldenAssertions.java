@@ -9,6 +9,8 @@ import io.beam.ir.erlang.Module;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.stream.Collectors;
 
 final class IrGoldenAssertions {
   private IrGoldenAssertions() {}
@@ -26,6 +28,19 @@ final class IrGoldenAssertions {
   static void assertGolden(Header header, String resourcePath) throws IOException {
     assertThat(normalizeTrailingNewline(ErlangRenderer.render(header)))
         .isEqualTo(readExpectedString(resourcePath));
+  }
+
+  static void assertGoldenFunctions(List<Function> functions, String resourcePath)
+      throws IOException {
+    assertThat(normalizeTrailingNewline(renderFunctions(functions)))
+        .isEqualTo(readExpectedString(resourcePath));
+  }
+
+  /** Renders functions with the same spacing as {@link ErlangRenderer#render(Module)}. */
+  static String renderFunctions(List<Function> functions) {
+    return functions.stream()
+        .map(ErlangRenderer::renderFunction)
+        .collect(Collectors.joining("\n"));
   }
 
   static String normalizeTrailingNewline(String text) {

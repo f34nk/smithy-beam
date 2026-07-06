@@ -22,10 +22,7 @@ class ErlangRetryIrTest {
 
   @Test
   void withRetryFunctionsMatchGolden() throws IOException {
-    String combined =
-        ErlangRetryIr.withRetryFunctions().stream()
-            .map(ErlangRenderer::renderFunction)
-            .collect(Collectors.joining("\n\n"));
+    String combined = IrGoldenAssertions.renderFunctions(ErlangRetryIr.withRetryFunctions());
     assertThat(combined).isEqualTo(IrGoldenAssertions.readExpectedString("ir/retry_with_retry.expected.erl"));
   }
 

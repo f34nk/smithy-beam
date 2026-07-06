@@ -20,14 +20,10 @@ class ErlangXmlCodecIrTest {
   @Test
   void restXmlHelpersAsStringMatchGolden() throws IOException {
     String decode =
-        ErlangXmlCodecIr.restXmlDecodeHelpers().stream()
-            .map(ErlangRenderer::renderFunction)
-            .collect(java.util.stream.Collectors.joining("\n\n"));
+        IrGoldenAssertions.renderFunctions(ErlangXmlCodecIr.restXmlDecodeHelpers());
     String encode =
-        ErlangXmlCodecIr.restXmlEncodeHelpers().stream()
-            .map(ErlangRenderer::renderFunction)
-            .collect(java.util.stream.Collectors.joining("\n\n"));
-    assertThat(IrGoldenAssertions.normalizeTrailingNewline(decode + "\n\n" + encode))
+        IrGoldenAssertions.renderFunctions(ErlangXmlCodecIr.restXmlEncodeHelpers());
+    assertThat(IrGoldenAssertions.normalizeTrailingNewline(decode + "\n" + encode))
         .isEqualTo(IrGoldenAssertions.readExpectedString("ir/rest_xml_helpers.expected.erl"));
   }
 }

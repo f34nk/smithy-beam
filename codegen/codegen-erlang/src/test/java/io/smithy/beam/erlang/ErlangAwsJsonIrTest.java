@@ -2,7 +2,6 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.erlang.ErlangRenderer;
 import io.beam.ir.erlang.Function;
 import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamCodegenKind;
@@ -15,7 +14,6 @@ import io.smithy.beam.core.BeamSettings;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -115,9 +113,7 @@ class ErlangAwsJsonIrTest {
   @Test
   void sharedCodecHelpersMatchesGolden() throws IOException {
     List<Function> functions = ErlangAwsJsonIr.sharedCodecHelpers(model, service, provider);
-    assertThat(IrGoldenAssertions.normalizeTrailingNewline(helpersAsString(functions)))
-        .isEqualTo(
-            IrGoldenAssertions.readExpectedString("ir/aws_json_shared_codec_helpers.expected.erl"));
+    IrGoldenAssertions.assertGoldenFunctions(functions, "ir/aws_json_shared_codec_helpers.expected.erl");
     for (Function fn : functions) {
       assertStructural(fn);
     }
@@ -183,10 +179,6 @@ class ErlangAwsJsonIrTest {
         resolved.orElse(null),
         layout.clientModuleName(),
         layout.clientModuleFile());
-  }
-
-  private static String helpersAsString(List<Function> functions) {
-    return functions.stream().map(ErlangRenderer::renderFunction).collect(Collectors.joining("\n\n"));
   }
 
   private static void assertStructural(Function fn) {

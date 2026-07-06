@@ -10,10 +10,7 @@ class ErlangRuntimeHelpersRenderTest {
 
   @Test
   void labelParsingUsesMapUpdateAndSplitTailPattern() {
-    String rendered =
-        ErlangRuntimeHelpersIr.labelParsingFunctions().stream()
-            .map(ErlangRenderer::renderFunction)
-            .collect(Collectors.joining("\n\n"));
+    String rendered = IrGoldenAssertions.renderFunctions(ErlangRuntimeHelpersIr.labelParsingFunctions());
     assertThat(rendered).contains("Acc#{Key => Val}");
     assertThat(rendered).contains("[Label | [<<>>]]");
   }

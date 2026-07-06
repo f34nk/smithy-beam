@@ -50,14 +50,8 @@ class ErlangClientPaginationIrTest {
     assertThat(functions.get(1).arity()).isEqualTo(3);
     assertThat(functions.get(0).clauses()).isNotEmpty();
     assertThat(functions.get(1).clauses()).isNotEmpty();
-    assertThat(renderFunctions(functions))
+    assertThat(IrGoldenAssertions.renderFunctions(functions))
         .isEqualTo(readExpectedString("ir/client_pagination_list_widgets.expected.erl"));
-  }
-
-  private static String renderFunctions(List<Function> functions) {
-    return functions.stream()
-        .map(ErlangRenderer::renderFunction)
-        .collect(Collectors.joining("\n\n"));
   }
 
   private static Model paginatedModel() {
