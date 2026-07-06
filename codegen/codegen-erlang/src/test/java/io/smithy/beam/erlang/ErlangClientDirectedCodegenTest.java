@@ -39,7 +39,7 @@ class ErlangClientDirectedCodegenTest {
     int includeIndex = client.indexOf("-include(\"basic_service_types.hrl\").");
     int exportIndex = client.indexOf("-export([");
     assertThat(moduleIndex).isLessThan(exportIndex);
-    assertThat(exportIndex).isLessThan(includeIndex);
+    assertThat(includeIndex).isLessThan(exportIndex);
   }
 
   private static Model basicModel() {

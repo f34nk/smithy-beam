@@ -25,7 +25,7 @@ class CredentialProviderEmissionTest {
 
     String credentials = manifest.expectFileString("sigv4test_service_credentials.erl");
     assertThat(credentials).contains("-module(sigv4test_service_credentials).");
-    assertThat(credentials).contains("-export([resolve/1]).");
+    assertThat(credentials).contains("-export([\n    resolve/1\n]).");
     assertThat(credentials).contains("resolve_from_env");
 
     String http = manifest.expectFileString("runtime_http.erl");

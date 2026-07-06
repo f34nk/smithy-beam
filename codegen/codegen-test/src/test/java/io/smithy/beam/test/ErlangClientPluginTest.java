@@ -70,7 +70,7 @@ class ErlangClientPluginTest {
     int includeIndex = clientSource.indexOf("-include(\"basic_service_types.hrl\").");
     int exportIndex = clientSource.indexOf("-export([");
     assertThat(moduleIndex).isLessThan(exportIndex);
-    assertThat(exportIndex).isLessThan(includeIndex);
+    assertThat(includeIndex).isLessThan(exportIndex);
     assertThat(clientSource.stripLeading()).doesNotStartWith("-include");
   }
 

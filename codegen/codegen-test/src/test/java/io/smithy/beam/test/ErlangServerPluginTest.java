@@ -74,7 +74,12 @@ class ErlangServerPluginTest {
   private static void assertServerDispatcher(String source) {
     assertThat(source).contains("-module(basic_service_server).");
     assertThat(source).contains("-behaviour(basic_service_behaviour).");
-    assertThat(source).contains("-export([init_handlers/0");
+    assertThat(source)
+        .contains(
+            "-export([\n"
+                + "    init_handlers/0,\n"
+                + "    handle_get_type_closure/3,\n"
+                + "    handle_list_basic_items/3\n");
     assertThat(source).contains("-define(DEFAULT_IMPL, basic_service_impl).");
     assertThat(source).contains("-define(HANDLERS_KEY, {basic_service_server, handlers}).");
     assertThat(source).contains("resolve_impl(Impl) ->");
@@ -84,15 +89,16 @@ class ErlangServerPluginTest {
     assertThat(source).contains("persistent_term:put(?HANDLERS_KEY, Handlers)");
     assertThat(source).contains("dispatch_handler(Fun, Ctx, Input, Meta) ->");
     assertThat(source).contains("dispatch_handler(handle_get_type_closure, Ctx, Input, Meta)");
+    assertThat(source).contains("dispatch_handler(handle_list_basic_items, Ctx, Input, Meta)");
     assertThat(source).doesNotContain("Impl = maps:get(impl, Ctx");
     assertThat(source).doesNotContain("{error, not_implemented}.");
     int moduleIndex = source.indexOf("-module(basic_service_server).");
     int behaviourIndex = source.indexOf("-behaviour(basic_service_behaviour).");
-    int exportIndex = source.indexOf("-export([init_handlers/0");
     int includeIndex = source.indexOf("-include(\"basic_service_types.hrl\").");
+    int exportIndex = source.indexOf("-export([");
     assertThat(moduleIndex).isLessThan(behaviourIndex);
-    assertThat(behaviourIndex).isLessThan(exportIndex);
-    assertThat(exportIndex).isLessThan(includeIndex);
+    assertThat(behaviourIndex).isLessThan(includeIndex);
+    assertThat(includeIndex).isLessThan(exportIndex);
   }
 
   @Test

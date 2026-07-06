@@ -36,7 +36,7 @@ class ErlangRouterIrTest {
             model, service, layout, ShapeId.from("aws.protocols#restJson1"), operations, sp);
     String router = ErlangRenderer.render(module);
     assertThat(router).contains("-module(basic_service_router).");
-    assertThat(router).contains("-export([dispatch/2]).");
+    assertThat(router).contains("-export([\n    dispatch/2\n]).");
     assertThat(router).contains("#http_request{method = Method, path = Path}");
     assertThat(router).contains("route(Method, Path, Handler, Req)");
     assertThat(router).contains("<<\"/basic-items\">>");

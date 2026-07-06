@@ -43,7 +43,9 @@ class SigV4SigningTest {
     String sigv4 = manifest.expectFileString("sigv4test_service_sigv4.erl");
 
     assertThat(sigv4).contains("-module(sigv4test_service_sigv4).");
-    assertThat(sigv4).contains("-export([sign/3, presign/5, endpoint_host_from_config/1]).");
+    assertThat(sigv4)
+        .contains(
+            "-export([\n    sign/3,\n    presign/5,\n    endpoint_host_from_config/1\n]).");
     assertThat(sigv4).contains("sign_request(Request, Credentials, Region, Service, Opts).");
     assertThat(sigv4).contains("aws_signature:sign_v4(");
     assertThat(sigv4).contains("endpoint_host_from_config(Config)");

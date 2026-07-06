@@ -57,7 +57,7 @@ class EndpointRulesEmissionTest {
     String endpoints = manifest.expectFileString("endpoint_rules_service_endpoints.erl");
     assertThat(endpoints).contains("-module(endpoint_rules_service_endpoints).");
     assertThat(endpoints).contains("-include(\"runtime_types.hrl\").");
-    assertThat(endpoints).contains("-export([resolve/2]).");
+    assertThat(endpoints).contains("-export([\n    resolve/2\n]).");
     assertThat(endpoints).doesNotContain("rule_set/0");
     assertThat(endpoints)
         .contains("aws_endpoint_rules:evaluate(?ENDPOINT_RULE_SET, merge_params(Config, Params)).");

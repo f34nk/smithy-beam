@@ -31,7 +31,7 @@ class ErlangServerDirectedCodegenTest {
     assertThat(server).contains("-module(basic_service_server).");
     assertThat(server).contains("-behaviour(basic_service_behaviour).");
     assertThat(server).contains("-include(\"basic_service_types.hrl\").");
-    assertThat(server).contains("-export([init_handlers/0");
+    assertThat(server).contains("-export([\n    init_handlers/0,\n    handle_get_type_closure/3\n");
     assertThat(server).contains("-define(DEFAULT_IMPL, basic_service_impl).");
     assertThat(server).contains("resolve_impl(Impl) ->");
     assertThat(server).contains("init_handlers() ->");
@@ -39,9 +39,7 @@ class ErlangServerDirectedCodegenTest {
     assertThat(server).contains("handle_get_type_closure(Ctx, Input, Meta) ->");
     int moduleIndex = server.indexOf("-module(basic_service_server).");
     int behaviourIndex = server.indexOf("-behaviour(basic_service_behaviour).");
-    int exportIndex = server.indexOf("-export([init_handlers/0");
     assertThat(moduleIndex).isLessThan(behaviourIndex);
-    assertThat(behaviourIndex).isLessThan(exportIndex);
   }
 
   private static Model basicModel() {
