@@ -3,6 +3,44 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-07-06
+
+### Fixed
+- Erlang IR golden fixtures realigned with renderer output, including spacing between multi-function module renders.
+
+## 2026-07-05
+
+### Added
+- Remaining Erlang codegen emitters migrated to the shared beam-ir library: client and server shells, routers, behaviours, handler discovery, resources, HTTP dispatch, AWS runtime helpers, and protocol codec modules for REST JSON, REST XML, AWS JSON, and AWS Query.
+
+### Changed
+- Erlang structural IR removed from codegen-ir in favor of beam-ir; Elixir IR remains in codegen-ir for now.
+- Protocol codec, shell module, and runtime helper wiring now render through beam-ir module and function builders; golden IR fixtures consolidated.
+
+### Fixed
+- Erlang IR rendering corrected for HTTP dispatch request patterns, waiter type guards, CRC32 binary segments, event stream payload inlining, endpoint rule Region map keys, REST-XML xmlns prefixes, map pattern syntax, comma-separated clause bodies, mime defaults, label splitting, path label capture, and split_base_url tuple layout.
+
+## 2026-07-04
+
+### Added
+- Erlang protocol codec helper and REST JSON operation emitters migrated to the shared beam-ir library, including checksum, host label, JSON and XML codec support, and shared structure, map, union, and enum helpers.
+
+### Changed
+- codegen-erlang now depends on beam-ir for Erlang IR types and rendering; IR test infrastructure retargeted and duplicate goldens dropped.
+
+## 2026-07-02
+
+### Added
+- Elixir aws-examples for DynamoDB, IAM, Kinesis, Lambda, RDS, SNS, and SSM; Erlang SSM demo.
+
+### Fixed
+- REST JSON and SigV4 query encoding expands list values correctly.
+- Elixir resource identifier typespecs qualify identifier types; timeout is treated as a shadowed builtin type name.
+- AWS demos use distinct resource names per language so Erlang and Elixir can run in parallel on shared LocalStack; SQS enabled in LocalStack Docker services.
+
+### Changed
+- Erlang JSON dependency uses jsone only; demo runner skips clean before runs; Python baseline builds pin Smithy dependency versions.
+
 ## 2026-07-01
 
 ### Added
