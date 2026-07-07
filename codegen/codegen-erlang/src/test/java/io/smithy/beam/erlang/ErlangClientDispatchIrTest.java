@@ -31,7 +31,6 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
 
-@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ErlangClientDispatchIrTest {
   private static final String HTTP_SERVICE = "smithy.beam.demo.http#HttpService";
   private static final String PAGINATED_SERVICE = "smithy.beam.test.paginated#PaginatedService";
@@ -209,6 +208,7 @@ class ErlangClientDispatchIrTest {
   }
 
   @Test
+  @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
   void restJsonOperationBodyMatchesGolden() throws IOException {
     Model model = httpModel();
     OperationShape op =
@@ -228,6 +228,7 @@ class ErlangClientDispatchIrTest {
   }
 
   @Test
+  @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
   void restJsonOperationBodyWithRetryMatchesGolden() throws IOException {
     Model model = httpModel();
     OperationShape op =
@@ -250,6 +251,26 @@ class ErlangClientDispatchIrTest {
   }
 
   @Test
+  void sigv4OperationBodyFetchesAmbientCredentialsBeforeSign() {
+    Model model = sigv4HttpModel();
+    OperationShape op =
+        model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
+    List<Expression> body =
+        ErlangClientDispatchIr.operationBodyExprs(
+            testContext(model, HTTP_SERVICE),
+            op,
+            layout(model, HTTP_SERVICE),
+            false,
+            "retry_mod",
+            false,
+            ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
+    String rendered = renderBody(body);
+    assertThat(rendered).contains("aws_credentials:get_credentials()");
+    assertThat(rendered).contains("session_token => maps:get(token, Creds0, undefined)");
+  }
+
+  @Test
+  @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
   void restJsonOperationBodyWithSigV4MatchesGolden() throws IOException {
     Model model = sigv4HttpModel();
     OperationShape op =
@@ -269,6 +290,7 @@ class ErlangClientDispatchIrTest {
   }
 
   @Test
+  @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
   void paginatedPageBodyMatchesGolden() throws IOException {
     Model model = paginatedModel();
     OperationShape op =
