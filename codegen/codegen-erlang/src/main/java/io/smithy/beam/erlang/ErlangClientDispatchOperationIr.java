@@ -13,6 +13,7 @@ import io.beam.ir.erlang.ListExpr;
 import io.beam.ir.erlang.LocalCallExpr;
 import io.beam.ir.erlang.MapExpr;
 import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.OpaqueExpr;
 import io.beam.ir.erlang.Pattern;
 import io.beam.ir.erlang.RecordExpr;
 import io.beam.ir.erlang.RecordField;
@@ -205,27 +206,30 @@ final class ErlangClientDispatchOperationIr {
   }
 
   private static Expression buildSignedRequestMatch(DispatchContext ctx) {
-    Expression credentialsCase =
-        CaseExpr.of(
-            RemoteCallExpr.of(
-                "maps",
-                "get",
-                List.of(
-                    AtomExpr.of("credentials"),
-                    Variable.of("Config"),
-                    AtomExpr.of("undefined"))),
-            List.of(
-                Clause.of(AtomPattern.of("undefined"), Variable.of("Req")),
-                Clause.of(
-                    VariablePattern.of("_"),
-                    RemoteCallExpr.of(
-                        ctx.sigv4Module(),
-                        "sign",
-                        List.of(
-                            Variable.of("Config"),
-                            AtomExpr.of(ctx.opName()),
-                            Variable.of("Req"))))));
-    return MatchExpr.bindValue("SignedReq", credentialsCase);
+    String sigv4Mod = ctx.sigv4Module();
+    String opName = ctx.opName();
+    return MatchExpr.bindValue(
+        "SignedReq",
+        OpaqueExpr.of(
+            """
+            case maps:get(credentials, Config, undefined) of
+                undefined ->
+                    case aws_credentials:get_credentials() of
+                        undefined ->
+                            Req;
+                        Creds0 ->
+                            Creds = #{
+                                access_key_id => maps:get(access_key_id, Creds0),
+                                secret_access_key => maps:get(secret_access_key, Creds0),
+                                session_token => maps:get(token, Creds0, undefined)
+                            },
+                            %s:sign(Config#{credentials => Creds}, %s, Req)
+                    end;
+                _ ->
+                    %s:sign(Config, %s, Req)
+            end"""
+                .formatted(sigv4Mod, opName, sigv4Mod, opName)
+                .strip()));
   }
 
   private static Expression dispatchRequestVar(DispatchContext ctx) {
