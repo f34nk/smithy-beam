@@ -3,6 +3,14 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+### Changed
+- Erlang SigV4 clients no longer emit a per-service credentials module. Ambient credentials are
+  fetched lazily via aws_credentials:get_credentials/0 immediately before SigV4 signing.
+
+### Deprecated
+- Generated `<service>_credentials.erl` modules are removed. Regenerate clients and add
+  `{aws_credentials, "1.0.5"}` to rebar.config.
+
 ## 2026-07-06
 
 ### Fixed
