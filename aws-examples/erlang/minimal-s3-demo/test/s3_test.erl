@@ -95,7 +95,10 @@ head_bucket_client_config(Extra) ->
             signing_name => <<"s3">>,
             s3_addressing_style => path_style,
             http_client => head_bucket_http_mock,
-            credentials => undefined,
+            credentials => #{
+                access_key_id => <<"dummy">>,
+                secret_access_key => <<"dummy">>
+            },
             retry => #{max_attempts => 3, base_delay_ms => 0}
         },
         Extra
