@@ -9,6 +9,7 @@
 -define(LAMBDA_ZIP_PATH, "terraform/lambda_function.zip").
 
 run() ->
+    {ok, _} = application:ensure_all_started(aws_credentials),
     io:format("~n=== Lambda Demo: Full Function Lifecycle ===~n~n"),
 
     Config = client_config(),

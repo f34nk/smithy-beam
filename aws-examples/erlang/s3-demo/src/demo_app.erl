@@ -12,6 +12,7 @@
 -define(EXPECTED_BODY, <<"Hello World">>).
 
 run() ->
+    {ok, _} = application:ensure_all_started(aws_credentials),
     io:format("~n=== Running S3 Client Application ===~n~n"),
 
     Config = client_config(),

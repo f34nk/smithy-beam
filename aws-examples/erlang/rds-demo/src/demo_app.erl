@@ -6,6 +6,7 @@
 -define(TEST_PARAM_GROUP_NAME, <<"rds-demo-erlang-test-param-group">>).
 
 run() ->
+    {ok, _} = application:ensure_all_started(aws_credentials),
     io:format("~n=== Running RDS Client Application ===~n~n"),
     io:format("Note: LocalStack free tier has limited RDS support.~n"),
     io:format("Some operations may return 501 errors, but client API calls work correctly.~n~n"),

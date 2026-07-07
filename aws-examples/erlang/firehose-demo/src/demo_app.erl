@@ -6,6 +6,7 @@
 -define(STREAM_NAME, <<"firehose-demo-erlang-stream">>).
 
 run() ->
+    {ok, _} = application:ensure_all_started(aws_credentials),
     io:format("~n=== Running Firehose Client Application ===~n~n"),
 
     Config = client_config(),

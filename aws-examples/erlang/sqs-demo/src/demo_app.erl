@@ -8,6 +8,7 @@
 -define(MSG2_BODY, <<"Hello from Erlang! This is message 2.">>).
 
 run() ->
+    {ok, _} = application:ensure_all_started(aws_credentials),
     io:format("~n=== Running SQS Client Application ===~n~n"),
 
     Config = client_config(),
