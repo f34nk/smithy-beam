@@ -18,7 +18,6 @@ import software.amazon.smithy.model.shapes.ShapeId;
 class ErlangHttpDispatchIrTest {
   private static final String HELPERS_MOD = "runtime_helpers";
   private static final String ENDPOINTS_MOD = "endpoints";
-  private static final String CREDENTIALS_MOD = "credentials";
 
   @Test
   void httpDispatchModuleAsStringMatchesGolden() throws IOException {
@@ -32,10 +31,8 @@ class ErlangHttpDispatchIrTest {
             service,
             false,
             false,
-            "Config",
             HELPERS_MOD,
-            ENDPOINTS_MOD,
-            CREDENTIALS_MOD);
+            ENDPOINTS_MOD);
     IrGoldenAssertions.assertGolden(module, "ir/http_dispatch_module.expected.erl");
   }
 
@@ -105,24 +102,21 @@ class ErlangHttpDispatchIrTest {
   @Test
   void dispatchSignedBasicAsStringMatchesGolden() throws IOException {
     Function fn =
-        ErlangHttpDispatchIr.dispatchSigned(
-            false, false, "Config", HELPERS_MOD, ENDPOINTS_MOD, CREDENTIALS_MOD);
+        ErlangHttpDispatchIr.dispatchSigned(false, false, HELPERS_MOD, ENDPOINTS_MOD);
     IrGoldenAssertions.assertGolden(fn, "ir/http_dispatch_dispatch_signed_basic.expected.erl");
   }
 
   @Test
   void dispatchSignedSigv4AsStringMatchesGolden() throws IOException {
     Function fn =
-        ErlangHttpDispatchIr.dispatchSigned(
-            true, false, "Config1", HELPERS_MOD, ENDPOINTS_MOD, CREDENTIALS_MOD);
+        ErlangHttpDispatchIr.dispatchSigned(true, false, HELPERS_MOD, ENDPOINTS_MOD);
     IrGoldenAssertions.assertGolden(fn, "ir/http_dispatch_dispatch_signed_sigv4.expected.erl");
   }
 
   @Test
   void dispatchSignedEndpointRulesAsStringMatchesGolden() throws IOException {
     Function fn =
-        ErlangHttpDispatchIr.dispatchSigned(
-            false, true, "Config", HELPERS_MOD, ENDPOINTS_MOD, CREDENTIALS_MOD);
+        ErlangHttpDispatchIr.dispatchSigned(false, true, HELPERS_MOD, ENDPOINTS_MOD);
     IrGoldenAssertions.assertGolden(
         fn, "ir/http_dispatch_dispatch_signed_endpoint_rules.expected.erl");
   }
@@ -130,8 +124,7 @@ class ErlangHttpDispatchIrTest {
   @Test
   void dispatchSignedSigv4EndpointRulesAsStringMatchesGolden() throws IOException {
     Function fn =
-        ErlangHttpDispatchIr.dispatchSigned(
-            true, true, "Config1", HELPERS_MOD, ENDPOINTS_MOD, CREDENTIALS_MOD);
+        ErlangHttpDispatchIr.dispatchSigned(true, true, HELPERS_MOD, ENDPOINTS_MOD);
     IrGoldenAssertions.assertGolden(
         fn, "ir/http_dispatch_dispatch_signed_sigv4_endpoint_rules.expected.erl");
   }

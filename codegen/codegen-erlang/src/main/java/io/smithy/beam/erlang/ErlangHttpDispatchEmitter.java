@@ -21,9 +21,7 @@ public final class ErlangHttpDispatchEmitter {
     boolean sigv4 = BeamSigV4Metadata.from(service).isPresent();
     boolean endpointRules = BeamEndpointRuleSetEmitter.hasRuleSet(ctx.model(), service);
     String endpointsMod = layout.endpointsModuleName();
-    String credentialsMod = layout.credentialsModuleName();
     String helpersMod = layout.runtimeHelpersModuleName();
-    String configVar = sigv4 ? "Config1" : "Config";
 
     Module module =
         ErlangHttpDispatchIr.httpDispatchModule(
@@ -32,10 +30,8 @@ public final class ErlangHttpDispatchEmitter {
             service,
             sigv4,
             endpointRules,
-            configVar,
             helpersMod,
-            endpointsMod,
-            credentialsMod);
+            endpointsMod);
     ErlangCodecEmission.writeModule(ctx, layout.runtimeHttpModuleFile(), module);
   }
 }

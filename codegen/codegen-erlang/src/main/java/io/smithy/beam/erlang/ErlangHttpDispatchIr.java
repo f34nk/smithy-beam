@@ -45,17 +45,14 @@ final class ErlangHttpDispatchIr {
       ServiceShape service,
       boolean sigv4,
       boolean endpointRules,
-      String configVar,
       String helpersMod,
-      String endpointsMod,
-      String credentialsMod) {
+      String endpointsMod) {
     return Module.of(
         httpModule,
         List.of(
             dispatchArity2(),
             dispatchArity3(),
-            dispatchSigned(
-                sigv4, endpointRules, configVar, helpersMod, endpointsMod, credentialsMod),
+            dispatchSigned(sigv4, endpointRules, helpersMod, endpointsMod),
             splitBaseUrl(),
             mime()),
         List.of(
@@ -119,15 +116,10 @@ final class ErlangHttpDispatchIr {
   static Function dispatchSigned(
       boolean sigv4,
       boolean endpointRules,
-      String configVar,
       String helpersMod,
-      String endpointsMod,
-      String credentialsMod) {
+      String endpointsMod) {
     List<Expression> body = new ArrayList<>();
-    if (sigv4) {
-      body.add(sigv4ConfigMatch(credentialsMod));
-    }
-    body.add(resolveBaseUrlMatch(configVar, helpersMod, endpointsMod, endpointRules));
+    body.add(resolveBaseUrlMatch(helpersMod, endpointsMod, endpointRules));
     body.add(queryStringMatch());
     body.add(
         MatchExpr.of(
@@ -273,42 +265,8 @@ final class ErlangHttpDispatchIr {
             RecordPatternField.of("host", VariablePattern.of("Host"))));
   }
 
-  private static MatchExpr sigv4ConfigMatch(String credentialsMod) {
-    return MatchExpr.bindValue(
-        "Config1",
-        CaseExpr.of(
-            RemoteCallExpr.of(
-                "maps",
-                "get",
-                List.of(
-                    AtomExpr.of("credentials"),
-                    Variable.of("Config"),
-                    AtomExpr.of("undefined"))),
-            List.of(
-                Clause.of(
-                    AtomPattern.of("undefined"),
-                    CaseExpr.of(
-                        RemoteCallExpr.of(
-                            credentialsMod, "resolve", List.of(Variable.of("Config"))),
-                        List.of(
-                            Clause.of(
-                                TuplePattern.of(
-                                    List.of(
-                                        AtomPattern.of("ok"),
-                                        VariablePattern.of("Creds"))),
-                                MapExpr.of(
-                                    Variable.of("Config"),
-                                    List.of(
-                                        MapEntry.of(
-                                            AtomExpr.of("credentials"),
-                                            Variable.of("Creds"))))),
-                            Clause.of(
-                                VariablePattern.of("_"), Variable.of("Config"))))),
-                Clause.of(VariablePattern.of("_"), Variable.of("Config")))));
-  }
-
   private static MatchExpr resolveBaseUrlMatch(
-      String configVar, String helpersMod, String endpointsMod, boolean endpointRules) {
+      String helpersMod, String endpointsMod, boolean endpointRules) {
     Clause endpointPrefixFallback;
     if (endpointRules) {
       endpointPrefixFallback =
@@ -318,7 +276,7 @@ final class ErlangHttpDispatchIr {
                   RemoteCallExpr.of(
                       endpointsMod,
                       "resolve",
-                      List.of(Variable.of(configVar), MapExpr.of(List.of()))),
+                      List.of(Variable.of("Config"), MapExpr.of(List.of()))),
                   List.of(
                       Clause.of(
                           TuplePattern.of(
@@ -335,13 +293,13 @@ final class ErlangHttpDispatchIr {
                           RemoteCallExpr.of(
                               helpersMod,
                               "resolve_base_url",
-                              List.of(Variable.of(configVar)))))));
+                              List.of(Variable.of("Config")))))));
     } else {
       endpointPrefixFallback =
           Clause.of(
               VariablePattern.of("_"),
               RemoteCallExpr.of(
-                  helpersMod, "resolve_base_url", List.of(Variable.of(configVar))));
+                  helpersMod, "resolve_base_url", List.of(Variable.of("Config"))));
     }
 
     return MatchExpr.bindValue(
@@ -352,7 +310,7 @@ final class ErlangHttpDispatchIr {
                 "get",
                 List.of(
                     AtomExpr.of("base_url"),
-                    Variable.of(configVar),
+                    Variable.of("Config"),
                     AtomExpr.of("undefined"))),
             List.of(
                 Clause.of(
@@ -363,7 +321,7 @@ final class ErlangHttpDispatchIr {
                             "get",
                             List.of(
                                 AtomExpr.of("endpoint_prefix"),
-                                Variable.of(configVar),
+                                Variable.of("Config"),
                                 AtomExpr.of("undefined"))),
                         List.of(
                             Clause.of(AtomPattern.of("undefined"), BinaryExpr.of("")),
