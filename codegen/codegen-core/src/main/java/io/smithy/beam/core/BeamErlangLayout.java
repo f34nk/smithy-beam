@@ -186,14 +186,6 @@ public final class BeamErlangLayout {
     return serviceSnakeName() + "_presigner";
   }
 
-  public String credentialsModuleFile() {
-    return credentialsModuleName() + ".erl";
-  }
-
-  public String credentialsModuleName() {
-    return serviceSnakeName() + "_credentials";
-  }
-
   public String endpointsModuleFile() {
     return endpointsModuleName() + ".erl";
   }
