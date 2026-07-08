@@ -15,11 +15,10 @@ final class ErlangClientDispatchIr {
       OperationShape op,
       BeamErlangLayout layout,
       boolean wrapWithRetry,
-      String retryModule,
       boolean paginated,
       ErlangClientDispatchOperationIr.DispatchBodyMode mode) {
     return ErlangClientDispatchOperationIr.buildDispatchBody(
-        ctx, op, layout, wrapWithRetry, retryModule, paginated, mode);
+        ctx, op, layout, wrapWithRetry, paginated, mode);
   }
 
   /** Test helper; delete once ErlangClientDispatchIrTest renders via ErlangRenderer directly. */

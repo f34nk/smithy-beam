@@ -1,16 +1,13 @@
 package io.smithy.beam.erlang;
 
-import io.beam.ir.erlang.ApplyExpr;
 import io.beam.ir.erlang.AtomExpr;
 import io.beam.ir.erlang.Edoc;
 import io.beam.ir.erlang.Function;
 import io.beam.ir.erlang.FunctionClause;
-import io.beam.ir.erlang.Module;
 import io.beam.ir.erlang.OpaqueExpr;
 import io.beam.ir.erlang.RecordPattern;
 import io.beam.ir.erlang.Spec;
 import io.beam.ir.erlang.TuplePattern;
-import io.beam.ir.erlang.Variable;
 import io.beam.ir.erlang.VariablePattern;
 import io.beam.ir.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamRetryIndex;
@@ -29,27 +26,21 @@ import software.amazon.smithy.model.shapes.StructureShape;
 final class ErlangRetryIr {
   private ErlangRetryIr() {}
 
-  static Module retryModule(
-      String retryMod,
-      String typesHeaderFile,
-      ServiceShape service,
-      Model model,
-      SymbolProvider sp) {
+  static boolean serviceHasRetryableErrors(Model model, ServiceShape service) {
+    return !retryableErrors(model, service).isEmpty();
+  }
+
+  static List<Function> clientPredicateFunctions(
+      Model model, ServiceShape service, SymbolProvider sp) {
     List<StructureShape> retryableErrors = retryableErrors(model, service);
+    if (retryableErrors.isEmpty()) {
+      return List.of();
+    }
     List<StructureShape> modeledErrors = modeledErrors(model, service);
-    List<Function> functions = new ArrayList<>();
-    functions.addAll(withRetryFunctions());
-    functions.add(retryable(modeledErrors, sp));
-    functions.add(throttling(modeledErrors, sp));
-    functions.add(shouldRetry(retryableErrors, sp));
-    return Module.of(
-        retryMod,
-        functions,
-        List.of("Generated retry helpers for " + service.getId() + "."),
-        null,
-        List.of(typesHeaderFile),
-        null,
-        List.of("with_retry/2", "retryable/1", "throttling/1", "should_retry/1"));
+    return List.of(
+        shouldRetry(retryableErrors, sp),
+        retryable(modeledErrors, sp),
+        throttling(modeledErrors, sp));
   }
 
   static List<Function> withRetryFunctions() {
@@ -66,11 +57,12 @@ final class ErlangRetryIr {
                     """
                     Max = maps:get(max_attempts, Opts, 3),
                     Base = maps:get(base_delay_ms, Opts, 100),
-                    with_retry(Fun, Max, Base, 1)"""
+                    ShouldRetry = maps:get(should_retry, Opts, fun(_) -> false end),
+                    with_retry(Fun, Max, Base, 1, ShouldRetry)"""
                         .strip()))),
         Spec.of("with_retry(fun(() -> term()), map()) -> term()"),
         Edoc.of(
-            "Invokes {@code Fun} with exponential backoff when a modeled retryable error is returned."),
+            "Invokes {@code Fun} with exponential backoff when a retryable error is returned."),
         null);
   }
 
@@ -83,24 +75,26 @@ final class ErlangRetryIr {
                     VariablePattern.of("Fun"),
                     VariablePattern.of("0"),
                     VariablePattern.of("_"),
+                    VariablePattern.of("_"),
                     VariablePattern.of("_")),
-                ApplyExpr.of(Variable.of("Fun"), List.of())),
+                OpaqueExpr.of("Fun()")),
             FunctionClause.of(
                 List.of(
                     VariablePattern.of("Fun"),
                     VariablePattern.of("Attempts"),
                     VariablePattern.of("Base"),
-                    VariablePattern.of("N")),
+                    VariablePattern.of("N"),
+                    VariablePattern.of("ShouldRetry")),
                 OpaqueExpr.of(
                     """
                     case Fun() of
                         {ok, _} = Ok ->
                             Ok;
                         {error, _} = Err ->
-                            case should_retry(Err) of
+                            case ShouldRetry(Err) of
                                 true when Attempts > 1 ->
                                     timer:sleep(trunc(Base * math:pow(2, N - 1))),
-                                    with_retry(Fun, Attempts - 1, Base, N + 1);
+                                    with_retry(Fun, Attempts - 1, Base, N + 1, ShouldRetry);
                                 _ ->
                                     Err
                             end

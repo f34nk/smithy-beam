@@ -21,7 +21,6 @@ public final class ErlangClientPaginationEmitter {
       ServiceShape service,
       OperationShape op,
       boolean wrapWithRetry,
-      String retryModule,
       Runnable emitPageDispatch,
       ErlangWriter writer) {
     Symbol opSym = ctx.symbolProvider().toSymbol(op);
@@ -48,7 +47,7 @@ public final class ErlangClientPaginationEmitter {
 
     for (Function fn :
         ErlangClientPaginationIr.paginatedOperationFunctions(
-            ctx, service, op, layout, wrapWithRetry, retryModule, successReturnType, null)) {
+            ctx, service, op, layout, wrapWithRetry, successReturnType, null)) {
       writer.write("$L", ErlangRenderer.renderFunction(fn));
       writer.write("$L", "");
     }

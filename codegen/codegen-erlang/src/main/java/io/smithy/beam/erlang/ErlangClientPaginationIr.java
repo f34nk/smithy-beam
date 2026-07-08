@@ -13,10 +13,7 @@ import io.beam.ir.erlang.Fun;
 import io.beam.ir.erlang.FunClause;
 import io.beam.ir.erlang.ListExpr;
 import io.beam.ir.erlang.LocalCallExpr;
-import io.beam.ir.erlang.MapExpr;
-import io.beam.ir.erlang.MatchExpr;
 import io.beam.ir.erlang.Pattern;
-import io.beam.ir.erlang.RemoteCallExpr;
 import io.beam.ir.erlang.Spec;
 import io.beam.ir.erlang.TupleExpr;
 import io.beam.ir.erlang.TuplePattern;
@@ -41,7 +38,6 @@ final class ErlangClientPaginationIr {
       OperationShape op,
       BeamErlangLayout layout,
       boolean wrapWithRetry,
-      String retryModule,
       String successReturnType,
       Edoc docOrNull) {
     SymbolProvider sp = ctx.symbolProvider();
@@ -84,13 +80,12 @@ final class ErlangClientPaginationIr {
             op,
             layout,
             wrapWithRetry,
-            retryModule,
             true,
             ErlangClientDispatchOperationIr.DispatchBodyMode.PAGINATED_PAGE);
 
     FunctionClause arity3Clause =
         paginatedArity3Clause(
-            ctx, service, op, wrapWithRetry, retryModule, pageBody, sp, opSym);
+            ctx, service, op, layout, wrapWithRetry, pageBody, sp, opSym);
 
     Function arity3 = Function.of(opName, List.of(arity3Clause), spec3, null, null);
 
@@ -101,8 +96,8 @@ final class ErlangClientPaginationIr {
       ErlangContext ctx,
       ServiceShape service,
       OperationShape op,
+      BeamErlangLayout layout,
       boolean wrapWithRetry,
-      String retryModule,
       List<Expression> pageBody,
       SymbolProvider sp,
       Symbol opSym) {
@@ -114,7 +109,7 @@ final class ErlangClientPaginationIr {
     Expression body =
         wrapWithRetry
             ? BlockExpr.commaSeparated(
-                retryWrappedPageBody(ctx, service, op, retryModule, pageBody, sp, opSym),
+                retryWrappedPageBody(ctx, service, op, layout, pageBody, sp, opSym),
                 false)
             : (pageBody.size() == 1
                 ? pageBody.get(0)
@@ -126,7 +121,7 @@ final class ErlangClientPaginationIr {
       ErlangContext ctx,
       ServiceShape service,
       OperationShape op,
-      String retryModule,
+      BeamErlangLayout layout,
       List<Expression> pageBody,
       SymbolProvider sp,
       Symbol opSym) {
@@ -155,8 +150,8 @@ final class ErlangClientPaginationIr {
                         : BlockExpr.commaSeparated(pageBody, false))));
     Expression retryCase =
         CaseExpr.of(
-            RemoteCallExpr.of(
-                retryModule, "with_retry", List.of(pageFun, Variable.of("RetryOpts"))),
+            ErlangClientDispatchOperationIr.withRetryCall(
+                layout.runtimeHttpModuleName(), pageFun),
             List.of(
                 Clause.of(
                     TuplePattern.of(
@@ -175,16 +170,6 @@ final class ErlangClientPaginationIr {
                         List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
                     TupleExpr.of(
                         List.of(AtomExpr.of("error"), Variable.of("Reason"))))));
-    return List.of(
-        MatchExpr.bindValue(
-            "RetryOpts",
-            RemoteCallExpr.of(
-                "maps",
-                "get",
-                List.of(
-                    AtomExpr.of("retry"),
-                    Variable.of("Config"),
-                    MapExpr.of(List.of())))),
-        retryCase);
+    return List.of(ErlangClientDispatchOperationIr.retryOptsBinding(), retryCase);
   }
 }

@@ -145,7 +145,6 @@ final class ErlangClientDirectedCodegen
     ErlangProtocolCodecIr.emitClientCodec(ctx, service);
 
     ErlangS3EndpointEmitter.emit(ctx, service);
-    ErlangRetryEmitter.emit(ctx, service);
     ErlangWaiterEmitter.emit(ctx, service);
     ErlangComplianceTestEmitter.emit(ctx, service);
     ErlangEventStreamEmitter.emit(ctx, service);
@@ -162,6 +161,10 @@ final class ErlangClientDirectedCodegen
           ErlangTopDown.containedOperationsSorted(ctx.model(), service);
       for (OperationShape op : operations) {
         exports.add(sp.toSymbol(op).getName() + "/2");
+      }
+      if (ErlangRetryIr.serviceHasRetryableErrors(ctx.model(), service)) {
+        builder.addOperationFunctions(
+            ErlangRetryIr.clientPredicateFunctions(ctx.model(), service, sp));
       }
       Module module =
           ErlangClientIr.clientModule(
@@ -207,7 +210,6 @@ final class ErlangClientDirectedCodegen
         BeamProtocolSupport.hasWireCodegen(
             ctx.resolvedProtocolTraitId(), ctx.protocolCodegen(), ctx.integrations());
     boolean wrapWithRetry = BeamClientRetrySupport.operationHasRetryableErrors(ctx.model(), op);
-    String retryModule = layout.retryModuleName();
     boolean paginated = BeamClientPaginationSupport.isPaginated(ctx.model(), ctx.service(), op);
     PaginationInfo paginationInfo =
         paginated
@@ -224,7 +226,6 @@ final class ErlangClientDirectedCodegen
               op,
               layout,
               wrapWithRetry,
-              retryModule,
               successReturnType,
               operationDoc(op, ctx)));
       return;
@@ -240,7 +241,6 @@ final class ErlangClientDirectedCodegen
             successReturnType,
             hasProtocol,
             wrapWithRetry,
-            retryModule,
             operationDoc(op, ctx)));
   }
 
@@ -295,7 +295,6 @@ final class ErlangClientDirectedCodegen
       String successReturnType,
       boolean hasProtocol,
       boolean wrapWithRetry,
-      String retryModule,
       Edoc doc) {
     String specOutput = "{'ok', " + successReturnType + "} | {'error', term()}";
     Spec spec =
@@ -324,7 +323,6 @@ final class ErlangClientDirectedCodegen
             op,
             layout,
             wrapWithRetry,
-            retryModule,
             false,
             ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
     Expression clauseBody =

@@ -11,6 +11,7 @@ import io.beam.ir.erlang.FunClause;
 import io.beam.ir.erlang.InfixExpr;
 import io.beam.ir.erlang.ListExpr;
 import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MapEntry;
 import io.beam.ir.erlang.MapExpr;
 import io.beam.ir.erlang.MatchExpr;
 import io.beam.ir.erlang.OpaqueExpr;
@@ -50,7 +51,6 @@ final class ErlangClientDispatchOperationIr {
       OperationShape op,
       BeamErlangLayout layout,
       boolean wrapWithRetry,
-      String retryModule,
       boolean paginated,
       DispatchBodyMode mode,
       Symbol opSym,
@@ -65,11 +65,9 @@ final class ErlangClientDispatchOperationIr {
       OperationShape op,
       BeamErlangLayout layout,
       boolean wrapWithRetry,
-      String retryModule,
       boolean paginated,
       DispatchBodyMode mode) {
-    DispatchContext dispatch =
-        buildContext(ctx, op, layout, wrapWithRetry, retryModule, paginated, mode);
+    DispatchContext dispatch = buildContext(ctx, op, layout, wrapWithRetry, paginated, mode);
     List<Expression> core = new ArrayList<>();
     core.add(buildEncodeRequestMatch(dispatch));
     if (dispatch.sigv4()) {
@@ -164,7 +162,6 @@ final class ErlangClientDispatchOperationIr {
       OperationShape op,
       BeamErlangLayout layout,
       boolean wrapWithRetry,
-      String retryModule,
       boolean paginated,
       DispatchBodyMode mode) {
     SymbolProvider sp = ctx.symbolProvider();
@@ -178,7 +175,6 @@ final class ErlangClientDispatchOperationIr {
         op,
         layout,
         wrapWithRetry,
-        retryModule,
         paginated,
         mode,
         opSym,
@@ -314,19 +310,33 @@ final class ErlangClientDispatchOperationIr {
                 FunClause.of(
                     List.of(),
                     core.size() == 1 ? core.get(0) : BlockExpr.commaSeparated(core, false))));
-    return List.of(
-        MatchExpr.bindValue(
-            "RetryOpts",
+    return List.of(retryOptsBinding(), withRetryCall(ctx.runtimeHttpModule(), retryFun));
+  }
+
+  static Expression retryOptsBinding() {
+    return MatchExpr.bindValue(
+        "RetryOpts",
+        RemoteCallExpr.of(
+            "maps",
+            "get",
+            List.of(AtomExpr.of("retry"), Variable.of("Config"), MapExpr.of(List.of()))));
+  }
+
+  static Expression withRetryCall(String runtimeModule, Expression retryFun) {
+    return RemoteCallExpr.of(
+        runtimeModule,
+        "with_retry",
+        List.of(
+            retryFun,
             RemoteCallExpr.of(
                 "maps",
-                "get",
+                "merge",
                 List.of(
-                    AtomExpr.of("retry"),
-                    Variable.of("Config"),
-                    MapExpr.of(List.of())))),
-        RemoteCallExpr.of(
-            ctx.retryModule(),
-            "with_retry",
-            List.of(retryFun, Variable.of("RetryOpts"))));
+                    MapExpr.of(
+                        List.of(
+                            MapEntry.of(
+                                AtomExpr.of("should_retry"),
+                                OpaqueExpr.of("fun should_retry/1")))),
+                    Variable.of("RetryOpts")))));
   }
 }
