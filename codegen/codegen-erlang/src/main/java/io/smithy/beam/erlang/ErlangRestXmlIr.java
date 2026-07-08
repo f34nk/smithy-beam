@@ -190,9 +190,6 @@ final class ErlangRestXmlIr {
     functions.add(ErlangCodecHelperIr.prefixHeadersToList());
     functions.add(ErlangCodecHelperIr.prefixHeadersFromList());
     functions.add(ErlangCodecHelperIr.generateUuid());
-    if (ErlangHttpChecksumIr.serviceHasChecksumOperations(model, service)) {
-      functions.addAll(ErlangHttpChecksumIr.checksumHelperFunctions());
-    }
     if (encodeWithConfig) {
       functions.addAll(ErlangHostLabelIr.buildHostFunctions(model, service, sp));
     }

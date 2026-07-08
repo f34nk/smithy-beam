@@ -284,11 +284,8 @@ final class ErlangRestJsonIr {
     functions.add(ErlangCodecHelperIr.decodeTimestampDateTime());
     functions.add(ErlangCodecHelperIr.generateUuid());
 
-    boolean checksumBindings = ErlangHttpChecksumIr.serviceHasChecksumOperations(model, service);
     boolean compressionBindings = serviceHasCompressionOperations(model, service);
-    if (checksumBindings) {
-      functions.addAll(ErlangHttpChecksumIr.checksumHelperFunctions());
-    } else if (compressionBindings) {
+    if (compressionBindings) {
       functions.add(ErlangCodecHelperIr.headersSet());
     }
     return functions;

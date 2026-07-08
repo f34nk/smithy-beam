@@ -41,8 +41,7 @@ final class ErlangRuntimeHelpersIr {
       ServiceShape service,
       Model model,
       boolean awsMetadata,
-      boolean labelBindings,
-      boolean checksumBindings) {
+      boolean labelBindings) {
     List<Function> functions = new ArrayList<>();
     List<String> exports = new ArrayList<>();
     if (labelBindings) {
@@ -52,11 +51,6 @@ final class ErlangRuntimeHelpersIr {
     if (awsMetadata) {
       exports.add("resolve_base_url/1");
       functions.add(resolveBaseUrl());
-    }
-    if (checksumBindings) {
-      exports.addAll(
-          List.of("headers_set/3", "checksum_header_encode/1", "sha256_hash/1", "crc32_hash/1"));
-      functions.addAll(ErlangHttpChecksumIr.checksumHelperFunctions());
     }
     return Module.of(
         moduleName,

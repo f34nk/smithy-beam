@@ -87,7 +87,7 @@ class ErlangRuntimeHelpersIrTest {
     ServiceShape service = model.expectShape(ShapeId.from(LABEL_SERVICE), ServiceShape.class);
     Module module =
         ErlangRuntimeHelpersIr.runtimeHelpersModule(
-            "runtime_helpers", service, model, false, true, false);
+            "runtime_helpers", service, model, false, true);
     IrGoldenAssertions.assertGolden(module, "ir/runtime_helpers_label_module.expected.erl");
   }
 

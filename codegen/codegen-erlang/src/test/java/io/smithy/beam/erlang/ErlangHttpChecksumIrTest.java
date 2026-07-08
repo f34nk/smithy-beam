@@ -24,17 +24,6 @@ import software.amazon.smithy.model.shapes.ShapeId;
 @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ErlangHttpChecksumIrTest {
   @Test
-  void checksumHelperFunctionsMatchGolden() throws IOException {
-    List<Function> functions = ErlangHttpChecksumIr.checksumHelperFunctions();
-    assertThat(IrGoldenAssertions.renderFunctions(functions))
-        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/http_checksum_helpers.expected.erl"));
-    for (Function fn : functions) {
-      assertThat(fn.name()).isNotBlank();
-      assertThat(fn.clauses()).isNotEmpty();
-    }
-  }
-
-  @Test
   void requestChecksumHeadersExprMatchesGolden() throws IOException {
     Model model = checksumFixtureModel();
     ServiceShape service =

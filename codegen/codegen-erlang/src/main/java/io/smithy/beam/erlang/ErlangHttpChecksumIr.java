@@ -3,19 +3,11 @@ package io.smithy.beam.erlang;
 import io.beam.ir.erlang.AtomExpr;
 import io.beam.ir.erlang.AtomPattern;
 import io.beam.ir.erlang.BinaryExpr;
-import io.beam.ir.erlang.BinaryPattern;
-import io.beam.ir.erlang.BinarySegmentExpr;
-import io.beam.ir.erlang.BinarySegmentPattern;
 import io.beam.ir.erlang.BlockExpr;
 import io.beam.ir.erlang.CaseExpr;
 import io.beam.ir.erlang.Clause;
 import io.beam.ir.erlang.Expression;
-import io.beam.ir.erlang.Function;
-import io.beam.ir.erlang.FunctionClause;
-import io.beam.ir.erlang.InfixExpr;
-import io.beam.ir.erlang.IsTypeGuard;
 import io.beam.ir.erlang.ListExpr;
-import io.beam.ir.erlang.ListPattern;
 import io.beam.ir.erlang.LocalCallExpr;
 import io.beam.ir.erlang.MatchExpr;
 import io.beam.ir.erlang.RemoteCallExpr;
@@ -23,7 +15,6 @@ import io.beam.ir.erlang.TupleExpr;
 import io.beam.ir.erlang.TuplePattern;
 import io.beam.ir.erlang.Variable;
 import io.beam.ir.erlang.VariablePattern;
-import io.beam.ir.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import java.util.ArrayList;
@@ -31,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -42,6 +34,11 @@ import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.StructureShape;
 
 final class ErlangHttpChecksumIr {
+  private static final String HTTP_CHECKSUM_MOD = "http_checksum";
+  private static final String RUNTIME_HELPERS_MOD = "runtime_helpers";
+  private static final Set<String> HTTP_CHECKSUM_HASH_HELPERS =
+      Set.of("md5_hash", "sha256_hash", "crc32_hash", "crc32c_hash");
+
   private ErlangHttpChecksumIr() {}
 
   static boolean serviceHasChecksumOperations(Model model, ServiceShape service) {
@@ -94,12 +91,15 @@ final class ErlangHttpChecksumIr {
       exprs.add(
           MatchExpr.bindValue(
               next,
-              LocalCallExpr.of(
+              RemoteCallExpr.of(
+                  RUNTIME_HELPERS_MOD,
                   "headers_set",
                   List.of(
                       BinaryExpr.of(cb.headerName()),
-                      LocalCallExpr.of(
-                          "checksum_header_encode", List.of(Variable.of(checksumVar))),
+                      RemoteCallExpr.of(
+                          HTTP_CHECKSUM_MOD,
+                          "checksum_header_encode",
+                          List.of(Variable.of(checksumVar))),
                       Variable.of(current)))));
       current = next;
     }
@@ -119,7 +119,8 @@ final class ErlangHttpChecksumIr {
       headerNames.add(BinaryExpr.of(binding.headerName()));
     }
     return CaseExpr.of(
-        LocalCallExpr.of(
+        RemoteCallExpr.of(
+            HTTP_CHECKSUM_MOD,
             "validate_response_checksum",
             List.of(
                 Variable.of("Body"),
@@ -139,238 +140,45 @@ final class ErlangHttpChecksumIr {
                                 Variable.of("Reason"))))))));
   }
 
-  static List<Function> checksumHelperFunctions() {
-    List<Function> functions = new ArrayList<>();
-    functions.add(ErlangCodecHelperIr.headersSet());
-    functions.add(checksumHeaderEncode());
-    functions.add(md5Hash());
-    functions.add(sha256Hash());
-    functions.add(crc32Hash());
-    functions.add(crc32cHash());
-    functions.add(crc64nvmeHash());
-    functions.add(xxhash64Hash());
-    functions.add(xxhash3Hash());
-    functions.add(xxhash128Hash());
-    functions.add(checksumDigest());
-    functions.add(validateResponseChecksum());
-    functions.add(checksumAlgorithmFromHeader());
-    return functions;
-  }
-
-  private static Function checksumHeaderEncode() {
-    return Function.of(
-        "checksum_header_encode",
-        List.of(
-            FunctionClause.of(
-                List.of(VariablePattern.of("Data")),
-                IsTypeGuard.of("binary", Variable.of("Data")),
-                RemoteCallExpr.of("base64", "encode", List.of(Variable.of("Data"))))));
-  }
-
-  private static Function md5Hash() {
-    return Function.of(
-        "md5_hash",
-        List.of(
-            FunctionClause.of(
-                List.of(VariablePattern.of("Body")),
-                RemoteCallExpr.of(
-                    "crypto", "hash", List.of(AtomExpr.of("md5"), Variable.of("Body"))))));
-  }
-
-  private static Function sha256Hash() {
-    return Function.of(
-        "sha256_hash",
-        List.of(
-            FunctionClause.of(
-                List.of(VariablePattern.of("Body")),
-                RemoteCallExpr.of(
-                    "crypto", "hash", List.of(AtomExpr.of("sha256"), Variable.of("Body"))))));
-  }
-
-  private static Function crc32Hash() {
-    return Function.of(
-        "crc32_hash",
-        List.of(
-            FunctionClause.of(
-                List.of(VariablePattern.of("Body")),
-                BinaryExpr.of(
-                    List.of(
-                        BinarySegmentExpr.of(
-                            RemoteCallExpr.of("erlang", "crc32", List.of(Variable.of("Body"))),
-                            32,
-                            "big-unsigned-integer"))))));
-  }
-
-  private static Function crc32cHash() {
-    return Function.of(
-        "crc32c_hash",
-        List.of(
-            FunctionClause.of(
-                List.of(VariablePattern.of("Body")),
-                RemoteCallExpr.of(
-                    "crypto", "hash", List.of(AtomExpr.of("crc32c"), Variable.of("Body"))))));
-  }
-
-  private static Function crc64nvmeHash() {
-    return stubHashFunction("crc64nvme_hash", "crc64nvme");
-  }
-
-  private static Function xxhash64Hash() {
-    return stubHashFunction("xxhash64_hash", "xxhash64");
-  }
-
-  private static Function xxhash3Hash() {
-    return stubHashFunction("xxhash3_hash", "xxhash3");
-  }
-
-  private static Function xxhash128Hash() {
-    return stubHashFunction("xxhash128_hash", "xxhash128");
-  }
-
-  private static Function stubHashFunction(String name, String algorithm) {
-    return Function.of(
-        name,
-        List.of(
-            FunctionClause.of(
-                List.of(VariablePattern.of("_Body")),
-                LocalCallExpr.of(
-                    "error",
-                    List.of(
-                        TupleExpr.of(
-                            List.of(
-                                AtomExpr.of("unsupported_checksum_algorithm"),
-                                AtomExpr.of(algorithm))))))));
-  }
-
-  private static Function checksumDigest() {
-    return Function.of(
-        "checksum_digest",
-        List.of(
-            FunctionClause.of(
-                List.of(VariablePattern.of("Body"), BinaryPattern.of("MD5")),
-                LocalCallExpr.of("md5_hash", List.of(Variable.of("Body")))),
-            FunctionClause.of(
-                List.of(VariablePattern.of("Body"), BinaryPattern.of("SHA256")),
-                LocalCallExpr.of("sha256_hash", List.of(Variable.of("Body")))),
-            FunctionClause.of(
-                List.of(VariablePattern.of("Body"), BinaryPattern.of("CRC32")),
-                LocalCallExpr.of("crc32_hash", List.of(Variable.of("Body")))),
-            FunctionClause.of(
-                List.of(VariablePattern.of("Body"), BinaryPattern.of("CRC32C")),
-                LocalCallExpr.of("crc32c_hash", List.of(Variable.of("Body"))))));
-  }
-
-  private static Function validateResponseChecksum() {
-    CaseExpr checksumMatch =
-        CaseExpr.of(
-            InfixExpr.of(
-                LocalCallExpr.of(
-                    "checksum_header_encode",
-                    List.of(
-                        LocalCallExpr.of(
-                            "checksum_digest",
-                            List.of(
-                                Variable.of("Body"),
-                                LocalCallExpr.of(
-                                    "checksum_algorithm_from_header",
-                                    List.of(Variable.of("HeaderName"))))))),
-                "=:=",
-                Variable.of("Expected")),
-            List.of(
-                Clause.of(AtomPattern.of("true"), AtomExpr.of("ok")),
-                Clause.of(
-                    VariablePattern.of("false"),
-                    TupleExpr.of(
-                        List.of(
-                            AtomExpr.of("error"),
-                            TupleExpr.of(
-                                List.of(
-                                    AtomExpr.of("checksum_mismatch"),
-                                    Variable.of("HeaderName"))))))));
-
-    return Function.of(
-        "validate_response_checksum",
-        List.of(
-            FunctionClause.of(
-                List.of(
-                    VariablePattern.of("_Body"),
-                    VariablePattern.of("_Headers"),
-                    ListPattern.of(List.of())),
-                AtomExpr.of("ok")),
-            FunctionClause.of(
-                List.of(
-                    VariablePattern.of("Body"),
-                    VariablePattern.of("Headers"),
-                    ListPattern.cons(
-                        VariablePattern.of("HeaderName"), VariablePattern.of("Rest"))),
-                CaseExpr.of(
-                    RemoteCallExpr.of(
-                        "proplists",
-                        "get_value",
-                        List.of(
-                            Variable.of("HeaderName"),
-                            Variable.of("Headers"),
-                            AtomExpr.of("undefined"))),
-                    List.of(
-                        Clause.of(
-                            AtomPattern.of("undefined"),
-                            LocalCallExpr.of(
-                                "validate_response_checksum",
-                                List.of(
-                                    Variable.of("Body"),
-                                    Variable.of("Headers"),
-                                    Variable.of("Rest")))),
-                        Clause.of(VariablePattern.of("Expected"), checksumMatch))))));
-  }
-
-  private static Function checksumAlgorithmFromHeader() {
-    return Function.of(
-        "checksum_algorithm_from_header",
-        List.of(
-            FunctionClause.of(
-                List.of(
-                    BinaryPattern.of(
-                        List.of(
-                            BinarySegmentPattern.literal("x-amz-checksum-"),
-                            BinarySegmentPattern.of(VariablePattern.of("Rest"), "binary")))),
-                LocalCallExpr.of(
-                    "list_to_binary",
-                    List.of(
-                        RemoteCallExpr.of(
-                            "string",
-                            "uppercase",
-                            List.of(
-                                LocalCallExpr.of(
-                                    "binary_to_list", List.of(Variable.of("Rest"))))))))));
-  }
-
   private static Expression checksumBranchExpr(
       BeamHttpChecksumIndex.ChecksumBinding cb, String headersVar) {
     return BlockExpr.commaSeparated(
         List.of(
             checksumComputationExpr(cb, "Checksum"),
-            LocalCallExpr.of(
+            RemoteCallExpr.of(
+                RUNTIME_HELPERS_MOD,
                 "headers_set",
                 List.of(
                     BinaryExpr.of(cb.headerName()),
-                    LocalCallExpr.of(
-                        "checksum_header_encode", List.of(Variable.of("Checksum"))),
+                    RemoteCallExpr.of(
+                        HTTP_CHECKSUM_MOD,
+                        "checksum_header_encode",
+                        List.of(Variable.of("Checksum"))),
                     Variable.of(headersVar)))),
         false);
   }
 
   private static Expression checksumComputationExpr(
       BeamHttpChecksumIndex.ChecksumBinding cb, String checksumVar) {
+    Expression hashExpr;
     if (cb.usesCryptoHash()) {
-      return MatchExpr.bindValue(
-          checksumVar,
+      String helper = cb.hashHelperName();
+      if (HTTP_CHECKSUM_HASH_HELPERS.contains(helper)) {
+        hashExpr =
+            RemoteCallExpr.of(HTTP_CHECKSUM_MOD, helper, List.of(Variable.of("Body")));
+      } else {
+        hashExpr =
+            RemoteCallExpr.of(
+                "crypto",
+                "hash",
+                List.of(AtomExpr.of(cb.algorithmErlangAtom()), Variable.of("Body")));
+      }
+    } else {
+      hashExpr =
           RemoteCallExpr.of(
-              "crypto",
-              "hash",
-              List.of(AtomExpr.of(cb.algorithmErlangAtom()), Variable.of("Body"))));
+              HTTP_CHECKSUM_MOD, cb.hashHelperName(), List.of(Variable.of("Body")));
     }
-    return MatchExpr.bindValue(
-        checksumVar, LocalCallExpr.of(cb.hashHelperName(), List.of(Variable.of("Body"))));
+    return MatchExpr.bindValue(checksumVar, hashExpr);
   }
 
   @SuppressWarnings("unchecked")
