@@ -1,6 +1,6 @@
 %% HTTP carrier types for generated clients.
--ifndef(BEAM_RUNTIME_TYPES_INCLUDED).
--define(BEAM_RUNTIME_TYPES_INCLUDED, true).
+-ifndef(BEAM_HTTP_TYPES_INCLUDED).
+-define(BEAM_HTTP_TYPES_INCLUDED, true).
 
 %% HTTP carrier types for generated clients. Adjust only via codegen.
 -record(http_request, {
