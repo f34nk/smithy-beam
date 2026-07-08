@@ -21,6 +21,7 @@ build:
 
 .PHONY: test
 test: test/java
+	make -C runtime/erlang test
 
 .PHONY: test/java
 test/java:
@@ -40,9 +41,7 @@ format/java:
 	
 .PHONY: format/runtime-erlang
 format/runtime-erlang:
-	cd runtime/erlang && \
-	erlfmt --write *.erl && \
-	erlfmt --write *.hrl
+	make -C runtime/erlang format
 
 .PHONY: clean
 clean:
@@ -87,6 +86,9 @@ _run:
 	mkdir -p build
 	rm -rf build/$(TARGET)*.log
 	touch build/$(TARGET).log
+	@if find $(TARGET)/erlang -maxdepth 2 -name Makefile 2>/dev/null | grep -q .; then \
+		make -C runtime/erlang compile; \
+	fi
 	#
 	# Run $(TARGET) in parallel ($(PARALLEL_JOBS) jobs)
 	#

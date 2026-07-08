@@ -21,7 +21,8 @@ sign(Config, Operation, Request) ->
     },
     sign_request(Request, Credentials, Region, Service, Opts).
 
--spec presign_url(client_config(), Operation :: atom(), http_request()) -> {ok, binary()} | {error, term()}.
+-spec presign_url(client_config(), Operation :: atom(), http_request()) ->
+    {ok, binary()} | {error, term()}.
 presign_url(Config, Operation, Request) ->
     Credentials = maps:get(credentials, Config),
     Region = maps:get(region, Config, <<"us-east-1">>),
@@ -47,20 +48,21 @@ presign(Request, Credentials, Region, Service, Opts) ->
         [
             {ttl, Ttl},
             {uri_encode_path, Service =/= <<"s3">>}
-        ]
-        ++ body_digest_option(Opts)
-        ++ session_token_option(maps:get(session_token, Credentials, undefined)),
+        ] ++
+            body_digest_option(Opts) ++
+            session_token_option(maps:get(session_token, Credentials, undefined)),
     try
-        {ok, aws_signature:sign_v4_query_params(
-            AccessKeyId,
-            SecretAccessKey,
-            Region,
-            Service,
-            DateTime,
-            Request#http_request.method,
-            Url,
-            QueryOpts
-        )}
+        {ok,
+            aws_signature:sign_v4_query_params(
+                AccessKeyId,
+                SecretAccessKey,
+                Region,
+                Service,
+                DateTime,
+                Request#http_request.method,
+                Url,
+                QueryOpts
+            )}
     catch
         _:Reason ->
             {error, Reason}

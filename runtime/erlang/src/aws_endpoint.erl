@@ -64,12 +64,16 @@ resolve_base_url(Config) ->
 endpoint_host_from_config(Config) ->
     case maps:get(base_url, Config, undefined) of
         undefined ->
-            case {maps:get(endpoint_prefix, Config, undefined),
-                  maps:get(region, Config, <<"us-east-1">>)} of
+            case
+                {
+                    maps:get(endpoint_prefix, Config, undefined),
+                    maps:get(region, Config, <<"us-east-1">>)
+                }
+            of
                 {undefined, _} -> undefined;
                 {Prefix, Region} -> <<Prefix/binary, ".", Region/binary, ".amazonaws.com">>
             end;
         BaseUrl ->
-            {_Scheme, Authority} = runtime_helpers:split_base_url(BaseUrl),
+            {_Scheme, Authority} = utils:split_base_url(BaseUrl),
             Authority
     end.

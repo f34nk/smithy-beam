@@ -14,7 +14,9 @@ dispatch(Config, Request) ->
 
 dispatch(HttpClient, Config, Request) -> dispatch_signed(HttpClient, Config, Request).
 
-dispatch_signed(HttpClient, Config, #http_request{method = Method, path = Path, query = Query, headers = Headers, body = Body, host = Host}) ->
+dispatch_signed(HttpClient, Config, #http_request{
+    method = Method, path = Path, query = Query, headers = Headers, body = Body, host = Host
+}) ->
     BaseUrl =
         case maps:get(base_url, Config, undefined) of
             undefined ->
@@ -42,7 +44,7 @@ dispatch_signed(HttpClient, Config, #http_request{method = Method, path = Path, 
                 Encoded = uri_string:compose_query([{K, V} || {K, V} <- Pairs]),
                 <<"?", Encoded/binary>>
         end,
-    {Scheme, DefaultAuthority} = runtime_helpers:split_base_url(BaseUrl),
+    {Scheme, DefaultAuthority} = utils:split_base_url(BaseUrl),
     Authority =
         case Host of
             undefined -> DefaultAuthority;
