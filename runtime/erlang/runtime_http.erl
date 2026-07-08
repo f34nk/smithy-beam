@@ -21,7 +21,7 @@ dispatch_signed(HttpClient, Config, #http_request{method = Method, path = Path, 
                     undefined ->
                         <<>>;
                     _ ->
-                        case runtime_endpoint:resolve(Config, #{}) of
+                        case aws_endpoint:resolve(Config, #{}) of
                             {ok, #{url := ResolvedUrl}} -> ResolvedUrl;
                             _ -> runtime_helpers:resolve_base_url(Config)
                         end

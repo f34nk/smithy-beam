@@ -1,6 +1,6 @@
-%% Shared smithy-beam Erlang endpoint resolver.
-%% Replaces generated <service>_endpoints modules (e.g. s3_endpoints).
--module(runtime_endpoint).
+%% Shared smithy-beam Erlang AWS endpoint resolver.
+%% TODO: Placeholder once full endpoint rules are implemented
+-module(aws_endpoint).
 -export([
     resolve/2
 ]).
@@ -22,8 +22,7 @@ evaluate(Params) ->
 
 merge_params(Config, Params) ->
     ConfigParams = config_to_rule_params(Config),
-    ClientParams = client_context_params(Config),
-    maps:merge(maps:merge(ConfigParams, ClientParams), Params).
+    maps:merge(ConfigParams, Params).
 
 config_to_rule_params(Config) ->
     case maps:get(region, Config, undefined) of
@@ -31,19 +30,20 @@ config_to_rule_params(Config) ->
         Value -> #{<<"Region">> => Value}
     end.
 
-client_context_params(Config) ->
-    maps:merge(
-        optional_param(Config, force_path_style, <<"ForcePathStyle">>),
-        optional_param(Config, use_arn_region, <<"UseArnRegion">>),
-        optional_param(Config, disable_multi_region_access_points,
-            <<"DisableMultiRegionAccessPoints">>
-        ),
-        optional_param(Config, accelerate, <<"Accelerate">>),
-        optional_param(Config, disable_s3express_session_auth, <<"DisableS3ExpressSessionAuth">>)
-    ).
+% TODO: fully implement endpoint rules per service
+% client_context_params(Config) ->
+%     maps:merge(
+%         optional_param(Config, force_path_style, <<"ForcePathStyle">>),
+%         optional_param(Config, use_arn_region, <<"UseArnRegion">>),
+%         optional_param(Config, disable_multi_region_access_points,
+%             <<"DisableMultiRegionAccessPoints">>
+%         ),
+%         optional_param(Config, accelerate, <<"Accelerate">>),
+%         optional_param(Config, disable_s3express_session_auth, <<"DisableS3ExpressSessionAuth">>)
+%     ).
 
-optional_param(Config, Key, RuleKey) ->
-    case maps:get(Key, Config, undefined) of
-        undefined -> #{};
-        Value -> #{RuleKey => Value}
-    end.
+% optional_param(Config, Key, RuleKey) ->
+%     case maps:get(Key, Config, undefined) of
+%         undefined -> #{};
+%         Value -> #{RuleKey => Value}
+%     end.

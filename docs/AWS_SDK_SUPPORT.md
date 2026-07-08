@@ -222,14 +222,14 @@ Endpoint rules engine for dynamic endpoint resolution.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [Rules Engine Specification](https://smithy.io/2.0/aws/rules-engine/index.html) | ⚠️ | Generated clients embed serialized rule sets in service types headers and resolve endpoints through the static [runtime_endpoint](https://github.com/f34nk/smithy-beam/blob/v3/runtime/erlang/runtime_endpoint.erl) module when `@endpointRuleSet` is present. Full AWS rules engine surface is not otherwise exposed. |
+| [Rules Engine Specification](https://smithy.io/2.0/aws/rules-engine/index.html) | ⚠️ | Generated clients embed serialized rule sets in service types headers and resolve endpoints through the static [aws_endpoint](https://github.com/f34nk/smithy-beam/blob/v3/runtime/erlang/aws_endpoint.erl) module when `@endpointRuleSet` is present. Full AWS rules engine surface is not otherwise exposed. |
 | [`@endpointRuleSet`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ✅ | Rule set serialized into generated service types headers and evaluated by the static runtime endpoint resolver. |
 | [`@contextParam`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ➖ | Model metadata for rule parameters; operation input binding is not generated yet. |
 | [`@staticContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ➖ | Model metadata for rule parameters; static values are not merged into generated resolvers yet. |
 | [`@clientContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ✅ | Client config keys are merged into rule evaluation parameters. |
-| [Authentication Scheme Validators](https://smithy.io/2.0/aws/rules-engine/auth-schemes.html) | ⚠️ | Delegated to [runtime_endpoint](https://github.com/f34nk/smithy-beam/blob/v3/runtime/erlang/runtime_endpoint.erl) when rules reference auth schemes. |
-| [AWS Rules Engine Built-ins](https://smithy.io/2.0/aws/rules-engine/built-ins.html) | ⚠️ | Delegated to [runtime_endpoint](https://github.com/f34nk/smithy-beam/blob/v3/runtime/erlang/runtime_endpoint.erl). |
-| [AWS Rules Engine Library Functions](https://smithy.io/2.0/aws/rules-engine/library-functions.html) | ⚠️ | Delegated to [runtime_endpoint](https://github.com/f34nk/smithy-beam/blob/v3/runtime/erlang/runtime_endpoint.erl). |
+| [Authentication Scheme Validators](https://smithy.io/2.0/aws/rules-engine/auth-schemes.html) | ⚠️ | Delegated to [aws_endpoint](https://github.com/f34nk/smithy-beam/blob/v3/runtime/erlang/aws_endpoint.erl) when rules reference auth schemes. |
+| [AWS Rules Engine Built-ins](https://smithy.io/2.0/aws/rules-engine/built-ins.html) | ⚠️ | Delegated to [aws_endpoint](https://github.com/f34nk/smithy-beam/blob/v3/runtime/erlang/aws_endpoint.erl). |
+| [AWS Rules Engine Library Functions](https://smithy.io/2.0/aws/rules-engine/library-functions.html) | ⚠️ | Delegated to [aws_endpoint](https://github.com/f34nk/smithy-beam/blob/v3/runtime/erlang/aws_endpoint.erl). |
 
 ---
 
