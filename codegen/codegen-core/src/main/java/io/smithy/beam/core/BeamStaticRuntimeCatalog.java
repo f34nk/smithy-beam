@@ -12,7 +12,6 @@ public final class BeamStaticRuntimeCatalog {
           BeamStaticRuntimeModule.HTTP_TYPES,
           BeamStaticRuntimeModule.REQRES,
           BeamStaticRuntimeModule.UTILS,
-          BeamStaticRuntimeModule.AWS_ENDPOINT,
           BeamStaticRuntimeModule.AWS_SIGV4,
           BeamStaticRuntimeModule.HTTP_CHECKSUM,
           BeamStaticRuntimeModule.AWS_EVENT_STREAM);

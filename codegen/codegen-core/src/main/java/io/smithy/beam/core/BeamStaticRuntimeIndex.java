@@ -66,12 +66,10 @@ public final class BeamStaticRuntimeIndex {
     }
     if (module == BeamStaticRuntimeModule.REQRES) {
       addWithDependencies(selected, BeamStaticRuntimeModule.HTTP_TYPES);
-      addWithDependencies(selected, BeamStaticRuntimeModule.AWS_ENDPOINT);
-    } else if (module == BeamStaticRuntimeModule.AWS_ENDPOINT) {
       addWithDependencies(selected, BeamStaticRuntimeModule.UTILS);
     } else if (module == BeamStaticRuntimeModule.AWS_SIGV4) {
       addWithDependencies(selected, BeamStaticRuntimeModule.HTTP_TYPES);
-      addWithDependencies(selected, BeamStaticRuntimeModule.AWS_ENDPOINT);
+      addWithDependencies(selected, BeamStaticRuntimeModule.UTILS);
     }
   }
 

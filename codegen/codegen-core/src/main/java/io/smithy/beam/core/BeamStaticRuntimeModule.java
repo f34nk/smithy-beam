@@ -6,7 +6,6 @@ public record BeamStaticRuntimeModule(
 
   public enum RuntimeFeature {
     HTTP_CLIENT,
-    ENDPOINT,
     SIGV4,
     HTTP_CHECKSUM,
     EVENT_STREAM
@@ -20,9 +19,6 @@ public record BeamStaticRuntimeModule(
 
   public static final BeamStaticRuntimeModule UTILS =
       module("src/utils.erl", "utils.erl", "utils", RuntimeFeature.HTTP_CLIENT);
-
-  public static final BeamStaticRuntimeModule AWS_ENDPOINT =
-      module("src/aws_endpoint.erl", "aws_endpoint.erl", "aws_endpoint", RuntimeFeature.ENDPOINT);
 
   public static final BeamStaticRuntimeModule AWS_SIGV4 =
       module("src/aws_sigv4.erl", "aws_sigv4.erl", "aws_sigv4", RuntimeFeature.SIGV4);
