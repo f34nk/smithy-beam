@@ -25,6 +25,7 @@ build: copy
 	# Build $(CONTAINER_NAME)
 	#
 	smithy build
+	rm -rf src/generated
 	mkdir -p src/generated
 	cp -r build/smithy/source/erlang-*-codegen/* src/generated/
 	tree src/generated
