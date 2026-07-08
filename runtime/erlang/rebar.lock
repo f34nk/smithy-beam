@@ -1,1 +1,8 @@
-[].
+{"1.2.0",
+[{<<"aws_signature">>,{pkg,<<"aws_signature">>,<<"0.3.2">>},0}]}.
+[
+{pkg_hash,[
+ {<<"aws_signature">>, <<"ADF33BC4AF00B2089B7708BF20E3246F09C639A905A619B3689F0A0A22C3EF8F">>}]},
+{pkg_hash_ext,[
+ {<<"aws_signature">>, <<"B0DAF61FEB4250A8AB0ADEA60DB3E336AF732FF71DD3FB22E45AE3DCBD071E44">>}]}
+].
