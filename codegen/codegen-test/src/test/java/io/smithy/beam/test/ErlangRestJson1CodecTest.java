@@ -79,7 +79,7 @@ class ErlangRestJson1CodecTest {
     MockManifest manifest = runPlugin(loadFixture());
     String client = manifest.expectFileString("demo_rest_json_client.erl");
     assertThat(client).contains("demo_rest_json_rest_json_1:encode_describe_item_request(");
-    assertThat(client).contains("client:dispatch(");
+    assertThat(client).contains("reqres:dispatch(");
     assertThat(client).contains("demo_rest_json_rest_json_1:decode_describe_item_response(");
   }
 

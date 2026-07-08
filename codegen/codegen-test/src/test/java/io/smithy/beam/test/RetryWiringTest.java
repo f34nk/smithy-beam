@@ -38,7 +38,9 @@ class RetryWiringTest {
 
     String client = manifest.expectFileString("error_fixture_service_client.erl");
     assertThat(client).contains("RetryOpts = maps:get(retry, Config, #{})");
-    assertThat(client).contains("error_fixture_service_retry:with_retry(");
+    assertThat(client).contains("reqres:with_retry(");
+    assertThat(client).contains("should_retry => fun");
+    assertThat(client).doesNotContain("error_fixture_service_retry:");
     assertThat(client).contains("fun() ->");
     assertThat(client).contains("get_item(Config, Input) ->");
   }
@@ -66,7 +68,9 @@ class RetryWiringTest {
                 .build());
 
     String client = manifest.expectFileString("basic_service_client.erl");
-    assertThat(client).contains("basic_service_retry:with_retry(");
+    assertThat(client).contains("reqres:with_retry(");
+    assertThat(client).contains("should_retry => fun");
+    assertThat(client).doesNotContain("basic_service_retry:");
     assertThat(client).contains("fun() ->");
     assertThat(client).contains("get_type_closure(Config, Input) ->");
     assertThat(client).doesNotContain("list_basic_items(Config, Input) ->\n    RetryOpts");

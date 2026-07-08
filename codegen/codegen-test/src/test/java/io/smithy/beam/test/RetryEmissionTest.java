@@ -36,12 +36,10 @@ class RetryEmissionTest {
                         .build())
                 .build());
 
-    String retry = manifest.getFileString("error_fixture_service_retry.erl").orElse("");
-    assertThat(retry).contains("-module(error_fixture_service_retry).");
-    assertThat(retry).contains("with_retry/2");
-    assertThat(retry).contains("should_retry({error, #not_found_error{}}) -> true;");
-    assertThat(retry).contains("should_retry({error, #throttling_error{}}) -> true;");
-    assertThat(retry).contains("timer:sleep(trunc(Base * math:pow(2, N - 1))),");
+    String client = manifest.expectFileString("error_fixture_service_client.erl");
+    assertThat(client).contains("should_retry({error, #not_found_error{}}) -> true;");
+    assertThat(client).contains("should_retry({error, #throttling_error{}}) -> true;");
+    assertThat(client).contains("reqres:with_retry(");
   }
 
   @Test

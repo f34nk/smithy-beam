@@ -169,7 +169,7 @@ class ErlangClientPluginTest {
     assertThat(client)
         .contains("describe_item(Config, Input) ->")
         .contains("Req = demo_rest_json_rest_json_1:encode_describe_item_request(Input)")
-        .contains("case client:dispatch(Config, Req) of")
+        .contains("case reqres:dispatch(Config, Req) of")
         .contains("demo_rest_json_rest_json_1:decode_describe_item_response(Resp);");
   }
 
