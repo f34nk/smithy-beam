@@ -181,11 +181,11 @@ Endpoint resolution and regional configuration.
 |---------|--------|-------|
 | [Partition Support](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
 | [Region Configuration](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ✅ | Generated `default_config/0` seeds a default region. Callers override via client config. |
-| [Static Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ✅ | Generated `resolve_base_url/1` builds regional HTTPS URLs from `endpointPrefix` and config region when no endpoint rule set is present. HTTP dispatch applies it when `base_url` is unset. |
+| [Static Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ⚠️ | Elixir generated clients expose `resolve_base_url/1` and apply it when `base_url` is unset. Erlang HTTP dispatch reads `base_url` from client config; callers supply the endpoint URL explicitly. |
 | [Dual-Stack Endpoints](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-dualstackonlyendpoints-trait) | ❌ | Not implemented for general services. S3 dual-stack host suffix is available via client config (see S3 customizations). |
 | [FIPS Endpoints](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
 | [Declarative Endpoint Traits](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
-| [Rules-Based Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-rulesbasedendpoints-trait) | ✅ | When `@endpointRuleSet` is present, generated endpoint module evaluates rules at runtime and HTTP dispatch prefers that URL over static resolution. |
+| [Rules-Based Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-rulesbasedendpoints-trait) | ⚠️ | Elixir generated endpoint modules evaluate `@endpointRuleSet` at runtime when present. Erlang clients embed serialized rule sets in service types headers but do not evaluate them at runtime yet. |
 
 ---
 
@@ -222,14 +222,14 @@ Endpoint rules engine for dynamic endpoint resolution.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [Rules Engine Specification](https://smithy.io/2.0/aws/rules-engine/index.html) | ⚠️ | Generated clients embed serialized rule sets in service types headers and resolve endpoints through the static [aws_endpoint](https://github.com/f34nk/smithy-beam/blob/v3/runtime/erlang/aws_endpoint.erl) module when `@endpointRuleSet` is present. Full AWS rules engine surface is not otherwise exposed. |
-| [`@endpointRuleSet`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ✅ | Rule set serialized into generated service types headers and evaluated by the static runtime endpoint resolver. |
+| [Rules Engine Specification](https://smithy.io/2.0/aws/rules-engine/index.html) | ⚠️ | Elixir clients evaluate embedded `@endpointRuleSet` data through generated endpoint modules. Erlang clients embed rule sets in service types headers but do not evaluate them at runtime. Full AWS rules engine surface is not otherwise exposed. |
+| [`@endpointRuleSet`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ⚠️ | Rule set serialized into generated service types headers. Elixir clients evaluate it through generated endpoint modules; Erlang runtime evaluation is not implemented yet. |
 | [`@contextParam`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ➖ | Model metadata for rule parameters; operation input binding is not generated yet. |
 | [`@staticContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ➖ | Model metadata for rule parameters; static values are not merged into generated resolvers yet. |
 | [`@clientContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ✅ | Client config keys are merged into rule evaluation parameters. |
-| [Authentication Scheme Validators](https://smithy.io/2.0/aws/rules-engine/auth-schemes.html) | ⚠️ | Delegated to [aws_endpoint](https://github.com/f34nk/smithy-beam/blob/v3/runtime/erlang/aws_endpoint.erl) when rules reference auth schemes. |
-| [AWS Rules Engine Built-ins](https://smithy.io/2.0/aws/rules-engine/built-ins.html) | ⚠️ | Delegated to [aws_endpoint](https://github.com/f34nk/smithy-beam/blob/v3/runtime/erlang/aws_endpoint.erl). |
-| [AWS Rules Engine Library Functions](https://smithy.io/2.0/aws/rules-engine/library-functions.html) | ⚠️ | Delegated to [aws_endpoint](https://github.com/f34nk/smithy-beam/blob/v3/runtime/erlang/aws_endpoint.erl). |
+| [Authentication Scheme Validators](https://smithy.io/2.0/aws/rules-engine/auth-schemes.html) | ❌ | Not implemented. |
+| [AWS Rules Engine Built-ins](https://smithy.io/2.0/aws/rules-engine/built-ins.html) | ❌ | Not implemented. |
+| [AWS Rules Engine Library Functions](https://smithy.io/2.0/aws/rules-engine/library-functions.html) | ❌ | Not implemented. |
 
 ---
 
