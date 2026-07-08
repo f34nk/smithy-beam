@@ -44,7 +44,7 @@ final class ErlangS3EndpointIr {
                 OpaqueExpr.of(
                     """
                     BaseUrl = maps:get(base_url, Config, <<>>),
-                    {_Scheme, Authority} = runtime_http:split_base_url(BaseUrl),
+                    {_Scheme, Authority} = runtime_helpers:split_base_url(BaseUrl),
                     Authority"""
                         .strip()))),
         Spec.of("region_host(" + CLIENT_CONFIG + ") -> binary()"),

@@ -62,6 +62,6 @@ endpoint_host_from_config(Config) ->
                 {Prefix, Region} -> <<Prefix/binary, ".", Region/binary, ".amazonaws.com">>
             end;
         BaseUrl ->
-            {_Scheme, Authority} = runtime_http:split_base_url(BaseUrl),
+            {_Scheme, Authority} = runtime_helpers:split_base_url(BaseUrl),
             Authority
     end.

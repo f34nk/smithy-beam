@@ -5,7 +5,9 @@
     headers_set/3,
     checksum_header_encode/1,
     sha256_hash/1,
-    crc32_hash/1
+    crc32_hash/1,
+    split_base_url/1,
+    resolve_base_url/1
 ]).
 -spec parse_labels(binary(), binary()) -> {ok, map()} | {error, path_mismatch}.
 parse_labels(Path, Template) ->
@@ -85,3 +87,25 @@ validate_response_checksum(Body, Headers, [HeaderName | Rest]) ->
 
 checksum_algorithm_from_header(<<"x-amz-checksum-", Rest/binary>>) ->
     list_to_binary(string:uppercase(binary_to_list(Rest))).
+
+-spec resolve_base_url(map()) -> binary().
+resolve_base_url(Config) ->
+    Prefix = maps:get(endpoint_prefix, Config),
+    Region = maps:get(region, Config, <<"us-east-1">>),
+    <<"https://", Prefix/binary, ".", Region/binary, ".amazonaws.com">>.
+
+split_base_url(<<>>) ->
+    {<<>>, <<>>};
+split_base_url(BaseUrl) ->
+    case uri_string:parse(binary_to_list(BaseUrl)) of
+        #{scheme := Scheme, host := Host} = Parts ->
+            PortSuffix =
+                case maps:get(port, Parts, undefined) of
+                    undefined -> <<>>;
+                    Port -> <<":", (integer_to_binary(Port))/binary>>
+                end,
+            {<<(list_to_binary(Scheme))/binary, "://">>, <<(list_to_binary(Host))/binary,
+                PortSuffix/binary>>};
+        _ ->
+            {<<>>, BaseUrl}
+    end.

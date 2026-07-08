@@ -53,7 +53,6 @@ final class ErlangHttpDispatchIr {
             dispatchArity2(),
             dispatchArity3(),
             dispatchSigned(sigv4, endpointRules, helpersMod, endpointsMod),
-            splitBaseUrl(),
             mime()),
         List.of(
             "Generated HTTP dispatcher for " + service.getId() + ".",
@@ -127,7 +126,10 @@ final class ErlangHttpDispatchIr {
                 List.of(
                     VariablePattern.of("Scheme"),
                     VariablePattern.of("DefaultAuthority"))),
-            LocalCallExpr.of("split_base_url", List.of(Variable.of("BaseUrl"))),
+            RemoteCallExpr.of(
+                "runtime_helpers",
+                "split_base_url",
+                List.of(Variable.of("BaseUrl"))),
             BlockExpr.commaSeparated(
                 List.of(
                     authorityMatch(),
@@ -290,7 +292,7 @@ final class ErlangHttpDispatchIr {
                       Clause.of(
                           VariablePattern.of("_"),
                           RemoteCallExpr.of(
-                              "runtime_http",
+                              "runtime_helpers",
                               "resolve_base_url",
                               List.of(Variable.of("Config")))))));
     } else {
@@ -298,7 +300,7 @@ final class ErlangHttpDispatchIr {
           Clause.of(
               VariablePattern.of("_"),
               RemoteCallExpr.of(
-                  "runtime_http", "resolve_base_url", List.of(Variable.of("Config"))));
+                  "runtime_helpers", "resolve_base_url", List.of(Variable.of("Config"))));
     }
 
     return MatchExpr.bindValue(

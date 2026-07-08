@@ -4,9 +4,7 @@
 -include("runtime_types.hrl").
 -export([
     dispatch/2,
-    dispatch/3,
-    split_base_url/1,
-    resolve_base_url/1
+    dispatch/3
 ]).
 
 dispatch(Config, Request) ->
@@ -25,7 +23,7 @@ dispatch_signed(HttpClient, Config, #http_request{method = Method, path = Path, 
                     _ ->
                         case runtime_endpoint:resolve(Config, #{}) of
                             {ok, #{url := ResolvedUrl}} -> ResolvedUrl;
-                            _ -> resolve_base_url(Config)
+                            _ -> runtime_helpers:resolve_base_url(Config)
                         end
                 end;
             GivenUrl ->
@@ -39,7 +37,7 @@ dispatch_signed(HttpClient, Config, #http_request{method = Method, path = Path, 
                 Encoded = uri_string:compose_query([{K, V} || {K, V} <- Pairs]),
                 <<"?", Encoded/binary>>
         end,
-    {Scheme, DefaultAuthority} = split_base_url(BaseUrl),
+    {Scheme, DefaultAuthority} = runtime_helpers:split_base_url(BaseUrl),
     Authority =
         case Host of
             undefined -> DefaultAuthority;
@@ -69,28 +67,6 @@ dispatch_signed(HttpClient, Config, #http_request{method = Method, path = Path, 
             }};
         {error, Reason} ->
             {error, Reason}
-    end.
-
--spec resolve_base_url(map()) -> binary().
-resolve_base_url(Config) ->
-    Prefix = maps:get(endpoint_prefix, Config),
-    Region = maps:get(region, Config, <<"us-east-1">>),
-    <<"https://", Prefix/binary, ".", Region/binary, ".amazonaws.com">>.
-
-split_base_url(<<>>) ->
-    {<<>>, <<>>};
-split_base_url(BaseUrl) ->
-    case uri_string:parse(binary_to_list(BaseUrl)) of
-        #{scheme := Scheme, host := Host} = Parts ->
-            PortSuffix =
-                case maps:get(port, Parts, undefined) of
-                    undefined -> <<>>;
-                    Port -> <<":", (integer_to_binary(Port))/binary>>
-                end,
-            {<<(list_to_binary(Scheme))/binary, "://">>, <<(list_to_binary(Host))/binary,
-                PortSuffix/binary>>};
-        _ ->
-            {<<>>, BaseUrl}
     end.
 
 mime(Headers) ->

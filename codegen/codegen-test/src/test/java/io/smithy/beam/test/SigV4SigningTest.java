@@ -51,7 +51,7 @@ class SigV4SigningTest {
     assertThat(sigv4).contains("endpoint_host_from_config(Config)");
     assertThat(sigv4).contains("end;");
     assertThat(sigv4).contains("BaseUrl ->");
-    assertThat(sigv4).contains("runtime_http:split_base_url(BaseUrl)");
+    assertThat(sigv4).contains("runtime_helpers:split_base_url(BaseUrl)");
 
     String presigner = manifest.expectFileString("sigv4test_service_presigner.erl");
     assertThat(presigner).contains("-module(sigv4test_service_presigner).");

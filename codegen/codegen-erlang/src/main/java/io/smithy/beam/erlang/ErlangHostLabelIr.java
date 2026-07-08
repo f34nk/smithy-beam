@@ -94,7 +94,7 @@ final class ErlangHostLabelIr {
                                     VariablePattern.of("_Scheme"),
                                     VariablePattern.of("Authority"))),
                             RemoteCallExpr.of(
-                                "runtime_http",
+                                "runtime_helpers",
                                 "split_base_url",
                                 List.of(Variable.of("BaseUrl"))),
                             null),
