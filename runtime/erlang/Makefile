@@ -11,7 +11,7 @@ build: compile
 
 .PHONY: clean
 clean:
-	rm -rf _build
+	rm -rf _build *.dump
 	rebar3 clean
 
 .PHONY: format
