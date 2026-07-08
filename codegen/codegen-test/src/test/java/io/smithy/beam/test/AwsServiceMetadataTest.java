@@ -72,10 +72,7 @@ class AwsServiceMetadataTest {
     assertThat(client).contains("signing_name => <<\"testsign\">>");
     assertThat(client).doesNotContain("resolve_base_url");
 
-    String helpers = manifest.expectFileString("runtime_helpers.erl");
-    assertThat(helpers).contains("resolve_base_url(Config) ->");
-    assertThat(helpers)
-        .contains("<<\"https://\", Prefix/binary, \".\", Region/binary, \".amazonaws.com\">>");
+    assertThat(manifest.getFileString("runtime_helpers.erl")).isEmpty();
   }
 
   @Test

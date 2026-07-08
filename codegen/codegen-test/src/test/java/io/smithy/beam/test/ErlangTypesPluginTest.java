@@ -104,6 +104,9 @@ class ErlangTypesPluginTest {
     assertThat(manifest.getFileString("reserved_service_rest_json_1.erl")).isEmpty();
     assertThat(manifest.getFileString("reserved_service_router.erl")).isEmpty();
     assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
+    assertThat(manifest.getFileString("runtime_types.hrl")).isEmpty();
+    assertThat(manifest.getFileString("runtime_helpers.erl")).isEmpty();
+    assertThat(manifest.getFileString("aws_endpoint_rules.erl")).isEmpty();
   }
 
   @Test

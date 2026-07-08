@@ -84,11 +84,10 @@ class ErlangRestJson1CodecTest {
   }
 
   @Test
-  void httpDispatchModuleIsEmitted() {
+  void httpDispatchModuleIsNotEmitted() {
     MockManifest manifest = runPlugin(loadFixture());
-    String http = manifest.expectFileString("runtime_http.erl");
-    assertThat(http).contains("-module(runtime_http).");
-    assertThat(http).contains("dispatch_signed(HttpClient, Config, #http_request{method = Method");
-    assertThat(http).contains("HttpClient:request(");
+    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
+    assertThat(manifest.getFileString("runtime_types.hrl")).isEmpty();
+    assertThat(manifest.getFileString("runtime_helpers.erl")).isEmpty();
   }
 }

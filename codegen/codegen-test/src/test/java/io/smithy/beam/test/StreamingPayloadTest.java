@@ -105,9 +105,13 @@ class StreamingPayloadTest {
   }
 
   @Test
-  void erlangRuntimeTypesIncludeStreamField() {
-    String types = runErlangPlugin(loadModel()).getFileString("runtime_types.hrl").orElse("");
-    assertThat(types).contains("stream = undefined");
+  void erlangRuntimeTypesAreNotEmitted() {
+    MockManifest manifest = runErlangPlugin(loadModel());
+    assertThat(manifest.getFileString("runtime_types.hrl")).isEmpty();
+
+    String codec = manifest.getFileString("streaming_service_rest_json_1.erl").orElse("");
+    assertThat(codec).contains("-include(\"runtime_types.hrl\").");
+    assertThat(codec).contains("stream = Stream");
   }
 
   @Test

@@ -59,9 +59,7 @@ class HttpChecksumEmissionTest {
     assertThat(codec).contains("Other ->");
     assertThat(codec).contains("error({unsupported_checksum_algorithm, Other})");
 
-    String runtimeHelpers = manifest.getFileString("runtime_helpers.erl").orElse("");
-    assertThat(runtimeHelpers).contains("<<(erlang:crc32(Body)):32/big-unsigned-integer>>");
-    assertThat(runtimeHelpers).doesNotContain("/32/big-unsigned-integer");
+    assertThat(manifest.getFileString("runtime_helpers.erl")).isEmpty();
   }
 
   @Test

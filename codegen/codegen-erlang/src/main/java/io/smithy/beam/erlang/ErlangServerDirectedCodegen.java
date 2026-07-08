@@ -9,7 +9,6 @@ import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
-import io.beam.ir.erlang.ErlangRenderer;
 import io.beam.ir.erlang.Module;
 import java.util.ArrayList;
 import java.util.List;
@@ -106,19 +105,6 @@ final class ErlangServerDirectedCodegen
             protocol ->
                 BeamProtocolResolver.assertClosureSupported(
                     directive.model(), service, protocol, edition));
-
-    String ns = service.getId().getNamespace();
-    BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns, service);
-
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.runtimeTypesHeaderFile(),
-            writer ->
-                writer.write(
-                    "$L",
-                    ErlangRenderer.render(
-                        ErlangRuntimeTypesIr.runtimeTypesHeader(
-                            "runtime_types", Optional.of(service.getId().toString())))));
 
     List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
     ErlangBehaviourEmitter.beginService(ctx, service, operations);

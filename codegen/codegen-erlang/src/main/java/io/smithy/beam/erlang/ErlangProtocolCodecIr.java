@@ -49,7 +49,6 @@ final class ErlangProtocolCodecIr {
     if (protocol == null) {
       return;
     }
-    ErlangCodecEmission.emitRuntimeHelpersIfNeeded(ctx, service, true);
     BeamErlangLayout layout = layout(ctx, service);
     switch (protocol) {
       case ShapeId id when BeamProtocolIds.REST_JSON_1.equals(id) -> {

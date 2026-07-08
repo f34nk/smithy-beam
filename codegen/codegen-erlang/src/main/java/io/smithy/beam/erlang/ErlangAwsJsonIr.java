@@ -123,7 +123,6 @@ final class ErlangAwsJsonIr {
   }
 
   static void emitServerCodecModule(ErlangContext ctx, ServiceShape service, ShapeId protocol) {
-    ErlangCodecEmission.emitRuntimeHelpersIfNeeded(ctx, service, true);
     Module module = buildServerCodecModule(ctx, service, protocol);
     ErlangCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service, protocol), module);
   }

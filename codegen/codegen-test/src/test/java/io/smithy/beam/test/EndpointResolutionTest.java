@@ -26,17 +26,13 @@ class EndpointResolutionTest {
   @Test
   void erlangHttpDispatchFallsBackToResolveBaseUrl() {
     MockManifest manifest = runErlangClient();
-    String http = manifest.expectFileString("runtime_http.erl");
+    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
+    assertThat(manifest.getFileString("runtime_helpers.erl")).isEmpty();
+    assertThat(manifest.getFileString("runtime_types.hrl")).isEmpty();
 
-    assertThat(http).contains("case maps:get(base_url, Config, undefined) of");
-    assertThat(http).contains("GivenUrl ->");
-    assertThat(http).contains("GivenUrl");
-    assertThat(http).doesNotContain("Url -> Url");
-    assertThat(http).contains("runtime_helpers:resolve_base_url(Config)");
-
-    String helpers = manifest.expectFileString("runtime_helpers.erl");
-    assertThat(helpers).contains("resolve_base_url(Config) ->");
-    assertThat(helpers).contains("maps:get(endpoint_prefix, Config)");
+    String client = manifest.expectFileString("aws_metadata_service_client.erl");
+    assertThat(client).contains("default_config() ->");
+    assertThat(client).contains("endpoint_prefix => <<\"testprefix\">>");
   }
 
   @Test

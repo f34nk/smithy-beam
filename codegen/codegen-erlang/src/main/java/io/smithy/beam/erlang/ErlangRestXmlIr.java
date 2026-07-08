@@ -115,7 +115,6 @@ final class ErlangRestXmlIr {
   }
 
   static void emitServerCodecModule(ErlangContext ctx, ServiceShape service) {
-    ErlangCodecEmission.emitRuntimeHelpersIfNeeded(ctx, service, true);
     Module module = buildServerCodecModule(ctx, service);
     ErlangCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service), module);
   }

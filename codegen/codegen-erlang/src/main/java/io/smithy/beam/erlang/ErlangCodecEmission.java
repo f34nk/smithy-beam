@@ -2,7 +2,6 @@ package io.smithy.beam.erlang;
 
 import io.beam.ir.erlang.ErlangRenderer;
 import io.beam.ir.erlang.Module;
-import software.amazon.smithy.model.shapes.ServiceShape;
 
 final class ErlangCodecEmission {
   private ErlangCodecEmission() {}
@@ -19,11 +18,5 @@ final class ErlangCodecEmission {
               writer.pushGeneratedDocumentationSection();
               writer.write("$L", erlangSource);
             });
-  }
-
-  static void emitRuntimeHelpersIfNeeded(ErlangContext ctx, ServiceShape service, boolean server) {
-    if (server) {
-      ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
-    }
   }
 }

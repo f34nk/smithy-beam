@@ -165,10 +165,7 @@ class ErlangClientPluginTest {
     assertThat(manifest.expectFileString("demo_rest_json_rest_json_1.erl"))
         .contains("-module(demo_rest_json_rest_json_1).")
         .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
-    assertThat(manifest.expectFileString("runtime_http.erl"))
-        .contains("-module(runtime_http).")
-        .contains("HttpClient = maps:get(http_client, Config, httpc),")
-        .contains("dispatch_signed(HttpClient, Config, #http_request{method = Method");
+    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
     String client = manifest.expectFileString("demo_rest_json_client.erl");
     assertThat(client)
         .contains("describe_item(Config, Input) ->")
@@ -205,15 +202,11 @@ class ErlangClientPluginTest {
     assertThat(codec).doesNotContain("#describe_item_input(){");
     assertThat(codec).contains("(V) when V =/= undefined");
     assertThat(codec).contains("uri_encode(");
-    String runtimeHelpers = manifest.expectFileString("runtime_helpers.erl");
-    assertThat(runtimeHelpers.split("-module\\(runtime_helpers\\)", -1)).hasSize(2);
-    assertThat(runtimeHelpers)
-        .contains("-module(runtime_helpers).")
-        .contains("parse_labels(Path, Template)");
     assertThat(codec).contains("decode_describe_item_request(");
     assertThat(codec).contains("LabelMap");
     assertThat(codec).doesNotContain("runtime_helpers:parse_labels(Path");
     assertThat(codec).doesNotContain("beam_path:parse_labels");
+    assertThat(manifest.getFileString("runtime_helpers.erl")).isEmpty();
 
     new ErlangServerPlugin()
         .execute(
@@ -272,7 +265,7 @@ class ErlangClientPluginTest {
             PluginContext.builder().model(model).fileManifest(manifest).settings(settings).build());
 
     assertThat(manifest.getFileString("resource_lifecycle_service_rest_json_1.erl")).isPresent();
-    assertThat(manifest.getFileString("runtime_http.erl")).isPresent();
+    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
 
     String org = manifest.expectFileString("organization_resource.erl");
     assertThat(org).contains("-module(organization_resource).");
