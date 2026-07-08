@@ -38,6 +38,12 @@ format/java:
 	#
 	./gradlew spotlessApply
 	
+.PHONY: format/runtime-erlang
+format/runtime-erlang:
+	cd runtime/erlang && \
+	erlfmt --write *.erl && \
+	erlfmt --write *.hrl
+
 .PHONY: clean
 clean:
 	#
