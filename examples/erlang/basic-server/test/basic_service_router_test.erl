@@ -2,7 +2,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include("basic_service_types.hrl").
--include("runtime_types.hrl").
+-include("http_types.hrl").
 
 %% Request flow: http_request -> basic_service_router:dispatch/2 -> codec decode -> Handler:handle_<op>/3.
 %% Pass basic_service_server as Handler to invoke the generated server stub.
