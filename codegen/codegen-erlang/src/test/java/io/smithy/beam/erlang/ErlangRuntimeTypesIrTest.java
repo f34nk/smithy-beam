@@ -24,12 +24,13 @@ class ErlangRuntimeTypesIrTest {
   private static Path runtimeHttpTypesHeader() {
     Path dir = Path.of(System.getProperty("user.dir"));
     while (dir != null) {
-      Path header = dir.resolve("runtime/erlang/http_types.hrl");
+      Path header = dir.resolve("runtime/erlang/include/http_types.hrl");
       if (Files.isRegularFile(header)) {
         return header;
       }
+      header = dir.resolve("runtime/erlang/src/http_types.hrl");
       dir = dir.getParent();
     }
-    throw new IllegalStateException("Could not find runtime/erlang/http_types.hrl");
+    throw new IllegalStateException("Could not find runtime/erlang/include/http_types.hrl");
   }
 }

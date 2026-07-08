@@ -123,11 +123,11 @@ public final class BeamErlangLayout {
   }
 
   public String runtimeHelpersModuleFile() {
-    return "runtime_helpers.erl";
+    return "utils.erl";
   }
 
   public String runtimeHelpersModuleName() {
-    return "runtime_helpers";
+    return "utils";
   }
 
   public String runtimeHttpModuleFile() {

@@ -42,6 +42,8 @@ class ErlangRouterIrTest {
     assertThat(router).contains("<<\"/basic-items\">>");
     assertThat(router).contains("<<\"/types/\", NameSeg/binary>>");
     assertThat(router).contains("parse_labels(Path, <<\"/types/{name}\">>)");
+    assertThat(router).doesNotContain("utils:parse_labels");
+    assertThat(router).contains("-spec parse_labels(binary(), binary())");
     assertThat(router).contains("{error, {not_found, Method, Path}}");
   }
 

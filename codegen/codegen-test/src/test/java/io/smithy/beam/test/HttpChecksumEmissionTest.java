@@ -45,7 +45,7 @@ class HttpChecksumEmissionTest {
     assertThat(codec).doesNotContain("md5_hash(Body) ->");
     assertThat(codec).doesNotContain("validate_response_checksum(_Body");
     assertThat(codec).doesNotContain("checksum_digest(Body");
-    assertThat(codec).contains("runtime_helpers:headers_set(<<\"Content-MD5\">>");
+    assertThat(codec).contains("lists:keystore(<<\"Content-MD5\">>, 1, Headers");
     assertThat(codec).contains("http_checksum:checksum_header_encode(");
     assertThat(codec).contains("http_checksum:md5_hash(Body)");
     assertThat(codec).contains("http_checksum:crc32c_hash(Body)");
@@ -81,7 +81,7 @@ class HttpChecksumEmissionTest {
     assertThat(codec).doesNotContain("md5_hash(Body) ->");
     assertThat(codec).doesNotContain("validate_response_checksum(_Body");
     assertThat(codec).doesNotContain("checksum_digest(Body");
-    assertThat(codec).contains("runtime_helpers:headers_set(<<\"Content-MD5\">>");
+    assertThat(codec).contains("lists:keystore(<<\"Content-MD5\">>, 1, Headers");
     assertThat(codec).contains("http_checksum:checksum_header_encode(");
     assertThat(codec).contains("http_checksum:md5_hash(Body)");
   }

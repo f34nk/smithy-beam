@@ -7,6 +7,7 @@ import io.beam.ir.erlang.BlockExpr;
 import io.beam.ir.erlang.CaseExpr;
 import io.beam.ir.erlang.Clause;
 import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.IntegerExpr;
 import io.beam.ir.erlang.ListExpr;
 import io.beam.ir.erlang.LocalCallExpr;
 import io.beam.ir.erlang.MatchExpr;
@@ -35,7 +36,6 @@ import software.amazon.smithy.model.shapes.StructureShape;
 
 final class ErlangHttpChecksumIr {
   private static final String HTTP_CHECKSUM_MOD = "http_checksum";
-  private static final String RUNTIME_HELPERS_MOD = "runtime_helpers";
   private static final Set<String> HTTP_CHECKSUM_HASH_HELPERS =
       Set.of("md5_hash", "sha256_hash", "crc32_hash", "crc32c_hash");
 
@@ -91,16 +91,13 @@ final class ErlangHttpChecksumIr {
       exprs.add(
           MatchExpr.bindValue(
               next,
-              RemoteCallExpr.of(
-                  RUNTIME_HELPERS_MOD,
-                  "headers_set",
-                  List.of(
-                      BinaryExpr.of(cb.headerName()),
-                      RemoteCallExpr.of(
-                          HTTP_CHECKSUM_MOD,
-                          "checksum_header_encode",
-                          List.of(Variable.of(checksumVar))),
-                      Variable.of(current)))));
+              headersSetExpr(
+                  BinaryExpr.of(cb.headerName()),
+                  RemoteCallExpr.of(
+                      HTTP_CHECKSUM_MOD,
+                      "checksum_header_encode",
+                      List.of(Variable.of(checksumVar))),
+                  Variable.of(current))));
       current = next;
     }
     return Optional.of(BlockExpr.commaSeparated(exprs, false));
@@ -145,17 +142,26 @@ final class ErlangHttpChecksumIr {
     return BlockExpr.commaSeparated(
         List.of(
             checksumComputationExpr(cb, "Checksum"),
-            RemoteCallExpr.of(
-                RUNTIME_HELPERS_MOD,
-                "headers_set",
-                List.of(
-                    BinaryExpr.of(cb.headerName()),
-                    RemoteCallExpr.of(
-                        HTTP_CHECKSUM_MOD,
-                        "checksum_header_encode",
-                        List.of(Variable.of("Checksum"))),
-                    Variable.of(headersVar)))),
+            headersSetExpr(
+                BinaryExpr.of(cb.headerName()),
+                RemoteCallExpr.of(
+                    HTTP_CHECKSUM_MOD,
+                    "checksum_header_encode",
+                    List.of(Variable.of("Checksum"))),
+                Variable.of(headersVar))),
         false);
+  }
+
+  private static Expression headersSetExpr(
+      Expression name, Expression value, Expression headers) {
+    return RemoteCallExpr.of(
+        "lists",
+        "keystore",
+        List.of(
+            name,
+            IntegerExpr.of(1),
+            headers,
+            TupleExpr.of(List.of(name, value))));
   }
 
   private static Expression checksumComputationExpr(
