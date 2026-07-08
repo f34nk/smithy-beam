@@ -171,8 +171,7 @@ final class ErlangSigV4Ir {
         signOptions(),
         bodyDigestOption(),
         sessionTokenOption(),
-        endpointHostFromConfig(),
-        splitBaseUrl());
+        endpointHostFromConfig());
   }
 
   private static List<Function> sigV4Functions() {
@@ -393,7 +392,7 @@ final class ErlangSigV4Ir {
                                 {Prefix, Region} -> <<Prefix/binary, \".\", Region/binary, \".amazonaws.com\">>
                             end;
                         BaseUrl ->
-                            {_Scheme, Authority} = split_base_url(BaseUrl),
+                            {_Scheme, Authority} = runtime_http:split_base_url(BaseUrl),
                             Authority
                     end"""
                         .strip()))),
@@ -402,31 +401,4 @@ final class ErlangSigV4Ir {
         null);
   }
 
-  private static Function splitBaseUrl() {
-    return Function.of(
-        "split_base_url",
-        List.of(
-            FunctionClause.of(
-                List.of(BinaryPattern.of("")),
-                TupleExpr.of(List.of(BinaryExpr.of(""), BinaryExpr.of("")))),
-            FunctionClause.of(
-                List.of(VariablePattern.of("BaseUrl")),
-                OpaqueExpr.of(
-                    """
-                    case uri_string:parse(binary_to_list(BaseUrl)) of
-                        #{scheme := Scheme, host := Host} = Parts ->
-                            PortSuffix = case maps:get(port, Parts, undefined) of
-                                undefined -> <<>>;
-                                Port -> <<\":\", (integer_to_binary(Port))/binary>>
-                            end,
-                            {<< (list_to_binary(Scheme))/binary, \"://\">>,
-                             << (list_to_binary(Host))/binary, PortSuffix/binary >>};
-                        _ ->
-                            {<<>>, BaseUrl}
-                    end"""
-                        .strip()))),
-        null,
-        null,
-        null);
-  }
 }

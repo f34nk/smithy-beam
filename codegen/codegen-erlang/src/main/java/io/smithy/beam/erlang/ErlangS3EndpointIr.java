@@ -7,7 +7,6 @@ import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.Module;
 import io.beam.ir.erlang.OpaqueExpr;
 import io.beam.ir.erlang.Spec;
-import io.beam.ir.erlang.TupleExpr;
 import io.beam.ir.erlang.TypeAlias;
 import io.beam.ir.erlang.VariablePattern;
 import java.util.ArrayList;
@@ -45,7 +44,7 @@ final class ErlangS3EndpointIr {
                 OpaqueExpr.of(
                     """
                     BaseUrl = maps:get(base_url, Config, <<>>),
-                    {_Scheme, Authority} = split_base_url(BaseUrl),
+                    {_Scheme, Authority} = runtime_http:split_base_url(BaseUrl),
                     Authority"""
                         .strip()))),
         Spec.of("region_host(" + CLIENT_CONFIG + ") -> binary()"),
@@ -85,7 +84,7 @@ final class ErlangS3EndpointIr {
   }
 
   static List<Function> helperFunctions() {
-    return List.of(keyPath(), virtualHost(), s3HostSuffix(), splitBaseUrl());
+    return List.of(keyPath(), virtualHost(), s3HostSuffix());
   }
 
   private static Function keyPath() {
@@ -142,31 +141,4 @@ final class ErlangS3EndpointIr {
         null);
   }
 
-  private static Function splitBaseUrl() {
-    return Function.of(
-        "split_base_url",
-        List.of(
-            FunctionClause.of(
-                List.of(BinaryPattern.of("")),
-                TupleExpr.of(List.of(BinaryExpr.of(""), BinaryExpr.of("")))),
-            FunctionClause.of(
-                List.of(VariablePattern.of("BaseUrl")),
-                OpaqueExpr.of(
-                    """
-                    case uri_string:parse(binary_to_list(BaseUrl)) of
-                        #{scheme := Scheme, host := Host} = Parts ->
-                            PortSuffix = case maps:get(port, Parts, undefined) of
-                                undefined -> <<>>;
-                                Port -> <<\":\", (integer_to_binary(Port))/binary>>
-                            end,
-                            {<< (list_to_binary(Scheme))/binary, \"://">>,
-                             << (list_to_binary(Host))/binary, PortSuffix/binary >>};
-                        _ ->
-                            {<<>>, BaseUrl}
-                    end"""
-                        .strip()))),
-        null,
-        null,
-        null);
-  }
 }

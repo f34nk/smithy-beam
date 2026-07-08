@@ -29,11 +29,8 @@ class ErlangHostLabelIrTest {
         new ErlangSymbolProvider(
             settings, model, service, "host_label_types.hrl", BeamCodegenKind.CLIENT);
     List<Function> functions = ErlangHostLabelIr.buildHostFunctions(model, service, sp);
-    assertThat(functions).hasSize(2);
-    String combined =
-        ErlangRenderer.renderFunction(functions.get(0))
-            + "\n\n"
-            + ErlangRenderer.renderFunction(functions.get(1));
+    assertThat(functions).hasSize(1);
+    String combined = ErlangRenderer.renderFunction(functions.get(0));
     assertThat(combined)
         .isEqualTo(IrGoldenAssertions.readExpectedString("ir/host_label_helpers.expected.erl"));
   }

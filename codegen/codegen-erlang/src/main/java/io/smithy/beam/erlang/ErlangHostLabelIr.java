@@ -41,7 +41,6 @@ final class ErlangHostLabelIr {
   static List<Function> buildHostFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
     List<Function> functions = new ArrayList<>();
-    functions.add(ErlangHttpDispatchIr.splitBaseUrl());
     BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
     for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
       List<MemberShape> hostLabels = hostLabelIndex.hostLabelMembers(op);
@@ -94,7 +93,10 @@ final class ErlangHostLabelIr {
                                 List.of(
                                     VariablePattern.of("_Scheme"),
                                     VariablePattern.of("Authority"))),
-                            LocalCallExpr.of("split_base_url", List.of(Variable.of("BaseUrl"))),
+                            RemoteCallExpr.of(
+                                "runtime_http",
+                                "split_base_url",
+                                List.of(Variable.of("BaseUrl"))),
                             null),
                         MatchExpr.bindValue("Prefix", buildHostPrefixExpression(hostPrefix)),
                         result),

@@ -94,6 +94,8 @@ class HostLabelTest {
     assertThat(codec).contains("host = Host");
     assertThat(codec).contains("build_host(#get_tenant_data_input{");
     assertThat(codec).contains("uri_encode(to_binary(Tenant))");
+    assertThat(codec).contains("runtime_http:split_base_url(BaseUrl)");
+    assertThat(codec).doesNotContain("split_base_url(<<>>)");
 
     assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
 
