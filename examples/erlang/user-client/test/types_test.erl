@@ -1,4 +1,4 @@
--module(user_service_types_test).
+-module(types_test).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("user_service_types.hrl").
