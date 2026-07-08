@@ -119,7 +119,7 @@ public final class BeamErlangLayout {
   }
 
   public String runtimeTypesHeaderFile() {
-    return "runtime_types.hrl";
+    return "http_types.hrl";
   }
 
   public String runtimeHelpersModuleFile() {
@@ -135,7 +135,7 @@ public final class BeamErlangLayout {
   }
 
   public String runtimeHttpModuleName() {
-    return "runtime_http";
+    return "client";
   }
 
   public String paginatorsModuleFile() {
