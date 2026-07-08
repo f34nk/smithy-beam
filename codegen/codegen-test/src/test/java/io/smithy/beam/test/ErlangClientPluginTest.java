@@ -35,6 +35,21 @@ class ErlangClientPluginTest {
   }
 
   @Test
+  void emitsOnlyRequiredStaticRuntimeModulesForBasicClient() {
+    Model model = loadModel();
+    MockManifest manifest = new MockManifest();
+
+    new ErlangClientPlugin().execute(buildContext(model, manifest));
+
+    assertThat(manifest.getFileString("reqres.erl")).isPresent();
+    assertThat(manifest.getFileString("http_types.hrl")).isPresent();
+    assertThat(manifest.expectFileString("reqres.erl")).contains("-module(reqres).");
+    assertThat(manifest.getFileString("aws_sigv4.erl")).isEmpty();
+    assertThat(manifest.getFileString("http_checksum.erl")).isEmpty();
+    assertThat(manifest.getFileString("aws_event_stream.erl")).isEmpty();
+  }
+
+  @Test
   void emitsTypesHeaderAndClientStubOnManifest() {
     Model model = loadModel();
     MockManifest manifest = new MockManifest();
