@@ -4,9 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.beam.ir.erlang.ErlangRenderer;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -14,23 +13,21 @@ class ErlangRuntimeTypesIrTest {
 
   @Test
   void runtimeTypesHeaderMatchesResource() throws IOException {
-    String expected = Files.readString(runtimeHttpTypesHeader(), StandardCharsets.UTF_8);
+    String expected = runtimeHttpTypesHeader();
     assertThat(
             ErlangRenderer.render(
                 ErlangRuntimeTypesIr.runtimeTypesHeader("http_types", Optional.empty())))
         .isEqualTo(expected);
   }
 
-  private static Path runtimeHttpTypesHeader() {
-    Path dir = Path.of(System.getProperty("user.dir"));
-    while (dir != null) {
-      Path header = dir.resolve("runtime/erlang/include/http_types.hrl");
-      if (Files.isRegularFile(header)) {
-        return header;
+  private static String runtimeHttpTypesHeader() throws IOException {
+    String resourcePath = "runtime/erlang/src/http_types.hrl";
+    try (InputStream in =
+        ErlangRuntimeTypesIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
+      if (in == null) {
+        throw new IllegalStateException("Missing classpath resource: " + resourcePath);
       }
-      header = dir.resolve("runtime/erlang/src/http_types.hrl");
-      dir = dir.getParent();
+      return new String(in.readAllBytes(), StandardCharsets.UTF_8);
     }
-    throw new IllegalStateException("Could not find runtime/erlang/include/http_types.hrl");
   }
 }
