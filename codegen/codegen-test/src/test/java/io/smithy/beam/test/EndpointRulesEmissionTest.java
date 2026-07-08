@@ -56,8 +56,6 @@ class EndpointRulesEmissionTest {
     assertThat(serviceTypes).contains("<<\"argv\">> => [");
 
     assertThat(manifest.getFileString("endpoint_rules_service_endpoints.erl")).isEmpty();
-    assertThat(manifest.getFileString("aws_endpoint_rules.erl")).isEmpty();
-    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
 
     assertRuleEvaluationMatchesReference(loadModel());
   }

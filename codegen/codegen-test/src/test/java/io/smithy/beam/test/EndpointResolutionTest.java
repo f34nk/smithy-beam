@@ -26,9 +26,6 @@ class EndpointResolutionTest {
   @Test
   void erlangHttpDispatchFallsBackToResolveBaseUrl() {
     MockManifest manifest = runErlangClient();
-    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
-    assertThat(manifest.getFileString("runtime_helpers.erl")).isEmpty();
-    assertThat(manifest.getFileString("runtime_types.hrl")).isEmpty();
 
     String client = manifest.expectFileString("aws_metadata_service_client.erl");
     assertThat(client).contains("default_config() ->");

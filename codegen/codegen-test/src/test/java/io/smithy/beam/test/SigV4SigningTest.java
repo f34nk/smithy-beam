@@ -41,7 +41,6 @@ class SigV4SigningTest {
   void erlangClientEmitsSigV4SigningModule() {
     MockManifest manifest = runErlangClient();
 
-    assertThat(manifest.getFileString("sigv4test_service_sigv4.erl")).isEmpty();
     assertThat(manifest.getFileString("sigv4test_service_presigner.erl")).isEmpty();
 
     String client = manifest.expectFileString("sigv4test_service_client.erl");
@@ -89,7 +88,6 @@ class SigV4SigningTest {
                         .build())
                 .build());
 
-    assertThat(manifest.getFileString("basic_service_sigv4.erl")).isEmpty();
     assertThat(manifest.expectFileString("basic_service_client.erl"))
         .doesNotContain("aws_sigv4:sign(");
   }

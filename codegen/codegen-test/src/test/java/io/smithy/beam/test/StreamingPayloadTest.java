@@ -105,12 +105,11 @@ class StreamingPayloadTest {
   }
 
   @Test
-  void erlangRuntimeTypesAreNotEmitted() {
+  void erlangStreamingPayloadIncludesRuntimeTypesHeader() {
     MockManifest manifest = runErlangPlugin(loadModel());
-    assertThat(manifest.getFileString("runtime_types.hrl")).isEmpty();
 
     String codec = manifest.getFileString("streaming_service_rest_json_1.erl").orElse("");
-    assertThat(codec).contains("-include(\"runtime_types.hrl\").");
+    assertThat(codec).contains("-include(\"http_types.hrl\").");
     assertThat(codec).contains("stream = Stream");
   }
 

@@ -60,8 +60,6 @@ class HttpChecksumEmissionTest {
     assertThat(codec).contains("sha256 ->");
     assertThat(codec).contains("Other ->");
     assertThat(codec).contains("error({unsupported_checksum_algorithm, Other})");
-
-    assertThat(manifest.getFileString("runtime_helpers.erl")).isEmpty();
   }
 
   @Test

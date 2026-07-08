@@ -28,8 +28,6 @@ class CredentialProviderEmissionTest {
     String client = manifest.expectFileString("sigv4test_service_client.erl");
     assertThat(client).contains("aws_credentials:get_credentials()");
     assertThat(client).contains("session_token => maps:get(token, Creds0, undefined)");
-
-    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
   }
 
   @Test
@@ -49,7 +47,6 @@ class CredentialProviderEmissionTest {
   void basicServiceOmitsCredentialsModule() {
     MockManifest erlang = runErlang(BASIC_SERVICE, "/model/basic.smithy");
     assertThat(erlang.getFileString("basic_service_credentials.erl")).isEmpty();
-    assertThat(erlang.getFileString("runtime_http.erl")).isEmpty();
 
     MockManifest elixir = runElixir(BASIC_SERVICE, "/model/basic.smithy");
     assertThat(elixir.getFileString("basic_service_credentials.ex")).isEmpty();

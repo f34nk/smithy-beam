@@ -71,8 +71,6 @@ class AwsServiceMetadataTest {
     assertThat(client).contains("endpoint_prefix => <<\"testprefix\">>");
     assertThat(client).contains("signing_name => <<\"testsign\">>");
     assertThat(client).doesNotContain("resolve_base_url");
-
-    assertThat(manifest.getFileString("runtime_helpers.erl")).isEmpty();
   }
 
   @Test

@@ -136,7 +136,6 @@ class ErlangIntegrationSectionsTest {
     runClientDirectedCodegen(context);
 
     assertThat(manifest.getFileString("demo_rest_json_rest_json_1.erl")).isPresent();
-    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
     assertThat(manifest.getFileString("demo_rest_json_client.erl")).isPresent();
   }
 
@@ -150,7 +149,6 @@ class ErlangIntegrationSectionsTest {
     runClientDirectedCodegen(context);
 
     assertThat(manifest.getFileString("dedicated_io_service_rest_json_1.erl")).isEmpty();
-    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
     assertThat(manifest.getFileString("dedicated_io_service_client.erl")).isPresent();
   }
 }

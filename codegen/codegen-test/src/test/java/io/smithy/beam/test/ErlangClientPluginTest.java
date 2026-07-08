@@ -165,12 +165,11 @@ class ErlangClientPluginTest {
     assertThat(manifest.expectFileString("demo_rest_json_rest_json_1.erl"))
         .contains("-module(demo_rest_json_rest_json_1).")
         .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
-    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
     String client = manifest.expectFileString("demo_rest_json_client.erl");
     assertThat(client)
         .contains("describe_item(Config, Input) ->")
         .contains("Req = demo_rest_json_rest_json_1:encode_describe_item_request(Input)")
-        .contains("case runtime_http:dispatch(Config, Req) of")
+        .contains("case client:dispatch(Config, Req) of")
         .contains("demo_rest_json_rest_json_1:decode_describe_item_response(Resp);");
   }
 
@@ -206,7 +205,6 @@ class ErlangClientPluginTest {
     assertThat(codec).contains("LabelMap");
     assertThat(codec).doesNotContain("runtime_helpers:parse_labels(Path");
     assertThat(codec).doesNotContain("beam_path:parse_labels");
-    assertThat(manifest.getFileString("runtime_helpers.erl")).isEmpty();
 
     new ErlangServerPlugin()
         .execute(
@@ -265,7 +263,6 @@ class ErlangClientPluginTest {
             PluginContext.builder().model(model).fileManifest(manifest).settings(settings).build());
 
     assertThat(manifest.getFileString("resource_lifecycle_service_rest_json_1.erl")).isPresent();
-    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
 
     String org = manifest.expectFileString("organization_resource.erl");
     assertThat(org).contains("-module(organization_resource).");

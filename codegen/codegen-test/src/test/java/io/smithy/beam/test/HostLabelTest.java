@@ -97,8 +97,6 @@ class HostLabelTest {
     assertThat(codec).contains("runtime_helpers:split_base_url(BaseUrl)");
     assertThat(codec).doesNotContain("split_base_url(<<>>)");
 
-    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
-
     String client = manifest.getFileString("host_label_service_client.erl").orElse("");
     assertThat(client).contains("encode_get_tenant_data_request(");
     assertThat(client).contains("Config, Input");

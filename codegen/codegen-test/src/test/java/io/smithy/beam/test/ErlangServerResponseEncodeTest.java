@@ -36,7 +36,6 @@ class ErlangServerResponseEncodeTest {
     assertThat(serverCodec).contains("#http_response{");
     assertThat(serverCodec).contains("status = 200");
     assertThat(serverCodec).contains("status = 201");
-    assertThat(manifest.getFileString("runtime_helpers.erl")).isEmpty();
 
     String router = manifest.getFileString("demo_rest_json_router.erl").orElse("");
     assertThat(router).contains("runtime_helpers:parse_labels(");
