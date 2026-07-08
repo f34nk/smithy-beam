@@ -1,4 +1,4 @@
--module(user_service_server_probe).
+-module(server_probe).
 
 -include("user_service_types.hrl").
 

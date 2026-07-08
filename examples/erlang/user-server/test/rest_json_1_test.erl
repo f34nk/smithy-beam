@@ -1,4 +1,4 @@
--module(user_service_rest_json_1_test).
+-module(rest_json_1_test).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("user_service_types.hrl").

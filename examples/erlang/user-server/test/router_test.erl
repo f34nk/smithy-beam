@@ -1,4 +1,4 @@
--module(user_service_router_test).
+-module(router_test).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("user_service_types.hrl").
@@ -51,7 +51,7 @@ dispatch_decodes_wire_request_before_handler_test() ->
         headers = [],
         body = <<>>
     },
-    {ok, Out} = user_service_router:dispatch(user_service_server_probe, Req),
+    {ok, Out} = user_service_router:dispatch(server_probe, Req),
     ?assertEqual(#{<<"userId">> => <<"u-1">>}, Out#get_user_output.user).
 
 dispatch_not_found_for_unknown_route_test() ->
