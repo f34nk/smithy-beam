@@ -1,4 +1,4 @@
--module(basic_service_router_test).
+-module(router_test).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("basic_service_types.hrl").
@@ -51,7 +51,7 @@ dispatch_decodes_wire_request_before_handler_test() ->
         headers = [{<<"X-Request-Tag">>, <<"trace-1">>}],
         body = <<>>
     },
-    {ok, Out} = basic_service_router:dispatch(basic_service_server_probe, Req),
+    {ok, Out} = basic_service_router:dispatch(server_probe, Req),
     ?assertEqual(<<"widget">>, Out#get_type_closure_output.basic_string),
     ?assertEqual(true, Out#get_type_closure_output.basic_boolean).
 

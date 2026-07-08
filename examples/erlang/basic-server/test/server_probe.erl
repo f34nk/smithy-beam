@@ -1,4 +1,4 @@
--module(basic_service_server_probe).
+-module(server_probe).
 
 -include("basic_service_types.hrl").
 
