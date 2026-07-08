@@ -1,4 +1,4 @@
--module(basic_service_retry_wiring_mock).
+-module(retry_mock).
 -export([request/4, call_count/0, reset/0]).
 
 request(get, _Req, [], [{body_format, binary}]) ->

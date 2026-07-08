@@ -1,11 +1,11 @@
--module(basic_service_client_pagination_test).
+-module(pagination_test).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("basic_service_types.hrl").
 
 client_list_basic_items_collects_all_pages_test() ->
     Config = #{base_url => <<"https://api.example">>,
-               http_client => runtime_http_mock},
+               http_client => http_mock},
     Input = #list_basic_items_input{},
     ?assertEqual(
         {ok, [
