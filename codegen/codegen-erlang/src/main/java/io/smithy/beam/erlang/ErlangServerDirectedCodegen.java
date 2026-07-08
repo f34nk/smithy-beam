@@ -118,9 +118,7 @@ final class ErlangServerDirectedCodegen
                     "$L",
                     ErlangRenderer.render(
                         ErlangRuntimeTypesIr.runtimeTypesHeader(
-                            "runtime_types",
-                            Optional.empty(),
-                            Optional.of(service.getId().toString())))));
+                            "runtime_types", Optional.of(service.getId().toString())))));
 
     List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
     ErlangBehaviourEmitter.beginService(ctx, service, operations);

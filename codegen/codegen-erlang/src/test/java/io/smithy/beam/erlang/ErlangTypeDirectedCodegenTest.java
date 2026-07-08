@@ -12,6 +12,7 @@ import io.beam.ir.erlang.HeaderRecordEntry;
 import io.beam.ir.erlang.HeaderTypeAliasEntry;
 import io.beam.ir.erlang.RecordDef;
 import io.beam.ir.erlang.TypeAlias;
+import java.net.URL;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
@@ -585,6 +586,44 @@ class ErlangTypeDirectedCodegenTest {
     assertThat(content)
         .contains("-type lma_string_list() :: [lma_string()].")
         .contains("-type lma_sparse_string_map() :: #{lma_string() => lma_string() | undefined}.");
+  }
+
+  @Test
+  void typesHeaderAppendsEndpointRuleSetWhenTraitPresent() {
+    URL resource =
+        ErlangTypeDirectedCodegenTest.class.getResource("/model/endpoint_rules_minimal.smithy");
+    assertThat(resource).isNotNull();
+    Model endpointModel =
+        Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+    ServiceShape service =
+        endpointModel.expectShape(
+            ShapeId.from("smithy.beam.test.endpoints#EndpointRulesService"),
+            ServiceShape.class);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    String typesHeader =
+        new BeamErlangLayout(settings, service.getId().getNamespace(), service).typesHeaderFile();
+
+    MockManifest manifest = new MockManifest();
+    ObjectNode pluginSettings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.test.endpoints#EndpointRulesService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypeGeneration()
+        .generate(
+            PluginContext.builder()
+                .model(endpointModel)
+                .fileManifest(manifest)
+                .settings(pluginSettings)
+                .build());
+
+    String content = manifest.expectFileString(typesHeader);
+    assertThat(content)
+        .contains("%% @endpointRuleSet embedded at codegen time.")
+        .contains("-type endpoint_rule_set() :: map().")
+        .contains("-define(ENDPOINT_RULE_SET,")
+        .contains("s3.{Region}.amazonaws.com");
   }
 
   @Test

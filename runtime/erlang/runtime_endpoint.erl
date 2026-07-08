@@ -1,7 +1,6 @@
 %% Shared smithy-beam Erlang endpoint resolver.
 %% Replaces generated <service>_endpoints modules (e.g. s3_endpoints).
 -module(runtime_endpoint).
--include("runtime_types.hrl").
 -export([
     resolve/2
 ]).
@@ -11,10 +10,10 @@
 
 -spec resolve(client_config(), endpoint_params()) -> {ok, #{url := binary()}} | {error, term()}.
 resolve(Config, Params) ->
-    evaluate(?ENDPOINT_RULE_SET, merge_params(Config, Params)).
+    evaluate(merge_params(Config, Params)).
 
--spec evaluate(map(), map()) -> {ok, #{url := binary(), headers := map()}} | {error, term()}.
-evaluate(_RuleSet, Params) ->
+-spec evaluate(map()) -> {ok, #{url := binary(), headers := map()}} | {error, term()}.
+evaluate(Params) ->
     Region = maps:get(<<"Region">>, Params, maps:get('Region', Params, undefined)),
     case Region of
         undefined -> {error, "Invalid Configuration: Missing Region"};

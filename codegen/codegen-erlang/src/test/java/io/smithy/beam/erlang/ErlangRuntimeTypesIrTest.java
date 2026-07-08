@@ -16,22 +16,8 @@ class ErlangRuntimeTypesIrTest {
     String expected = loadResource("runtime_types.hrl");
     assertThat(
             ErlangRenderer.render(
-                ErlangRuntimeTypesIr.runtimeTypesHeader(
-                    "runtime_types", Optional.empty(), Optional.empty())))
+                ErlangRuntimeTypesIr.runtimeTypesHeader("runtime_types", Optional.empty())))
         .isEqualTo(expected);
-  }
-
-  @Test
-  void runtimeTypesHeaderAppendsEndpointRuleSetDefine() {
-    String map = "#{'argv' => [<<\"us-east-1\">>]}";
-    String output =
-        ErlangRenderer.render(
-            ErlangRuntimeTypesIr.runtimeTypesHeader(
-                "runtime_types", Optional.of(map), Optional.empty()));
-    assertThat(output)
-        .contains("%% @endpointRuleSet embedded at codegen time.")
-        .contains("-type endpoint_rule_set() :: map().")
-        .contains("-define(ENDPOINT_RULE_SET, " + map + ").");
   }
 
   private static String loadResource(String name) throws IOException {

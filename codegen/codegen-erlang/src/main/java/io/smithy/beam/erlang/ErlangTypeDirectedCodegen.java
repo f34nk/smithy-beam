@@ -12,6 +12,7 @@ import io.beam.ir.erlang.TypedField;
 import io.beam.ir.erlang.TypeAlias;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
+import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamDocumentation.DocTarget;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
@@ -400,7 +401,25 @@ final class ErlangTypeDirectedCodegen
   @Override
   public void customizeAfterIntegrations(
       CustomizeDirective<ErlangContext, BeamSettings> directive) {
-    // No action required for the types-only baseline.
+    ErlangContext ctx = directive.context();
+    ServiceShape service = ctx.service();
+    if (!BeamEndpointRuleSetEmitter.hasRuleSet(directive.model(), service)) {
+      return;
+    }
+    String ruleSetMap =
+        BeamEndpointRuleSetEmitter.serializeRuleSetErlangMap(directive.model(), service)
+            .orElseThrow();
+    String ns = service.getId().getNamespace();
+    BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns, service);
+    ctx.writerDelegator()
+        .useFileWriter(
+            layout.typesHeaderFile(),
+            writer ->
+                writer.write(
+                    "$L",
+                    ErlangRenderer.render(
+                        Header.ofEntries(
+                            ErlangTypesIr.endpointRuleSetEntries(ruleSetMap), false))));
   }
 
   // ── Service / Resource / Operation stubs ─────────────────────────────────

@@ -16,7 +16,6 @@ import io.smithy.beam.core.BeamClientRetrySupport;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamEdition;
-import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
@@ -129,15 +128,12 @@ final class ErlangClientDirectedCodegen
     ctx.writerDelegator()
         .useFileWriter(
             layout.runtimeTypesHeaderFile(),
-            writer -> {
-              Optional<String> ruleSet =
-                  BeamEndpointRuleSetEmitter.serializeRuleSetErlangMap(directive.model(), service);
-              writer.write(
-                  "$L",
-                  ErlangRenderer.render(
-                      ErlangRuntimeTypesIr.runtimeTypesHeader(
-                          "runtime_types", ruleSet, Optional.of(service.getId().toString()))));
-            });
+            writer ->
+                writer.write(
+                    "$L",
+                    ErlangRenderer.render(
+                        ErlangRuntimeTypesIr.runtimeTypesHeader(
+                            "runtime_types", Optional.of(service.getId().toString())))));
   }
 
   @Override

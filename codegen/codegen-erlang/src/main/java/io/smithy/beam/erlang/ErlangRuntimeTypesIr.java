@@ -20,8 +20,7 @@ final class ErlangRuntimeTypesIr {
 
   private ErlangRuntimeTypesIr() {}
 
-  static Header runtimeTypesHeader(
-      String moduleName, Optional<String> endpointRuleSetMap, Optional<String> serviceId) {
+  static Header runtimeTypesHeader(String moduleName, Optional<String> serviceId) {
     List<HeaderEntry> entries = new ArrayList<>();
     serviceId.ifPresent(
         id -> entries.add(new HeaderComment("Generated runtime types for " + id + ".")));
@@ -37,13 +36,6 @@ final class ErlangRuntimeTypesIr {
     entries.add(new HeaderTypeAliasEntry(TypeAlias.of("http_response", "#http_response{}")));
     entries.add(new HeaderBlankLine());
     entries.add(new HeaderEndif());
-    endpointRuleSetMap.ifPresent(
-        map -> {
-          entries.add(new HeaderBlankLine());
-          entries.add(new HeaderComment("@endpointRuleSet embedded at codegen time."));
-          entries.add(new HeaderTypeAliasEntry(TypeAlias.of("endpoint_rule_set", "map()")));
-          entries.add(new HeaderDefine("ENDPOINT_RULE_SET", map));
-        });
     return Header.ofEntries(entries, false);
   }
 
