@@ -58,7 +58,7 @@ clean:
 	# Clean $@
 	#
 	target="$$(dirname $@)"; \
-	find $$target/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \; |\
+	find $$target -name Makefile -type f -maxdepth 3 -exec dirname {} \; |\
 	xargs -S1024 -P $(PARALLEL_JOBS) -I {} sh -c ' \
 		target="{}"; \
 		echo "Clean $$target"; \
@@ -72,7 +72,7 @@ clean:
 	# Build $@
 	#
 	target="$$(dirname $@)"; \
-	find $$target/*/*/Makefile -type f -maxdepth 2 -exec dirname {} \; |\
+	find $$target -name Makefile -type f -maxdepth 3 -exec dirname {} \; |\
 	xargs -S1024 -P $(PARALLEL_JOBS) -I {} sh -c ' \
 		target="{}"; \
 		sleep 1; \

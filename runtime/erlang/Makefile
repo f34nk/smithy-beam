@@ -6,6 +6,9 @@ compile:
 test:
 	rebar3 eunit
 
+.PHONY: build
+build: compile
+
 .PHONY: clean
 clean:
 	rm -rf _build
