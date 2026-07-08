@@ -1,7 +1,7 @@
-%% Shared smithy-beam Erlang runtime http.
+%% Shared smithy-beam Erlang client module.
 %% Uses httpc from OTP. Replace via adapter for testing.
--module(runtime_http).
--include("runtime_types.hrl").
+-module(client).
+-include("http_types.hrl").
 -export([
     dispatch/2,
     dispatch/3
