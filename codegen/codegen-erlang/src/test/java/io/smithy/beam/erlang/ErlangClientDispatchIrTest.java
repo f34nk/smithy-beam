@@ -219,7 +219,6 @@ class ErlangClientDispatchIrTest {
             op,
             layout(model, HTTP_SERVICE),
             false,
-            "retry_mod",
             false,
             ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
     assertStructural(body);
@@ -239,13 +238,11 @@ class ErlangClientDispatchIrTest {
             op,
             layout(model, HTTP_SERVICE),
             true,
-            "retry_mod",
             false,
             ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
     assertThat(body.get(0)).isInstanceOf(MatchExpr.class);
     assertThat(body.get(body.size() - 1)).isInstanceOf(RemoteCallExpr.class);
-    assertThat(((RemoteCallExpr) body.get(body.size() - 1)).function())
-        .isEqualTo(AtomExpr.of("with_retry"));
+    assertThat(((RemoteCallExpr) body.get(body.size() - 1)).module()).isEqualTo(AtomExpr.of("reqres"));
     assertThat(renderBody(body))
         .isEqualTo(readExpectedString("ir/client_dispatch_get_name_retry.expected.erl"));
   }
@@ -261,7 +258,6 @@ class ErlangClientDispatchIrTest {
             op,
             layout(model, HTTP_SERVICE),
             false,
-            "retry_mod",
             false,
             ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
     String rendered = renderBody(body);
@@ -283,7 +279,6 @@ class ErlangClientDispatchIrTest {
             op,
             layout(model, HTTP_SERVICE),
             false,
-            "retry_mod",
             false,
             ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
     assertStructural(body);
@@ -304,7 +299,6 @@ class ErlangClientDispatchIrTest {
             op,
             layout(model, PAGINATED_SERVICE),
             false,
-            "retry_mod",
             true,
             ErlangClientDispatchOperationIr.DispatchBodyMode.PAGINATED_PAGE);
     assertStructural(body);

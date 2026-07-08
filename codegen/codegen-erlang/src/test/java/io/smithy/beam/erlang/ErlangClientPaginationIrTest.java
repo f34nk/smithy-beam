@@ -43,7 +43,7 @@ class ErlangClientPaginationIrTest {
 
     List<Function> functions =
         ErlangClientPaginationIr.paginatedOperationFunctions(
-            ctx, service, op, layout, false, "retry_mod", "[widget()]", null);
+            ctx, service, op, layout, false, "[widget()]", null);
 
     assertThat(functions).hasSize(2);
     assertThat(functions.get(0).arity()).isEqualTo(2);

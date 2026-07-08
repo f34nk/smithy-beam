@@ -26,23 +26,6 @@ class ErlangRetryIrTest {
     assertThat(combined).isEqualTo(IrGoldenAssertions.readExpectedString("ir/retry_with_retry.expected.erl"));
   }
 
-  @Test
-  void retryModuleMatchesGolden() throws IOException {
-    Model model = retryModel();
-    ServiceShape service = model.expectShape(RETRY_SERVICE, ServiceShape.class);
-    BeamSettings settings = new BeamSettings();
-    settings.edition("2026");
-    BeamErlangLayout layout =
-        new BeamErlangLayout(settings, service.getId().getNamespace(), service);
-    ErlangSymbolProvider sp =
-        new ErlangSymbolProvider(
-            settings, model, service, layout.typesHeaderFile(), BeamCodegenKind.CLIENT);
-    Module module =
-        ErlangRetryIr.retryModule(
-            "retry_service_retry", "retry_service_types.hrl", service, model, sp);
-    IrGoldenAssertions.assertGolden(module, "ir/retry_module.expected.erl");
-  }
-
   private static Model retryModel() {
     String idl =
         """

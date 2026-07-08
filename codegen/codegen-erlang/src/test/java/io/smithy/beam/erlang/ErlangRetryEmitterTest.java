@@ -45,7 +45,7 @@ class ErlangRetryEmitterTest {
     return Model.assembler().addUnparsedModel("retry.smithy", idl).assemble().unwrap();
   }
 
-  private static String generateRetryModule() {
+  private static MockManifest generateClient() {
     MockManifest manifest = new MockManifest();
     new ErlangClientPlugin()
         .execute(
@@ -58,20 +58,16 @@ class ErlangRetryEmitterTest {
                         .withMember("edition", "2026")
                         .build())
                 .build());
-    return manifest.expectFileString("retry_service_retry.erl");
+    return manifest;
   }
 
   @Test
-  void withRetryOuterCaseEndAlignsWithCaseFun() {
-    String retry = generateRetryModule();
-    int outerCase = retry.indexOf("case Fun() of");
-    assertThat(outerCase).isGreaterThanOrEqualTo(0);
-
-    String tail = retry.substring(outerCase);
-    assertThat(tail).contains("Err\n            end\n    end.");
-
-    int retryableSpec = retry.indexOf("-spec retryable(term())");
-    assertThat(retryableSpec).isGreaterThan(0);
-    assertThat(retry.substring(retryableSpec, retryableSpec + 20)).startsWith("-spec retryable");
+  void retryPredicatesAppearInClientNotSeparateModule() {
+    MockManifest manifest = generateClient();
+    assertThat(manifest.getFileString("retry_service_retry.erl")).isEmpty();
+    String client = manifest.expectFileString("retry_service_client.erl");
+    assertThat(client).contains("-spec should_retry(term())");
+    assertThat(client).contains("should_retry({error, #retryable_error{}}) -> true;");
+    assertThat(client).doesNotContain("-module(retry_service_retry).");
   }
 }
