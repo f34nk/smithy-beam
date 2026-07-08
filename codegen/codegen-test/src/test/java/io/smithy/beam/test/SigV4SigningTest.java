@@ -40,28 +40,12 @@ class SigV4SigningTest {
   @Test
   void erlangClientEmitsSigV4SigningModule() {
     MockManifest manifest = runErlangClient();
-    String sigv4 = manifest.expectFileString("sigv4test_service_sigv4.erl");
 
-    assertThat(sigv4).contains("-module(sigv4test_service_sigv4).");
-    assertThat(sigv4)
-        .contains(
-            "-export([\n    sign/3,\n    presign/5,\n    endpoint_host_from_config/1\n]).");
-    assertThat(sigv4).contains("sign_request(Request, Credentials, Region, Service, Opts).");
-    assertThat(sigv4).contains("aws_signature:sign_v4(");
-    assertThat(sigv4).contains("endpoint_host_from_config(Config)");
-    assertThat(sigv4).contains("end;");
-    assertThat(sigv4).contains("BaseUrl ->");
-    assertThat(sigv4).contains("runtime_helpers:split_base_url(BaseUrl)");
-
-    String presigner = manifest.expectFileString("sigv4test_service_presigner.erl");
-    assertThat(presigner).contains("-module(sigv4test_service_presigner).");
-    assertThat(presigner)
-        .contains("endpoint_host => sigv4test_service_sigv4:endpoint_host_from_config(Config)");
-    assertThat(presigner)
-        .contains("sigv4test_service_sigv4:presign(Request, Credentials, Region, Service, Opts).");
+    assertThat(manifest.getFileString("sigv4test_service_sigv4.erl")).isEmpty();
+    assertThat(manifest.getFileString("sigv4test_service_presigner.erl")).isEmpty();
 
     String client = manifest.expectFileString("sigv4test_service_client.erl");
-    assertThat(client).contains("sigv4test_service_sigv4:sign(Config, ping, Req)");
+    assertThat(client).contains("aws_sigv4:sign(Config, ping, Req)");
   }
 
   @Test
@@ -107,7 +91,7 @@ class SigV4SigningTest {
 
     assertThat(manifest.getFileString("basic_service_sigv4.erl")).isEmpty();
     assertThat(manifest.expectFileString("basic_service_client.erl"))
-        .doesNotContain(":sign(Config,");
+        .doesNotContain("aws_sigv4:sign(");
   }
 
   private static MockManifest runErlangClient() {

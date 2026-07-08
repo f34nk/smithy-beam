@@ -1,10 +1,10 @@
-%% Generated SigV4 signing hook for smithy.beam.test.sigv4#Sigv4TestService.
--module(sigv4test_service_sigv4).
+%% Shared smithy-beam Erlang @aws.auth#sigv4 helpers
+-module(aws_sigv4).
 -include("runtime_types.hrl").
 -export([
     sign/3,
     presign/5,
-    endpoint_host_from_config/1
+    presign_url/3
 ]).
 
 -type client_config() :: #{binary() => term()}.
@@ -17,9 +17,23 @@ sign(Config, Operation, Request) ->
     Unsigned = maps:get({unsigned_payload, Operation}, Config, false),
     Opts = #{
         unsigned_payload => Unsigned,
-        endpoint_host => endpoint_host_from_config(Config)
+        endpoint_host => aws_endpoint:endpoint_host_from_config(Config)
     },
     sign_request(Request, Credentials, Region, Service, Opts).
+
+-spec presign_url(client_config(), Operation :: atom(), http_request()) -> {ok, binary()} | {error, term()}.
+presign_url(Config, Operation, Request) ->
+    Credentials = maps:get(credentials, Config),
+    Region = maps:get(region, Config, <<"us-east-1">>),
+    Service = maps:get(signing_name, Config),
+    Expires = maps:get(presign_expires, Config, 900),
+    Unsigned = maps:get({unsigned_payload, Operation}, Config, false),
+    Opts = #{
+        expires => Expires,
+        unsigned_payload => Unsigned,
+        endpoint_host => aws_endpoint:endpoint_host_from_config(Config)
+    },
+    presign(Request, Credentials, Region, Service, Opts).
 
 -spec presign(http_request(), map(), binary(), binary(), map()) -> {ok, binary()} | {error, term()}.
 presign(Request, Credentials, Region, Service, Opts) ->
@@ -130,16 +144,3 @@ body_digest_option(Opts) ->
 
 session_token_option(undefined) -> [];
 session_token_option(Token) -> [{session_token, Token}].
-
-endpoint_host_from_config(Config) ->
-    case maps:get(base_url, Config, undefined) of
-        undefined ->
-            case {maps:get(endpoint_prefix, Config, undefined),
-                  maps:get(region, Config, <<"us-east-1">>)} of
-                {undefined, _} -> undefined;
-                {Prefix, Region} -> <<Prefix/binary, ".", Region/binary, ".amazonaws.com">>
-            end;
-        BaseUrl ->
-            {_Scheme, Authority} = runtime_helpers:split_base_url(BaseUrl),
-            Authority
-    end.

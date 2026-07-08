@@ -57,7 +57,6 @@ final class ErlangClientDispatchOperationIr {
       String opName,
       String codecModule,
       String runtimeHttpModule,
-      String sigv4Module,
       boolean sigv4,
       boolean encodeWithConfig) {}
 
@@ -186,7 +185,6 @@ final class ErlangClientDispatchOperationIr {
         opSym.getName(),
         layout.clientCodecModuleName(ctx.resolvedProtocolTraitId(), ctx.integrations()),
         layout.runtimeHttpModuleName(),
-        layout.sigv4ModuleName(),
         sigv4,
         encodeWithConfig);
   }
@@ -206,7 +204,6 @@ final class ErlangClientDispatchOperationIr {
   }
 
   private static Expression buildSignedRequestMatch(DispatchContext ctx) {
-    String sigv4Mod = ctx.sigv4Module();
     String opName = ctx.opName();
     return MatchExpr.bindValue(
         "SignedReq",
@@ -223,12 +220,12 @@ final class ErlangClientDispatchOperationIr {
                                 secret_access_key => maps:get(secret_access_key, Creds0),
                                 session_token => maps:get(token, Creds0, undefined)
                             },
-                            %s:sign(Config#{credentials => Creds}, %s, Req)
+                            aws_sigv4:sign(Config#{credentials => Creds}, %s, Req)
                     end;
                 _ ->
-                    %s:sign(Config, %s, Req)
+                    aws_sigv4:sign(Config, %s, Req)
             end"""
-                .formatted(sigv4Mod, opName, sigv4Mod, opName)
+                .formatted(opName, opName)
                 .strip()));
   }
 

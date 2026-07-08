@@ -25,7 +25,7 @@ presign_url_test() ->
         path = <<"/my-bucket/object.txt">>,
         host = <<"localhost:4566">>
     },
-    {ok, Url} = amazon_s3_presigner:presign_url(Config, get_object, Request),
+    {ok, Url} = aws_sigv4:presign_url(Config, get_object, Request),
     ?assertMatch(
         <<"https://localhost:4566/my-bucket/object.txt?", _/binary>>,
         Url

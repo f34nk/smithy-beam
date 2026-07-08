@@ -21,9 +21,13 @@ dispatch_signed(HttpClient, Config, #http_request{method = Method, path = Path, 
                     undefined ->
                         <<>>;
                     _ ->
+                        % TODO:
+                        % The intended design is:
+                        % resolve/2: run embedded @endpointRuleSet rules when present
+                        % resolve_base_url/1: simple static fallback when rules are absent or fail
                         case aws_endpoint:resolve(Config, #{}) of
                             {ok, #{url := ResolvedUrl}} -> ResolvedUrl;
-                            _ -> runtime_helpers:resolve_base_url(Config)
+                            _ -> aws_endpoint:resolve_base_url(Config)
                         end
                 end;
             GivenUrl ->

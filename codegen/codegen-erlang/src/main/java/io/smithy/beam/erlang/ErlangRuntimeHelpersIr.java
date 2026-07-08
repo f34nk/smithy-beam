@@ -40,17 +40,12 @@ final class ErlangRuntimeHelpersIr {
       String moduleName,
       ServiceShape service,
       Model model,
-      boolean awsMetadata,
       boolean labelBindings) {
     List<Function> functions = new ArrayList<>();
     List<String> exports = new ArrayList<>();
     if (labelBindings) {
       exports.add("parse_labels/2");
       functions.addAll(labelParsingFunctions());
-    }
-    if (awsMetadata) {
-      exports.add("resolve_base_url/1");
-      functions.add(resolveBaseUrl());
     }
     return Module.of(
         moduleName,
@@ -66,44 +61,6 @@ final class ErlangRuntimeHelpersIr {
 
   static List<Function> labelParsingFunctions() {
     return List.of(parseLabels(), segments(), matchSegments(), labelName());
-  }
-
-  static Function resolveBaseUrl() {
-    return Function.of(
-        "resolve_base_url",
-        List.of(
-            FunctionClause.of(
-                List.of(VariablePattern.of("Config")),
-                BlockExpr.commaSeparated(
-                    List.of(
-                        MatchExpr.bindValue(
-                            "Prefix",
-                            RemoteCallExpr.of(
-                                "maps",
-                                "get",
-                                List.of(
-                                    AtomExpr.of("endpoint_prefix"),
-                                    Variable.of("Config")))),
-                        MatchExpr.bindValue(
-                            "Region",
-                            RemoteCallExpr.of(
-                                "maps",
-                                "get",
-                                List.of(
-                                    AtomExpr.of("region"),
-                                    Variable.of("Config"),
-                                    BinaryExpr.of("us-east-1")))),
-                        BinaryExpr.of(
-                            List.of(
-                                BinarySegmentExpr.literal("https://"),
-                                BinarySegmentExpr.of(Variable.of("Prefix"), "binary"),
-                                BinarySegmentExpr.literal("."),
-                                BinarySegmentExpr.of(Variable.of("Region"), "binary"),
-                                BinarySegmentExpr.literal(".amazonaws.com")))),
-                    false))),
-        Spec.of("resolve_base_url(map()) -> binary()"),
-        null,
-        null);
   }
 
   static Function parseLabels() {

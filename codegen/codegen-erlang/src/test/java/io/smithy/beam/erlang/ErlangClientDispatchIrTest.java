@@ -267,6 +267,8 @@ class ErlangClientDispatchIrTest {
     String rendered = renderBody(body);
     assertThat(rendered).contains("aws_credentials:get_credentials()");
     assertThat(rendered).contains("session_token => maps:get(token, Creds0, undefined)");
+    assertThat(rendered).contains("aws_sigv4:sign(");
+    assertThat(rendered).doesNotContain("http_service_sigv4:sign(");
   }
 
   @Test

@@ -75,19 +75,12 @@ class ErlangRuntimeHelpersIrTest {
   }
 
   @Test
-  void resolveBaseUrlAsStringMatchesGolden() throws IOException {
-    IrGoldenAssertions.assertGolden(
-        ErlangRuntimeHelpersIr.resolveBaseUrl(),
-        "ir/runtime_helpers_resolve_base_url.expected.erl");
-  }
-
-  @Test
   void labelBindingsModuleMatchesGolden() throws IOException {
     Model model = labelModel();
     ServiceShape service = model.expectShape(ShapeId.from(LABEL_SERVICE), ServiceShape.class);
     Module module =
         ErlangRuntimeHelpersIr.runtimeHelpersModule(
-            "runtime_helpers", service, model, false, true);
+            "runtime_helpers", service, model, true);
     IrGoldenAssertions.assertGolden(module, "ir/runtime_helpers_label_module.expected.erl");
   }
 
