@@ -3,16 +3,40 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-07-08
+
+### Added
+- Shared Erlang runtime modules for HTTP dispatch, SigV4 signing, checksums, event streams, retries,
+  and URL helpers, packaged in the codegen-erlang JAR and copied into generated output based on
+  model requirements through a static runtime catalog and requirement index.
+
+### Changed
+- Erlang codegen no longer emits per-service runtime_types.hrl, runtime_helpers.erl,
+  runtime_http.erl, aws_endpoint_rules.erl, or endpoint modules. Plugins emit only the shared
+  runtime files a service needs; consumers compile them from generated output instead of
+  duplicating stubs per service.
+- HTTP dispatch and retry logic consolidated into the shared reqres module; SigV4, checksum, and
+  URL helpers live in static runtime modules. Endpoint rule sets are emitted in the service types
+  header, and endpoint host resolution uses shared utils helpers.
+- Erlang examples and demos point at generated runtime output; the runtime tree uses a flat
+  src-only layout.
+
+### Docs
+- AWS endpoint and rules engine support status updated; Erlang runtime references aligned with
+  static modules.
+
+## 2026-07-07
+
 ### Changed
 - Erlang SigV4 clients no longer emit a per-service credentials module. Ambient credentials are
   fetched lazily via aws_credentials:get_credentials/0 immediately before SigV4 signing.
-- Erlang codegen no longer emits runtime_types.hrl, runtime_helpers.erl, runtime_http.erl,
-  aws_endpoint_rules.erl, or per-service endpoints modules. Consumers compile shared modules
-  from runtime/erlang/ instead.
 
 ### Deprecated
-- Generated `<service>_credentials.erl` modules are removed. Regenerate clients and add
-  `{aws_credentials, "1.0.5"}` to rebar.config.
+- Generated service credentials modules are removed. Regenerate clients and add
+  aws_credentials to rebar.config.
+
+### Fixed
+- Erlang AWS examples and the minimal S3 demo integrate the aws_credentials dependency correctly.
 
 ## 2026-07-06
 
