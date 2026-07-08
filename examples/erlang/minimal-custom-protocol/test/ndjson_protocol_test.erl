@@ -1,4 +1,4 @@
--module(greeting_service_ndjson_protocol_test).
+-module(ndjson_protocol_test).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("greeting_service_types.hrl").
