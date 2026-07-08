@@ -8,34 +8,20 @@
     with_retry/2
 ]).
 
+%% @doc Dispatch an HTTP request using the client config default HTTP adapter.
+-spec dispatch(#{binary() => term()}, http_request()) ->
+    {ok, http_response()} | {error, term()}.
 dispatch(Config, Request) ->
     HttpClient = maps:get(http_client, Config, httpc),
     dispatch(HttpClient, Config, Request).
 
-dispatch(HttpClient, Config, Request) -> dispatch_signed(HttpClient, Config, Request).
-
-dispatch_signed(HttpClient, Config, #http_request{
+%% @doc Dispatch an HTTP request through a specific HTTP client module.
+-spec dispatch(module(), #{binary() => term()}, http_request()) ->
+    {ok, http_response()} | {error, term()}.
+dispatch(HttpClient, Config, #http_request{
     method = Method, path = Path, query = Query, headers = Headers, body = Body, host = Host
 }) ->
-    BaseUrl =
-        case maps:get(base_url, Config, undefined) of
-            undefined ->
-                case maps:get(endpoint_prefix, Config, undefined) of
-                    undefined ->
-                        <<>>;
-                    _ ->
-                        % TODO:
-                        % The intended design is:
-                        % resolve/2: run embedded @endpointRuleSet rules when present
-                        % resolve_base_url/1: simple static fallback when rules are absent or fail
-                        case aws_endpoint:resolve(Config, #{}) of
-                            {ok, #{url := ResolvedUrl}} -> ResolvedUrl;
-                            _ -> aws_endpoint:resolve_base_url(Config)
-                        end
-                end;
-            GivenUrl ->
-                GivenUrl
-        end,
+    BaseUrl = maps:get(base_url, Config, undefined),
     QueryStr =
         case maps:to_list(Query) of
             [] ->
@@ -76,13 +62,14 @@ dispatch_signed(HttpClient, Config, #http_request{
             {error, Reason}
     end.
 
+-spec mime([{binary(), binary()}]) -> string().
 mime(Headers) ->
     case proplists:get_value(<<"Content-Type">>, Headers) of
         undefined -> "application/octet-stream";
         CT -> binary_to_list(CT)
     end.
 
-%% @doc Invokes {@code Fun} with exponential backoff when a retryable error is returned.
+%% @doc Invoke Fun with exponential backoff when a retryable error is returned.
 -spec with_retry(fun(() -> term()), map()) -> term().
 with_retry(Fun, Opts) ->
     Max = maps:get(max_attempts, Opts, 3),
@@ -90,6 +77,10 @@ with_retry(Fun, Opts) ->
     ShouldRetry = maps:get(should_retry, Opts, fun(_) -> false end),
     with_retry(Fun, Max, Base, 1, ShouldRetry).
 
+-spec with_retry(fun(() -> term()), non_neg_integer(), non_neg_integer(), pos_integer(), fun(
+    (term()) -> boolean()
+)) ->
+    term().
 with_retry(Fun, 0, _, _, _) ->
     Fun();
 with_retry(Fun, Attempts, Base, N, ShouldRetry) ->
