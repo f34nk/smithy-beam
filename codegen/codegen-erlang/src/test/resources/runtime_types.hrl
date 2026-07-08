@@ -1,3 +1,4 @@
+%% HTTP carrier types for generated clients.
 -ifndef(BEAM_RUNTIME_TYPES_INCLUDED).
 -define(BEAM_RUNTIME_TYPES_INCLUDED, true).
 

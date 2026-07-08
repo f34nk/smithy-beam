@@ -6,6 +6,9 @@ All notable changes to this project will be documented here.
 ### Changed
 - Erlang SigV4 clients no longer emit a per-service credentials module. Ambient credentials are
   fetched lazily via aws_credentials:get_credentials/0 immediately before SigV4 signing.
+- Erlang codegen no longer emits runtime_types.hrl, runtime_helpers.erl, runtime_http.erl,
+  aws_endpoint_rules.erl, or per-service endpoints modules. Consumers compile shared modules
+  from runtime/erlang/ instead.
 
 ### Deprecated
 - Generated `<service>_credentials.erl` modules are removed. Regenerate clients and add

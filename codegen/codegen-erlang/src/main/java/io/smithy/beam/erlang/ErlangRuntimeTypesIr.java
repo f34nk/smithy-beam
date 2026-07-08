@@ -22,6 +22,7 @@ final class ErlangRuntimeTypesIr {
 
   static Header runtimeTypesHeader(String moduleName, Optional<String> serviceId) {
     List<HeaderEntry> entries = new ArrayList<>();
+    entries.add(new HeaderComment("HTTP carrier types for generated clients."));
     serviceId.ifPresent(
         id -> entries.add(new HeaderComment("Generated runtime types for " + id + ".")));
     entries.add(new HeaderIfndef("BEAM_RUNTIME_TYPES_INCLUDED"));
