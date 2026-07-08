@@ -1,4 +1,4 @@
--module(runtime_http_mock).
+-module(http_mock).
 -export([request/4]).
 
 request(get, Req, [], [{body_format, binary}]) ->
