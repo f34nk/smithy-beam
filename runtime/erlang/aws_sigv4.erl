@@ -1,6 +1,6 @@
 %% Shared smithy-beam Erlang @aws.auth#sigv4 helpers
 -module(aws_sigv4).
--include("runtime_types.hrl").
+-include("http_types.hrl").
 -export([
     sign/3,
     presign/5,
