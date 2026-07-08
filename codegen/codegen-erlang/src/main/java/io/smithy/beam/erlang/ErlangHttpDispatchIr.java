@@ -119,7 +119,7 @@ final class ErlangHttpDispatchIr {
       String helpersMod,
       String endpointsMod) {
     List<Expression> body = new ArrayList<>();
-    body.add(resolveBaseUrlMatch(helpersMod, endpointsMod, endpointRules));
+    body.add(resolveBaseUrlMatch(endpointRules));
     body.add(queryStringMatch());
     body.add(
         MatchExpr.of(
@@ -265,8 +265,7 @@ final class ErlangHttpDispatchIr {
             RecordPatternField.of("host", VariablePattern.of("Host"))));
   }
 
-  private static MatchExpr resolveBaseUrlMatch(
-      String helpersMod, String endpointsMod, boolean endpointRules) {
+  private static MatchExpr resolveBaseUrlMatch(boolean endpointRules) {
     Clause endpointPrefixFallback;
     if (endpointRules) {
       endpointPrefixFallback =
@@ -274,7 +273,7 @@ final class ErlangHttpDispatchIr {
               VariablePattern.of("_"),
               CaseExpr.of(
                   RemoteCallExpr.of(
-                      endpointsMod,
+                      "runtime_endpoint",
                       "resolve",
                       List.of(Variable.of("Config"), MapExpr.of(List.of()))),
                   List.of(
@@ -291,7 +290,7 @@ final class ErlangHttpDispatchIr {
                       Clause.of(
                           VariablePattern.of("_"),
                           RemoteCallExpr.of(
-                              helpersMod,
+                              "runtime_http",
                               "resolve_base_url",
                               List.of(Variable.of("Config")))))));
     } else {
@@ -299,7 +298,7 @@ final class ErlangHttpDispatchIr {
           Clause.of(
               VariablePattern.of("_"),
               RemoteCallExpr.of(
-                  helpersMod, "resolve_base_url", List.of(Variable.of("Config"))));
+                  "runtime_http", "resolve_base_url", List.of(Variable.of("Config"))));
     }
 
     return MatchExpr.bindValue(

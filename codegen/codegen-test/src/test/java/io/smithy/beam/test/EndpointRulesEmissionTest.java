@@ -32,9 +32,9 @@ class EndpointRulesEmissionTest {
   void erlangOmitsEndpointRuleSetWhenTraitAbsent() {
     MockManifest manifest = runErlangClient(loadBasicModel(), BASIC_SERVICE);
 
-    String runtimeTypes = manifest.expectFileString("runtime_types.hrl");
-    assertThat(runtimeTypes).doesNotContain("endpoint_rule_set");
-    assertThat(runtimeTypes).doesNotContain("ENDPOINT_RULE_SET");
+    String serviceTypes = manifest.expectFileString("basic_service_types.hrl");
+    assertThat(serviceTypes).doesNotContain("endpoint_rule_set");
+    assertThat(serviceTypes).doesNotContain("ENDPOINT_RULE_SET");
   }
 
   @Test
@@ -49,31 +49,15 @@ class EndpointRulesEmissionTest {
   void erlangEmitsEndpointsModuleAndPrefersRulesResolver() {
     MockManifest manifest = runErlangClient(loadModel(), SERVICE);
 
-    String runtimeTypes = manifest.expectFileString("runtime_types.hrl");
-    assertThat(runtimeTypes).contains("-type endpoint_rule_set() :: map().");
-    assertThat(runtimeTypes).contains("-define(ENDPOINT_RULE_SET,");
-    assertThat(runtimeTypes).contains("s3.{Region}.amazonaws.com");
+    String serviceTypes = manifest.expectFileString("endpoint_rules_service_types.hrl");
+    assertThat(serviceTypes).contains("-type endpoint_rule_set() :: map().");
+    assertThat(serviceTypes).contains("-define(ENDPOINT_RULE_SET,");
+    assertThat(serviceTypes).contains("s3.{Region}.amazonaws.com");
+    assertThat(serviceTypes).contains("<<\"argv\">> => [");
 
-    String endpoints = manifest.expectFileString("endpoint_rules_service_endpoints.erl");
-    assertThat(endpoints).contains("-module(endpoint_rules_service_endpoints).");
-    assertThat(endpoints).contains("-include(\"runtime_types.hrl\").");
-    assertThat(endpoints).contains("-export([\n    resolve/2\n]).");
-    assertThat(endpoints).doesNotContain("rule_set/0");
-    assertThat(endpoints)
-        .contains("aws_endpoint_rules:evaluate(?ENDPOINT_RULE_SET, merge_params(Config, Params)).");
-
-    String evaluator = manifest.expectFileString("aws_endpoint_rules.erl");
-    assertThat(evaluator).contains("-module(aws_endpoint_rules).");
-    assertThat(evaluator).contains("Temporary stub endpoint rules evaluator");
-    assertThat(evaluator).contains("evaluate(_RuleSet, Params)");
-    assertThat(evaluator).contains("maps:get('Region', Params, undefined)");
-
-    String http = manifest.expectFileString("runtime_http.erl");
-    assertThat(http).contains("endpoint_rules_service_endpoints:resolve(Config, #{})");
-    assertThat(http).contains("{ok, #{url := ResolvedUrl}} -> ResolvedUrl");
-    assertThat(http.indexOf("endpoint_rules_service_endpoints:resolve"))
-        .isLessThan(http.indexOf("runtime_helpers:resolve_base_url"));
-    assertThat(runtimeTypes).contains("<<\"argv\">> => [");
+    assertThat(manifest.getFileString("endpoint_rules_service_endpoints.erl")).isEmpty();
+    assertThat(manifest.getFileString("aws_endpoint_rules.erl")).isEmpty();
+    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
 
     assertRuleEvaluationMatchesReference(loadModel());
   }

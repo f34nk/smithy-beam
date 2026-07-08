@@ -3,7 +3,6 @@ package io.smithy.beam.erlang;
 import io.beam.ir.erlang.AtomExpr;
 import io.beam.ir.erlang.BlockExpr;
 import io.beam.ir.erlang.Edoc;
-import io.beam.ir.erlang.ErlangRenderer;
 import io.beam.ir.erlang.Expression;
 import io.beam.ir.erlang.Function;
 import io.beam.ir.erlang.FunctionClause;
@@ -121,19 +120,6 @@ final class ErlangClientDirectedCodegen
             protocol ->
                 BeamProtocolResolver.assertClosureSupported(
                     directive.model(), service, protocol, edition));
-
-    String ns = service.getId().getNamespace();
-    BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns, service);
-
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.runtimeTypesHeaderFile(),
-            writer ->
-                writer.write(
-                    "$L",
-                    ErlangRenderer.render(
-                        ErlangRuntimeTypesIr.runtimeTypesHeader(
-                            "runtime_types", Optional.of(service.getId().toString())))));
   }
 
   @Override
@@ -158,11 +144,7 @@ final class ErlangClientDirectedCodegen
 
     ErlangProtocolCodecIr.emitClientCodec(ctx, service);
 
-    ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
-    ErlangAwsEndpointRulesEmitter.emitIfNeeded(ctx, service);
     ErlangS3EndpointEmitter.emit(ctx, service);
-    ErlangEndpointRulesEmitter.emit(ctx, service);
-    ErlangHttpDispatchEmitter.emit(ctx, service);
     ErlangSigV4Emitter.emit(ctx, service);
     ErlangPresignerEmitter.emit(ctx, service);
     ErlangRetryEmitter.emit(ctx, service);
