@@ -135,7 +135,7 @@ public final class BeamErlangLayout {
   }
 
   public String runtimeHttpModuleName() {
-    return "client";
+    return "reqres";
   }
 
   public String paginatorsModuleFile() {
