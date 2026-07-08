@@ -8,3 +8,12 @@ dependencies {
     testImplementation(libs.assertj.core)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
+
+tasks.processResources {
+    from(rootProject.file("runtime/erlang")) {
+        into("runtime/erlang")
+        exclude("test/**")
+        exclude("_build/**")
+        exclude("rebar.lock")
+    }
+}
