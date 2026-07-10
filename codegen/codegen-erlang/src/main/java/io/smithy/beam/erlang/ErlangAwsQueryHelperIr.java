@@ -24,7 +24,7 @@ import io.beam.ir.erlang.LocalCallExpr;
 import io.beam.ir.erlang.MapEntry;
 import io.beam.ir.erlang.MapExpr;
 import io.beam.ir.erlang.MatchExpr;
-import io.beam.ir.erlang.OpaqueExpr;
+import io.beam.ir.erlang.NotExpr;
 import io.beam.ir.erlang.Pattern;
 import io.beam.ir.erlang.RemoteCallExpr;
 import io.beam.ir.erlang.TryExpr;
@@ -149,9 +149,12 @@ final class ErlangAwsQueryHelperIr {
                     List.of(
                         ListComprehensionGenerator.of(
                             VariablePattern.of("T"), Variable.of("Content")),
-                        ListComprehensionFilter.of(OpaqueExpr.of("is_list(T)")),
                         ListComprehensionFilter.of(
-                            OpaqueExpr.of("not is_element_string(T)"))))),
+                            LocalCallExpr.of("is_list", List.of(Variable.of("T")))),
+                        ListComprehensionFilter.of(
+                            NotExpr.of(
+                                LocalCallExpr.of(
+                                    "is_element_string", List.of(Variable.of("T")))))))),
             FunctionClause.of(List.of(W), ListExpr.of(List.of()))));
   }
 
