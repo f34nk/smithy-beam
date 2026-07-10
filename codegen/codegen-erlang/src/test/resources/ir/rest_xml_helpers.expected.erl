@@ -175,9 +175,12 @@ build_xml_child(Name, Values) when is_list(Values) ->
 build_xml_child(Name, Value) ->
     {Name, [], [{text, to_binary(Value)}]}.
 
-xml_namespace_attrs(#{uri := Uri}) -> [{xmlns, Uri}];
-xml_namespace_attrs(#{uri := Uri, prefix := Prefix}) -> [{'xmlns:' ++ binary_to_list(Prefix), Uri}];
-xml_namespace_attrs(_) -> [].
+xml_namespace_attrs(#{uri := Uri}) ->
+    [{xmlns, Uri}];
+xml_namespace_attrs(#{uri := Uri, prefix := Prefix}) ->
+    [{('xmlns:' ++ binary_to_list(Prefix)), Uri}];
+xml_namespace_attrs(_) ->
+    [].
 
 encode_query_value(V) when is_integer(V) -> integer_to_binary(V);
 encode_query_value(V) when is_float(V) -> float_to_binary(V, [short]);
