@@ -25,7 +25,6 @@ import io.beam.ir.erlang.MapExpr;
 import io.beam.ir.erlang.MatchExpr;
 import io.beam.ir.erlang.MatchPattern;
 import io.beam.ir.erlang.Module;
-import io.beam.ir.erlang.OpaquePattern;
 import io.beam.ir.erlang.Pattern;
 import io.beam.ir.erlang.RecordPattern;
 import io.beam.ir.erlang.RecordPatternField;
@@ -549,7 +548,12 @@ final class ErlangRouterIr {
         "label_name",
         List.of(
             FunctionClause.of(
-                List.of(OpaquePattern.of("<<\"{\", Rest/binary>>")), splitCase),
+                List.of(
+                    BinaryPattern.of(
+                        List.of(
+                            BinarySegmentPattern.literal("{"),
+                            BinarySegmentPattern.of(VariablePattern.of("Rest"), "binary")))),
+                splitCase),
             FunctionClause.of(List.of(WildcardPattern.of()), AtomExpr.of("error"))),
         null,
         null,
