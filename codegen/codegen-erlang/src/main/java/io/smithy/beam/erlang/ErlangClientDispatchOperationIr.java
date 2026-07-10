@@ -8,13 +8,13 @@ import io.beam.ir.erlang.Clause;
 import io.beam.ir.erlang.Expression;
 import io.beam.ir.erlang.Fun;
 import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.FunRefExpr;
 import io.beam.ir.erlang.InfixExpr;
 import io.beam.ir.erlang.ListExpr;
 import io.beam.ir.erlang.LocalCallExpr;
 import io.beam.ir.erlang.MapEntry;
 import io.beam.ir.erlang.MapExpr;
 import io.beam.ir.erlang.MatchExpr;
-import io.beam.ir.erlang.OpaqueExpr;
 import io.beam.ir.erlang.Pattern;
 import io.beam.ir.erlang.RecordExpr;
 import io.beam.ir.erlang.RecordField;
@@ -24,6 +24,7 @@ import io.beam.ir.erlang.TupleExpr;
 import io.beam.ir.erlang.TuplePattern;
 import io.beam.ir.erlang.Variable;
 import io.beam.ir.erlang.VariablePattern;
+import io.beam.ir.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSigV4Metadata;
@@ -201,28 +202,70 @@ final class ErlangClientDispatchOperationIr {
 
   private static Expression buildSignedRequestMatch(DispatchContext ctx) {
     String opName = ctx.opName();
-    return MatchExpr.bindValue(
-        "SignedReq",
-        OpaqueExpr.of(
-            """
-            case maps:get(credentials, Config, undefined) of
-                undefined ->
-                    case aws_credentials:get_credentials() of
-                        undefined ->
-                            Req;
-                        Creds0 ->
-                            Creds = #{
-                                access_key_id => maps:get(access_key_id, Creds0),
-                                secret_access_key => maps:get(secret_access_key, Creds0),
-                                session_token => maps:get(token, Creds0, undefined)
-                            },
-                            aws_sigv4:sign(Config#{credentials => Creds}, %s, Req)
-                    end;
-                _ ->
-                    aws_sigv4:sign(Config, %s, Req)
-            end"""
-                .formatted(opName, opName)
-                .strip()));
+    Expression credentialsLookup =
+        RemoteCallExpr.of(
+            "maps",
+            "get",
+            List.of(
+                AtomExpr.of("credentials"),
+                Variable.of("Config"),
+                AtomExpr.of("undefined")));
+    Expression signWithConfig =
+        RemoteCallExpr.of(
+            "aws_sigv4",
+            "sign",
+            List.of(Variable.of("Config"), AtomExpr.of(opName), Variable.of("Req")));
+    Expression credsMap =
+        MapExpr.of(
+            List.of(
+                MapEntry.of(
+                    AtomExpr.of("access_key_id"),
+                    RemoteCallExpr.of(
+                        "maps",
+                        "get",
+                        List.of(AtomExpr.of("access_key_id"), Variable.of("Creds0")))),
+                MapEntry.of(
+                    AtomExpr.of("secret_access_key"),
+                    RemoteCallExpr.of(
+                        "maps",
+                        "get",
+                        List.of(
+                            AtomExpr.of("secret_access_key"), Variable.of("Creds0")))),
+                MapEntry.of(
+                    AtomExpr.of("session_token"),
+                    RemoteCallExpr.of(
+                        "maps",
+                        "get",
+                        List.of(
+                            AtomExpr.of("token"),
+                            Variable.of("Creds0"),
+                            AtomExpr.of("undefined"))))));
+    Expression signWithMergedCreds =
+        RemoteCallExpr.of(
+            "aws_sigv4",
+            "sign",
+            List.of(
+                MapExpr.of(
+                    Variable.of("Config"),
+                    List.of(
+                        MapEntry.of(AtomExpr.of("credentials"), Variable.of("Creds")))),
+                AtomExpr.of(opName),
+                Variable.of("Req")));
+    Expression undefinedCredentialsBranch =
+        CaseExpr.of(
+            RemoteCallExpr.of("aws_credentials", "get_credentials", List.of()),
+            List.of(
+                Clause.of(AtomPattern.of("undefined"), Variable.of("Req")),
+                Clause.of(
+                    VariablePattern.of("Creds0"),
+                    MatchExpr.bindValue("Creds", credsMap, signWithMergedCreds))));
+    Expression credentialsCase =
+        CaseExpr.of(
+            credentialsLookup,
+            List.of(
+                Clause.of(AtomPattern.of("undefined"), undefinedCredentialsBranch),
+                Clause.of(WildcardPattern.of(), signWithConfig)));
+    return MatchExpr.bindValue("SignedReq", credentialsCase);
   }
 
   private static Expression dispatchRequestVar(DispatchContext ctx) {
@@ -336,7 +379,7 @@ final class ErlangClientDispatchOperationIr {
                         List.of(
                             MapEntry.of(
                                 AtomExpr.of("should_retry"),
-                                OpaqueExpr.of("fun should_retry/1")))),
+                                FunRefExpr.of("should_retry", 1)))),
                     Variable.of("RetryOpts")))));
   }
 }
