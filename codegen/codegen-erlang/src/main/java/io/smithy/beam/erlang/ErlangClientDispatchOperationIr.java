@@ -15,7 +15,6 @@ import io.beam.ir.erlang.LocalCallExpr;
 import io.beam.ir.erlang.MapEntry;
 import io.beam.ir.erlang.MapExpr;
 import io.beam.ir.erlang.MatchExpr;
-import io.beam.ir.erlang.Pattern;
 import io.beam.ir.erlang.RecordExpr;
 import io.beam.ir.erlang.RecordField;
 import io.beam.ir.erlang.RecordFieldAccessExpr;
@@ -90,14 +89,11 @@ final class ErlangClientDispatchOperationIr {
       String inputToken) {
     List<Expression> body = new ArrayList<>();
     if (hasItems) {
-      body.add(
-          MatchExpr.bindValue(
-              "NewAcc", InfixExpr.of(Variable.of("Acc"), "++", itemsExpr)));
+      body.add(MatchExpr.bindValue("NewAcc", InfixExpr.of(Variable.of("Acc"), "++", itemsExpr)));
     } else {
       body.add(
           MatchExpr.bindValue(
-              "NewAcc",
-              ListExpr.of(List.of(Variable.of("Output")), Variable.of("Acc"))));
+              "NewAcc", ListExpr.of(List.of(Variable.of("Output")), Variable.of("Acc"))));
     }
     Expression undefinedSuccess =
         hasItems
@@ -105,8 +101,7 @@ final class ErlangClientDispatchOperationIr {
             : TupleExpr.of(
                 List.of(
                     AtomExpr.of("ok"),
-                    RemoteCallExpr.of(
-                        "lists", "reverse", List.of(Variable.of("NewAcc")))));
+                    RemoteCallExpr.of("lists", "reverse", List.of(Variable.of("NewAcc")))));
     Expression nextInput =
         RecordExpr.update(
             Variable.of("Input"),
@@ -125,10 +120,7 @@ final class ErlangClientDispatchOperationIr {
                 Clause.of(
                     VariablePattern.of("NextToken"),
                     BlockExpr.commaSeparated(
-                        List.of(
-                            MatchExpr.bindValue("NextInput", nextInput),
-                            recurse),
-                        false))));
+                        List.of(MatchExpr.bindValue("NextInput", nextInput), recurse), false))));
     body.add(tokenCase);
     return body;
   }
@@ -206,10 +198,7 @@ final class ErlangClientDispatchOperationIr {
         RemoteCallExpr.of(
             "maps",
             "get",
-            List.of(
-                AtomExpr.of("credentials"),
-                Variable.of("Config"),
-                AtomExpr.of("undefined")));
+            List.of(AtomExpr.of("credentials"), Variable.of("Config"), AtomExpr.of("undefined")));
     Expression signWithConfig =
         RemoteCallExpr.of(
             "aws_sigv4",
@@ -229,8 +218,7 @@ final class ErlangClientDispatchOperationIr {
                     RemoteCallExpr.of(
                         "maps",
                         "get",
-                        List.of(
-                            AtomExpr.of("secret_access_key"), Variable.of("Creds0")))),
+                        List.of(AtomExpr.of("secret_access_key"), Variable.of("Creds0")))),
                 MapEntry.of(
                     AtomExpr.of("session_token"),
                     RemoteCallExpr.of(
@@ -247,8 +235,7 @@ final class ErlangClientDispatchOperationIr {
             List.of(
                 MapExpr.of(
                     Variable.of("Config"),
-                    List.of(
-                        MapEntry.of(AtomExpr.of("credentials"), Variable.of("Creds")))),
+                    List.of(MapEntry.of(AtomExpr.of("credentials"), Variable.of("Creds")))),
                 AtomExpr.of(opName),
                 Variable.of("Req")));
     Expression undefinedCredentialsBranch =
@@ -258,7 +245,7 @@ final class ErlangClientDispatchOperationIr {
                 Clause.of(AtomPattern.of("undefined"), Variable.of("Req")),
                 Clause.of(
                     VariablePattern.of("Creds0"),
-                    MatchExpr.bindValue("Creds", credsMap, signWithMergedCreds))));
+                    MatchExpr.bind("Creds", credsMap, signWithMergedCreds))));
     Expression credentialsCase =
         CaseExpr.of(
             credentialsLookup,
@@ -281,19 +268,19 @@ final class ErlangClientDispatchOperationIr {
             List.of(Variable.of("Config"), dispatchRequestVar(ctx))),
         List.of(
             Clause.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("ok"), VariablePattern.of("Resp"))),
+                TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("Resp"))),
                 successExpr),
             Clause.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
+                TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
                 TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("Reason"))))));
   }
 
   private static Expression buildDecodeSuccessExpr(DispatchContext ctx) {
     Expression decode =
         RemoteCallExpr.of(
-            ctx.codecModule(), "decode_" + ctx.opName() + "_response", List.of(Variable.of("Resp")));
+            ctx.codecModule(),
+            "decode_" + ctx.opName() + "_response",
+            List.of(Variable.of("Resp")));
     if (ctx.mode() == DispatchBodyMode.SINGLE_PAGE) {
       return decode;
     }
@@ -328,20 +315,13 @@ final class ErlangClientDispatchOperationIr {
         decodeCall,
         List.of(
             Clause.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("ok"), VariablePattern.of("Output"))),
+                TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("Output"))),
                 BlockExpr.commaSeparated(
                     buildAccumulationAndRecursion(
-                        ctx.opSym(),
-                        hasItems,
-                        itemsExpr,
-                        outputTokenExpr,
-                        inputRecord,
-                        inputToken),
+                        ctx.opSym(), hasItems, itemsExpr, outputTokenExpr, inputRecord, inputToken),
                     false)),
             Clause.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
+                TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
                 TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("Reason"))))));
   }
 
@@ -378,8 +358,7 @@ final class ErlangClientDispatchOperationIr {
                     MapExpr.of(
                         List.of(
                             MapEntry.of(
-                                AtomExpr.of("should_retry"),
-                                FunRefExpr.of("should_retry", 1)))),
+                                AtomExpr.of("should_retry"), FunRefExpr.of("should_retry", 1)))),
                     Variable.of("RetryOpts")))));
   }
 }
