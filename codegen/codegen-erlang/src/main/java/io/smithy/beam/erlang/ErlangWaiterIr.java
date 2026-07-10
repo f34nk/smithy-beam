@@ -26,7 +26,6 @@ import io.beam.ir.erlang.MapPattern;
 import io.beam.ir.erlang.MapPatternEntry;
 import io.beam.ir.erlang.MatchExpr;
 import io.beam.ir.erlang.Module;
-import io.beam.ir.erlang.OpaqueExpr;
 import io.beam.ir.erlang.RecordExpr;
 import io.beam.ir.erlang.RemoteCallExpr;
 import io.beam.ir.erlang.TupleExpr;
@@ -474,13 +473,14 @@ final class ErlangWaiterIr {
                     VariablePattern.of("Path"),
                     VariablePattern.of("Expected"),
                     VariablePattern.of("Output")),
-                OpaqueExpr.of(
-                    """
-                    case path_value(Path, Output) of
-                        undefined -> false;
-                        Value -> string_equals(Value, Expected)
-                    end"""
-                        .strip()))),
+                CaseExpr.of(
+                    LocalCallExpr.of("path_value", List.of(Variable.of("Path"), Variable.of("Output"))),
+                    List.of(
+                        Clause.of(AtomPattern.of("undefined"), AtomExpr.of("false")),
+                        Clause.of(
+                            VariablePattern.of("Value"),
+                            LocalCallExpr.of(
+                                "string_equals", List.of(Variable.of("Value"), Variable.of("Expected")))))))),
         null,
         null,
         null);
@@ -502,13 +502,18 @@ final class ErlangWaiterIr {
                     ListPattern.cons(VariablePattern.of("Key"), VariablePattern.of("Rest")),
                     VariablePattern.of("Value")),
                 IsTypeGuard.of("map", Variable.of("Value")),
-                OpaqueExpr.of(
-                    """
-                    case maps:get(Key, Value, undefined) of
-                        undefined -> undefined;
-                        Next -> path_value(Rest, Next)
-                    end"""
-                        .strip())),
+                CaseExpr.of(
+                    RemoteCallExpr.of(
+                        "maps",
+                        "get",
+                        List.of(
+                            Variable.of("Key"), Variable.of("Value"), AtomExpr.of("undefined"))),
+                    List.of(
+                        Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
+                        Clause.of(
+                            VariablePattern.of("Next"),
+                            LocalCallExpr.of(
+                                "path_value", List.of(Variable.of("Rest"), Variable.of("Next"))))))),
             FunctionClause.of(
                 List.of(
                     ListPattern.cons(VariablePattern.of("Key"), VariablePattern.of("Rest")),
@@ -521,13 +526,14 @@ final class ErlangWaiterIr {
                                 LocalCallExpr.of("tuple_size", List.of(Variable.of("Value"))),
                                 ">=",
                                 IntegerExpr.of(1))))),
-                OpaqueExpr.of(
-                    """
-                    case record_field(Value, Key) of
-                        undefined -> undefined;
-                        Next -> path_value(Rest, Next)
-                    end"""
-                        .strip())),
+                CaseExpr.of(
+                    LocalCallExpr.of("record_field", List.of(Variable.of("Value"), Variable.of("Key"))),
+                    List.of(
+                        Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
+                        Clause.of(
+                            VariablePattern.of("Next"),
+                            LocalCallExpr.of(
+                                "path_value", List.of(Variable.of("Rest"), Variable.of("Next"))))))),
             FunctionClause.of(
                 List.of(WildcardPattern.of(), WildcardPattern.of()), AtomExpr.of("undefined"))),
         null,
@@ -574,19 +580,45 @@ final class ErlangWaiterIr {
                                 LocalCallExpr.of("tuple_size", List.of(Variable.of("Record"))),
                                 ">=",
                                 IntegerExpr.of(1))))),
-                OpaqueExpr.of(
-                    """
-                    Tag = element(1, Record),
-                    case record_fields(Tag) of
-                        Fields when is_list(Fields) ->
-                            Values = tl(tuple_to_list(Record)),
-                            case lists:keyfind(Field, 1, lists:zip(Fields, Values)) of
-                                {Field, V} -> V;
-                                false -> undefined
-                            end;
-                        undefined -> undefined
-                    end"""
-                        .strip()))),
+                MatchExpr.bind(
+                    "Tag",
+                    LocalCallExpr.of("element", List.of(IntegerExpr.of(1), Variable.of("Record"))),
+                    CaseExpr.of(
+                        LocalCallExpr.of("record_fields", List.of(Variable.of("Tag"))),
+                        List.of(
+                            Clause.of(
+                                VariablePattern.of("Fields"),
+                                IsTypeGuard.of("list", Variable.of("Fields")),
+                                MatchExpr.bind(
+                                    "Values",
+                                    LocalCallExpr.of(
+                                        "tl",
+                                        List.of(
+                                            LocalCallExpr.of(
+                                                "tuple_to_list", List.of(Variable.of("Record"))))),
+                                    CaseExpr.of(
+                                        LocalCallExpr.of(
+                                            "lists:keyfind",
+                                            List.of(
+                                                Variable.of("Field"),
+                                                IntegerExpr.of(1),
+                                                RemoteCallExpr.of(
+                                                    "lists",
+                                                    "zip",
+                                                    List.of(
+                                                        Variable.of("Fields"),
+                                                        Variable.of("Values"))))),
+                                        List.of(
+                                            Clause.of(
+                                                TuplePattern.of(
+                                                    List.of(
+                                                        VariablePattern.of("Field"),
+                                                        VariablePattern.of("V"))),
+                                                Variable.of("V")),
+                                            Clause.of(
+                                                AtomPattern.of("false"), AtomExpr.of("undefined")))),
+                            Clause.of(
+                                AtomPattern.of("undefined"), AtomExpr.of("undefined"))))))))),
         null,
         null,
         null);
