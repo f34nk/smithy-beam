@@ -13,7 +13,9 @@ public final class BeamStaticRuntimeEmitter {
   private BeamStaticRuntimeEmitter() {}
 
   public static void emit(
-      FileManifest manifest, ClassLoader classLoader, BeamStaticRuntimeIndex.Requirements requirements) {
+      FileManifest manifest,
+      ClassLoader classLoader,
+      BeamStaticRuntimeIndex.Requirements requirements) {
     if (requirements.modules().isEmpty()) {
       return;
     }

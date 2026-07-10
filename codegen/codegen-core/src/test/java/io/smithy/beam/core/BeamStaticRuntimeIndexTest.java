@@ -14,7 +14,8 @@ class BeamStaticRuntimeIndexTest {
   void basicClientRequiresHttpRuntime() {
     Model model = load("/model/protocol_rest_json_fixture.smithy");
     ServiceShape service =
-        model.expectShape(ShapeId.from("smithy.beam.demo.protocoljson#DemoRestJson"), ServiceShape.class);
+        model.expectShape(
+            ShapeId.from("smithy.beam.demo.protocoljson#DemoRestJson"), ServiceShape.class);
 
     BeamSettings settings = new BeamSettings();
     settings.edition("2026");
@@ -34,8 +35,7 @@ class BeamStaticRuntimeIndexTest {
     Model model = load("/model/sigv4_unsigned_fixture.smithy");
     ServiceShape service =
         model.expectShape(
-            ShapeId.from("smithy.beam.test.sigv4#Sigv4UnsignedTestService"),
-            ServiceShape.class);
+            ShapeId.from("smithy.beam.test.sigv4#Sigv4UnsignedTestService"), ServiceShape.class);
 
     BeamSettings settings = new BeamSettings();
     settings.edition("2026");
@@ -51,7 +51,8 @@ class BeamStaticRuntimeIndexTest {
   void serverOmitsClientDispatchRuntime() {
     Model model = load("/model/protocol_rest_json_fixture.smithy");
     ServiceShape service =
-        model.expectShape(ShapeId.from("smithy.beam.demo.protocoljson#DemoRestJson"), ServiceShape.class);
+        model.expectShape(
+            ShapeId.from("smithy.beam.demo.protocoljson#DemoRestJson"), ServiceShape.class);
 
     BeamSettings settings = new BeamSettings();
     settings.edition("2026");
