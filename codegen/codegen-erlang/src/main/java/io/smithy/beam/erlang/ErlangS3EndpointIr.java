@@ -1,14 +1,25 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
 import io.beam.ir.erlang.BinaryExpr;
 import io.beam.ir.erlang.BinaryPattern;
+import io.beam.ir.erlang.BinarySegmentExpr;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.Clause;
 import io.beam.ir.erlang.Function;
 import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MatchExpr;
 import io.beam.ir.erlang.Module;
-import io.beam.ir.erlang.OpaqueExpr;
+import io.beam.ir.erlang.RemoteCallExpr;
 import io.beam.ir.erlang.Spec;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TuplePattern;
 import io.beam.ir.erlang.TypeAlias;
+import io.beam.ir.erlang.Variable;
 import io.beam.ir.erlang.VariablePattern;
+import io.beam.ir.erlang.WildcardPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -41,15 +52,21 @@ final class ErlangS3EndpointIr {
         List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Config")),
-                OpaqueExpr.of(
-                    """
-                    BaseUrl = maps:get(base_url, Config, <<>>),
-                    {_Scheme, Authority} = utils:split_base_url(BaseUrl),
-                    Authority"""
-                        .strip()))),
-        Spec.of("region_host(" + CLIENT_CONFIG + ") -> binary()"),
-        null,
-        null);
+                MatchExpr.bind(
+                    "BaseUrl",
+                    RemoteCallExpr.of(
+                        "maps",
+                        "get",
+                        List.of(AtomExpr.of("base_url"), Variable.of("Config"), BinaryExpr.of(""))),
+                    MatchExpr.of(
+                        TuplePattern.of(
+                            List.of(WildcardPattern.of(), VariablePattern.of("Authority"))),
+                        RemoteCallExpr.of(
+                            "utils",
+                            "split_base_url",
+                            List.of(Variable.of("BaseUrl"))),
+                        Variable.of("Authority"))))),
+        Spec.of("region_host(" + CLIENT_CONFIG + ") -> binary()"));
   }
 
   static Function resolveBucketUrl() {
@@ -61,26 +78,66 @@ final class ErlangS3EndpointIr {
                     VariablePattern.of("Config"),
                     VariablePattern.of("Bucket"),
                     VariablePattern.of("Key")),
-                OpaqueExpr.of(
-                    """
-                    Style = maps:get(s3_addressing_style, Config, virtual_host),
-                    RegionHost = region_host(Config),
-                    KeyPath = key_path(Key),
-                    case Style of
-                        virtual_host ->
-                            Host = virtual_host(Config, Bucket, RegionHost),
-                            {Host, KeyPath};
-                        path_style ->
-                            {RegionHost, <<"/", Bucket/binary, KeyPath/binary>>};
-                        _ ->
-                            Host = virtual_host(Config, Bucket, RegionHost),
-                            {Host, KeyPath}
-                    end"""
-                        .strip()))),
+                MatchExpr.bind(
+                    "Style",
+                    RemoteCallExpr.of(
+                        "maps",
+                        "get",
+                        List.of(
+                            AtomExpr.of("s3_addressing_style"),
+                            Variable.of("Config"),
+                            AtomExpr.of("virtual_host"))),
+                    MatchExpr.bind(
+                        "RegionHost",
+                        LocalCallExpr.of("region_host", List.of(Variable.of("Config"))),
+                        MatchExpr.bind(
+                            "KeyPath",
+                            LocalCallExpr.of("key_path", List.of(Variable.of("Key"))),
+                            CaseExpr.of(
+                                Variable.of("Style"),
+                                List.of(
+                                    Clause.of(
+                                        AtomPattern.of("virtual_host"),
+                                        MatchExpr.bind(
+                                            "Host",
+                                            LocalCallExpr.of(
+                                                "virtual_host",
+                                                List.of(
+                                                    Variable.of("Config"),
+                                                    Variable.of("Bucket"),
+                                                    Variable.of("RegionHost"))),
+                                            TupleExpr.of(
+                                                List.of(
+                                                    Variable.of("Host"),
+                                                    Variable.of("KeyPath"))))),
+                                    Clause.of(
+                                        AtomPattern.of("path_style"),
+                                        TupleExpr.of(
+                                            List.of(
+                                                Variable.of("RegionHost"),
+                                                BinaryExpr.of(
+                                                    List.of(
+                                                        BinarySegmentExpr.literal("/"),
+                                                        BinarySegmentExpr.of(
+                                                            Variable.of("Bucket"), "binary"),
+                                                        BinarySegmentExpr.of(
+                                                            Variable.of("KeyPath"), "binary")))))),
+                                    Clause.of(
+                                        WildcardPattern.of(),
+                                        MatchExpr.bind(
+                                            "Host",
+                                            LocalCallExpr.of(
+                                                "virtual_host",
+                                                List.of(
+                                                    Variable.of("Config"),
+                                                    Variable.of("Bucket"),
+                                                    Variable.of("RegionHost"))),
+                                            TupleExpr.of(
+                                                List.of(
+                                                    Variable.of("Host"),
+                                                    Variable.of("KeyPath")))))))))))),
         Spec.of(
-            "resolve_bucket_url(" + CLIENT_CONFIG + ", binary(), binary()) -> {binary(), binary()}"),
-        null,
-        null);
+            "resolve_bucket_url(" + CLIENT_CONFIG + ", binary(), binary()) -> {binary(), binary()}"));
   }
 
   static List<Function> helperFunctions() {
@@ -94,10 +151,10 @@ final class ErlangS3EndpointIr {
             FunctionClause.of(List.of(BinaryPattern.of("")), BinaryExpr.of("")),
             FunctionClause.of(
                 List.of(VariablePattern.of("Key")),
-                OpaqueExpr.of("<<\"/\", Key/binary>>".strip()))),
-        null,
-        null,
-        null);
+                BinaryExpr.of(
+                    List.of(
+                        BinarySegmentExpr.literal("/"),
+                        BinarySegmentExpr.of(Variable.of("Key"), "binary"))))));
   }
 
   private static Function virtualHost() {
@@ -109,18 +166,32 @@ final class ErlangS3EndpointIr {
                     VariablePattern.of("Config"),
                     VariablePattern.of("Bucket"),
                     VariablePattern.of("RegionHost")),
-                OpaqueExpr.of(
-                    """
-                    case maps:get(s3_use_accelerate, Config, false) of
-                        true -> <<Bucket/binary, ".s3-accelerate.amazonaws.com">>;
-                        false ->
-                            Suffix = s3_host_suffix(Config),
-                            <<Bucket/binary, Suffix/binary, RegionHost/binary>>
-                    end"""
-                        .strip()))),
-        null,
-        null,
-        null);
+                CaseExpr.of(
+                    RemoteCallExpr.of(
+                        "maps",
+                        "get",
+                        List.of(
+                            AtomExpr.of("s3_use_accelerate"),
+                            Variable.of("Config"),
+                            AtomExpr.of("false"))),
+                    List.of(
+                        Clause.of(
+                            AtomPattern.of("true"),
+                            BinaryExpr.of(
+                                List.of(
+                                    BinarySegmentExpr.of(Variable.of("Bucket"), "binary"),
+                                    BinarySegmentExpr.literal(".s3-accelerate.amazonaws.com")))),
+                        Clause.of(
+                            WildcardPattern.of(),
+                            MatchExpr.bind(
+                                "Suffix",
+                                LocalCallExpr.of("s3_host_suffix", List.of(Variable.of("Config"))),
+                                BinaryExpr.of(
+                                    List.of(
+                                        BinarySegmentExpr.of(Variable.of("Bucket"), "binary"),
+                                        BinarySegmentExpr.of(Variable.of("Suffix"), "binary"),
+                                        BinarySegmentExpr.of(
+                                            Variable.of("RegionHost"), "binary"))))))))));
   }
 
   private static Function s3HostSuffix() {
@@ -129,16 +200,17 @@ final class ErlangS3EndpointIr {
         List.of(
             FunctionClause.of(
                 List.of(VariablePattern.of("Config")),
-                OpaqueExpr.of(
-                    """
-                    case maps:get(s3_use_dualstack, Config, false) of
-                        true -> <<".s3.dualstack.">>;
-                        false -> <<".s3.">>
-                    end"""
-                        .strip()))),
-        null,
-        null,
-        null);
+                CaseExpr.of(
+                    RemoteCallExpr.of(
+                        "maps",
+                        "get",
+                        List.of(
+                            AtomExpr.of("s3_use_dualstack"),
+                            Variable.of("Config"),
+                            AtomExpr.of("false"))),
+                    List.of(
+                        Clause.of(AtomPattern.of("true"), BinaryExpr.of(".s3.dualstack.")),
+                        Clause.of(WildcardPattern.of(), BinaryExpr.of(".s3.")))))));
   }
 
 }
