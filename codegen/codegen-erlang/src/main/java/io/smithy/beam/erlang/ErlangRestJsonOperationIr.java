@@ -1,12 +1,5 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.core.BeamEventStreamIndex;
-import io.smithy.beam.core.BeamHostLabelIndex;
-import io.smithy.beam.core.BeamHttpBindings;
-import io.smithy.beam.core.BeamHttpChecksumIndex;
-import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.core.BeamRequestCompressionIndex;
 import io.beam.ir.erlang.AndGuard;
 import io.beam.ir.erlang.AtomExpr;
 import io.beam.ir.erlang.AtomPattern;
@@ -19,10 +12,10 @@ import io.beam.ir.erlang.Clause;
 import io.beam.ir.erlang.Edoc;
 import io.beam.ir.erlang.Expression;
 import io.beam.ir.erlang.ExpressionGuard;
-import io.beam.ir.erlang.Function;
-import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.Fun;
 import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.Guard;
 import io.beam.ir.erlang.InfixExpr;
 import io.beam.ir.erlang.IntegerExpr;
@@ -48,6 +41,13 @@ import io.beam.ir.erlang.TuplePattern;
 import io.beam.ir.erlang.Variable;
 import io.beam.ir.erlang.VariablePattern;
 import io.beam.ir.erlang.WildcardPattern;
+import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamEventStreamIndex;
+import io.smithy.beam.core.BeamHostLabelIndex;
+import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamHttpChecksumIndex;
+import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamRequestCompressionIndex;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -116,8 +116,7 @@ final class ErlangRestJsonOperationIr {
 
     List<Expression> body = new ArrayList<>();
     body.addAll(buildIdempotencyTokenExprs(input, inputRecord));
-    body.add(
-        MatchExpr.bindValue("Path", buildPathExpression(uriTemplate, labels)));
+    body.add(MatchExpr.bindValue("Path", buildPathExpression(uriTemplate, labels)));
     body.add(MatchExpr.bindValue("Query", buildQueryListExpr(model, queries)));
     body.addAll(buildQueryParamsExprs(queryParams));
     body.addAll(buildRequestHeadersExprs(model, op, headers, prefixHeaders, sp));
@@ -132,8 +131,13 @@ final class ErlangRestJsonOperationIr {
       HttpBinding payload = reqPayload.get(0);
       String fieldName = BeamNameUtils.toSnakeCase(payload.getMember().getMemberName());
       body.add(
-          MatchExpr.bindValue("Stream", CaseExpr.of(Variable.of(toBindingVar(fieldName)), List.of(Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
-                  Clause.of(VariablePattern.of("Value"), Variable.of("Value"))))));
+          MatchExpr.bindValue(
+              "Stream",
+              CaseExpr.of(
+                  Variable.of(toBindingVar(fieldName)),
+                  List.of(
+                      Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
+                      Clause.of(VariablePattern.of("Value"), Variable.of("Value"))))));
     }
 
     BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
@@ -141,7 +145,10 @@ final class ErlangRestJsonOperationIr {
         !hostLabelIndex.hostLabelMembers(op).isEmpty() && op.hasTrait(EndpointTrait.class);
     if (hasHostLabels) {
       body.add(
-          MatchExpr.bindValue("Host", LocalCallExpr.of("build_host", List.of(Variable.of("Input"), Variable.of("Config")))));
+          MatchExpr.bindValue(
+              "Host",
+              LocalCallExpr.of(
+                  "build_host", List.of(Variable.of("Input"), Variable.of("Config")))));
     }
 
     String requestHeaders =
@@ -155,8 +162,7 @@ final class ErlangRestJsonOperationIr {
         "encode_" + opName + "_request",
         List.of(FunctionClause.of(patterns, BlockExpr.commaSeparated(body, false))),
         Spec.of(specText),
-        Edoc.of("Encode HTTP request for " + op.getId() + "."),
-        null);
+        Edoc.of("Encode HTTP request for " + op.getId() + "."));
   }
 
   static Function buildDecodeRequest(
@@ -216,8 +222,7 @@ final class ErlangRestJsonOperationIr {
         "decode_" + opName + "_request",
         List.of(FunctionClause.of(patterns, BlockExpr.commaSeparated(body, false))),
         Spec.of(specText),
-        Edoc.of("Decode HTTP request for " + op.getId() + "."),
-        null);
+        Edoc.of("Decode HTTP request for " + op.getId() + "."));
   }
 
   static Function buildDecodeResponse(
@@ -256,14 +261,11 @@ final class ErlangRestJsonOperationIr {
 
     List<Guard> successGuards = new ArrayList<>();
     List<RecordPatternField> successFields = new ArrayList<>();
-    successFields.add(
-        RecordPatternField.of("status", VariablePattern.of("HttpStatus")));
-    successFields.add(
-        RecordPatternField.of("headers", VariablePattern.of("Headers")));
+    successFields.add(RecordPatternField.of("status", VariablePattern.of("HttpStatus")));
+    successFields.add(RecordPatternField.of("headers", VariablePattern.of("Headers")));
     successFields.add(RecordPatternField.of("body", VariablePattern.of("Body")));
     if (streamingResponsePayload) {
-      successFields.add(
-          RecordPatternField.of("stream", VariablePattern.of("Stream")));
+      successFields.add(RecordPatternField.of("stream", VariablePattern.of("Stream")));
     }
     if (!respCode.isEmpty()) {
       successGuards.add(
@@ -274,17 +276,10 @@ final class ErlangRestJsonOperationIr {
 
     RecordPattern successPattern;
     if (!respCode.isEmpty()) {
-      successPattern =
-          RecordPattern.of(
-              "http_response", successFields);
+      successPattern = RecordPattern.of("http_response", successFields);
     } else {
-      successFields.set(
-          0,
-          RecordPatternField.of(
-              "status", IntegerPattern.of(successCode)));
-      successPattern =
-          RecordPattern.of(
-              "http_response", successFields);
+      successFields.set(0, RecordPatternField.of("status", IntegerPattern.of(successCode)));
+      successPattern = RecordPattern.of("http_response", successFields);
     }
 
     List<Expression> successBody = new ArrayList<>();
@@ -293,22 +288,24 @@ final class ErlangRestJsonOperationIr {
       String expectedContentType = resolvedResponseContentType(model, op);
       List<Clause> contentTypeClauses = new ArrayList<>();
       contentTypeClauses.add(
-          Clause.of(AtomPattern.of("false"),
-                  TupleExpr.of(
-                      List.of(
-                          AtomExpr.of("error"),
-                          TupleExpr.of(
-                              List.of(
-                                  AtomExpr.of("invalid_content_type"),
-                                  RemoteCallExpr.of(
-                                      "proplists",
-                                      "get_value",
-                                      List.of(
-                                          BinaryExpr.of("Content-Type"),
-                                          Variable.of("Headers"),
-                                          AtomExpr.of("undefined")))))))));
+          Clause.of(
+              AtomPattern.of("false"),
+              TupleExpr.of(
+                  List.of(
+                      AtomExpr.of("error"),
+                      TupleExpr.of(
+                          List.of(
+                              AtomExpr.of("invalid_content_type"),
+                              RemoteCallExpr.of(
+                                  "proplists",
+                                  "get_value",
+                                  List.of(
+                                      BinaryExpr.of("Content-Type"),
+                                      Variable.of("Headers"),
+                                      AtomExpr.of("undefined")))))))));
       contentTypeClauses.add(
-          Clause.of(AtomPattern.of("true"),
+          Clause.of(
+              AtomPattern.of("true"),
               buildDecodeResponseSuccessBody(
                   model,
                   op,
@@ -325,8 +322,11 @@ final class ErlangRestJsonOperationIr {
                   eventStreamModule,
                   needsContentTypeCheck)));
       successBody.add(
-          CaseExpr.of(LocalCallExpr.of("content_type_matches", List.of(Variable.of("Headers"),
-                  BinaryExpr.of(expectedContentType))), contentTypeClauses));
+          CaseExpr.of(
+              LocalCallExpr.of(
+                  "content_type_matches",
+                  List.of(Variable.of("Headers"), BinaryExpr.of(expectedContentType))),
+              contentTypeClauses));
     } else {
       successBody.add(
           buildDecodeResponseSuccessBody(
@@ -348,9 +348,12 @@ final class ErlangRestJsonOperationIr {
 
     FunctionClause successClause =
         successGuards.isEmpty()
-            ? FunctionClause.of(List.of(successPattern), BlockExpr.commaSeparated(successBody, false))
+            ? FunctionClause.of(
+                List.of(successPattern), BlockExpr.commaSeparated(successBody, false))
             : FunctionClause.of(
-                List.of(successPattern), AndGuard.of(successGuards), BlockExpr.commaSeparated(successBody, false));
+                List.of(successPattern),
+                AndGuard.of(successGuards),
+                BlockExpr.commaSeparated(successBody, false));
 
     FunctionClause errorClause =
         FunctionClause.of(
@@ -363,8 +366,7 @@ final class ErlangRestJsonOperationIr {
         "decode_" + opName + "_response",
         List.of(successClause, errorClause),
         Spec.of(specText),
-        Edoc.of("Decode HTTP response for " + op.getId() + "."),
-        null);
+        Edoc.of("Decode HTTP response for " + op.getId() + "."));
   }
 
   static Function buildErrorDispatch(
@@ -393,10 +395,16 @@ final class ErlangRestJsonOperationIr {
                   IntegerPattern.of(httpStatus),
                   VariablePattern.of("_Hdrs"),
                   VariablePattern.of("Body")),
-              BlockExpr.commaSeparated(List.of(
-                  MatchExpr.bindValue("Decoded", LocalCallExpr.of("decode_json_body", List.of(Variable.of("Body")))),
-                  TupleExpr.of(List.of(
-                      AtomExpr.of("error"), buildErrorRecord(recName, model, errShape, sp)))), false)));
+              BlockExpr.commaSeparated(
+                  List.of(
+                      MatchExpr.bindValue(
+                          "Decoded",
+                          LocalCallExpr.of("decode_json_body", List.of(Variable.of("Body")))),
+                      TupleExpr.of(
+                          List.of(
+                              AtomExpr.of("error"),
+                              buildErrorRecord(recName, model, errShape, sp)))),
+                  false)));
     }
 
     boolean hasTypeDiscriminated =
@@ -417,8 +425,7 @@ final class ErlangRestJsonOperationIr {
                 BinaryPattern.of(errorId.getName()),
                 TupleExpr.of(
                     List.of(
-                        AtomExpr.of("error"),
-                        buildErrorRecord(recName, model, errShape, sp)))));
+                        AtomExpr.of("error"), buildErrorRecord(recName, model, errShape, sp)))));
       }
       typeClauses.add(
           Clause.of(
@@ -437,15 +444,23 @@ final class ErlangRestJsonOperationIr {
                   VariablePattern.of("Status"),
                   VariablePattern.of("_Hdrs"),
                   VariablePattern.of("Body")),
-              ExpressionGuard.of(
-                  InfixExpr.of(Variable.of("Status"), ">=", IntegerExpr.of(400))),
+              ExpressionGuard.of(InfixExpr.of(Variable.of("Status"), ">=", IntegerExpr.of(400))),
               BlockExpr.commaSeparated(
                   List.of(
-                      MatchExpr.bindValue("Decoded", LocalCallExpr.of("decode_json_body", List.of(Variable.of("Body")))),
-                      MatchExpr.bindValue("ErrorType", RemoteCallExpr.of("maps", "get", List.of(BinaryExpr.of("__type"),
-                          Variable.of("Decoded"),
-                          AtomExpr.of("undefined")))),
-                      CaseExpr.of(Variable.of("ErrorType"), typeClauses)), false)));
+                      MatchExpr.bindValue(
+                          "Decoded",
+                          LocalCallExpr.of("decode_json_body", List.of(Variable.of("Body")))),
+                      MatchExpr.bindValue(
+                          "ErrorType",
+                          RemoteCallExpr.of(
+                              "maps",
+                              "get",
+                              List.of(
+                                  BinaryExpr.of("__type"),
+                                  Variable.of("Decoded"),
+                                  AtomExpr.of("undefined")))),
+                      CaseExpr.of(Variable.of("ErrorType"), typeClauses)),
+                  false)));
     } else {
       clauses.add(
           FunctionClause.of(
@@ -467,8 +482,7 @@ final class ErlangRestJsonOperationIr {
         "decode_" + opName + "_response_error",
         clauses,
         null,
-        Edoc.of("Error dispatch for " + op.getId() + "."),
-        null);
+        Edoc.of("Error dispatch for " + op.getId() + "."));
   }
 
   static Function buildErrorDispatch(Model model, OperationShape op, SymbolProvider sp) {
@@ -489,10 +503,10 @@ final class ErlangRestJsonOperationIr {
         List.of(
             FunctionClause.of(
                 List.of(encodeResponsePattern(model, op, httpIndex, sp, output, outputRecord)),
-                BlockExpr.commaSeparated(buildEncodeResponseBodyExprs(model, op, httpIndex, sp), false))),
+                BlockExpr.commaSeparated(
+                    buildEncodeResponseBodyExprs(model, op, httpIndex, sp), false))),
         Spec.of(specText),
-        Edoc.of("Encode HTTP response for " + op.getId() + "."),
-        null);
+        Edoc.of("Encode HTTP response for " + op.getId() + "."));
   }
 
   static List<Expression> buildEncodeResponseBodyExprs(
@@ -510,11 +524,16 @@ final class ErlangRestJsonOperationIr {
     for (HttpBinding ph : respPrefixHeaders) {
       String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
       body.add(
-          MatchExpr.bindValue("Headers", InfixExpr.of(
+          MatchExpr.bindValue(
+              "Headers",
+              InfixExpr.of(
                   Variable.of("Headers"),
                   "++",
-                  LocalCallExpr.of("prefix_headers_to_list", List.of(BinaryExpr.of(ph.getLocationName()),
-                      Variable.of(toBindingVar(fieldName)))))));
+                  LocalCallExpr.of(
+                      "prefix_headers_to_list",
+                      List.of(
+                          BinaryExpr.of(ph.getLocationName()),
+                          Variable.of(toBindingVar(fieldName)))))));
     }
 
     boolean streamingResponsePayload =
@@ -525,8 +544,13 @@ final class ErlangRestJsonOperationIr {
       String bindingVar = toBindingVar(fieldName);
       if (streamingResponsePayload) {
         body.add(
-            MatchExpr.bindValue("Stream", CaseExpr.of(Variable.of(bindingVar), List.of(Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
-                    Clause.of(VariablePattern.of("Value"), Variable.of("Value"))))));
+            MatchExpr.bindValue(
+                "Stream",
+                CaseExpr.of(
+                    Variable.of(bindingVar),
+                    List.of(
+                        Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
+                        Clause.of(VariablePattern.of("Value"), Variable.of("Value"))))));
         body.add(MatchExpr.bindValue("Body", BinaryExpr.of("")));
       } else {
         body.add(MatchExpr.bindValue("Body", Variable.of(bindingVar)));
@@ -551,7 +575,8 @@ final class ErlangRestJsonOperationIr {
                                       Variable.of("V"), "=/=", AtomExpr.of("undefined"))))),
                       MapExpr.of(entries)))));
       body.add(
-          MatchExpr.bindValue("Body", RemoteCallExpr.of("jsone", "encode", List.of(Variable.of("BodyMap")))));
+          MatchExpr.bindValue(
+              "Body", RemoteCallExpr.of("jsone", "encode", List.of(Variable.of("BodyMap")))));
     } else {
       body.add(MatchExpr.bindValue("Body", BinaryExpr.of("")));
     }
@@ -572,9 +597,14 @@ final class ErlangRestJsonOperationIr {
     List<Expression> exprs = new ArrayList<>();
     if (respHeaders.isEmpty()) {
       exprs.add(
-          MatchExpr.bindValue("Headers", ListExpr.of(List.of(
-                  TupleExpr.of(List.of(
-                      BinaryExpr.of("Content-Type"), BinaryExpr.of(responseContentType)))))));
+          MatchExpr.bindValue(
+              "Headers",
+              ListExpr.of(
+                  List.of(
+                      TupleExpr.of(
+                          List.of(
+                              BinaryExpr.of("Content-Type"),
+                              BinaryExpr.of(responseContentType)))))));
       return exprs;
     }
 
@@ -606,9 +636,7 @@ final class ErlangRestJsonOperationIr {
         MatchExpr.bindValue(
             "ExtraHeaders",
             RemoteCallExpr.of(
-                "lists",
-                "filtermap",
-                List.of(Fun.of(headerClauses), ListExpr.of(headerArgs)))));
+                "lists", "filtermap", List.of(Fun.of(headerClauses), ListExpr.of(headerArgs)))));
     exprs.add(
         MatchExpr.bindValue(
             "Headers",
@@ -616,8 +644,7 @@ final class ErlangRestJsonOperationIr {
                 List.of(
                     TupleExpr.of(
                         List.of(
-                            BinaryExpr.of("Content-Type"),
-                            BinaryExpr.of(responseContentType)))),
+                            BinaryExpr.of("Content-Type"), BinaryExpr.of(responseContentType)))),
                 Variable.of("ExtraHeaders"))));
     return exprs;
   }
@@ -638,8 +665,7 @@ final class ErlangRestJsonOperationIr {
     List<RecordPatternField> fields = new ArrayList<>();
     for (HttpBinding b : concat(respHeaders, respPrefixHeaders, respDoc, respPayload)) {
       String field = BeamNameUtils.toSnakeCase(b.getMember().getMemberName());
-      fields.add(
-          RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
+      fields.add(RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
     }
     return RecordPattern.of(outputRecord, fields);
   }
@@ -658,13 +684,11 @@ final class ErlangRestJsonOperationIr {
         continue;
       }
       String field = BeamNameUtils.toSnakeCase(m.getMemberName());
-      fields.add(
-          RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
+      fields.add(RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
     }
 
     List<MapEntry> bodyEntries = new ArrayList<>();
-    bodyEntries.add(
-        MapEntry.of(BinaryExpr.of("__type"), BinaryExpr.of(errorId.getName())));
+    bodyEntries.add(MapEntry.of(BinaryExpr.of("__type"), BinaryExpr.of(errorId.getName())));
     for (MemberShape m : errShape.members()) {
       if (m.getMemberName().equals("__beam_error_kind")) {
         continue;
@@ -678,23 +702,28 @@ final class ErlangRestJsonOperationIr {
         BlockExpr.commaSeparated(
             List.of(
                 MatchExpr.bindValue("BodyMap", MapExpr.of(bodyEntries)),
-                MatchExpr.bindValue("Body", RemoteCallExpr.of("jsone", "encode", List.of(Variable.of("BodyMap")))),
-                RecordExpr.of("http_response", List.of(RecordField.of("status", IntegerExpr.of(status)),
-                    RecordField.of(
-                        "headers",
-                        ListExpr.of(List.of(
-                            TupleExpr.of(List.of(
-                                BinaryExpr.of("Content-Type"),
-                                BinaryExpr.of("application/json")))))),
-                    RecordField.of("body", Variable.of("Body"))))),
+                MatchExpr.bindValue(
+                    "Body", RemoteCallExpr.of("jsone", "encode", List.of(Variable.of("BodyMap")))),
+                RecordExpr.of(
+                    "http_response",
+                    List.of(
+                        RecordField.of("status", IntegerExpr.of(status)),
+                        RecordField.of(
+                            "headers",
+                            ListExpr.of(
+                                List.of(
+                                    TupleExpr.of(
+                                        List.of(
+                                            BinaryExpr.of("Content-Type"),
+                                            BinaryExpr.of("application/json")))))),
+                        RecordField.of("body", Variable.of("Body"))))),
             false);
 
     return Function.of(
         "encode_" + recName + "_response",
         List.of(FunctionClause.of(List.of(RecordPattern.of(recName, fields)), body)),
         Spec.of("encode_" + recName + "_response(#" + recName + "{}) -> #http_response{}"),
-        Edoc.of("Encode HTTP error response for " + errorId + "."),
-        null);
+        Edoc.of("Encode HTTP error response for " + errorId + "."));
   }
 
   static RecordPattern memberBindingHead(
@@ -702,8 +731,7 @@ final class ErlangRestJsonOperationIr {
     List<RecordPatternField> fields = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String field = BeamNameUtils.toSnakeCase(member.getMemberName());
-      fields.add(
-          RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
+      fields.add(RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
     }
     return RecordPattern.bind(alias, recordName, fields);
   }
@@ -713,8 +741,7 @@ final class ErlangRestJsonOperationIr {
     List<RecordPatternField> fields = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String field = BeamNameUtils.toSnakeCase(member.getMemberName());
-      fields.add(
-          RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
+      fields.add(RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
     }
     return RecordPattern.of(recordName, fields);
   }
@@ -744,7 +771,15 @@ final class ErlangRestJsonOperationIr {
       String helper = ErlangEventStreamEmitter.helperName(sp, union);
       String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
       return List.of(
-          MatchExpr.bindValue("Body", LocalCallExpr.of("iolist_to_binary", List.of(RemoteCallExpr.of(eventStreamModule, "encode_" + helper, List.of(Variable.of(toBindingVar(fieldName))))))));
+          MatchExpr.bindValue(
+              "Body",
+              LocalCallExpr.of(
+                  "iolist_to_binary",
+                  List.of(
+                      RemoteCallExpr.of(
+                          eventStreamModule,
+                          "encode_" + helper,
+                          List.of(Variable.of(toBindingVar(fieldName))))))));
     }
     List<MapEntry> entries =
         ErlangJsonCodecSupport.bodyMapEntries(
@@ -760,8 +795,7 @@ final class ErlangRestJsonOperationIr {
                         List.of(
                             FunClause.of(
                                 List.of(WildcardPattern.of(), VariablePattern.of("V")),
-                                InfixExpr.of(
-                                    Variable.of("V"), "=/=", AtomExpr.of("undefined"))))),
+                                InfixExpr.of(Variable.of("V"), "=/=", AtomExpr.of("undefined"))))),
                     MapExpr.of(entries)))),
         MatchExpr.bindValue(
             "Body", RemoteCallExpr.of("jsone", "encode", List.of(Variable.of("BodyMap")))));
@@ -812,8 +846,9 @@ final class ErlangRestJsonOperationIr {
       recordFields.add(
           RecordField.of(
               fieldName,
-              LocalCallExpr.of("prefix_headers_from_list", List.of(Variable.of("Headers"),
-                  BinaryExpr.of(ph.getLocationName())))));
+              LocalCallExpr.of(
+                  "prefix_headers_from_list",
+                  List.of(Variable.of("Headers"), BinaryExpr.of(ph.getLocationName())))));
     }
     for (HttpBinding db : respDoc) {
       String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
@@ -822,8 +857,7 @@ final class ErlangRestJsonOperationIr {
           ErlangCodecHelperIr.mapsGetDefault(
               BinaryExpr.of(wireKey), Variable.of("Decoded"), AtomExpr.of("undefined"));
       recordFields.add(
-          RecordField.of(
-              fieldName, decodeJsonExpr(model, sp, httpIndex, db.getMember(), raw)));
+          RecordField.of(fieldName, decodeJsonExpr(model, sp, httpIndex, db.getMember(), raw)));
     }
     for (HttpBinding pb : respPayload) {
       String fieldName = BeamNameUtils.toSnakeCase(pb.getMember().getMemberName());
@@ -835,7 +869,8 @@ final class ErlangRestJsonOperationIr {
         recordFields.add(
             RecordField.of(
                 fieldName,
-                RemoteCallExpr.of(eventStreamModule, "decode_" + helper, List.of(Variable.of("Body")))));
+                RemoteCallExpr.of(
+                    eventStreamModule, "decode_" + helper, List.of(Variable.of("Body")))));
       } else {
         recordFields.add(RecordField.of(fieldName, Variable.of("Body")));
       }
@@ -846,8 +881,7 @@ final class ErlangRestJsonOperationIr {
     }
 
     Expression success =
-        TupleExpr.of(
-            List.of(AtomExpr.of("ok"), RecordExpr.of(outputRecord, recordFields)));
+        TupleExpr.of(List.of(AtomExpr.of("ok"), RecordExpr.of(outputRecord, recordFields)));
     body.add(ErlangHttpChecksumIr.responseChecksumGuardExpr(model, op, success));
     return body.size() == 1 ? body.get(0) : BlockExpr.commaSeparated(body, false);
   }
@@ -872,42 +906,64 @@ final class ErlangRestJsonOperationIr {
       fields.add(
           RecordField.of(
               fieldName,
-              LocalCallExpr.of("uri_decode", List.of(RemoteCallExpr.of("maps", "get", List.of(BinaryExpr.of(lb.getMember().getMemberName()),
-                      Variable.of("LabelMap"),
-                      AtomExpr.of("undefined")))))));
+              LocalCallExpr.of(
+                  "uri_decode",
+                  List.of(
+                      RemoteCallExpr.of(
+                          "maps",
+                          "get",
+                          List.of(
+                              BinaryExpr.of(lb.getMember().getMemberName()),
+                              Variable.of("LabelMap"),
+                              AtomExpr.of("undefined")))))));
     }
     for (HttpBinding qb : queries) {
       String fieldName = BeamNameUtils.toSnakeCase(qb.getMember().getMemberName());
       fields.add(
           RecordField.of(
               fieldName,
-              LocalCallExpr.of("decode_query_param", List.of(RemoteCallExpr.of("maps", "get", List.of(BinaryExpr.of(qb.getLocationName()),
-                      Variable.of("Query"),
-                      AtomExpr.of("undefined")))))));
+              LocalCallExpr.of(
+                  "decode_query_param",
+                  List.of(
+                      RemoteCallExpr.of(
+                          "maps",
+                          "get",
+                          List.of(
+                              BinaryExpr.of(qb.getLocationName()),
+                              Variable.of("Query"),
+                              AtomExpr.of("undefined")))))));
     }
     for (HttpBinding qp : queryParams) {
       String fieldName = BeamNameUtils.toSnakeCase(qp.getMember().getMemberName());
       fields.add(
           RecordField.of(
               fieldName,
-              RemoteCallExpr.of("maps", "from_list", List.of(RemoteCallExpr.of("maps", "to_list", List.of(Variable.of("Query")))))));
+              RemoteCallExpr.of(
+                  "maps",
+                  "from_list",
+                  List.of(RemoteCallExpr.of("maps", "to_list", List.of(Variable.of("Query")))))));
     }
     for (HttpBinding hb : headers) {
       String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
       fields.add(
           RecordField.of(
               fieldName,
-              RemoteCallExpr.of("proplists", "get_value", List.of(BinaryExpr.of(hb.getLocationName()),
-                  Variable.of("Headers"),
-                  AtomExpr.of("undefined")))));
+              RemoteCallExpr.of(
+                  "proplists",
+                  "get_value",
+                  List.of(
+                      BinaryExpr.of(hb.getLocationName()),
+                      Variable.of("Headers"),
+                      AtomExpr.of("undefined")))));
     }
     for (HttpBinding ph : prefixHeaders) {
       String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
       fields.add(
           RecordField.of(
               fieldName,
-              LocalCallExpr.of("prefix_headers_from_list", List.of(Variable.of("Headers"),
-                  BinaryExpr.of(ph.getLocationName())))));
+              LocalCallExpr.of(
+                  "prefix_headers_from_list",
+                  List.of(Variable.of("Headers"), BinaryExpr.of(ph.getLocationName())))));
     }
     for (HttpBinding db : docMembers) {
       String fieldName = BeamNameUtils.toSnakeCase(db.getMember().getMemberName());
@@ -916,8 +972,7 @@ final class ErlangRestJsonOperationIr {
           ErlangCodecHelperIr.mapsGetDefault(
               BinaryExpr.of(wireKey), Variable.of("Decoded"), AtomExpr.of("undefined"));
       fields.add(
-          RecordField.of(
-              fieldName, decodeJsonExpr(model, sp, httpIndex, db.getMember(), raw)));
+          RecordField.of(fieldName, decodeJsonExpr(model, sp, httpIndex, db.getMember(), raw)));
     }
     for (HttpBinding pb : reqPayload) {
       String fieldName = BeamNameUtils.toSnakeCase(pb.getMember().getMemberName());
@@ -929,7 +984,8 @@ final class ErlangRestJsonOperationIr {
         fields.add(
             RecordField.of(
                 fieldName,
-                RemoteCallExpr.of(eventStreamModule, "decode_" + helper, List.of(Variable.of("Body")))));
+                RemoteCallExpr.of(
+                    eventStreamModule, "decode_" + helper, List.of(Variable.of("Body")))));
       } else {
         fields.add(RecordField.of(fieldName, Variable.of("Body")));
       }
@@ -948,9 +1004,13 @@ final class ErlangRestJsonOperationIr {
       fields.add(
           RecordField.of(
               field,
-              RemoteCallExpr.of("maps", "get", List.of(BinaryExpr.of(member.getMemberName()),
-                  Variable.of("Decoded"),
-                  AtomExpr.of("undefined")))));
+              RemoteCallExpr.of(
+                  "maps",
+                  "get",
+                  List.of(
+                      BinaryExpr.of(member.getMemberName()),
+                      Variable.of("Decoded"),
+                      AtomExpr.of("undefined")))));
     }
     return RecordExpr.of(recName, fields);
   }
@@ -1016,7 +1076,11 @@ final class ErlangRestJsonOperationIr {
       String fieldName = BeamNameUtils.toSnakeCase(labelName);
       segments.add(
           BinarySegmentExpr.of(
-              LocalCallExpr.of("uri_encode", List.of(LocalCallExpr.of("to_binary", List.of(Variable.of(toBindingVar(fieldName)))))),
+              LocalCallExpr.of(
+                  "uri_encode",
+                  List.of(
+                      LocalCallExpr.of(
+                          "to_binary", List.of(Variable.of(toBindingVar(fieldName)))))),
               "binary"));
       pos = end + 1;
     }
@@ -1034,8 +1098,11 @@ final class ErlangRestJsonOperationIr {
       Fun fun = queryFiltermapFun(qb.getLocationName());
       Expression listArg =
           target instanceof ListShape
-              ? CaseExpr.of(Variable.of(bindingVar), List.of(Clause.of(AtomPattern.of("undefined"), ListExpr.of(List.of())),
-                  Clause.of(VariablePattern.of("V"), Variable.of("V"))))
+              ? CaseExpr.of(
+                  Variable.of(bindingVar),
+                  List.of(
+                      Clause.of(AtomPattern.of("undefined"), ListExpr.of(List.of())),
+                      Clause.of(VariablePattern.of("V"), Variable.of("V"))))
               : ListExpr.of(List.of(Variable.of(bindingVar)));
       parts.add(RemoteCallExpr.of("lists", "filtermap", List.of(fun, listArg)));
     }
@@ -1087,12 +1154,11 @@ final class ErlangRestJsonOperationIr {
                           ListComprehensionExpr.of(
                               TupleExpr.of(List.of(Variable.of("K"), Variable.of("V"))),
                               TuplePattern.of(
-                                  List.of(
-                                      VariablePattern.of("K"), VariablePattern.of("V"))),
-                              RemoteCallExpr.of(
-                                  "maps", "to_list", List.of(Variable.of("M")))))))));
+                                  List.of(VariablePattern.of("K"), VariablePattern.of("V"))),
+                              RemoteCallExpr.of("maps", "to_list", List.of(Variable.of("M")))))))));
       exprs.add(
-          MatchExpr.bindValue("Query", InfixExpr.of(Variable.of("Query"), "++", Variable.of("QueryExtra"))));
+          MatchExpr.bindValue(
+              "Query", InfixExpr.of(Variable.of("Query"), "++", Variable.of("QueryExtra"))));
     }
     return exprs;
   }
@@ -1107,9 +1173,14 @@ final class ErlangRestJsonOperationIr {
     List<Expression> exprs = new ArrayList<>();
     if (headers.isEmpty()) {
       exprs.add(
-          MatchExpr.bindValue("Headers", ListExpr.of(List.of(
-                  TupleExpr.of(List.of(
-                      BinaryExpr.of("Content-Type"), BinaryExpr.of(requestContentType)))))));
+          MatchExpr.bindValue(
+              "Headers",
+              ListExpr.of(
+                  List.of(
+                      TupleExpr.of(
+                          List.of(
+                              BinaryExpr.of("Content-Type"),
+                              BinaryExpr.of(requestContentType)))))));
     } else {
       List<FunClause> headerClauses = new ArrayList<>();
       for (HttpBinding hb : headers) {
@@ -1139,9 +1210,7 @@ final class ErlangRestJsonOperationIr {
           MatchExpr.bindValue(
               "Headers0",
               RemoteCallExpr.of(
-                  "lists",
-                  "filtermap",
-                  List.of(Fun.of(headerClauses), ListExpr.of(headerArgs)))));
+                  "lists", "filtermap", List.of(Fun.of(headerClauses), ListExpr.of(headerArgs)))));
       exprs.add(
           MatchExpr.bindValue(
               "Headers",
@@ -1149,18 +1218,22 @@ final class ErlangRestJsonOperationIr {
                   List.of(
                       TupleExpr.of(
                           List.of(
-                              BinaryExpr.of("Content-Type"),
-                              BinaryExpr.of(requestContentType)))),
+                              BinaryExpr.of("Content-Type"), BinaryExpr.of(requestContentType)))),
                   Variable.of("Headers0"))));
     }
     for (HttpBinding ph : prefixHeaders) {
       String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
       exprs.add(
-          MatchExpr.bindValue("Headers", InfixExpr.of(
+          MatchExpr.bindValue(
+              "Headers",
+              InfixExpr.of(
                   Variable.of("Headers"),
                   "++",
-                  LocalCallExpr.of("prefix_headers_to_list", List.of(BinaryExpr.of(ph.getLocationName()),
-                      Variable.of(toBindingVar(fieldName)))))));
+                  LocalCallExpr.of(
+                      "prefix_headers_to_list",
+                      List.of(
+                          BinaryExpr.of(ph.getLocationName()),
+                          Variable.of(toBindingVar(fieldName)))))));
     }
     return exprs;
   }
@@ -1190,14 +1263,27 @@ final class ErlangRestJsonOperationIr {
         UnionShape union = model.expectShape(member.getTarget(), UnionShape.class);
         String helper = ErlangEventStreamEmitter.helperName(sp, union);
         exprs.add(
-            MatchExpr.bindValue("Body", LocalCallExpr.of("iolist_to_binary", List.of(RemoteCallExpr.of(eventStreamModule, "encode_" + helper, List.of(Variable.of(bindingVar)))))));
+            MatchExpr.bindValue(
+                "Body",
+                LocalCallExpr.of(
+                    "iolist_to_binary",
+                    List.of(
+                        RemoteCallExpr.of(
+                            eventStreamModule,
+                            "encode_" + helper,
+                            List.of(Variable.of(bindingVar)))))));
         return exprs;
       }
       Shape target = model.expectShape(member.getTarget());
       if (target instanceof BlobShape || target instanceof StringShape) {
         exprs.add(
-            MatchExpr.bindValue("Body", CaseExpr.of(Variable.of(bindingVar), List.of(Clause.of(AtomPattern.of("undefined"), BinaryExpr.of("")),
-                    Clause.of(VariablePattern.of("Value"), Variable.of("Value"))))));
+            MatchExpr.bindValue(
+                "Body",
+                CaseExpr.of(
+                    Variable.of(bindingVar),
+                    List.of(
+                        Clause.of(AtomPattern.of("undefined"), BinaryExpr.of("")),
+                        Clause.of(VariablePattern.of("Value"), Variable.of("Value"))))));
         return exprs;
       }
     }
@@ -1218,13 +1304,22 @@ final class ErlangRestJsonOperationIr {
               HttpBinding.Location.DOCUMENT,
               eventStreamModule);
       exprs.add(
-          MatchExpr.bindValue("BodyMap", RemoteCallExpr.of("maps", "filter", List.of(Fun.of(List.of(
-                      FunClause.of(
-                          List.of(WildcardPattern.of(), VariablePattern.of("V")),
-                          InfixExpr.of(Variable.of("V"), "=/=", AtomExpr.of("undefined"))))),
-                  MapExpr.of(entries)))));
+          MatchExpr.bindValue(
+              "BodyMap",
+              RemoteCallExpr.of(
+                  "maps",
+                  "filter",
+                  List.of(
+                      Fun.of(
+                          List.of(
+                              FunClause.of(
+                                  List.of(WildcardPattern.of(), VariablePattern.of("V")),
+                                  InfixExpr.of(
+                                      Variable.of("V"), "=/=", AtomExpr.of("undefined"))))),
+                      MapExpr.of(entries)))));
       exprs.add(
-          MatchExpr.bindValue("Body", RemoteCallExpr.of("jsone", "encode", List.of(Variable.of("BodyMap")))));
+          MatchExpr.bindValue(
+              "Body", RemoteCallExpr.of("jsone", "encode", List.of(Variable.of("BodyMap")))));
     }
     return exprs;
   }
@@ -1235,7 +1330,8 @@ final class ErlangRestJsonOperationIr {
     fields.add(RecordField.of("method", BinaryExpr.of(method)));
     fields.add(RecordField.of("path", Variable.of("Path")));
     fields.add(
-        RecordField.of("query", RemoteCallExpr.of("maps", "from_list", List.of(Variable.of("Query")))));
+        RecordField.of(
+            "query", RemoteCallExpr.of("maps", "from_list", List.of(Variable.of("Query")))));
     fields.add(RecordField.of("headers", Variable.of(headersVar)));
     fields.add(RecordField.of("body", Variable.of("Body")));
     if (streamingRequestPayload) {
@@ -1252,7 +1348,11 @@ final class ErlangRestJsonOperationIr {
   }
 
   static Expression decodeJsonExpr(
-      Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member, Expression raw) {
+      Model model,
+      SymbolProvider sp,
+      HttpBindingIndex httpIndex,
+      MemberShape member,
+      Expression raw) {
     return ErlangJsonCodecSupport.decodeJsonExpr(model, sp, httpIndex, member, raw);
   }
 
@@ -1270,8 +1370,7 @@ final class ErlangRestJsonOperationIr {
     List<RecordPatternField> fields = new ArrayList<>();
     for (HttpBinding binding : bindings) {
       String field = BeamNameUtils.toSnakeCase(binding.getMember().getMemberName());
-      fields.add(
-          RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
+      fields.add(RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
     }
     return RecordPattern.bind(alias, recordName, fields);
   }
@@ -1284,8 +1383,7 @@ final class ErlangRestJsonOperationIr {
     if (streaming) {
       fields.add(RecordPatternField.of("stream", VariablePattern.of("Stream")));
     }
-    return RecordPattern.of(
-        "http_request", fields);
+    return RecordPattern.of("http_request", fields);
   }
 
   private static RecordPattern httpResponseErrorPattern() {
@@ -1327,12 +1425,11 @@ final class ErlangRestJsonOperationIr {
                                             List.of(
                                                 BinaryExpr.of("Content-Encoding"),
                                                 BinaryExpr.of("gzip"),
-                                                Variable.of("Headers1")))))), false)),
+                                                Variable.of("Headers1")))))),
+                            false)),
                     Clause.of(
                         AtomPattern.of("false"),
-                        TupleExpr.of(
-                            List.of(
-                                Variable.of("Body"), Variable.of("Headers1"))))))));
+                        TupleExpr.of(List.of(Variable.of("Body"), Variable.of("Headers1"))))))));
   }
 
   private static boolean supportsGzipCompression(OperationShape op) {
