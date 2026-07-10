@@ -184,14 +184,12 @@ final class ElixirClientDirectedCodegen
 
     ElixirClientModuleBuilder builder = ctx.clientModuleBuilderOrNull();
     if (builder != null) {
-      builder.addServiceFunctions(ElixirClientIr.serviceFunctions(service, ctx.model(), sp));
       String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
       ExModule module =
           ElixirClientIr.clientModule(
               layout,
               service,
               typesModuleName,
-              builder.serviceFunctions(),
               builder.operationFunctions());
       ctx.writerDelegator()
           .useFileWriter(ctx.definitionFile(), writer -> writer.write("$L", module.asString()));

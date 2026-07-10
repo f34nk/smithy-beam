@@ -28,8 +28,7 @@ class EndpointResolutionTest {
     MockManifest manifest = runErlangClient();
 
     String client = manifest.expectFileString("aws_metadata_service_client.erl");
-    assertThat(client).contains("default_config() ->");
-    assertThat(client).contains("endpoint_prefix => <<\"testprefix\">>");
+    assertThat(client).doesNotContain("default_config()");
   }
 
   @Test

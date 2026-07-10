@@ -155,7 +155,6 @@ final class ErlangClientDirectedCodegen
 
     ErlangClientModuleBuilder builder = ctx.clientModuleBuilderOrNull();
     if (builder != null) {
-      builder.addServiceFunctions(ErlangClientIr.serviceFunctions(service, ctx.model(), sp));
       List<String> exports = new ArrayList<>();
       List<OperationShape> operations =
           ErlangTopDown.containedOperationsSorted(ctx.model(), service);
@@ -168,7 +167,7 @@ final class ErlangClientDirectedCodegen
       }
       Module module =
           ErlangClientIr.clientModule(
-              layout, service, exports, builder.serviceFunctions(), builder.operationFunctions());
+              layout, service, exports, builder.operationFunctions());
       ErlangCodecEmission.writeModule(ctx, ctx.definitionFile(), module);
       if (ctx.protocolCodegen() != null) {
         for (OperationShape op : operations) {
