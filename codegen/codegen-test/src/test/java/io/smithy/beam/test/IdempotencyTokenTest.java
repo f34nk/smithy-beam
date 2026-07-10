@@ -92,8 +92,7 @@ class IdempotencyTokenTest {
     assertThat(codec).contains("encode_create_resource_request(");
     assertThat(codec).contains("Input1 =");
     assertThat(codec).contains("case Input#create_resource_input.client_token of");
-    assertThat(codec)
-        .contains("Input#create_resource_input{client_token = generate_uuid()}");
+    assertThat(codec).contains("Input#create_resource_input{client_token = generate_uuid()}");
     assertThat(codec).contains("ClientToken = Input1#create_resource_input.client_token");
     assertThat(codec).contains("generate_uuid() ->");
     assertThat(codec).contains("uuid:to_string(uuid:v4())");

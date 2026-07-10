@@ -82,5 +82,4 @@ class ErlangRestJson1CodecTest {
     assertThat(client).contains("runtime_http:dispatch(");
     assertThat(client).contains("demo_rest_json_rest_json_1:decode_describe_item_response(");
   }
-
 }
