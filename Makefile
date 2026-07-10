@@ -86,9 +86,6 @@ _run:
 	mkdir -p build
 	rm -rf build/$(TARGET)*.log
 	touch build/$(TARGET).log
-	@if find $(TARGET)/erlang -maxdepth 2 -name Makefile 2>/dev/null | grep -q .; then \
-		make -C runtime/erlang compile; \
-	fi
 	#
 	# Run $(TARGET) in parallel ($(PARALLEL_JOBS) jobs)
 	#
