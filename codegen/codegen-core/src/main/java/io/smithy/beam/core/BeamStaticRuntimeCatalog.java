@@ -10,7 +10,7 @@ public final class BeamStaticRuntimeCatalog {
   private static final List<BeamStaticRuntimeModule> ALL =
       List.of(
           BeamStaticRuntimeModule.HTTP_TYPES,
-          BeamStaticRuntimeModule.REQRES,
+          BeamStaticRuntimeModule.HTTP_RUNTIME,
           BeamStaticRuntimeModule.UTILS,
           BeamStaticRuntimeModule.AWS_SIGV4,
           BeamStaticRuntimeModule.HTTP_CHECKSUM,

@@ -1,7 +1,7 @@
--module(reqres_test).
+-module(runtime_http_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("http_types.hrl").
+-include("runtime_types.hrl").
 
 dispatch_builds_url_without_query_test() ->
     Config = #{base_url => <<"https://api.example">>},
@@ -12,7 +12,7 @@ dispatch_builds_url_without_query_test() ->
         headers = [],
         body = <<>>
     },
-    {ok, Resp} = reqres:dispatch(http_mock, Config, Req),
+    {ok, Resp} = runtime_http:dispatch(http_mock, Config, Req),
     ?assertEqual(200, Resp#http_response.status),
     ?assertEqual(<<"{\"ok\":true}">>, Resp#http_response.body).
 
@@ -25,7 +25,7 @@ dispatch_appends_query_string_test() ->
         headers = [],
         body = <<>>
     },
-    {ok, Resp} = reqres:dispatch(http_mock, Config, Req),
+    {ok, Resp} = runtime_http:dispatch(http_mock, Config, Req),
     ?assertEqual(200, Resp#http_response.status),
     ?assertEqual(<<>>, Resp#http_response.body).
 
@@ -38,7 +38,7 @@ dispatch_sends_request_body_test() ->
         headers = [{<<"Content-Type">>, <<"application/json">>}],
         body = <<"{\"name\":\"item\"}">>
     },
-    {ok, Resp} = reqres:dispatch(http_mock, Config, Req),
+    {ok, Resp} = runtime_http:dispatch(http_mock, Config, Req),
     ?assertEqual(201, Resp#http_response.status),
     ?assertEqual(<<"{\"id\":1}">>, Resp#http_response.body).
 
@@ -51,7 +51,7 @@ dispatch_propagates_client_error_test() ->
         headers = [],
         body = <<>>
     },
-    ?assertEqual({error, timeout}, reqres:dispatch(http_mock, Config, Req)).
+    ?assertEqual({error, timeout}, runtime_http:dispatch(http_mock, Config, Req)).
 
 with_retry_returns_ok_without_retry_test() ->
     Ref = counters:new(1, []),
@@ -59,7 +59,7 @@ with_retry_returns_ok_without_retry_test() ->
         counters:add(Ref, 1, 1),
         {ok, done}
     end,
-    ?assertEqual({ok, done}, reqres:with_retry(Fun, #{max_attempts => 3, base_delay_ms => 0})),
+    ?assertEqual({ok, done}, runtime_http:with_retry(Fun, #{max_attempts => 3, base_delay_ms => 0})),
     ?assertEqual(1, counters:get(Ref, 1)).
 
 with_retry_retries_retryable_error_test() ->
@@ -74,7 +74,7 @@ with_retry_retries_retryable_error_test() ->
     ShouldRetry = fun({error, retryable}) -> true; (_) -> false end,
     ?assertEqual(
         {ok, done},
-        reqres:with_retry(Fun, #{
+        runtime_http:with_retry(Fun, #{
             max_attempts => 3,
             base_delay_ms => 0,
             should_retry => ShouldRetry
@@ -90,6 +90,6 @@ with_retry_stops_on_non_retryable_error_test() ->
     end,
     ?assertEqual(
         {error, fatal},
-        reqres:with_retry(Fun, #{max_attempts => 3, base_delay_ms => 0})
+        runtime_http:with_retry(Fun, #{max_attempts => 3, base_delay_ms => 0})
     ),
     ?assertEqual(1, counters:get(Ref, 1)).

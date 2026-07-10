@@ -1,7 +1,7 @@
 %% Shared smithy-beam Erlang HTTP request/response helper module.
 %% Uses httpc from OTP. Replace via adapter for testing.
--module(reqres).
--include("http_types.hrl").
+-module(runtime_http).
+-include("runtime_types.hrl").
 -export([
     dispatch/2,
     dispatch/3,

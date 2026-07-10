@@ -242,7 +242,7 @@ class ErlangClientDispatchIrTest {
             ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
     assertThat(body.get(0)).isInstanceOf(MatchExpr.class);
     assertThat(body.get(body.size() - 1)).isInstanceOf(RemoteCallExpr.class);
-    assertThat(((RemoteCallExpr) body.get(body.size() - 1)).module()).isEqualTo(AtomExpr.of("reqres"));
+    assertThat(((RemoteCallExpr) body.get(body.size() - 1)).module()).isEqualTo(AtomExpr.of("runtime_http"));
     assertThat(renderBody(body))
         .isEqualTo(readExpectedString("ir/client_dispatch_get_name_retry.expected.erl"));
   }

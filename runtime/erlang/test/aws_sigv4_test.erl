@@ -1,7 +1,7 @@
 -module(aws_sigv4_test).
 
 -include_lib("eunit/include/eunit.hrl").
--include("http_types.hrl").
+-include("runtime_types.hrl").
 
 -define(CREDENTIALS, #{
     access_key_id => <<"AKIAIOSFODNN7EXAMPLE">>,

@@ -25,8 +25,8 @@ final class ErlangRuntimeTypesIr {
     entries.add(new HeaderComment("HTTP carrier types for generated clients."));
     serviceId.ifPresent(
         id -> entries.add(new HeaderComment("Generated runtime types for " + id + ".")));
-    entries.add(new HeaderIfndef("BEAM_HTTP_TYPES_INCLUDED"));
-    entries.add(new HeaderDefine("BEAM_HTTP_TYPES_INCLUDED", "true"));
+    entries.add(new HeaderIfndef("BEAM_RUNTIME_TYPES_INCLUDED"));
+    entries.add(new HeaderDefine("BEAM_RUNTIME_TYPES_INCLUDED", "true"));
     entries.add(new HeaderBlankLine());
     entries.add(
         new HeaderComment("HTTP carrier types for generated clients. Adjust only via codegen."));

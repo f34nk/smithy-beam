@@ -12,10 +12,10 @@ public record BeamStaticRuntimeModule(
   }
 
   public static final BeamStaticRuntimeModule HTTP_TYPES =
-      module("src/http_types.hrl", "http_types.hrl", "http_types", RuntimeFeature.HTTP_CLIENT);
+      module("src/runtime_types.hrl", "runtime_types.hrl", "runtime_types", RuntimeFeature.HTTP_CLIENT);
 
-  public static final BeamStaticRuntimeModule REQRES =
-      module("src/reqres.erl", "reqres.erl", "reqres", RuntimeFeature.HTTP_CLIENT);
+  public static final BeamStaticRuntimeModule HTTP_RUNTIME =
+      module("src/runtime_http.erl", "runtime_http.erl", "runtime_http", RuntimeFeature.HTTP_CLIENT);
 
   public static final BeamStaticRuntimeModule UTILS =
       module("src/utils.erl", "utils.erl", "utils", RuntimeFeature.HTTP_CLIENT);

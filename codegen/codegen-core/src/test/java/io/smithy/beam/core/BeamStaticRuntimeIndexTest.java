@@ -23,7 +23,7 @@ class BeamStaticRuntimeIndexTest {
 
     assertThat(requirements.modules())
         .extracting(BeamStaticRuntimeModule::moduleName)
-        .contains("reqres", "utils", "http_types");
+        .contains("runtime_http", "utils", "runtime_types");
     assertThat(requirements.modules())
         .extracting(BeamStaticRuntimeModule::moduleName)
         .doesNotContain("aws_sigv4", "http_checksum", "aws_event_stream");
@@ -60,10 +60,10 @@ class BeamStaticRuntimeIndexTest {
 
     assertThat(requirements.modules())
         .extracting(BeamStaticRuntimeModule::moduleName)
-        .containsExactly("http_types");
+        .containsExactly("runtime_types");
     assertThat(requirements.modules())
         .extracting(BeamStaticRuntimeModule::moduleName)
-        .doesNotContain("reqres", "aws_sigv4", "utils");
+        .doesNotContain("runtime_http", "aws_sigv4", "utils");
   }
 
   @Test

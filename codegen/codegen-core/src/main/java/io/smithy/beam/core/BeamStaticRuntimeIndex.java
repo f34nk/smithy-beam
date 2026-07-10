@@ -34,7 +34,7 @@ public final class BeamStaticRuntimeIndex {
     Set<BeamStaticRuntimeModule> selected = new LinkedHashSet<>();
 
     if (client) {
-      addWithDependencies(selected, BeamStaticRuntimeModule.REQRES);
+      addWithDependencies(selected, BeamStaticRuntimeModule.HTTP_RUNTIME);
     } else {
       addWithDependencies(selected, BeamStaticRuntimeModule.HTTP_TYPES);
     }
@@ -64,7 +64,7 @@ public final class BeamStaticRuntimeIndex {
     if (!selected.add(module)) {
       return;
     }
-    if (module == BeamStaticRuntimeModule.REQRES) {
+    if (module == BeamStaticRuntimeModule.HTTP_RUNTIME) {
       addWithDependencies(selected, BeamStaticRuntimeModule.HTTP_TYPES);
       addWithDependencies(selected, BeamStaticRuntimeModule.UTILS);
     } else if (module == BeamStaticRuntimeModule.AWS_SIGV4) {

@@ -2,7 +2,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include("amazon_s3_types.hrl").
--include("http_types.hrl").
+-include("runtime_types.hrl").
 
 -define(BUCKET_NAME, <<"smithy-beam-minimal-s3-erlang">>).
 -define(HEAD_BUCKET, <<"my-bucket">>).

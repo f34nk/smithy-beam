@@ -191,7 +191,7 @@ class ErlangRestJsonIrTest {
     settings.edition("2026");
     ErlangSymbolProvider sp =
         new ErlangSymbolProvider(
-            settings, model, service, "http_types.hrl", BeamCodegenKind.CLIENT);
+            settings, model, service, "runtime_types.hrl", BeamCodegenKind.CLIENT);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     String combined =
         ErlangRestJsonOperationIr.buildEncodeResponseBodyExprs(model, op, httpIndex, sp).stream()
@@ -212,7 +212,7 @@ class ErlangRestJsonIrTest {
     settings.edition("2026");
     ErlangSymbolProvider sp =
         new ErlangSymbolProvider(
-            settings, model, service, "http_types.hrl", BeamCodegenKind.CLIENT);
+            settings, model, service, "runtime_types.hrl", BeamCodegenKind.CLIENT);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     Function fn = ErlangRestJsonOperationIr.buildEncodeResponse(model, op, httpIndex, sp);
     assertStructural(fn);
@@ -229,7 +229,7 @@ class ErlangRestJsonIrTest {
         model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
     ErlangSymbolProvider sp =
         new ErlangSymbolProvider(
-            settings, model, service, "http_types.hrl", BeamCodegenKind.CLIENT);
+            settings, model, service, "runtime_types.hrl", BeamCodegenKind.CLIENT);
     Function fn = ErlangRestJsonOperationIr.buildErrorResponseEncoder(model, errorId, sp);
     assertStructural(fn);
     IrGoldenAssertions.assertGolden(

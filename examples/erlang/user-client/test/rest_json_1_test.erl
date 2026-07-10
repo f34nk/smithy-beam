@@ -2,7 +2,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include("user_service_types.hrl").
--include("http_types.hrl").
+-include("runtime_types.hrl").
 
 %% encode_get_user_request/1
 

@@ -39,7 +39,7 @@ class RetryEmissionTest {
     String client = manifest.expectFileString("error_fixture_service_client.erl");
     assertThat(client).contains("should_retry({error, #not_found_error{}}) -> true;");
     assertThat(client).contains("should_retry({error, #throttling_error{}}) -> true;");
-    assertThat(client).contains("reqres:with_retry(");
+    assertThat(client).contains("runtime_http:with_retry(");
   }
 
   @Test

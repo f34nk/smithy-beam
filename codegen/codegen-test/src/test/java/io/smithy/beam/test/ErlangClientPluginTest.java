@@ -41,9 +41,9 @@ class ErlangClientPluginTest {
 
     new ErlangClientPlugin().execute(buildContext(model, manifest));
 
-    assertThat(manifest.getFileString("reqres.erl")).isPresent();
-    assertThat(manifest.getFileString("http_types.hrl")).isPresent();
-    assertThat(manifest.expectFileString("reqres.erl")).contains("-module(reqres).");
+    assertThat(manifest.getFileString("runtime_http.erl")).isPresent();
+    assertThat(manifest.getFileString("runtime_types.hrl")).isPresent();
+    assertThat(manifest.expectFileString("runtime_http.erl")).contains("-module(runtime_http).");
     assertThat(manifest.getFileString("aws_sigv4.erl")).isEmpty();
     assertThat(manifest.getFileString("http_checksum.erl")).isEmpty();
     assertThat(manifest.getFileString("aws_event_stream.erl")).isEmpty();
@@ -184,7 +184,7 @@ class ErlangClientPluginTest {
     assertThat(client)
         .contains("describe_item(Config, Input) ->")
         .contains("Req = demo_rest_json_rest_json_1:encode_describe_item_request(Input)")
-        .contains("case reqres:dispatch(Config, Req) of")
+        .contains("case runtime_http:dispatch(Config, Req) of")
         .contains("demo_rest_json_rest_json_1:decode_describe_item_response(Resp);");
   }
 

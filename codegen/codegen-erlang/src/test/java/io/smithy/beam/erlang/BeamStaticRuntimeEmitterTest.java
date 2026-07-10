@@ -33,10 +33,10 @@ class BeamStaticRuntimeEmitterTest {
     BeamStaticRuntimeEmitter.emit(
         manifest, BeamStaticRuntimeEmitterTest.class.getClassLoader(), requirements);
 
-    assertThat(manifest.getFileString("reqres.erl")).isPresent();
-    assertThat(manifest.getFileString("http_types.hrl")).isPresent();
+    assertThat(manifest.getFileString("runtime_http.erl")).isPresent();
+    assertThat(manifest.getFileString("runtime_types.hrl")).isPresent();
     assertThat(manifest.getFileString("aws_sigv4.erl")).isEmpty();
-    assertThat(manifest.expectFileString("http_types.hrl"))
+    assertThat(manifest.expectFileString("runtime_types.hrl"))
         .contains("-record(http_request");
   }
 }

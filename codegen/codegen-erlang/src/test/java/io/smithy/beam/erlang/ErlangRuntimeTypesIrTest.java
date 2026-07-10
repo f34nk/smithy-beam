@@ -16,12 +16,12 @@ class ErlangRuntimeTypesIrTest {
     String expected = runtimeHttpTypesHeader();
     assertThat(
             ErlangRenderer.render(
-                ErlangRuntimeTypesIr.runtimeTypesHeader("http_types", Optional.empty())))
+                ErlangRuntimeTypesIr.runtimeTypesHeader("runtime_types", Optional.empty())))
         .isEqualTo(expected);
   }
 
   private static String runtimeHttpTypesHeader() throws IOException {
-    String resourcePath = "runtime/erlang/src/http_types.hrl";
+    String resourcePath = "runtime/erlang/src/runtime_types.hrl";
     try (InputStream in =
         ErlangRuntimeTypesIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
       if (in == null) {

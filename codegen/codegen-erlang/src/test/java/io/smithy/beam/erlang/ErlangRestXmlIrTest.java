@@ -180,7 +180,7 @@ class ErlangRestXmlIrTest {
         new io.smithy.beam.core.BeamSettings(),
         model,
         service,
-        "http_types.hrl",
+        "runtime_types.hrl",
         io.smithy.beam.core.BeamCodegenKind.CLIENT);
   }
 

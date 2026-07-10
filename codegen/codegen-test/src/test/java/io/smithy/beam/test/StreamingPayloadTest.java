@@ -109,7 +109,7 @@ class StreamingPayloadTest {
     MockManifest manifest = runErlangPlugin(loadModel());
 
     String codec = manifest.getFileString("streaming_service_rest_json_1.erl").orElse("");
-    assertThat(codec).contains("-include(\"http_types.hrl\").");
+    assertThat(codec).contains("-include(\"runtime_types.hrl\").");
     assertThat(codec).contains("stream = Stream");
   }
 
