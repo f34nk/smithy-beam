@@ -4,10 +4,10 @@ import io.beam.ir.erlang.AtomExpr;
 import io.beam.ir.erlang.AtomPattern;
 import io.beam.ir.erlang.BinaryExpr;
 import io.beam.ir.erlang.Expression;
-import io.beam.ir.erlang.Function;
-import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.Fun;
 import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.InfixExpr;
 import io.beam.ir.erlang.IsTypeGuard;
 import io.beam.ir.erlang.LocalCallExpr;
@@ -62,8 +62,7 @@ final class ErlangStructureHelperIr {
       Expression raw =
           ErlangCodecHelperIr.mapsGetDefault(
               BinaryExpr.of(wireKey), Variable.of("Map"), AtomExpr.of("undefined"));
-      fields.add(
-          RecordField.of(fieldName, decodeFieldValue(model, sp, httpIndex, member, raw)));
+      fields.add(RecordField.of(fieldName, decodeFieldValue(model, sp, httpIndex, member, raw)));
     }
     return Function.of(
         "decode_" + helperName,
@@ -161,8 +160,7 @@ final class ErlangStructureHelperIr {
       String recordVar) {
     String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
     String recordName = ErlangJsonCodecSupport.structureHelperName(sp, parent);
-    Expression binding =
-        RecordFieldAccessExpr.of(Variable.of(recordVar), recordName, fieldName);
+    Expression binding = RecordFieldAccessExpr.of(Variable.of(recordVar), recordName, fieldName);
     return encodeFieldValue(model, sp, httpIndex, member, binding);
   }
 

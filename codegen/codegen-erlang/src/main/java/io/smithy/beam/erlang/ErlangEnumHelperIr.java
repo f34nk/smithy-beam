@@ -64,10 +64,8 @@ final class ErlangEnumHelperIr {
             List.of(VariablePattern.of("V")),
             IsTypeGuard.of("binary", Variable.of("V")),
             TupleExpr.of(List.of(AtomExpr.of("unknown"), Variable.of("V")))));
-    clauses.add(
-        FunctionClause.of(List.of(AtomPattern.of("null")), AtomExpr.of("undefined")));
-    clauses.add(
-        FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")));
+    clauses.add(FunctionClause.of(List.of(AtomPattern.of("null")), AtomExpr.of("undefined")));
+    clauses.add(FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")));
     return Function.of("decode_" + helperName, clauses);
   }
 
@@ -85,18 +83,14 @@ final class ErlangEnumHelperIr {
     }
     clauses.add(
         FunctionClause.of(
-            List.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("unknown"), VariablePattern.of("V")))),
+            List.of(TuplePattern.of(List.of(AtomPattern.of("unknown"), VariablePattern.of("V")))),
             IsTypeGuard.of("binary", Variable.of("V")),
             Variable.of("V")));
-    clauses.add(
-        FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")));
+    clauses.add(FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")));
     return Function.of("encode_" + helperName, clauses);
   }
 
-  private static Function decodeIntEnum(
-      IntEnumShape shape, SymbolProvider sp, String helperName) {
+  private static Function decodeIntEnum(IntEnumShape shape, SymbolProvider sp, String helperName) {
     List<FunctionClause> clauses = new ArrayList<>();
     for (MemberShape m : shape.members()) {
       int wireValue = m.expectTrait(EnumValueTrait.class).expectIntValue();
@@ -110,15 +104,12 @@ final class ErlangEnumHelperIr {
             List.of(VariablePattern.of("V")),
             IsTypeGuard.of("integer", Variable.of("V")),
             TupleExpr.of(List.of(AtomExpr.of("unknown"), Variable.of("V")))));
-    clauses.add(
-        FunctionClause.of(List.of(AtomPattern.of("null")), AtomExpr.of("undefined")));
-    clauses.add(
-        FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")));
+    clauses.add(FunctionClause.of(List.of(AtomPattern.of("null")), AtomExpr.of("undefined")));
+    clauses.add(FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")));
     return Function.of("decode_" + helperName, clauses);
   }
 
-  private static Function encodeIntEnum(
-      IntEnumShape shape, SymbolProvider sp, String helperName) {
+  private static Function encodeIntEnum(IntEnumShape shape, SymbolProvider sp, String helperName) {
     List<FunctionClause> clauses = new ArrayList<>();
     for (MemberShape m : shape.members()) {
       int wireValue = m.expectTrait(EnumValueTrait.class).expectIntValue();
@@ -129,13 +120,10 @@ final class ErlangEnumHelperIr {
     }
     clauses.add(
         FunctionClause.of(
-            List.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("unknown"), VariablePattern.of("V")))),
+            List.of(TuplePattern.of(List.of(AtomPattern.of("unknown"), VariablePattern.of("V")))),
             IsTypeGuard.of("integer", Variable.of("V")),
             Variable.of("V")));
-    clauses.add(
-        FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")));
+    clauses.add(FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")));
     return Function.of("encode_" + helperName, clauses);
   }
 

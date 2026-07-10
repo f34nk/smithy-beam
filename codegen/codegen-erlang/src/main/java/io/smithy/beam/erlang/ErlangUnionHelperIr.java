@@ -42,15 +42,13 @@ final class ErlangUnionHelperIr {
       caseClauses.add(
           Clause.of(
               singletonListPattern(
-                  TuplePattern.of(
-                      List.of(BinaryPattern.of(wireKey), VariablePattern.of("V")))),
+                  TuplePattern.of(List.of(BinaryPattern.of(wireKey), VariablePattern.of("V")))),
               TupleExpr.of(List.of(AtomExpr.of(tag), Variable.of("V")))));
     }
     caseClauses.add(
         Clause.of(
             singletonListPattern(
-                TuplePattern.of(
-                    List.of(VariablePattern.of("K"), WildcardPattern.of()))),
+                TuplePattern.of(List.of(VariablePattern.of("K"), WildcardPattern.of()))),
             TupleExpr.of(List.of(AtomExpr.of("unknown"), Variable.of("K")))));
     caseClauses.add(Clause.of(WildcardPattern.of(), AtomExpr.of("undefined")));
 
@@ -73,20 +71,15 @@ final class ErlangUnionHelperIr {
       String tag = unionTagForMember(sp, member);
       clauses.add(
           FunctionClause.of(
-              List.of(
-                  TuplePattern.of(
-                      List.of(AtomPattern.of(tag), VariablePattern.of("V")))),
+              List.of(TuplePattern.of(List.of(AtomPattern.of(tag), VariablePattern.of("V")))),
               MapExpr.of(List.of(MapEntry.of(BinaryExpr.of(wireKey), Variable.of("V"))))));
     }
     clauses.add(
         FunctionClause.of(
-            List.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("unknown"), VariablePattern.of("K")))),
+            List.of(TuplePattern.of(List.of(AtomPattern.of("unknown"), VariablePattern.of("K")))),
             IsTypeGuard.of("binary", Variable.of("K")),
             MapExpr.of(List.of(MapEntry.of(Variable.of("K"), AtomExpr.of("null"))))));
-    clauses.add(
-        FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")));
+    clauses.add(FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")));
     return Function.of("encode_" + helperName, clauses);
   }
 

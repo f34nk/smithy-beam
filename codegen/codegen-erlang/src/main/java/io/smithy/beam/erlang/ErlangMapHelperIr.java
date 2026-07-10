@@ -59,7 +59,11 @@ final class ErlangMapHelperIr {
   }
 
   static Expression mapEncodeExpr(
-      Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MapShape map, Expression binding) {
+      Model model,
+      SymbolProvider sp,
+      HttpBindingIndex httpIndex,
+      MapShape map,
+      Expression binding) {
     if (mapNeedsTypedHelper(model, map)) {
       return LocalCallExpr.of("encode_" + mapHelperName(map), List.of(binding));
     }
@@ -81,7 +85,11 @@ final class ErlangMapHelperIr {
   }
 
   static Expression mapDecodeExpr(
-      Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MapShape map, Expression binding) {
+      Model model,
+      SymbolProvider sp,
+      HttpBindingIndex httpIndex,
+      MapShape map,
+      Expression binding) {
     if (mapNeedsTypedHelper(model, map)) {
       return LocalCallExpr.of("decode_" + mapHelperName(map), List.of(binding));
     }
@@ -206,8 +214,7 @@ final class ErlangMapHelperIr {
                 AtomPattern.of("null"),
                 TupleExpr.of(
                     List.of(
-                        mapKey(model, sp, httpIndex, keyMember, false),
-                        AtomExpr.of("undefined")))),
+                        mapKey(model, sp, httpIndex, keyMember, false), AtomExpr.of("undefined")))),
             Clause.of(
                 WildcardPattern.of(),
                 mapEntry(model, httpIndex, keyMember, valueMember, sp, false))));

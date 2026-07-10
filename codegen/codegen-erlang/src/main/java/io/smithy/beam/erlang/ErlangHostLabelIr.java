@@ -1,24 +1,16 @@
 package io.smithy.beam.erlang;
 
 import io.beam.ir.erlang.AtomExpr;
-import io.beam.ir.erlang.AtomPattern;
 import io.beam.ir.erlang.BinaryExpr;
-import io.beam.ir.erlang.BinaryPattern;
 import io.beam.ir.erlang.BinarySegmentExpr;
 import io.beam.ir.erlang.BlockExpr;
-import io.beam.ir.erlang.CaseExpr;
-import io.beam.ir.erlang.Clause;
 import io.beam.ir.erlang.Function;
 import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.LocalCallExpr;
-import io.beam.ir.erlang.MapPattern;
-import io.beam.ir.erlang.MapPatternEntry;
 import io.beam.ir.erlang.MatchExpr;
-import io.beam.ir.erlang.MatchPattern;
 import io.beam.ir.erlang.RecordPattern;
 import io.beam.ir.erlang.RecordPatternField;
 import io.beam.ir.erlang.RemoteCallExpr;
-import io.beam.ir.erlang.TupleExpr;
 import io.beam.ir.erlang.TuplePattern;
 import io.beam.ir.erlang.Variable;
 import io.beam.ir.erlang.VariablePattern;
@@ -38,8 +30,7 @@ import software.amazon.smithy.model.traits.EndpointTrait;
 final class ErlangHostLabelIr {
   private ErlangHostLabelIr() {}
 
-  static List<Function> buildHostFunctions(
-      Model model, ServiceShape service, SymbolProvider sp) {
+  static List<Function> buildHostFunctions(Model model, ServiceShape service, SymbolProvider sp) {
     List<Function> functions = new ArrayList<>();
     BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
     for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
@@ -94,9 +85,7 @@ final class ErlangHostLabelIr {
                                     VariablePattern.of("_Scheme"),
                                     VariablePattern.of("Authority"))),
                             RemoteCallExpr.of(
-                                "utils",
-                                "split_base_url",
-                                List.of(Variable.of("BaseUrl"))),
+                                "utils", "split_base_url", List.of(Variable.of("BaseUrl"))),
                             null),
                         MatchExpr.bindValue("Prefix", buildHostPrefixExpression(hostPrefix)),
                         result),

@@ -259,7 +259,9 @@ final class ErlangJsonCodecSupport {
             MapEntry.of(
                 BinaryExpr.of(jsonKey(member)),
                 RemoteCallExpr.of(
-                    eventStreamModule, "encode_" + helper, List.of(Variable.of(toBindingVar(fieldName))))));
+                    eventStreamModule,
+                    "encode_" + helper,
+                    List.of(Variable.of(toBindingVar(fieldName))))));
       } else {
         entries.add(
             MapEntry.of(
@@ -287,15 +289,13 @@ final class ErlangJsonCodecSupport {
         fields.add(
             RecordField.of(
                 fieldName,
-                RemoteCallExpr.of(eventStreamModule, "decode_" + helper, List.of(Variable.of("Body")))));
+                RemoteCallExpr.of(
+                    eventStreamModule, "decode_" + helper, List.of(Variable.of("Body")))));
       } else {
         Expression raw =
             ErlangCodecHelperIr.mapsGetDefault(
-                BinaryExpr.of(jsonKey(member)),
-                Variable.of("Decoded"),
-                AtomExpr.of("undefined"));
-        fields.add(
-            RecordField.of(fieldName, decodeJsonExpr(model, sp, httpIndex, member, raw)));
+                BinaryExpr.of(jsonKey(member)), Variable.of("Decoded"), AtomExpr.of("undefined"));
+        fields.add(RecordField.of(fieldName, decodeJsonExpr(model, sp, httpIndex, member, raw)));
       }
     }
     return fields;
@@ -323,13 +323,16 @@ final class ErlangJsonCodecSupport {
                                     WildcardPattern.of())),
                             Variable.of("Val")),
                         Clause.of(
-                            TuplePattern.of(
-                                List.of(AtomPattern.of("error"), WildcardPattern.of())),
+                            TuplePattern.of(List.of(AtomPattern.of("error"), WildcardPattern.of())),
                             MapExpr.of(List.of())))))));
   }
 
   static Expression decodeJsonExpr(
-      Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member, Expression raw) {
+      Model model,
+      SymbolProvider sp,
+      HttpBindingIndex httpIndex,
+      MemberShape member,
+      Expression raw) {
     Shape target = model.expectShape(member.getTarget());
     if (target instanceof EnumShape || target instanceof IntEnumShape) {
       String helperName = structureHelperName(sp, target);

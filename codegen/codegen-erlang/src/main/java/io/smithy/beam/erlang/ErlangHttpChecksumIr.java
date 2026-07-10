@@ -77,8 +77,7 @@ final class ErlangHttpChecksumIr {
                               AtomExpr.of("unsupported_checksum_algorithm"),
                               Variable.of("Other")))))));
       return Optional.of(
-          MatchExpr.bindValue(
-              headersOut, CaseExpr.of(Variable.of(bindingVar), clauses)));
+          MatchExpr.bindValue(headersOut, CaseExpr.of(Variable.of(bindingVar), clauses)));
     }
 
     List<Expression> exprs = new ArrayList<>();
@@ -119,15 +118,11 @@ final class ErlangHttpChecksumIr {
         RemoteCallExpr.of(
             HTTP_CHECKSUM_MOD,
             "validate_response_checksum",
-            List.of(
-                Variable.of("Body"),
-                Variable.of("Headers"),
-                ListExpr.of(headerNames))),
+            List.of(Variable.of("Body"), Variable.of("Headers"), ListExpr.of(headerNames))),
         List.of(
             Clause.of(AtomPattern.of("ok"), successExpr),
             Clause.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
+                TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
                 TupleExpr.of(
                     List.of(
                         AtomExpr.of("error"),
@@ -145,23 +140,16 @@ final class ErlangHttpChecksumIr {
             headersSetExpr(
                 BinaryExpr.of(cb.headerName()),
                 RemoteCallExpr.of(
-                    HTTP_CHECKSUM_MOD,
-                    "checksum_header_encode",
-                    List.of(Variable.of("Checksum"))),
+                    HTTP_CHECKSUM_MOD, "checksum_header_encode", List.of(Variable.of("Checksum"))),
                 Variable.of(headersVar))),
         false);
   }
 
-  private static Expression headersSetExpr(
-      Expression name, Expression value, Expression headers) {
+  private static Expression headersSetExpr(Expression name, Expression value, Expression headers) {
     return RemoteCallExpr.of(
         "lists",
         "keystore",
-        List.of(
-            name,
-            IntegerExpr.of(1),
-            headers,
-            TupleExpr.of(List.of(name, value))));
+        List.of(name, IntegerExpr.of(1), headers, TupleExpr.of(List.of(name, value))));
   }
 
   private static Expression checksumComputationExpr(
@@ -170,8 +158,7 @@ final class ErlangHttpChecksumIr {
     if (cb.usesCryptoHash()) {
       String helper = cb.hashHelperName();
       if (HTTP_CHECKSUM_HASH_HELPERS.contains(helper)) {
-        hashExpr =
-            RemoteCallExpr.of(HTTP_CHECKSUM_MOD, helper, List.of(Variable.of("Body")));
+        hashExpr = RemoteCallExpr.of(HTTP_CHECKSUM_MOD, helper, List.of(Variable.of("Body")));
       } else {
         hashExpr =
             RemoteCallExpr.of(
@@ -181,8 +168,7 @@ final class ErlangHttpChecksumIr {
       }
     } else {
       hashExpr =
-          RemoteCallExpr.of(
-              HTTP_CHECKSUM_MOD, cb.hashHelperName(), List.of(Variable.of("Body")));
+          RemoteCallExpr.of(HTTP_CHECKSUM_MOD, cb.hashHelperName(), List.of(Variable.of("Body")));
     }
     return MatchExpr.bindValue(checksumVar, hashExpr);
   }

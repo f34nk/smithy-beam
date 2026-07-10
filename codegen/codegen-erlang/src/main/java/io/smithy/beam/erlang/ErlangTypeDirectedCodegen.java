@@ -8,12 +8,12 @@ import io.beam.ir.erlang.HeaderEntry;
 import io.beam.ir.erlang.HeaderRecordEntry;
 import io.beam.ir.erlang.HeaderTypeAliasEntry;
 import io.beam.ir.erlang.RecordDef;
-import io.beam.ir.erlang.TypedField;
 import io.beam.ir.erlang.TypeAlias;
+import io.beam.ir.erlang.TypedField;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
-import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamDocumentation.DocTarget;
+import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamMemberNullability;
@@ -515,8 +515,7 @@ final class ErlangTypeDirectedCodegen
               TypeAlias.of(symbol.getName(), "{unknown, binary()}", shapeDoc)));
     } else {
       String variants = String.join(" | ", atoms) + " | {unknown, binary()}";
-      entries.add(
-          new HeaderTypeAliasEntry(TypeAlias.of(symbol.getName(), variants, shapeDoc)));
+      entries.add(new HeaderTypeAliasEntry(TypeAlias.of(symbol.getName(), variants, shapeDoc)));
       entries.add(new HeaderComment("Wire values for " + shapeId));
       for (MemberShape member : members) {
         String wireValue =
@@ -677,8 +676,7 @@ final class ErlangTypeDirectedCodegen
 
   static RecordDef buildStructureRecord(
       StructureShape shape, SymbolProvider sp, NullableIndex nullableIndex, String recordName) {
-    List<MemberShape> members =
-        StreamSupport.stream(shape.members().spliterator(), false).toList();
+    List<MemberShape> members = StreamSupport.stream(shape.members().spliterator(), false).toList();
     if (members.isEmpty()) {
       return RecordDef.of(recordName, List.of());
     }
@@ -736,8 +734,7 @@ final class ErlangTypeDirectedCodegen
                 + " | throttling: "
                 + isThrottling);
     String kind = errorTrait.getValue().equals("client") ? "client" : "server";
-    fields.add(
-        TypedField.of("'__beam_error_kind'", "client | server", kind, meta));
+    fields.add(TypedField.of("'__beam_error_kind'", "client | server", kind, meta));
     return RecordDef.of(recordName, fields);
   }
 
