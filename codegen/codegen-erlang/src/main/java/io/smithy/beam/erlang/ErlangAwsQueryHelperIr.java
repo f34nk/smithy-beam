@@ -107,8 +107,7 @@ final class ErlangAwsQueryHelperIr {
                 IsTypeGuard.of("atom", Variable.of("Name")),
                 LocalCallExpr.of(
                     "list_to_binary",
-                    List.of(
-                        LocalCallExpr.of("atom_to_list", List.of(Variable.of("Name")))))),
+                    List.of(LocalCallExpr.of("atom_to_list", List.of(Variable.of("Name")))))),
             FunctionClause.of(
                 List.of(xmlElementNamePattern()),
                 IsTypeGuard.of("list", Variable.of("Name")),
@@ -122,8 +121,7 @@ final class ErlangAwsQueryHelperIr {
                 IsTypeGuard.of("atom", Variable.of("Name")),
                 LocalCallExpr.of(
                     "list_to_binary",
-                    List.of(
-                        LocalCallExpr.of("atom_to_list", List.of(Variable.of("Name")))))),
+                    List.of(LocalCallExpr.of("atom_to_list", List.of(Variable.of("Name")))))),
             FunctionClause.of(
                 List.of(sixTupleNamePattern()),
                 IsTypeGuard.of("list", Variable.of("Name")),
@@ -164,9 +162,7 @@ final class ErlangAwsQueryHelperIr {
             Variable.of("C"),
             List.of(
                 Clause.of(
-                    xmlTextPattern(),
-                    IsTypeGuard.of("list", Variable.of("V")),
-                    Variable.of("V")),
+                    xmlTextPattern(), IsTypeGuard.of("list", Variable.of("V")), Variable.of("V")),
                 Clause.of(
                     xmlTextPattern(),
                     IsTypeGuard.of("binary", Variable.of("V")),
@@ -190,19 +186,11 @@ final class ErlangAwsQueryHelperIr {
   }
 
   private static TuplePattern xmlTextPattern() {
-    return TuplePattern.of(
-        List.of(
-            AtomPattern.of("xmlText"),
-            W,
-            W,
-            W,
-            VariablePattern.of("V"),
-            W));
+    return TuplePattern.of(List.of(AtomPattern.of("xmlText"), W, W, W, VariablePattern.of("V"), W));
   }
 
   private static Function awsQueryXmlChildStructList() {
-    Expression decodeItem =
-        ApplyExpr.of(Variable.of("DecodeFun"), List.of(Variable.of("Item")));
+    Expression decodeItem = ApplyExpr.of(Variable.of("DecodeFun"), List.of(Variable.of("Item")));
 
     return Function.of(
         "xml_child_struct_list",
@@ -218,8 +206,7 @@ final class ErlangAwsQueryHelperIr {
                         "find_element",
                         List.of(
                             Variable.of("ListName"),
-                            LocalCallExpr.of(
-                                "element_content", List.of(Variable.of("Parent"))))),
+                            LocalCallExpr.of("element_content", List.of(Variable.of("Parent"))))),
                     List.of(
                         Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
                         Clause.of(
@@ -263,8 +250,7 @@ final class ErlangAwsQueryHelperIr {
                         LocalCallExpr.of(
                             "list_to_binary",
                             List.of(
-                                LocalCallExpr.of(
-                                    "element_text", List.of(Variable.of("Item")))))))),
+                                LocalCallExpr.of("element_text", List.of(Variable.of("Item")))))))),
             ListComprehensionFilter.of(
                 InfixExpr.of(Variable.of("ItemText"), "=/=", BinaryExpr.of(""))));
 
@@ -281,14 +267,12 @@ final class ErlangAwsQueryHelperIr {
                         "find_element",
                         List.of(
                             Variable.of("ListName"),
-                            LocalCallExpr.of(
-                                "element_content", List.of(Variable.of("Parent"))))),
+                            LocalCallExpr.of("element_content", List.of(Variable.of("Parent"))))),
                     List.of(
                         Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
                         Clause.of(
                             VariablePattern.of("ListElement"),
-                            ListComprehensionExpr.of(
-                                Variable.of("ItemText"), itemQualifiers)))))));
+                            ListComprehensionExpr.of(Variable.of("ItemText"), itemQualifiers)))))));
   }
 
   private static TuplePattern xmlElementNamePattern() {
@@ -296,8 +280,7 @@ final class ErlangAwsQueryHelperIr {
   }
 
   private static TuplePattern sixTupleNamePattern() {
-    return TuplePattern.of(
-        List.of(VariablePattern.of("Name"), W, W, W, W, W));
+    return TuplePattern.of(List.of(VariablePattern.of("Name"), W, W, W, W, W));
   }
 
   private static TuplePattern xmlElementContentPattern() {
@@ -305,8 +288,7 @@ final class ErlangAwsQueryHelperIr {
   }
 
   private static TuplePattern sixTupleContentPattern() {
-    return TuplePattern.of(
-        List.of(W, W, VariablePattern.of("Content"), W, W, W));
+    return TuplePattern.of(List.of(W, W, VariablePattern.of("Content"), W, W, W));
   }
 
   static List<Function> serverQueryDecodeHelperFunctions(boolean ec2Query) {
@@ -352,8 +334,7 @@ final class ErlangAwsQueryHelperIr {
                 List.of(VariablePattern.of("Key"), VariablePattern.of("Value")),
                 IsTypeGuard.of("tuple", Variable.of("Value")),
                 LocalCallExpr.of(
-                    "flatten_structure",
-                    List.of(Variable.of("Key"), Variable.of("Value")))),
+                    "flatten_structure", List.of(Variable.of("Key"), Variable.of("Value")))),
             FunctionClause.of(
                 List.of(VariablePattern.of("Key"), VariablePattern.of("Value")),
                 ListExpr.of(
@@ -363,12 +344,10 @@ final class ErlangAwsQueryHelperIr {
   private static ListComprehensionExpr flattenMemberListComprehension(String listSuffix) {
     return ListComprehensionExpr.of(
         LocalCallExpr.of(
-            "flatten_member",
-            List.of(flattenMemberIndexedKey(listSuffix), Variable.of("V"))),
+            "flatten_member", List.of(flattenMemberIndexedKey(listSuffix), Variable.of("V"))),
         List.of(
             ListComprehensionGenerator.of(
-                TuplePattern.of(
-                    List.of(VariablePattern.of("I"), VariablePattern.of("V"))),
+                TuplePattern.of(List.of(VariablePattern.of("I"), VariablePattern.of("V"))),
                 RemoteCallExpr.of("lists", "enumerate", List.of(Variable.of("Value")))),
             ListComprehensionFilter.of(
                 InfixExpr.of(Variable.of("V"), "=/=", AtomExpr.of("undefined")))));
@@ -378,12 +357,10 @@ final class ErlangAwsQueryHelperIr {
     return ListComprehensionExpr.of(
         InfixExpr.of(
             LocalCallExpr.of(
-                "flatten_member",
-                List.of(flattenMemberEntryKey(".key"), Variable.of("K"))),
+                "flatten_member", List.of(flattenMemberEntryKey(".key"), Variable.of("K"))),
             "++",
             LocalCallExpr.of(
-                "flatten_member",
-                List.of(flattenMemberEntryKey(".value"), Variable.of("V")))),
+                "flatten_member", List.of(flattenMemberEntryKey(".value"), Variable.of("V")))),
         List.of(
             ListComprehensionGenerator.of(
                 TuplePattern.of(
@@ -394,8 +371,7 @@ final class ErlangAwsQueryHelperIr {
                 RemoteCallExpr.of(
                     "lists",
                     "enumerate",
-                    List.of(
-                        RemoteCallExpr.of("maps", "to_list", List.of(Variable.of("Value")))))),
+                    List.of(RemoteCallExpr.of("maps", "to_list", List.of(Variable.of("Value")))))),
             ListComprehensionFilter.of(
                 InfixExpr.of(Variable.of("K"), "=/=", AtomExpr.of("undefined"))),
             ListComprehensionFilter.of(
@@ -428,8 +404,7 @@ final class ErlangAwsQueryHelperIr {
             FunctionClause.of(
                 List.of(VariablePattern.of("V")),
                 IsTypeGuard.of("boolean", Variable.of("V")),
-                LocalCallExpr.of(
-                    "atom_to_binary", List.of(Variable.of("V"), AtomExpr.of("utf8")))),
+                LocalCallExpr.of("atom_to_binary", List.of(Variable.of("V"), AtomExpr.of("utf8")))),
             FunctionClause.of(
                 List.of(VariablePattern.of("V")),
                 IsTypeGuard.of("integer", Variable.of("V")),
@@ -453,8 +428,7 @@ final class ErlangAwsQueryHelperIr {
     Expression resultLookup =
         CaseExpr.of(
             LocalCallExpr.of(
-                "query_result_element",
-                List.of(Variable.of("Root"), Variable.of("ResultName"))),
+                "query_result_element", List.of(Variable.of("Root"), Variable.of("ResultName"))),
             List.of(
                 Clause.of(
                     AtomPattern.of("undefined"),
@@ -463,8 +437,7 @@ final class ErlangAwsQueryHelperIr {
                             AtomExpr.of("error"),
                             TupleExpr.of(
                                 List.of(
-                                    AtomExpr.of("missing_result"),
-                                    Variable.of("ResultName")))))),
+                                    AtomExpr.of("missing_result"), Variable.of("ResultName")))))),
                 Clause.of(
                     VariablePattern.of("Result"),
                     TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Result"))))));
@@ -474,14 +447,12 @@ final class ErlangAwsQueryHelperIr {
             BlockExpr.commaSeparated(
                 List.of(
                     MatchExpr.of(
-                        TuplePattern.of(
-                            List.of(VariablePattern.of("Xml"), WildcardPattern.of())),
+                        TuplePattern.of(List.of(VariablePattern.of("Xml"), WildcardPattern.of())),
                         RemoteCallExpr.of(
                             "xmerl_scan",
                             "string",
                             List.of(
-                                LocalCallExpr.of(
-                                    "binary_to_list", List.of(Variable.of("Body"))))),
+                                LocalCallExpr.of("binary_to_list", List.of(Variable.of("Body"))))),
                         MatchExpr.bindValue(
                             "Root",
                             LocalCallExpr.of(
@@ -496,15 +467,13 @@ final class ErlangAwsQueryHelperIr {
                             AtomExpr.of("error"),
                             TupleExpr.of(
                                 List.of(
-                                    AtomExpr.of("xml_parse_error"),
-                                    Variable.of("Reason"))))))));
+                                    AtomExpr.of("xml_parse_error"), Variable.of("Reason"))))))));
 
     return Function.of(
         "unwrap_query_result",
         List.of(
             FunctionClause.of(
-                List.of(VariablePattern.of("Body"), VariablePattern.of("ResultName")),
-                body)));
+                List.of(VariablePattern.of("Body"), VariablePattern.of("ResultName")), body)));
   }
 
   private static Function normalizeXmlElement() {
@@ -514,8 +483,7 @@ final class ErlangAwsQueryHelperIr {
             FunctionClause.of(
                 List.of(ListPattern.cons(VariablePattern.of("H"), WildcardPattern.of())),
                 LocalCallExpr.of("normalize_xml_element", List.of(Variable.of("H")))),
-            FunctionClause.of(
-                List.of(VariablePattern.of("Element")), Variable.of("Element"))));
+            FunctionClause.of(List.of(VariablePattern.of("Element")), Variable.of("Element"))));
   }
 
   private static Function queryResultElement() {
@@ -541,8 +509,7 @@ final class ErlangAwsQueryHelperIr {
                                 List.of(
                                     Variable.of("ResultName"),
                                     LocalCallExpr.of(
-                                        "element_content",
-                                        List.of(Variable.of("Element")))))))))));
+                                        "element_content", List.of(Variable.of("Element")))))))))));
   }
 
   private static Function decodeQueryError(boolean ec2Query) {
@@ -582,8 +549,7 @@ final class ErlangAwsQueryHelperIr {
                 "find_element",
                 List.of(
                     BinaryExpr.of(errorElement),
-                    LocalCallExpr.of(
-                        "element_content", List.of(Variable.of("ErrorResponse"))))),
+                    LocalCallExpr.of("element_content", List.of(Variable.of("ErrorResponse"))))),
             List.of(
                 Clause.of(AtomPattern.of("undefined"), unknownQueryError()),
                 Clause.of(
@@ -668,9 +634,7 @@ final class ErlangAwsQueryHelperIr {
 
   private static Expression queryErrorTuple(Expression codeExpr, Expression messageExpr) {
     return TupleExpr.of(
-        List.of(
-            AtomExpr.of("error"),
-            TupleExpr.of(List.of(codeExpr, messageExpr))));
+        List.of(AtomExpr.of("error"), TupleExpr.of(List.of(codeExpr, messageExpr))));
   }
 
   private static Expression queryErrorTryBody(Expression resultLookup) {
@@ -678,17 +642,14 @@ final class ErlangAwsQueryHelperIr {
         BlockExpr.commaSeparated(
             List.of(
                 MatchExpr.of(
-                    TuplePattern.of(
-                        List.of(VariablePattern.of("Xml"), WildcardPattern.of())),
+                    TuplePattern.of(List.of(VariablePattern.of("Xml"), WildcardPattern.of())),
                     RemoteCallExpr.of(
                         "xmerl_scan",
                         "string",
-                        List.of(
-                            LocalCallExpr.of("binary_to_list", List.of(Variable.of("Body"))))),
+                        List.of(LocalCallExpr.of("binary_to_list", List.of(Variable.of("Body"))))),
                     MatchExpr.bindValue(
                         "Root",
-                        LocalCallExpr.of(
-                            "normalize_xml_element", List.of(Variable.of("Xml"))))),
+                        LocalCallExpr.of("normalize_xml_element", List.of(Variable.of("Xml"))))),
                 resultLookup),
             false),
         List.of(Clause.of(CatchPattern.anyAny(), unknownQueryError())));
@@ -700,9 +661,7 @@ final class ErlangAwsQueryHelperIr {
             AtomExpr.of("error"),
             TupleExpr.of(
                 List.of(
-                    AtomExpr.of("unknown_error"),
-                    Variable.of("Status"),
-                    Variable.of("Body")))));
+                    AtomExpr.of("unknown_error"), Variable.of("Status"), Variable.of("Body")))));
   }
 
   private static Function parseQueryParams() {
@@ -716,9 +675,7 @@ final class ErlangAwsQueryHelperIr {
                     "from_list",
                     List.of(
                         RemoteCallExpr.of(
-                            "uri_string",
-                            "dissect_query",
-                            List.of(Variable.of("Body"))))))));
+                            "uri_string", "dissect_query", List.of(Variable.of("Body"))))))));
   }
 
   private static Function formValue() {
@@ -731,9 +688,7 @@ final class ErlangAwsQueryHelperIr {
                     "maps",
                     "get",
                     List.of(
-                        Variable.of("Key"),
-                        Variable.of("Params"),
-                        AtomExpr.of("undefined"))))));
+                        Variable.of("Key"), Variable.of("Params"), AtomExpr.of("undefined"))))));
   }
 
   private static Function formListValuesAws() {
@@ -769,8 +724,7 @@ final class ErlangAwsQueryHelperIr {
   private static Expression formListPrefix(String suffix) {
     return BinaryExpr.of(
         List.of(
-            BinarySegmentExpr.of(Variable.of("Key"), "binary"),
-            BinarySegmentExpr.literal(suffix)));
+            BinarySegmentExpr.of(Variable.of("Key"), "binary"), BinarySegmentExpr.literal(suffix)));
   }
 
   private static Function indexedFormValues() {
@@ -794,16 +748,14 @@ final class ErlangAwsQueryHelperIr {
                         TupleExpr.of(
                             List.of(
                                 IntegerExpr.of(0),
-                                LocalCallExpr.of(
-                                    "byte_size", List.of(Variable.of("Prefix")))))))));
+                                LocalCallExpr.of("byte_size", List.of(Variable.of("Prefix")))))))));
 
     ListComprehensionExpr sortedValues =
         ListComprehensionExpr.of(
             Variable.of("V"),
             List.of(
                 ListComprehensionGenerator.of(
-                    TuplePattern.of(
-                        List.of(WildcardPattern.of(), VariablePattern.of("V"))),
+                    TuplePattern.of(List.of(WildcardPattern.of(), VariablePattern.of("V"))),
                     Variable.of("Sorted"))));
 
     return Function.of(
@@ -815,12 +767,10 @@ final class ErlangAwsQueryHelperIr {
                     List.of(
                         MatchExpr.bindValue("Entries", entries),
                         CaseExpr.of(
-                            RemoteCallExpr.of(
-                                "lists", "sort", List.of(Variable.of("Entries"))),
+                            RemoteCallExpr.of("lists", "sort", List.of(Variable.of("Entries"))),
                             List.of(
                                 Clause.of(ListPattern.of(List.of()), AtomExpr.of("undefined")),
-                                Clause.of(
-                                    VariablePattern.of("Sorted"), sortedValues)))),
+                                Clause.of(VariablePattern.of("Sorted"), sortedValues)))),
                     false))));
   }
 
@@ -839,17 +789,13 @@ final class ErlangAwsQueryHelperIr {
                                 "part",
                                 List.of(
                                     Variable.of("Key"),
-                                    LocalCallExpr.of(
-                                        "byte_size", List.of(Variable.of("Prefix"))),
+                                    LocalCallExpr.of("byte_size", List.of(Variable.of("Prefix"))),
                                     InfixExpr.of(
-                                        LocalCallExpr.of(
-                                            "byte_size", List.of(Variable.of("Key"))),
+                                        LocalCallExpr.of("byte_size", List.of(Variable.of("Key"))),
                                         "-",
                                         LocalCallExpr.of(
-                                            "byte_size",
-                                            List.of(Variable.of("Prefix"))))))),
-                        LocalCallExpr.of(
-                            "binary_to_integer", List.of(Variable.of("Rest")))),
+                                            "byte_size", List.of(Variable.of("Prefix"))))))),
+                        LocalCallExpr.of("binary_to_integer", List.of(Variable.of("Rest")))),
                     false))));
   }
 
@@ -862,8 +808,7 @@ final class ErlangAwsQueryHelperIr {
                     MapExpr.of(
                         List.of(
                             MapEntry.of(
-                                Variable.of("ResultName"),
-                                Variable.of("ResultContent")))))));
+                                Variable.of("ResultName"), Variable.of("ResultContent")))))));
 
     return Function.of(
         "wrap_aws_query_response",
@@ -874,9 +819,7 @@ final class ErlangAwsQueryHelperIr {
                     VariablePattern.of("ResultContent"),
                     VariablePattern.of("ResponseName"),
                     VariablePattern.of("XmlNs")),
-                LocalCallExpr.of(
-                    "encode_xml",
-                    List.of(responseMap, Variable.of("XmlNs"))))));
+                LocalCallExpr.of("encode_xml", List.of(responseMap, Variable.of("XmlNs"))))));
   }
 
   private static TuplePattern xmlElementTuple(
