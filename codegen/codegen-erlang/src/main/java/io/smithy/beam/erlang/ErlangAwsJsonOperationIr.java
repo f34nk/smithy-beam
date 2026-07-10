@@ -2,7 +2,6 @@ package io.smithy.beam.erlang;
 
 import io.beam.ir.erlang.AtomExpr;
 import io.beam.ir.erlang.BlockExpr;
-import io.beam.ir.erlang.Clause;
 import io.beam.ir.erlang.Edoc;
 import io.beam.ir.erlang.Function;
 import io.beam.ir.erlang.FunctionClause;
@@ -81,8 +80,7 @@ final class ErlangAwsJsonOperationIr {
         "encode_" + opName + "_request",
         List.of(FunctionClause.of(List.of(inputPattern), BlockExpr.commaSeparated(body, false))),
         Spec.of("encode_" + opName + "_request(" + inputType + ") -> #http_request{}"),
-        Edoc.of("Encode AWS JSON request for " + op.getId() + "."),
-        null);
+        Edoc.of("Encode AWS JSON request for " + op.getId() + "."));
   }
 
   static Function buildDecodeResponse(
@@ -133,12 +131,8 @@ final class ErlangAwsJsonOperationIr {
                       List.of(
                           AtomExpr.of("ok"),
                           ErlangRestJsonOperationIr.buildDocumentRecordFromDecoded(
-                              outputRecord,
-                              model,
-                              httpIndex,
-                              sp,
-                              members,
-                              eventStreamModule)))), false);
+                              outputRecord, model, httpIndex, sp, members, eventStreamModule)))),
+              false);
     }
 
     FunctionClause successClause = FunctionClause.of(List.of(successPattern), successBody);
@@ -164,8 +158,7 @@ final class ErlangAwsJsonOperationIr {
                 + "_response(#http_response{}) -> {'ok', "
                 + outputType
                 + "} | {'error', term()}"),
-        Edoc.of("Decode AWS JSON response for " + op.getId() + "."),
-        null);
+        Edoc.of("Decode AWS JSON response for " + op.getId() + "."));
   }
 
   static Function buildErrorDispatch(Model model, OperationShape op, SymbolProvider sp) {
@@ -186,8 +179,7 @@ final class ErlangAwsJsonOperationIr {
 
     RecordPattern pattern =
         RecordPattern.of(
-            "http_request",
-            List.of(RecordPatternField.of("body", VariablePattern.of("Body"))));
+            "http_request", List.of(RecordPatternField.of("body", VariablePattern.of("Body"))));
 
     io.beam.ir.erlang.Expression body;
     if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
@@ -200,15 +192,15 @@ final class ErlangAwsJsonOperationIr {
               List.of(
                   MatchExpr.bindValue("Decoded", ErlangRestJsonOperationIr.decodeBodyJsonExpr()),
                   ErlangRestJsonOperationIr.buildDocumentRecordFromDecoded(
-                      inputRecord, model, httpIndex, sp, members, eventStreamModule)), false);
+                      inputRecord, model, httpIndex, sp, members, eventStreamModule)),
+              false);
     }
 
     return Function.of(
         "decode_" + opName + "_request",
         List.of(FunctionClause.of(List.of(pattern), body)),
         Spec.of("decode_" + opName + "_request(#http_request{}) -> " + inputType),
-        Edoc.of("Decode AWS JSON request for " + op.getId() + "."),
-        null);
+        Edoc.of("Decode AWS JSON request for " + op.getId() + "."));
   }
 
   static Function buildEncodeResponse(
@@ -225,8 +217,7 @@ final class ErlangAwsJsonOperationIr {
     List<MemberShape> members =
         ErlangJsonCodecSupport.documentMembers(httpIndex, op, output, false);
 
-    RecordPattern pattern =
-        ErlangRestJsonOperationIr.outputBindingHead(outputRecord, output, sp);
+    RecordPattern pattern = ErlangRestJsonOperationIr.outputBindingHead(outputRecord, output, sp);
 
     List<io.beam.ir.erlang.Expression> body = new ArrayList<>();
     body.addAll(
@@ -251,7 +242,6 @@ final class ErlangAwsJsonOperationIr {
         "encode_" + opName + "_response",
         List.of(FunctionClause.of(List.of(pattern), BlockExpr.commaSeparated(body, false))),
         Spec.of("encode_" + opName + "_response(" + outputType + ") -> #http_response{}"),
-        Edoc.of("Encode AWS JSON response for " + op.getId() + "."),
-        null);
+        Edoc.of("Encode AWS JSON response for " + op.getId() + "."));
   }
 }

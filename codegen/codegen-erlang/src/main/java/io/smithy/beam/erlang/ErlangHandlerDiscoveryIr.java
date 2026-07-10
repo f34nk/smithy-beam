@@ -7,10 +7,10 @@ import io.beam.ir.erlang.CaseExpr;
 import io.beam.ir.erlang.Clause;
 import io.beam.ir.erlang.Expression;
 import io.beam.ir.erlang.ExpressionGuard;
-import io.beam.ir.erlang.Function;
-import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.Fun;
 import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.IntegerExpr;
 import io.beam.ir.erlang.IntegerPattern;
 import io.beam.ir.erlang.ListComprehensionExpr;
@@ -132,9 +132,7 @@ final class ErlangHandlerDiscoveryIr {
                                     List.of(MacroExpr.of("HANDLERS_KEY"), MapExpr.of(List.of()))),
                                 TupleExpr.of(
                                     List.of(AtomExpr.of("error"), Variable.of("Reason"))))))))),
-        Spec.of("init_handlers() -> ok | {error, term()}"),
-        null,
-        null);
+        Spec.of("init_handlers() -> ok | {error, term()}"));
   }
 
   static Function dispatchHandler() {

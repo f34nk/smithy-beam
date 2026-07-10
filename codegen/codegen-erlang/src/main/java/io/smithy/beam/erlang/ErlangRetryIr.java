@@ -9,10 +9,10 @@ import io.beam.ir.erlang.Clause;
 import io.beam.ir.erlang.Edoc;
 import io.beam.ir.erlang.Expression;
 import io.beam.ir.erlang.ExpressionGuard;
-import io.beam.ir.erlang.Function;
-import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.Fun;
 import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.InfixExpr;
 import io.beam.ir.erlang.IntegerExpr;
 import io.beam.ir.erlang.IntegerPattern;
@@ -64,8 +64,7 @@ final class ErlangRetryIr {
   }
 
   private static Expression defaultShouldRetryFun() {
-    return Fun.of(
-        List.of(FunClause.of(List.of(WildcardPattern.of()), AtomExpr.of("false"))));
+    return Fun.of(List.of(FunClause.of(List.of(WildcardPattern.of()), AtomExpr.of("false"))));
   }
 
   private static Function withRetryOuter() {
@@ -80,9 +79,7 @@ final class ErlangRetryIr {
                         "maps",
                         "get",
                         List.of(
-                            AtomExpr.of("max_attempts"),
-                            Variable.of("Opts"),
-                            IntegerExpr.of(3))),
+                            AtomExpr.of("max_attempts"), Variable.of("Opts"), IntegerExpr.of(3))),
                     MatchExpr.bind(
                         "Base",
                         RemoteCallExpr.of(
@@ -131,8 +128,7 @@ final class ErlangRetryIr {
                                 "pow",
                                 List.of(
                                     IntegerExpr.of(2),
-                                    InfixExpr.of(
-                                        Variable.of("N"), "-", IntegerExpr.of(1)))))))));
+                                    InfixExpr.of(Variable.of("N"), "-", IntegerExpr.of(1)))))))));
     Expression retryCall =
         LocalCallExpr.of(
             "with_retry",
@@ -183,9 +179,7 @@ final class ErlangRetryIr {
                                         AtomPattern.of("true"),
                                         ExpressionGuard.of(
                                             InfixExpr.of(
-                                                Variable.of("Attempts"),
-                                                ">",
-                                                IntegerExpr.of(1))),
+                                                Variable.of("Attempts"), ">", IntegerExpr.of(1))),
                                         backoffBody),
                                     Clause.of(WildcardPattern.of(), Variable.of("Err"))))))))));
   }
@@ -201,12 +195,8 @@ final class ErlangRetryIr {
                 List.of(RecordPattern.of(recordName, List.of())), AtomExpr.of("true")));
       }
     }
-    clauses.add(
-        FunctionClause.of(List.of(WildcardPattern.of()), AtomExpr.of("false")));
-    return Function.of(
-        "retryable",
-        clauses,
-        Spec.of("retryable(term()) -> boolean()"));
+    clauses.add(FunctionClause.of(List.of(WildcardPattern.of()), AtomExpr.of("false")));
+    return Function.of("retryable", clauses, Spec.of("retryable(term()) -> boolean()"));
   }
 
   static Function throttling(List<StructureShape> modeledErrors, SymbolProvider sp) {
@@ -220,12 +210,8 @@ final class ErlangRetryIr {
                 List.of(RecordPattern.of(recordName, List.of())), AtomExpr.of("true")));
       }
     }
-    clauses.add(
-        FunctionClause.of(List.of(WildcardPattern.of()), AtomExpr.of("false")));
-    return Function.of(
-        "throttling",
-        clauses,
-        Spec.of("throttling(term()) -> boolean()"));
+    clauses.add(FunctionClause.of(List.of(WildcardPattern.of()), AtomExpr.of("false")));
+    return Function.of("throttling", clauses, Spec.of("throttling(term()) -> boolean()"));
   }
 
   static Function shouldRetry(List<StructureShape> retryableErrors, SymbolProvider sp) {
@@ -237,16 +223,11 @@ final class ErlangRetryIr {
               List.of(
                   TuplePattern.of(
                       List.of(
-                          VariablePattern.of("error"),
-                          RecordPattern.of(recordName, List.of())))),
+                          VariablePattern.of("error"), RecordPattern.of(recordName, List.of())))),
               AtomExpr.of("true")));
     }
-    clauses.add(
-        FunctionClause.of(List.of(WildcardPattern.of()), AtomExpr.of("false")));
-    return Function.of(
-        "should_retry",
-        clauses,
-        Spec.of("should_retry(term()) -> boolean()"));
+    clauses.add(FunctionClause.of(List.of(WildcardPattern.of()), AtomExpr.of("false")));
+    return Function.of("should_retry", clauses, Spec.of("should_retry(term()) -> boolean()"));
   }
 
   private static List<StructureShape> modeledErrors(Model model, ServiceShape service) {

@@ -6,10 +6,10 @@ import io.beam.ir.erlang.BinaryExpr;
 import io.beam.ir.erlang.BinaryPattern;
 import io.beam.ir.erlang.BlockExpr;
 import io.beam.ir.erlang.Expression;
-import io.beam.ir.erlang.Function;
-import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.Fun;
 import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.InfixExpr;
 import io.beam.ir.erlang.IsTypeGuard;
 import io.beam.ir.erlang.ListComprehensionExpr;
@@ -80,18 +80,13 @@ final class ErlangEventStreamIr {
                 ListExpr.of(
                     List.of(
                         TupleExpr.of(
-                            List.of(
-                                BinaryExpr.of(":event-type"), Variable.of("EventType"))),
+                            List.of(BinaryExpr.of(":event-type"), Variable.of("EventType"))),
                         TupleExpr.of(
-                            List.of(
-                                BinaryExpr.of(":message-type"), BinaryExpr.of("event"))),
+                            List.of(BinaryExpr.of(":message-type"), BinaryExpr.of("event"))),
                         TupleExpr.of(
                             List.of(
                                 BinaryExpr.of(":content-type"),
-                                BinaryExpr.of("application/json"))))))),
-        null,
-        null,
-        null);
+                                BinaryExpr.of("application/json"))))))));
   }
 
   static Function headerValue() {
@@ -104,12 +99,7 @@ final class ErlangEventStreamIr {
                     "proplists",
                     "get_value",
                     List.of(
-                        Variable.of("Name"),
-                        Variable.of("Headers"),
-                        AtomExpr.of("undefined"))))),
-        null,
-        null,
-        null);
+                        Variable.of("Name"), Variable.of("Headers"), AtomExpr.of("undefined"))))));
   }
 
   static List<Function> unionHelpers(Model model, UnionShape union, SymbolProvider sp) {
@@ -132,10 +122,7 @@ final class ErlangEventStreamIr {
                 ListComprehensionExpr.of(
                     LocalCallExpr.of("encode_" + helper + "_event", List.of(Variable.of("E"))),
                     VariablePattern.of("E"),
-                    Variable.of("Events")))),
-        null,
-        null,
-        null);
+                    Variable.of("Events")))));
   }
 
   static Function unionDecodeList(UnionShape union, SymbolProvider sp) {
@@ -150,10 +137,7 @@ final class ErlangEventStreamIr {
                     LocalCallExpr.of("decode_" + helper + "_event", List.of(Variable.of("F"))),
                     VariablePattern.of("F"),
                     RemoteCallExpr.of(
-                        "aws_event_stream", "decode_frames", List.of(Variable.of("Body")))))),
-        null,
-        null,
-        null);
+                        "aws_event_stream", "decode_frames", List.of(Variable.of("Body")))))));
   }
 
   static Function unionEncodeEvent(Model model, UnionShape union, SymbolProvider sp) {
@@ -164,12 +148,11 @@ final class ErlangEventStreamIr {
     }
     clauses.add(
         FunctionClause.of(
-            List.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("unknown"), VariablePattern.of("_")))),
+            List.of(TuplePattern.of(List.of(AtomPattern.of("unknown"), VariablePattern.of("_")))),
             LocalCallExpr.of(
-                "error", List.of(TupleExpr.of(List.of(AtomExpr.of("bad_event"), AtomExpr.of("unknown")))))));
-    return Function.of("encode_" + helper + "_event", clauses, null, null, null);
+                "error",
+                List.of(TupleExpr.of(List.of(AtomExpr.of("bad_event"), AtomExpr.of("unknown")))))));
+    return Function.of("encode_" + helper + "_event", clauses);
   }
 
   static Function unionDecodeEvent(UnionShape union, SymbolProvider sp) {
@@ -191,15 +174,11 @@ final class ErlangEventStreamIr {
                             "EventType",
                             LocalCallExpr.of(
                                 "header_value",
-                                List.of(
-                                    Variable.of("Headers"), BinaryExpr.of(":event-type")))),
+                                List.of(Variable.of("Headers"), BinaryExpr.of(":event-type")))),
                         LocalCallExpr.of(
                             "decode_" + helper + "_event_type",
                             List.of(Variable.of("EventType"), Variable.of("Payload")))),
-                    false))),
-        null,
-        null,
-        null);
+                    false))));
   }
 
   static Function unionDecodeEventType(Model model, UnionShape union, SymbolProvider sp) {
@@ -214,9 +193,8 @@ final class ErlangEventStreamIr {
             LocalCallExpr.of(
                 "error",
                 List.of(
-                    TupleExpr.of(
-                        List.of(AtomExpr.of("bad_event"), Variable.of("EventType")))))));
-    return Function.of("decode_" + helper + "_event_type", clauses, null, null, null);
+                    TupleExpr.of(List.of(AtomExpr.of("bad_event"), Variable.of("EventType")))))));
+    return Function.of("decode_" + helper + "_event_type", clauses);
   }
 
   static String helperName(SymbolProvider sp, UnionShape union) {
@@ -232,12 +210,10 @@ final class ErlangEventStreamIr {
         List.of(TuplePattern.of(List.of(AtomPattern.of(tag), VariablePattern.of("Value")))),
         BlockExpr.commaSeparated(
             List.of(
-                MatchExpr.bindValue(
-                    "Payload", encodeMemberPayload(model, target, "Value", sp)),
+                MatchExpr.bindValue("Payload", encodeMemberPayload(model, target, "Value", sp)),
                 MatchExpr.bindValue(
                     "Headers",
-                    LocalCallExpr.of(
-                        "encode_event_headers", List.of(BinaryExpr.of(eventType)))),
+                    LocalCallExpr.of("encode_event_headers", List.of(BinaryExpr.of(eventType)))),
                 RemoteCallExpr.of(
                     "aws_event_stream",
                     "frame",
@@ -252,8 +228,7 @@ final class ErlangEventStreamIr {
     Shape target = model.expectShape(member.getTarget());
     return FunctionClause.of(
         List.of(BinaryPattern.of(eventType), VariablePattern.of("Payload")),
-        TupleExpr.of(
-            List.of(AtomExpr.of(tag), decodeMemberPayload(model, target, "Payload", sp))));
+        TupleExpr.of(List.of(AtomExpr.of(tag), decodeMemberPayload(model, target, "Payload", sp))));
   }
 
   private static Expression encodeMemberPayload(
@@ -304,10 +279,8 @@ final class ErlangEventStreamIr {
                     Fun.of(
                         List.of(
                             FunClause.of(
-                                List.of(
-                                    VariablePattern.of("_"), VariablePattern.of("V")),
-                                InfixExpr.of(
-                                    Variable.of("V"), "=/=", AtomExpr.of("undefined"))))),
+                                List.of(VariablePattern.of("_"), VariablePattern.of("V")),
+                                InfixExpr.of(Variable.of("V"), "=/=", AtomExpr.of("undefined"))))),
                     MapExpr.of(entries)))));
   }
 
@@ -329,8 +302,7 @@ final class ErlangEventStreamIr {
               RemoteCallExpr.of(
                   "maps",
                   "get",
-                  List.of(
-                      BinaryExpr.of(wireKey), decodedPayload, AtomExpr.of("undefined")))));
+                  List.of(BinaryExpr.of(wireKey), decodedPayload, AtomExpr.of("undefined")))));
     }
     return RecordExpr.of(recordName, fields);
   }

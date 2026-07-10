@@ -1,8 +1,8 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AndGuard;
 import io.beam.ir.erlang.AtomExpr;
 import io.beam.ir.erlang.AtomPattern;
-import io.beam.ir.erlang.AndGuard;
 import io.beam.ir.erlang.BinaryExpr;
 import io.beam.ir.erlang.BinaryPattern;
 import io.beam.ir.erlang.BinarySegmentPattern;
@@ -68,8 +68,7 @@ final class ErlangRouterIr {
     List<Function> functions = new ArrayList<>();
     if (BeamProtocolIds.AWS_JSON_1_0.equals(protocol)
         || BeamProtocolIds.AWS_JSON_1_1.equals(protocol)) {
-      preambleComments =
-          List.of("Generated AWS JSON 1.0 router for " + service.getId() + ".");
+      preambleComments = List.of("Generated AWS JSON 1.0 router for " + service.getId() + ".");
       functions.add(awsJsonDispatch(serverMod));
       functions.add(awsJsonRoute(service, operations, sp, codecMod));
     } else {
@@ -127,8 +126,7 @@ final class ErlangRouterIr {
             "Routes an incoming HTTP request to the appropriate server handler.\n"
                 + "Handler must export handle_<operation>/3; typically "
                 + serverMod
-                + " after init_handlers/0."),
-        null);
+                + " after init_handlers/0."));
   }
 
   private static Function awsJsonDispatch(String serverMod) {
@@ -154,8 +152,7 @@ final class ErlangRouterIr {
                         Variable.of("Handler"),
                         Variable.of("Req"))))),
         null,
-        Edoc.of("Routes POST / requests by X-Amz-Target header."),
-        null);
+        Edoc.of("Routes POST / requests by X-Amz-Target header."));
   }
 
   private static Function httpRoute(
@@ -188,14 +185,17 @@ final class ErlangRouterIr {
                       MatchExpr.bind(
                           "Input",
                           RemoteCallExpr.of(
-                              codecMod, "decode_" + opName + "_request", List.of(Variable.of("Req"))),
+                              codecMod,
+                              "decode_" + opName + "_request",
+                              List.of(Variable.of("Req"))),
                           RemoteCallExpr.of(
                               Variable.of("Handler"),
                               AtomExpr.of(handlerFn),
                               List.of(
                                   MapExpr.of(List.of()),
                                   Variable.of("Input"),
-                                  MapExpr.of(List.of()))))), false)));
+                                  MapExpr.of(List.of()))))),
+                  false)));
     }
     postClauses.add(
         Clause.of(
@@ -245,7 +245,8 @@ final class ErlangRouterIr {
     String uriTemplate = httpTrait.getUri().toString();
     String opName = sp.toSymbol(op).getName();
     String handlerFn = "handle_" + opName;
-    Pattern pathPattern = pathMatchPattern(uriTemplate, httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL));
+    Pattern pathPattern =
+        pathMatchPattern(uriTemplate, httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL));
     List<Guard> guards = trailingLabelGuard(uriTemplate);
     Guard guard = guardOrNull(guards);
 
@@ -265,18 +266,12 @@ final class ErlangRouterIr {
   }
 
   private static Expression labeledRouteBody(
-      String uriTemplate,
-      String codecMod,
-      String opName,
-      String handlerFn,
-      String method) {
+      String uriTemplate, String codecMod, String opName, String handlerFn, String method) {
     return CaseExpr.of(
-        LocalCallExpr.of(
-            "parse_labels", List.of(Variable.of("Path"), BinaryExpr.of(uriTemplate))),
+        LocalCallExpr.of("parse_labels", List.of(Variable.of("Path"), BinaryExpr.of(uriTemplate))),
         List.of(
             Clause.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("ok"), VariablePattern.of("LabelMap"))),
+                TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("LabelMap"))),
                 BlockExpr.commaSeparated(
                     List.of(
                         MatchExpr.bind(
@@ -291,10 +286,10 @@ final class ErlangRouterIr {
                                 List.of(
                                     MapExpr.of(List.of()),
                                     Variable.of("Input"),
-                                    MapExpr.of(List.of()))))), false)),
+                                    MapExpr.of(List.of()))))),
+                    false)),
             Clause.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("error"), AtomPattern.of("path_mismatch"))),
+                TuplePattern.of(List.of(AtomPattern.of("error"), AtomPattern.of("path_mismatch"))),
                 TupleExpr.of(
                     List.of(
                         AtomExpr.of("error"),
@@ -315,8 +310,8 @@ final class ErlangRouterIr {
                 RemoteCallExpr.of(
                     Variable.of("Handler"),
                     AtomExpr.of(handlerFn),
-                    List.of(
-                        MapExpr.of(List.of()), Variable.of("Input"), MapExpr.of(List.of()))))), false);
+                    List.of(MapExpr.of(List.of()), Variable.of("Input"), MapExpr.of(List.of()))))),
+        false);
   }
 
   private static FunctionClause notFoundClause(int arity) {
@@ -335,9 +330,7 @@ final class ErlangRouterIr {
                 AtomExpr.of("error"),
                 TupleExpr.of(
                     List.of(
-                        AtomExpr.of("not_found"),
-                        Variable.of("Method"),
-                        Variable.of("Path"))))));
+                        AtomExpr.of("not_found"), Variable.of("Method"), Variable.of("Path"))))));
   }
 
   private static Pattern pathMatchPattern(String uriTemplate, List<HttpBinding> labels) {
@@ -350,8 +343,7 @@ final class ErlangRouterIr {
   private static List<BinarySegmentPattern> buildBinarySegmentPatterns(String uriTemplate) {
     List<BinarySegmentPattern> segments = new ArrayList<>();
     int labelIndex = 0;
-    List<BeamHttpPathPatterns.PathSegment> parsed =
-        BeamHttpPathPatterns.parseTemplate(uriTemplate);
+    List<BeamHttpPathPatterns.PathSegment> parsed = BeamHttpPathPatterns.parseTemplate(uriTemplate);
     for (BeamHttpPathPatterns.PathSegment seg : parsed) {
       if (seg.kind() == BeamHttpPathPatterns.SegmentKind.LABEL) {
         segments.add(
@@ -368,8 +360,7 @@ final class ErlangRouterIr {
     if (var == null) {
       return List.of();
     }
-    return List.of(
-        ExpressionGuard.of(InfixExpr.of(Variable.of(var), "=/=", BinaryExpr.of(""))));
+    return List.of(ExpressionGuard.of(InfixExpr.of(Variable.of(var), "=/=", BinaryExpr.of(""))));
   }
 
   private static Guard guardOrNull(List<Guard> guards) {
@@ -422,17 +413,13 @@ final class ErlangRouterIr {
                     List.of(
                         Clause.of(
                             TuplePattern.of(
-                                List.of(
-                                    AtomPattern.of("ok"), VariablePattern.of("Labels"))),
+                                List.of(AtomPattern.of("ok"), VariablePattern.of("Labels"))),
                             TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Labels")))),
                         Clause.of(
                             AtomPattern.of("error"),
                             TupleExpr.of(
-                                List.of(
-                                    AtomExpr.of("error"), AtomExpr.of("path_mismatch")))))))),
-        Spec.of("parse_labels(binary(), binary()) -> {ok, map()} | {error, path_mismatch}"),
-        null,
-        null);
+                                List.of(AtomExpr.of("error"), AtomExpr.of("path_mismatch")))))))),
+        Spec.of("parse_labels(binary(), binary()) -> {ok, map()} | {error, path_mismatch}"));
   }
 
   static Function segments() {
@@ -457,10 +444,7 @@ final class ErlangRouterIr {
                             VariablePattern.of("S"),
                             Variable.of("Parts"),
                             InfixExpr.of(Variable.of("S"), "=/=", BinaryExpr.of("")))),
-                    false))),
-        null,
-        null,
-        null);
+                    false))));
   }
 
   static Function matchSegments() {
@@ -473,9 +457,7 @@ final class ErlangRouterIr {
                     LocalCallExpr.of(
                         "match_segments",
                         List.of(
-                            Variable.of("RestPath"),
-                            Variable.of("RestTpl"),
-                            Variable.of("Acc")))),
+                            Variable.of("RestPath"), Variable.of("RestTpl"), Variable.of("Acc")))),
                 Clause.of(AtomPattern.of("false"), AtomExpr.of("error"))));
 
     Expression labelNameCase =
@@ -483,16 +465,13 @@ final class ErlangRouterIr {
             LocalCallExpr.of("label_name", List.of(Variable.of("TplSeg"))),
             List.of(
                 Clause.of(
-                    TuplePattern.of(
-                        List.of(AtomPattern.of("ok"), VariablePattern.of("Key"))),
+                    TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("Key"))),
                     BlockExpr.commaSeparated(
                         List.of(
                             MatchExpr.bindValue(
                                 "Val",
                                 RemoteCallExpr.of(
-                                    "uri_string",
-                                    "unquote",
-                                    List.of(Variable.of("Seg")))),
+                                    "uri_string", "unquote", List.of(Variable.of("Seg")))),
                             LocalCallExpr.of(
                                 "match_segments",
                                 List.of(
@@ -523,24 +502,17 @@ final class ErlangRouterIr {
                 labelNameCase),
             FunctionClause.of(
                 List.of(WildcardPattern.of(), WildcardPattern.of(), WildcardPattern.of()),
-                AtomExpr.of("error"))),
-        null,
-        null,
-        null);
+                AtomExpr.of("error"))));
   }
 
   static Function labelName() {
     CaseExpr splitCase =
         CaseExpr.of(
-            RemoteCallExpr.of(
-                "binary",
-                "split",
-                List.of(Variable.of("Rest"), BinaryExpr.of("}"))),
+            RemoteCallExpr.of("binary", "split", List.of(Variable.of("Rest"), BinaryExpr.of("}"))),
             List.of(
                 Clause.of(
                     ListPattern.cons(
-                        VariablePattern.of("Label"),
-                        ListPattern.of(List.of(BinaryPattern.of("")))),
+                        VariablePattern.of("Label"), ListPattern.of(List.of(BinaryPattern.of("")))),
                     TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Label")))),
                 Clause.of(WildcardPattern.of(), AtomExpr.of("error"))));
 
@@ -554,9 +526,6 @@ final class ErlangRouterIr {
                             BinarySegmentPattern.literal("{"),
                             BinarySegmentPattern.of(VariablePattern.of("Rest"), "binary")))),
                 splitCase),
-            FunctionClause.of(List.of(WildcardPattern.of()), AtomExpr.of("error"))),
-        null,
-        null,
-        null);
+            FunctionClause.of(List.of(WildcardPattern.of()), AtomExpr.of("error"))));
   }
 }

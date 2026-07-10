@@ -10,16 +10,15 @@ import io.beam.ir.erlang.CaseExpr;
 import io.beam.ir.erlang.Clause;
 import io.beam.ir.erlang.Edoc;
 import io.beam.ir.erlang.Expression;
-import io.beam.ir.erlang.Function;
-import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.Fun;
 import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.InfixExpr;
 import io.beam.ir.erlang.IntegerExpr;
 import io.beam.ir.erlang.IntegerPattern;
 import io.beam.ir.erlang.IsTypeGuard;
 import io.beam.ir.erlang.ListComprehensionExpr;
-import io.beam.ir.erlang.ListComprehensionGenerator;
 import io.beam.ir.erlang.ListExpr;
 import io.beam.ir.erlang.ListPattern;
 import io.beam.ir.erlang.LocalCallExpr;
@@ -120,8 +119,7 @@ final class ErlangRestXmlOperationIr {
                         model, service, op, httpIndex, sp, encodeWithConfig),
                     false))),
         Spec.of("encode_" + opName + "_request(" + inputArgs + ") -> #http_request{}"),
-        Edoc.of("Encode REST-XML request for " + op.getId() + "."),
-        null);
+        Edoc.of("Encode REST-XML request for " + op.getId() + "."));
   }
 
   static Function buildDecodeRequest(
@@ -152,8 +150,7 @@ final class ErlangRestXmlOperationIr {
                 + ") -> {'ok', "
                 + inputType
                 + "} | {'error', term()}"),
-        Edoc.of("Decode REST-XML request for " + op.getId() + "."),
-        null);
+        Edoc.of("Decode REST-XML request for " + op.getId() + "."));
   }
 
   static List<Function> buildDecodeResponse(
@@ -199,8 +196,7 @@ final class ErlangRestXmlOperationIr {
                     + "_response(#http_response{}) -> {'ok', "
                     + outputType
                     + "} | {'error', term()}"),
-            Edoc.of("Decode REST-XML response for " + op.getId() + "."),
-            null));
+            Edoc.of("Decode REST-XML response for " + op.getId() + ".")));
 
     if (!op.getErrors().isEmpty()) {
       functions.add(
@@ -208,11 +204,8 @@ final class ErlangRestXmlOperationIr {
               "decode_" + opName + "_response_error",
               ErlangRestXmlSupport.buildResponseErrorDispatchClauses(model, op, sp),
               Spec.of(
-                  "decode_"
-                      + opName
-                      + "_response_error(integer(), term()) -> {'error', term()}"),
-              Edoc.of("Error dispatch for " + op.getId() + "."),
-              null));
+                  "decode_" + opName + "_response_error(integer(), term()) -> {'error', term()}"),
+              Edoc.of("Error dispatch for " + op.getId() + ".")));
     }
     return functions;
   }
@@ -232,8 +225,7 @@ final class ErlangRestXmlOperationIr {
                 BlockExpr.commaSeparated(
                     buildEncodeResponseBodyExprs(model, op, httpIndex, sp), false))),
         Spec.of("encode_" + opName + "_response(" + outputType + ") -> #http_response{}"),
-        Edoc.of("Encode REST-XML response for " + op.getId() + "."),
-        null);
+        Edoc.of("Encode REST-XML response for " + op.getId() + "."));
   }
 
   static Function buildErrorResponseEncoder(Model model, ShapeId errorId, SymbolProvider sp) {
@@ -267,8 +259,7 @@ final class ErlangRestXmlOperationIr {
                         "encode_xml",
                         List.of(
                             MapExpr.of(
-                                List.of(
-                                    MapEntry.of(BinaryExpr.of("Error"), Variable.of("Inner")))),
+                                List.of(MapEntry.of(BinaryExpr.of("Error"), Variable.of("Inner")))),
                             Variable.of("XmlNs")))),
                 RecordExpr.of(
                     "http_response",
@@ -285,7 +276,9 @@ final class ErlangRestXmlOperationIr {
                         RecordField.of("body", Variable.of("Body"))))),
             false);
 
-    return Function.of("encode_" + recName + "_response", List.of(FunctionClause.of(List.of(RecordPattern.of(recName, List.of())), body)));
+    return Function.of(
+        "encode_" + recName + "_response",
+        List.of(FunctionClause.of(List.of(RecordPattern.of(recName, List.of())), body)));
   }
 
   static List<Expression> buildDecodeRequestBodyExprs(
@@ -350,11 +343,9 @@ final class ErlangRestXmlOperationIr {
             labels, queries, queryParams, headers, prefixHeaders, payloadMembers)) {
       String fieldName = BeamNameUtils.toSnakeCase(b.getMember().getMemberName());
       recordFields.add(
-          RecordField.of(
-              fieldName, Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName))));
+          RecordField.of(fieldName, Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName))));
     }
-    body.add(
-        TupleExpr.of(List.of(AtomExpr.of("ok"), RecordExpr.of(inputRecord, recordFields))));
+    body.add(TupleExpr.of(List.of(AtomExpr.of("ok"), RecordExpr.of(inputRecord, recordFields))));
     return body;
   }
 
@@ -400,8 +391,7 @@ final class ErlangRestXmlOperationIr {
               "Parsed",
               CaseExpr.of(
                   LocalCallExpr.of(
-                      "parse_xml_root",
-                      List.of(Variable.of("Body"), BinaryExpr.of(rootElement))),
+                      "parse_xml_root", List.of(Variable.of("Body"), BinaryExpr.of(rootElement))),
                   List.of(
                       Clause.of(
                           TuplePattern.of(
@@ -421,8 +411,7 @@ final class ErlangRestXmlOperationIr {
       String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
       if (boundFields.add(fieldName)) {
         recordFields.add(
-            RecordField.of(
-                fieldName, Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName))));
+            RecordField.of(fieldName, Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName))));
       }
     }
     if (respPayload.isEmpty() && !xmlBodyMembers.isEmpty()) {
@@ -430,8 +419,7 @@ final class ErlangRestXmlOperationIr {
         String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
         if (boundFields.add(fieldName)) {
           recordFields.add(
-              RecordField.of(
-                  fieldName, Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName))));
+              RecordField.of(fieldName, Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName))));
         }
       }
     }
@@ -445,9 +433,12 @@ final class ErlangRestXmlOperationIr {
   static Expression buildDecodeResponseFallbackExprs(OperationShape op, SymbolProvider sp) {
     String opName = sp.toSymbol(op).getName();
     if (op.getErrors().isEmpty()) {
-      return LocalCallExpr.of("decode_rest_xml_error", List.of(Variable.of("Status"), Variable.of("Body")));
+      return LocalCallExpr.of(
+          "decode_rest_xml_error", List.of(Variable.of("Status"), Variable.of("Body")));
     }
-    return LocalCallExpr.of("decode_" + opName + "_response_error", List.of(Variable.of("Status"), Variable.of("Body")));
+    return LocalCallExpr.of(
+        "decode_" + opName + "_response_error",
+        List.of(Variable.of("Status"), Variable.of("Body")));
   }
 
   static List<Expression> buildEncodeRequestBodyExprs(
@@ -492,38 +483,30 @@ final class ErlangRestXmlOperationIr {
       if (encodeWithConfig) {
         body.add(
             MatchExpr.of(
-                TuplePattern.of(
-                    List.of(
-                        VariablePattern.of("Host"), VariablePattern.of("Path"))),
+                TuplePattern.of(List.of(VariablePattern.of("Host"), VariablePattern.of("Path"))),
                 RemoteCallExpr.of(
                     "s3_endpoint",
                     "resolve_bucket_url",
-                    List.of(
-                        Variable.of("Config"), Variable.of(bucketVar), Variable.of(keyVar))),
+                    List.of(Variable.of("Config"), Variable.of(bucketVar), Variable.of(keyVar))),
                 null));
       } else {
         body.add(
             MatchExpr.of(
-                TuplePattern.of(
-                    List.of(
-                        VariablePattern.of("Host"), VariablePattern.of("Path"))),
+                TuplePattern.of(List.of(VariablePattern.of("Host"), VariablePattern.of("Path"))),
                 RemoteCallExpr.of(
                     "s3_endpoint",
                     "resolve_bucket_url",
-                    List.of(
-                        MapExpr.of(List.of()), Variable.of(bucketVar), Variable.of(keyVar))),
+                    List.of(MapExpr.of(List.of()), Variable.of(bucketVar), Variable.of(keyVar))),
                 null));
       }
     } else {
-      body.add(
-          MatchExpr.bindValue("Path", buildPathExpression(uriTemplate, labels)));
+      body.add(MatchExpr.bindValue("Path", buildPathExpression(uriTemplate, labels)));
     }
 
     if (queries.isEmpty()) {
       body.add(MatchExpr.bindValue("Query", ListExpr.of(List.of())));
     } else {
-      body.add(
-          MatchExpr.bindValue("Query", flattenBindingCasesExpr(model, sp, queries, true)));
+      body.add(MatchExpr.bindValue("Query", flattenBindingCasesExpr(model, sp, queries, true)));
     }
 
     body.addAll(buildQueryParamsExprs(queryParams));
@@ -539,8 +522,7 @@ final class ErlangRestXmlOperationIr {
                               BinaryExpr.of("Content-Type"),
                               BinaryExpr.of(requestContentType)))))));
     } else {
-      body.add(
-          MatchExpr.bindValue("Headers0", flattenBindingCasesExpr(model, sp, headers, false)));
+      body.add(MatchExpr.bindValue("Headers0", flattenBindingCasesExpr(model, sp, headers, false)));
       body.add(
           MatchExpr.bindValue(
               "Headers",
@@ -548,15 +530,23 @@ final class ErlangRestXmlOperationIr {
                   List.of(
                       TupleExpr.of(
                           List.of(
-                              BinaryExpr.of("Content-Type"),
-                              BinaryExpr.of(requestContentType)))),
-                      Variable.of("Headers0"))));
+                              BinaryExpr.of("Content-Type"), BinaryExpr.of(requestContentType)))),
+                  Variable.of("Headers0"))));
     }
 
     for (HttpBinding ph : prefixHeaders) {
       String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
       body.add(
-          MatchExpr.bindValue("Headers", InfixExpr.of(Variable.of("Headers"), "++", LocalCallExpr.of("prefix_headers_to_list", List.of(BinaryExpr.of(ph.getLocationName()), Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName)))))));
+          MatchExpr.bindValue(
+              "Headers",
+              InfixExpr.of(
+                  Variable.of("Headers"),
+                  "++",
+                  LocalCallExpr.of(
+                      "prefix_headers_to_list",
+                      List.of(
+                          BinaryExpr.of(ph.getLocationName()),
+                          Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName)))))));
     }
 
     body.addAll(buildRequestBodyExprs(model, payloadMembers, method, sp));
@@ -569,14 +559,18 @@ final class ErlangRestXmlOperationIr {
 
     if (hasHostLabels && !s3BucketAddressing) {
       body.add(
-          MatchExpr.bindValue("Host", LocalCallExpr.of("build_host", List.of(Variable.of("Input"), Variable.of("Config")))));
+          MatchExpr.bindValue(
+              "Host",
+              LocalCallExpr.of(
+                  "build_host", List.of(Variable.of("Input"), Variable.of("Config")))));
     }
 
     List<RecordField> requestFields = new ArrayList<>();
     requestFields.add(RecordField.of("method", BinaryExpr.of(method)));
     requestFields.add(RecordField.of("path", Variable.of("Path")));
     requestFields.add(
-        RecordField.of("query", RemoteCallExpr.of("maps", "from_list", List.of(Variable.of("Query")))));
+        RecordField.of(
+            "query", RemoteCallExpr.of("maps", "from_list", List.of(Variable.of("Query")))));
     requestFields.add(RecordField.of("headers", Variable.of(requestHeaders)));
     requestFields.add(RecordField.of("body", Variable.of("Body")));
     if (hasHostLabels || s3BucketAddressing) {
@@ -606,11 +600,11 @@ final class ErlangRestXmlOperationIr {
                   List.of(
                       TupleExpr.of(
                           List.of(
-                              BinaryExpr.of("Content-Type"),
-                              BinaryExpr.of("application/xml")))))));
+                              BinaryExpr.of("Content-Type"), BinaryExpr.of("application/xml")))))));
     } else {
       body.add(
-          MatchExpr.bindValue("ExtraHeaders", flattenBindingCasesExpr(model, sp, respHeaders, false)));
+          MatchExpr.bindValue(
+              "ExtraHeaders", flattenBindingCasesExpr(model, sp, respHeaders, false)));
       body.add(
           MatchExpr.bindValue(
               "Headers",
@@ -618,23 +612,30 @@ final class ErlangRestXmlOperationIr {
                   List.of(
                       TupleExpr.of(
                           List.of(
-                              BinaryExpr.of("Content-Type"),
-                              BinaryExpr.of("application/xml")))),
-                      Variable.of("ExtraHeaders"))));
+                              BinaryExpr.of("Content-Type"), BinaryExpr.of("application/xml")))),
+                  Variable.of("ExtraHeaders"))));
     }
 
     for (HttpBinding ph : respPrefixHeaders) {
       String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
       body.add(
-          MatchExpr.bindValue("Headers", InfixExpr.of(Variable.of("Headers"), "++", LocalCallExpr.of("prefix_headers_to_list", List.of(BinaryExpr.of(ph.getLocationName()), Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName)))))));
+          MatchExpr.bindValue(
+              "Headers",
+              InfixExpr.of(
+                  Variable.of("Headers"),
+                  "++",
+                  LocalCallExpr.of(
+                      "prefix_headers_to_list",
+                      List.of(
+                          BinaryExpr.of(ph.getLocationName()),
+                          Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName)))))));
     }
 
     if (!respPayload.isEmpty()) {
       body.addAll(buildResponseBodyFromPayloadExprs(model, respPayload.get(0), sp));
     } else if (implicitBody) {
       String rootElement = BeamXmlBindingIndex.shapeElementName(output);
-      body.add(
-          MatchExpr.bindValue("XmlNs", LocalCallExpr.of("xml_namespace", List.of())));
+      body.add(MatchExpr.bindValue("XmlNs", LocalCallExpr.of("xml_namespace", List.of())));
       List<MapEntry> entries = new ArrayList<>();
       for (MemberShape member : output.members()) {
         String field = BeamNameUtils.toSnakeCase(member.getMemberName());
@@ -653,8 +654,7 @@ final class ErlangRestXmlOperationIr {
                       Fun.of(
                           List.of(
                               FunClause.of(
-                                  List.of(
-                                      WildcardPattern.of(), VariablePattern.of("V")),
+                                  List.of(WildcardPattern.of(), VariablePattern.of("V")),
                                   InfixExpr.of(
                                       Variable.of("V"), "=/=", AtomExpr.of("undefined"))))),
                       MapExpr.of(entries)))));
@@ -666,8 +666,7 @@ final class ErlangRestXmlOperationIr {
                   List.of(
                       MapExpr.of(
                           List.of(
-                              MapEntry.of(
-                                  BinaryExpr.of(rootElement), Variable.of("MemberMap")))),
+                              MapEntry.of(BinaryExpr.of(rootElement), Variable.of("MemberMap")))),
                       Variable.of("XmlNs")))));
     } else {
       body.add(MatchExpr.bindValue("Body", BinaryExpr.of("")));
@@ -688,7 +687,13 @@ final class ErlangRestXmlOperationIr {
     String fieldName = BeamNameUtils.toSnakeCase(binding.getMember().getMemberName());
     String bindingVar = ErlangRestXmlSupport.toBindingVar(fieldName);
     Expression headerLookup =
-        RemoteCallExpr.of("proplists", "get_value", List.of(BinaryExpr.of(binding.getLocationName()), Variable.of("Headers"), AtomExpr.of("undefined")));
+        RemoteCallExpr.of(
+            "proplists",
+            "get_value",
+            List.of(
+                BinaryExpr.of(binding.getLocationName()),
+                Variable.of("Headers"),
+                AtomExpr.of("undefined")));
     Shape target = model.expectShape(binding.getMember().getTarget());
     Expression value = headerLookup;
     if (target instanceof EnumShape || target instanceof IntEnumShape) {
@@ -720,12 +725,10 @@ final class ErlangRestXmlOperationIr {
                 "parse_xml_root", List.of(Variable.of("Body"), BinaryExpr.of(rootElement))),
             List.of(
                 Clause.of(
-                    TuplePattern.of(
-                        List.of(AtomPattern.of("ok"), VariablePattern.of("Root"))),
+                    TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("Root"))),
                     payloadDecodeValueExpr(model, target, sp)),
                 Clause.of(
-                    TuplePattern.of(
-                        List.of(AtomPattern.of("error"), VariablePattern.of("_"))),
+                    TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("_"))),
                     AtomExpr.of("undefined"))));
 
     return List.of(
@@ -758,12 +761,10 @@ final class ErlangRestXmlOperationIr {
                     "parse_xml_root", List.of(Variable.of("Body"), BinaryExpr.of(rootElement))),
                 List.of(
                     Clause.of(
-                        TuplePattern.of(
-                            List.of(AtomPattern.of("ok"), VariablePattern.of("Root"))),
+                        TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("Root"))),
                         payloadDecodeValueExpr(model, target, sp)),
                     Clause.of(
-                        TuplePattern.of(
-                            List.of(AtomPattern.of("error"), VariablePattern.of("_"))),
+                        TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("_"))),
                         AtomExpr.of("undefined"))))));
   }
 
@@ -788,16 +789,23 @@ final class ErlangRestXmlOperationIr {
         fields.add(
             RecordField.of(
                 field,
-                LocalCallExpr.of("xml_attribute", List.of(Variable.of(xmlVar), BinaryExpr.of(BeamXmlBindingIndex.memberElementName(member))))));
+                LocalCallExpr.of(
+                    "xml_attribute",
+                    List.of(
+                        Variable.of(xmlVar),
+                        BinaryExpr.of(BeamXmlBindingIndex.memberElementName(member))))));
       } else if (target instanceof ListShape listShape) {
         fields.add(
-            RecordField.of(
-                field, buildDecodeListFieldExpr(model, member, listShape, xmlVar, sp)));
+            RecordField.of(field, buildDecodeListFieldExpr(model, member, listShape, xmlVar, sp)));
       } else {
         fields.add(
             RecordField.of(
                 field,
-                LocalCallExpr.of("xml_child_text", List.of(Variable.of(xmlVar), BinaryExpr.of(BeamXmlBindingIndex.memberElementName(member))))));
+                LocalCallExpr.of(
+                    "xml_child_text",
+                    List.of(
+                        Variable.of(xmlVar),
+                        BinaryExpr.of(BeamXmlBindingIndex.memberElementName(member))))));
       }
     }
     if (fields.isEmpty()) {
@@ -846,10 +854,22 @@ final class ErlangRestXmlOperationIr {
       Shape listMember = model.expectShape(listShape.getMember().getTarget());
       if (listMember instanceof StructureShape nested) {
         Fun decodeFun =
-            Fun.of(List.of(FunClause.of(VariablePattern.of("Item"), buildDecodeStructureExpr(model, nested, "Item", sp))));
-        return LocalCallExpr.of("xml_child_struct_list", List.of(Variable.of(elementVar), AtomExpr.of("undefined"), BinaryExpr.of(itemElement), decodeFun));
+            Fun.of(
+                List.of(
+                    FunClause.of(
+                        VariablePattern.of("Item"),
+                        buildDecodeStructureExpr(model, nested, "Item", sp))));
+        return LocalCallExpr.of(
+            "xml_child_struct_list",
+            List.of(
+                Variable.of(elementVar),
+                AtomExpr.of("undefined"),
+                BinaryExpr.of(itemElement),
+                decodeFun));
       }
-      return LocalCallExpr.of("xml_child_list", List.of(Variable.of(elementVar), AtomExpr.of("undefined"), BinaryExpr.of(itemElement)));
+      return LocalCallExpr.of(
+          "xml_child_list",
+          List.of(Variable.of(elementVar), AtomExpr.of("undefined"), BinaryExpr.of(itemElement)));
     }
     return CaseExpr.of(
         LocalCallExpr.of("element_text", List.of(Variable.of(elementVar))),
@@ -871,10 +891,17 @@ final class ErlangRestXmlOperationIr {
     Shape listMember = model.expectShape(listShape.getMember().getTarget());
     if (listMember instanceof StructureShape nested) {
       Fun decodeFun =
-          Fun.of(List.of(FunClause.of(VariablePattern.of("Item"), buildDecodeStructureExpr(model, nested, "Item", sp))));
-      return LocalCallExpr.of("xml_child_struct_list", List.of(Variable.of(xmlVar), listNameExpr, BinaryExpr.of(itemElement), decodeFun));
+          Fun.of(
+              List.of(
+                  FunClause.of(
+                      VariablePattern.of("Item"),
+                      buildDecodeStructureExpr(model, nested, "Item", sp))));
+      return LocalCallExpr.of(
+          "xml_child_struct_list",
+          List.of(Variable.of(xmlVar), listNameExpr, BinaryExpr.of(itemElement), decodeFun));
     }
-    return LocalCallExpr.of("xml_child_list", List.of(Variable.of(xmlVar), listNameExpr, BinaryExpr.of(itemElement)));
+    return LocalCallExpr.of(
+        "xml_child_list", List.of(Variable.of(xmlVar), listNameExpr, BinaryExpr.of(itemElement)));
   }
 
   private static List<Expression> buildMembersFromXmlExprs(
@@ -953,8 +980,7 @@ final class ErlangRestXmlOperationIr {
                         "xml_child_text",
                         List.of(
                             Variable.of(xmlVar),
-                            BinaryExpr.of(
-                                BeamXmlBindingIndex.memberElementName(member))))))));
+                            BinaryExpr.of(BeamXmlBindingIndex.memberElementName(member))))))));
   }
 
   private static List<Expression> buildRequestBodyExprs(
@@ -1014,13 +1040,11 @@ final class ErlangRestXmlOperationIr {
               List.of(
                   MapExpr.of(
                       List.of(
-                          MapEntry.of(
-                              BinaryExpr.of(rootElement), Variable.of("PayloadValue")))),
+                          MapEntry.of(BinaryExpr.of(rootElement), Variable.of("PayloadValue")))),
                   Variable.of("XmlNs")));
     }
 
-    exprs.add(
-        MatchExpr.bindValue("XmlNs", LocalCallExpr.of("xml_namespace", List.of())));
+    exprs.add(MatchExpr.bindValue("XmlNs", LocalCallExpr.of("xml_namespace", List.of())));
     exprs.add(
         MatchExpr.bindValue(
             "Body",
@@ -1074,8 +1098,7 @@ final class ErlangRestXmlOperationIr {
               List.of(
                   MapExpr.of(
                       List.of(
-                          MapEntry.of(
-                              BinaryExpr.of(rootElement), Variable.of("PayloadValue")))),
+                          MapEntry.of(BinaryExpr.of(rootElement), Variable.of("PayloadValue")))),
                   Variable.of("XmlNs")));
     }
 
@@ -1115,13 +1138,10 @@ final class ErlangRestXmlOperationIr {
                               MapEntry.of(
                                   BinaryExpr.of(rootElement),
                                   MapExpr.of(
-                                      List.of(
-                                          MapEntry.of(
-                                              BinaryExpr.of(element), innerValue)))))),
+                                      List.of(MapEntry.of(BinaryExpr.of(element), innerValue)))))),
                       Variable.of("XmlNs")))));
     }
-    clauses.add(
-        Clause.of(AtomPattern.of("undefined"), BinaryExpr.of("")));
+    clauses.add(Clause.of(AtomPattern.of("undefined"), BinaryExpr.of("")));
     return CaseExpr.of(Variable.of(valueVar), clauses);
   }
 
@@ -1277,16 +1297,13 @@ final class ErlangRestXmlOperationIr {
                           VariablePattern.of("M"),
                           IsTypeGuard.of("map", Variable.of("M")),
                           ListComprehensionExpr.of(
-                              TupleExpr.of(
-                                  List.of(Variable.of("K"), Variable.of("V"))),
+                              TupleExpr.of(List.of(Variable.of("K"), Variable.of("V"))),
                               TuplePattern.of(
-                                  List.of(
-                                      VariablePattern.of("K"),
-                                      VariablePattern.of("V"))),
-                              RemoteCallExpr.of(
-                                  "maps", "to_list", List.of(Variable.of("M")))))))));
+                                  List.of(VariablePattern.of("K"), VariablePattern.of("V"))),
+                              RemoteCallExpr.of("maps", "to_list", List.of(Variable.of("M")))))))));
       exprs.add(
-          MatchExpr.bindValue("Query", InfixExpr.of(Variable.of("Query"), "++", Variable.of("QueryExtra"))));
+          MatchExpr.bindValue(
+              "Query", InfixExpr.of(Variable.of("Query"), "++", Variable.of("QueryExtra"))));
     }
     return exprs;
   }
@@ -1346,8 +1363,7 @@ final class ErlangRestXmlOperationIr {
   private static void addBindingField(List<RecordPatternField> fields, String memberName) {
     String field = BeamNameUtils.toSnakeCase(memberName);
     fields.add(
-        RecordPatternField.of(
-            field, VariablePattern.of(ErlangRestXmlSupport.toBindingVar(field))));
+        RecordPatternField.of(field, VariablePattern.of(ErlangRestXmlSupport.toBindingVar(field))));
   }
 
   private static RecordPattern recordBindingHead(

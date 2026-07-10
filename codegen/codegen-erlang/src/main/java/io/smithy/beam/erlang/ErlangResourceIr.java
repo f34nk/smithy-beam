@@ -182,8 +182,7 @@ final class ErlangResourceIr {
 
     return Function.of(
         helper,
-        List.of(
-            FunctionClause.of(patterns, RemoteCallExpr.of(delegateMod, opHandler, callArgs))),
+        List.of(FunctionClause.of(patterns, RemoteCallExpr.of(delegateMod, opHandler, callArgs))),
         Spec.of(
             helper
                 + "("
@@ -191,8 +190,7 @@ final class ErlangResourceIr {
                 + ") -> {'ok', "
                 + outSym.getName()
                 + "} | {'error', term()}"),
-        BeamDocumentation.forShape(op).map(Edoc::of).orElse(null),
-        null);
+        BeamDocumentation.forShape(op).map(Edoc::of).orElse(null));
   }
 
   private static String identifierType(

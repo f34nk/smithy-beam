@@ -9,16 +9,14 @@ import io.beam.ir.erlang.CaseExpr;
 import io.beam.ir.erlang.Clause;
 import io.beam.ir.erlang.Edoc;
 import io.beam.ir.erlang.Expression;
-import io.beam.ir.erlang.Function;
-import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.Fun;
 import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
 import io.beam.ir.erlang.InfixExpr;
 import io.beam.ir.erlang.IntegerExpr;
 import io.beam.ir.erlang.IntegerPattern;
 import io.beam.ir.erlang.ListComprehensionExpr;
-import io.beam.ir.erlang.ListComprehensionFilter;
-import io.beam.ir.erlang.ListComprehensionGenerator;
 import io.beam.ir.erlang.ListExpr;
 import io.beam.ir.erlang.LocalCallExpr;
 import io.beam.ir.erlang.MapEntry;
@@ -81,10 +79,8 @@ final class ErlangAwsQueryOperationIr {
             "Pairs",
             ListExpr.of(
                 List.of(
-                    TupleExpr.of(
-                        List.of(BinaryExpr.of("Action"), BinaryExpr.of(action))),
-                    TupleExpr.of(
-                        List.of(BinaryExpr.of("Version"), BinaryExpr.of(version)))),
+                    TupleExpr.of(List.of(BinaryExpr.of("Action"), BinaryExpr.of(action))),
+                    TupleExpr.of(List.of(BinaryExpr.of("Version"), BinaryExpr.of(version)))),
                 LocalCallExpr.of("flatten_query_input", List.of(Variable.of("Input"))))));
     body.add(
         MatchExpr.bindValue(
@@ -98,11 +94,9 @@ final class ErlangAwsQueryOperationIr {
                             List.of(
                                 Variable.of("K"),
                                 LocalCallExpr.of("enc", List.of(Variable.of("V"))))),
-                        TuplePattern.of(
-                            List.of(VariablePattern.of("K"), VariablePattern.of("V"))),
+                        TuplePattern.of(List.of(VariablePattern.of("K"), VariablePattern.of("V"))),
                         Variable.of("Pairs"),
-                        InfixExpr.of(
-                            Variable.of("V"), "=/=", AtomExpr.of("undefined")))))));
+                        InfixExpr.of(Variable.of("V"), "=/=", AtomExpr.of("undefined")))))));
     body.add(
         RecordExpr.of(
             "http_request",
@@ -124,8 +118,7 @@ final class ErlangAwsQueryOperationIr {
         "encode_" + opName + "_request",
         List.of(FunctionClause.of(List.of(inputPattern), BlockExpr.commaSeparated(body, false))),
         Spec.of("encode_" + opName + "_request(" + inputType + ") -> #http_request{}"),
-        Edoc.of("Encode AWS Query request for " + op.getId() + "."),
-        null);
+        Edoc.of("Encode AWS Query request for " + op.getId() + "."));
   }
 
   static Function buildFlattenQueryInput(
@@ -149,8 +142,7 @@ final class ErlangAwsQueryOperationIr {
     }
     clauses.add(
         FunctionClause.of(
-            List.of(
-                VariablePattern.of("_WirePrefix"), AtomPattern.of("undefined")),
+            List.of(VariablePattern.of("_WirePrefix"), AtomPattern.of("undefined")),
             ListExpr.of(List.of())));
     clauses.add(
         FunctionClause.of(
@@ -189,8 +181,7 @@ final class ErlangAwsQueryOperationIr {
     List<RecordPatternField> fieldPatterns = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String field = memberFieldName(sp, member);
-      fieldPatterns.add(
-          RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
+      fieldPatterns.add(RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
     }
     RecordPattern pattern = RecordPattern.of(record, fieldPatterns);
 
@@ -231,8 +222,7 @@ final class ErlangAwsQueryOperationIr {
     List<RecordPatternField> fieldPatterns = new ArrayList<>();
     for (MemberShape member : members) {
       String field = memberFieldName(sp, member);
-      fieldPatterns.add(
-          RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
+      fieldPatterns.add(RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
     }
     RecordPattern pattern = RecordPattern.of(inputRecord, fieldPatterns);
 
@@ -287,8 +277,7 @@ final class ErlangAwsQueryOperationIr {
             FunctionClause.of(
                 List.of(fallbackPattern),
                 LocalCallExpr.of(
-                    "decode_query_error",
-                    List.of(Variable.of("Status"), Variable.of("Body")))));
+                    "decode_query_error", List.of(Variable.of("Status"), Variable.of("Body")))));
 
     return Function.of(
         "decode_" + opName + "_response",
@@ -299,8 +288,7 @@ final class ErlangAwsQueryOperationIr {
                 + "_response(#http_response{}) -> {'ok', "
                 + outputType
                 + "} | {'error', term()}"),
-        Edoc.of("Decode AWS Query response for " + op.getId() + "."),
-        null);
+        Edoc.of("Decode AWS Query response for " + op.getId() + "."));
   }
 
   private static Expression buildDecodeSuccessBody(
@@ -312,8 +300,7 @@ final class ErlangAwsQueryOperationIr {
       boolean ec2Query) {
     Expression unwrap =
         LocalCallExpr.of(
-            "unwrap_query_result",
-            List.of(Variable.of("Body"), BinaryExpr.of(resultElement)));
+            "unwrap_query_result", List.of(Variable.of("Body"), BinaryExpr.of(resultElement)));
     if (output.members().isEmpty()) {
       Expression emptyOutput = RecordExpr.of(outputRecord, List.of());
       return CaseExpr.of(
@@ -330,26 +317,20 @@ final class ErlangAwsQueryOperationIr {
                               List.of(AtomPattern.of("missing_result"), WildcardPattern.of())))),
                   TupleExpr.of(List.of(AtomExpr.of("ok"), emptyOutput))),
               Clause.of(
-                  TuplePattern.of(
-                      List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
+                  TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
                   TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("Reason"))))));
     }
     List<RecordField> fields = buildOutputRecordFields(model, sp, output, "Result", ec2Query);
     Expression okRecord =
-        TupleExpr.of(
-            List.of(
-                AtomExpr.of("ok"),
-                RecordExpr.of(outputRecord, fields)));
+        TupleExpr.of(List.of(AtomExpr.of("ok"), RecordExpr.of(outputRecord, fields)));
     return CaseExpr.of(
         unwrap,
         List.of(
             Clause.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("ok"), VariablePattern.of("Result"))),
+                TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("Result"))),
                 okRecord),
             Clause.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
+                TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("Reason"))),
                 TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("Reason"))))));
   }
 
@@ -361,14 +342,12 @@ final class ErlangAwsQueryOperationIr {
 
     RecordPattern pattern =
         RecordPattern.of(
-            "http_request",
-            List.of(RecordPatternField.of("body", VariablePattern.of("Body"))));
+            "http_request", List.of(RecordPatternField.of("body", VariablePattern.of("Body"))));
 
     List<Expression> body =
         List.of(
             MatchExpr.bindValue(
-                "Params",
-                LocalCallExpr.of("parse_query_params", List.of(Variable.of("Body")))),
+                "Params", LocalCallExpr.of("parse_query_params", List.of(Variable.of("Body")))),
             LocalCallExpr.of(
                 "parse_" + recordName(sp.toSymbol(input)) + "_input",
                 List.of(Variable.of("Params"))));
@@ -377,8 +356,7 @@ final class ErlangAwsQueryOperationIr {
         "decode_" + opName + "_request",
         List.of(FunctionClause.of(List.of(pattern), BlockExpr.commaSeparated(body, false))),
         Spec.of("decode_" + opName + "_request(#http_request{}) -> " + inputType),
-        Edoc.of("Decode AWS Query server request for " + op.getId() + "."),
-        null);
+        Edoc.of("Decode AWS Query server request for " + op.getId() + "."));
   }
 
   static Function buildServerEncodeResponse(
@@ -409,9 +387,7 @@ final class ErlangAwsQueryOperationIr {
             RemoteCallExpr.of(
                 "maps",
                 "filter",
-                List.of(
-                    filterUndefined,
-                    MapExpr.of(buildOutputMapEntries(model, sp, output))))));
+                List.of(filterUndefined, MapExpr.of(buildOutputMapEntries(model, sp, output))))));
     if (ec2Query) {
       body.add(
           MatchExpr.bindValue(
@@ -447,16 +423,14 @@ final class ErlangAwsQueryOperationIr {
                         List.of(
                             TupleExpr.of(
                                 List.of(
-                                    BinaryExpr.of("Content-Type"),
-                                    BinaryExpr.of("text/xml")))))),
+                                    BinaryExpr.of("Content-Type"), BinaryExpr.of("text/xml")))))),
                 RecordField.of("body", Variable.of("Body")))));
 
     return Function.of(
         "encode_" + opName + "_response",
         List.of(FunctionClause.of(List.of(pattern), BlockExpr.commaSeparated(body, false))),
         Spec.of("encode_" + opName + "_response(" + outputType + ") -> #http_response{}"),
-        Edoc.of("Encode AWS Query server response for " + op.getId() + "."),
-        null);
+        Edoc.of("Encode AWS Query server response for " + op.getId() + "."));
   }
 
   static Function buildParseInputFromForm(
@@ -474,15 +448,12 @@ final class ErlangAwsQueryOperationIr {
         valueExpr =
             ec2Query
                 ? LocalCallExpr.of(
-                    "form_list_values_ec2",
-                    List.of(Variable.of("Params"), BinaryExpr.of(wireKey)))
+                    "form_list_values_ec2", List.of(Variable.of("Params"), BinaryExpr.of(wireKey)))
                 : LocalCallExpr.of(
-                    "form_list_values_aws",
-                    List.of(Variable.of("Params"), BinaryExpr.of(wireKey)));
+                    "form_list_values_aws", List.of(Variable.of("Params"), BinaryExpr.of(wireKey)));
       } else {
         valueExpr =
-            LocalCallExpr.of(
-                "form_value", List.of(Variable.of("Params"), BinaryExpr.of(wireKey)));
+            LocalCallExpr.of("form_value", List.of(Variable.of("Params"), BinaryExpr.of(wireKey)));
       }
       fields.add(RecordField.of(field, valueExpr));
     }
@@ -491,8 +462,7 @@ final class ErlangAwsQueryOperationIr {
         "parse_" + inputRecord + "_input",
         List.of(
             FunctionClause.of(
-                List.of(VariablePattern.of("Params")),
-                RecordExpr.of(inputRecord, fields))));
+                List.of(VariablePattern.of("Params")), RecordExpr.of(inputRecord, fields))));
   }
 
   private static RecordPattern inputBindingHead(
@@ -500,8 +470,7 @@ final class ErlangAwsQueryOperationIr {
     List<RecordPatternField> fields = new ArrayList<>();
     for (MemberShape member : input.members()) {
       String field = memberFieldName(sp, member);
-      fields.add(
-          RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
+      fields.add(RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
     }
     return RecordPattern.bind(alias, recordName, fields);
   }
@@ -511,8 +480,7 @@ final class ErlangAwsQueryOperationIr {
     List<RecordPatternField> fields = new ArrayList<>();
     for (MemberShape member : output.members()) {
       String field = memberFieldName(sp, member);
-      fields.add(
-          RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
+      fields.add(RecordPatternField.of(field, VariablePattern.of(toBindingVar(field))));
     }
     return RecordPattern.of(recordName, fields);
   }
@@ -539,8 +507,7 @@ final class ErlangAwsQueryOperationIr {
                         "find_element",
                         List.of(
                             BinaryExpr.of(element),
-                            LocalCallExpr.of(
-                                "element_content", List.of(Variable.of(resultVar))))),
+                            LocalCallExpr.of("element_content", List.of(Variable.of(resultVar))))),
                     List.of(
                         Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
                         Clause.of(
@@ -582,8 +549,7 @@ final class ErlangAwsQueryOperationIr {
                         "find_element",
                         List.of(
                             BinaryExpr.of(element),
-                            LocalCallExpr.of(
-                                "element_content", List.of(Variable.of(xmlVar))))),
+                            LocalCallExpr.of("element_content", List.of(Variable.of(xmlVar))))),
                     List.of(
                         Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
                         Clause.of(
@@ -629,15 +595,10 @@ final class ErlangAwsQueryOperationIr {
                       buildDecodeStructureExpr(model, nested, "Item", sp, ec2Query))));
       return LocalCallExpr.of(
           "xml_child_struct_list",
-          List.of(
-              Variable.of(xmlVar),
-              listNameExpr,
-              BinaryExpr.of(itemElement),
-              decodeFun));
+          List.of(Variable.of(xmlVar), listNameExpr, BinaryExpr.of(itemElement), decodeFun));
     }
     return LocalCallExpr.of(
-        "xml_child_list",
-        List.of(Variable.of(xmlVar), listNameExpr, BinaryExpr.of(itemElement)));
+        "xml_child_list", List.of(Variable.of(xmlVar), listNameExpr, BinaryExpr.of(itemElement)));
   }
 
   private static List<MapEntry> buildOutputMapEntries(

@@ -298,23 +298,16 @@ final class ErlangClientDirectedCodegen
       Edoc doc) {
     String specOutput = "{'ok', " + successReturnType + "} | {'error', term()}";
     Spec spec =
-        Spec.of(
-            opSym.getName()
-                + "(client_config(), "
-                + inSym.getName()
-                + ") -> "
-                + specOutput);
+        Spec.of(opSym.getName() + "(client_config(), " + inSym.getName() + ") -> " + specOutput);
     if (!hasProtocol) {
       return Function.of(
           opSym.getName(),
           List.of(
               FunctionClause.of(
                   List.of(VariablePattern.of("_Config"), VariablePattern.of("_Input")),
-                  TupleExpr.of(
-                      List.of(AtomExpr.of("error"), AtomExpr.of("not_implemented"))))),
+                  TupleExpr.of(List.of(AtomExpr.of("error"), AtomExpr.of("not_implemented"))))),
           spec,
-          doc,
-          null);
+          doc);
     }
 
     List<Expression> body =
@@ -325,17 +318,14 @@ final class ErlangClientDirectedCodegen
             wrapWithRetry,
             false,
             ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
-    Expression clauseBody =
-        body.size() == 1 ? body.get(0) : BlockExpr.commaSeparated(body, false);
+    Expression clauseBody = body.size() == 1 ? body.get(0) : BlockExpr.commaSeparated(body, false);
     return Function.of(
         opSym.getName(),
         List.of(
             FunctionClause.of(
-                List.of(VariablePattern.of("Config"), VariablePattern.of("Input")),
-                clauseBody)),
+                List.of(VariablePattern.of("Config"), VariablePattern.of("Input")), clauseBody)),
         spec,
-        doc,
-        null);
+        doc);
   }
 
   @Override
