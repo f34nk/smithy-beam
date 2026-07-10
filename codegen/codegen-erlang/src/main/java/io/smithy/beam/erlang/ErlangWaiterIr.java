@@ -122,7 +122,8 @@ final class ErlangWaiterIr {
                                                 IntegerExpr.of(binding.minDelaySeconds() * 1000L)),
                                             MapEntry.of(
                                                 AtomExpr.of("max_delay_ms"),
-                                                IntegerExpr.of(binding.maxDelaySeconds() * 1000L)))),
+                                                IntegerExpr.of(
+                                                    binding.maxDelaySeconds() * 1000L)))),
                                     Variable.of("Opts")))),
                         LocalCallExpr.of(
                             "wait_until",
@@ -141,9 +142,7 @@ final class ErlangWaiterIr {
                                 Variable.of("WaitOpts")))),
                     false))),
         null,
-        Edoc.of(
-            "Waits using the " + binding.name() + " waiter on " + operation.getId() + "."),
-        null);
+        Edoc.of("Waits using the " + binding.name() + " waiter on " + operation.getId() + "."));
   }
 
   static Expression acceptorMap(BeamWaiterIndex.AcceptorInfo acceptor, SymbolProvider sp) {
@@ -154,15 +153,13 @@ final class ErlangWaiterIr {
       entries.add(MapEntry.of(AtomExpr.of("matcher"), AtomExpr.of("success")));
       entries.add(
           MapEntry.of(
-              AtomExpr.of("expected"),
-              expected ? AtomExpr.of("true") : AtomExpr.of("false")));
+              AtomExpr.of("expected"), expected ? AtomExpr.of("true") : AtomExpr.of("false")));
     } else if (acceptor.errorTypeName().isPresent()) {
       String errorType = acceptor.errorTypeName().get();
       entries.add(MapEntry.of(AtomExpr.of("matcher"), AtomExpr.of("errorType")));
       if (acceptor.resolvedError().isPresent()) {
         String record = recordName(sp.toSymbol(acceptor.resolvedError().get()));
-        entries.add(
-            MapEntry.of(AtomExpr.of("expected"), RecordExpr.of(record, List.of())));
+        entries.add(MapEntry.of(AtomExpr.of("expected"), RecordExpr.of(record, List.of())));
       } else {
         entries.add(MapEntry.of(AtomExpr.of("expected"), BinaryExpr.of(errorType)));
       }
@@ -170,10 +167,8 @@ final class ErlangWaiterIr {
       BeamWaiterIndex.PathMatcherInfo pathMatcher = acceptor.pathMatcher().get();
       entries.add(MapEntry.of(AtomExpr.of("matcher"), AtomExpr.of(acceptor.matcherKind())));
       entries.add(MapEntry.of(AtomExpr.of("path"), pathExpr(pathMatcher.path())));
-      entries.add(
-          MapEntry.of(AtomExpr.of("comparator"), AtomExpr.of(pathMatcher.comparator())));
-      entries.add(
-          MapEntry.of(AtomExpr.of("expected"), BinaryExpr.of(pathMatcher.expected())));
+      entries.add(MapEntry.of(AtomExpr.of("comparator"), AtomExpr.of(pathMatcher.comparator())));
+      entries.add(MapEntry.of(AtomExpr.of("expected"), BinaryExpr.of(pathMatcher.expected())));
     } else {
       entries.add(MapEntry.of(AtomExpr.of("matcher"), AtomExpr.of(acceptor.matcherKind())));
     }
@@ -242,17 +237,13 @@ final class ErlangWaiterIr {
                                 Variable.of("MaxAttempts"),
                                 Variable.of("MinDelay"),
                                 Variable.of("MaxDelay")))),
-                    false))),
-        null,
-        null,
-        null);
+                    false))));
   }
 
   private static Function waitUntilArity5() {
     Expression pollCase =
         CaseExpr.of(
-            LocalCallExpr.of(
-                "classify", List.of(Variable.of("Acceptors"), Variable.of("Result"))),
+            LocalCallExpr.of("classify", List.of(Variable.of("Acceptors"), Variable.of("Result"))),
             List.of(
                 Clause.of(
                     AtomPattern.of("success"),
@@ -270,24 +261,21 @@ final class ErlangWaiterIr {
                     AtomPattern.of("retry"),
                     BlockExpr.commaSeparated(
                         List.of(
-                            RemoteCallExpr.of(
-                                "timer", "sleep", List.of(Variable.of("Delay"))),
+                            RemoteCallExpr.of("timer", "sleep", List.of(Variable.of("Delay"))),
                             MatchExpr.bindValue(
                                 "NextDelay",
                                 RemoteCallExpr.of(
                                     "erlang",
                                     "min",
                                     List.of(
-                                        InfixExpr.of(
-                                            Variable.of("Delay"), "*", IntegerExpr.of(2)),
+                                        InfixExpr.of(Variable.of("Delay"), "*", IntegerExpr.of(2)),
                                         Variable.of("MaxDelay")))),
                             LocalCallExpr.of(
                                 "wait_until",
                                 List.of(
                                     Variable.of("Fun"),
                                     Variable.of("Acceptors"),
-                                    InfixExpr.of(
-                                        Variable.of("Attempts"), "-", IntegerExpr.of(1)),
+                                    InfixExpr.of(Variable.of("Attempts"), "-", IntegerExpr.of(1)),
                                     Variable.of("NextDelay"),
                                     Variable.of("MaxDelay")))),
                         false))));
@@ -301,8 +289,7 @@ final class ErlangWaiterIr {
                     VariablePattern.of("0"),
                     VariablePattern.of("_Delay"),
                     VariablePattern.of("_MaxDelay")),
-                TupleExpr.of(
-                    List.of(AtomExpr.of("error"), AtomExpr.of("max_attempts_exceeded")))),
+                TupleExpr.of(List.of(AtomExpr.of("error"), AtomExpr.of("max_attempts_exceeded")))),
             FunctionClause.of(
                 List.of(
                     VariablePattern.of("Fun"),
@@ -314,10 +301,7 @@ final class ErlangWaiterIr {
                     List.of(
                         MatchExpr.bindValue("Result", LocalCallExpr.of("Fun", List.of())),
                         pollCase),
-                    false))),
-        null,
-        null,
-        null);
+                    false))));
   }
 
   private static Function classify() {
@@ -329,8 +313,7 @@ final class ErlangWaiterIr {
                 AtomExpr.of("retry")),
             FunctionClause.of(
                 List.of(
-                    ListPattern.cons(
-                        VariablePattern.of("Acceptor"), VariablePattern.of("Rest")),
+                    ListPattern.cons(VariablePattern.of("Acceptor"), VariablePattern.of("Rest")),
                     VariablePattern.of("Result")),
                 CaseExpr.of(
                     LocalCallExpr.of(
@@ -342,16 +325,12 @@ final class ErlangWaiterIr {
                             RemoteCallExpr.of(
                                 "maps",
                                 "get",
-                                List.of(
-                                    AtomExpr.of("state"), Variable.of("Acceptor")))),
+                                List.of(AtomExpr.of("state"), Variable.of("Acceptor")))),
                         Clause.of(
                             AtomPattern.of("false"),
                             LocalCallExpr.of(
                                 "classify",
-                                List.of(Variable.of("Rest"), Variable.of("Result")))))))),
-        null,
-        null,
-        null);
+                                List.of(Variable.of("Rest"), Variable.of("Result")))))))));
   }
 
   private static Function matchesAcceptor() {
@@ -366,8 +345,7 @@ final class ErlangWaiterIr {
                                 AtomExpr.of("matcher"), AtomPattern.of("success"), true),
                             MapPatternEntry.of(
                                 AtomExpr.of("expected"), AtomPattern.of("true"), true))),
-                    TuplePattern.of(
-                        List.of(AtomPattern.of("ok"), VariablePattern.of("_")))),
+                    TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("_")))),
                 AtomExpr.of("true")),
             FunctionClause.of(
                 List.of(
@@ -377,8 +355,7 @@ final class ErlangWaiterIr {
                                 AtomExpr.of("matcher"), AtomPattern.of("success"), true),
                             MapPatternEntry.of(
                                 AtomExpr.of("expected"), AtomPattern.of("false"), true))),
-                    TuplePattern.of(
-                        List.of(AtomPattern.of("error"), VariablePattern.of("_")))),
+                    TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("_")))),
                 AtomExpr.of("true")),
             FunctionClause.of(
                 List.of(
@@ -388,11 +365,9 @@ final class ErlangWaiterIr {
                                 AtomExpr.of("matcher"), AtomPattern.of("errorType"), true),
                             MapPatternEntry.of(
                                 AtomExpr.of("expected"), VariablePattern.of("Expected"), true))),
-                    TuplePattern.of(
-                        List.of(AtomPattern.of("error"), VariablePattern.of("Got")))),
+                    TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("Got")))),
                 LocalCallExpr.of(
-                    "error_types_match",
-                    List.of(Variable.of("Expected"), Variable.of("Got")))),
+                    "error_types_match", List.of(Variable.of("Expected"), Variable.of("Got")))),
             FunctionClause.of(
                 List.of(
                     MapPattern.of(
@@ -405,12 +380,10 @@ final class ErlangWaiterIr {
                                 AtomExpr.of("comparator"), AtomPattern.of("stringEquals"), true),
                             MapPatternEntry.of(
                                 AtomExpr.of("expected"), VariablePattern.of("Expected"), true))),
-                    TuplePattern.of(
-                        List.of(AtomPattern.of("ok"), VariablePattern.of("Output")))),
+                    TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("Output")))),
                 LocalCallExpr.of(
                     "path_string_equals",
-                    List.of(
-                        Variable.of("Path"), Variable.of("Expected"), Variable.of("Output")))),
+                    List.of(Variable.of("Path"), Variable.of("Expected"), Variable.of("Output")))),
             FunctionClause.of(
                 List.of(
                     MapPattern.of(
@@ -423,17 +396,12 @@ final class ErlangWaiterIr {
                                 AtomExpr.of("comparator"), AtomPattern.of("stringEquals"), true),
                             MapPatternEntry.of(
                                 AtomExpr.of("expected"), VariablePattern.of("Expected"), true))),
-                    TuplePattern.of(
-                        List.of(AtomPattern.of("ok"), VariablePattern.of("Output")))),
+                    TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("Output")))),
                 LocalCallExpr.of(
                     "path_string_equals",
-                    List.of(
-                        Variable.of("Path"), Variable.of("Expected"), Variable.of("Output")))),
+                    List.of(Variable.of("Path"), Variable.of("Expected"), Variable.of("Output")))),
             FunctionClause.of(
-                List.of(WildcardPattern.of(), WildcardPattern.of()), AtomExpr.of("false"))),
-        null,
-        null,
-        null);
+                List.of(WildcardPattern.of(), WildcardPattern.of()), AtomExpr.of("false"))));
   }
 
   private static Function errorTypesMatch() {
@@ -454,14 +422,10 @@ final class ErlangWaiterIr {
                     LocalCallExpr.of(
                         "element", List.of(IntegerExpr.of(1), Variable.of("Expected"))),
                     "=:=",
-                    LocalCallExpr.of(
-                        "element", List.of(IntegerExpr.of(1), Variable.of("Got"))))),
+                    LocalCallExpr.of("element", List.of(IntegerExpr.of(1), Variable.of("Got"))))),
             FunctionClause.of(
                 List.of(VariablePattern.of("Expected"), VariablePattern.of("Got")),
-                InfixExpr.of(Variable.of("Expected"), "=:=", Variable.of("Got")))),
-        null,
-        null,
-        null);
+                InfixExpr.of(Variable.of("Expected"), "=:=", Variable.of("Got")))));
   }
 
   private static Function pathStringEquals() {
@@ -474,16 +438,15 @@ final class ErlangWaiterIr {
                     VariablePattern.of("Expected"),
                     VariablePattern.of("Output")),
                 CaseExpr.of(
-                    LocalCallExpr.of("path_value", List.of(Variable.of("Path"), Variable.of("Output"))),
+                    LocalCallExpr.of(
+                        "path_value", List.of(Variable.of("Path"), Variable.of("Output"))),
                     List.of(
                         Clause.of(AtomPattern.of("undefined"), AtomExpr.of("false")),
                         Clause.of(
                             VariablePattern.of("Value"),
                             LocalCallExpr.of(
-                                "string_equals", List.of(Variable.of("Value"), Variable.of("Expected")))))))),
-        null,
-        null,
-        null);
+                                "string_equals",
+                                List.of(Variable.of("Value"), Variable.of("Expected")))))))));
   }
 
   private static Function pathValue() {
@@ -513,7 +476,8 @@ final class ErlangWaiterIr {
                         Clause.of(
                             VariablePattern.of("Next"),
                             LocalCallExpr.of(
-                                "path_value", List.of(Variable.of("Rest"), Variable.of("Next"))))))),
+                                "path_value",
+                                List.of(Variable.of("Rest"), Variable.of("Next"))))))),
             FunctionClause.of(
                 List.of(
                     ListPattern.cons(VariablePattern.of("Key"), VariablePattern.of("Rest")),
@@ -527,18 +491,17 @@ final class ErlangWaiterIr {
                                 ">=",
                                 IntegerExpr.of(1))))),
                 CaseExpr.of(
-                    LocalCallExpr.of("record_field", List.of(Variable.of("Value"), Variable.of("Key"))),
+                    LocalCallExpr.of(
+                        "record_field", List.of(Variable.of("Value"), Variable.of("Key"))),
                     List.of(
                         Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
                         Clause.of(
                             VariablePattern.of("Next"),
                             LocalCallExpr.of(
-                                "path_value", List.of(Variable.of("Rest"), Variable.of("Next"))))))),
+                                "path_value",
+                                List.of(Variable.of("Rest"), Variable.of("Next"))))))),
             FunctionClause.of(
-                List.of(WildcardPattern.of(), WildcardPattern.of()), AtomExpr.of("undefined"))),
-        null,
-        null,
-        null);
+                List.of(WildcardPattern.of(), WildcardPattern.of()), AtomExpr.of("undefined"))));
   }
 
   private static List<Function> recordFieldsFunctions(
@@ -561,12 +524,49 @@ final class ErlangWaiterIr {
               LocalCallExpr.of(
                   "record_info", List.of(AtomExpr.of("fields"), AtomExpr.of(record)))));
     }
-    clauses.add(
-        FunctionClause.of(List.of(WildcardPattern.of()), AtomExpr.of("undefined")));
-    return List.of(Function.of("record_fields", clauses, null, null, null));
+    clauses.add(FunctionClause.of(List.of(WildcardPattern.of()), AtomExpr.of("undefined")));
+    return List.of(Function.of("record_fields", clauses));
   }
 
   private static Function recordField() {
+    Expression keyfindCase =
+        CaseExpr.of(
+            LocalCallExpr.of(
+                "lists:keyfind",
+                List.of(
+                    Variable.of("Field"),
+                    IntegerExpr.of(1),
+                    RemoteCallExpr.of(
+                        "lists", "zip", List.of(Variable.of("Fields"), Variable.of("Values"))))),
+            List.of(
+                Clause.of(
+                    TuplePattern.of(List.of(VariablePattern.of("Field"), VariablePattern.of("V"))),
+                    Variable.of("V")),
+                Clause.of(AtomPattern.of("false"), AtomExpr.of("undefined"))));
+
+    Expression valuesBind =
+        MatchExpr.bind(
+            "Values",
+            LocalCallExpr.of(
+                "tl", List.of(LocalCallExpr.of("tuple_to_list", List.of(Variable.of("Record"))))),
+            keyfindCase);
+
+    Expression recordFieldsCase =
+        CaseExpr.of(
+            LocalCallExpr.of("record_fields", List.of(Variable.of("Tag"))),
+            List.of(
+                Clause.of(
+                    VariablePattern.of("Fields"),
+                    IsTypeGuard.of("list", Variable.of("Fields")),
+                    valuesBind),
+                Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined"))));
+
+    Expression tagBind =
+        MatchExpr.bind(
+            "Tag",
+            LocalCallExpr.of("element", List.of(IntegerExpr.of(1), Variable.of("Record"))),
+            recordFieldsCase);
+
     return Function.of(
         "record_field",
         List.of(
@@ -580,48 +580,7 @@ final class ErlangWaiterIr {
                                 LocalCallExpr.of("tuple_size", List.of(Variable.of("Record"))),
                                 ">=",
                                 IntegerExpr.of(1))))),
-                MatchExpr.bind(
-                    "Tag",
-                    LocalCallExpr.of("element", List.of(IntegerExpr.of(1), Variable.of("Record"))),
-                    CaseExpr.of(
-                        LocalCallExpr.of("record_fields", List.of(Variable.of("Tag"))),
-                        List.of(
-                            Clause.of(
-                                VariablePattern.of("Fields"),
-                                IsTypeGuard.of("list", Variable.of("Fields")),
-                                MatchExpr.bind(
-                                    "Values",
-                                    LocalCallExpr.of(
-                                        "tl",
-                                        List.of(
-                                            LocalCallExpr.of(
-                                                "tuple_to_list", List.of(Variable.of("Record"))))),
-                                    CaseExpr.of(
-                                        LocalCallExpr.of(
-                                            "lists:keyfind",
-                                            List.of(
-                                                Variable.of("Field"),
-                                                IntegerExpr.of(1),
-                                                RemoteCallExpr.of(
-                                                    "lists",
-                                                    "zip",
-                                                    List.of(
-                                                        Variable.of("Fields"),
-                                                        Variable.of("Values"))))),
-                                        List.of(
-                                            Clause.of(
-                                                TuplePattern.of(
-                                                    List.of(
-                                                        VariablePattern.of("Field"),
-                                                        VariablePattern.of("V"))),
-                                                Variable.of("V")),
-                                            Clause.of(
-                                                AtomPattern.of("false"), AtomExpr.of("undefined")))),
-                            Clause.of(
-                                AtomPattern.of("undefined"), AtomExpr.of("undefined"))))))))),
-        null,
-        null,
-        null);
+                tagBind)));
   }
 
   private static Function stringEquals() {
@@ -640,11 +599,9 @@ final class ErlangWaiterIr {
                         "uppercase",
                         List.of(
                             LocalCallExpr.of(
-                                "atom_to_binary",
-                                List.of(Variable.of("V"), AtomExpr.of("utf8"))))),
+                                "atom_to_binary", List.of(Variable.of("V"), AtomExpr.of("utf8"))))),
                     "=:=",
-                    RemoteCallExpr.of(
-                        "string", "uppercase", List.of(Variable.of("Expected"))))),
+                    RemoteCallExpr.of("string", "uppercase", List.of(Variable.of("Expected"))))),
             FunctionClause.of(
                 List.of(VariablePattern.of("V"), VariablePattern.of("Expected")),
                 AndGuard.of(
@@ -657,10 +614,7 @@ final class ErlangWaiterIr {
                     RemoteCallExpr.of("string", "uppercase", List.of(Variable.of("Expected"))))),
             FunctionClause.of(
                 List.of(VariablePattern.of("V"), VariablePattern.of("Expected")),
-                InfixExpr.of(Variable.of("V"), "=:=", Variable.of("Expected")))),
-        null,
-        null,
-        null);
+                InfixExpr.of(Variable.of("V"), "=:=", Variable.of("Expected")))));
   }
 
   static Expression pathExpr(String path) {
