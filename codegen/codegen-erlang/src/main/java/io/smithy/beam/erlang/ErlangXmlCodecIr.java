@@ -23,11 +23,12 @@ import io.beam.ir.erlang.ListPattern;
 import io.beam.ir.erlang.LocalCallExpr;
 import io.beam.ir.erlang.MapEntry;
 import io.beam.ir.erlang.MapExpr;
+import io.beam.ir.erlang.MapPattern;
+import io.beam.ir.erlang.MapPatternEntry;
 import io.beam.ir.erlang.MatchExpr;
 import io.beam.ir.erlang.NotExpr;
-import io.beam.ir.erlang.OpaqueExpr;
-import io.beam.ir.erlang.OpaquePattern;
 import io.beam.ir.erlang.Pattern;
+import io.beam.ir.erlang.QuotedAtomExpr;
 import io.beam.ir.erlang.RemoteCallExpr;
 import io.beam.ir.erlang.TupleExpr;
 import io.beam.ir.erlang.TuplePattern;
@@ -776,15 +777,29 @@ final class ErlangXmlCodecIr {
   private static Function xmlNamespaceAttrs() {
     return Function.of("xml_namespace_attrs", List.of(
             FunctionClause.of(
-                List.of(OpaquePattern.of("#{uri := Uri}")),
+                List.of(
+                    MapPattern.of(
+                        List.of(
+                            MapPatternEntry.of(
+                                AtomExpr.of("uri"), VariablePattern.of("Uri"), true)))),
                 ListExpr.of(List.of(TupleExpr.of(List.of(AtomExpr.of("xmlns"), Variable.of("Uri")))))),
             FunctionClause.of(
-                List.of(OpaquePattern.of("#{uri := Uri, prefix := Prefix}")),
+                List.of(
+                    MapPattern.of(
+                        List.of(
+                            MapPatternEntry.of(
+                                AtomExpr.of("uri"), VariablePattern.of("Uri"), true),
+                            MapPatternEntry.of(
+                                AtomExpr.of("prefix"), VariablePattern.of("Prefix"), true)))),
                 ListExpr.of(
                     List.of(
                         TupleExpr.of(
                             List.of(
-                                OpaqueExpr.of("'xmlns:' ++ binary_to_list(Prefix)"),
+                                InfixExpr.of(
+                                    QuotedAtomExpr.of("xmlns:"),
+                                    "++",
+                                    LocalCallExpr.of(
+                                        "binary_to_list", List.of(Variable.of("Prefix")))),
                                 Variable.of("Uri")))))),
             FunctionClause.of(List.of(W), ListExpr.of(List.of()))));
   }
