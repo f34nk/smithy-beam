@@ -2,14 +2,12 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.erlang.ErlangRenderer;
 import io.beam.ir.erlang.Function;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamSettings;
 import java.io.IOException;
 import java.net.URL;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -17,7 +15,6 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.UnionShape;
-
 
 @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ErlangEventStreamIrTest {
@@ -58,8 +55,7 @@ class ErlangEventStreamIrTest {
 
   @Test
   void unionHelpersAsStringMatchesGolden() throws IOException {
-    List<Function> functions =
-        ErlangEventStreamIr.unionHelpers(model, eventStreamUnion, provider);
+    List<Function> functions = ErlangEventStreamIr.unionHelpers(model, eventStreamUnion, provider);
     assertThat(functions).hasSize(5);
     for (Function fn : functions) {
       assertThat(fn.name()).isNotBlank();

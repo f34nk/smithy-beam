@@ -2,10 +2,10 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.core.BeamResourceIndex;
 import io.beam.ir.erlang.ErlangRenderer;
 import io.beam.ir.erlang.Module;
+import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamResourceIndex;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;

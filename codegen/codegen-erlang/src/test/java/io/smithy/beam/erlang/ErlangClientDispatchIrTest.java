@@ -2,12 +2,6 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.smithy.beam.core.BeamCodegenKind;
-import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.core.BeamHttpBindings;
-import io.smithy.beam.core.BeamProtocolCodegenFactory;
-import io.smithy.beam.core.BeamProtocolResolver;
-import io.smithy.beam.core.BeamSettings;
 import io.beam.ir.erlang.AtomExpr;
 import io.beam.ir.erlang.BlockExpr;
 import io.beam.ir.erlang.CaseExpr;
@@ -15,6 +9,12 @@ import io.beam.ir.erlang.ErlangRenderer;
 import io.beam.ir.erlang.Expression;
 import io.beam.ir.erlang.MatchExpr;
 import io.beam.ir.erlang.RemoteCallExpr;
+import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamHttpBindings;
+import io.smithy.beam.core.BeamProtocolCodegenFactory;
+import io.smithy.beam.core.BeamProtocolResolver;
+import io.smithy.beam.core.BeamSettings;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -29,7 +29,6 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
-
 
 class ErlangClientDispatchIrTest {
   private static final String HTTP_SERVICE = "smithy.beam.demo.http#HttpService";
@@ -242,7 +241,8 @@ class ErlangClientDispatchIrTest {
             ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
     assertThat(body.get(0)).isInstanceOf(MatchExpr.class);
     assertThat(body.get(body.size() - 1)).isInstanceOf(RemoteCallExpr.class);
-    assertThat(((RemoteCallExpr) body.get(body.size() - 1)).module()).isEqualTo(AtomExpr.of("runtime_http"));
+    assertThat(((RemoteCallExpr) body.get(body.size() - 1)).module())
+        .isEqualTo(AtomExpr.of("runtime_http"));
     assertThat(renderBody(body))
         .isEqualTo(readExpectedString("ir/client_dispatch_get_name_retry.expected.erl"));
   }
@@ -313,8 +313,7 @@ class ErlangClientDispatchIrTest {
   }
 
   private static String renderBody(List<Expression> body) {
-    Expression block =
-        body.size() == 1 ? body.get(0) : BlockExpr.commaSeparated(body, false);
+    Expression block = body.size() == 1 ? body.get(0) : BlockExpr.commaSeparated(body, false);
     return ErlangRenderer.renderStatement(block);
   }
 

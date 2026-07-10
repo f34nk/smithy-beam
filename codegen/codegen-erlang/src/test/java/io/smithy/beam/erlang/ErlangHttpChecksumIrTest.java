@@ -5,21 +5,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.beam.ir.erlang.AtomExpr;
 import io.beam.ir.erlang.ErlangRenderer;
 import io.beam.ir.erlang.Expression;
-import io.beam.ir.erlang.Function;
 import io.beam.ir.erlang.TupleExpr;
 import io.beam.ir.erlang.Variable;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamSettings;
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
-
 
 @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ErlangHttpChecksumIrTest {
@@ -53,7 +50,8 @@ class ErlangHttpChecksumIrTest {
             + "\n\n"
             + ErlangRenderer.renderExpression(flexibleExpr);
     assertThat(combined)
-        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/http_checksum_request_headers.expected.erl"));
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString("ir/http_checksum_request_headers.expected.erl"));
   }
 
   @Test
@@ -74,11 +72,10 @@ class ErlangHttpChecksumIrTest {
 
     Expression guarded =
         ErlangHttpChecksumIr.responseChecksumGuardExpr(
-            model,
-            flexible,
-            TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Output"))));
+            model, flexible, TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Output"))));
     assertThat(ErlangRenderer.renderExpression(guarded))
-        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/http_checksum_response_guard.expected.erl"));
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString("ir/http_checksum_response_guard.expected.erl"));
   }
 
   static Model checksumFixtureModel() {

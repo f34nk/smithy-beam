@@ -2,6 +2,7 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.Header;
 import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
@@ -9,7 +10,6 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
-import io.beam.ir.erlang.Header;
 import java.io.IOException;
 import java.net.URL;
 import java.util.List;
@@ -24,7 +24,6 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
-
 
 @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ErlangIrGoldenIntegrationTest {

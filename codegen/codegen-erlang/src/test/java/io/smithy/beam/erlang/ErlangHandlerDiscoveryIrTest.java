@@ -3,7 +3,6 @@ package io.smithy.beam.erlang;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-
 @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ErlangHandlerDiscoveryIrTest {
   @Test
@@ -16,15 +15,13 @@ class ErlangHandlerDiscoveryIrTest {
   @Test
   void makeHandlerAsStringMatchesGolden() throws Exception {
     IrGoldenAssertions.assertGolden(
-        ErlangHandlerDiscoveryIr.makeHandler(),
-        "ir/handler_discovery_make_handler.expected.erl");
+        ErlangHandlerDiscoveryIr.makeHandler(), "ir/handler_discovery_make_handler.expected.erl");
   }
 
   @Test
   void initHandlersAsStringMatchesGolden() throws Exception {
     IrGoldenAssertions.assertGolden(
-        ErlangHandlerDiscoveryIr.initHandlers(),
-        "ir/handler_discovery_init_handlers.expected.erl");
+        ErlangHandlerDiscoveryIr.initHandlers(), "ir/handler_discovery_init_handlers.expected.erl");
   }
 
   @Test

@@ -10,7 +10,6 @@ import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.core.BeamWaiterIndex;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;

@@ -2,19 +2,11 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.erlang.ErlangRenderer;
-import io.beam.ir.erlang.Module;
-import io.smithy.beam.core.BeamCodegenKind;
-import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.core.BeamSettings;
 import java.io.IOException;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
-import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
-
 
 @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ErlangRetryIrTest {
@@ -23,7 +15,8 @@ class ErlangRetryIrTest {
   @Test
   void withRetryFunctionsMatchGolden() throws IOException {
     String combined = IrGoldenAssertions.renderFunctions(ErlangRetryIr.withRetryFunctions());
-    assertThat(combined).isEqualTo(IrGoldenAssertions.readExpectedString("ir/retry_with_retry.expected.erl"));
+    assertThat(combined)
+        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/retry_with_retry.expected.erl"));
   }
 
   private static Model retryModel() {

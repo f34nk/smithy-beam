@@ -44,7 +44,8 @@ class ErlangCodecHelperIrTest {
 
   @Test
   void decodeListAsStringMatchGolden() throws IOException {
-    IrGoldenAssertions.assertGolden(ErlangCodecHelperIr.decodeList(), "ir/decode_list.expected.erl");
+    IrGoldenAssertions.assertGolden(
+        ErlangCodecHelperIr.decodeList(), "ir/decode_list.expected.erl");
   }
 
   @Test
@@ -124,6 +125,7 @@ class ErlangCodecHelperIrTest {
 
   @Test
   void headersSetAsStringMatchGolden() throws IOException {
-    IrGoldenAssertions.assertGolden(ErlangCodecHelperIr.headersSet(), "ir/headers_set.expected.erl");
+    IrGoldenAssertions.assertGolden(
+        ErlangCodecHelperIr.headersSet(), "ir/headers_set.expected.erl");
   }
 }

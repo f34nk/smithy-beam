@@ -25,7 +25,6 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
-
 class ErlangAwsJsonIrTest {
   private static Model model;
   private static ServiceShape service;
@@ -113,7 +112,8 @@ class ErlangAwsJsonIrTest {
   @Test
   void sharedCodecHelpersMatchesGolden() throws IOException {
     List<Function> functions = ErlangAwsJsonIr.sharedCodecHelpers(model, service, provider);
-    IrGoldenAssertions.assertGoldenFunctions(functions, "ir/aws_json_shared_codec_helpers.expected.erl");
+    IrGoldenAssertions.assertGoldenFunctions(
+        functions, "ir/aws_json_shared_codec_helpers.expected.erl");
     for (Function fn : functions) {
       assertStructural(fn);
     }

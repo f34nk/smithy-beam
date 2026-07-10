@@ -10,7 +10,6 @@ import io.smithy.beam.core.BeamSettings;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
@@ -19,7 +18,6 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
-
 
 class ErlangAwsQueryIrTest {
   static Model model;
@@ -73,8 +71,7 @@ class ErlangAwsQueryIrTest {
 
   @Test
   void encodeListUsersRequestMatchesGolden() throws IOException {
-    Function fn =
-        ErlangAwsQueryIr.encodeRequest(model, service, listUsersOp, httpIndex, provider);
+    Function fn = ErlangAwsQueryIr.encodeRequest(model, service, listUsersOp, httpIndex, provider);
     assertStructural(fn);
     IrGoldenAssertions.assertGolden(fn, "ir/aws_query_encode_list_users_request.expected.erl");
   }
@@ -118,7 +115,8 @@ class ErlangAwsQueryIrTest {
   void serverDecodeListUsersRequestMatchesGolden() throws IOException {
     Function fn = ErlangAwsQueryIr.serverDecodeRequest(model, listUsersOp, provider, false);
     assertStructural(fn);
-    IrGoldenAssertions.assertGolden(fn, "ir/aws_query_server_decode_list_users_request.expected.erl");
+    IrGoldenAssertions.assertGolden(
+        fn, "ir/aws_query_server_decode_list_users_request.expected.erl");
   }
 
   @Test
@@ -126,7 +124,8 @@ class ErlangAwsQueryIrTest {
     Function fn =
         ErlangAwsQueryIr.serverEncodeResponse(model, service, listUsersOp, provider, false);
     assertStructural(fn);
-    IrGoldenAssertions.assertGolden(fn, "ir/aws_query_server_encode_list_users_response.expected.erl");
+    IrGoldenAssertions.assertGolden(
+        fn, "ir/aws_query_server_encode_list_users_response.expected.erl");
   }
 
   @Test

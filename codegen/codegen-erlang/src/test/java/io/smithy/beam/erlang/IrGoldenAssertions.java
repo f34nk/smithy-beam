@@ -38,9 +38,7 @@ final class IrGoldenAssertions {
 
   /** Renders functions with the same spacing as {@link ErlangRenderer#render(Module)}. */
   static String renderFunctions(List<Function> functions) {
-    return functions.stream()
-        .map(ErlangRenderer::renderFunction)
-        .collect(Collectors.joining("\n"));
+    return functions.stream().map(ErlangRenderer::renderFunction).collect(Collectors.joining("\n"));
   }
 
   static String normalizeTrailingNewline(String text) {

@@ -2,16 +2,16 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.smithy.beam.core.BeamCodegenKind;
-import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.core.BeamRetryIndex;
-import io.smithy.beam.core.BeamSettings;
 import io.beam.ir.erlang.ErlangRenderer;
 import io.beam.ir.erlang.Header;
 import io.beam.ir.erlang.HeaderRecordEntry;
 import io.beam.ir.erlang.HeaderTypeAliasEntry;
 import io.beam.ir.erlang.RecordDef;
 import io.beam.ir.erlang.TypeAlias;
+import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamRetryIndex;
+import io.smithy.beam.core.BeamSettings;
 import java.net.URL;
 import java.util.List;
 import java.util.Set;
@@ -597,8 +597,7 @@ class ErlangTypeDirectedCodegenTest {
         Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
     ServiceShape service =
         endpointModel.expectShape(
-            ShapeId.from("smithy.beam.test.endpoints#EndpointRulesService"),
-            ServiceShape.class);
+            ShapeId.from("smithy.beam.test.endpoints#EndpointRulesService"), ServiceShape.class);
     BeamSettings settings = new BeamSettings();
     settings.edition("2026");
     String typesHeader =
@@ -682,15 +681,13 @@ class ErlangTypeDirectedCodegenTest {
     TypeAlias type = TypeAlias.of("er_unavailable", "#er_unavailable{}");
 
     assertThat(
-            ErlangRenderer.render(
-                Header.ofEntries(List.of(new HeaderRecordEntry(record)), false)))
+            ErlangRenderer.render(Header.ofEntries(List.of(new HeaderRecordEntry(record)), false)))
         .contains("-record(er_unavailable, {")
         .contains("message :: er_string() | undefined,")
         .contains("%% fault: server | retryable: true | throttling: false")
         .contains("'__beam_error_kind' = server :: client | server");
     assertThat(
-            ErlangRenderer.render(
-                Header.ofEntries(List.of(new HeaderTypeAliasEntry(type)), false)))
+            ErlangRenderer.render(Header.ofEntries(List.of(new HeaderTypeAliasEntry(type)), false)))
         .isEqualTo("-type er_unavailable() :: #er_unavailable{}.\n");
   }
 

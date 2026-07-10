@@ -12,8 +12,7 @@ class ErlangTypesIrTest {
   void endpointRuleSetEntriesRendersTypeAliasAndDefine() {
     String map = "#{'argv' => [<<\"us-east-1\">>]}";
     String output =
-        ErlangRenderer.render(
-            Header.ofEntries(ErlangTypesIr.endpointRuleSetEntries(map), false));
+        ErlangRenderer.render(Header.ofEntries(ErlangTypesIr.endpointRuleSetEntries(map), false));
     assertThat(output)
         .contains("%% @endpointRuleSet embedded at codegen time.")
         .contains("-type endpoint_rule_set() :: map().")

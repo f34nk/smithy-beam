@@ -22,7 +22,6 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 
-
 @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ErlangRestJsonIrTest {
   private static StructureShape basicItem;
@@ -116,7 +115,9 @@ class ErlangRestJsonIrTest {
             + "\n\n"
             + ErlangRenderer.renderFunction(functions.get(1));
     assertThat(combined)
-        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/structure_decode_encode_basic_item.expected.erl"));
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString(
+                "ir/structure_decode_encode_basic_item.expected.erl"));
   }
 
   @Test
@@ -147,7 +148,9 @@ class ErlangRestJsonIrTest {
         ErlangJsonCodecSupport.decodedBodyPrelude().stream()
             .map(ErlangRenderer::renderExpression)
             .collect(Collectors.joining("\n"));
-    assertThat(combined).isEqualTo(IrGoldenAssertions.readExpectedString("ir/json_decoded_body_prelude.expected.erl"));
+    assertThat(combined)
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString("ir/json_decoded_body_prelude.expected.erl"));
   }
 
   @Test
@@ -173,11 +176,16 @@ class ErlangRestJsonIrTest {
             model, httpIndex, provider, members, HttpBinding.Location.DOCUMENT, "event_stream");
     String combined =
         entries.stream()
-            .map(entry -> ErlangRenderer.renderExpression(entry.key()) + " => "
-                + ErlangRenderer.renderExpression(entry.value()))
+            .map(
+                entry ->
+                    ErlangRenderer.renderExpression(entry.key())
+                        + " => "
+                        + ErlangRenderer.renderExpression(entry.value()))
             .collect(Collectors.joining(",\n"));
     assertThat(combined)
-        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/json_body_map_entries_basic_item.expected.erl"));
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString(
+                "ir/json_body_map_entries_basic_item.expected.erl"));
   }
 
   @Test
@@ -198,7 +206,9 @@ class ErlangRestJsonIrTest {
             .map(ErlangRenderer::renderExpression)
             .collect(Collectors.joining("\n"));
     assertThat(combined)
-        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/rest_json_encode_response_body.expected.erl"));
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString(
+                "ir/rest_json_encode_response_body.expected.erl"));
   }
 
   @Test
@@ -356,7 +366,9 @@ class ErlangRestJsonIrTest {
             + "\n\n"
             + ErlangRenderer.renderFunction(functions.get(1));
     assertThat(combined)
-        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/structure_list_decode_encode_item.expected.erl"));
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString(
+                "ir/structure_list_decode_encode_item.expected.erl"));
   }
 
   private static void assertStructural(Function fn) {

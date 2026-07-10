@@ -16,7 +16,6 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.UnionShape;
 
-
 @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ErlangUnionHelperIrTest {
   private static UnionShape eventUnion;
@@ -71,7 +70,8 @@ class ErlangUnionHelperIrTest {
             + "\n\n"
             + ErlangRenderer.renderFunction(functions.get(1));
     assertThat(combined)
-        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/union_decode_encode_event.expected.erl"));
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString("ir/union_decode_encode_event.expected.erl"));
   }
 
   private static void assertStructural(Function fn) {
