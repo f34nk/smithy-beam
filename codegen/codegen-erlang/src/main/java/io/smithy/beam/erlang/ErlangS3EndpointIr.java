@@ -62,9 +62,7 @@ final class ErlangS3EndpointIr {
                         TuplePattern.of(
                             List.of(WildcardPattern.of(), VariablePattern.of("Authority"))),
                         RemoteCallExpr.of(
-                            "utils",
-                            "split_base_url",
-                            List.of(Variable.of("BaseUrl"))),
+                            "utils", "split_base_url", List.of(Variable.of("BaseUrl"))),
                         Variable.of("Authority"))))),
         Spec.of("region_host(" + CLIENT_CONFIG + ") -> binary()"));
   }
@@ -108,8 +106,7 @@ final class ErlangS3EndpointIr {
                                                     Variable.of("RegionHost"))),
                                             TupleExpr.of(
                                                 List.of(
-                                                    Variable.of("Host"),
-                                                    Variable.of("KeyPath"))))),
+                                                    Variable.of("Host"), Variable.of("KeyPath"))))),
                                     Clause.of(
                                         AtomPattern.of("path_style"),
                                         TupleExpr.of(
@@ -137,7 +134,9 @@ final class ErlangS3EndpointIr {
                                                     Variable.of("Host"),
                                                     Variable.of("KeyPath")))))))))))),
         Spec.of(
-            "resolve_bucket_url(" + CLIENT_CONFIG + ", binary(), binary()) -> {binary(), binary()}"));
+            "resolve_bucket_url("
+                + CLIENT_CONFIG
+                + ", binary(), binary()) -> {binary(), binary()}"));
   }
 
   static List<Function> helperFunctions() {
@@ -212,5 +211,4 @@ final class ErlangS3EndpointIr {
                         Clause.of(AtomPattern.of("true"), BinaryExpr.of(".s3.dualstack.")),
                         Clause.of(WildcardPattern.of(), BinaryExpr.of(".s3.")))))));
   }
-
 }

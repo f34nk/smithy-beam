@@ -2,9 +2,7 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamErlangLayout;
 
-/**
- * Contributes handler discovery helpers into the server {@link io.beam.ir.erlang.Module}.
- */
+/** Contributes handler discovery helpers into the server {@link io.beam.ir.erlang.Module}. */
 final class ErlangHandlerDiscoveryEmitter {
 
   private ErlangHandlerDiscoveryEmitter() {}

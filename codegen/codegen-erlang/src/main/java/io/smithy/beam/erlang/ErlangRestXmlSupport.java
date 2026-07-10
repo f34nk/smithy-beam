@@ -69,15 +69,13 @@ final class ErlangRestXmlSupport {
       clauses.add(
           FunctionClause.of(
               List.of(IntegerPattern.of(httpStatus), WildcardPattern.of()),
-              TupleExpr.of(
-                  List.of(AtomExpr.of("error"), restXmlErrorRecord(errShape, recName)))));
+              TupleExpr.of(List.of(AtomExpr.of("error"), restXmlErrorRecord(errShape, recName)))));
     }
     clauses.add(
         FunctionClause.of(
             List.of(VariablePattern.of("Status"), VariablePattern.of("Body")),
             LocalCallExpr.of(
-                "decode_rest_xml_error",
-                List.of(Variable.of("Status"), Variable.of("Body")))));
+                "decode_rest_xml_error", List.of(Variable.of("Status"), Variable.of("Body")))));
     return clauses;
   }
 

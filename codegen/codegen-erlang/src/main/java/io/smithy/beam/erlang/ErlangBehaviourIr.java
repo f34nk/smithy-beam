@@ -34,8 +34,7 @@ final class ErlangBehaviourIr {
     String name = "handle_" + opSym.getName();
     String inputTypes = "Ctx :: term(), Input :: " + inSym.getName() + ", Meta :: term()";
     String outputTypes = "{ok, " + outSym.getName() + "} | {error, term()}";
-    FunctionDoc doc =
-        BeamDocumentation.forShape(op).map(Edoc::of).orElse(null);
+    FunctionDoc doc = BeamDocumentation.forShape(op).map(Edoc::of).orElse(null);
     return Callback.of(name, inputTypes, outputTypes, doc);
   }
 }

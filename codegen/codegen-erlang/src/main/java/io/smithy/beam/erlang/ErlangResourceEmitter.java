@@ -1,9 +1,9 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamResourceLifecycle;
-import io.beam.ir.erlang.Module;
 import software.amazon.smithy.model.shapes.ResourceShape;
 
 /** Generates per-resource lifecycle helper modules for client and server passes. */

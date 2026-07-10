@@ -76,15 +76,13 @@ final class ErlangClientIr {
     List<OperationShape> unsignedOps = sigv4Index.operationsWithUnsignedPayload(model, service);
     List<MapEntry> entries = new ArrayList<>();
     entries.add(MapEntry.of(AtomExpr.of("region"), BinaryExpr.of("us-east-1")));
-    entries.add(
-        MapEntry.of(AtomExpr.of("endpoint_prefix"), BinaryExpr.of(meta.endpointPrefix())));
+    entries.add(MapEntry.of(AtomExpr.of("endpoint_prefix"), BinaryExpr.of(meta.endpointPrefix())));
     entries.add(MapEntry.of(AtomExpr.of("signing_name"), BinaryExpr.of(meta.signingName())));
     for (OperationShape op : unsignedOps) {
       Symbol opSym = sp.toSymbol(op);
       entries.add(
           MapEntry.of(
-              TupleExpr.of(
-                  List.of(AtomExpr.of("unsigned_payload"), AtomExpr.of(opSym.getName()))),
+              TupleExpr.of(List.of(AtomExpr.of("unsigned_payload"), AtomExpr.of(opSym.getName()))),
               AtomExpr.of("true")));
     }
     return Function.of(

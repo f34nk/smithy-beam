@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamErlangLayout;
@@ -9,7 +10,6 @@ import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
-import io.beam.ir.erlang.Module;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;

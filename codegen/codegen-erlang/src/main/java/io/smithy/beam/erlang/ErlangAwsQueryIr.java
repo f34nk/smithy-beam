@@ -99,13 +99,15 @@ final class ErlangAwsQueryIr {
   static void emitClientCodecModule(
       ErlangContext ctx, ServiceShape service, ShapeId protocolTraitId) {
     Module module = buildClientCodecModule(ctx, service, protocolTraitId);
-    ErlangCodecEmission.writeModule(ctx, clientCodecFileName(ctx, service, protocolTraitId), module);
+    ErlangCodecEmission.writeModule(
+        ctx, clientCodecFileName(ctx, service, protocolTraitId), module);
   }
 
   static void emitServerCodecModule(
       ErlangContext ctx, ServiceShape service, ShapeId protocolTraitId) {
     Module module = buildServerCodecModule(ctx, service, protocolTraitId);
-    ErlangCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service, protocolTraitId), module);
+    ErlangCodecEmission.writeModule(
+        ctx, serverCodecFileName(ctx, service, protocolTraitId), module);
   }
 
   private static BeamErlangLayout layout(ErlangContext ctx, ServiceShape service) {
