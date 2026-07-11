@@ -166,8 +166,7 @@ final class ErlangClientDirectedCodegen
             ErlangRetryIr.clientPredicateFunctions(ctx.model(), service, sp));
       }
       Module module =
-          ErlangClientIr.clientModule(
-              layout, service, exports, builder.operationFunctions());
+          ErlangClientIr.clientModule(layout, service, exports, builder.operationFunctions());
       ErlangCodecEmission.writeModule(ctx, ctx.definitionFile(), module);
       if (ctx.protocolCodegen() != null) {
         for (OperationShape op : operations) {

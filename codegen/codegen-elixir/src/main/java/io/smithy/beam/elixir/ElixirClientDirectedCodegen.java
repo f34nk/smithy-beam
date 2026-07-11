@@ -187,10 +187,7 @@ final class ElixirClientDirectedCodegen
       String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
       ExModule module =
           ElixirClientIr.clientModule(
-              layout,
-              service,
-              typesModuleName,
-              builder.operationFunctions());
+              layout, service, typesModuleName, builder.operationFunctions());
       ctx.writerDelegator()
           .useFileWriter(ctx.definitionFile(), writer -> writer.write("$L", module.asString()));
       if (ctx.protocolCodegen() != null) {
