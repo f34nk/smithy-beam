@@ -3,6 +3,22 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-07-10
+
+### Changed
+- Shared Erlang HTTP dispatch and types modules are named runtime_http and runtime_types again.
+- Erlang codegen IR no longer embeds raw Erlang fragments. Waiters, retry wrappers, SigV4 signing,
+  S3 endpoint helpers, and XML namespace handling now compose through beam-ir expression trees,
+  and protocol operation and codec builders align with current beam-ir APIs and rendering.
+
+### Removed
+- Generated Erlang and Elixir clients no longer emit an unused default_config/0 helper.
+  Applications assemble client configuration locally.
+
+### Fixed
+- Erlang IR construction updated for beam-ir Function and MatchExpr API changes, including
+  SigV4 credential binding.
+
 ## 2026-07-08
 
 ### Added
