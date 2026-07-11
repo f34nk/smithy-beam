@@ -1,0 +1,20 @@
+.PHONY: compile
+compile:
+	rebar3 compile
+
+.PHONY: test
+test:
+	rebar3 eunit
+
+.PHONY: build
+build: compile
+
+.PHONY: clean
+clean:
+	rm -rf _build *.dump
+	rebar3 clean
+
+.PHONY: format
+format:
+	erlfmt --write src/*.erl
+	erlfmt --write src/*.hrl

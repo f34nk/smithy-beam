@@ -1,36 +1,39 @@
 package io.smithy.beam.erlang;
 
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
-import io.smithy.beam.ir.erlang.ErlBinPattern;
-import io.smithy.beam.ir.erlang.ErlBinary;
-import io.smithy.beam.ir.erlang.ErlBinaryExpr;
-import io.smithy.beam.ir.erlang.ErlBinaryPattern;
-import io.smithy.beam.ir.erlang.ErlBinaryTemplate;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCase;
-import io.smithy.beam.ir.erlang.ErlCatchClause;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlConsPattern;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFun;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlGuard;
-import io.smithy.beam.ir.erlang.ErlInteger;
-import io.smithy.beam.ir.erlang.ErlIntegerPattern;
-import io.smithy.beam.ir.erlang.ErlList;
-import io.smithy.beam.ir.erlang.ErlListComprehension;
-import io.smithy.beam.ir.erlang.ErlMap;
-import io.smithy.beam.ir.erlang.ErlMatch;
-import io.smithy.beam.ir.erlang.ErlMatchPattern;
-import io.smithy.beam.ir.erlang.ErlOp;
-import io.smithy.beam.ir.erlang.ErlString;
-import io.smithy.beam.ir.erlang.ErlTry;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlTuplePattern;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BinaryExpr;
+import io.beam.ir.erlang.BinaryPattern;
+import io.beam.ir.erlang.BinarySegmentExpr;
+import io.beam.ir.erlang.BinarySegmentPattern;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.CatchPattern;
+import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Fun;
+import io.beam.ir.erlang.FunClause;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.InfixExpr;
+import io.beam.ir.erlang.IntegerExpr;
+import io.beam.ir.erlang.IntegerPattern;
+import io.beam.ir.erlang.IsTypeGuard;
+import io.beam.ir.erlang.ListComprehensionExpr;
+import io.beam.ir.erlang.ListExpr;
+import io.beam.ir.erlang.ListPattern;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MapExpr;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.MatchPattern;
+import io.beam.ir.erlang.Pattern;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.StringExpr;
+import io.beam.ir.erlang.TryExpr;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TuplePattern;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
+import io.beam.ir.erlang.WildcardPattern;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,564 +46,581 @@ final class ErlangCodecHelperIr {
   }
 
   /** Reusable undefined/null tail clauses for wire-optional decoders. */
-  static List<ErlClause> nullUndefinedTailClauses() {
+  static List<FunctionClause> nullUndefinedTailClauses() {
     return List.of(
-        ErlClause.clause(
-            List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
-        ErlClause.clause(List.of(ErlAtomPattern.atomPattern("null")), ErlAtom.atom("undefined")));
+        FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")),
+        FunctionClause.of(List.of(AtomPattern.of("null")), AtomExpr.of("undefined")));
   }
 
   /** IR for maps:get(Key, Map, Default) used by structure decoders. */
-  static ErlCall mapsGetDefault(ErlBinary key, ErlVar map, ErlAtom defaultValue) {
-    return ErlCall.call("maps", "get", key, map, defaultValue);
+  static RemoteCallExpr mapsGetDefault(BinaryExpr key, Variable map, AtomExpr defaultValue) {
+    return RemoteCallExpr.of("maps", "get", List.of(key, map, defaultValue));
   }
 
-  public static ErlFunction generateUuid() {
-    return ErlFunction.function(
+  public static Function generateUuid() {
+    return Function.of(
         "generate_uuid",
-        0,
         List.of(
-            ErlClause.clause(
+            FunctionClause.of(
                 List.of(),
-                ErlCallLocal.callLocal(
+                LocalCallExpr.of(
                     "list_to_binary",
-                    ErlCall.call("uuid", "to_string", ErlCall.call("uuid", "v4"))))));
+                    List.of(
+                        RemoteCallExpr.of(
+                            "uuid",
+                            "to_string",
+                            List.of(RemoteCallExpr.of("uuid", "v4", List.of()))))))));
   }
 
-  public static ErlFunction uriEncode() {
-    return ErlFunction.function(
+  public static Function uriEncode() {
+    return Function.of(
         "uri_encode",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Value")),
-                ErlCall.call("uri_string", "quote", ErlVar.var("Value")))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Value")),
+                RemoteCallExpr.of("uri_string", "quote", List.of(Variable.of("Value"))))));
   }
 
-  public static ErlFunction uriDecode() {
-    return ErlFunction.function(
+  public static Function uriDecode() {
+    return Function.of(
         "uri_decode",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Value")),
-                List.of(ErlGuard.guard("is_binary", ErlVar.var("Value"))),
-                ErlCall.call("uri_string", "unquote", ErlVar.var("Value"))),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined"))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Value")),
+                IsTypeGuard.of("binary", Variable.of("Value")),
+                RemoteCallExpr.of("uri_string", "unquote", List.of(Variable.of("Value")))),
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined"))));
   }
 
-  public static ErlFunction decodeQueryParam() {
-    return ErlFunction.function(
+  public static Function decodeQueryParam() {
+    return Function.of(
         "decode_query_param",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
-            ErlClause.clause(List.of(ErlBinaryPattern.binaryPattern("true")), ErlAtom.atom("true")),
-            ErlClause.clause(
-                List.of(ErlBinaryPattern.binaryPattern("false")), ErlAtom.atom("false")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_binary", ErlVar.var("V"))),
-                ErlVar.var("V"))));
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")),
+            FunctionClause.of(List.of(BinaryPattern.of("true")), AtomExpr.of("true")),
+            FunctionClause.of(List.of(BinaryPattern.of("false")), AtomExpr.of("false")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("binary", Variable.of("V")),
+                Variable.of("V"))));
   }
 
-  public static ErlFunction toBinary(ToBinaryVariant variant) {
-    List<ErlClause> clauses = new ArrayList<>();
+  public static Function toBinary(ToBinaryVariant variant) {
+    List<FunctionClause> clauses = new ArrayList<>();
     clauses.add(
-        ErlClause.clause(
-            List.of(ErlVarPattern.varPattern("V")),
-            List.of(ErlGuard.guard("is_binary", ErlVar.var("V"))),
-            ErlVar.var("V")));
+        FunctionClause.of(
+            List.of(VariablePattern.of("V")),
+            IsTypeGuard.of("binary", Variable.of("V")),
+            Variable.of("V")));
     clauses.add(
-        ErlClause.clause(
-            List.of(ErlVarPattern.varPattern("V")),
-            List.of(ErlGuard.guard("is_list", ErlVar.var("V"))),
-            ErlCallLocal.callLocal("list_to_binary", ErlVar.var("V"))));
+        FunctionClause.of(
+            List.of(VariablePattern.of("V")),
+            IsTypeGuard.of("list", Variable.of("V")),
+            LocalCallExpr.of("list_to_binary", List.of(Variable.of("V")))));
     if (variant == ToBinaryVariant.REST_JSON) {
+      clauses.add(FunctionClause.of(List.of(AtomPattern.of("true")), BinaryExpr.of("true")));
+      clauses.add(FunctionClause.of(List.of(AtomPattern.of("false")), BinaryExpr.of("false")));
       clauses.add(
-          ErlClause.clause(List.of(ErlAtomPattern.atomPattern("true")), ErlBinary.binary("true")));
+          FunctionClause.of(
+              List.of(VariablePattern.of("V")),
+              IsTypeGuard.of("atom", Variable.of("V")),
+              LocalCallExpr.of("atom_to_binary", List.of(Variable.of("V"), AtomExpr.of("utf8")))));
       clauses.add(
-          ErlClause.clause(
-              List.of(ErlAtomPattern.atomPattern("false")), ErlBinary.binary("false")));
+          FunctionClause.of(
+              List.of(VariablePattern.of("V")),
+              IsTypeGuard.of("integer", Variable.of("V")),
+              LocalCallExpr.of("integer_to_binary", List.of(Variable.of("V")))));
       clauses.add(
-          ErlClause.clause(
-              List.of(ErlVarPattern.varPattern("V")),
-              List.of(ErlGuard.guard("is_atom", ErlVar.var("V"))),
-              ErlCallLocal.callLocal("atom_to_binary", ErlVar.var("V"), ErlAtom.atom("utf8"))));
-      clauses.add(
-          ErlClause.clause(
-              List.of(ErlVarPattern.varPattern("V")),
-              List.of(ErlGuard.guard("is_integer", ErlVar.var("V"))),
-              ErlCallLocal.callLocal("integer_to_binary", ErlVar.var("V"))));
-      clauses.add(
-          ErlClause.clause(
-              List.of(ErlVarPattern.varPattern("V")),
-              List.of(ErlGuard.guard("is_float", ErlVar.var("V"))),
-              ErlCallLocal.callLocal("float_to_binary", ErlVar.var("V"))));
+          FunctionClause.of(
+              List.of(VariablePattern.of("V")),
+              IsTypeGuard.of("float", Variable.of("V")),
+              LocalCallExpr.of("float_to_binary", List.of(Variable.of("V")))));
     } else {
       clauses.add(
-          ErlClause.clause(
-              List.of(ErlVarPattern.varPattern("V")),
-              List.of(ErlGuard.guard("is_atom", ErlVar.var("V"))),
-              ErlCallLocal.callLocal("atom_to_binary", ErlVar.var("V"), ErlAtom.atom("utf8"))));
+          FunctionClause.of(
+              List.of(VariablePattern.of("V")),
+              IsTypeGuard.of("atom", Variable.of("V")),
+              LocalCallExpr.of("atom_to_binary", List.of(Variable.of("V"), AtomExpr.of("utf8")))));
       clauses.add(
-          ErlClause.clause(
-              List.of(ErlVarPattern.varPattern("V")),
-              List.of(ErlGuard.guard("is_integer", ErlVar.var("V"))),
-              ErlCallLocal.callLocal("integer_to_binary", ErlVar.var("V"))));
+          FunctionClause.of(
+              List.of(VariablePattern.of("V")),
+              IsTypeGuard.of("integer", Variable.of("V")),
+              LocalCallExpr.of("integer_to_binary", List.of(Variable.of("V")))));
       clauses.add(
-          ErlClause.clause(
-              List.of(ErlVarPattern.varPattern("V")),
-              List.of(ErlGuard.guard("is_float", ErlVar.var("V"))),
-              ErlCallLocal.callLocal(
-                  "float_to_binary", ErlVar.var("V"), ErlList.list(ErlAtom.atom("short")))));
+          FunctionClause.of(
+              List.of(VariablePattern.of("V")),
+              IsTypeGuard.of("float", Variable.of("V")),
+              LocalCallExpr.of(
+                  "float_to_binary",
+                  List.of(Variable.of("V"), ListExpr.of(List.of(AtomExpr.of("short")))))));
       clauses.add(
-          ErlClause.clause(
-              List.of(ErlVarPattern.varPattern("V")),
-              List.of(ErlGuard.guard("is_boolean", ErlVar.var("V"))),
-              ErlCallLocal.callLocal("atom_to_binary", ErlVar.var("V"), ErlAtom.atom("utf8"))));
+          FunctionClause.of(
+              List.of(VariablePattern.of("V")),
+              IsTypeGuard.of("boolean", Variable.of("V")),
+              LocalCallExpr.of("atom_to_binary", List.of(Variable.of("V"), AtomExpr.of("utf8")))));
     }
-    return ErlFunction.function("to_binary", 1, clauses);
+    return Function.of("to_binary", clauses);
   }
 
-  public static ErlFunction encodeQueryValueRestJson() {
-    return ErlFunction.function(
+  public static Function encodeQueryValueRestJson() {
+    return Function.of(
         "encode_query_value",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_boolean", ErlVar.var("V"))),
-                ErlCallLocal.callLocal("atom_to_binary", ErlVar.var("V"), ErlAtom.atom("utf8"))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_integer", ErlVar.var("V"))),
-                ErlCallLocal.callLocal("integer_to_binary", ErlVar.var("V"))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_float", ErlVar.var("V"))),
-                ErlCallLocal.callLocal("float_to_binary", ErlVar.var("V"))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_binary", ErlVar.var("V"))),
-                ErlVar.var("V")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_atom", ErlVar.var("V"))),
-                ErlCallLocal.callLocal("atom_to_binary", ErlVar.var("V"), ErlAtom.atom("utf8")))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("boolean", Variable.of("V")),
+                LocalCallExpr.of("atom_to_binary", List.of(Variable.of("V"), AtomExpr.of("utf8")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("integer", Variable.of("V")),
+                LocalCallExpr.of("integer_to_binary", List.of(Variable.of("V")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("float", Variable.of("V")),
+                LocalCallExpr.of("float_to_binary", List.of(Variable.of("V")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("binary", Variable.of("V")),
+                Variable.of("V")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("atom", Variable.of("V")),
+                LocalCallExpr.of(
+                    "atom_to_binary", List.of(Variable.of("V"), AtomExpr.of("utf8"))))));
   }
 
-  public static ErlFunction encodeQueryValueXmlQuery() {
-    return ErlFunction.function(
+  public static Function encodeQueryValueXmlQuery() {
+    return Function.of(
         "encode_query_value",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_integer", ErlVar.var("V"))),
-                ErlCallLocal.callLocal("integer_to_binary", ErlVar.var("V"))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_float", ErlVar.var("V"))),
-                ErlCallLocal.callLocal(
-                    "float_to_binary", ErlVar.var("V"), ErlList.list(ErlAtom.atom("short")))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_boolean", ErlVar.var("V"))),
-                ErlCallLocal.callLocal("atom_to_binary", ErlVar.var("V"), ErlAtom.atom("utf8"))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                ErlCallLocal.callLocal("to_binary", ErlVar.var("V")))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("integer", Variable.of("V")),
+                LocalCallExpr.of("integer_to_binary", List.of(Variable.of("V")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("float", Variable.of("V")),
+                LocalCallExpr.of(
+                    "float_to_binary",
+                    List.of(Variable.of("V"), ListExpr.of(List.of(AtomExpr.of("short")))))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("boolean", Variable.of("V")),
+                LocalCallExpr.of("atom_to_binary", List.of(Variable.of("V"), AtomExpr.of("utf8")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                LocalCallExpr.of("to_binary", List.of(Variable.of("V"))))));
   }
 
-  public static ErlFunction decodeList() {
-    List<ErlClause> clauses = new ArrayList<>(nullUndefinedTailClauses());
+  public static Function decodeList() {
+    List<FunctionClause> clauses = new ArrayList<>(nullUndefinedTailClauses());
     clauses.add(
-        ErlClause.clause(
-            List.of(ErlVarPattern.varPattern("List")),
-            List.of(ErlGuard.guard("is_list", ErlVar.var("List"))),
-            ErlListComprehension.comprehension(
-                ErlVar.var("V"),
-                ErlVarPattern.varPattern("V"),
-                ErlVar.var("List"),
-                ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("null")))));
-    return ErlFunction.function("decode_list", 1, clauses);
+        FunctionClause.of(
+            List.of(VariablePattern.of("List")),
+            IsTypeGuard.of("list", Variable.of("List")),
+            ListComprehensionExpr.of(
+                Variable.of("V"),
+                VariablePattern.of("V"),
+                Variable.of("List"),
+                InfixExpr.of(Variable.of("V"), "=/=", AtomExpr.of("null")))));
+    return Function.of("decode_list", clauses);
   }
 
-  public static ErlFunction decodeSparseList() {
-    ErlCase nullToUndefined =
-        ErlCase.caseExpr(
-            ErlVar.var("V"),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("null")), ErlAtom.atom("undefined")),
-            ErlClause.clause(List.of(ErlVarPattern.varPattern("_")), ErlVar.var("V")));
-    List<ErlClause> clauses = new ArrayList<>(nullUndefinedTailClauses());
+  public static Function decodeSparseList() {
+    CaseExpr nullToUndefined =
+        CaseExpr.of(
+            Variable.of("V"),
+            List.of(
+                Clause.of(AtomPattern.of("null"), AtomExpr.of("undefined")),
+                Clause.of(WildcardPattern.of(), Variable.of("V"))));
+    List<FunctionClause> clauses = new ArrayList<>(nullUndefinedTailClauses());
     clauses.add(
-        ErlClause.clause(
-            List.of(ErlVarPattern.varPattern("List")),
-            List.of(ErlGuard.guard("is_list", ErlVar.var("List"))),
-            ErlListComprehension.comprehension(
-                nullToUndefined, ErlVarPattern.varPattern("V"), ErlVar.var("List"))));
-    return ErlFunction.function("decode_sparse_list", 1, clauses);
+        FunctionClause.of(
+            List.of(VariablePattern.of("List")),
+            IsTypeGuard.of("list", Variable.of("List")),
+            ListComprehensionExpr.of(
+                nullToUndefined, VariablePattern.of("V"), Variable.of("List"))));
+    return Function.of("decode_sparse_list", clauses);
   }
 
-  public static ErlFunction encodeSparseList() {
-    ErlCase undefinedToNull =
-        ErlCase.caseExpr(
-            ErlVar.var("V"),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("null")),
-            ErlClause.clause(List.of(ErlVarPattern.varPattern("_")), ErlVar.var("V")));
-    return ErlFunction.function(
+  public static Function encodeSparseList() {
+    CaseExpr undefinedToNull =
+        CaseExpr.of(
+            Variable.of("V"),
+            List.of(
+                Clause.of(AtomPattern.of("undefined"), AtomExpr.of("null")),
+                Clause.of(WildcardPattern.of(), Variable.of("V"))));
+    return Function.of(
         "encode_sparse_list",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("null")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("List")),
-                List.of(ErlGuard.guard("is_list", ErlVar.var("List"))),
-                ErlListComprehension.comprehension(
-                    undefinedToNull, ErlVarPattern.varPattern("V"), ErlVar.var("List")))));
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("null")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("List")),
+                IsTypeGuard.of("list", Variable.of("List")),
+                ListComprehensionExpr.of(
+                    undefinedToNull, VariablePattern.of("V"), Variable.of("List")))));
   }
 
-  public static ErlFunction encodeSparseMap() {
-    ErlFun sparseMapFun =
-        ErlFun.fun(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("_K"), ErlAtomPattern.atomPattern("undefined")),
-                ErlAtom.atom("null")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("_K"), ErlVarPattern.varPattern("V")),
-                ErlVar.var("V")));
-    return ErlFunction.function(
+  public static Function encodeSparseMap() {
+    return Function.of(
         "encode_sparse_map",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("null")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Map")),
-                List.of(ErlGuard.guard("is_map", ErlVar.var("Map"))),
-                ErlCall.call("maps", "map", sparseMapFun, ErlVar.var("Map")))));
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("null")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Map")),
+                IsTypeGuard.of("map", Variable.of("Map")),
+                sparseMapTransform(AtomPattern.of("undefined"), AtomExpr.of("null")))));
   }
 
-  public static ErlFunction decodeJsonBody() {
-    return ErlFunction.function(
+  private static RemoteCallExpr sparseMapTransform(Pattern nullPattern, Expression replacement) {
+    return RemoteCallExpr.of(
+        "maps",
+        "map",
+        List.of(
+            Fun.of(
+                List.of(
+                    FunClause.of(List.of(WildcardPattern.of("K"), nullPattern), replacement),
+                    FunClause.of(
+                        List.of(WildcardPattern.of("K"), VariablePattern.of("V")),
+                        Variable.of("V")))),
+            Variable.of("Map")));
+  }
+
+  public static Function decodeJsonBody() {
+    return Function.of(
         "decode_json_body",
-        1,
         List.of(
-            ErlClause.clause(List.of(ErlBinaryPattern.binaryPattern("")), ErlMap.map()),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Body")),
-                ErlCase.caseExpr(
-                    ErlCall.call("jsone", "try_decode", ErlVar.var("Body")),
-                    ErlClause.clause(
-                        List.of(
-                            ErlTuplePattern.tuplePattern(
-                                ErlAtomPattern.atomPattern("ok"),
-                                ErlVarPattern.varPattern("V"),
-                                ErlVarPattern.varPattern("_"))),
-                        List.of(ErlGuard.guard("is_map", ErlVar.var("V"))),
-                        ErlVar.var("V")),
-                    ErlClause.clause(List.of(ErlVarPattern.varPattern("_")), ErlMap.map())))));
+            FunctionClause.of(List.of(BinaryPattern.of("")), MapExpr.of(List.of())),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body")),
+                CaseExpr.of(
+                    RemoteCallExpr.of("jsone", "try_decode", List.of(Variable.of("Body"))),
+                    List.of(
+                        Clause.of(
+                            TuplePattern.of(
+                                List.of(
+                                    AtomPattern.of("ok"),
+                                    VariablePattern.of("V"),
+                                    WildcardPattern.of())),
+                            IsTypeGuard.of("map", Variable.of("V")),
+                            Variable.of("V")),
+                        Clause.of(WildcardPattern.of(), MapExpr.of(List.of())))))));
   }
 
-  public static ErlFunction contentTypeMatches() {
-    return ErlFunction.function(
+  public static Function contentTypeMatches() {
+    Pattern binaryMatchGuard =
+        MatchPattern.of(
+            BinaryPattern.of(List.of(BinarySegmentPattern.of(WildcardPattern.of(), "binary"))),
+            VariablePattern.of("CT"));
+    return Function.of(
         "content_type_matches",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Headers"), ErlVarPattern.varPattern("Expected")),
-                ErlCase.caseExpr(
-                    ErlCall.call(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Headers"), VariablePattern.of("Expected")),
+                CaseExpr.of(
+                    RemoteCallExpr.of(
                         "proplists",
                         "get_value",
-                        ErlBinary.binary("Content-Type"),
-                        ErlVar.var("Headers"),
-                        ErlAtom.atom("undefined")),
-                    ErlClause.clause(
-                        List.of(ErlVarPattern.varPattern("Expected")), ErlAtom.atom("true")),
-                    ErlClause.clause(
                         List.of(
-                            ErlMatchPattern.matchPattern(
-                                ErlBinPattern.binPattern("_/binary"),
-                                ErlVarPattern.varPattern("CT"))),
-                        ErlOp.op(
-                            "=:=",
-                            ErlCallLocal.callLocal("ct_base", ErlVar.var("CT")),
-                            ErlCallLocal.callLocal("ct_base", ErlVar.var("Expected")))),
-                    ErlClause.clause(
-                        List.of(ErlVarPattern.varPattern("_")), ErlAtom.atom("false"))))));
+                            BinaryExpr.of("Content-Type"),
+                            Variable.of("Headers"),
+                            AtomExpr.of("undefined"))),
+                    List.of(
+                        Clause.of(VariablePattern.of("Expected"), AtomExpr.of("true")),
+                        Clause.of(
+                            binaryMatchGuard,
+                            InfixExpr.of(
+                                LocalCallExpr.of("ct_base", List.of(Variable.of("CT"))),
+                                "=:=",
+                                LocalCallExpr.of("ct_base", List.of(Variable.of("Expected"))))),
+                        Clause.of(WildcardPattern.of(), AtomExpr.of("false")))))));
   }
 
-  public static ErlFunction ctBase() {
-    return ErlFunction.function(
+  public static Function ctBase() {
+    return Function.of(
         "ct_base",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("CT")),
-                ErlCase.caseExpr(
-                    ErlCall.call("binary", "split", ErlVar.var("CT"), ErlBinary.binary(";")),
-                    ErlClause.clause(
-                        List.of(
-                            ErlConsPattern.consPattern(
-                                ErlVarPattern.varPattern("Base"), ErlVarPattern.varPattern("_"))),
-                        ErlVar.var("Base")),
-                    ErlClause.clause(List.of(ErlVarPattern.varPattern("_")), ErlVar.var("CT"))))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("CT")),
+                CaseExpr.of(
+                    RemoteCallExpr.of(
+                        "binary", "split", List.of(Variable.of("CT"), BinaryExpr.of(";"))),
+                    List.of(
+                        Clause.of(
+                            ListPattern.cons(VariablePattern.of("Base"), WildcardPattern.of()),
+                            Variable.of("Base")),
+                        Clause.of(WildcardPattern.of(), Variable.of("CT")))))));
   }
 
-  public static ErlFunction prefixHeadersToList() {
-    ErlBinaryTemplate headerName =
-        ErlBinaryTemplate.binaryTemplate(
-            ErlBinaryExpr.expr(ErlVar.var("Prefix"), true),
-            ErlBinaryExpr.expr(ErlVar.var("H"), true));
-    return ErlFunction.function(
-        "prefix_headers_to_list",
-        2,
-        List.of(
-            ErlClause.clause(
-                List.of(
-                    ErlVarPattern.varPattern("_Prefix"), ErlAtomPattern.atomPattern("undefined")),
-                ErlList.list()),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Prefix"), ErlVarPattern.varPattern("Map")),
-                List.of(ErlGuard.guard("is_map", ErlVar.var("Map"))),
-                ErlListComprehension.comprehension(
-                    ErlTuple.tuple(
-                        headerName, ErlCallLocal.callLocal("to_binary", ErlVar.var("V"))),
-                    ErlTuplePattern.tuplePattern(
-                        ErlVarPattern.varPattern("H"), ErlVarPattern.varPattern("V")),
-                    ErlCall.call("maps", "to_list", ErlVar.var("Map"))))));
-  }
-
-  public static ErlFunction prefixHeadersFromList() {
-    ErlListComprehension headerEntries =
-        ErlListComprehension.comprehensionWithFilters(
-            ErlTuple.tuple(
-                ErlCall.call(
-                    "binary",
-                    "part",
-                    ErlVar.var("Name"),
-                    ErlCallLocal.callLocal("byte_size", ErlVar.var("Prefix"))),
-                ErlVar.var("Val")),
-            ErlTuplePattern.tuplePattern(
-                ErlVarPattern.varPattern("Name"), ErlVarPattern.varPattern("Val")),
-            ErlVar.var("Headers"),
+  public static Function prefixHeadersToList() {
+    Expression headerName =
+        BinaryExpr.of(
             List.of(
-                ErlOp.op(
-                    ">",
-                    ErlCallLocal.callLocal("byte_size", ErlVar.var("Name")),
-                    ErlCallLocal.callLocal("byte_size", ErlVar.var("Prefix"))),
-                ErlOp.op(
-                    "=:=",
-                    ErlCall.call(
+                BinarySegmentExpr.of(Variable.of("Prefix"), "binary"),
+                BinarySegmentExpr.of(Variable.of("H"), "binary")));
+    return Function.of(
+        "prefix_headers_to_list",
+        List.of(
+            FunctionClause.of(
+                List.of(VariablePattern.of("_Prefix"), AtomPattern.of("undefined")),
+                ListExpr.of(List.of())),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Prefix"), VariablePattern.of("Map")),
+                IsTypeGuard.of("map", Variable.of("Map")),
+                ListComprehensionExpr.of(
+                    TupleExpr.of(
+                        List.of(
+                            headerName, LocalCallExpr.of("to_binary", List.of(Variable.of("V"))))),
+                    TuplePattern.of(List.of(VariablePattern.of("H"), VariablePattern.of("V"))),
+                    RemoteCallExpr.of("maps", "to_list", List.of(Variable.of("Map")))))));
+  }
+
+  public static Function prefixHeadersFromList() {
+    ListComprehensionExpr headerEntries =
+        ListComprehensionExpr.of(
+            TupleExpr.of(
+                List.of(
+                    RemoteCallExpr.of(
                         "binary",
                         "part",
-                        ErlVar.var("Name"),
-                        ErlInteger.integer(0),
-                        ErlCallLocal.callLocal("byte_size", ErlVar.var("Prefix"))),
-                    ErlVar.var("Prefix"))));
-    return ErlFunction.function(
+                        List.of(
+                            Variable.of("Name"),
+                            LocalCallExpr.of("byte_size", List.of(Variable.of("Prefix"))))),
+                    Variable.of("Val"))),
+            TuplePattern.of(List.of(VariablePattern.of("Name"), VariablePattern.of("Val"))),
+            Variable.of("Headers"),
+            List.of(
+                InfixExpr.of(
+                    LocalCallExpr.of("byte_size", List.of(Variable.of("Name"))),
+                    ">",
+                    LocalCallExpr.of("byte_size", List.of(Variable.of("Prefix")))),
+                InfixExpr.of(
+                    RemoteCallExpr.of(
+                        "binary",
+                        "part",
+                        List.of(
+                            Variable.of("Name"),
+                            IntegerExpr.of(0),
+                            LocalCallExpr.of("byte_size", List.of(Variable.of("Prefix"))))),
+                    "=:=",
+                    Variable.of("Prefix"))));
+    return Function.of(
         "prefix_headers_from_list",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Headers"), ErlVarPattern.varPattern("Prefix")),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Map"),
-                        ErlCall.call("maps", "from_list", headerEntries)),
-                    ErlCase.caseExpr(
-                        ErlCall.call("maps", "size", ErlVar.var("Map")),
-                        ErlClause.clause(
-                            List.of(ErlIntegerPattern.integerPattern(0)),
-                            ErlAtom.atom("undefined")),
-                        ErlClause.clause(
-                            List.of(ErlVarPattern.varPattern("_")), ErlVar.var("Map")))))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Headers"), VariablePattern.of("Prefix")),
+                MatchExpr.bind(
+                    "Map",
+                    RemoteCallExpr.of("maps", "from_list", List.of(headerEntries)),
+                    CaseExpr.of(
+                        RemoteCallExpr.of("maps", "size", List.of(Variable.of("Map"))),
+                        List.of(
+                            Clause.of(IntegerPattern.of(0), AtomExpr.of("undefined")),
+                            Clause.of(WildcardPattern.of(), Variable.of("Map"))))))));
   }
 
-  public static ErlFunction encodeTimestampEpochSeconds() {
-    return ErlFunction.function(
+  public static Function encodeTimestampEpochSeconds() {
+    return Function.of(
         "encode_timestamp_epoch_seconds",
-        1,
         List.of(
-            ErlClause.clause(
+            FunctionClause.of(
                 List.of(
-                    ErlTuplePattern.tuplePattern(
-                        ErlVarPattern.varPattern("Mega"),
-                        ErlVarPattern.varPattern("Secs"),
-                        ErlVarPattern.varPattern("_Micro"))),
-                ErlOp.op(
+                    TuplePattern.of(
+                        List.of(
+                            VariablePattern.of("Mega"),
+                            VariablePattern.of("Secs"),
+                            WildcardPattern.of("Micro")))),
+                InfixExpr.of(
+                    InfixExpr.of(Variable.of("Mega"), "*", IntegerExpr.of(1_000_000L)),
                     "+",
-                    ErlOp.op("*", ErlVar.var("Mega"), ErlInteger.integer(1_000_000L)),
-                    ErlVar.var("Secs"))),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined"))));
+                    Variable.of("Secs"))),
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined"))));
   }
 
-  public static ErlFunction encodeTimestampDateTime() {
-    return ErlFunction.function(
+  public static Function encodeTimestampDateTime() {
+    return Function.of(
         "encode_timestamp_date_time",
-        1,
         List.of(
-            ErlClause.clause(
+            FunctionClause.of(
                 List.of(
-                    ErlTuplePattern.tuplePattern(
-                        ErlVarPattern.varPattern("Mega"),
-                        ErlVarPattern.varPattern("Secs"),
-                        ErlVarPattern.varPattern("_Micro"))),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("EpochSecs"),
-                        ErlOp.op(
-                            "+",
-                            ErlOp.op("*", ErlVar.var("Mega"), ErlInteger.integer(1_000_000L)),
-                            ErlVar.var("Secs"))),
-                    ErlMatch.match(
-                        ErlTuplePattern.tuplePattern(
-                            ErlTuplePattern.tuplePattern(
-                                ErlVarPattern.varPattern("Y"),
-                                ErlVarPattern.varPattern("Mo"),
-                                ErlVarPattern.varPattern("D")),
-                            ErlTuplePattern.tuplePattern(
-                                ErlVarPattern.varPattern("H"),
-                                ErlVarPattern.varPattern("Mi"),
-                                ErlVarPattern.varPattern("S"))),
-                        ErlCall.call(
-                            "calendar",
-                            "gregorian_seconds_to_datetime",
-                            ErlOp.op(
-                                "+",
-                                ErlVar.var("EpochSecs"),
-                                ErlInteger.integer(62_167_219_200L)))),
-                    ErlCallLocal.callLocal(
-                        "iolist_to_binary",
-                        ErlCall.call(
-                            "io_lib",
-                            "format",
-                            ErlString.string("~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0BZ"),
-                            ErlList.list(
-                                ErlVar.var("Y"),
-                                ErlVar.var("Mo"),
-                                ErlVar.var("D"),
-                                ErlVar.var("H"),
-                                ErlVar.var("Mi"),
-                                ErlVar.var("S")))))),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined"))));
+                    TuplePattern.of(
+                        List.of(
+                            VariablePattern.of("Mega"),
+                            VariablePattern.of("Secs"),
+                            WildcardPattern.of("Micro")))),
+                encodeTimestampDateTimeBody()),
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined"))));
   }
 
-  public static ErlFunction decodeTimestampEpochSeconds() {
-    return ErlFunction.function(
+  private static MatchExpr encodeTimestampDateTimeBody() {
+    Expression epochSecs =
+        InfixExpr.of(
+            InfixExpr.of(Variable.of("Mega"), "*", IntegerExpr.of(1_000_000L)),
+            "+",
+            Variable.of("Secs"));
+    Expression gregorian =
+        RemoteCallExpr.of(
+            "calendar",
+            "gregorian_seconds_to_datetime",
+            List.of(InfixExpr.of(Variable.of("EpochSecs"), "+", IntegerExpr.of(62_167_219_200L))));
+    Expression formatted =
+        LocalCallExpr.of(
+            "iolist_to_binary",
+            List.of(
+                RemoteCallExpr.of(
+                    "io_lib",
+                    "format",
+                    List.of(
+                        StringExpr.of("~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0BZ"),
+                        ListExpr.of(
+                            List.of(
+                                Variable.of("Y"),
+                                Variable.of("Mo"),
+                                Variable.of("D"),
+                                Variable.of("H"),
+                                Variable.of("Mi"),
+                                Variable.of("S")))))));
+    Pattern dateTimeTuple =
+        TuplePattern.of(
+            List.of(
+                TuplePattern.of(
+                    List.of(
+                        VariablePattern.of("Y"),
+                        VariablePattern.of("Mo"),
+                        VariablePattern.of("D"))),
+                TuplePattern.of(
+                    List.of(
+                        VariablePattern.of("H"),
+                        VariablePattern.of("Mi"),
+                        VariablePattern.of("S")))));
+    return MatchExpr.of(
+        VariablePattern.of("EpochSecs"),
+        epochSecs,
+        MatchExpr.of(dateTimeTuple, gregorian, formatted));
+  }
+
+  public static Function decodeTimestampEpochSeconds() {
+    Expression epochTuple =
+        MatchExpr.bind(
+            "Mega",
+            InfixExpr.of(Variable.of("V"), "div", IntegerExpr.of(1_000_000L)),
+            MatchExpr.bind(
+                "Secs",
+                InfixExpr.of(Variable.of("V"), "rem", IntegerExpr.of(1_000_000L)),
+                TupleExpr.of(
+                    List.of(Variable.of("Mega"), Variable.of("Secs"), IntegerExpr.of(0)))));
+    return Function.of(
         "decode_timestamp_epoch_seconds",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("null")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_number", ErlVar.var("V"))),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Mega"),
-                        ErlOp.op("div", ErlVar.var("V"), ErlInteger.integer(1_000_000L))),
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Secs"),
-                        ErlOp.op("rem", ErlVar.var("V"), ErlInteger.integer(1_000_000L))),
-                    ErlTuple.tuple(
-                        ErlVar.var("Mega"), ErlVar.var("Secs"), ErlInteger.integer(0))))));
+            FunctionClause.of(List.of(AtomPattern.of("null")), AtomExpr.of("undefined")),
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("number", Variable.of("V")),
+                epochTuple)));
   }
 
-  public static ErlFunction decodeTimestampDateTime() {
-    ErlTry iso8601Parse =
-        ErlTry.tryExpr(
+  public static Function decodeTimestampDateTime() {
+    BinaryPattern isoTimestampPattern =
+        BinaryPattern.of(
             List.of(
-                ErlMatch.match(
-                    ErlBinPattern.binPattern(
-                        "Y:4/binary, \"-\", Mo:2/binary, \"-\", D:2/binary, \"T\","
-                            + " H:2/binary, \":\", Mi:2/binary, \":\", S:2/binary, _/binary"),
-                    ErlVar.var("V")),
-                ErlMatch.match(
-                    ErlVarPattern.varPattern("Dt"),
-                    ErlTuple.tuple(
-                        ErlTuple.tuple(
-                            ErlCallLocal.callLocal("binary_to_integer", ErlVar.var("Y")),
-                            ErlCallLocal.callLocal("binary_to_integer", ErlVar.var("Mo")),
-                            ErlCallLocal.callLocal("binary_to_integer", ErlVar.var("D"))),
-                        ErlTuple.tuple(
-                            ErlCallLocal.callLocal("binary_to_integer", ErlVar.var("H")),
-                            ErlCallLocal.callLocal("binary_to_integer", ErlVar.var("Mi")),
-                            ErlCallLocal.callLocal("binary_to_integer", ErlVar.var("S"))))),
-                ErlMatch.match(
-                    ErlVarPattern.varPattern("GregorianSecs"),
-                    ErlCall.call("calendar", "datetime_to_gregorian_seconds", ErlVar.var("Dt"))),
-                ErlMatch.match(
-                    ErlVarPattern.varPattern("EpochSecs"),
-                    ErlOp.op(
-                        "-", ErlVar.var("GregorianSecs"), ErlInteger.integer(62_167_219_200L))),
-                ErlMatch.match(
-                    ErlVarPattern.varPattern("Mega"),
-                    ErlOp.op("div", ErlVar.var("EpochSecs"), ErlInteger.integer(1_000_000L))),
-                ErlTuple.tuple(
-                    ErlVar.var("Mega"),
-                    ErlOp.op("rem", ErlVar.var("EpochSecs"), ErlInteger.integer(1_000_000L)),
-                    ErlInteger.integer(0))),
+                BinarySegmentPattern.of(VariablePattern.of("Y"), 4, "binary"),
+                BinarySegmentPattern.literal("-"),
+                BinarySegmentPattern.of(VariablePattern.of("Mo"), 2, "binary"),
+                BinarySegmentPattern.literal("-"),
+                BinarySegmentPattern.of(VariablePattern.of("D"), 2, "binary"),
+                BinarySegmentPattern.literal("T"),
+                BinarySegmentPattern.of(VariablePattern.of("H"), 2, "binary"),
+                BinarySegmentPattern.literal(":"),
+                BinarySegmentPattern.of(VariablePattern.of("Mi"), 2, "binary"),
+                BinarySegmentPattern.literal(":"),
+                BinarySegmentPattern.of(VariablePattern.of("S"), 2, "binary"),
+                BinarySegmentPattern.of(WildcardPattern.of(), "binary")));
+    Expression gregorianSecs =
+        RemoteCallExpr.of("calendar", "datetime_to_gregorian_seconds", List.of(Variable.of("Dt")));
+    Expression epochSecs =
+        InfixExpr.of(Variable.of("GregorianSecs"), "-", IntegerExpr.of(62_167_219_200L));
+    Expression mega = InfixExpr.of(Variable.of("EpochSecs"), "div", IntegerExpr.of(1_000_000L));
+    Expression binaryResult =
+        TupleExpr.of(
             List.of(
-                ErlCatchClause.catchClause(
-                    ErlVarPattern.varPattern("_"),
-                    ErlVarPattern.varPattern("_"),
-                    ErlAtom.atom("undefined"))));
-    return ErlFunction.function(
+                Variable.of("Mega"),
+                InfixExpr.of(Variable.of("EpochSecs"), "rem", IntegerExpr.of(1_000_000L)),
+                IntegerExpr.of(0)));
+    TryExpr iso8601Parse =
+        TryExpr.of(
+            MatchExpr.of(
+                isoTimestampPattern,
+                Variable.of("V"),
+                MatchExpr.bind(
+                    "Dt",
+                    TupleExpr.of(
+                        List.of(
+                            TupleExpr.of(
+                                List.of(
+                                    LocalCallExpr.of(
+                                        "binary_to_integer", List.of(Variable.of("Y"))),
+                                    LocalCallExpr.of(
+                                        "binary_to_integer", List.of(Variable.of("Mo"))),
+                                    LocalCallExpr.of(
+                                        "binary_to_integer", List.of(Variable.of("D"))))),
+                            TupleExpr.of(
+                                List.of(
+                                    LocalCallExpr.of(
+                                        "binary_to_integer", List.of(Variable.of("H"))),
+                                    LocalCallExpr.of(
+                                        "binary_to_integer", List.of(Variable.of("Mi"))),
+                                    LocalCallExpr.of(
+                                        "binary_to_integer", List.of(Variable.of("S"))))))),
+                    MatchExpr.bind(
+                        "GregorianSecs",
+                        gregorianSecs,
+                        MatchExpr.bind(
+                            "EpochSecs", epochSecs, MatchExpr.bind("Mega", mega, binaryResult))))),
+            List.of(Clause.of(CatchPattern.anyAny(), AtomExpr.of("undefined"))));
+    Expression numberResult =
+        MatchExpr.bind(
+            "EpochSecs",
+            LocalCallExpr.of("trunc", List.of(Variable.of("V"))),
+            MatchExpr.bind(
+                "Mega",
+                InfixExpr.of(Variable.of("EpochSecs"), "div", IntegerExpr.of(1_000_000L)),
+                TupleExpr.of(
+                    List.of(
+                        Variable.of("Mega"),
+                        InfixExpr.of(Variable.of("EpochSecs"), "rem", IntegerExpr.of(1_000_000L)),
+                        IntegerExpr.of(0)))));
+    return Function.of(
         "decode_timestamp_date_time",
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("null")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_number", ErlVar.var("V"))),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("EpochSecs"),
-                        ErlCallLocal.callLocal("trunc", ErlVar.var("V"))),
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Mega"),
-                        ErlOp.op("div", ErlVar.var("EpochSecs"), ErlInteger.integer(1_000_000L))),
-                    ErlTuple.tuple(
-                        ErlVar.var("Mega"),
-                        ErlOp.op("rem", ErlVar.var("EpochSecs"), ErlInteger.integer(1_000_000L)),
-                        ErlInteger.integer(0)))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_binary", ErlVar.var("V"))),
+            FunctionClause.of(List.of(AtomPattern.of("null")), AtomExpr.of("undefined")),
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("number", Variable.of("V")),
+                numberResult),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("binary", Variable.of("V")),
                 iso8601Parse)));
   }
 
-  public static ErlFunction headersSet() {
-    return ErlFunction.function(
+  public static Function headersSet() {
+    return Function.of(
         "headers_set",
-        3,
         List.of(
-            ErlClause.clause(
+            FunctionClause.of(
                 List.of(
-                    ErlVarPattern.varPattern("Name"),
-                    ErlVarPattern.varPattern("Value"),
-                    ErlVarPattern.varPattern("Headers")),
-                ErlCall.call(
+                    VariablePattern.of("Name"),
+                    VariablePattern.of("Value"),
+                    VariablePattern.of("Headers")),
+                RemoteCallExpr.of(
                     "lists",
                     "keystore",
-                    ErlVar.var("Name"),
-                    ErlInteger.integer(1),
-                    ErlVar.var("Headers"),
-                    ErlTuple.tuple(ErlVar.var("Name"), ErlVar.var("Value"))))));
+                    List.of(
+                        Variable.of("Name"),
+                        IntegerExpr.of(1),
+                        Variable.of("Headers"),
+                        TupleExpr.of(List.of(Variable.of("Name"), Variable.of("Value"))))))));
   }
 }

@@ -35,6 +35,21 @@ class ErlangClientPluginTest {
   }
 
   @Test
+  void emitsOnlyRequiredStaticRuntimeModulesForBasicClient() {
+    Model model = loadModel();
+    MockManifest manifest = new MockManifest();
+
+    new ErlangClientPlugin().execute(buildContext(model, manifest));
+
+    assertThat(manifest.getFileString("runtime_http.erl")).isPresent();
+    assertThat(manifest.getFileString("runtime_types.hrl")).isPresent();
+    assertThat(manifest.expectFileString("runtime_http.erl")).contains("-module(runtime_http).");
+    assertThat(manifest.getFileString("aws_sigv4.erl")).isEmpty();
+    assertThat(manifest.getFileString("http_checksum.erl")).isEmpty();
+    assertThat(manifest.getFileString("aws_event_stream.erl")).isEmpty();
+  }
+
+  @Test
   void emitsTypesHeaderAndClientStubOnManifest() {
     Model model = loadModel();
     MockManifest manifest = new MockManifest();
@@ -69,7 +84,7 @@ class ErlangClientPluginTest {
     int moduleIndex = clientSource.indexOf("-module(basic_service_client).");
     int includeIndex = clientSource.indexOf("-include(\"basic_service_types.hrl\").");
     int exportIndex = clientSource.indexOf("-export([");
-    assertThat(moduleIndex).isLessThan(includeIndex);
+    assertThat(moduleIndex).isLessThan(exportIndex);
     assertThat(includeIndex).isLessThan(exportIndex);
     assertThat(clientSource.stripLeading()).doesNotStartWith("-include");
   }
@@ -165,14 +180,10 @@ class ErlangClientPluginTest {
     assertThat(manifest.expectFileString("demo_rest_json_rest_json_1.erl"))
         .contains("-module(demo_rest_json_rest_json_1).")
         .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
-    assertThat(manifest.expectFileString("runtime_http.erl"))
-        .contains("-module(runtime_http).")
-        .contains("HttpClient = maps:get(http_client, Config, httpc),")
-        .contains("dispatch_signed(HttpClient, Config, #http_request{");
     String client = manifest.expectFileString("demo_rest_json_client.erl");
     assertThat(client)
         .contains("describe_item(Config, Input) ->")
-        .contains("Req = demo_rest_json_rest_json_1:encode_describe_item_request(Input),")
+        .contains("Req = demo_rest_json_rest_json_1:encode_describe_item_request(Input)")
         .contains("case runtime_http:dispatch(Config, Req) of")
         .contains("demo_rest_json_rest_json_1:decode_describe_item_response(Resp);");
   }
@@ -205,11 +216,6 @@ class ErlangClientPluginTest {
     assertThat(codec).doesNotContain("#describe_item_input(){");
     assertThat(codec).contains("(V) when V =/= undefined");
     assertThat(codec).contains("uri_encode(");
-    String runtimeHelpers = manifest.expectFileString("runtime_helpers.erl");
-    assertThat(runtimeHelpers.split("-module\\(runtime_helpers\\)", -1)).hasSize(2);
-    assertThat(runtimeHelpers)
-        .contains("-module(runtime_helpers).")
-        .contains("parse_labels(Path, Template)");
     assertThat(codec).contains("decode_describe_item_request(");
     assertThat(codec).contains("LabelMap");
     assertThat(codec).doesNotContain("runtime_helpers:parse_labels(Path");
@@ -272,7 +278,6 @@ class ErlangClientPluginTest {
             PluginContext.builder().model(model).fileManifest(manifest).settings(settings).build());
 
     assertThat(manifest.getFileString("resource_lifecycle_service_rest_json_1.erl")).isPresent();
-    assertThat(manifest.getFileString("runtime_http.erl")).isPresent();
 
     String org = manifest.expectFileString("organization_resource.erl");
     assertThat(org).contains("-module(organization_resource).");

@@ -67,15 +67,8 @@ class AwsServiceMetadataTest {
 
     assertThat(client).contains("%%   sdkId: TestSdk");
     assertThat(client).contains("%%   endpointPrefix: testprefix");
-    assertThat(client).contains("default_config() ->");
-    assertThat(client).contains("endpoint_prefix => <<\"testprefix\">>");
-    assertThat(client).contains("signing_name => <<\"testsign\">>");
+    assertThat(client).doesNotContain("default_config()");
     assertThat(client).doesNotContain("resolve_base_url");
-
-    String helpers = manifest.expectFileString("runtime_helpers.erl");
-    assertThat(helpers).contains("resolve_base_url(Config) ->");
-    assertThat(helpers)
-        .contains("<<\"https://\", Prefix/binary, \".\", Region/binary, \".amazonaws.com\">>");
   }
 
   @Test
@@ -85,9 +78,7 @@ class AwsServiceMetadataTest {
 
     assertThat(client).contains("#   sdkId: TestSdk");
     assertThat(client).contains("#   endpointPrefix: testprefix");
-    assertThat(client).contains("def default_config do");
-    assertThat(client).contains("endpoint_prefix: \"testprefix\"");
-    assertThat(client).contains("signing_name: \"testsign\"");
+    assertThat(client).doesNotContain("def default_config");
     assertThat(client).doesNotContain("def resolve_base_url");
 
     String helpers = manifest.expectFileString("runtime_helpers.ex");

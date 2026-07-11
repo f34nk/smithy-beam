@@ -42,20 +42,24 @@ class HttpChecksumEmissionTest {
 
     String codec =
         manifest.getFileString("http_checksum_rest_json_service_rest_json_1.erl").orElse("");
-    assertThat(codec).contains("headers_set(<<\"Content-MD5\">>, checksum_header_encode(");
-    assertThat(codec).contains("crypto:hash(md5, Body)");
-    assertThat(codec).contains("crc32c_hash(Body)");
-    assertThat(codec).contains("sha256_hash(Body)");
-    assertThat(codec).contains("validate_response_checksum(Body, Headers,");
-    assertThat(codec)
-        .contains(
-            "case checksum_header_encode(checksum_digest(Body, checksum_algorithm_from_header(HeaderName))) =:= Expected of");
-    assertThat(codec).containsPattern("end\\s+end\\.");
-    assertThat(codec).contains("HeadersWithChecksum = case ChecksumAlgorithm of");
-    assertThat(codec).contains("undefined -> Headers;");
+    assertThat(codec).doesNotContain("md5_hash(Body) ->");
+    assertThat(codec).doesNotContain("validate_response_checksum(_Body");
+    assertThat(codec).doesNotContain("checksum_digest(Body");
+    assertThat(codec).contains("lists:keystore(<<\"Content-MD5\">>, 1, Headers");
+    assertThat(codec).contains("http_checksum:checksum_header_encode(");
+    assertThat(codec).contains("http_checksum:md5_hash(Body)");
+    assertThat(codec).contains("http_checksum:crc32c_hash(Body)");
+    assertThat(codec).contains("http_checksum:sha256_hash(Body)");
+    assertThat(codec).contains("http_checksum:validate_response_checksum(Body, Headers,");
+    assertThat(codec).contains("http_checksum:checksum_header_encode(");
+    assertThat(codec).contains("HeadersWithChecksum =");
+    assertThat(codec).contains("case ChecksumAlgorithm of");
+    assertThat(codec).contains("undefined ->");
+    assertThat(codec).contains("Headers;");
     assertThat(codec).contains("crc32c ->");
     assertThat(codec).contains("sha256 ->");
-    assertThat(codec).contains("Other -> error({unsupported_checksum_algorithm, Other})");
+    assertThat(codec).contains("Other ->");
+    assertThat(codec).contains("error({unsupported_checksum_algorithm, Other})");
   }
 
   @Test
@@ -74,8 +78,12 @@ class HttpChecksumEmissionTest {
                 .build());
 
     String codec = manifest.getFileString("http_checksum_rest_xml_service_rest_xml.erl").orElse("");
-    assertThat(codec).contains("headers_set(<<\"Content-MD5\">>, checksum_header_encode(");
-    assertThat(codec).contains("crypto:hash(md5, Body)");
+    assertThat(codec).doesNotContain("md5_hash(Body) ->");
+    assertThat(codec).doesNotContain("validate_response_checksum(_Body");
+    assertThat(codec).doesNotContain("checksum_digest(Body");
+    assertThat(codec).contains("lists:keystore(<<\"Content-MD5\">>, 1, Headers");
+    assertThat(codec).contains("http_checksum:checksum_header_encode(");
+    assertThat(codec).contains("http_checksum:md5_hash(Body)");
   }
 
   @Test

@@ -1,28 +1,25 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.Edoc;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.IntegerExpr;
+import io.beam.ir.erlang.IntegerPattern;
+import io.beam.ir.erlang.ListExpr;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.RecordExpr;
+import io.beam.ir.erlang.RecordField;
+import io.beam.ir.erlang.RecordPattern;
+import io.beam.ir.erlang.RecordPatternField;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.Spec;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlBinary;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlFunctionDoc;
-import io.smithy.beam.ir.erlang.ErlFunctionSpec;
-import io.smithy.beam.ir.erlang.ErlInteger;
-import io.smithy.beam.ir.erlang.ErlIntegerPattern;
-import io.smithy.beam.ir.erlang.ErlList;
-import io.smithy.beam.ir.erlang.ErlMap;
-import io.smithy.beam.ir.erlang.ErlMatch;
-import io.smithy.beam.ir.erlang.ErlRecord;
-import io.smithy.beam.ir.erlang.ErlRecordField;
-import io.smithy.beam.ir.erlang.ErlRecordFieldPattern;
-import io.smithy.beam.ir.erlang.ErlRecordPattern;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -36,7 +33,7 @@ import software.amazon.smithy.model.shapes.UnionShape;
 final class ErlangAwsJsonOperationIr {
   private ErlangAwsJsonOperationIr() {}
 
-  static ErlFunction buildEncodeRequest(
+  static Function buildEncodeRequest(
       Model model,
       OperationShape op,
       HttpBindingIndex httpIndex,
@@ -51,39 +48,42 @@ final class ErlangAwsJsonOperationIr {
     List<MemberShape> members = ErlangJsonCodecSupport.documentMembers(httpIndex, op, input, true);
     String amzTarget = targetPrefix + "." + op.getId().getName();
 
-    ErlFunctionSpec spec =
-        ErlFunctionSpec.functionSpec("encode_" + opName + "_request", inputType, "#http_request{}");
-    ErlRecordPattern inputPattern =
+    RecordPattern inputPattern =
         ErlangRestJsonOperationIr.memberBindingHead("Input", inputRecord, input, sp);
 
-    List<ErlExpr> body = new ArrayList<>();
+    List<io.beam.ir.erlang.Expression> body = new ArrayList<>();
     body.addAll(
         ErlangRestJsonOperationIr.buildDocumentBodyEncodeExprs(
             model, httpIndex, sp, members, eventStreamModule));
     body.add(
-        ErlRecord.record(
+        RecordExpr.of(
             "http_request",
-            ErlRecordField.field("method", ErlBinary.binary("POST")),
-            ErlRecordField.field("path", ErlBinary.binary("/")),
-            ErlRecordField.field("query", ErlMap.map()),
-            ErlRecordField.field(
-                "headers",
-                ErlList.list(
-                    ErlTuple.tuple(ErlBinary.binary("Content-Type"), ErlBinary.binary(contentType)),
-                    ErlTuple.tuple(ErlBinary.binary("X-Amz-Target"), ErlBinary.binary(amzTarget)))),
-            ErlRecordField.field("body", ErlVar.var("Body"))));
+            List.of(
+                RecordField.of("method", io.beam.ir.erlang.BinaryExpr.of("POST")),
+                RecordField.of("path", io.beam.ir.erlang.BinaryExpr.of("/")),
+                RecordField.of("query", io.beam.ir.erlang.MapExpr.of(List.of())),
+                RecordField.of(
+                    "headers",
+                    ListExpr.of(
+                        List.of(
+                            TupleExpr.of(
+                                List.of(
+                                    io.beam.ir.erlang.BinaryExpr.of("Content-Type"),
+                                    io.beam.ir.erlang.BinaryExpr.of(contentType))),
+                            TupleExpr.of(
+                                List.of(
+                                    io.beam.ir.erlang.BinaryExpr.of("X-Amz-Target"),
+                                    io.beam.ir.erlang.BinaryExpr.of(amzTarget)))))),
+                RecordField.of("body", Variable.of("Body")))));
 
-    return ErlFunction.functionWithDocAndSpec(
+    return Function.of(
         "encode_" + opName + "_request",
-        1,
-        ErlFunctionDoc.functionDoc("Encode AWS JSON request for " + op.getId() + "."),
-        spec,
-        List.of(
-            ErlClause.clause(
-                List.of(inputPattern), ErlExprBlock.block(body.toArray(ErlExpr[]::new)))));
+        List.of(FunctionClause.of(List.of(inputPattern), BlockExpr.commaSeparated(body, false))),
+        Spec.of("encode_" + opName + "_request(" + inputType + ") -> #http_request{}"),
+        Edoc.of("Encode AWS JSON request for " + op.getId() + "."));
   }
 
-  static ErlFunction buildDecodeResponse(
+  static Function buildDecodeResponse(
       Model model,
       OperationShape op,
       HttpBindingIndex httpIndex,
@@ -96,74 +96,76 @@ final class ErlangAwsJsonOperationIr {
     List<MemberShape> members =
         ErlangJsonCodecSupport.documentMembers(httpIndex, op, output, false);
 
-    ErlFunctionSpec spec =
-        ErlFunctionSpec.functionSpec(
-            "decode_" + opName + "_response",
-            "#http_response{}",
-            "{'ok', " + outputType + "} | {'error', term()}");
-
-    ErlRecordPattern successPattern =
-        ErlRecordPattern.recordPattern(
+    RecordPattern successPattern =
+        RecordPattern.of(
             "http_response",
-            ErlRecordFieldPattern.fieldPattern("status", ErlIntegerPattern.integerPattern(200)),
-            ErlRecordFieldPattern.fieldPattern("body", ErlVarPattern.varPattern("Body")));
+            List.of(
+                RecordPatternField.of("status", IntegerPattern.of(200)),
+                RecordPatternField.of("body", VariablePattern.of("Body"))));
 
-    ErlExpr successBody;
+    io.beam.ir.erlang.Expression successBody;
     if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
       MemberShape member = members.get(0);
       UnionShape union = model.expectShape(member.getTarget(), UnionShape.class);
       String helper = ErlangEventStreamEmitter.helperName(sp, union);
       String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
       successBody =
-          ErlTuple.tuple(
-              ErlAtom.atom("ok"),
-              ErlRecord.record(
-                  outputRecord,
-                  ErlRecordField.field(
-                      fieldName,
-                      ErlCall.call(eventStreamModule, "decode_" + helper, ErlVar.var("Body")))));
+          TupleExpr.of(
+              List.of(
+                  AtomExpr.of("ok"),
+                  RecordExpr.of(
+                      outputRecord,
+                      List.of(
+                          RecordField.of(
+                              fieldName,
+                              RemoteCallExpr.of(
+                                  eventStreamModule,
+                                  "decode_" + helper,
+                                  List.of(Variable.of("Body"))))))));
     } else {
       successBody =
-          ErlExprBlock.block(
-              ErlMatch.match(
-                  ErlVarPattern.varPattern("Decoded"),
-                  ErlangRestJsonOperationIr.decodeBodyJsonExpr()),
-              ErlTuple.tuple(
-                  ErlAtom.atom("ok"),
-                  ErlangRestJsonOperationIr.buildDocumentRecordFromDecoded(
-                      outputRecord, model, httpIndex, sp, members, eventStreamModule)));
+          BlockExpr.commaSeparated(
+              List.of(
+                  MatchExpr.bindValue("Decoded", ErlangRestJsonOperationIr.decodeBodyJsonExpr()),
+                  TupleExpr.of(
+                      List.of(
+                          AtomExpr.of("ok"),
+                          ErlangRestJsonOperationIr.buildDocumentRecordFromDecoded(
+                              outputRecord, model, httpIndex, sp, members, eventStreamModule)))),
+              false);
     }
 
-    ErlClause successClause = ErlClause.clause(List.of(successPattern), successBody);
-    ErlClause errorClause =
-        ErlClause.clause(
+    FunctionClause successClause = FunctionClause.of(List.of(successPattern), successBody);
+    FunctionClause errorClause =
+        FunctionClause.of(
             List.of(
-                ErlRecordPattern.recordPattern(
+                RecordPattern.of(
                     "http_response",
-                    ErlRecordFieldPattern.fieldPattern(
-                        "status", ErlVarPattern.varPattern("Status")),
-                    ErlRecordFieldPattern.fieldPattern(
-                        "headers", ErlVarPattern.varPattern("RespHeaders")),
-                    ErlRecordFieldPattern.fieldPattern("body", ErlVarPattern.varPattern("Body")))),
-            ErlCallLocal.callLocal(
+                    List.of(
+                        RecordPatternField.of("status", VariablePattern.of("Status")),
+                        RecordPatternField.of("headers", VariablePattern.of("RespHeaders")),
+                        RecordPatternField.of("body", VariablePattern.of("Body"))))),
+            LocalCallExpr.of(
                 "decode_" + opName + "_response_error",
-                ErlVar.var("Status"),
-                ErlVar.var("RespHeaders"),
-                ErlVar.var("Body")));
+                List.of(Variable.of("Status"), Variable.of("RespHeaders"), Variable.of("Body"))));
 
-    return ErlFunction.functionWithDocAndSpec(
+    return Function.of(
         "decode_" + opName + "_response",
-        1,
-        ErlFunctionDoc.functionDoc("Decode AWS JSON response for " + op.getId() + "."),
-        spec,
-        List.of(successClause, errorClause));
+        List.of(successClause, errorClause),
+        Spec.of(
+            "decode_"
+                + opName
+                + "_response(#http_response{}) -> {'ok', "
+                + outputType
+                + "} | {'error', term()}"),
+        Edoc.of("Decode AWS JSON response for " + op.getId() + "."));
   }
 
-  static ErlFunction buildErrorDispatch(Model model, OperationShape op, SymbolProvider sp) {
+  static Function buildErrorDispatch(Model model, OperationShape op, SymbolProvider sp) {
     return ErlangRestJsonOperationIr.buildErrorDispatch(model, op, sp);
   }
 
-  static ErlFunction buildDecodeRequest(
+  static Function buildDecodeRequest(
       Model model,
       OperationShape op,
       HttpBindingIndex httpIndex,
@@ -175,37 +177,33 @@ final class ErlangAwsJsonOperationIr {
     String inputType = sp.toSymbol(input).getName();
     List<MemberShape> members = ErlangJsonCodecSupport.documentMembers(httpIndex, op, input, true);
 
-    ErlFunctionSpec spec =
-        ErlFunctionSpec.functionSpec("decode_" + opName + "_request", "#http_request{}", inputType);
-    ErlRecordPattern pattern =
-        ErlRecordPattern.recordPattern(
-            "http_request",
-            ErlRecordFieldPattern.fieldPattern("body", ErlVarPattern.varPattern("Body")));
+    RecordPattern pattern =
+        RecordPattern.of(
+            "http_request", List.of(RecordPatternField.of("body", VariablePattern.of("Body"))));
 
-    ErlExpr body;
+    io.beam.ir.erlang.Expression body;
     if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
       body =
           ErlangRestJsonOperationIr.buildDocumentRecordFromDecoded(
               inputRecord, model, httpIndex, sp, members, eventStreamModule);
     } else {
       body =
-          ErlExprBlock.block(
-              ErlMatch.match(
-                  ErlVarPattern.varPattern("Decoded"),
-                  ErlangRestJsonOperationIr.decodeBodyJsonExpr()),
-              ErlangRestJsonOperationIr.buildDocumentRecordFromDecoded(
-                  inputRecord, model, httpIndex, sp, members, eventStreamModule));
+          BlockExpr.commaSeparated(
+              List.of(
+                  MatchExpr.bindValue("Decoded", ErlangRestJsonOperationIr.decodeBodyJsonExpr()),
+                  ErlangRestJsonOperationIr.buildDocumentRecordFromDecoded(
+                      inputRecord, model, httpIndex, sp, members, eventStreamModule)),
+              false);
     }
 
-    return ErlFunction.functionWithDocAndSpec(
+    return Function.of(
         "decode_" + opName + "_request",
-        1,
-        ErlFunctionDoc.functionDoc("Decode AWS JSON request for " + op.getId() + "."),
-        spec,
-        List.of(ErlClause.clause(List.of(pattern), body)));
+        List.of(FunctionClause.of(List.of(pattern), body)),
+        Spec.of("decode_" + opName + "_request(#http_request{}) -> " + inputType),
+        Edoc.of("Decode AWS JSON request for " + op.getId() + "."));
   }
 
-  static ErlFunction buildEncodeResponse(
+  static Function buildEncodeResponse(
       Model model,
       OperationShape op,
       HttpBindingIndex httpIndex,
@@ -219,33 +217,31 @@ final class ErlangAwsJsonOperationIr {
     List<MemberShape> members =
         ErlangJsonCodecSupport.documentMembers(httpIndex, op, output, false);
 
-    ErlFunctionSpec spec =
-        ErlFunctionSpec.functionSpec(
-            "encode_" + opName + "_response", outputType, "#http_response{}");
-    ErlRecordPattern pattern =
-        ErlangRestJsonOperationIr.outputBindingHead(outputRecord, output, sp);
+    RecordPattern pattern = ErlangRestJsonOperationIr.outputBindingHead(outputRecord, output, sp);
 
-    List<ErlExpr> body = new ArrayList<>();
+    List<io.beam.ir.erlang.Expression> body = new ArrayList<>();
     body.addAll(
         ErlangRestJsonOperationIr.buildDocumentBodyEncodeExprs(
             model, httpIndex, sp, members, eventStreamModule));
     body.add(
-        ErlRecord.record(
+        RecordExpr.of(
             "http_response",
-            ErlRecordField.field("status", ErlInteger.integer(200)),
-            ErlRecordField.field(
-                "headers",
-                ErlList.list(
-                    ErlTuple.tuple(
-                        ErlBinary.binary("Content-Type"), ErlBinary.binary(contentType)))),
-            ErlRecordField.field("body", ErlVar.var("Body"))));
+            List.of(
+                RecordField.of("status", IntegerExpr.of(200)),
+                RecordField.of(
+                    "headers",
+                    ListExpr.of(
+                        List.of(
+                            TupleExpr.of(
+                                List.of(
+                                    io.beam.ir.erlang.BinaryExpr.of("Content-Type"),
+                                    io.beam.ir.erlang.BinaryExpr.of(contentType)))))),
+                RecordField.of("body", Variable.of("Body")))));
 
-    return ErlFunction.functionWithDocAndSpec(
+    return Function.of(
         "encode_" + opName + "_response",
-        1,
-        ErlFunctionDoc.functionDoc("Encode AWS JSON response for " + op.getId() + "."),
-        spec,
-        List.of(
-            ErlClause.clause(List.of(pattern), ErlExprBlock.block(body.toArray(ErlExpr[]::new)))));
+        List.of(FunctionClause.of(List.of(pattern), BlockExpr.commaSeparated(body, false))),
+        Spec.of("encode_" + opName + "_response(" + outputType + ") -> #http_response{}"),
+        Edoc.of("Encode AWS JSON response for " + op.getId() + "."));
   }
 }

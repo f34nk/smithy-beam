@@ -103,7 +103,6 @@ class ErlangTypesPluginTest {
     assertThat(manifest.expectFileString("reserved_service_types.hrl")).contains("-type");
     assertThat(manifest.getFileString("reserved_service_rest_json_1.erl")).isEmpty();
     assertThat(manifest.getFileString("reserved_service_router.erl")).isEmpty();
-    assertThat(manifest.getFileString("runtime_http.erl")).isEmpty();
   }
 
   @Test

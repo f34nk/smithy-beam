@@ -86,7 +86,9 @@ class ModelProtocolWireTest {
       String ext = plugin.ext();
       if (plugin.client()) {
         assertThat(manifest.getFileString("demo_rest_json_rest_json_1." + ext)).isPresent();
-        assertThat(manifest.getFileString("runtime_http." + ext)).isPresent();
+        if (!plugin.erlang()) {
+          assertThat(manifest.getFileString("runtime_http." + ext)).isPresent();
+        }
       } else {
         assertThat(manifest.getFileString("demo_rest_json_router." + ext)).isPresent();
         assertThat(manifest.getFileString("demo_rest_json_rest_json_1." + ext)).isPresent();
@@ -116,9 +118,9 @@ class ModelProtocolWireTest {
       }
       assertThat(manifest.getFileString("dedicated_io_service_rest_json_1." + ext)).isEmpty();
       assertThat(manifest.getFileString("dedicated_io_service_router." + ext)).isEmpty();
-      if (plugin.client()) {
+      if (plugin.client() && !plugin.erlang()) {
         assertThat(manifest.getFileString("runtime_http." + ext)).isPresent();
-      } else {
+      } else if (!plugin.client()) {
         assertThat(manifest.getFileString("runtime_http." + ext)).isEmpty();
       }
     }
@@ -230,7 +232,6 @@ class ModelProtocolWireTest {
     assertThat(erlangManifest.getFileString("reserved_service_types.hrl")).isPresent();
     assertThat(erlangManifest.getFileString("reserved_service_rest_json_1.erl")).isEmpty();
     assertThat(erlangManifest.getFileString("reserved_service_router.erl")).isEmpty();
-    assertThat(erlangManifest.getFileString("runtime_http.erl")).isEmpty();
 
     MockManifest elixirManifest = new MockManifest();
     new ElixirTypesPlugin()

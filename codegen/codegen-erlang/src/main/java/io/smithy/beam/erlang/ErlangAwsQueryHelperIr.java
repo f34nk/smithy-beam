@@ -1,53 +1,53 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.ApplyExpr;
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.BinaryExpr;
+import io.beam.ir.erlang.BinarySegmentExpr;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.CatchPattern;
+import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.InfixExpr;
+import io.beam.ir.erlang.IntegerExpr;
+import io.beam.ir.erlang.IsTypeGuard;
+import io.beam.ir.erlang.ListComprehensionExpr;
+import io.beam.ir.erlang.ListComprehensionFilter;
+import io.beam.ir.erlang.ListComprehensionGenerator;
+import io.beam.ir.erlang.ListExpr;
+import io.beam.ir.erlang.ListPattern;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MapEntry;
+import io.beam.ir.erlang.MapExpr;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.NotExpr;
+import io.beam.ir.erlang.Pattern;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.TryExpr;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TuplePattern;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
+import io.beam.ir.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamXmlDecoder;
-import io.smithy.beam.ir.erlang.ErlApply;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
-import io.smithy.beam.ir.erlang.ErlBinary;
-import io.smithy.beam.ir.erlang.ErlBinaryExpr;
-import io.smithy.beam.ir.erlang.ErlBinaryTemplate;
-import io.smithy.beam.ir.erlang.ErlBinaryText;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCase;
-import io.smithy.beam.ir.erlang.ErlCatchClause;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlComprehensionFilter;
-import io.smithy.beam.ir.erlang.ErlComprehensionGenerator;
-import io.smithy.beam.ir.erlang.ErlComprehensionQual;
-import io.smithy.beam.ir.erlang.ErlConsPattern;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlGuard;
-import io.smithy.beam.ir.erlang.ErlInteger;
-import io.smithy.beam.ir.erlang.ErlList;
-import io.smithy.beam.ir.erlang.ErlListComprehension;
-import io.smithy.beam.ir.erlang.ErlMap;
-import io.smithy.beam.ir.erlang.ErlMapEntry;
-import io.smithy.beam.ir.erlang.ErlMatch;
-import io.smithy.beam.ir.erlang.ErlNilPattern;
-import io.smithy.beam.ir.erlang.ErlOp;
-import io.smithy.beam.ir.erlang.ErlTry;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlTuplePattern;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 
 final class ErlangAwsQueryHelperIr {
   private ErlangAwsQueryHelperIr() {}
 
-  private static final ErlVarPattern W = ErlVarPattern.varPattern("_");
+  private static final WildcardPattern W = WildcardPattern.of();
 
-  static List<ErlFunction> queryHelperFunctions(boolean ec2Query) {
+  static List<Function> queryHelperFunctions(boolean ec2Query) {
     return List.of(flattenMember(ec2Query), enc());
   }
 
-  static List<ErlFunction> xmlHelperFunctions(boolean ec2Query) {
-    List<ErlFunction> functions = new ArrayList<>();
+  static List<Function> xmlHelperFunctions(boolean ec2Query) {
+    List<Function> functions = new ArrayList<>();
     functions.add(unwrapQueryResult());
     functions.add(normalizeXmlElement());
     functions.add(queryResultElement());
@@ -58,7 +58,7 @@ final class ErlangAwsQueryHelperIr {
     return functions;
   }
 
-  private static List<ErlFunction> awsQueryXmlElementHelpers() {
+  private static List<Function> awsQueryXmlElementHelpers() {
     return List.of(
         ErlangXmlCodecIr.elementContentFunction(),
         awsQueryFindElement(),
@@ -70,243 +70,228 @@ final class ErlangAwsQueryHelperIr {
         ErlangXmlCodecIr.isElementStringFunction());
   }
 
-  private static ErlFunction awsQueryFindElement() {
-    ErlListComprehension matches =
-        ErlListComprehension.comprehensionWithFilters(
-            ErlVar.var("C"),
-            ErlVarPattern.varPattern("C"),
-            ErlVar.var("Content"),
+  private static Function awsQueryFindElement() {
+    Expression matches =
+        ListComprehensionExpr.of(
+            Variable.of("C"),
             List.of(
-                ErlCallLocal.callLocal("is_element", ErlVar.var("C")),
-                ErlOp.op(
-                    "=:=",
-                    ErlCallLocal.callLocal("element_name", ErlVar.var("C")),
-                    ErlVar.var("Name"))));
+                ListComprehensionGenerator.of(VariablePattern.of("C"), Variable.of("Content")),
+                ListComprehensionFilter.of(
+                    LocalCallExpr.of("is_element", List.of(Variable.of("C")))),
+                ListComprehensionFilter.of(
+                    InfixExpr.of(
+                        LocalCallExpr.of("element_name", List.of(Variable.of("C"))),
+                        "=:=",
+                        Variable.of("Name")))));
 
-    return ErlFunction.function(
+    return Function.of(
         "find_element",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Name"), ErlVarPattern.varPattern("Content")),
-                ErlCase.caseExpr(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Name"), VariablePattern.of("Content")),
+                CaseExpr.of(
                     matches,
-                    ErlClause.clause(
-                        List.of(ErlConsPattern.consPattern(ErlVarPattern.varPattern("Element"), W)),
-                        ErlVar.var("Element")),
-                    ErlClause.clause(
-                        List.of(ErlNilPattern.nilPattern()), ErlAtom.atom("undefined"))))));
-  }
-
-  private static ErlFunction awsQueryElementName() {
-    return ErlFunction.function(
-        "element_name",
-        1,
-        List.of(
-            ErlClause.blockClause(
-                List.of(xmlElementNamePattern()),
-                List.of(ErlGuard.guard("is_atom", ErlVar.var("Name"))),
-                ErlCallLocal.callLocal(
-                    "list_to_binary", ErlCallLocal.callLocal("atom_to_list", ErlVar.var("Name")))),
-            ErlClause.blockClause(
-                List.of(xmlElementNamePattern()),
-                List.of(ErlGuard.guard("is_list", ErlVar.var("Name"))),
-                ErlCallLocal.callLocal("list_to_binary", ErlVar.var("Name"))),
-            ErlClause.clause(
-                List.of(xmlElementNamePattern()),
-                List.of(ErlGuard.guard("is_binary", ErlVar.var("Name"))),
-                ErlVar.var("Name")),
-            ErlClause.clause(
-                List.of(sixTupleNamePattern()),
-                List.of(ErlGuard.guard("is_atom", ErlVar.var("Name"))),
-                ErlCallLocal.callLocal(
-                    "list_to_binary", ErlCallLocal.callLocal("atom_to_list", ErlVar.var("Name")))),
-            ErlClause.clause(
-                List.of(sixTupleNamePattern()),
-                List.of(ErlGuard.guard("is_list", ErlVar.var("Name"))),
-                ErlCallLocal.callLocal("list_to_binary", ErlVar.var("Name"))),
-            ErlClause.clause(
-                List.of(sixTupleNamePattern()),
-                List.of(ErlGuard.guard("is_binary", ErlVar.var("Name"))),
-                ErlVar.var("Name"))));
-  }
-
-  private static ErlFunction awsQueryElementText() {
-    return ErlFunction.function(
-        "element_text",
-        1,
-        List.of(
-            ErlClause.blockClause(
-                List.of(xmlElementContentPattern()),
-                ErlCallLocal.callLocal("xml_text_values", ErlVar.var("Content"))),
-            ErlClause.blockClause(
-                List.of(sixTupleContentPattern()),
-                List.of(ErlGuard.guard("is_list", ErlVar.var("Content"))),
-                ErlListComprehension.comprehensionWithFilters(
-                    ErlVar.var("T"),
-                    ErlVarPattern.varPattern("T"),
-                    ErlVar.var("Content"),
                     List.of(
-                        ErlGuard.guard("is_list", ErlVar.var("T")),
-                        ErlGuard.exprGuard(
-                            ErlOp.prefix(
-                                "not",
-                                ErlCallLocal.callLocal("is_element_string", ErlVar.var("T"))))))),
-            ErlClause.clause(List.of(W), ErlList.list())));
+                        Clause.of(
+                            ListPattern.cons(VariablePattern.of("Element"), WildcardPattern.of()),
+                            Variable.of("Element")),
+                        Clause.of(ListPattern.of(List.of()), AtomExpr.of("undefined")))))));
   }
 
-  private static ErlFunction awsQueryXmlTextValues() {
-    ErlCase textCase =
-        ErlCase.caseExpr(
-            ErlVar.var("C"),
-            ErlClause.clause(
-                List.of(xmlTextPattern()),
-                List.of(ErlGuard.guard("is_list", ErlVar.var("V"))),
-                ErlVar.var("V")),
-            ErlClause.clause(
-                List.of(xmlTextPattern()),
-                List.of(ErlGuard.guard("is_binary", ErlVar.var("V"))),
-                ErlCallLocal.callLocal("binary_to_list", ErlVar.var("V"))),
-            ErlClause.clause(List.of(W), ErlList.list()));
-
-    return ErlFunction.function(
-        "xml_text_values",
-        1,
+  private static Function awsQueryElementName() {
+    return Function.of(
+        "element_name",
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Content")),
-                ErlCall.call(
+            FunctionClause.of(
+                List.of(xmlElementNamePattern()),
+                IsTypeGuard.of("atom", Variable.of("Name")),
+                LocalCallExpr.of(
+                    "list_to_binary",
+                    List.of(LocalCallExpr.of("atom_to_list", List.of(Variable.of("Name")))))),
+            FunctionClause.of(
+                List.of(xmlElementNamePattern()),
+                IsTypeGuard.of("list", Variable.of("Name")),
+                LocalCallExpr.of("list_to_binary", List.of(Variable.of("Name")))),
+            FunctionClause.of(
+                List.of(xmlElementNamePattern()),
+                IsTypeGuard.of("binary", Variable.of("Name")),
+                Variable.of("Name")),
+            FunctionClause.of(
+                List.of(sixTupleNamePattern()),
+                IsTypeGuard.of("atom", Variable.of("Name")),
+                LocalCallExpr.of(
+                    "list_to_binary",
+                    List.of(LocalCallExpr.of("atom_to_list", List.of(Variable.of("Name")))))),
+            FunctionClause.of(
+                List.of(sixTupleNamePattern()),
+                IsTypeGuard.of("list", Variable.of("Name")),
+                LocalCallExpr.of("list_to_binary", List.of(Variable.of("Name")))),
+            FunctionClause.of(
+                List.of(sixTupleNamePattern()),
+                IsTypeGuard.of("binary", Variable.of("Name")),
+                Variable.of("Name"))));
+  }
+
+  private static Function awsQueryElementText() {
+    return Function.of(
+        "element_text",
+        List.of(
+            FunctionClause.of(
+                List.of(xmlElementContentPattern()),
+                LocalCallExpr.of("xml_text_values", List.of(Variable.of("Content")))),
+            FunctionClause.of(
+                List.of(sixTupleContentPattern()),
+                IsTypeGuard.of("list", Variable.of("Content")),
+                ListComprehensionExpr.of(
+                    Variable.of("T"),
+                    List.of(
+                        ListComprehensionGenerator.of(
+                            VariablePattern.of("T"), Variable.of("Content")),
+                        ListComprehensionFilter.of(
+                            LocalCallExpr.of("is_list", List.of(Variable.of("T")))),
+                        ListComprehensionFilter.of(
+                            NotExpr.of(
+                                LocalCallExpr.of(
+                                    "is_element_string", List.of(Variable.of("T")))))))),
+            FunctionClause.of(List.of(W), ListExpr.of(List.of()))));
+  }
+
+  private static Function awsQueryXmlTextValues() {
+    Expression textCase =
+        CaseExpr.of(
+            Variable.of("C"),
+            List.of(
+                Clause.of(
+                    xmlTextPattern(), IsTypeGuard.of("list", Variable.of("V")), Variable.of("V")),
+                Clause.of(
+                    xmlTextPattern(),
+                    IsTypeGuard.of("binary", Variable.of("V")),
+                    LocalCallExpr.of("binary_to_list", List.of(Variable.of("V")))),
+                Clause.of(W, ListExpr.of(List.of()))));
+
+    return Function.of(
+        "xml_text_values",
+        List.of(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Content")),
+                RemoteCallExpr.of(
                     "lists",
                     "flatten",
-                    ErlListComprehension.comprehension(
-                        textCase, ErlVarPattern.varPattern("C"), ErlVar.var("Content"))))));
-  }
-
-  private static ErlTuplePattern xmlTextPattern() {
-    return ErlTuplePattern.tuplePattern(
-        ErlAtomPattern.atomPattern("xmlText"), W, W, W, ErlVarPattern.varPattern("V"), W);
-  }
-
-  private static ErlFunction awsQueryXmlChildStructList() {
-    ErlApply decodeItem = ErlApply.apply(ErlVar.var("DecodeFun"), ErlVar.var("Item"));
-
-    return ErlFunction.function(
-        "xml_child_struct_list",
-        4,
-        List.of(
-            ErlClause.clause(
-                List.of(
-                    ErlVarPattern.varPattern("Parent"),
-                    ErlVarPattern.varPattern("ListName"),
-                    ErlVarPattern.varPattern("ItemName"),
-                    ErlVarPattern.varPattern("DecodeFun")),
-                ErlCase.caseExpr(
-                    ErlCallLocal.callLocal(
-                        "find_element",
-                        ErlVar.var("ListName"),
-                        ErlCallLocal.callLocal("element_content", ErlVar.var("Parent"))),
-                    ErlClause.clause(
-                        List.of(ErlAtomPattern.atomPattern("undefined")),
-                        ErlAtom.atom("undefined")),
-                    ErlClause.clause(
-                        List.of(ErlVarPattern.varPattern("ListElement")),
-                        ErlListComprehension.comprehensionWithFilters(
-                            decodeItem,
-                            ErlVarPattern.varPattern("Item"),
-                            ErlCallLocal.callLocal("element_content", ErlVar.var("ListElement")),
+                    List.of(
+                        ListComprehensionExpr.of(
+                            textCase,
                             List.of(
-                                ErlCallLocal.callLocal("is_element", ErlVar.var("Item")),
-                                ErlOp.op(
-                                    "=:=",
-                                    ErlCallLocal.callLocal("element_name", ErlVar.var("Item")),
-                                    ErlVar.var("ItemName")))))))));
+                                ListComprehensionGenerator.of(
+                                    VariablePattern.of("C"), Variable.of("Content")))))))));
   }
 
-  private static ErlFunction awsQueryXmlChildList() {
-    List<ErlComprehensionQual> itemQualifiers =
-        List.of(
-            new ErlComprehensionGenerator(
-                ErlVarPattern.varPattern("Item"),
-                ErlCallLocal.callLocal("element_content", ErlVar.var("ListElement"))),
-            new ErlComprehensionFilter(ErlCallLocal.callLocal("is_element", ErlVar.var("Item"))),
-            new ErlComprehensionFilter(
-                ErlOp.op(
-                    "=:=",
-                    ErlCallLocal.callLocal("element_name", ErlVar.var("Item")),
-                    ErlVar.var("ItemName"))),
-            new ErlComprehensionGenerator(
-                ErlVarPattern.varPattern("ItemText"),
-                ErlList.list(
-                    ErlCallLocal.callLocal(
-                        "list_to_binary",
-                        ErlCallLocal.callLocal("element_text", ErlVar.var("Item"))))),
-            new ErlComprehensionFilter(
-                ErlOp.op("=/=", ErlVar.var("ItemText"), ErlBinary.binary(""))));
+  private static TuplePattern xmlTextPattern() {
+    return TuplePattern.of(List.of(AtomPattern.of("xmlText"), W, W, W, VariablePattern.of("V"), W));
+  }
 
-    return ErlFunction.function(
-        "xml_child_list",
-        3,
+  private static Function awsQueryXmlChildStructList() {
+    Expression decodeItem = ApplyExpr.of(Variable.of("DecodeFun"), List.of(Variable.of("Item")));
+
+    return Function.of(
+        "xml_child_struct_list",
         List.of(
-            ErlClause.clause(
+            FunctionClause.of(
                 List.of(
-                    ErlVarPattern.varPattern("Parent"),
-                    ErlVarPattern.varPattern("ListName"),
-                    ErlVarPattern.varPattern("ItemName")),
-                ErlCase.caseExpr(
-                    ErlCallLocal.callLocal(
+                    VariablePattern.of("Parent"),
+                    VariablePattern.of("ListName"),
+                    VariablePattern.of("ItemName"),
+                    VariablePattern.of("DecodeFun")),
+                CaseExpr.of(
+                    LocalCallExpr.of(
                         "find_element",
-                        ErlVar.var("ListName"),
-                        ErlCallLocal.callLocal("element_content", ErlVar.var("Parent"))),
-                    ErlClause.clause(
-                        List.of(ErlAtomPattern.atomPattern("undefined")),
-                        ErlAtom.atom("undefined")),
-                    ErlClause.clause(
-                        List.of(ErlVarPattern.varPattern("ListElement")),
-                        ErlListComprehension.comprehensionQualifiers(
-                            ErlVar.var("ItemText"), itemQualifiers))))));
+                        List.of(
+                            Variable.of("ListName"),
+                            LocalCallExpr.of("element_content", List.of(Variable.of("Parent"))))),
+                    List.of(
+                        Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
+                        Clause.of(
+                            VariablePattern.of("ListElement"),
+                            ListComprehensionExpr.of(
+                                decodeItem,
+                                List.of(
+                                    ListComprehensionGenerator.of(
+                                        VariablePattern.of("Item"),
+                                        LocalCallExpr.of(
+                                            "element_content",
+                                            List.of(Variable.of("ListElement")))),
+                                    ListComprehensionFilter.of(
+                                        LocalCallExpr.of(
+                                            "is_element", List.of(Variable.of("Item")))),
+                                    ListComprehensionFilter.of(
+                                        InfixExpr.of(
+                                            LocalCallExpr.of(
+                                                "element_name", List.of(Variable.of("Item"))),
+                                            "=:=",
+                                            Variable.of("ItemName")))))))))));
   }
 
-  private static ErlTuplePattern xmlElementNamePattern() {
-    return ErlTuplePattern.tuplePattern(
-        ErlAtomPattern.atomPattern("xmlElement"),
-        ErlVarPattern.varPattern("Name"),
-        W,
-        W,
-        W,
-        W,
-        W,
-        W,
-        W,
-        W,
-        W,
-        W);
+  private static Function awsQueryXmlChildList() {
+    List<io.beam.ir.erlang.ListComprehensionQualifier> itemQualifiers =
+        List.of(
+            ListComprehensionGenerator.of(
+                VariablePattern.of("Item"),
+                LocalCallExpr.of("element_content", List.of(Variable.of("ListElement")))),
+            ListComprehensionFilter.of(
+                LocalCallExpr.of("is_element", List.of(Variable.of("Item")))),
+            ListComprehensionFilter.of(
+                InfixExpr.of(
+                    LocalCallExpr.of("element_name", List.of(Variable.of("Item"))),
+                    "=:=",
+                    Variable.of("ItemName"))),
+            ListComprehensionGenerator.of(
+                VariablePattern.of("ItemText"),
+                ListExpr.of(
+                    List.of(
+                        LocalCallExpr.of(
+                            "list_to_binary",
+                            List.of(
+                                LocalCallExpr.of("element_text", List.of(Variable.of("Item")))))))),
+            ListComprehensionFilter.of(
+                InfixExpr.of(Variable.of("ItemText"), "=/=", BinaryExpr.of(""))));
+
+    return Function.of(
+        "xml_child_list",
+        List.of(
+            FunctionClause.of(
+                List.of(
+                    VariablePattern.of("Parent"),
+                    VariablePattern.of("ListName"),
+                    VariablePattern.of("ItemName")),
+                CaseExpr.of(
+                    LocalCallExpr.of(
+                        "find_element",
+                        List.of(
+                            Variable.of("ListName"),
+                            LocalCallExpr.of("element_content", List.of(Variable.of("Parent"))))),
+                    List.of(
+                        Clause.of(AtomPattern.of("undefined"), AtomExpr.of("undefined")),
+                        Clause.of(
+                            VariablePattern.of("ListElement"),
+                            ListComprehensionExpr.of(Variable.of("ItemText"), itemQualifiers)))))));
   }
 
-  private static ErlTuplePattern sixTupleNamePattern() {
-    return ErlTuplePattern.tuplePattern(ErlVarPattern.varPattern("Name"), W, W, W, W, W);
+  private static TuplePattern xmlElementNamePattern() {
+    return xmlElementTuple(VariablePattern.of("Name"), -1, null, W);
   }
 
-  private static ErlTuplePattern xmlElementContentPattern() {
-    return ErlTuplePattern.tuplePattern(
-        ErlAtomPattern.atomPattern("xmlElement"),
-        W,
-        W,
-        W,
-        W,
-        W,
-        W,
-        W,
-        ErlVarPattern.varPattern("Content"),
-        W,
-        W,
-        W);
+  private static TuplePattern sixTupleNamePattern() {
+    return TuplePattern.of(List.of(VariablePattern.of("Name"), W, W, W, W, W));
   }
 
-  private static ErlTuplePattern sixTupleContentPattern() {
-    return ErlTuplePattern.tuplePattern(W, W, ErlVarPattern.varPattern("Content"), W, W, W);
+  private static TuplePattern xmlElementContentPattern() {
+    return xmlElementTuple(W, 8, "Content", W);
   }
 
-  static List<ErlFunction> serverQueryDecodeHelperFunctions(boolean ec2Query) {
+  private static TuplePattern sixTupleContentPattern() {
+    return TuplePattern.of(List.of(W, W, VariablePattern.of("Content"), W, W, W));
+  }
+
+  static List<Function> serverQueryDecodeHelperFunctions(boolean ec2Query) {
     return List.of(
         parseQueryParams(),
         formValue(),
@@ -315,8 +300,8 @@ final class ErlangAwsQueryHelperIr {
         formIndex());
   }
 
-  static List<ErlFunction> serverXmlEncodeHelperFunctions(boolean ec2Query) {
-    List<ErlFunction> functions = new ArrayList<>();
+  static List<Function> serverXmlEncodeHelperFunctions(boolean ec2Query) {
+    List<Function> functions = new ArrayList<>();
     if (!ec2Query) {
       functions.add(wrapAwsQueryResponse());
     }
@@ -324,210 +309,222 @@ final class ErlangAwsQueryHelperIr {
     return functions;
   }
 
-  private static ErlFunction flattenMember(boolean ec2Query) {
+  private static Function flattenMember(boolean ec2Query) {
     String listSuffix = ec2Query ? "." : ".member.";
-    ErlExpr listBody = ErlCall.call("lists", "append", flattenMemberListComprehension(listSuffix));
+    Expression listBody =
+        RemoteCallExpr.of("lists", "append", List.of(flattenMemberListComprehension(listSuffix)));
+    Expression mapBody =
+        RemoteCallExpr.of("lists", "append", List.of(flattenMemberMapComprehension()));
 
-    ErlExpr mapBody = ErlCall.call("lists", "append", flattenMemberMapComprehension());
-
-    return ErlFunction.function(
+    return Function.of(
         "flatten_member",
-        2,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("_Key"), ErlAtomPattern.atomPattern("undefined")),
-                ErlList.list()),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Key"), ErlVarPattern.varPattern("Value")),
-                List.of(ErlGuard.guard("is_list", ErlVar.var("Value"))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("_Key"), AtomPattern.of("undefined")),
+                ListExpr.of(List.of())),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Key"), VariablePattern.of("Value")),
+                IsTypeGuard.of("list", Variable.of("Value")),
                 listBody),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Key"), ErlVarPattern.varPattern("Value")),
-                List.of(ErlGuard.guard("is_map", ErlVar.var("Value"))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Key"), VariablePattern.of("Value")),
+                IsTypeGuard.of("map", Variable.of("Value")),
                 mapBody),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Key"), ErlVarPattern.varPattern("Value")),
-                List.of(ErlGuard.guard("is_tuple", ErlVar.var("Value"))),
-                ErlCallLocal.callLocal(
-                    "flatten_structure", ErlVar.var("Key"), ErlVar.var("Value"))),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Key"), ErlVarPattern.varPattern("Value")),
-                ErlList.list(ErlTuple.tuple(ErlVar.var("Key"), ErlVar.var("Value"))))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Key"), VariablePattern.of("Value")),
+                IsTypeGuard.of("tuple", Variable.of("Value")),
+                LocalCallExpr.of(
+                    "flatten_structure", List.of(Variable.of("Key"), Variable.of("Value")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Key"), VariablePattern.of("Value")),
+                ListExpr.of(
+                    List.of(TupleExpr.of(List.of(Variable.of("Key"), Variable.of("Value"))))))));
   }
 
-  private static ErlListComprehension flattenMemberListComprehension(String listSuffix) {
-    return ErlListComprehension.comprehensionQualifiers(
-        ErlCallLocal.callLocal(
-            "flatten_member", flattenMemberIndexedKey(listSuffix), ErlVar.var("V")),
+  private static ListComprehensionExpr flattenMemberListComprehension(String listSuffix) {
+    return ListComprehensionExpr.of(
+        LocalCallExpr.of(
+            "flatten_member", List.of(flattenMemberIndexedKey(listSuffix), Variable.of("V"))),
         List.of(
-            new ErlComprehensionGenerator(
-                ErlTuplePattern.tuplePattern(
-                    ErlVarPattern.varPattern("I"), ErlVarPattern.varPattern("V")),
-                ErlCall.call("lists", "enumerate", ErlVar.var("Value"))),
-            new ErlComprehensionFilter(
-                ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))));
+            ListComprehensionGenerator.of(
+                TuplePattern.of(List.of(VariablePattern.of("I"), VariablePattern.of("V"))),
+                RemoteCallExpr.of("lists", "enumerate", List.of(Variable.of("Value")))),
+            ListComprehensionFilter.of(
+                InfixExpr.of(Variable.of("V"), "=/=", AtomExpr.of("undefined")))));
   }
 
-  private static ErlListComprehension flattenMemberMapComprehension() {
-    return ErlListComprehension.comprehensionQualifiers(
-        ErlOp.op(
+  private static ListComprehensionExpr flattenMemberMapComprehension() {
+    return ListComprehensionExpr.of(
+        InfixExpr.of(
+            LocalCallExpr.of(
+                "flatten_member", List.of(flattenMemberEntryKey(".key"), Variable.of("K"))),
             "++",
-            ErlCallLocal.callLocal(
-                "flatten_member", flattenMemberEntryKey(".key"), ErlVar.var("K")),
-            ErlCallLocal.callLocal(
-                "flatten_member", flattenMemberEntryKey(".value"), ErlVar.var("V"))),
+            LocalCallExpr.of(
+                "flatten_member", List.of(flattenMemberEntryKey(".value"), Variable.of("V")))),
         List.of(
-            new ErlComprehensionGenerator(
-                ErlTuplePattern.tuplePattern(
-                    ErlVarPattern.varPattern("I"),
-                    ErlTuplePattern.tuplePattern(
-                        ErlVarPattern.varPattern("K"), ErlVarPattern.varPattern("V"))),
-                ErlCall.call(
-                    "lists", "enumerate", ErlCall.call("maps", "to_list", ErlVar.var("Value")))),
-            new ErlComprehensionFilter(ErlOp.op("=/=", ErlVar.var("K"), ErlAtom.atom("undefined"))),
-            new ErlComprehensionFilter(
-                ErlOp.op("=/=", ErlVar.var("V"), ErlAtom.atom("undefined")))));
+            ListComprehensionGenerator.of(
+                TuplePattern.of(
+                    List.of(
+                        VariablePattern.of("I"),
+                        TuplePattern.of(
+                            List.of(VariablePattern.of("K"), VariablePattern.of("V"))))),
+                RemoteCallExpr.of(
+                    "lists",
+                    "enumerate",
+                    List.of(RemoteCallExpr.of("maps", "to_list", List.of(Variable.of("Value")))))),
+            ListComprehensionFilter.of(
+                InfixExpr.of(Variable.of("K"), "=/=", AtomExpr.of("undefined"))),
+            ListComprehensionFilter.of(
+                InfixExpr.of(Variable.of("V"), "=/=", AtomExpr.of("undefined")))));
   }
 
-  private static ErlBinaryTemplate flattenMemberIndexedKey(String listSuffix) {
-    return ErlBinaryTemplate.binaryTemplate(
-        ErlBinaryExpr.expr(ErlVar.var("Key"), true),
-        ErlBinaryText.text(listSuffix),
-        ErlBinaryExpr.expr(ErlCallLocal.callLocal("integer_to_binary", ErlVar.var("I")), "binary"));
+  private static Expression flattenMemberIndexedKey(String listSuffix) {
+    return BinaryExpr.of(
+        List.of(
+            BinarySegmentExpr.of(Variable.of("Key"), "binary"),
+            BinarySegmentExpr.literal(listSuffix),
+            BinarySegmentExpr.of(
+                LocalCallExpr.of("integer_to_binary", List.of(Variable.of("I"))), "binary")));
   }
 
-  private static ErlBinaryTemplate flattenMemberEntryKey(String suffix) {
-    return ErlBinaryTemplate.binaryTemplate(
-        ErlBinaryExpr.expr(ErlVar.var("Key"), true),
-        ErlBinaryText.text(".entry."),
-        ErlBinaryExpr.expr(ErlCallLocal.callLocal("integer_to_binary", ErlVar.var("I")), "binary"),
-        ErlBinaryText.text(suffix));
+  private static Expression flattenMemberEntryKey(String suffix) {
+    return BinaryExpr.of(
+        List.of(
+            BinarySegmentExpr.of(Variable.of("Key"), "binary"),
+            BinarySegmentExpr.literal(".entry."),
+            BinarySegmentExpr.of(
+                LocalCallExpr.of("integer_to_binary", List.of(Variable.of("I"))), "binary"),
+            BinarySegmentExpr.literal(suffix)));
   }
 
-  private static ErlFunction enc() {
-    return ErlFunction.function(
+  private static Function enc() {
+    return Function.of(
         "enc",
-        1,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_boolean", ErlVar.var("V"))),
-                ErlCallLocal.callLocal("atom_to_binary", ErlVar.var("V"), ErlAtom.atom("utf8"))),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_integer", ErlVar.var("V"))),
-                ErlCallLocal.callLocal("integer_to_binary", ErlVar.var("V"))),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_float", ErlVar.var("V"))),
-                ErlCallLocal.callLocal("float_to_binary", ErlVar.var("V"))),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_binary", ErlVar.var("V"))),
-                ErlVar.var("V")),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("V")),
-                List.of(ErlGuard.guard("is_atom", ErlVar.var("V"))),
-                ErlCallLocal.callLocal("atom_to_binary", ErlVar.var("V"), ErlAtom.atom("utf8")))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("boolean", Variable.of("V")),
+                LocalCallExpr.of("atom_to_binary", List.of(Variable.of("V"), AtomExpr.of("utf8")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("integer", Variable.of("V")),
+                LocalCallExpr.of("integer_to_binary", List.of(Variable.of("V")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("float", Variable.of("V")),
+                LocalCallExpr.of("float_to_binary", List.of(Variable.of("V")))),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("binary", Variable.of("V")),
+                Variable.of("V")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("V")),
+                IsTypeGuard.of("atom", Variable.of("V")),
+                LocalCallExpr.of(
+                    "atom_to_binary", List.of(Variable.of("V"), AtomExpr.of("utf8"))))));
   }
 
-  private static ErlFunction unwrapQueryResult() {
-    ErlCase resultLookup =
-        ErlCase.caseExpr(
-            ErlCallLocal.callLocal(
-                "query_result_element", ErlVar.var("Root"), ErlVar.var("ResultName")),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")),
-                ErlTuple.tuple(
-                    ErlAtom.atom("error"),
-                    ErlTuple.tuple(ErlAtom.atom("missing_result"), ErlVar.var("ResultName")))),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Result")),
-                ErlTuple.tuple(ErlAtom.atom("ok"), ErlVar.var("Result"))));
-
-    ErlTry body =
-        ErlTry.tryExpr(
+  private static Function unwrapQueryResult() {
+    Expression resultLookup =
+        CaseExpr.of(
+            LocalCallExpr.of(
+                "query_result_element", List.of(Variable.of("Root"), Variable.of("ResultName"))),
             List.of(
-                ErlMatch.match(
-                    ErlTuplePattern.tuplePattern(
-                        ErlVarPattern.varPattern("Xml"), ErlVarPattern.varPattern("_")),
-                    ErlCall.call(
-                        "xmerl_scan",
-                        "string",
-                        ErlCallLocal.callLocal("binary_to_list", ErlVar.var("Body")))),
-                ErlMatch.match(
-                    ErlVarPattern.varPattern("Root"),
-                    ErlCallLocal.callLocal("normalize_xml_element", ErlVar.var("Xml"))),
-                resultLookup),
-            List.of(
-                ErlCatchClause.catchClause(
-                    W,
-                    ErlVarPattern.varPattern("Reason"),
-                    ErlTuple.tuple(
-                        ErlAtom.atom("error"),
-                        ErlTuple.tuple(ErlAtom.atom("xml_parse_error"), ErlVar.var("Reason"))))));
+                Clause.of(
+                    AtomPattern.of("undefined"),
+                    TupleExpr.of(
+                        List.of(
+                            AtomExpr.of("error"),
+                            TupleExpr.of(
+                                List.of(
+                                    AtomExpr.of("missing_result"), Variable.of("ResultName")))))),
+                Clause.of(
+                    VariablePattern.of("Result"),
+                    TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Result"))))));
 
-    return ErlFunction.function(
-        "unwrap_query_result",
-        2,
-        List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Body"), ErlVarPattern.varPattern("ResultName")),
-                body)));
-  }
-
-  private static ErlFunction normalizeXmlElement() {
-    return ErlFunction.function(
-        "normalize_xml_element",
-        1,
-        List.of(
-            ErlClause.blockClause(
-                List.of(ErlConsPattern.consPattern(ErlVarPattern.varPattern("H"), W)),
-                ErlCallLocal.callLocal("normalize_xml_element", ErlVar.var("H"))),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Element")), ErlVar.var("Element"))));
-  }
-
-  private static ErlFunction queryResultElement() {
-    return ErlFunction.function(
-        "query_result_element",
-        2,
-        List.of(
-            ErlClause.clause(
+    Expression body =
+        TryExpr.of(
+            BlockExpr.commaSeparated(
                 List.of(
-                    ErlVarPattern.varPattern("Element"), ErlVarPattern.varPattern("ResultName")),
-                ErlCase.caseExpr(
-                    ErlOp.op(
-                        "andalso",
-                        ErlCallLocal.callLocal("is_element", ErlVar.var("Element")),
-                        ErlOp.op(
-                            "=:=",
-                            ErlCallLocal.callLocal("element_name", ErlVar.var("Element")),
-                            ErlVar.var("ResultName"))),
-                    ErlClause.clause(
-                        List.of(ErlAtomPattern.atomPattern("true")), ErlVar.var("Element")),
-                    ErlClause.clause(
-                        List.of(ErlAtomPattern.atomPattern("false")),
-                        ErlCallLocal.callLocal(
-                            "find_element",
-                            ErlVar.var("ResultName"),
-                            ErlCallLocal.callLocal("element_content", ErlVar.var("Element"))))))));
+                    MatchExpr.of(
+                        TuplePattern.of(List.of(VariablePattern.of("Xml"), WildcardPattern.of())),
+                        RemoteCallExpr.of(
+                            "xmerl_scan",
+                            "string",
+                            List.of(
+                                LocalCallExpr.of("binary_to_list", List.of(Variable.of("Body"))))),
+                        MatchExpr.bindValue(
+                            "Root",
+                            LocalCallExpr.of(
+                                "normalize_xml_element", List.of(Variable.of("Xml"))))),
+                    resultLookup),
+                false),
+            List.of(
+                Clause.of(
+                    CatchPattern.anyReason("Reason"),
+                    TupleExpr.of(
+                        List.of(
+                            AtomExpr.of("error"),
+                            TupleExpr.of(
+                                List.of(
+                                    AtomExpr.of("xml_parse_error"), Variable.of("Reason"))))))));
+
+    return Function.of(
+        "unwrap_query_result",
+        List.of(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body"), VariablePattern.of("ResultName")), body)));
   }
 
-  private static ErlFunction decodeQueryError(boolean ec2Query) {
+  private static Function normalizeXmlElement() {
+    return Function.of(
+        "normalize_xml_element",
+        List.of(
+            FunctionClause.of(
+                List.of(ListPattern.cons(VariablePattern.of("H"), WildcardPattern.of())),
+                LocalCallExpr.of("normalize_xml_element", List.of(Variable.of("H")))),
+            FunctionClause.of(List.of(VariablePattern.of("Element")), Variable.of("Element"))));
+  }
+
+  private static Function queryResultElement() {
+    return Function.of(
+        "query_result_element",
+        List.of(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Element"), VariablePattern.of("ResultName")),
+                CaseExpr.of(
+                    InfixExpr.of(
+                        LocalCallExpr.of("is_element", List.of(Variable.of("Element"))),
+                        "andalso",
+                        InfixExpr.of(
+                            LocalCallExpr.of("element_name", List.of(Variable.of("Element"))),
+                            "=:=",
+                            Variable.of("ResultName"))),
+                    List.of(
+                        Clause.of(AtomPattern.of("true"), Variable.of("Element")),
+                        Clause.of(
+                            AtomPattern.of("false"),
+                            LocalCallExpr.of(
+                                "find_element",
+                                List.of(
+                                    Variable.of("ResultName"),
+                                    LocalCallExpr.of(
+                                        "element_content", List.of(Variable.of("Element")))))))))));
+  }
+
+  private static Function decodeQueryError(boolean ec2Query) {
     if (ec2Query) {
       return decodeEc2QueryError();
     }
     return decodeAwsQueryError();
   }
 
-  private static ErlFunction decodeAwsQueryError() {
-    return ErlFunction.function(
+  private static Function decodeAwsQueryError() {
+    return Function.of(
         "decode_query_error",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Status"), ErlVarPattern.varPattern("Body")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Status"), VariablePattern.of("Body")),
                 decodeQueryErrorBody(
                     BeamXmlDecoder.ERROR_RESPONSE_ELEMENT,
                     BeamXmlDecoder.ERROR_ELEMENT,
@@ -535,269 +532,311 @@ final class ErlangAwsQueryHelperIr {
                     BeamXmlDecoder.ERROR_MESSAGE_ELEMENT))));
   }
 
-  private static ErlFunction decodeEc2QueryError() {
-    return ErlFunction.function(
+  private static Function decodeEc2QueryError() {
+    return Function.of(
         "decode_query_error",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Status"), ErlVarPattern.varPattern("Body")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Status"), VariablePattern.of("Body")),
                 decodeQueryErrorBodyEc2())));
   }
 
-  private static ErlTry decodeQueryErrorBody(
+  private static Expression decodeQueryErrorBody(
       String responseElement, String errorElement, String codeElement, String messageElement) {
-    ErlCase errorLookup =
-        ErlCase.caseExpr(
-            ErlCallLocal.callLocal(
+    Expression errorLookup =
+        CaseExpr.of(
+            LocalCallExpr.of(
                 "find_element",
-                ErlBinary.binary(errorElement),
-                ErlCallLocal.callLocal("element_content", ErlVar.var("ErrorResponse"))),
-            ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), unknownQueryError()),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Error")),
-                ErlTuple.tuple(
-                    ErlAtom.atom("error"),
-                    ErlTuple.tuple(
-                        ErlCallLocal.callLocal(
-                            "xml_child_text", ErlVar.var("Error"), ErlBinary.binary(codeElement)),
-                        ErlCallLocal.callLocal(
+                List.of(
+                    BinaryExpr.of(errorElement),
+                    LocalCallExpr.of("element_content", List.of(Variable.of("ErrorResponse"))))),
+            List.of(
+                Clause.of(AtomPattern.of("undefined"), unknownQueryError()),
+                Clause.of(
+                    VariablePattern.of("Error"),
+                    queryErrorTuple(
+                        LocalCallExpr.of(
                             "xml_child_text",
-                            ErlVar.var("Error"),
-                            ErlBinary.binary(messageElement))))));
-
-    ErlCase responseLookup =
-        ErlCase.caseExpr(
-            ErlCallLocal.callLocal(
-                "query_result_element", ErlVar.var("Root"), ErlBinary.binary(responseElement)),
-            ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), unknownQueryError()),
-            ErlClause.clause(List.of(ErlVarPattern.varPattern("ErrorResponse")), errorLookup));
-
-    return ErlTry.tryExpr(
-        List.of(
-            ErlMatch.match(
-                ErlTuplePattern.tuplePattern(
-                    ErlVarPattern.varPattern("Xml"), ErlVarPattern.varPattern("_")),
-                ErlCall.call(
-                    "xmerl_scan",
-                    "string",
-                    ErlCallLocal.callLocal("binary_to_list", ErlVar.var("Body")))),
-            ErlMatch.match(
-                ErlVarPattern.varPattern("Root"),
-                ErlCallLocal.callLocal("normalize_xml_element", ErlVar.var("Xml"))),
-            responseLookup),
-        List.of(ErlCatchClause.catchClause(W, W, unknownQueryError())));
-  }
-
-  private static ErlTry decodeQueryErrorBodyEc2() {
-    ErlCase errorLookup =
-        ErlCase.caseExpr(
-            ErlCallLocal.callLocal(
-                "find_element",
-                ErlBinary.binary(BeamXmlDecoder.ERROR_ELEMENT),
-                ErlCallLocal.callLocal("element_content", ErlVar.var("Error"))),
-            ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), unknownQueryError()),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Error")),
-                ErlTuple.tuple(
-                    ErlAtom.atom("error"),
-                    ErlTuple.tuple(
-                        ErlCallLocal.callLocal(
+                            List.of(Variable.of("Error"), BinaryExpr.of(codeElement))),
+                        LocalCallExpr.of(
                             "xml_child_text",
-                            ErlVar.var("Error"),
-                            ErlBinary.binary(BeamXmlDecoder.ERROR_CODE_ELEMENT)),
-                        ErlCallLocal.callLocal(
-                            "xml_child_text",
-                            ErlVar.var("Error"),
-                            ErlBinary.binary(BeamXmlDecoder.ERROR_MESSAGE_ELEMENT))))));
+                            List.of(Variable.of("Error"), BinaryExpr.of(messageElement)))))));
 
-    ErlCase errorsLookup =
-        ErlCase.caseExpr(
-            ErlCallLocal.callLocal(
-                "find_element",
-                ErlBinary.binary(BeamXmlDecoder.EC2_ERRORS_ELEMENT),
-                ErlCallLocal.callLocal("element_content", ErlVar.var("Response"))),
-            ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), unknownQueryError()),
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Errors")),
-                ErlCase.caseExpr(
-                    ErlCallLocal.callLocal(
-                        "find_element",
-                        ErlBinary.binary(BeamXmlDecoder.ERROR_ELEMENT),
-                        ErlCallLocal.callLocal("element_content", ErlVar.var("Errors"))),
-                    ErlClause.clause(
-                        List.of(ErlAtomPattern.atomPattern("undefined")), unknownQueryError()),
-                    ErlClause.clause(List.of(ErlVarPattern.varPattern("Error")), errorLookup))));
-
-    ErlCase responseLookup =
-        ErlCase.caseExpr(
-            ErlCallLocal.callLocal(
+    Expression responseLookup =
+        CaseExpr.of(
+            LocalCallExpr.of(
                 "query_result_element",
-                ErlVar.var("Root"),
-                ErlBinary.binary(BeamXmlDecoder.EC2_RESPONSE_ELEMENT)),
-            ErlClause.clause(List.of(ErlAtomPattern.atomPattern("undefined")), unknownQueryError()),
-            ErlClause.clause(List.of(ErlVarPattern.varPattern("Response")), errorsLookup));
+                List.of(Variable.of("Root"), BinaryExpr.of(responseElement))),
+            List.of(
+                Clause.of(AtomPattern.of("undefined"), unknownQueryError()),
+                Clause.of(VariablePattern.of("ErrorResponse"), errorLookup)));
 
-    return ErlTry.tryExpr(
+    return queryErrorTryBody(responseLookup);
+  }
+
+  private static Expression decodeQueryErrorBodyEc2() {
+    Expression errorLookup =
+        CaseExpr.of(
+            LocalCallExpr.of(
+                "find_element",
+                List.of(
+                    BinaryExpr.of(BeamXmlDecoder.ERROR_ELEMENT),
+                    LocalCallExpr.of("element_content", List.of(Variable.of("Error"))))),
+            List.of(
+                Clause.of(AtomPattern.of("undefined"), unknownQueryError()),
+                Clause.of(
+                    VariablePattern.of("Error"),
+                    queryErrorTuple(
+                        LocalCallExpr.of(
+                            "xml_child_text",
+                            List.of(
+                                Variable.of("Error"),
+                                BinaryExpr.of(BeamXmlDecoder.ERROR_CODE_ELEMENT))),
+                        LocalCallExpr.of(
+                            "xml_child_text",
+                            List.of(
+                                Variable.of("Error"),
+                                BinaryExpr.of(BeamXmlDecoder.ERROR_MESSAGE_ELEMENT)))))));
+
+    Expression errorsLookup =
+        CaseExpr.of(
+            LocalCallExpr.of(
+                "find_element",
+                List.of(
+                    BinaryExpr.of(BeamXmlDecoder.EC2_ERRORS_ELEMENT),
+                    LocalCallExpr.of("element_content", List.of(Variable.of("Response"))))),
+            List.of(
+                Clause.of(AtomPattern.of("undefined"), unknownQueryError()),
+                Clause.of(
+                    VariablePattern.of("Errors"),
+                    CaseExpr.of(
+                        LocalCallExpr.of(
+                            "find_element",
+                            List.of(
+                                BinaryExpr.of(BeamXmlDecoder.ERROR_ELEMENT),
+                                LocalCallExpr.of(
+                                    "element_content", List.of(Variable.of("Errors"))))),
+                        List.of(
+                            Clause.of(AtomPattern.of("undefined"), unknownQueryError()),
+                            Clause.of(VariablePattern.of("Error"), errorLookup))))));
+
+    Expression responseLookup =
+        CaseExpr.of(
+            LocalCallExpr.of(
+                "query_result_element",
+                List.of(Variable.of("Root"), BinaryExpr.of(BeamXmlDecoder.EC2_RESPONSE_ELEMENT))),
+            List.of(
+                Clause.of(AtomPattern.of("undefined"), unknownQueryError()),
+                Clause.of(VariablePattern.of("Response"), errorsLookup)));
+
+    return queryErrorTryBody(responseLookup);
+  }
+
+  private static Expression queryErrorTuple(Expression codeExpr, Expression messageExpr) {
+    return TupleExpr.of(
+        List.of(AtomExpr.of("error"), TupleExpr.of(List.of(codeExpr, messageExpr))));
+  }
+
+  private static Expression queryErrorTryBody(Expression resultLookup) {
+    return TryExpr.of(
+        BlockExpr.commaSeparated(
+            List.of(
+                MatchExpr.of(
+                    TuplePattern.of(List.of(VariablePattern.of("Xml"), WildcardPattern.of())),
+                    RemoteCallExpr.of(
+                        "xmerl_scan",
+                        "string",
+                        List.of(LocalCallExpr.of("binary_to_list", List.of(Variable.of("Body"))))),
+                    MatchExpr.bindValue(
+                        "Root",
+                        LocalCallExpr.of("normalize_xml_element", List.of(Variable.of("Xml"))))),
+                resultLookup),
+            false),
+        List.of(Clause.of(CatchPattern.anyAny(), unknownQueryError())));
+  }
+
+  private static Expression unknownQueryError() {
+    return TupleExpr.of(
         List.of(
-            ErlMatch.match(
-                ErlTuplePattern.tuplePattern(
-                    ErlVarPattern.varPattern("Xml"), ErlVarPattern.varPattern("_")),
-                ErlCall.call(
-                    "xmerl_scan",
-                    "string",
-                    ErlCallLocal.callLocal("binary_to_list", ErlVar.var("Body")))),
-            ErlMatch.match(
-                ErlVarPattern.varPattern("Root"),
-                ErlCallLocal.callLocal("normalize_xml_element", ErlVar.var("Xml"))),
-            responseLookup),
-        List.of(ErlCatchClause.catchClause(W, W, unknownQueryError())));
+            AtomExpr.of("error"),
+            TupleExpr.of(
+                List.of(
+                    AtomExpr.of("unknown_error"), Variable.of("Status"), Variable.of("Body")))));
   }
 
-  private static ErlTuple unknownQueryError() {
-    return ErlTuple.tuple(
-        ErlAtom.atom("error"),
-        ErlTuple.tuple(ErlAtom.atom("unknown_error"), ErlVar.var("Status"), ErlVar.var("Body")));
-  }
-
-  private static ErlFunction parseQueryParams() {
-    return ErlFunction.function(
+  private static Function parseQueryParams() {
+    return Function.of(
         "parse_query_params",
-        1,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Body")),
-                ErlCall.call(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Body")),
+                RemoteCallExpr.of(
                     "maps",
                     "from_list",
-                    ErlCall.call("uri_string", "dissect_query", ErlVar.var("Body"))))));
+                    List.of(
+                        RemoteCallExpr.of(
+                            "uri_string", "dissect_query", List.of(Variable.of("Body"))))))));
   }
 
-  private static ErlFunction formValue() {
-    return ErlFunction.function(
+  private static Function formValue() {
+    return Function.of(
         "form_value",
-        2,
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Params"), ErlVarPattern.varPattern("Key")),
-                ErlCall.call(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Params"), VariablePattern.of("Key")),
+                RemoteCallExpr.of(
                     "maps",
                     "get",
-                    ErlVar.var("Key"),
-                    ErlVar.var("Params"),
-                    ErlAtom.atom("undefined")))));
+                    List.of(
+                        Variable.of("Key"), Variable.of("Params"), AtomExpr.of("undefined"))))));
   }
 
-  private static ErlFunction formListValuesAws() {
-    return ErlFunction.function(
+  private static Function formListValuesAws() {
+    return Function.of(
         "form_list_values_aws",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Params"), ErlVarPattern.varPattern("Key")),
-                ErlExprBlock.block(
-                    ErlMatch.match(ErlVarPattern.varPattern("Prefix"), formListPrefix(".member.")),
-                    ErlCallLocal.callLocal(
-                        "indexed_form_values", ErlVar.var("Params"), ErlVar.var("Prefix"))))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Params"), VariablePattern.of("Key")),
+                BlockExpr.commaSeparated(
+                    List.of(
+                        MatchExpr.bindValue("Prefix", formListPrefix(".member.")),
+                        LocalCallExpr.of(
+                            "indexed_form_values",
+                            List.of(Variable.of("Params"), Variable.of("Prefix")))),
+                    false))));
   }
 
-  private static ErlFunction formListValuesEc2() {
-    return ErlFunction.function(
+  private static Function formListValuesEc2() {
+    return Function.of(
         "form_list_values_ec2",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Params"), ErlVarPattern.varPattern("Key")),
-                ErlExprBlock.block(
-                    ErlMatch.match(ErlVarPattern.varPattern("Prefix"), formListPrefix(".")),
-                    ErlCallLocal.callLocal(
-                        "indexed_form_values", ErlVar.var("Params"), ErlVar.var("Prefix"))))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Params"), VariablePattern.of("Key")),
+                BlockExpr.commaSeparated(
+                    List.of(
+                        MatchExpr.bindValue("Prefix", formListPrefix(".")),
+                        LocalCallExpr.of(
+                            "indexed_form_values",
+                            List.of(Variable.of("Params"), Variable.of("Prefix")))),
+                    false))));
   }
 
-  private static ErlBinaryTemplate formListPrefix(String suffix) {
-    return ErlBinaryTemplate.binaryTemplate(
-        ErlBinaryExpr.expr(ErlVar.var("Key"), true), ErlBinaryText.text(suffix));
+  private static Expression formListPrefix(String suffix) {
+    return BinaryExpr.of(
+        List.of(
+            BinarySegmentExpr.of(Variable.of("Key"), "binary"), BinarySegmentExpr.literal(suffix)));
   }
 
-  private static ErlFunction indexedFormValues() {
-    ErlListComprehension entries =
-        ErlListComprehension.comprehensionWithFilters(
-            ErlTuple.tuple(
-                ErlCallLocal.callLocal("form_index", ErlVar.var("K"), ErlVar.var("Prefix")),
-                ErlCall.call("maps", "get", ErlVar.var("K"), ErlVar.var("Params"))),
-            ErlVarPattern.varPattern("K"),
-            ErlCall.call("maps", "keys", ErlVar.var("Params")),
-            List.of(
-                ErlOp.op(
-                    "=:=",
-                    ErlCall.call("binary", "match", ErlVar.var("K"), ErlVar.var("Prefix")),
-                    ErlTuple.tuple(
-                        ErlInteger.integer(0),
-                        ErlCallLocal.callLocal("byte_size", ErlVar.var("Prefix"))))));
-
-    ErlListComprehension sortedValues =
-        ErlListComprehension.comprehension(
-            ErlVar.var("V"),
-            ErlTuplePattern.tuplePattern(W, ErlVarPattern.varPattern("V")),
-            ErlVar.var("Sorted"));
-
-    return ErlFunction.function(
-        "indexed_form_values",
-        2,
-        List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Params"), ErlVarPattern.varPattern("Prefix")),
-                ErlExprBlock.block(
-                    ErlMatch.match(ErlVarPattern.varPattern("Entries"), entries),
-                    ErlCase.caseExpr(
-                        ErlCall.call("lists", "sort", ErlVar.var("Entries")),
-                        ErlClause.clause(
-                            List.of(ErlNilPattern.nilPattern()), ErlAtom.atom("undefined")),
-                        ErlClause.clause(
-                            List.of(ErlVarPattern.varPattern("Sorted")), sortedValues))))));
-  }
-
-  private static ErlFunction formIndex() {
-    return ErlFunction.function(
-        "form_index",
-        2,
-        List.of(
-            ErlClause.clause(
-                List.of(ErlVarPattern.varPattern("Key"), ErlVarPattern.varPattern("Prefix")),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Rest"),
-                        ErlCall.call(
-                            "binary",
-                            "part",
-                            ErlVar.var("Key"),
-                            ErlCallLocal.callLocal("byte_size", ErlVar.var("Prefix")),
-                            ErlOp.op(
-                                "-",
-                                ErlCallLocal.callLocal("byte_size", ErlVar.var("Key")),
-                                ErlCallLocal.callLocal("byte_size", ErlVar.var("Prefix"))))),
-                    ErlCallLocal.callLocal("binary_to_integer", ErlVar.var("Rest"))))));
-  }
-
-  private static ErlFunction wrapAwsQueryResponse() {
-    return ErlFunction.function(
-        "wrap_aws_query_response",
-        4,
-        List.of(
-            ErlClause.clause(
+  private static Function indexedFormValues() {
+    ListComprehensionExpr entries =
+        ListComprehensionExpr.of(
+            TupleExpr.of(
                 List.of(
-                    ErlVarPattern.varPattern("ResultName"),
-                    ErlVarPattern.varPattern("ResultContent"),
-                    ErlVarPattern.varPattern("ResponseName"),
-                    ErlVarPattern.varPattern("XmlNs")),
-                ErlCallLocal.callLocal(
-                    "encode_xml",
-                    ErlMap.map(
-                        ErlMapEntry.entry(
-                            ErlVar.var("ResponseName"),
-                            ErlMap.map(
-                                ErlMapEntry.entry(
-                                    ErlVar.var("ResultName"), ErlVar.var("ResultContent"))))),
-                    ErlVar.var("XmlNs")))));
+                    LocalCallExpr.of(
+                        "form_index", List.of(Variable.of("K"), Variable.of("Prefix"))),
+                    RemoteCallExpr.of(
+                        "maps", "get", List.of(Variable.of("K"), Variable.of("Params"))))),
+            List.of(
+                ListComprehensionGenerator.of(
+                    VariablePattern.of("K"),
+                    RemoteCallExpr.of("maps", "keys", List.of(Variable.of("Params")))),
+                ListComprehensionFilter.of(
+                    InfixExpr.of(
+                        RemoteCallExpr.of(
+                            "binary", "match", List.of(Variable.of("K"), Variable.of("Prefix"))),
+                        "=:=",
+                        TupleExpr.of(
+                            List.of(
+                                IntegerExpr.of(0),
+                                LocalCallExpr.of("byte_size", List.of(Variable.of("Prefix")))))))));
+
+    ListComprehensionExpr sortedValues =
+        ListComprehensionExpr.of(
+            Variable.of("V"),
+            List.of(
+                ListComprehensionGenerator.of(
+                    TuplePattern.of(List.of(WildcardPattern.of(), VariablePattern.of("V"))),
+                    Variable.of("Sorted"))));
+
+    return Function.of(
+        "indexed_form_values",
+        List.of(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Params"), VariablePattern.of("Prefix")),
+                BlockExpr.commaSeparated(
+                    List.of(
+                        MatchExpr.bindValue("Entries", entries),
+                        CaseExpr.of(
+                            RemoteCallExpr.of("lists", "sort", List.of(Variable.of("Entries"))),
+                            List.of(
+                                Clause.of(ListPattern.of(List.of()), AtomExpr.of("undefined")),
+                                Clause.of(VariablePattern.of("Sorted"), sortedValues)))),
+                    false))));
+  }
+
+  private static Function formIndex() {
+    return Function.of(
+        "form_index",
+        List.of(
+            FunctionClause.of(
+                List.of(VariablePattern.of("Key"), VariablePattern.of("Prefix")),
+                BlockExpr.commaSeparated(
+                    List.of(
+                        MatchExpr.bindValue(
+                            "Rest",
+                            RemoteCallExpr.of(
+                                "binary",
+                                "part",
+                                List.of(
+                                    Variable.of("Key"),
+                                    LocalCallExpr.of("byte_size", List.of(Variable.of("Prefix"))),
+                                    InfixExpr.of(
+                                        LocalCallExpr.of("byte_size", List.of(Variable.of("Key"))),
+                                        "-",
+                                        LocalCallExpr.of(
+                                            "byte_size", List.of(Variable.of("Prefix"))))))),
+                        LocalCallExpr.of("binary_to_integer", List.of(Variable.of("Rest")))),
+                    false))));
+  }
+
+  private static Function wrapAwsQueryResponse() {
+    Expression responseMap =
+        MapExpr.of(
+            List.of(
+                MapEntry.of(
+                    Variable.of("ResponseName"),
+                    MapExpr.of(
+                        List.of(
+                            MapEntry.of(
+                                Variable.of("ResultName"), Variable.of("ResultContent")))))));
+
+    return Function.of(
+        "wrap_aws_query_response",
+        List.of(
+            FunctionClause.of(
+                List.of(
+                    VariablePattern.of("ResultName"),
+                    VariablePattern.of("ResultContent"),
+                    VariablePattern.of("ResponseName"),
+                    VariablePattern.of("XmlNs")),
+                LocalCallExpr.of("encode_xml", List.of(responseMap, Variable.of("XmlNs"))))));
+  }
+
+  private static TuplePattern xmlElementTuple(
+      Pattern namePattern, int contentIndex, String contentName, Pattern trailing) {
+    List<Pattern> elements = new ArrayList<>();
+    elements.add(AtomPattern.of("xmlElement"));
+    for (int i = 1; i < 12; i++) {
+      if (i == 1 && namePattern != W) {
+        elements.add(namePattern);
+      } else if (i == contentIndex && contentName != null) {
+        elements.add(VariablePattern.of(contentName));
+      } else if (i == 11) {
+        elements.add(trailing);
+      } else {
+        elements.add(W);
+      }
+    }
+    return TuplePattern.of(elements);
   }
 }

@@ -82,13 +82,4 @@ class ErlangRestJson1CodecTest {
     assertThat(client).contains("runtime_http:dispatch(");
     assertThat(client).contains("demo_rest_json_rest_json_1:decode_describe_item_response(");
   }
-
-  @Test
-  void httpDispatchModuleIsEmitted() {
-    MockManifest manifest = runPlugin(loadFixture());
-    String http = manifest.expectFileString("runtime_http.erl");
-    assertThat(http).contains("-module(runtime_http).");
-    assertThat(http).contains("dispatch_signed(HttpClient, Config, #http_request{");
-    assertThat(http).contains("HttpClient:request(");
-  }
 }

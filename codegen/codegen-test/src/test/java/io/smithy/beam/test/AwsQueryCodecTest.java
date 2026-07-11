@@ -126,7 +126,8 @@ class AwsQueryCodecTest {
     MockManifest manifest = runErlangClient(loadVoidOutputModel());
     String codec = manifest.expectFileString(findAwsQueryErlangCodec(manifest));
     assertThat(codec).contains("decode_delete_user_response(");
-    assertThat(codec).contains("{error, {missing_result, _}} -> {ok, #delete_user_output{}}");
+    assertThat(codec.replaceAll("\\s+", " "))
+        .contains("{error, {missing_result, _}} -> {ok, #delete_user_output{");
   }
 
   @Test

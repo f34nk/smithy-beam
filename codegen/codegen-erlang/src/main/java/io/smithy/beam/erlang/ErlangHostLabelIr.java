@@ -1,23 +1,21 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.BinaryExpr;
+import io.beam.ir.erlang.BinarySegmentExpr;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.MatchExpr;
+import io.beam.ir.erlang.RecordPattern;
+import io.beam.ir.erlang.RecordPatternField;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.TuplePattern;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlBinary;
-import io.smithy.beam.ir.erlang.ErlBinaryExpr;
-import io.smithy.beam.ir.erlang.ErlBinarySegment;
-import io.smithy.beam.ir.erlang.ErlBinaryTemplate;
-import io.smithy.beam.ir.erlang.ErlBinaryText;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlMatch;
-import io.smithy.beam.ir.erlang.ErlRecordFieldPattern;
-import io.smithy.beam.ir.erlang.ErlRecordPattern;
-import io.smithy.beam.ir.erlang.ErlTuplePattern;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -32,10 +30,8 @@ import software.amazon.smithy.model.traits.EndpointTrait;
 final class ErlangHostLabelIr {
   private ErlangHostLabelIr() {}
 
-  static List<ErlFunction> buildHostFunctions(
-      Model model, ServiceShape service, SymbolProvider sp) {
-    List<ErlFunction> functions = new ArrayList<>();
-    functions.add(ErlangHttpDispatchIr.splitBaseUrl());
+  static List<Function> buildHostFunctions(Model model, ServiceShape service, SymbolProvider sp) {
+    List<Function> functions = new ArrayList<>();
     BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
     for (OperationShape op : ErlangTopDown.containedOperationsSorted(model, service)) {
       List<MemberShape> hostLabels = hostLabelIndex.hostLabelMembers(op);
@@ -47,68 +43,74 @@ final class ErlangHostLabelIr {
     return functions;
   }
 
-  private static ErlFunction buildHostFunction(
+  private static Function buildHostFunction(
       Model model, OperationShape op, List<MemberShape> hostLabels, SymbolProvider sp) {
     StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
     String inputRecord = ErlangRestXmlSupport.recordName(sp.toSymbol(input));
     SmithyPattern hostPrefix = op.expectTrait(EndpointTrait.class).getHostPrefix();
 
-    List<ErlRecordFieldPattern> fields = new ArrayList<>();
+    List<RecordPatternField> fields = new ArrayList<>();
     for (MemberShape m : hostLabels) {
       String field = BeamNameUtils.toSnakeCase(m.getMemberName());
       fields.add(
-          ErlRecordFieldPattern.fieldPattern(
-              field, ErlVarPattern.varPattern(ErlangRestXmlSupport.toBindingVar(field))));
+          RecordPatternField.of(
+              field, VariablePattern.of(ErlangRestXmlSupport.toBindingVar(field))));
     }
 
-    ErlBinaryTemplate result =
-        ErlBinaryTemplate.binaryTemplate(
-            ErlBinaryExpr.expr(ErlVar.var("Prefix"), true),
-            ErlBinaryExpr.expr(ErlVar.var("Authority"), true));
+    BinaryExpr result =
+        BinaryExpr.of(
+            List.of(
+                BinarySegmentExpr.of(Variable.of("Prefix"), "binary"),
+                BinarySegmentExpr.of(Variable.of("Authority"), "binary")));
 
-    return ErlFunction.function(
+    return Function.of(
         "build_host",
-        2,
         List.of(
-            ErlClause.clause(
-                List.of(
-                    new ErlRecordPattern(inputRecord, fields), ErlVarPattern.varPattern("Config")),
-                ErlExprBlock.block(
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("BaseUrl"),
-                        ErlCallLocal.callLocal(
-                            "maps:get",
-                            ErlAtom.atom("base_url"),
-                            ErlVar.var("Config"),
-                            ErlBinary.binary(""))),
-                    ErlMatch.match(
-                        ErlTuplePattern.tuplePattern(
-                            ErlVarPattern.varPattern("_Scheme"),
-                            ErlVarPattern.varPattern("Authority")),
-                        ErlCallLocal.callLocal("split_base_url", ErlVar.var("BaseUrl"))),
-                    ErlMatch.match(
-                        ErlVarPattern.varPattern("Prefix"), buildHostPrefixExpression(hostPrefix)),
-                    result))));
+            FunctionClause.of(
+                List.of(RecordPattern.of(inputRecord, fields), VariablePattern.of("Config")),
+                BlockExpr.commaSeparated(
+                    List.of(
+                        MatchExpr.bindValue(
+                            "BaseUrl",
+                            RemoteCallExpr.of(
+                                "maps",
+                                "get",
+                                List.of(
+                                    AtomExpr.of("base_url"),
+                                    Variable.of("Config"),
+                                    BinaryExpr.of("")))),
+                        MatchExpr.of(
+                            TuplePattern.of(
+                                List.of(
+                                    VariablePattern.of("_Scheme"),
+                                    VariablePattern.of("Authority"))),
+                            RemoteCallExpr.of(
+                                "utils", "split_base_url", List.of(Variable.of("BaseUrl"))),
+                            null),
+                        MatchExpr.bindValue("Prefix", buildHostPrefixExpression(hostPrefix)),
+                        result),
+                    false))));
   }
 
-  private static ErlBinaryTemplate buildHostPrefixExpression(SmithyPattern hostPrefix) {
+  private static BinaryExpr buildHostPrefixExpression(SmithyPattern hostPrefix) {
     if (hostPrefix.getSegments().isEmpty()) {
-      return ErlBinaryTemplate.binaryTemplate(ErlBinaryText.text(""));
+      return BinaryExpr.of("");
     }
-    List<ErlBinarySegment> segments = new ArrayList<>();
+    List<BinarySegmentExpr> segments = new ArrayList<>();
     for (SmithyPattern.Segment segment : hostPrefix.getSegments()) {
       if (segment.isLabel()) {
         String fieldName = BeamNameUtils.toSnakeCase(segment.getContent());
         String bindingVar = ErlangRestXmlSupport.toBindingVar(fieldName);
         segments.add(
-            ErlBinaryExpr.expr(
-                ErlCallLocal.callLocal(
-                    "uri_encode", ErlCallLocal.callLocal("to_binary", ErlVar.var(bindingVar))),
+            BinarySegmentExpr.of(
+                LocalCallExpr.of(
+                    "uri_encode",
+                    List.of(LocalCallExpr.of("to_binary", List.of(Variable.of(bindingVar))))),
                 "binary"));
       } else {
-        segments.add(ErlBinaryText.text(segment.getContent()));
+        segments.add(BinarySegmentExpr.literal(segment.getContent()));
       }
     }
-    return ErlBinaryTemplate.binaryTemplate(segments.toArray(ErlBinarySegment[]::new));
+    return BinaryExpr.of(segments);
   }
 }

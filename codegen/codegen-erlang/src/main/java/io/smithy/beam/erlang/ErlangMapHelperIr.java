@@ -1,21 +1,23 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.AtomPattern;
+import io.beam.ir.erlang.CaseExpr;
+import io.beam.ir.erlang.Clause;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.IsTypeGuard;
+import io.beam.ir.erlang.ListComprehensionExpr;
+import io.beam.ir.erlang.ListComprehensionGenerator;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.RemoteCallExpr;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.TuplePattern;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
+import io.beam.ir.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlAtomPattern;
-import io.smithy.beam.ir.erlang.ErlCall;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlCase;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlComprehensionGenerator;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlGuard;
-import io.smithy.beam.ir.erlang.ErlListComprehension;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlTuplePattern;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.List;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -34,7 +36,7 @@ import software.amazon.smithy.model.traits.SparseTrait;
 final class ErlangMapHelperIr {
   private ErlangMapHelperIr() {}
 
-  static List<ErlFunction> mapDecodeEncode(
+  static List<Function> mapDecodeEncode(
       Model model, HttpBindingIndex httpIndex, MapShape map, SymbolProvider sp) {
     if (!mapNeedsTypedHelper(model, map)) {
       return List.of();
@@ -56,13 +58,17 @@ final class ErlangMapHelperIr {
     return binding;
   }
 
-  static ErlExpr mapEncodeExpr(
-      Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MapShape map, ErlExpr binding) {
+  static Expression mapEncodeExpr(
+      Model model,
+      SymbolProvider sp,
+      HttpBindingIndex httpIndex,
+      MapShape map,
+      Expression binding) {
     if (mapNeedsTypedHelper(model, map)) {
-      return ErlCallLocal.callLocal("encode_" + mapHelperName(map), binding);
+      return LocalCallExpr.of("encode_" + mapHelperName(map), List.of(binding));
     }
     if (map.hasTrait(SparseTrait.class)) {
-      return ErlCallLocal.callLocal("encode_sparse_map", binding);
+      return LocalCallExpr.of("encode_sparse_map", List.of(binding));
     }
     return binding;
   }
@@ -78,13 +84,17 @@ final class ErlangMapHelperIr {
     return binding;
   }
 
-  static ErlExpr mapDecodeExpr(
-      Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MapShape map, ErlExpr binding) {
+  static Expression mapDecodeExpr(
+      Model model,
+      SymbolProvider sp,
+      HttpBindingIndex httpIndex,
+      MapShape map,
+      Expression binding) {
     if (mapNeedsTypedHelper(model, map)) {
-      return ErlCallLocal.callLocal("decode_" + mapHelperName(map), binding);
+      return LocalCallExpr.of("decode_" + mapHelperName(map), List.of(binding));
     }
     if (map.hasTrait(SparseTrait.class)) {
-      return ErlCallLocal.callLocal("decode_sparse_map", binding);
+      return LocalCallExpr.of("decode_sparse_map", List.of(binding));
     }
     return binding;
   }
@@ -119,70 +129,66 @@ final class ErlangMapHelperIr {
     return false;
   }
 
-  private static ErlFunction buildEncodeMap(
+  private static Function buildEncodeMap(
       Model model, HttpBindingIndex httpIndex, MapShape map, SymbolProvider sp, String helperName) {
-    return ErlFunction.function(
+    return Function.of(
         "encode_" + helperName,
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Map")),
-                List.of(ErlGuard.guard("is_map", ErlVar.var("Map"))),
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Map")),
+                IsTypeGuard.of("map", Variable.of("Map")),
                 transformMap(model, httpIndex, map, sp, true))));
   }
 
-  private static ErlFunction buildDecodeMap(
+  private static Function buildDecodeMap(
       Model model, HttpBindingIndex httpIndex, MapShape map, SymbolProvider sp, String helperName) {
-    return ErlFunction.function(
+    return Function.of(
         "decode_" + helperName,
-        1,
         List.of(
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("undefined")), ErlAtom.atom("undefined")),
-            ErlClause.clause(
-                List.of(ErlAtomPattern.atomPattern("null")), ErlAtom.atom("undefined")),
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Map")),
-                List.of(ErlGuard.guard("is_map", ErlVar.var("Map"))),
+            FunctionClause.of(List.of(AtomPattern.of("undefined")), AtomExpr.of("undefined")),
+            FunctionClause.of(List.of(AtomPattern.of("null")), AtomExpr.of("undefined")),
+            FunctionClause.of(
+                List.of(VariablePattern.of("Map")),
+                IsTypeGuard.of("map", Variable.of("Map")),
                 transformMap(model, httpIndex, map, sp, false))));
   }
 
-  private static ErlCall transformMap(
+  private static RemoteCallExpr transformMap(
       Model model, HttpBindingIndex httpIndex, MapShape map, SymbolProvider sp, boolean encode) {
     MemberShape keyMember = map.getKey();
     MemberShape valueMember = map.getValue();
     boolean sparse = map.hasTrait(SparseTrait.class);
-    ErlExpr entryExpr =
+    Expression entryExpr =
         sparse
             ? sparseMapEntry(model, httpIndex, keyMember, valueMember, sp, encode)
             : mapEntry(model, httpIndex, keyMember, valueMember, sp, encode);
-    return ErlCall.call(
+    return RemoteCallExpr.of(
         "maps",
         "from_list",
-        ErlListComprehension.comprehensionQualifiers(
-            entryExpr,
-            List.of(
-                new ErlComprehensionGenerator(
-                    ErlTuplePattern.tuplePattern(
-                        ErlVarPattern.varPattern("K"), ErlVarPattern.varPattern("V")),
-                    ErlCall.call("maps", "to_list", ErlVar.var("Map"))))));
+        List.of(
+            ListComprehensionExpr.of(
+                entryExpr,
+                List.of(
+                    ListComprehensionGenerator.of(
+                        TuplePattern.of(List.of(VariablePattern.of("K"), VariablePattern.of("V"))),
+                        RemoteCallExpr.of("maps", "to_list", List.of(Variable.of("Map"))))))));
   }
 
-  private static ErlTuple mapEntry(
+  private static TupleExpr mapEntry(
       Model model,
       HttpBindingIndex httpIndex,
       MemberShape keyMember,
       MemberShape valueMember,
       SymbolProvider sp,
       boolean encode) {
-    return ErlTuple.tuple(
-        mapKey(model, sp, httpIndex, keyMember, encode),
-        mapValue(model, sp, httpIndex, valueMember, encode));
+    return TupleExpr.of(
+        List.of(
+            mapKey(model, sp, httpIndex, keyMember, encode),
+            mapValue(model, sp, httpIndex, valueMember, encode)));
   }
 
-  private static ErlCase sparseMapEntry(
+  private static CaseExpr sparseMapEntry(
       Model model,
       HttpBindingIndex httpIndex,
       MemberShape keyMember,
@@ -190,47 +196,159 @@ final class ErlangMapHelperIr {
       SymbolProvider sp,
       boolean encode) {
     if (encode) {
-      return ErlCase.caseExpr(
-          ErlVar.var("V"),
-          ErlClause.clause(
-              List.of(ErlAtomPattern.atomPattern("undefined")),
-              ErlTuple.tuple(mapKey(model, sp, httpIndex, keyMember, true), ErlAtom.atom("null"))),
-          ErlClause.clause(
-              List.of(ErlVarPattern.varPattern("_")),
-              mapEntry(model, httpIndex, keyMember, valueMember, sp, true)));
+      return CaseExpr.of(
+          Variable.of("V"),
+          List.of(
+              Clause.of(
+                  AtomPattern.of("undefined"),
+                  TupleExpr.of(
+                      List.of(mapKey(model, sp, httpIndex, keyMember, true), AtomExpr.of("null")))),
+              Clause.of(
+                  WildcardPattern.of(),
+                  mapEntry(model, httpIndex, keyMember, valueMember, sp, true))));
     }
-    return ErlCase.caseExpr(
-        ErlVar.var("V"),
-        ErlClause.clause(
-            List.of(ErlAtomPattern.atomPattern("null")),
-            ErlTuple.tuple(
-                mapKey(model, sp, httpIndex, keyMember, false), ErlAtom.atom("undefined"))),
-        ErlClause.clause(
-            List.of(ErlVarPattern.varPattern("_")),
-            mapEntry(model, httpIndex, keyMember, valueMember, sp, false)));
+    return CaseExpr.of(
+        Variable.of("V"),
+        List.of(
+            Clause.of(
+                AtomPattern.of("null"),
+                TupleExpr.of(
+                    List.of(
+                        mapKey(model, sp, httpIndex, keyMember, false), AtomExpr.of("undefined")))),
+            Clause.of(
+                WildcardPattern.of(),
+                mapEntry(model, httpIndex, keyMember, valueMember, sp, false))));
   }
 
-  private static ErlExpr mapKey(
+  private static Expression mapKey(
       Model model,
       SymbolProvider sp,
       HttpBindingIndex httpIndex,
       MemberShape member,
       boolean encode) {
     if (encode) {
-      return ErlangJsonCodecSupport.encodeJsonExpr(model, sp, httpIndex, member, "K");
+      return encodeMemberExpr(model, sp, httpIndex, member, "K");
     }
-    return ErlangJsonCodecSupport.decodeJsonExpr(model, sp, httpIndex, member, ErlVar.var("K"));
+    return decodeMemberExpr(model, sp, httpIndex, member, Variable.of("K"));
   }
 
-  private static ErlExpr mapValue(
+  private static Expression mapValue(
       Model model,
       SymbolProvider sp,
       HttpBindingIndex httpIndex,
       MemberShape member,
       boolean encode) {
     if (encode) {
-      return ErlangJsonCodecSupport.encodeJsonExpr(model, sp, httpIndex, member, "V");
+      return encodeMemberExpr(model, sp, httpIndex, member, "V");
     }
-    return ErlangJsonCodecSupport.decodeJsonExpr(model, sp, httpIndex, member, ErlVar.var("V"));
+    return decodeMemberExpr(model, sp, httpIndex, member, Variable.of("V"));
+  }
+
+  private static Expression decodeMemberExpr(
+      Model model,
+      SymbolProvider sp,
+      HttpBindingIndex httpIndex,
+      MemberShape member,
+      Expression raw) {
+    Shape target = model.expectShape(member.getTarget());
+    if (target instanceof EnumShape || target instanceof IntEnumShape) {
+      String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
+      return LocalCallExpr.of("decode_" + helperName, List.of(raw));
+    }
+    if (target instanceof UnionShape) {
+      String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
+      return LocalCallExpr.of("decode_" + helperName, List.of(raw));
+    }
+    if (target instanceof StructureShape) {
+      String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
+      return LocalCallExpr.of("decode_" + helperName, List.of(raw));
+    }
+    if (target instanceof TimestampShape) {
+      String decodeHelper = timestampDecodeHelper(httpIndex, member);
+      return LocalCallExpr.of(decodeHelper, List.of(raw));
+    }
+    if (target instanceof ListShape listShape) {
+      Shape element = model.expectShape(listShape.getMember().getTarget());
+      if (element instanceof StructureShape) {
+        String helperName = ErlangJsonCodecSupport.structureHelperName(sp, element);
+        return LocalCallExpr.of("decode_" + helperName + "_list", List.of(raw));
+      }
+      if (element instanceof EnumShape || element instanceof IntEnumShape) {
+        String helperName = ErlangJsonCodecSupport.structureHelperName(sp, element);
+        return LocalCallExpr.of("decode_" + helperName + "_list", List.of(raw));
+      }
+      String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
+      return LocalCallExpr.of(helper, List.of(raw));
+    }
+    if (target instanceof MapShape mapShape) {
+      return mapDecodeExpr(model, sp, httpIndex, mapShape, raw);
+    }
+    return raw;
+  }
+
+  private static Expression encodeMemberExpr(
+      Model model,
+      SymbolProvider sp,
+      HttpBindingIndex httpIndex,
+      MemberShape member,
+      String bindingVar) {
+    Shape target = model.expectShape(member.getTarget());
+    if (target instanceof EnumShape || target instanceof IntEnumShape) {
+      String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
+      return LocalCallExpr.of("encode_" + helperName, List.of(Variable.of(bindingVar)));
+    }
+    if (target instanceof UnionShape) {
+      String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
+      return LocalCallExpr.of("encode_" + helperName, List.of(Variable.of(bindingVar)));
+    }
+    if (target instanceof StructureShape) {
+      String helperName = ErlangJsonCodecSupport.structureHelperName(sp, target);
+      return LocalCallExpr.of("encode_" + helperName, List.of(Variable.of(bindingVar)));
+    }
+    if (target instanceof TimestampShape) {
+      String encodeHelper = timestampEncodeHelper(httpIndex, member);
+      return LocalCallExpr.of(encodeHelper, List.of(Variable.of(bindingVar)));
+    }
+    if (target instanceof ListShape listShape) {
+      Shape element = model.expectShape(listShape.getMember().getTarget());
+      if (element instanceof StructureShape) {
+        String helperName = ErlangJsonCodecSupport.structureHelperName(sp, element);
+        return LocalCallExpr.of("encode_" + helperName + "_list", List.of(Variable.of(bindingVar)));
+      }
+      if (element instanceof EnumShape || element instanceof IntEnumShape) {
+        String helperName = ErlangJsonCodecSupport.structureHelperName(sp, element);
+        return LocalCallExpr.of("encode_" + helperName + "_list", List.of(Variable.of(bindingVar)));
+      }
+      if (target.hasTrait(SparseTrait.class)) {
+        return LocalCallExpr.of("encode_sparse_list", List.of(Variable.of(bindingVar)));
+      }
+      return Variable.of(bindingVar);
+    }
+    if (target instanceof MapShape mapShape) {
+      return mapEncodeExpr(model, sp, httpIndex, mapShape, Variable.of(bindingVar));
+    }
+    return Variable.of(bindingVar);
+  }
+
+  private static String timestampEncodeHelper(HttpBindingIndex httpIndex, MemberShape member) {
+    var fmt =
+        httpIndex.determineTimestampFormat(
+            member,
+            software.amazon.smithy.model.knowledge.HttpBinding.Location.DOCUMENT,
+            software.amazon.smithy.model.traits.TimestampFormatTrait.Format.DATE_TIME);
+    return fmt == software.amazon.smithy.model.traits.TimestampFormatTrait.Format.EPOCH_SECONDS
+        ? "encode_timestamp_epoch_seconds"
+        : "encode_timestamp_date_time";
+  }
+
+  private static String timestampDecodeHelper(HttpBindingIndex httpIndex, MemberShape member) {
+    var fmt =
+        httpIndex.determineTimestampFormat(
+            member,
+            software.amazon.smithy.model.knowledge.HttpBinding.Location.DOCUMENT,
+            software.amazon.smithy.model.traits.TimestampFormatTrait.Format.DATE_TIME);
+    return fmt == software.amazon.smithy.model.traits.TimestampFormatTrait.Format.EPOCH_SECONDS
+        ? "decode_timestamp_epoch_seconds"
+        : "decode_timestamp_date_time";
   }
 }

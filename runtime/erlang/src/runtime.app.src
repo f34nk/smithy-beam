@@ -1,0 +1,6 @@
+{application, runtime, [
+    {description, "smithy-beam Erlang runtime"},
+    {vsn, "0.1.0"},
+    {modules, []},
+    {applications, [kernel, stdlib, crypto]}
+]}.

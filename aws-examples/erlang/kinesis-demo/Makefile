@@ -27,6 +27,7 @@ build: copy
 	# Build $(CONTAINER_NAME)
 	#
 	smithy build
+	rm -rf src/generated
 	mkdir -p src/generated
 	cp -r build/smithy/source/erlang-*-codegen/* src/generated/
 	tree src/generated
@@ -67,9 +68,7 @@ run:
 	# Run $(CONTAINER_NAME)
 	#
 	erl \
-	-pa _build/default/lib/demo/ebin \
-	-pa _build/default/lib/jsone/ebin \
-	-pa _build/default/lib/aws_signature/ebin \
+	-pa _build/default/lib/*/ebin \
 	-noshell \
 	-eval "application:ensure_all_started(inets), application:ensure_all_started(ssl), application:ensure_all_started(jsone), demo_app:run(), halt()."
 

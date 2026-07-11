@@ -12,6 +12,7 @@
 -define(PARAM_VALUE, <<"test-value-from-erlang">>).
 
 run() ->
+    {ok, _} = application:ensure_all_started(aws_credentials),
     io:format("~n=== Running SSM Client Application ===~n~n"),
 
     Config = client_config(),

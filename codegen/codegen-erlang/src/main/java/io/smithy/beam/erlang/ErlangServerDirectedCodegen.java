@@ -1,5 +1,6 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamErlangLayout;
@@ -9,7 +10,6 @@ import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlModule;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -106,21 +106,6 @@ final class ErlangServerDirectedCodegen
                 BeamProtocolResolver.assertClosureSupported(
                     directive.model(), service, protocol, edition));
 
-    String ns = service.getId().getNamespace();
-    BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns, service);
-
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.runtimeTypesHeaderFile(),
-            writer ->
-                writer.write(
-                    "$L",
-                    ErlangRuntimeTypesIr.runtimeTypesHeader(
-                            "runtime_types",
-                            Optional.empty(),
-                            Optional.of(service.getId().toString()))
-                        .asString()));
-
     List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(ctx.model(), service);
     ErlangBehaviourEmitter.beginService(ctx, service, operations);
   }
@@ -166,7 +151,7 @@ final class ErlangServerDirectedCodegen
         Symbol sym = sp.toSymbol(op);
         exports.add("handle_" + sym.getName() + "/3");
       }
-      ErlModule module =
+      Module module =
           ErlangServerIr.serverModule(
               layout,
               service,
@@ -174,14 +159,7 @@ final class ErlangServerDirectedCodegen
               exports,
               builder.operationFunctions(),
               builder.discoveryFunctions());
-      ctx.writerDelegator()
-          .useFileWriter(
-              ctx.definitionFile(),
-              writer -> {
-                writer.pushGeneratedDocumentationSection();
-                writer.write("$L", module.asString());
-                writer.popState();
-              });
+      ErlangCodecEmission.writeModule(ctx, ctx.definitionFile(), module);
     }
   }
 

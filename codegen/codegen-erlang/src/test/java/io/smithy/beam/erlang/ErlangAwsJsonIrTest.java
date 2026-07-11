@@ -2,6 +2,8 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
@@ -9,14 +11,9 @@ import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlModule;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -55,19 +52,19 @@ class ErlangAwsJsonIrTest {
 
   @Test
   void buildClientCodecModuleHasExpectedStructure() {
-    ErlModule module =
+    Module module =
         ErlangAwsJsonIr.buildClientCodecModule(
             clientContext(), service, BeamProtocolIds.AWS_JSON_1_1);
-    assertThat(module.moduleName()).isNotBlank();
+    assertThat(module.name()).isNotBlank();
     assertThat(module.functions()).isNotEmpty();
-    for (ErlFunction fn : module.functions()) {
+    for (Function fn : module.functions()) {
       assertStructural(fn);
     }
   }
 
   @Test
   void encodeGetUserRequestMatchesGolden() throws IOException {
-    ErlFunction fn =
+    Function fn =
         ErlangAwsJsonIr.encodeRequest(
             model,
             getUserOp,
@@ -77,52 +74,47 @@ class ErlangAwsJsonIrTest {
             "application/x-amz-json-1.1",
             "event_stream");
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/aws_json_encode_get_user_request.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/aws_json_encode_get_user_request.expected.erl");
   }
 
   @Test
   void decodeGetUserResponseMatchesGolden() throws IOException {
-    ErlFunction fn =
+    Function fn =
         ErlangAwsJsonIr.decodeResponse(model, getUserOp, httpIndex, provider, "event_stream");
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/aws_json_decode_get_user_response.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/aws_json_decode_get_user_response.expected.erl");
   }
 
   @Test
   void errorDispatchGetUserMatchesGolden() throws IOException {
-    ErlFunction fn = ErlangAwsJsonIr.errorDispatch(model, getUserOp, provider);
+    Function fn = ErlangAwsJsonIr.errorDispatch(model, getUserOp, provider);
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/aws_json_error_dispatch_get_user.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/aws_json_error_dispatch_get_user.expected.erl");
   }
 
   @Test
   void decodeGetUserRequestMatchesGolden() throws IOException {
-    ErlFunction fn =
+    Function fn =
         ErlangAwsJsonIr.decodeRequest(model, getUserOp, httpIndex, provider, "event_stream");
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/aws_json_decode_get_user_request.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/aws_json_decode_get_user_request.expected.erl");
   }
 
   @Test
   void encodeGetUserResponseMatchesGolden() throws IOException {
-    ErlFunction fn =
+    Function fn =
         ErlangAwsJsonIr.encodeResponse(
             model, getUserOp, httpIndex, provider, "application/x-amz-json-1.1", "event_stream");
     assertStructural(fn);
-    assertThat(fn.asString())
-        .isEqualTo(readExpectedString("ir/aws_json_encode_get_user_response.expected.erl"));
+    IrGoldenAssertions.assertGolden(fn, "ir/aws_json_encode_get_user_response.expected.erl");
   }
 
   @Test
   void sharedCodecHelpersMatchesGolden() throws IOException {
-    List<ErlFunction> functions = ErlangAwsJsonIr.sharedCodecHelpers(model, service, provider);
-    assertThat(helpersAsString(functions))
-        .isEqualTo(readExpectedString("ir/aws_json_shared_codec_helpers.expected.erl"));
-    for (ErlFunction fn : functions) {
+    List<Function> functions = ErlangAwsJsonIr.sharedCodecHelpers(model, service, provider);
+    IrGoldenAssertions.assertGoldenFunctions(
+        functions, "ir/aws_json_shared_codec_helpers.expected.erl");
+    for (Function fn : functions) {
       assertStructural(fn);
     }
   }
@@ -163,27 +155,6 @@ class ErlangAwsJsonIrTest {
         .unwrap();
   }
 
-  private static String helpersAsString(List<ErlFunction> functions) {
-    return functions.stream().map(ErlFunction::asString).collect(Collectors.joining("\n\n"));
-  }
-
-  private static void assertStructural(ErlFunction fn) {
-    assertThat(fn.name()).isNotBlank();
-    assertThat(fn.clauses()).isNotEmpty();
-  }
-
-  private static String readExpectedString(String resourcePath) throws IOException {
-    try (InputStream in =
-        ErlangAwsJsonIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
-      assertThat(in).as("resource %s", resourcePath).isNotNull();
-      String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-      if (text.endsWith("\n")) {
-        text = text.substring(0, text.length() - 1);
-      }
-      return text;
-    }
-  }
-
   private static ErlangContext clientContext() {
     BeamSettings settings = new BeamSettings();
     settings.edition("2026");
@@ -208,5 +179,10 @@ class ErlangAwsJsonIrTest {
         resolved.orElse(null),
         layout.clientModuleName(),
         layout.clientModuleFile());
+  }
+
+  private static void assertStructural(Function fn) {
+    assertThat(fn.name()).isNotBlank();
+    assertThat(fn.clauses()).isNotEmpty();
   }
 }

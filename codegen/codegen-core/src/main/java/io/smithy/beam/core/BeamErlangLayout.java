@@ -123,11 +123,11 @@ public final class BeamErlangLayout {
   }
 
   public String runtimeHelpersModuleFile() {
-    return "runtime_helpers.erl";
+    return "utils.erl";
   }
 
   public String runtimeHelpersModuleName() {
-    return "runtime_helpers";
+    return "utils";
   }
 
   public String runtimeHttpModuleFile() {
@@ -184,14 +184,6 @@ public final class BeamErlangLayout {
 
   public String presignerModuleName() {
     return serviceSnakeName() + "_presigner";
-  }
-
-  public String credentialsModuleFile() {
-    return credentialsModuleName() + ".erl";
-  }
-
-  public String credentialsModuleName() {
-    return serviceSnakeName() + "_credentials";
   }
 
   public String endpointsModuleFile() {

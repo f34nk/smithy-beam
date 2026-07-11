@@ -2,9 +2,10 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.Callback;
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.ir.erlang.ErlCallbackSpec;
-import io.smithy.beam.ir.erlang.ErlModule;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -51,10 +52,10 @@ class ErlangBehaviourIrTest {
             null,
             null);
     List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
-    List<ErlCallbackSpec> callbacks =
+    List<Callback> callbacks =
         operations.stream().map(op -> ErlangBehaviourIr.operationCallback(ctx, op, sp)).toList();
-    ErlModule module = ErlangBehaviourIr.behaviourModule(layout, service, callbacks);
-    String source = module.asString();
+    Module module = ErlangBehaviourIr.behaviourModule(layout, service, callbacks);
+    String source = ErlangRenderer.render(module);
     assertThat(source).contains("-module(basic_service_behaviour).");
     assertThat(source).contains("-include(\"basic_service_types.hrl\").");
     assertThat(source).contains("-callback handle_get_type_closure(");

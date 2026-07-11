@@ -20,21 +20,14 @@ class CredentialProviderEmissionTest {
   private static final ShapeId BASIC_SERVICE = ShapeId.from("smithy.beam.demo.basic#BasicService");
 
   @Test
-  void erlangSigV4ServiceEmitsCredentialsModuleAndDispatchResolves() {
+  void erlangSigV4ServiceOmitsCredentialsModuleAndDispatchLazyFetches() {
     MockManifest manifest = runErlang(SIGV4_SERVICE, "/model/sigv4_fixture.smithy");
 
-    String credentials = manifest.expectFileString("sigv4test_service_credentials.erl");
-    assertThat(credentials).contains("-module(sigv4test_service_credentials).");
-    assertThat(credentials).contains("-export([resolve/1]).");
-    assertThat(credentials).contains("resolve_from_env");
+    assertThat(manifest.getFileString("sigv4test_service_credentials.erl")).isEmpty();
 
-    String http = manifest.expectFileString("runtime_http.erl");
-    assertThat(http).contains("sigv4test_service_credentials:resolve(Config)");
-    assertThat(http).contains("Config#{credentials => Creds}");
-    assertThat(credentials).contains("resolve_from_ec2(Config).");
-    assertThat(credentials).contains("if map_size(Acc) > 0 ->");
-    assertThat(credentials).doesNotContain("_ when map_size(Acc)");
-    assertThat(credentials).doesNotContain("resolve_from_ec2(Config);");
+    String client = manifest.expectFileString("sigv4test_service_client.erl");
+    assertThat(client).contains("aws_credentials:get_credentials()");
+    assertThat(client).contains("session_token => maps:get(token, Creds0, undefined)");
   }
 
   @Test
@@ -54,7 +47,6 @@ class CredentialProviderEmissionTest {
   void basicServiceOmitsCredentialsModule() {
     MockManifest erlang = runErlang(BASIC_SERVICE, "/model/basic.smithy");
     assertThat(erlang.getFileString("basic_service_credentials.erl")).isEmpty();
-    assertThat(erlang.expectFileString("runtime_http.erl")).doesNotContain("_credentials:resolve");
 
     MockManifest elixir = runElixir(BASIC_SERVICE, "/model/basic.smithy");
     assertThat(elixir.getFileString("basic_service_credentials.ex")).isEmpty();

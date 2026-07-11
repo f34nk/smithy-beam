@@ -2,12 +2,18 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Header;
+import io.beam.ir.erlang.HeaderRecordEntry;
+import io.beam.ir.erlang.HeaderTypeAliasEntry;
+import io.beam.ir.erlang.RecordDef;
+import io.beam.ir.erlang.TypeAlias;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamRetryIndex;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlRecordDef;
-import io.smithy.beam.ir.erlang.ErlTypeDef;
+import java.net.URL;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -583,6 +589,43 @@ class ErlangTypeDirectedCodegenTest {
   }
 
   @Test
+  void typesHeaderAppendsEndpointRuleSetWhenTraitPresent() {
+    URL resource =
+        ErlangTypeDirectedCodegenTest.class.getResource("/model/endpoint_rules_minimal.smithy");
+    assertThat(resource).isNotNull();
+    Model endpointModel =
+        Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
+    ServiceShape service =
+        endpointModel.expectShape(
+            ShapeId.from("smithy.beam.test.endpoints#EndpointRulesService"), ServiceShape.class);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    String typesHeader =
+        new BeamErlangLayout(settings, service.getId().getNamespace(), service).typesHeaderFile();
+
+    MockManifest manifest = new MockManifest();
+    ObjectNode pluginSettings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.test.endpoints#EndpointRulesService")
+            .withMember("edition", "2026")
+            .build();
+    new ErlangTypeGeneration()
+        .generate(
+            PluginContext.builder()
+                .model(endpointModel)
+                .fileManifest(manifest)
+                .settings(pluginSettings)
+                .build());
+
+    String content = manifest.expectFileString(typesHeader);
+    assertThat(content)
+        .contains("%% @endpointRuleSet embedded at codegen time.")
+        .contains("-type endpoint_rule_set() :: map().")
+        .contains("-define(ENDPOINT_RULE_SET,")
+        .contains("s3.{Region}.amazonaws.com");
+  }
+
+  @Test
   void buildErrorRecordGoldenUsesIrNodes() {
     Model model =
         Model.assembler()
@@ -627,7 +670,7 @@ class ErlangTypeDirectedCodegenTest {
     ErrorTrait errorTrait = shape.expectTrait(ErrorTrait.class);
     BeamRetryIndex.RetryInfo retryInfo = BeamRetryIndex.forError(shape).orElseThrow();
 
-    ErlRecordDef record =
+    RecordDef record =
         ErlangTypeDirectedCodegen.buildErrorRecord(
             shape,
             symbolProvider,
@@ -635,14 +678,17 @@ class ErlangTypeDirectedCodegenTest {
             errorTrait,
             retryInfo.retryable(),
             retryInfo.throttling());
-    ErlTypeDef type = new ErlTypeDef("er_unavailable", "#er_unavailable{}");
+    TypeAlias type = TypeAlias.of("er_unavailable", "#er_unavailable{}");
 
-    assertThat(record.asString())
+    assertThat(
+            ErlangRenderer.render(Header.ofEntries(List.of(new HeaderRecordEntry(record)), false)))
         .contains("-record(er_unavailable, {")
         .contains("message :: er_string() | undefined,")
         .contains("%% fault: server | retryable: true | throttling: false")
         .contains("'__beam_error_kind' = server :: client | server");
-    assertThat(type.asString()).isEqualTo("-type er_unavailable() :: #er_unavailable{}.");
+    assertThat(
+            ErlangRenderer.render(Header.ofEntries(List.of(new HeaderTypeAliasEntry(type)), false)))
+        .isEqualTo("-type er_unavailable() :: #er_unavailable{}.\n");
   }
 
   private static int countOccurrences(String haystack, String needle) {

@@ -3,7 +3,6 @@ package io.smithy.beam.erlang;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamEventStreamIndex;
-import io.smithy.beam.ir.erlang.ErlModule;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -39,15 +38,11 @@ public final class ErlangEventStreamEmitter {
       exports.add("decode_" + helper + "/1");
     }
 
-    ErlModule module =
+    ErlangCodecEmission.writeModule(
+        ctx,
+        layout.eventStreamModuleFile(),
         ErlangEventStreamIr.eventStreamModule(
-            moduleName, layout.typesHeaderFile(), service, unions, model, sp, exports);
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.eventStreamModuleFile(),
-            writer -> {
-              writer.write("$L", module.asString());
-            });
+            moduleName, layout.typesHeaderFile(), service, unions, model, sp, exports));
   }
 
   static String helperName(SymbolProvider sp, UnionShape union) {

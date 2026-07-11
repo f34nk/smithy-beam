@@ -1,11 +1,20 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.BlockExpr;
+import io.beam.ir.erlang.Edoc;
+import io.beam.ir.erlang.Expression;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.Module;
+import io.beam.ir.erlang.Spec;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.VariablePattern;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamClientRetrySupport;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamEdition;
-import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
@@ -14,16 +23,6 @@ import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlExpr;
-import io.smithy.beam.ir.erlang.ErlExprBlock;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlFunctionDoc;
-import io.smithy.beam.ir.erlang.ErlFunctionSpec;
-import io.smithy.beam.ir.erlang.ErlModule;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -121,22 +120,6 @@ final class ErlangClientDirectedCodegen
             protocol ->
                 BeamProtocolResolver.assertClosureSupported(
                     directive.model(), service, protocol, edition));
-
-    String ns = service.getId().getNamespace();
-    BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns, service);
-
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.runtimeTypesHeaderFile(),
-            writer -> {
-              Optional<String> ruleSet =
-                  BeamEndpointRuleSetEmitter.serializeRuleSetErlangMap(directive.model(), service);
-              writer.write(
-                  "$L",
-                  ErlangRuntimeTypesIr.runtimeTypesHeader(
-                          "runtime_types", ruleSet, Optional.of(service.getId().toString()))
-                      .asString());
-            });
   }
 
   @Override
@@ -161,15 +144,7 @@ final class ErlangClientDirectedCodegen
 
     ErlangProtocolCodecIr.emitClientCodec(ctx, service);
 
-    ErlangRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
-    ErlangAwsEndpointRulesEmitter.emitIfNeeded(ctx, service);
     ErlangS3EndpointEmitter.emit(ctx, service);
-    ErlangEndpointRulesEmitter.emit(ctx, service);
-    ErlangHttpDispatchEmitter.emit(ctx, service);
-    ErlangSigV4Emitter.emit(ctx, service);
-    ErlangPresignerEmitter.emit(ctx, service);
-    ErlangCredentialProviderEmitter.emit(ctx, service);
-    ErlangRetryEmitter.emit(ctx, service);
     ErlangWaiterEmitter.emit(ctx, service);
     ErlangComplianceTestEmitter.emit(ctx, service);
     ErlangEventStreamEmitter.emit(ctx, service);
@@ -180,24 +155,20 @@ final class ErlangClientDirectedCodegen
 
     ErlangClientModuleBuilder builder = ctx.clientModuleBuilderOrNull();
     if (builder != null) {
-      builder.addServiceFunctions(ErlangClientIr.serviceFunctions(service, ctx.model(), sp));
       List<String> exports = new ArrayList<>();
       List<OperationShape> operations =
           ErlangTopDown.containedOperationsSorted(ctx.model(), service);
       for (OperationShape op : operations) {
         exports.add(sp.toSymbol(op).getName() + "/2");
       }
-      ErlModule module =
+      if (ErlangRetryIr.serviceHasRetryableErrors(ctx.model(), service)) {
+        builder.addOperationFunctions(
+            ErlangRetryIr.clientPredicateFunctions(ctx.model(), service, sp));
+      }
+      Module module =
           ErlangClientIr.clientModule(
-              layout, service, exports, builder.serviceFunctions(), builder.operationFunctions());
-      ctx.writerDelegator()
-          .useFileWriter(
-              ctx.definitionFile(),
-              writer -> {
-                writer.pushGeneratedDocumentationSection();
-                writer.write("$L", module.asString());
-                writer.popState();
-              });
+              layout, service, exports, builder.operationFunctions());
+      ErlangCodecEmission.writeModule(ctx, ctx.definitionFile(), module);
       if (ctx.protocolCodegen() != null) {
         for (OperationShape op : operations) {
           ctx.writerDelegator()
@@ -238,7 +209,6 @@ final class ErlangClientDirectedCodegen
         BeamProtocolSupport.hasWireCodegen(
             ctx.resolvedProtocolTraitId(), ctx.protocolCodegen(), ctx.integrations());
     boolean wrapWithRetry = BeamClientRetrySupport.operationHasRetryableErrors(ctx.model(), op);
-    String retryModule = layout.retryModuleName();
     boolean paginated = BeamClientPaginationSupport.isPaginated(ctx.model(), ctx.service(), op);
     PaginationInfo paginationInfo =
         paginated
@@ -246,12 +216,17 @@ final class ErlangClientDirectedCodegen
             : null;
 
     String successReturnType = successReturnType(paginated, paginationInfo, ctx, sp, outSym);
-    ErlFunctionDoc doc = operationDoc(op, ctx);
 
     if (paginated) {
       builder.addOperationFunctions(
           ErlangClientPaginationIr.paginatedOperationFunctions(
-              ctx, ctx.service(), op, layout, wrapWithRetry, retryModule, successReturnType, doc));
+              ctx,
+              ctx.service(),
+              op,
+              layout,
+              wrapWithRetry,
+              successReturnType,
+              operationDoc(op, ctx)));
       return;
     }
 
@@ -265,8 +240,7 @@ final class ErlangClientDirectedCodegen
             successReturnType,
             hasProtocol,
             wrapWithRetry,
-            retryModule,
-            doc));
+            operationDoc(op, ctx)));
   }
 
   private static String successReturnType(
@@ -288,7 +262,7 @@ final class ErlangClientDirectedCodegen
     return outSym.getName();
   }
 
-  private static ErlFunctionDoc operationDoc(OperationShape op, ErlangContext ctx) {
+  private static Edoc operationDoc(OperationShape op, ErlangContext ctx) {
     StringBuilder text = new StringBuilder();
     BeamDocumentation.forShape(op).ifPresent(doc -> text.append(doc).append('\n'));
     if (ctx.protocolCodegen() != null) {
@@ -308,10 +282,10 @@ final class ErlangClientDirectedCodegen
     if (text.isEmpty()) {
       return null;
     }
-    return ErlFunctionDoc.functionDoc(text.toString().strip());
+    return Edoc.of(text.toString().strip());
   }
 
-  private static ErlFunction singlePageOperationFunction(
+  private static Function singlePageOperationFunction(
       ErlangContext ctx,
       OperationShape op,
       BeamErlangLayout layout,
@@ -320,41 +294,37 @@ final class ErlangClientDirectedCodegen
       String successReturnType,
       boolean hasProtocol,
       boolean wrapWithRetry,
-      String retryModule,
-      ErlFunctionDoc doc) {
+      Edoc doc) {
     String specOutput = "{'ok', " + successReturnType + "} | {'error', term()}";
+    Spec spec =
+        Spec.of(opSym.getName() + "(client_config(), " + inSym.getName() + ") -> " + specOutput);
     if (!hasProtocol) {
-      return new ErlFunction(
+      return Function.of(
           opSym.getName(),
-          2,
-          doc,
-          ErlFunctionSpec.functionSpec(
-              opSym.getName(), "client_config(), " + inSym.getName(), specOutput),
           List.of(
-              ErlClause.clause(
-                  List.of(ErlVarPattern.varPattern("_Config"), ErlVarPattern.varPattern("_Input")),
-                  ErlTuple.tuple(ErlAtom.atom("error"), ErlAtom.atom("not_implemented")))));
+              FunctionClause.of(
+                  List.of(VariablePattern.of("_Config"), VariablePattern.of("_Input")),
+                  TupleExpr.of(List.of(AtomExpr.of("error"), AtomExpr.of("not_implemented"))))),
+          spec,
+          doc);
     }
 
-    List<ErlExpr> body =
+    List<Expression> body =
         ErlangClientDispatchIr.operationBodyExprs(
             ctx,
             op,
             layout,
             wrapWithRetry,
-            retryModule,
             false,
             ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
-    return new ErlFunction(
+    Expression clauseBody = body.size() == 1 ? body.get(0) : BlockExpr.commaSeparated(body, false);
+    return Function.of(
         opSym.getName(),
-        2,
-        doc,
-        ErlFunctionSpec.functionSpec(
-            opSym.getName(), "client_config(), " + inSym.getName(), specOutput),
         List.of(
-            ErlClause.blockClause(
-                List.of(ErlVarPattern.varPattern("Config"), ErlVarPattern.varPattern("Input")),
-                ErlExprBlock.block(body.toArray(ErlExpr[]::new)))));
+            FunctionClause.of(
+                List.of(VariablePattern.of("Config"), VariablePattern.of("Input")), clauseBody)),
+        spec,
+        doc);
   }
 
   @Override

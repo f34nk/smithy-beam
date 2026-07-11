@@ -8,6 +8,7 @@
 -define(HASH_KEY, <<"TestTableHashKey">>).
 
 run() ->
+    {ok, _} = application:ensure_all_started(aws_credentials),
     io:format("~n=== Running DynamoDB Client Application ===~n~n"),
 
     Config = client_config(),

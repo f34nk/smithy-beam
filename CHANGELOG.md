@@ -3,6 +3,79 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-07-08
+
+### Added
+- Shared Erlang runtime modules for HTTP dispatch, SigV4 signing, checksums, event streams, retries,
+  and URL helpers, packaged in the codegen-erlang JAR and copied into generated output based on
+  model requirements through a static runtime catalog and requirement index.
+
+### Changed
+- Erlang codegen no longer emits per-service runtime_types.hrl, runtime_helpers.erl,
+  runtime_http.erl, aws_endpoint_rules.erl, or endpoint modules. Plugins emit only the shared
+  runtime files a service needs; consumers compile them from generated output instead of
+  duplicating stubs per service.
+- HTTP dispatch and retry logic consolidated into the shared reqres module; SigV4, checksum, and
+  URL helpers live in static runtime modules. Endpoint rule sets are emitted in the service types
+  header, and endpoint host resolution uses shared utils helpers.
+- Erlang examples and demos point at generated runtime output; the runtime tree uses a flat
+  src-only layout.
+
+### Docs
+- AWS endpoint and rules engine support status updated; Erlang runtime references aligned with
+  static modules.
+
+## 2026-07-07
+
+### Changed
+- Erlang SigV4 clients no longer emit a per-service credentials module. Ambient credentials are
+  fetched lazily via aws_credentials:get_credentials/0 immediately before SigV4 signing.
+
+### Deprecated
+- Generated service credentials modules are removed. Regenerate clients and add
+  aws_credentials to rebar.config.
+
+### Fixed
+- Erlang AWS examples and the minimal S3 demo integrate the aws_credentials dependency correctly.
+
+## 2026-07-06
+
+### Fixed
+- Erlang IR golden fixtures realigned with renderer output, including spacing between multi-function module renders.
+
+## 2026-07-05
+
+### Added
+- Remaining Erlang codegen emitters migrated to the shared beam-ir library: client and server shells, routers, behaviours, handler discovery, resources, HTTP dispatch, AWS runtime helpers, and protocol codec modules for REST JSON, REST XML, AWS JSON, and AWS Query.
+
+### Changed
+- Erlang structural IR removed from codegen-ir in favor of beam-ir; Elixir IR remains in codegen-ir for now.
+- Protocol codec, shell module, and runtime helper wiring now render through beam-ir module and function builders; golden IR fixtures consolidated.
+
+### Fixed
+- Erlang IR rendering corrected for HTTP dispatch request patterns, waiter type guards, CRC32 binary segments, event stream payload inlining, endpoint rule Region map keys, REST-XML xmlns prefixes, map pattern syntax, comma-separated clause bodies, mime defaults, label splitting, path label capture, and split_base_url tuple layout.
+
+## 2026-07-04
+
+### Added
+- Erlang protocol codec helper and REST JSON operation emitters migrated to the shared beam-ir library, including checksum, host label, JSON and XML codec support, and shared structure, map, union, and enum helpers.
+
+### Changed
+- codegen-erlang now depends on beam-ir for Erlang IR types and rendering; IR test infrastructure retargeted and duplicate goldens dropped.
+
+## 2026-07-02
+
+### Added
+- Elixir aws-examples for DynamoDB, IAM, Kinesis, Lambda, RDS, SNS, and SSM; Erlang SSM demo.
+
+### Fixed
+- REST JSON and SigV4 query encoding expands list values correctly.
+- Elixir resource identifier typespecs qualify identifier types; timeout is treated as a shadowed builtin type name.
+- AWS demos use distinct resource names per language so Erlang and Elixir can run in parallel on shared LocalStack; SQS enabled in LocalStack Docker services.
+
+### Changed
+- Erlang JSON dependency uses jsone only; demo runner skips clean before runs; Python baseline builds pin Smithy dependency versions.
+
 ## 2026-07-01
 
 ### Added

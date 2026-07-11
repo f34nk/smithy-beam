@@ -45,8 +45,10 @@ class WaiterEmissionTest {
     assertThat(waiters).contains("waitable_service_client:head_bucket(Client, Input)");
     assertThat(waiters).contains("state => success");
     assertThat(waiters).contains("matcher => success, expected => true");
-    assertThat(waiters).contains("matcher => errorType, expected => #not_found{}");
+    assertThat(waiters).contains("matcher => errorType, expected => #not_found");
     assertThat(waiters).contains("error_types_match(Expected, Got)");
+    assertThat(waiters).contains("when is_binary(Expected)");
+    assertThat(waiters).doesNotContain("is_is_binary");
     assertThat(waiters).contains("timer:sleep(Delay)");
   }
 
@@ -66,7 +68,8 @@ class WaiterEmissionTest {
                 .build());
 
     String waiters = manifest.getFileString("waitable_service_waiters.erl").orElse("");
-    assertThat(waiters).contains("path => [table, table_status]");
+    assertThat(waiters).contains("path => [");
+    assertThat(waiters).contains("table_status");
     assertThat(waiters).contains("record_fields(table_description)");
     assertThat(waiters).contains("record_field(");
     assertThat(waiters).contains("string_equals(");

@@ -8,21 +8,18 @@ export TF_VAR_endpoint=http://localhost:$(HOST_PORT)
 .PHONY: clean
 clean:
 	rebar3 clean
-	rm -rf _build build *.dump *.log src/generated/*
+	rm -rf _build build *.dump *.log src/generated
 	rm -rf terraform/.terraform* terraform/terraform.*
 
 .PHONY: build
 build:
 	smithy build
+	rm -rf src/generated
 	mkdir -p src/generated
 	cp -r build/smithy/source/erlang-*-codegen/* src/generated/
 
-.PHONY: deps
-deps:
-	rebar3 get-deps
-
 .PHONY: test
-test: deps
+test:
 	rebar3 eunit
 
 .PHONY: demo

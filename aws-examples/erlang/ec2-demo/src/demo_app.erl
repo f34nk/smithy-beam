@@ -11,6 +11,7 @@
 -define(DEMO_SG_DESCRIPTION, <<"Security group for EC2 demo">>).
 
 run() ->
+    {ok, _} = application:ensure_all_started(aws_credentials),
     io:format("~n=== Running EC2 Client Application ===~n~n"),
 
     Config = client_config(),

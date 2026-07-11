@@ -2,10 +2,9 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.smithy.beam.ir.erlang.ErlFunction;
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Function;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
@@ -16,23 +15,19 @@ import software.amazon.smithy.model.shapes.ShapeId;
 
 class ErlangRestXmlIrTest {
   @Test
-  void restXmlHelpersAsStringMatchGolden() throws IOException {
-    String decode =
-        ErlangRestXmlIr.xmlDecodeHelpers().stream()
-            .map(ErlFunction::asString)
-            .collect(java.util.stream.Collectors.joining("\n\n"));
-    String encode =
-        ErlangRestXmlIr.xmlEncodeHelpers().stream()
-            .map(ErlFunction::asString)
-            .collect(java.util.stream.Collectors.joining("\n\n"));
-    String combined = decode + "\n\n" + encode;
-    for (ErlFunction fn : ErlangRestXmlIr.xmlDecodeHelpers()) {
+  void restXmlHelpersMatchGolden() throws IOException {
+    for (Function fn : ErlangRestXmlIr.xmlDecodeHelpers()) {
       assertStructural(fn);
     }
-    for (ErlFunction fn : ErlangRestXmlIr.xmlEncodeHelpers()) {
+    for (Function fn : ErlangRestXmlIr.xmlEncodeHelpers()) {
       assertStructural(fn);
     }
-    assertThat(combined).isEqualTo(readExpectedString("ir/rest_xml_helpers.expected.erl"));
+    String combined =
+        IrGoldenAssertions.renderFunctions(ErlangRestXmlIr.xmlDecodeHelpers())
+            + "\n"
+            + IrGoldenAssertions.renderFunctions(ErlangRestXmlIr.xmlEncodeHelpers());
+    assertThat(IrGoldenAssertions.normalizeTrailingNewline(combined))
+        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/rest_xml_helpers.expected.erl"));
   }
 
   @Test
@@ -52,85 +47,54 @@ class ErlangRestXmlIrTest {
 
   @Test
   void decodeGetNameRequestMatchesGolden() throws IOException {
-    assertThat(decodeGetNameRequest().asString())
-        .isEqualTo(readExpectedString("ir/rest_xml_decode_get_name_request.expected.erl"));
+    IrGoldenAssertions.assertGolden(
+        decodeGetNameRequest(), "ir/rest_xml_decode_get_name_request.expected.erl");
   }
 
   @Test
   void decodeGetNameResponseMatchesGolden() throws IOException {
-    assertThat(decodeGetNameResponse())
-        .isEqualTo(readExpectedString("ir/rest_xml_decode_get_name_response.expected.erl"));
+    String combined =
+        IrGoldenAssertions.renderFunctions(
+            ErlangRestXmlOperationIr.buildDecodeResponse(
+                sampleModel(), op(), HttpBindingIndex.of(sampleModel()), sp()));
+    assertThat(IrGoldenAssertions.normalizeTrailingNewline(combined))
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString(
+                "ir/rest_xml_decode_get_name_response.expected.erl"));
   }
 
   @Test
   void encodeGetNameRequestMatchesGolden() throws IOException {
-    assertThat(sampleEncodeRequest().asString())
-        .isEqualTo(readExpectedString("ir/rest_xml_encode_get_name_request.expected.erl"));
+    IrGoldenAssertions.assertGolden(
+        sampleEncodeRequest(), "ir/rest_xml_encode_get_name_request.expected.erl");
   }
 
   @Test
   void encodeGetNameResponseMatchesGolden() throws IOException {
-    assertThat(encodeGetNameResponse().asString())
-        .isEqualTo(readExpectedString("ir/rest_xml_encode_get_name_response.expected.erl"));
-  }
-
-  private static ErlFunction decodeGetNameRequest() {
-    Model model = sampleModel();
-    OperationShape op =
-        model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
-    return ErlangRestXmlOperationIr.buildDecodeRequest(
-        model,
-        op,
-        HttpBindingIndex.of(model),
-        sampleSymbolProvider(
-            model,
-            model.expectShape(
-                ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class)));
-  }
-
-  private static String decodeGetNameResponse() {
-    Model model = sampleModel();
-    ServiceShape service =
-        model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
-    OperationShape op =
-        model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
-    return ErlangRestXmlOperationIr.buildDecodeResponse(
-            model, op, HttpBindingIndex.of(model), sampleSymbolProvider(model, service))
-        .stream()
-        .map(ErlFunction::asString)
-        .collect(java.util.stream.Collectors.joining("\n\n"));
-  }
-
-  private static ErlFunction encodeGetNameResponse() {
-    Model model = sampleModel();
-    ServiceShape service =
-        model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
-    OperationShape op =
-        model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
-    return ErlangRestXmlOperationIr.buildEncodeResponse(
-        model, op, HttpBindingIndex.of(model), sampleSymbolProvider(model, service));
+    IrGoldenAssertions.assertGolden(
+        encodeGetNameResponse(), "ir/rest_xml_encode_get_name_response.expected.erl");
   }
 
   @Test
   void capturedCodecBodiesDoNotDuplicateClauseTerminators() {
     Model model = sampleModel();
-    ServiceShape service =
-        model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
-    OperationShape op =
-        model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
-    ErlangSymbolProvider sp = sampleSymbolProvider(model, service);
+    ServiceShape service = service();
+    OperationShape op = op();
+    ErlangSymbolProvider sp = sp();
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
 
     String encodeRequest =
-        ErlangRestXmlIr.encodeRequest(model, service, op, httpIndex, sp, false).asString();
+        ErlangRenderer.renderFunction(
+            ErlangRestXmlIr.encodeRequest(model, service, op, httpIndex, sp, false));
     String decodeRequest =
-        ErlangRestXmlOperationIr.buildDecodeRequest(model, op, httpIndex, sp).asString();
+        ErlangRenderer.renderFunction(
+            ErlangRestXmlOperationIr.buildDecodeRequest(model, op, httpIndex, sp));
     String decodeResponse =
-        ErlangRestXmlOperationIr.buildDecodeResponse(model, op, httpIndex, sp).stream()
-            .map(ErlFunction::asString)
-            .collect(java.util.stream.Collectors.joining("\n\n"));
+        IrGoldenAssertions.renderFunctions(
+            ErlangRestXmlOperationIr.buildDecodeResponse(model, op, httpIndex, sp));
     String encodeResponse =
-        ErlangRestXmlOperationIr.buildEncodeResponse(model, op, httpIndex, sp).asString();
+        ErlangRenderer.renderFunction(
+            ErlangRestXmlOperationIr.buildEncodeResponse(model, op, httpIndex, sp));
 
     for (String generated : List.of(encodeRequest, decodeRequest, decodeResponse, encodeResponse)) {
       assertThat(generated).doesNotContain("}..");
@@ -179,19 +143,36 @@ class ErlangRestXmlIrTest {
         .unwrap();
   }
 
-  private static ErlFunction sampleEncodeRequest() {
+  private static Function sampleEncodeRequest() {
     Model model = sampleModel();
-    ServiceShape service =
-        model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
-    OperationShape op =
-        model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
     return ErlangRestXmlIr.encodeRequest(
-        model,
-        service,
-        op,
-        HttpBindingIndex.of(model),
-        sampleSymbolProvider(model, service),
-        false);
+        model, service(), op(), HttpBindingIndex.of(model), sp(), false);
+  }
+
+  private static Function decodeGetNameRequest() {
+    Model model = sampleModel();
+    return ErlangRestXmlOperationIr.buildDecodeRequest(
+        model, op(), HttpBindingIndex.of(model), sp());
+  }
+
+  private static Function encodeGetNameResponse() {
+    Model model = sampleModel();
+    return ErlangRestXmlOperationIr.buildEncodeResponse(
+        model, op(), HttpBindingIndex.of(model), sp());
+  }
+
+  private static ServiceShape service() {
+    return sampleModel()
+        .expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+  }
+
+  private static OperationShape op() {
+    return sampleModel()
+        .expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
+  }
+
+  private static ErlangSymbolProvider sp() {
+    return sampleSymbolProvider(sampleModel(), service());
   }
 
   static ErlangSymbolProvider sampleSymbolProvider(Model model, ServiceShape service) {
@@ -199,24 +180,12 @@ class ErlangRestXmlIrTest {
         new io.smithy.beam.core.BeamSettings(),
         model,
         service,
-        "http_types.hrl",
+        "runtime_types.hrl",
         io.smithy.beam.core.BeamCodegenKind.CLIENT);
   }
 
-  private static void assertStructural(ErlFunction fn) {
+  private static void assertStructural(Function fn) {
     assertThat(fn.name()).isNotBlank();
     assertThat(fn.clauses()).isNotEmpty();
-  }
-
-  private static String readExpectedString(String resourcePath) throws IOException {
-    try (InputStream in =
-        ErlangRestXmlIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
-      assertThat(in).as("resource %s", resourcePath).isNotNull();
-      String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-      if (text.endsWith("\n")) {
-        text = text.substring(0, text.length() - 1);
-      }
-      return text;
-    }
   }
 }

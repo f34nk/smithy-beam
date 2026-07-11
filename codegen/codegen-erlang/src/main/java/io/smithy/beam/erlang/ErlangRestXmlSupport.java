@@ -1,18 +1,19 @@
 package io.smithy.beam.erlang;
 
+import io.beam.ir.erlang.AtomExpr;
+import io.beam.ir.erlang.FunctionClause;
+import io.beam.ir.erlang.IntegerPattern;
+import io.beam.ir.erlang.LocalCallExpr;
+import io.beam.ir.erlang.RecordExpr;
+import io.beam.ir.erlang.RecordField;
+import io.beam.ir.erlang.TupleExpr;
+import io.beam.ir.erlang.Variable;
+import io.beam.ir.erlang.VariablePattern;
+import io.beam.ir.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
 import io.smithy.beam.core.BeamXmlBindingIndex;
-import io.smithy.beam.ir.erlang.ErlAtom;
-import io.smithy.beam.ir.erlang.ErlCallLocal;
-import io.smithy.beam.ir.erlang.ErlClause;
-import io.smithy.beam.ir.erlang.ErlIntegerPattern;
-import io.smithy.beam.ir.erlang.ErlRecord;
-import io.smithy.beam.ir.erlang.ErlRecordField;
-import io.smithy.beam.ir.erlang.ErlTuple;
-import io.smithy.beam.ir.erlang.ErlVar;
-import io.smithy.beam.ir.erlang.ErlVarPattern;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -52,9 +53,9 @@ final class ErlangRestXmlSupport {
     return out;
   }
 
-  static List<ErlClause> buildResponseErrorDispatchClauses(
+  static List<FunctionClause> buildResponseErrorDispatchClauses(
       Model model, OperationShape op, SymbolProvider sp) {
-    List<ErlClause> clauses = new ArrayList<>();
+    List<FunctionClause> clauses = new ArrayList<>();
     for (ShapeId errorId : op.getErrors()) {
       StructureShape errShape = model.expectShape(errorId, StructureShape.class);
       String recName = recordName(sp.toSymbol(errShape));
@@ -66,33 +67,32 @@ final class ErlangRestXmlSupport {
         continue;
       }
       clauses.add(
-          ErlClause.clause(
-              List.of(
-                  ErlIntegerPattern.integerPattern(httpStatus), ErlVarPattern.varPattern("_Body")),
-              ErlTuple.tuple(ErlAtom.atom("error"), restXmlErrorRecord(errShape, recName))));
+          FunctionClause.of(
+              List.of(IntegerPattern.of(httpStatus), WildcardPattern.of()),
+              TupleExpr.of(List.of(AtomExpr.of("error"), restXmlErrorRecord(errShape, recName)))));
     }
     clauses.add(
-        ErlClause.clause(
-            List.of(ErlVarPattern.varPattern("Status"), ErlVarPattern.varPattern("Body")),
-            ErlCallLocal.callLocal(
-                "decode_rest_xml_error", ErlVar.var("Status"), ErlVar.var("Body"))));
+        FunctionClause.of(
+            List.of(VariablePattern.of("Status"), VariablePattern.of("Body")),
+            LocalCallExpr.of(
+                "decode_rest_xml_error", List.of(Variable.of("Status"), Variable.of("Body")))));
     return clauses;
   }
 
-  private static ErlRecord restXmlErrorRecord(StructureShape errShape, String recName) {
-    List<ErlRecordField> fields = new ArrayList<>();
+  private static RecordExpr restXmlErrorRecord(StructureShape errShape, String recName) {
+    List<RecordField> fields = new ArrayList<>();
     for (MemberShape member : errShape.members()) {
       if (member.getMemberName().equals("__beam_error_kind")) {
         continue;
       }
       fields.add(
-          ErlRecordField.field(
-              BeamNameUtils.toSnakeCase(member.getMemberName()), ErlAtom.atom("undefined")));
+          RecordField.of(
+              BeamNameUtils.toSnakeCase(member.getMemberName()), AtomExpr.of("undefined")));
     }
     if (fields.isEmpty()) {
-      return ErlRecord.record(recName);
+      return RecordExpr.of(recName, List.of());
     }
-    return ErlRecord.record(recName, fields.toArray(ErlRecordField[]::new));
+    return RecordExpr.of(recName, fields);
   }
 
   static String buildStructureXmlMap(

@@ -7,6 +7,7 @@
 -define(TEST_TOPIC_NAME, <<"sns-demo-erlang-test-topic">>).
 
 run() ->
+    {ok, _} = application:ensure_all_started(aws_credentials),
     io:format("~n=== Running SNS Client Application ===~n~n"),
 
     Config = client_config(),

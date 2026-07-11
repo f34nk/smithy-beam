@@ -2,22 +2,50 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.smithy.beam.ir.erlang.IrObject;
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.Header;
+import io.beam.ir.erlang.Module;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 final class IrGoldenAssertions {
   private IrGoldenAssertions() {}
 
-  static void assertLinesAndAsString(IrObject ir, String resourcePath) throws IOException {
-    List<String> expectedLines = readExpectedLines(resourcePath);
-    String expectedString = readExpectedString(resourcePath);
-    assertThat(ir.lines()).isEqualTo(expectedLines);
-    assertThat(ir.asString()).isEqualTo(expectedString);
-    assertThat(ir.asString()).isEqualTo(String.join("\n", expectedLines));
+  static void assertGolden(Function function, String resourcePath) throws IOException {
+    assertThat(normalizeTrailingNewline(ErlangRenderer.renderFunction(function)))
+        .isEqualTo(readExpectedString(resourcePath));
+  }
+
+  static void assertGolden(Module module, String resourcePath) throws IOException {
+    assertThat(normalizeTrailingNewline(ErlangRenderer.render(module)))
+        .isEqualTo(readExpectedString(resourcePath));
+  }
+
+  static void assertGolden(Header header, String resourcePath) throws IOException {
+    assertThat(normalizeTrailingNewline(ErlangRenderer.render(header)))
+        .isEqualTo(readExpectedString(resourcePath));
+  }
+
+  static void assertGoldenFunctions(List<Function> functions, String resourcePath)
+      throws IOException {
+    assertThat(normalizeTrailingNewline(renderFunctions(functions)))
+        .isEqualTo(readExpectedString(resourcePath));
+  }
+
+  /** Renders functions with the same spacing as {@link ErlangRenderer#render(Module)}. */
+  static String renderFunctions(List<Function> functions) {
+    return functions.stream().map(ErlangRenderer::renderFunction).collect(Collectors.joining("\n"));
+  }
+
+  static String normalizeTrailingNewline(String text) {
+    if (text.endsWith("\n")) {
+      return text.substring(0, text.length() - 1);
+    }
+    return text;
   }
 
   static String readExpectedString(String resourcePath) throws IOException {
@@ -30,9 +58,5 @@ final class IrGoldenAssertions {
       }
       return text;
     }
-  }
-
-  static List<String> readExpectedLines(String resourcePath) throws IOException {
-    return Arrays.asList(readExpectedString(resourcePath).split("\n", -1));
   }
 }

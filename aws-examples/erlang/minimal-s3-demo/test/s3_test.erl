@@ -25,7 +25,7 @@ presign_url_test() ->
         path = <<"/my-bucket/object.txt">>,
         host = <<"localhost:4566">>
     },
-    {ok, Url} = amazon_s3_presigner:presign_url(Config, get_object, Request),
+    {ok, Url} = aws_sigv4:presign_url(Config, get_object, Request),
     ?assertMatch(
         <<"https://localhost:4566/my-bucket/object.txt?", _/binary>>,
         Url
@@ -95,7 +95,10 @@ head_bucket_client_config(Extra) ->
             signing_name => <<"s3">>,
             s3_addressing_style => path_style,
             http_client => head_bucket_http_mock,
-            credentials => undefined,
+            credentials => #{
+                access_key_id => <<"dummy">>,
+                secret_access_key => <<"dummy">>
+            },
             retry => #{max_attempts => 3, base_delay_ms => 0}
         },
         Extra

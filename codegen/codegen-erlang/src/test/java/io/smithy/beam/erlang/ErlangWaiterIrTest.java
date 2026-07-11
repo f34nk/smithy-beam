@@ -2,14 +2,14 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.erlang.ErlangRenderer;
+import io.beam.ir.erlang.Function;
+import io.beam.ir.erlang.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.core.BeamWaiterIndex;
-import io.smithy.beam.ir.erlang.ErlFunction;
-import io.smithy.beam.ir.erlang.ErlModule;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
@@ -47,17 +47,19 @@ class ErlangWaiterIrTest {
             .filter(b -> b.name().equals("BucketExists"))
             .findFirst()
             .orElseThrow();
-    ErlFunction fn = ErlangWaiterIr.waiterFunction(index, binding, clientMod, provider);
-    String text = fn.asString();
+    Function fn = ErlangWaiterIr.waiterFunction(index, binding, clientMod, provider);
+    String text = ErlangRenderer.renderFunction(fn);
 
     assertThat(fn.name()).isEqualTo("wait_bucket_exists");
-    assertThat(fn.arity()).isEqualTo(3);
+    assertThat(fn.clauses()).hasSize(1);
     assertThat(text)
         .contains("Waits using the BucketExists waiter on smithy.beam.test.waiters#HeadBucket.");
     assertThat(text).contains("wait_bucket_exists(Client, Input, Opts) ->");
     assertThat(text).contains("state => success");
-    assertThat(text).contains("matcher => success, expected => true");
-    assertThat(text).contains("matcher => errorType, expected => #not_found{}");
+    assertThat(text).contains("matcher => success");
+    assertThat(text).contains("expected => true");
+    assertThat(text).contains("matcher => errorType");
+    assertThat(text).contains("expected => #not_found{");
     assertThat(text).contains("min_delay_ms => 4000");
     assertThat(text).contains("max_delay_ms => 300000");
     assertThat(text).contains(clientMod + ":head_bucket(Client, Input)");
@@ -71,12 +73,14 @@ class ErlangWaiterIrTest {
             .filter(b -> b.name().equals("TableExists"))
             .findFirst()
             .orElseThrow();
-    ErlFunction fn = ErlangWaiterIr.waiterFunction(index, binding, clientMod, provider);
-    String text = fn.asString();
+    Function fn = ErlangWaiterIr.waiterFunction(index, binding, clientMod, provider);
+    String text = ErlangRenderer.renderFunction(fn);
 
     assertThat(fn.name()).isEqualTo("wait_table_exists");
     assertThat(text).contains("matcher => output");
-    assertThat(text).contains("path => [table, table_status]");
+    assertThat(text).contains("path => [");
+    assertThat(text).contains("table,");
+    assertThat(text).contains("table_status");
     assertThat(text).contains("comparator => stringEquals");
     assertThat(text).contains("expected => <<\"ACTIVE\">>");
     assertThat(text).contains(clientMod + ":describe_table(Client, Input)");
@@ -84,9 +88,8 @@ class ErlangWaiterIrTest {
 
   @Test
   void waitUntilHelpersIncludePollingLoop() {
-    List<ErlFunction> helpers = ErlangWaiterIr.waitUntilHelperFunctions(model, service, provider);
-    String combined =
-        helpers.stream().map(ErlFunction::asString).collect(Collectors.joining("\n\n"));
+    List<Function> helpers = ErlangWaiterIr.waitUntilHelperFunctions(model, service, provider);
+    String combined = IrGoldenAssertions.renderFunctions(helpers);
 
     assertThat(combined).contains("wait_until(Fun, Acceptors, Opts) ->");
     assertThat(combined).contains("wait_until(Fun, Acceptors, Attempts, Delay, MaxDelay) ->");
@@ -102,7 +105,7 @@ class ErlangWaiterIrTest {
 
   @Test
   void waitersModuleIncludesExportsAndWaiters() {
-    ErlModule module =
+    Module module =
         ErlangWaiterIr.waitersModule(
             "waitable_service_waiters",
             "waitable_service_types.hrl",
@@ -111,7 +114,7 @@ class ErlangWaiterIrTest {
             provider,
             model,
             service);
-    String text = module.asString();
+    String text = ErlangRenderer.render(module);
 
     assertThat(text).contains("%% Generated waiters for smithy.beam.test.waiters#WaitableService.");
     assertThat(text).contains("-module(waitable_service_waiters).");
