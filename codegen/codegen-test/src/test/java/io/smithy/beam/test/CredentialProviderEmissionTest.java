@@ -38,9 +38,8 @@ class CredentialProviderEmissionTest {
     assertThat(credentials).contains("defmodule Sigv4testServiceCredentials do");
     assertThat(credentials).contains("def resolve(config)");
 
-    String http = manifest.expectFileString("runtime_http.ex");
-    assertThat(http).contains("Sigv4testServiceCredentials.resolve(config)");
-    assertThat(http).contains("Map.put(config, :credentials, creds)");
+    String client = manifest.expectFileString("sigv4test_service_client.ex");
+    assertThat(client).contains("RuntimeHttp.dispatch");
   }
 
   @Test

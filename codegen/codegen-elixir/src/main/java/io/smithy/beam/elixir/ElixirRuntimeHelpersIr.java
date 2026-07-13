@@ -31,6 +31,10 @@ import io.smithy.beam.ir.elixir.ExVar;
 import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.List;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.knowledge.HttpBinding;
+import software.amazon.smithy.model.knowledge.HttpBindingIndex;
+import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 final class ElixirRuntimeHelpersIr {
@@ -40,8 +44,7 @@ final class ElixirRuntimeHelpersIr {
     BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), service.getId().getNamespace());
     String moduleName = ElixirSymbolProvider.toModuleName(layout.runtimeHelpersModuleName());
     boolean awsMetadata = BeamAwsServiceMetadata.from(service).isPresent();
-    boolean labelBindings =
-        ElixirRuntimeHelpersEmitter.serviceHasLabelBindings(ctx.model(), service);
+    boolean labelBindings = serviceHasLabelBindings(ctx.model(), service);
 
     List<ExFunction> functions = new ArrayList<>();
     if (awsMetadata) {
@@ -196,5 +199,16 @@ final class ElixirRuntimeHelpersIr {
                         ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("label"))),
                     ExCaseBranch.branch(ExVarPattern.var("_"), ExAtom.atom("error")))),
             ExClause.inlineClause(List.of(ExVarPattern.var("_")), ExAtom.atom("error"))));
+  }
+
+  static boolean serviceHasLabelBindings(Model model, ServiceShape service) {
+    HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+    List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
+    for (OperationShape op : operations) {
+      if (!httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
   }
 }

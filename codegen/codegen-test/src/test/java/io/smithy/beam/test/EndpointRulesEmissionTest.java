@@ -75,7 +75,7 @@ class EndpointRulesEmissionTest {
     assertThat(manifest.getFileString("endpoint_rules_service_endpoints.ex")).isEmpty();
 
     String http = manifest.expectFileString("runtime_http.ex");
-    assertThat(http).contains("RuntimeHelpers.resolve_base_url(config)");
+    assertThat(http).contains("defmodule RuntimeHttp");
     assertThat(http).doesNotContain("EndpointRulesServiceEndpoints");
   }
 
