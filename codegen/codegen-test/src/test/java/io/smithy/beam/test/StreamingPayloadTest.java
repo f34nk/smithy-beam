@@ -140,10 +140,11 @@ class StreamingPayloadTest {
 
   @Test
   void elixirResponseDecoderUsesStreamField() {
-    String codec =
-        runElixirPlugin(loadModel()).getFileString("streaming_service_rest_json_1.ex").orElse("");
+    MockManifest manifest = runElixirPlugin(loadModel());
+    String codec = manifest.getFileString("streaming_service_rest_json_1.ex").orElse("");
     assertThat(codec).contains("def decode_get_streaming_body_response(");
     assertThat(codec).contains("stream: stream");
     assertThat(codec).contains("body: stream");
+    assertThat(manifest.getFileString("aws_event_stream.ex")).isEmpty();
   }
 }

@@ -100,6 +100,11 @@ class EventStreamEmissionTest {
     assertThat(eventStream).contains("def decode_event_stream(");
     assertThat(eventStream).contains("AwsEventStream.frame(headers, payload)");
     assertThat(eventStream).contains("AwsEventStream.decode_frames()");
+    assertThat(eventStream).contains("AwsEventStream.encode_event_headers(");
+    assertThat(eventStream).contains("AwsEventStream.header_value(");
+    assertThat(eventStream).doesNotContain("defp encode_event_headers(");
+    assertThat(eventStream).doesNotContain("defp header_value(");
+    assertThat(manifest.getFileString("aws_event_stream.ex")).isPresent();
   }
 
   @Test

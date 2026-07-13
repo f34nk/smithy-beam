@@ -63,8 +63,6 @@ final class ElixirEventStreamIr {
     for (UnionShape union : unions) {
       functions.addAll(unionHelpers(model, union, sp, typesMod));
     }
-    functions.add(headerValue());
-    functions.add(encodeEventHeaders());
 
     return ExModule.module(
         moduleName,
@@ -83,37 +81,6 @@ final class ElixirEventStreamIr {
         unionEncodeEvent(model, union, sp, typesMod),
         unionDecodeEvent(union, sp),
         unionDecodeEventType(model, union, sp, typesMod));
-  }
-
-  static ExFunction encodeEventHeaders() {
-    return ExFunction.defpFunction(
-        "encode_event_headers",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("event_type")),
-                ExList.list(
-                    ExTuple.tuple(ExString.string(":event-type"), ExVar.var("event_type")),
-                    ExTuple.tuple(ExString.string(":message-type"), ExString.string("event")),
-                    ExTuple.tuple(
-                        ExString.string(":content-type"), ExString.string("application/json"))))));
-  }
-
-  static ExFunction headerValue() {
-    return ExFunction.defpFunction(
-        "header_value",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("headers"), ExVarPattern.var("name")),
-                ExCall.call(
-                    "Enum",
-                    "find_value",
-                    ExVar.var("headers"),
-                    ExAnonymousFn.compactFn(
-                        ExClause.inlineClause(
-                            List.of(
-                                ExTuplePattern.tuple(
-                                    ExVarPattern.var("key"), ExVarPattern.var("value"))),
-                            ExCapturedBlock.capturedBlock("if key == name, do: value")))))));
   }
 
   static ExFunction unionEncodeList(UnionShape union, SymbolProvider sp) {
@@ -180,8 +147,11 @@ final class ElixirEventStreamIr {
                 ExExprBlock.block(
                     ExMatch.match(
                         ExVarPattern.var("event_type"),
-                        ExCallLocal.callLocal(
-                            "header_value", ExVar.var("headers"), ExString.string(":event-type"))),
+                        ExCall.call(
+                            "AwsEventStream",
+                            "header_value",
+                            ExVar.var("headers"),
+                            ExString.string(":event-type"))),
                     ExCallLocal.callLocal(
                         "decode_" + helper + "_event_type",
                         ExVar.var("event_type"),
@@ -220,7 +190,8 @@ final class ElixirEventStreamIr {
                 encodeMemberPayload(model, target, "value", sp, typesMod)),
             ExMatch.match(
                 ExVarPattern.var("headers"),
-                ExCallLocal.callLocal("encode_event_headers", ExString.string(eventType))),
+                ExCall.call(
+                    "AwsEventStream", "encode_event_headers", ExString.string(eventType))),
             ExCall.call("AwsEventStream", "frame", ExVar.var("headers"), ExVar.var("payload"))));
   }
 
