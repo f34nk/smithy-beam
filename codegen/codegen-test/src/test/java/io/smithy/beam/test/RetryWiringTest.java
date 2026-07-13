@@ -93,7 +93,8 @@ class RetryWiringTest {
 
     String client = manifest.expectFileString("error_fixture_service_client.ex");
     assertThat(client).contains("retry_opts = Map.get(config, :retry, [])");
-    assertThat(client).contains("ErrorFixtureServiceRetry.with_retry(");
+    assertThat(client).contains("RuntimeHttp.with_retry(");
+    assertThat(client).contains("{:should_retry, &ErrorFixtureServiceClient.should_retry?/1}");
     assertThat(client).contains("fn ->");
     assertThat(client).contains("def get_item(");
   }

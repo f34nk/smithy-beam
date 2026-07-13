@@ -7,6 +7,7 @@ import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExAtomPattern;
 import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExCallLocal;
+import io.smithy.beam.ir.elixir.ExCapturedBlock;
 import io.smithy.beam.ir.elixir.ExCase;
 import io.smithy.beam.ir.elixir.ExCaseBranch;
 import io.smithy.beam.ir.elixir.ExClause;
@@ -40,7 +41,7 @@ final class ElixirClientPaginationIr {
       OperationShape op,
       BeamElixirLayout layout,
       boolean wrapWithRetry,
-      String retryModule,
+      String clientModule,
       String successReturnType,
       ExDoc docOrNull) {
     SymbolProvider sp = ctx.symbolProvider();
@@ -69,7 +70,7 @@ final class ElixirClientPaginationIr {
             op,
             layout,
             wrapWithRetry,
-            retryModule,
+            clientModule,
             true,
             ElixirClientDispatchOperationIr.DispatchBodyMode.PAGINATED_PAGE);
 
@@ -80,7 +81,7 @@ final class ElixirClientPaginationIr {
             ExSpec.functionSpec(opName, "map(), " + inType + ", " + successReturnType, specOutput),
             List.of(
                 paginatedArity3Clause(
-                    ctx, service, op, wrapWithRetry, retryModule, pageBody, sp, opName)));
+                    ctx, service, op, wrapWithRetry, clientModule, pageBody, sp, opName)));
 
     return List.of(arity2, arity3);
   }
@@ -90,7 +91,7 @@ final class ElixirClientPaginationIr {
       ServiceShape service,
       OperationShape op,
       boolean wrapWithRetry,
-      String retryModule,
+      String clientModule,
       List<ExExpr> pageBody,
       SymbolProvider sp,
       String opName) {
@@ -100,7 +101,7 @@ final class ElixirClientPaginationIr {
       return ExClause.blockClause(
           patterns,
           ExExprBlock.block(
-              retryWrappedPageBody(ctx, service, op, retryModule, pageBody, sp, opName)
+              retryWrappedPageBody(ctx, service, op, clientModule, pageBody, sp, opName)
                   .toArray(ExExpr[]::new)));
     }
     return ExClause.blockClause(patterns, ExExprBlock.block(pageBody.toArray(ExExpr[]::new)));
@@ -110,7 +111,7 @@ final class ElixirClientPaginationIr {
       ElixirContext ctx,
       ServiceShape service,
       OperationShape op,
-      String retryModule,
+      String clientModule,
       List<ExExpr> pageBody,
       SymbolProvider sp,
       String opName) {
@@ -135,12 +136,20 @@ final class ElixirClientPaginationIr {
     ExCase retryCase =
         ExCase.caseExpr(
             ExCall.call(
-                retryModule,
+                "RuntimeHttp",
                 "with_retry",
                 ExAnonymousFn.fn(
                     ExClause.blockClause(
                         List.of(), ExExprBlock.block(pageBody.toArray(ExExpr[]::new)))),
-                ExVar.var("retry_opts")),
+                ExCall.call(
+                    "Keyword",
+                    "merge",
+                    ExList.list(
+                        ExTuple.tuple(
+                            ExAtom.atom("should_retry"),
+                            ExCapturedBlock.capturedBlock(
+                                "&" + clientModule + ".should_retry?/1"))),
+                    ExVar.var("retry_opts"))),
             ExCaseBranch.branch(
                 ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("output")),
                 ExExprBlock.block(
