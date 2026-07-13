@@ -3,6 +3,7 @@ package io.smithy.beam.elixir;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamMemberNullability;
 import io.smithy.beam.core.BeamNameUtils;
@@ -345,6 +346,15 @@ final class ElixirDirectedCodegen
   @Override
   public void customizeAfterIntegrations(
       CustomizeDirective<ElixirContext, BeamSettings> directive) {
+    ServiceShape service = directive.context().service();
+    if (BeamEndpointRuleSetEmitter.hasRuleSet(directive.model(), service)) {
+      String json =
+          BeamEndpointRuleSetEmitter.serializeRuleSetJson(directive.model(), service).orElseThrow();
+      for (ExModuleEntry entry : ElixirTypesIr.endpointRuleSetEntries(json)) {
+        directive.context().addTypesEntry(entry);
+      }
+      directive.context().addTypesFunction(ElixirTypesIr.endpointRuleSetFunction());
+    }
     ElixirTypesEmission.emit(directive.context());
   }
 

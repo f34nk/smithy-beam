@@ -6,7 +6,6 @@ import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
@@ -112,6 +111,7 @@ final class ElixirClientDirectedCodegen
         definitionFile,
         new java.util.ArrayList<>(),
         new java.util.ArrayList<>(),
+        new java.util.ArrayList<>(),
         new ElixirClientModuleBuilder(),
         null,
         null);
@@ -128,19 +128,6 @@ final class ElixirClientDirectedCodegen
             protocol ->
                 BeamProtocolResolver.assertClosureSupported(
                     directive.model(), service, protocol, edition));
-
-    String ns = service.getId().getNamespace();
-    BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns, service);
-    String runtimeTypesModule = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
-
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.runtimeTypesModuleFile(),
-            w -> {
-              Optional<String> ruleSet =
-                  BeamEndpointRuleSetEmitter.serializeRuleSetJson(directive.model(), service);
-              ElixirRuntimeTypesEmitter.writeBody(w, runtimeTypesModule, ruleSet);
-            });
   }
 
   @Override
@@ -167,8 +154,6 @@ final class ElixirClientDirectedCodegen
 
     ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
     ElixirS3EndpointEmitter.emit(ctx, service);
-    ElixirAwsEndpointRulesEmitter.emitIfNeeded(ctx, service);
-    ElixirEndpointRulesEmitter.emit(ctx, service);
     ElixirHttpDispatchEmitter.emit(ctx, service);
     ElixirSigV4Emitter.emit(ctx, service);
     ElixirPresignerEmitter.emit(ctx, service);

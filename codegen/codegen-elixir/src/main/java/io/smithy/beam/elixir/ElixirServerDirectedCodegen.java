@@ -94,6 +94,7 @@ final class ElixirServerDirectedCodegen
         definitionFile,
         new java.util.ArrayList<>(),
         new java.util.ArrayList<>(),
+        new java.util.ArrayList<>(),
         null,
         new ElixirBehaviourModuleBuilder(),
         new ElixirServerModuleBuilder());
@@ -111,17 +112,8 @@ final class ElixirServerDirectedCodegen
                 BeamProtocolResolver.assertClosureSupported(
                     directive.model(), service, protocol, edition));
 
-    String ns = service.getId().getNamespace();
-    BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns, service);
-    String runtimeTypesModule = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
-
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(ctx.model(), service);
     ElixirBehaviourEmitter.beginService(ctx, service, operations);
-
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.runtimeTypesModuleFile(),
-            w -> ElixirRuntimeTypesEmitter.writeBody(w, runtimeTypesModule, Optional.empty()));
   }
 
   @Override

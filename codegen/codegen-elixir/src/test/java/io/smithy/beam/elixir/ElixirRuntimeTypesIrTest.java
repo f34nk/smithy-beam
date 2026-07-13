@@ -2,16 +2,13 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.smithy.beam.ir.elixir.ExModule;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class ElixirRuntimeTypesIrTest {
 
   @Test
   void runtimeTypesModuleMatchesResource() {
-    String output =
-        ElixirRuntimeTypesIr.runtimeTypesModule("RuntimeTypes", Optional.empty()).asString();
+    String output = ElixirRuntimeTypesIr.runtimeTypesModule("RuntimeTypes").asString();
     assertThat(output)
         .contains("defmodule RuntimeTypes do")
         .contains(
@@ -21,20 +18,6 @@ class ElixirRuntimeTypesIrTest {
         .contains("method: \"GET\"")
         .contains("defmodule HttpResponse do")
         .contains("status: 200");
-  }
-
-  @Test
-  void runtimeTypesModuleAppendsEndpointRuleSet() {
-    ExModule module =
-        ElixirRuntimeTypesIr.runtimeTypesModule(
-            "RuntimeTypes", Optional.of("{\"region\":\"us-east-1\"}"));
-    String output = module.asString();
-    assertThat(output)
-        .contains("@type endpoint_rule_set :: map()")
-        .contains("@endpoint_rule_set_json ~S\"\"\"")
-        .contains("{\"region\":\"us-east-1\"}")
-        .contains("@endpoint_rule_set Jason.decode!(@endpoint_rule_set_json)")
-        .contains("@spec endpoint_rule_set() :: endpoint_rule_set()")
-        .contains("def endpoint_rule_set, do: @endpoint_rule_set");
+    assertThat(output).doesNotContain("endpoint_rule_set");
   }
 }

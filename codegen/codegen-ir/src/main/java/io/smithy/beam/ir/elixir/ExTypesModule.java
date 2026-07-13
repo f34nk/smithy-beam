@@ -7,17 +7,30 @@ public final class ExTypesModule implements IrObject {
   private final String moduleName;
   private final List<ExPreambleEntry> preamble;
   private final List<ExModuleEntry> entries;
+  private final List<ExFunction> functions;
 
   public ExTypesModule(
-      String moduleName, List<ExPreambleEntry> preamble, List<ExModuleEntry> entries) {
+      String moduleName,
+      List<ExPreambleEntry> preamble,
+      List<ExModuleEntry> entries,
+      List<ExFunction> functions) {
     this.moduleName = moduleName;
     this.preamble = List.copyOf(preamble);
     this.entries = List.copyOf(entries);
+    this.functions = List.copyOf(functions);
   }
 
   public static ExTypesModule typesModule(
       String moduleName, List<ExPreambleEntry> preamble, List<ExModuleEntry> entries) {
-    return new ExTypesModule(moduleName, preamble, entries);
+    return typesModule(moduleName, preamble, entries, List.of());
+  }
+
+  public static ExTypesModule typesModule(
+      String moduleName,
+      List<ExPreambleEntry> preamble,
+      List<ExModuleEntry> entries,
+      List<ExFunction> functions) {
+    return new ExTypesModule(moduleName, preamble, entries, functions);
   }
 
   public String moduleName() {
@@ -32,6 +45,10 @@ public final class ExTypesModule implements IrObject {
     return entries;
   }
 
+  public List<ExFunction> functions() {
+    return functions;
+  }
+
   @Override
   public List<String> lines(int indent) {
     List<String> out = new ArrayList<>();
@@ -41,6 +58,15 @@ public final class ExTypesModule implements IrObject {
     }
     for (ExModuleEntry entry : entries) {
       out.addAll(entry.lines(indent + 1));
+    }
+    if (!functions.isEmpty()) {
+      out.add("");
+    }
+    for (int i = 0; i < functions.size(); i++) {
+      if (i > 0) {
+        out.add("");
+      }
+      out.addAll(functions.get(i).lines(indent + 1));
     }
     out.add(IrObject.indent(indent) + "end");
     return out;

@@ -41,8 +41,8 @@ class EndpointRulesEmissionTest {
   void elixirOmitsEndpointRuleSetWhenTraitAbsent() {
     MockManifest manifest = runElixirClient(loadBasicModel(), BASIC_SERVICE);
 
-    String runtimeTypes = manifest.expectFileString("runtime_types.ex");
-    assertThat(runtimeTypes).doesNotContain("endpoint_rule_set");
+    String serviceTypes = manifest.expectFileString("basic_service_types.ex");
+    assertThat(serviceTypes).doesNotContain("endpoint_rule_set");
   }
 
   @Test
@@ -61,33 +61,22 @@ class EndpointRulesEmissionTest {
   }
 
   @Test
-  void elixirEmitsEndpointsModuleAndPrefersRulesResolver() {
+  void elixirEmitsEndpointRuleSetInServiceTypes() {
     MockManifest manifest = runElixirClient(loadModel(), SERVICE);
 
-    String runtimeTypes = manifest.expectFileString("runtime_types.ex");
-    assertThat(runtimeTypes).contains("@type endpoint_rule_set :: map()");
-    assertThat(runtimeTypes).contains("@endpoint_rule_set_json");
-    assertThat(runtimeTypes).contains("@endpoint_rule_set Jason.decode!(@endpoint_rule_set_json)");
-    assertThat(runtimeTypes).contains("s3.{Region}.amazonaws.com");
+    String serviceTypes = manifest.expectFileString("endpoint_rules_service_types.ex");
+    assertThat(serviceTypes).contains("@type endpoint_rule_set :: map()");
+    assertThat(serviceTypes).contains("@endpoint_rule_set_json");
+    assertThat(serviceTypes).contains("@endpoint_rule_set Jason.decode!(@endpoint_rule_set_json)");
+    assertThat(serviceTypes).contains("s3.{Region}.amazonaws.com");
+    assertThat(serviceTypes).contains("def endpoint_rule_set");
 
-    String endpoints = manifest.expectFileString("endpoint_rules_service_endpoints.ex");
-    assertThat(endpoints).contains("defmodule EndpointRulesServiceEndpoints do");
-    assertThat(endpoints).contains("def resolve(config, params) do");
-    assertThat(endpoints)
-        .contains(
-            "AwsEndpointRules.evaluate(RuntimeTypes.endpoint_rule_set(), merge_params(config, params))");
-    assertThat(manifest.expectFileString("aws_endpoint_rules.ex"))
-        .contains("defmodule AwsEndpointRules do");
-    assertThat(manifest.expectFileString("aws_endpoint_rules.ex"))
-        .contains("Temporary stub endpoint rules evaluator");
-    assertThat(manifest.expectFileString("aws_endpoint_rules.ex"))
-        .contains("def evaluate(_rule_set, params)");
-    assertThat(endpoints).doesNotContain("def rule_set");
+    assertThat(manifest.getFileString("aws_endpoint_rules.ex")).isEmpty();
+    assertThat(manifest.getFileString("endpoint_rules_service_endpoints.ex")).isEmpty();
 
     String http = manifest.expectFileString("runtime_http.ex");
-    assertThat(http).contains("EndpointRulesServiceEndpoints.resolve(config, %{})");
-    assertThat(http.indexOf("EndpointRulesServiceEndpoints.resolve"))
-        .isLessThan(http.indexOf("RuntimeHelpers.resolve_base_url"));
+    assertThat(http).contains("RuntimeHelpers.resolve_base_url(config)");
+    assertThat(http).doesNotContain("EndpointRulesServiceEndpoints");
   }
 
   private static void assertRuleEvaluationMatchesReference(Model model) {

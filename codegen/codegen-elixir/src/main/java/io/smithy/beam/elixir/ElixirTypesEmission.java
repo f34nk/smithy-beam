@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExModuleEntry;
 import io.smithy.beam.ir.elixir.ExNestedModule;
 import io.smithy.beam.ir.elixir.ExTypesModule;
@@ -39,13 +40,17 @@ final class ElixirTypesEmission {
     if (splitModules.isEmpty()) {
       ExTypesModule module =
           ExTypesModule.typesModule(
-              ctx.moduleName(), ctx.typesPreambleEntries(), ctx.typesEntries());
+              ctx.moduleName(),
+              ctx.typesPreambleEntries(),
+              rootEntries,
+              ctx.typesFunctions());
       writeTypesFile(ctx, ctx.definitionFile(), module);
       return;
     }
 
     ExTypesModule rootModule =
-        ExTypesModule.typesModule(ctx.moduleName(), ctx.typesPreambleEntries(), rootEntries);
+        ExTypesModule.typesModule(
+            ctx.moduleName(), ctx.typesPreambleEntries(), rootEntries, ctx.typesFunctions());
     writeTypesFile(ctx, ctx.definitionFile(), rootModule);
 
     BeamElixirLayout layout =

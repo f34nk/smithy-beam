@@ -131,12 +131,6 @@ class StreamingPayloadTest {
   }
 
   @Test
-  void elixirRuntimeTypesIncludeStreamField() {
-    String types = runElixirPlugin(loadModel()).getFileString("runtime_types.ex").orElse("");
-    assertThat(types).contains("stream: nil");
-  }
-
-  @Test
   void elixirRequestEncoderUsesStreamField() {
     String codec =
         runElixirPlugin(loadModel()).getFileString("streaming_service_rest_json_1.ex").orElse("");

@@ -4,6 +4,7 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExModuleEntry;
 import io.smithy.beam.ir.elixir.ExPreambleEntry;
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ public record ElixirContext(
     String definitionFile,
     List<ExPreambleEntry> typesPreambleEntries,
     List<ExModuleEntry> typesEntries,
+    List<ExFunction> typesFunctions,
     ElixirClientModuleBuilder clientModuleBuilderOrNull,
     ElixirBehaviourModuleBuilder behaviourModuleBuilderOrNull,
     ElixirServerModuleBuilder serverModuleBuilderOrNull)
@@ -70,6 +72,7 @@ public record ElixirContext(
         definitionFile,
         new ArrayList<>(),
         new ArrayList<>(),
+        new ArrayList<>(),
         null,
         null,
         null);
@@ -81,6 +84,10 @@ public record ElixirContext(
 
   public void addTypesEntry(ExModuleEntry entry) {
     typesEntries.add(entry);
+  }
+
+  public void addTypesFunction(ExFunction function) {
+    typesFunctions.add(function);
   }
 
   public boolean hasWireProtocol() {
