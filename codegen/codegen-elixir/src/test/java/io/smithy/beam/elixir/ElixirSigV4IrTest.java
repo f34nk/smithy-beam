@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModule;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -53,16 +52,6 @@ class ElixirSigV4IrTest {
     for (ExFunction fn : ElixirSigV4Ir.helperFunctions()) {
       ElixirIrTestSupport.assertStructural(fn);
     }
-  }
-
-  @Test
-  void sigV4ModuleMatchesGolden() throws IOException {
-    ServiceShape service = sigv4Model().expectShape(SIGV4_SERVICE, ServiceShape.class);
-    ExModule module = ElixirSigV4Ir.sigV4Module(testContext(service), service);
-    assertThat(module.asString()).isEqualTo(readExpectedString("ir/sigv4_module.expected.ex"));
-    ElixirIrTestSupport.assertStructural(ElixirSigV4Ir.sign());
-    ElixirIrTestSupport.assertStructural(ElixirSigV4Ir.presign());
-    ElixirIrTestSupport.assertStructural(ElixirSigV4Ir.signRequest());
   }
 
   private static ElixirContext testContext(ServiceShape service) {

@@ -54,7 +54,6 @@ final class ElixirClientDispatchOperationIr {
       String opName,
       String codecModule,
       String runtimeHttpModule,
-      String sigv4Module,
       boolean sigv4,
       boolean encodeWithConfig) {}
 
@@ -172,7 +171,6 @@ final class ElixirClientDispatchOperationIr {
         ElixirSymbolProvider.toModuleName(
             layout.clientCodecModuleName(ctx.resolvedProtocolTraitId(), ctx.integrations())),
         ElixirSymbolProvider.toModuleName(layout.runtimeHttpModuleName()),
-        ElixirSymbolProvider.toModuleName(layout.sigv4ModuleName()),
         sigv4,
         encodeWithConfig);
   }
@@ -198,7 +196,7 @@ final class ElixirClientDispatchOperationIr {
             ExCaseBranch.branch(
                 ExVarPattern.var("_"),
                 ExCall.call(
-                    ctx.sigv4Module(),
+                    "AwsSigv4",
                     "sign",
                     ExVar.var("config"),
                     ExAtom.atom(ctx.opName()),
