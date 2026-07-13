@@ -30,12 +30,6 @@ class ElixirHttpDispatchIrTest {
   }
 
   @Test
-  void splitBaseUrlAsStringMatchesGolden() throws IOException {
-    assertThat(ElixirHostLabelIr.splitBaseUrl().asString())
-        .isEqualTo(readExpectedString("ir/http_dispatch_split_base_url.expected.ex"));
-  }
-
-  @Test
   void dispatchArity2AsStringMatchesGolden() throws IOException {
     assertThat(ElixirHttpDispatchIr.dispatchArity2().asString())
         .isEqualTo(readExpectedString("ir/http_dispatch_dispatch_arity2.expected.ex"));

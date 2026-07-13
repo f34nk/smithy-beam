@@ -1,16 +1,3 @@
-def endpoint_host_from_config(config) do
-  case Map.get(config, :base_url) do
-    nil ->
-      case {Map.get(config, :endpoint_prefix), Map.get(config, :region, "us-east-1")} do
-        {nil, _} -> nil
-        {prefix, region} -> "#{prefix}.#{region}.amazonaws.com"
-      end
-    base_url ->
-      {_scheme, authority} = split_base_url(base_url)
-      authority
-  end
-end
-
 defp resolve_host(request = %HttpRequest{}, opts) do
   coalesce([request.host, Map.get(opts, :host), Map.get(opts, :endpoint_host), header_host(request.headers)])
 end
@@ -84,23 +71,6 @@ end
 
 defp session_token_option(nil), do: []
 defp session_token_option(token), do: [{:session_token, to_bin(token)}]
-
-defp split_base_url(""), do: {"", ""}
-defp split_base_url(base_url) do
-  case URI.parse(base_url) do
-    %URI{scheme: scheme, host: host} = uri when is_binary(host) ->
-      port_suffix =
-        case uri.port do
-          nil -> ""
-          port -> ":#{port}"
-        end
-  
-      {"#{scheme}://", "#{host}#{port_suffix}"}
-  
-    _ ->
-      {"", base_url}
-  end
-end
 
 defp to_bin(value) when is_binary(value), do: value
 defp to_bin(value) when is_atom(value), do: Atom.to_string(value)

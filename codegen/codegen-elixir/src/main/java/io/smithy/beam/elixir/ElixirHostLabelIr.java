@@ -37,7 +37,6 @@ final class ElixirHostLabelIr {
 
   static List<ExFunction> buildHostFunctions(Model model, ServiceShape service, SymbolProvider sp) {
     List<ExFunction> functions = new ArrayList<>();
-    functions.add(splitBaseUrl());
     BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
     for (OperationShape op : ElixirTopDown.containedOperationsSorted(model, service)) {
       List<MemberShape> hostLabels = hostLabelIndex.hostLabelMembers(op);
@@ -47,33 +46,6 @@ final class ElixirHostLabelIr {
       functions.add(buildHostFunction(model, op, hostLabels, sp));
     }
     return functions;
-  }
-
-  static ExFunction splitBaseUrl() {
-    return ExFunction.defpFunction(
-        "split_base_url",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExStringPattern.string("")),
-                ExTuple.tuple(ExString.string(""), ExString.string(""))),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("base_url")),
-                ExCapturedBlock.capturedBlock(
-                    "case URI.parse(base_url) do\n"
-                        + "  %URI{scheme: scheme, host: host} = uri when is_binary(host) ->\n"
-                        + "    port_suffix =\n"
-                        + "      case {uri.scheme, uri.port} do\n"
-                        + "        {\"https\", 443} -> \"\"\n"
-                        + "        {\"http\", 80} -> \"\"\n"
-                        + "        {_, nil} -> \"\"\n"
-                        + "        {_, port} -> \":#{port}\"\n"
-                        + "      end\n"
-                        + "\n"
-                        + "    {scheme <> \"://\", host <> port_suffix}\n"
-                        + "\n"
-                        + "  _ ->\n"
-                        + "    {\"\", base_url}\n"
-                        + "end"))));
   }
 
   private static ExFunction buildHostFunction(
@@ -110,7 +82,7 @@ final class ElixirHostLabelIr {
                     ExMatch.match(
                         ExTuplePattern.tuple(
                             ExVarPattern.var("_scheme"), ExVarPattern.var("authority")),
-                        ExCallLocal.callLocal("split_base_url", ExVar.var("base_url"))),
+                        ExCall.call("Utils", "split_base_url", ExVar.var("base_url"))),
                     ExMatch.match(ExVarPattern.var("prefix"), prefixExpr),
                     ExOp.op("<>", ExVar.var("prefix"), ExVar.var("authority"))))));
   }

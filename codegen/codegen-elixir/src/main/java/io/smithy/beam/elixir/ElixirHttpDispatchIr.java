@@ -40,7 +40,6 @@ final class ElixirHttpDispatchIr {
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
     String httpModule = ElixirSymbolProvider.toModuleName(layout.runtimeHttpModuleName());
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
-    String helpersModule = ElixirSymbolProvider.toModuleName(layout.runtimeHelpersModuleName());
     boolean sigv4 = BeamSigV4Metadata.from(service).isPresent();
     String credentialsModule = ElixirSymbolProvider.toModuleName(layout.credentialsModuleName());
     String configVar = sigv4 ? "config1" : "config";
@@ -49,7 +48,6 @@ final class ElixirHttpDispatchIr {
     functions.add(dispatchArity2());
     functions.add(dispatchArity3());
     functions.add(dispatchSigned(sigv4, configVar, credentialsModule));
-    functions.add(ElixirHostLabelIr.splitBaseUrl());
 
     return ExModule.module(
         httpModule,
@@ -58,7 +56,7 @@ final class ElixirHttpDispatchIr {
                 "Generated HTTP dispatcher for Smithy service clients. Uses Req.")),
         List.of(
             ExAliasAttr.alias(runtimeMod, RUNTIME_TYPES),
-            ExAliasAttr.alias(helpersModule, "RuntimeHelpers")),
+            ExAliasAttr.alias("Utils", "Utils")),
         List.of(),
         functions,
         List.of(reqClientModule()));
@@ -146,11 +144,11 @@ final class ElixirHttpDispatchIr {
         .append(configVar)
         .append(", :endpoint_prefix) do\n");
     sb.append("        nil -> \"\"\n");
-    sb.append("        _ -> RuntimeHelpers.resolve_base_url(").append(configVar).append(")\n");
+    sb.append("        _ -> Utils.resolve_base_url(").append(configVar).append(")\n");
     sb.append("      end\n\n");
     sb.append("    url ->\n      url\n");
     sb.append("  end\n\n");
-    sb.append("{scheme, default_authority} = split_base_url(base_url)\n\n");
+    sb.append("{scheme, default_authority} = Utils.split_base_url(base_url)\n\n");
     sb.append(
         "authority =\n  case req.host do\n    nil -> default_authority\n    host -> host\n  end\n\n");
     sb.append("url = scheme <> authority <> req.path\n");

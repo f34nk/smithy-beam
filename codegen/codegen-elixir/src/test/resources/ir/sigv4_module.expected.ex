@@ -12,7 +12,7 @@ defmodule Sigv4testServiceSigv4 do
     opts =
       %{
         unsigned_payload: unsigned,
-        endpoint_host: endpoint_host_from_config(config)
+        endpoint_host: Utils.endpoint_host_from_config(config)
       }
     sign_request(request, credentials, region, service, opts)
   end
@@ -59,19 +59,6 @@ defmodule Sigv4testServiceSigv4 do
     sign_opts = Kernel.++([{:uri_encode_path, service != "s3"}], body_digest_option(opts))
     signed_headers = :aws_signature.sign_v4(to_bin(access_key_id), to_bin(secret_access_key), to_bin(region), to_bin(service), datetime, to_bin(request.method), to_bin(url), to_erl_headers(headers1), to_bin(request.body), sign_opts)
     %HttpRequest{request | headers: from_erl_headers(signed_headers)}
-  end
-
-  def endpoint_host_from_config(config) do
-    case Map.get(config, :base_url) do
-      nil ->
-        case {Map.get(config, :endpoint_prefix), Map.get(config, :region, "us-east-1")} do
-          {nil, _} -> nil
-          {prefix, region} -> "#{prefix}.#{region}.amazonaws.com"
-        end
-      base_url ->
-        {_scheme, authority} = split_base_url(base_url)
-        authority
-    end
   end
 
   defp resolve_host(request = %HttpRequest{}, opts) do
@@ -147,23 +134,6 @@ defmodule Sigv4testServiceSigv4 do
 
   defp session_token_option(nil), do: []
   defp session_token_option(token), do: [{:session_token, to_bin(token)}]
-
-  defp split_base_url(""), do: {"", ""}
-  defp split_base_url(base_url) do
-    case URI.parse(base_url) do
-      %URI{scheme: scheme, host: host} = uri when is_binary(host) ->
-        port_suffix =
-          case uri.port do
-            nil -> ""
-            port -> ":#{port}"
-          end
-    
-        {"#{scheme}://", "#{host}#{port_suffix}"}
-    
-      _ ->
-        {"", base_url}
-    end
-  end
 
   defp to_bin(value) when is_binary(value), do: value
   defp to_bin(value) when is_atom(value), do: Atom.to_string(value)

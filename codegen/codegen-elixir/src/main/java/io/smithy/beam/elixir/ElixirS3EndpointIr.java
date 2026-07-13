@@ -36,7 +36,7 @@ final class ElixirS3EndpointIr {
                 ExCapturedBlock.capturedBlock(
                     """
                     base_url = Map.get(config, :base_url, "")
-                    {_scheme, authority} = split_base_url(base_url)
+                    {_scheme, authority} = Utils.split_base_url(base_url)
                     authority"""))));
   }
 
@@ -70,7 +70,7 @@ final class ElixirS3EndpointIr {
   }
 
   static List<ExFunction> helperFunctions() {
-    return List.of(keyPath(), virtualHost(), s3HostSuffix(), splitBaseUrl());
+    return List.of(keyPath(), virtualHost(), s3HostSuffix());
   }
 
   private static ExFunction keyPath() {
@@ -109,31 +109,5 @@ final class ElixirS3EndpointIr {
                 List.of(ExVarPattern.var("config")),
                 ExCapturedBlock.capturedBlock(
                     "if Map.get(config, :s3_use_dualstack, false), do: \".s3.dualstack.\", else: \".s3.\""))));
-  }
-
-  private static ExFunction splitBaseUrl() {
-    return ExFunction.defpFunction(
-        "split_base_url",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExStringPattern.string("")), ExCapturedBlock.capturedBlock("{\"\", \"\"}")),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("base_url")),
-                ExCapturedBlock.capturedBlock(
-                    """
-                    case URI.parse(base_url) do
-                      %URI{scheme: scheme, host: host, port: port} when is_binary(host) ->
-                        port_suffix =
-                          case port do
-                            nil -> ""
-
-                            p -> ":#{p}"
-                          end
-
-                        {"#{scheme}://", "#{host}#{port_suffix}"}
-
-                      _ ->
-                        {"", base_url}
-                    end"""))));
   }
 }

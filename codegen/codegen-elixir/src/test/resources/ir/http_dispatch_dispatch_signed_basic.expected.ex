@@ -6,14 +6,14 @@ defp dispatch_signed(http_client, config, req = %RuntimeTypes.HttpRequest{}) do
       nil ->
         case Map.get(config, :endpoint_prefix) do
           nil -> ""
-          _ -> RuntimeHelpers.resolve_base_url(config)
+          _ -> Utils.resolve_base_url(config)
         end
   
       url ->
         url
     end
   
-  {scheme, default_authority} = split_base_url(base_url)
+  {scheme, default_authority} = Utils.split_base_url(base_url)
   
   authority =
     case req.host do

@@ -103,8 +103,7 @@ final class ElixirSigV4Ir {
                         ExMapEntry.entry(ExAtom.atom("unsigned_payload"), ExVar.var("unsigned")),
                         ExMapEntry.entry(
                             ExAtom.atom("endpoint_host"),
-                            ExCallLocal.callLocal(
-                                "endpoint_host_from_config", ExVar.var("config"))))),
+                            ExCall.call("Utils", "endpoint_host_from_config", ExVar.var("config"))))),
                 ExCallLocal.callLocal(
                     "sign_request",
                     ExVar.var("request"),
@@ -286,7 +285,6 @@ final class ElixirSigV4Ir {
 
   static List<ExFunction> helperFunctions() {
     return List.of(
-        endpointHostFromConfig(),
         resolveHost(),
         coalesce(),
         buildUrl(),
@@ -297,7 +295,6 @@ final class ElixirSigV4Ir {
         maybeAddSessionToken(),
         bodyDigestOption(),
         sessionTokenOption(),
-        splitBaseUrl(),
         toBin(),
         toErlHeaders(),
         fromErlHeaders());
@@ -310,45 +307,6 @@ final class ElixirSigV4Ir {
     functions.add(signRequest());
     functions.addAll(helperFunctions());
     return functions;
-  }
-
-  private static ExFunction endpointHostFromConfig() {
-    return ExFunction.defFunction(
-        "endpoint_host_from_config",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("config")),
-                ExCase.caseExpr(
-                    ExCall.call("Map", "get", ExVar.var("config"), ExAtom.atom("base_url")),
-                    ExCaseBranch.branch(
-                        ExNilPattern.nil(),
-                        ExCase.caseExpr(
-                            ExTuple.tuple(
-                                ExCall.call(
-                                    "Map",
-                                    "get",
-                                    ExVar.var("config"),
-                                    ExAtom.atom("endpoint_prefix")),
-                                ExCall.call(
-                                    "Map",
-                                    "get",
-                                    ExVar.var("config"),
-                                    ExAtom.atom("region"),
-                                    ExString.string("us-east-1"))),
-                            ExCaseBranch.branch(
-                                ExTuplePattern.tuple(ExNilPattern.nil(), ExVarPattern.var("_")),
-                                ExNil.nil()),
-                            ExCaseBranch.branch(
-                                ExTuplePattern.tuple(
-                                    ExVarPattern.var("prefix"), ExVarPattern.var("region")),
-                                ExCapturedBlock.capturedBlock(
-                                    "\"#{prefix}.#{region}.amazonaws.com\"")))),
-                    ExCaseBranch.branch(
-                        ExVarPattern.var("base_url"),
-                        ExCapturedBlock.capturedBlock(
-                            """
-                            {_scheme, authority} = split_base_url(base_url)
-                            authority"""))))));
   }
 
   private static ExFunction resolveHost() {
@@ -554,32 +512,6 @@ final class ElixirSigV4Ir {
                     ExTuple.tuple(
                         ExAtom.atom("session_token"),
                         ExCallLocal.callLocal("to_bin", ExVar.var("token")))))));
-  }
-
-  private static ExFunction splitBaseUrl() {
-    return ExFunction.defpFunction(
-        "split_base_url",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExStringPattern.string("")),
-                ExTuple.tuple(ExString.string(""), ExString.string(""))),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("base_url")),
-                ExCapturedBlock.capturedBlock(
-                    """
-                    case URI.parse(base_url) do
-                      %URI{scheme: scheme, host: host} = uri when is_binary(host) ->
-                        port_suffix =
-                          case uri.port do
-                            nil -> ""
-                            port -> ":#{port}"
-                          end
-
-                        {"#{scheme}://", "#{host}#{port_suffix}"}
-
-                      _ ->
-                        {"", base_url}
-                    end"""))));
   }
 
   private static ExFunction toBin() {
