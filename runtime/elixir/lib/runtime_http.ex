@@ -14,34 +14,15 @@ defmodule RuntimeHttp do
   @spec dispatch(module(), map(), RuntimeTypes.HttpRequest.t()) ::
           {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}
   def dispatch(http_client, config, req = %RuntimeTypes.HttpRequest{}) do
-    dispatch_signed(http_client, config, req)
-  end
+    base_url = Map.get(config, :base_url)
 
-  @doc "Invokes fun with exponential backoff when a retryable error is returned."
-  @spec with_retry((-> term()), keyword()) :: term()
-  def with_retry(fun, opts) do
-    max_attempts = Keyword.get(opts, :max_attempts, 3)
-    base_delay_ms = Keyword.get(opts, :base_delay_ms, 100)
-    should_retry = Keyword.get(opts, :should_retry, fn _ -> false end)
-    with_retry(fun, max_attempts, base_delay_ms, 1, should_retry)
-  end
-
-  @spec dispatch_signed(module(), map(), RuntimeTypes.HttpRequest.t()) ::
-          {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}
-  defp dispatch_signed(http_client, config, req = %RuntimeTypes.HttpRequest{}) do
-    base_url =
-      case Map.get(config, :base_url) do
-        nil ->
-          case Map.get(config, :endpoint_prefix) do
-            nil -> ""
-            _ -> Utils.resolve_base_url(config)
-          end
-
-        url ->
-          url
+    query_str =
+      case Map.to_list(req.query) do
+        [] -> ""
+        pairs -> "?" <> URI.encode_query(pairs)
       end
 
-    {scheme, default_authority} = Utils.split_base_url(base_url)
+    {scheme, default_authority} = Utils.split_base_url(base_url || "")
 
     authority =
       case req.host do
@@ -49,12 +30,11 @@ defmodule RuntimeHttp do
         host -> host
       end
 
-    url = scheme <> authority <> req.path
+    req_url = scheme <> authority <> req.path <> query_str
 
     req_opts = [
       method: String.downcase(req.method) |> String.to_atom(),
-      url: url,
-      params: req.query,
+      url: req_url,
       headers: req.headers,
       body: req.body,
       decode_body: false
@@ -72,6 +52,15 @@ defmodule RuntimeHttp do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  @doc "Invokes fun with exponential backoff when a retryable error is returned."
+  @spec with_retry((-> term()), keyword()) :: term()
+  def with_retry(fun, opts) do
+    max_attempts = Keyword.get(opts, :max_attempts, 3)
+    base_delay_ms = Keyword.get(opts, :base_delay_ms, 100)
+    should_retry = Keyword.get(opts, :should_retry, fn _ -> false end)
+    with_retry(fun, max_attempts, base_delay_ms, 1, should_retry)
   end
 
   defp with_retry(fun, 0, _base, _n, _should_retry), do: fun.()
@@ -92,7 +81,7 @@ defmodule RuntimeHttp do
   end
 
   defmodule ReqClient do
-    @moduledoc "false"
+    @moduledoc false
 
     @spec request(keyword()) :: {:ok, map()} | {:error, term()}
     def request(req_opts) do
