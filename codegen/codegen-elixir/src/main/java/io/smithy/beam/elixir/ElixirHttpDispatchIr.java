@@ -1,7 +1,6 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamSigV4Metadata;
 import io.smithy.beam.ir.elixir.ExAliasAttr;
 import io.smithy.beam.ir.elixir.ExAtom;
@@ -43,16 +42,13 @@ final class ElixirHttpDispatchIr {
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String helpersModule = ElixirSymbolProvider.toModuleName(layout.runtimeHelpersModuleName());
     boolean sigv4 = BeamSigV4Metadata.from(service).isPresent();
-    boolean endpointRules = BeamEndpointRuleSetEmitter.hasRuleSet(ctx.model(), service);
-    String endpointsModule = ElixirSymbolProvider.toModuleName(layout.endpointsModuleName());
     String credentialsModule = ElixirSymbolProvider.toModuleName(layout.credentialsModuleName());
     String configVar = sigv4 ? "config1" : "config";
 
     List<ExFunction> functions = new ArrayList<>();
     functions.add(dispatchArity2());
     functions.add(dispatchArity3());
-    functions.add(
-        dispatchSigned(sigv4, endpointRules, configVar, endpointsModule, credentialsModule));
+    functions.add(dispatchSigned(sigv4, configVar, credentialsModule));
     functions.add(ElixirHostLabelIr.splitBaseUrl());
 
     return ExModule.module(
@@ -116,12 +112,7 @@ final class ElixirHttpDispatchIr {
                     ExVar.var("req")))));
   }
 
-  static ExFunction dispatchSigned(
-      boolean sigv4,
-      boolean endpointRules,
-      String configVar,
-      String endpointsModule,
-      String credentialsModule) {
+  static ExFunction dispatchSigned(boolean sigv4, String configVar, String credentialsModule) {
     return ExFunction.functionWithSpec(
         "defp",
         "dispatch_signed",
@@ -136,16 +127,10 @@ final class ElixirHttpDispatchIr {
                     ExVarPattern.var("config"),
                     HTTP_REQUEST_PATTERN),
                 ExCapturedBlock.capturedBlock(
-                    dispatchSignedBody(
-                        sigv4, endpointRules, configVar, endpointsModule, credentialsModule)))));
+                    dispatchSignedBody(sigv4, configVar, credentialsModule)))));
   }
 
-  static String dispatchSignedBody(
-      boolean sigv4,
-      boolean endpointRules,
-      String configVar,
-      String endpointsModule,
-      String credentialsModule) {
+  static String dispatchSignedBody(boolean sigv4, String configVar, String credentialsModule) {
     StringBuilder sb = new StringBuilder();
     if (sigv4) {
       sb.append("config1 =\n  case Map.get(config, :credentials) do\n");
@@ -161,20 +146,7 @@ final class ElixirHttpDispatchIr {
         .append(configVar)
         .append(", :endpoint_prefix) do\n");
     sb.append("        nil -> \"\"\n");
-    if (endpointRules) {
-      sb.append("        _ ->\n          case ")
-          .append(endpointsModule)
-          .append(".resolve(")
-          .append(configVar)
-          .append(", %{}) do\n");
-      sb.append("            {:ok, %{url: url}} -> url\n");
-      sb.append("            _ -> RuntimeHelpers.resolve_base_url(")
-          .append(configVar)
-          .append(")\n");
-      sb.append("          end\n");
-    } else {
-      sb.append("        _ -> RuntimeHelpers.resolve_base_url(").append(configVar).append(")\n");
-    }
+    sb.append("        _ -> RuntimeHelpers.resolve_base_url(").append(configVar).append(")\n");
     sb.append("      end\n\n");
     sb.append("    url ->\n      url\n");
     sb.append("  end\n\n");
