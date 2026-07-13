@@ -1,9 +1,12 @@
 package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamCodegenTransforms;
+import io.smithy.beam.core.BeamElixirStaticRuntimeEmitter;
+import io.smithy.beam.core.BeamElixirStaticRuntimeIndex;
 import io.smithy.beam.core.BeamSettings;
 import software.amazon.smithy.build.PluginContext;
 import software.amazon.smithy.codegen.core.directed.CodegenDirector;
+import software.amazon.smithy.model.shapes.ServiceShape;
 
 /** Runs Elixir type generation then client-specific DirectedCodegen on the same file manifest. */
 public final class ElixirClientGeneration {
@@ -29,5 +32,12 @@ public final class ElixirClientGeneration {
     BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
 
     runner.run();
+
+    ServiceShape service = context.getModel().expectShape(serviceId, ServiceShape.class);
+    BeamElixirStaticRuntimeIndex.Requirements requirements =
+        BeamElixirStaticRuntimeIndex.forClient(context.getModel(), service, settings);
+    ClassLoader classLoader =
+        context.getPluginClassLoader().orElseGet(ElixirClientGeneration.class::getClassLoader);
+    BeamElixirStaticRuntimeEmitter.emit(context.getFileManifest(), classLoader, requirements);
   }
 }

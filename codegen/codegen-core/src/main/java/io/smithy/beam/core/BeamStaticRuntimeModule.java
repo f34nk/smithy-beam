@@ -2,7 +2,8 @@ package io.smithy.beam.core;
 
 /** One Erlang runtime source file packaged under {@code runtime/erlang/} in the plugin JAR. */
 public record BeamStaticRuntimeModule(
-    String resourcePath, String outputPath, String moduleName, RuntimeFeature feature) {
+    String resourcePath, String outputPath, String moduleName, RuntimeFeature feature)
+    implements BeamPackagedRuntimeModule {
 
   public enum RuntimeFeature {
     HTTP_CLIENT,

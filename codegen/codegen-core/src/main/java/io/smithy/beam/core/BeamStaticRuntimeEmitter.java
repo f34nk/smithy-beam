@@ -4,10 +4,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import software.amazon.smithy.build.FileManifest;
 import software.amazon.smithy.codegen.core.CodegenException;
 
-/** Copies packaged Erlang runtime sources into a Smithy build file manifest. */
+/** Copies packaged runtime sources into a Smithy build file manifest. */
 public final class BeamStaticRuntimeEmitter {
 
   private BeamStaticRuntimeEmitter() {}
@@ -16,23 +17,42 @@ public final class BeamStaticRuntimeEmitter {
       FileManifest manifest,
       ClassLoader classLoader,
       BeamStaticRuntimeIndex.Requirements requirements) {
-    if (requirements.modules().isEmpty()) {
+    emit(
+        manifest,
+        classLoader,
+        BeamStaticRuntimeCatalog.RESOURCE_PREFIX,
+        requirements.modules(),
+        "Erlang");
+  }
+
+  static void emit(
+      FileManifest manifest,
+      ClassLoader classLoader,
+      String resourcePrefix,
+      List<? extends BeamPackagedRuntimeModule> modules,
+      String runtimeName) {
+    if (modules.isEmpty()) {
       return;
     }
-    for (BeamStaticRuntimeModule module : requirements.modules()) {
-      String resourcePath = BeamStaticRuntimeCatalog.RESOURCE_PREFIX + module.resourcePath();
-      String content = readResource(classLoader, resourcePath);
+    for (BeamPackagedRuntimeModule module : modules) {
+      String resourcePath = resourcePrefix + module.resourcePath();
+      String content = readResource(classLoader, resourcePath, runtimeName);
       manifest.writeFile(module.outputPath(), content);
     }
   }
 
-  private static String readResource(ClassLoader classLoader, String resourcePath) {
+  private static String readResource(
+      ClassLoader classLoader, String resourcePath, String runtimeName) {
     try (InputStream in = classLoader.getResourceAsStream(resourcePath)) {
       if (in == null) {
         throw new CodegenException(
-            "Missing Erlang runtime resource: "
+            "Missing "
+                + runtimeName
+                + " runtime resource: "
                 + resourcePath
-                + ". Rebuild codegen-erlang so runtime/erlang is packaged.");
+                + ". Rebuild the codegen plugin so runtime/"
+                + runtimeName.toLowerCase()
+                + " is packaged.");
       }
       return new String(in.readAllBytes(), StandardCharsets.UTF_8);
     } catch (IOException e) {
