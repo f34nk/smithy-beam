@@ -13,7 +13,10 @@ defmodule AwsEventStream do
     total_len = headers_len + payload_len + 16
     prelude = <<total_len::32-big, headers_len::32-big>>
     prelude_crc = :erlang.crc32(prelude)
-    message_without_crc = <<prelude::binary, prelude_crc::32-big, headers_bin::binary, payload::binary>>
+
+    message_without_crc =
+      <<prelude::binary, prelude_crc::32-big, headers_bin::binary, payload::binary>>
+
     message_crc = :erlang.crc32(message_without_crc)
     <<message_without_crc::binary, message_crc::32-big>>
   end
@@ -52,11 +55,11 @@ defmodule AwsEventStream do
         if :erlang.crc32(prelude) == prelude_crc do
           decode_frame_body(total_len, headers_len, prelude_crc, rest)
         else
-          raise ArgumentError, {:bad_event_stream, :invalid_prelude_crc}
+          raise ArgumentError, "bad event stream: invalid_prelude_crc"
         end
 
       _ ->
-        raise ArgumentError, {:bad_event_stream, :incomplete}
+        raise ArgumentError, "bad event stream: incomplete"
     end
   end
 
@@ -77,11 +80,11 @@ defmodule AwsEventStream do
             rest: tail
           }
         else
-          raise ArgumentError, {:bad_event_stream, :invalid_message_crc}
+          raise ArgumentError, "bad event stream: invalid_message_crc"
         end
 
       _ ->
-        raise ArgumentError, {:bad_event_stream, :incomplete}
+        raise ArgumentError, "bad event stream: incomplete"
     end
   end
 
@@ -90,6 +93,7 @@ defmodule AwsEventStream do
   defp encode_header({name, value}, acc) when is_binary(name) and is_binary(value) do
     value_len = byte_size(value)
     name_len = byte_size(name)
+
     <<acc::binary, name_len::8, name::binary, @header_type_string::8, value_len::16-big,
       value::binary>>
   end
@@ -110,7 +114,7 @@ defmodule AwsEventStream do
   end
 
   defp encode_header({name, _value}, _acc) do
-    raise ArgumentError, {:bad_event_stream, {:unsupported_header, name}}
+    raise ArgumentError, "bad event stream: unsupported header #{inspect(name)}"
   end
 
   defp decode_headers(<<>>, acc), do: Enum.reverse(acc)
@@ -142,6 +146,6 @@ defmodule AwsEventStream do
        do: decode_headers(rest, [{name, value} | acc])
 
   defp decode_headers(_bin, _acc) do
-    raise ArgumentError, {:bad_event_stream, :invalid_header}
+    raise ArgumentError, "bad event stream: invalid_header"
   end
 end
