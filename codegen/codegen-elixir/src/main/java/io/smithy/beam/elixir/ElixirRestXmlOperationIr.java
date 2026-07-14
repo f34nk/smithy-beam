@@ -383,7 +383,7 @@ final class ElixirRestXmlOperationIr {
     body.addAll(buildQueryExprs(queries, sp));
     body.addAll(buildRequestHeadersExprs(model, headers, sp, "input"));
     body.addAll(buildRequestBodyExprs(model, payloadMembers, httpTrait.getMethod(), sp, typesMod));
-    ElixirHttpChecksumIr.requestChecksumHeadersStatement(model, op, sp, "headers")
+    ElixirHttpChecksumIr.requestChecksumHeadersExpr(model, op, sp, "headers")
         .ifPresent(body::add);
 
     List<StructField> requestFields = new ArrayList<>();

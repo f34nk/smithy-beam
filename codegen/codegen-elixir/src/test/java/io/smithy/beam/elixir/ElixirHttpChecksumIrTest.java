@@ -2,18 +2,20 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.ElixirRenderer;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.Variable;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExVar;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import org.junit.jupiter.api.Test;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -47,13 +49,16 @@ class ElixirHttpChecksumIrTest {
             ElixirSymbolProvider.toModuleName(layout.typesModuleName()),
             BeamCodegenKind.CLIENT);
 
-    ExExpr requiredExpr =
+    Expression requiredExpr =
         ElixirHttpChecksumIr.requestChecksumHeadersExpr(model, required, sp, "headers")
             .orElseThrow();
-    ExExpr flexibleExpr =
+    Expression flexibleExpr =
         ElixirHttpChecksumIr.requestChecksumHeadersExpr(model, flexible, sp, "headers")
             .orElseThrow();
-    String combined = exprAsString(requiredExpr) + "\n\n" + exprAsString(flexibleExpr);
+    String combined =
+        ElixirRenderer.renderStatement(requiredExpr)
+            + "\n\n"
+            + ElixirRenderer.renderStatement(flexibleExpr);
     assertThat(combined)
         .isEqualTo(readExpectedString("ir/http_checksum_request_headers.expected.ex"));
   }
@@ -81,10 +86,12 @@ class ElixirHttpChecksumIrTest {
             ElixirSymbolProvider.toModuleName(layout.typesModuleName()),
             BeamCodegenKind.CLIENT);
 
-    ExExpr guarded =
+    Expression guarded =
         ElixirHttpChecksumIr.responseChecksumGuardExpr(
-            model, flexible, ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("output")));
-    assertThat(exprAsString(guarded))
+            model,
+            flexible,
+            TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("output"))));
+    assertThat(ElixirRenderer.renderExpression(guarded))
         .isEqualTo(readExpectedString("ir/http_checksum_response_guard.expected.ex"));
   }
 
@@ -161,10 +168,6 @@ class ElixirHttpChecksumIrTest {
         .discoverModels()
         .assemble()
         .unwrap();
-  }
-
-  private static String exprAsString(ExExpr expr) {
-    return String.join("\n", expr.lines());
   }
 
   private static String readExpectedString(String resourcePath) throws IOException {

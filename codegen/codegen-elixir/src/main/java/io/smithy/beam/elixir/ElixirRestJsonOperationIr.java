@@ -127,7 +127,7 @@ final class ElixirRestJsonOperationIr {
     body.addAll(
         buildRequestBodyExprs(
             model, httpIndex, reqPayload, docMembers, method, sp, "input", eventStreamModule));
-    ElixirHttpChecksumIr.requestChecksumHeadersStatement(model, op, sp, "headers")
+    ElixirHttpChecksumIr.requestChecksumHeadersExpr(model, op, sp, "headers")
         .ifPresent(body::add);
     body.addAll(buildRequestCompressionExprs(op));
 
