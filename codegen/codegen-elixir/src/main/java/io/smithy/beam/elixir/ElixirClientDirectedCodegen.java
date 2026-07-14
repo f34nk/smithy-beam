@@ -2,8 +2,16 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamClientRetrySupport;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.Expression;
 import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionDoc;
+import io.beam.ir.elixir.FunctionHead;
 import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.VariablePattern;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamEdition;
@@ -15,15 +23,7 @@ import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExDoc;
-import io.beam.ir.elixir.BlockExpr;
-import io.beam.ir.elixir.Expression;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExVarPattern;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -164,15 +164,16 @@ final class ElixirClientDirectedCodegen
     ElixirClientModuleBuilder builder = ctx.clientModuleBuilderOrNull();
     if (builder != null) {
       String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-      List<Function> retryFunctions =
-          ElixirRetryIr.serviceHasRetryableErrors(ctx.model(), service)
-              ? ElixirRetryIr.clientPredicateFunctions(ctx.model(), service, sp, layout)
-              : List.of();
+      List<Function> beamIrFunctions = new ArrayList<>(builder.operationFunctions());
+      if (ElixirRetryIr.serviceHasRetryableErrors(ctx.model(), service)) {
+        beamIrFunctions.addAll(
+            ElixirRetryIr.clientPredicateFunctions(ctx.model(), service, sp, layout));
+      }
       Module module =
           ElixirClientIr.clientModule(
               layout, service, typesModuleName, List.of());
       ElixirCodecEmission.writeModule(
-          ctx, ctx.definitionFile(), module, builder.operationFunctions(), retryFunctions);
+          ctx, ctx.definitionFile(), module, List.of(), beamIrFunctions);
       if (ctx.protocolCodegen() != null) {
         List<OperationShape> operations =
             ElixirTopDown.containedOperationsSorted(ctx.model(), service);
@@ -227,7 +228,7 @@ final class ElixirClientDirectedCodegen
 
     String successReturnType =
         successReturnType(paginated, paginationInfo, ctx, sp, typesModuleName, outSym);
-    ExDoc doc = operationDoc(op, ctx);
+    FunctionDoc doc = operationDoc(op, ctx);
 
     if (paginated) {
       builder.addOperationFunctions(
@@ -271,7 +272,7 @@ final class ElixirClientDirectedCodegen
     return ElixirTopDown.structureSpecType(typesModuleName, outSym);
   }
 
-  private static ExDoc operationDoc(OperationShape op, ElixirContext ctx) {
+  private static FunctionDoc operationDoc(OperationShape op, ElixirContext ctx) {
     StringBuilder text = new StringBuilder();
     BeamDocumentation.forShape(op).ifPresent(doc -> text.append(doc).append('\n'));
     if (ctx.protocolCodegen() != null) {
@@ -291,10 +292,10 @@ final class ElixirClientDirectedCodegen
     if (text.isEmpty()) {
       return null;
     }
-    return ExDoc.doc(text.toString().strip());
+    return FunctionDoc.of(text.toString().strip());
   }
 
-  private static ExFunction singlePageOperationFunction(
+  private static Function singlePageOperationFunction(
       ElixirContext ctx,
       OperationShape op,
       BeamElixirLayout layout,
@@ -304,18 +305,20 @@ final class ElixirClientDirectedCodegen
       boolean hasProtocol,
       boolean wrapWithRetry,
       String clientModule,
-      ExDoc doc) {
+      FunctionDoc doc) {
     String specOutput = "{:ok, " + successReturnType + "} | {:error, term()}";
+    Spec spec = Spec.of(opSym.getName() + "(map(), " + inType + ") -> " + specOutput);
     if (!hasProtocol) {
-      return ExFunction.functionWithDocAndSpec(
-          "def",
+      return new Function(
           opSym.getName(),
-          doc,
-          ExSpec.functionSpec(opSym.getName(), "map(), " + inType, specOutput),
+          false,
           List.of(
-              ExClause.inlineClause(
-                  List.of(ExVarPattern.var("_config"), ExVarPattern.var("_input")),
-                  ExTuple.tuple(ExAtom.atom("error"), ExAtom.atom("not_implemented")))));
+              FunctionHead.of(
+                  List.of(VariablePattern.of("_config"), VariablePattern.of("_input")))),
+          TupleExpr.of(List.of(AtomExpr.of("error"), AtomExpr.of("not_implemented"))),
+          spec,
+          doc,
+          true);
     }
 
     List<Expression> body =
@@ -328,15 +331,16 @@ final class ElixirClientDirectedCodegen
             false,
             ElixirClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
     Expression block = body.size() == 1 ? body.get(0) : new BlockExpr(body);
-    return ExFunction.functionWithDocAndSpec(
-        "def",
+    return new Function(
         opSym.getName(),
-        doc,
-        ExSpec.functionSpec(opSym.getName(), "map(), " + inType, specOutput),
+        false,
         List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("config"), ExVarPattern.var("input")),
-                ElixirBeamIrBridge.statement(block))));
+            FunctionHead.of(
+                List.of(VariablePattern.of("config"), VariablePattern.of("input")))),
+        block,
+        spec,
+        doc,
+        false);
   }
 
   @Override

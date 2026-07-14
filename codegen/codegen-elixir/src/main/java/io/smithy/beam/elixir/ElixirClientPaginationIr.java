@@ -8,21 +8,18 @@ import io.beam.ir.elixir.BlockExpr;
 import io.beam.ir.elixir.CaseExpr;
 import io.beam.ir.elixir.Clause;
 import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionDoc;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.ListExpr;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.Spec;
 import io.beam.ir.elixir.TupleExpr;
 import io.beam.ir.elixir.TuplePattern;
 import io.beam.ir.elixir.Variable;
 import io.beam.ir.elixir.VariablePattern;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExDoc;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExPattern;
-import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -35,7 +32,7 @@ import software.amazon.smithy.model.shapes.StructureShape;
 final class ElixirClientPaginationIr {
   private ElixirClientPaginationIr() {}
 
-  static List<ExFunction> paginatedOperationFunctions(
+  static List<Function> paginatedOperationFunctions(
       ElixirContext ctx,
       ServiceShape service,
       OperationShape op,
@@ -43,7 +40,7 @@ final class ElixirClientPaginationIr {
       boolean wrapWithRetry,
       String clientModule,
       String successReturnType,
-      ExDoc docOrNull) {
+      FunctionDoc docOrNull) {
     SymbolProvider sp = ctx.symbolProvider();
     Symbol opSym = sp.toSymbol(op);
     StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
@@ -52,17 +49,22 @@ final class ElixirClientPaginationIr {
     String inType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
     String specOutput = "{:ok, " + successReturnType + "} | {:error, term()}";
 
-    ExFunction arity2 =
-        ExFunction.functionWithDocAndSpec(
-            "def",
+    Function arity2 =
+        new Function(
             opName,
-            docOrNull,
-            ExSpec.functionSpec(opName, "map(), " + inType, specOutput),
+            false,
             List.of(
-                ExClause.blockClause(
-                    List.of(ExVarPattern.var("config"), ExVarPattern.var("input")),
-                    ExCallLocal.callLocal(
-                        opName, ExVar.var("config"), ExVar.var("input"), ExList.list()))));
+                FunctionHead.of(
+                    List.of(VariablePattern.of("config"), VariablePattern.of("input")))),
+            LocalCallExpr.of(
+                opName,
+                List.of(
+                    Variable.of("config"),
+                    Variable.of("input"),
+                    ListExpr.of(List.of()))),
+            Spec.of(opName + "(map(), " + inType + ") -> " + specOutput),
+            docOrNull,
+            true);
 
     List<Expression> pageBody =
         ElixirClientDispatchIr.operationBodyExprs(
@@ -74,19 +76,27 @@ final class ElixirClientPaginationIr {
             true,
             ElixirClientDispatchOperationIr.DispatchBodyMode.PAGINATED_PAGE);
 
-    ExFunction arity3 =
-        ExFunction.functionWithSpec(
-            "defp",
+    Function arity3 =
+        new Function(
             opName,
-            ExSpec.functionSpec(opName, "map(), " + inType + ", " + successReturnType, specOutput),
+            true,
             List.of(
-                paginatedArity3Clause(
-                    ctx, service, op, wrapWithRetry, clientModule, pageBody, sp, opName)));
+                FunctionHead.of(
+                    List.of(
+                        VariablePattern.of("config"),
+                        VariablePattern.of("input"),
+                        VariablePattern.of("acc")))),
+            paginatedArity3Body(
+                ctx, service, op, wrapWithRetry, clientModule, pageBody, sp, opName),
+            Spec.of(
+                opName + "(map(), " + inType + ", " + successReturnType + ") -> " + specOutput),
+            null,
+            false);
 
     return List.of(arity2, arity3);
   }
 
-  private static ExClause paginatedArity3Clause(
+  private static Expression paginatedArity3Body(
       ElixirContext ctx,
       ServiceShape service,
       OperationShape op,
@@ -95,17 +105,11 @@ final class ElixirClientPaginationIr {
       List<Expression> pageBody,
       SymbolProvider sp,
       String opName) {
-    List<ExPattern> patterns =
-        List.of(ExVarPattern.var("config"), ExVarPattern.var("input"), ExVarPattern.var("acc"));
     if (wrapWithRetry) {
-      return ExClause.blockClause(
-          patterns,
-          ElixirBeamIrBridge.statement(
-              blockExpr(
-                  retryWrappedPageBody(ctx, service, op, clientModule, pageBody, sp, opName))));
+      return blockExpr(
+          retryWrappedPageBody(ctx, service, op, clientModule, pageBody, sp, opName));
     }
-    return ExClause.blockClause(
-        patterns, ElixirBeamIrBridge.statement(blockExpr(pageBody)));
+    return blockExpr(pageBody);
   }
 
   private static Expression blockExpr(List<Expression> exprs) {
