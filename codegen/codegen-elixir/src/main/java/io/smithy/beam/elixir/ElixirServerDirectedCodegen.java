@@ -96,7 +96,6 @@ final class ElixirServerDirectedCodegen
         definitionFile,
         new java.util.ArrayList<>(),
         new java.util.ArrayList<>(),
-        new java.util.ArrayList<>(),
         null,
         new ElixirBehaviourModuleBuilder(),
         new ElixirServerModuleBuilder());

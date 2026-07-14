@@ -112,7 +112,6 @@ final class ElixirClientDirectedCodegen
         definitionFile,
         new java.util.ArrayList<>(),
         new java.util.ArrayList<>(),
-        new java.util.ArrayList<>(),
         new ElixirClientModuleBuilder(),
         null,
         null);

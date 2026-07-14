@@ -2,11 +2,11 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModuledoc;
-import io.smithy.beam.ir.elixir.ExTypesModule;
+import io.beam.ir.elixir.ElixirRenderer;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.Moduledoc;
+import io.beam.ir.elixir.Module;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
 
@@ -15,10 +15,7 @@ class ElixirTypesIrTest {
 
   @Test
   void endpointRuleSetEntriesRendersTypeAliasAndAttributes() {
-    String output =
-        ElixirTypesIr.endpointRuleSetEntries("{\"region\":\"us-east-1\"}").stream()
-            .map(entry -> String.join("\n", entry.lines()))
-            .collect(Collectors.joining("\n"));
+    String output = String.join("\n", ElixirTypesIr.endpointRuleSetEntries("{\"region\":\"us-east-1\"}"));
 
     assertThat(output)
         .contains("@type endpoint_rule_set :: map()")
@@ -30,22 +27,27 @@ class ElixirTypesIrTest {
 
   @Test
   void endpointRuleSetFunctionRendersAccessor() {
-    ExFunction function = ElixirTypesIr.endpointRuleSetFunction();
-    assertThat(function.asString())
+    Function function = ElixirTypesIr.endpointRuleSetFunction();
+    assertThat(ElixirRenderer.renderFunction(function))
         .contains("@spec endpoint_rule_set() :: endpoint_rule_set()")
         .contains("def endpoint_rule_set, do: @endpoint_rule_set");
   }
 
   @Test
   void endpointRuleSetEmitsAtEndOfTypesModule() {
-    ExTypesModule module =
-        ExTypesModule.typesModule(
+    List<ElixirTypesEntry> entries =
+        ElixirTypesIr.endpointRuleSetEntries("{\"version\":\"1.0\"}").stream()
+            .map(ElixirTypesRootLine::new)
+            .map(ElixirTypesEntry.class::cast)
+            .toList();
+    Module module =
+        ElixirBeamIrTypes.rootTypesModule(
             "EndpointRulesServiceTypes",
-            List.of(ExModuledoc.moduledoc("Types.")),
-            ElixirTypesIr.endpointRuleSetEntries("{\"version\":\"1.0\"}"),
+            Moduledoc.of("Types."),
+            entries,
             List.of(ElixirTypesIr.endpointRuleSetFunction()));
 
-    String output = module.asString();
+    String output = ElixirRenderer.render(module);
     assertThat(output)
         .contains("defmodule EndpointRulesServiceTypes do")
         .contains("@endpoint_rule_set_json")

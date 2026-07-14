@@ -1,9 +1,14 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.ElixirRenderer;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.Moduledoc;
+import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.TypesModule;
+import io.beam.ir.elixir.Variable;
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.ir.elixir.ExModuleEntry;
-import io.smithy.beam.ir.elixir.ExNestedModule;
-import io.smithy.beam.ir.elixir.ExTypesModule;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.WriterDelegator;
@@ -21,51 +26,68 @@ final class ElixirTypesEmission {
 
   static void writeTypesModules(
       ElixirContext ctx, int defstructSplitThreshold, int enumSplitThreshold) {
-    List<ExModuleEntry> rootEntries = new ArrayList<>();
-    List<ExNestedModule> splitModules = new ArrayList<>();
+    Moduledoc moduledoc = null;
+    List<ElixirTypesEntry> inlineEntries = new ArrayList<>();
+    List<ElixirTypesEntry> splitEntries = new ArrayList<>();
 
-    for (ExModuleEntry entry : ctx.typesEntries()) {
-      if (entry instanceof ExNestedModule nested) {
-        if (shouldSplitNestedModule(nested, defstructSplitThreshold, enumSplitThreshold)) {
-          splitModules.add(nested);
-        } else {
-          rootEntries.add(entry);
-        }
+    for (ElixirTypesEntry entry : ctx.typesEntries()) {
+      if (entry instanceof ElixirTypesModuledocEntry moduledocEntry) {
+        moduledoc = moduledocEntry.moduledoc();
+        continue;
+      }
+      if (shouldSplitEntry(entry, defstructSplitThreshold, enumSplitThreshold)) {
+        splitEntries.add(entry);
       } else {
-        rootEntries.add(entry);
+        inlineEntries.add(entry);
       }
     }
 
-    if (splitModules.isEmpty()) {
-      ExTypesModule module =
-          ExTypesModule.typesModule(
-              ctx.moduleName(), ctx.typesPreambleEntries(), rootEntries, ctx.typesFunctions());
-      writeTypesFile(ctx, ctx.definitionFile(), module);
+    Module rootModule =
+        ElixirBeamIrTypes.rootTypesModule(
+            ctx.moduleName(), moduledoc, inlineEntries, ctx.typesFunctions());
+    writeTypesFile(ctx, ctx.definitionFile(), rootModule);
+
+    if (splitEntries.isEmpty()) {
       return;
     }
 
-    ExTypesModule rootModule =
-        ExTypesModule.typesModule(
-            ctx.moduleName(), ctx.typesPreambleEntries(), rootEntries, ctx.typesFunctions());
-    writeTypesFile(ctx, ctx.definitionFile(), rootModule);
-
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), ctx.service().getId().getNamespace(), ctx.service());
-    for (ExNestedModule nested : splitModules) {
-      String file = layout.nestedTypeModuleFile(nested.name());
-      ExTypesModule topLevel = nested.asTopLevelModule(ctx.moduleName());
-      writeTypesFile(ctx, file, topLevel);
+    for (ElixirTypesEntry entry : splitEntries) {
+      writeSplitTypesFile(ctx, layout, entry);
     }
   }
 
-  private static boolean shouldSplitNestedModule(
-      ExNestedModule nested, int defstructSplitThreshold, int enumSplitThreshold) {
-    return nested.defstructLiteralSizeEstimate() > defstructSplitThreshold
-        || nested.enumModuleSizeEstimate() > enumSplitThreshold;
+  private static boolean shouldSplitEntry(
+      ElixirTypesEntry entry, int defstructSplitThreshold, int enumSplitThreshold) {
+    return switch (entry) {
+      case ElixirTypesStructNested(TypesModule typesModule) ->
+          ElixirBeamIrTypes.shouldSplitStruct(typesModule, defstructSplitThreshold);
+      case ElixirTypesEmbeddedNested embedded ->
+          ElixirBeamIrTypes.shouldSplitEmbedded(embedded, enumSplitThreshold);
+      default -> false;
+    };
   }
 
-  private static void writeTypesFile(ElixirContext ctx, String file, ExTypesModule module) {
-    writeTypesSource(ctx, file, module.asString());
+  private static void writeSplitTypesFile(
+      ElixirContext ctx, BeamElixirLayout layout, ElixirTypesEntry entry) {
+    switch (entry) {
+      case ElixirTypesStructNested(TypesModule typesModule) -> {
+        String file = layout.nestedTypeModuleFile(typesModule.name());
+        TypesModule topLevel = ElixirBeamIrTypes.splitStructModule(ctx.moduleName(), typesModule);
+        writeTypesSource(ctx, file, ElixirRenderer.render(topLevel));
+      }
+      case ElixirTypesEmbeddedNested embedded -> {
+        String file = layout.nestedTypeModuleFile(embedded.name());
+        Module topLevel = ElixirBeamIrTypes.splitEmbeddedModule(ctx.moduleName(), embedded);
+        writeTypesFile(ctx, file, topLevel);
+      }
+      default -> {}
+    }
+  }
+
+  private static void writeTypesFile(ElixirContext ctx, String file, Module module) {
+    writeTypesSource(ctx, file, ElixirRenderer.render(module));
   }
 
   private static void writeTypesSource(ElixirContext ctx, String file, String source) {

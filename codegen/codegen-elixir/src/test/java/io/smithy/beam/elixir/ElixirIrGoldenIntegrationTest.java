@@ -8,8 +8,9 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
+import io.beam.ir.elixir.ElixirRenderer;
 import io.beam.ir.elixir.Function;
-import io.smithy.beam.ir.elixir.ExNestedModule;
+import io.beam.ir.elixir.TypesModule;
 import java.io.IOException;
 import java.net.URL;
 import java.util.List;
@@ -84,10 +85,10 @@ class ElixirIrGoldenIntegrationTest {
     SymbolProvider sp = ctx.symbolProvider();
     List<MemberShape> members =
         StreamSupport.stream(getNameOutput.members().spliterator(), false).toList();
-    ExNestedModule nested =
-        ElixirDirectedCodegen.buildStructureNestedModule(
+    TypesModule nested =
+        ElixirTypesNestedIr.buildStructureNestedModule(
             getNameOutput, sp.toSymbol(getNameOutput), ctx, sp, NullableIndex.of(model), members);
-    assertThat(nested.asString())
+    assertThat(ElixirRenderer.render(nested))
         .isEqualTo(IrGoldenAssertions.readExpectedString("ir/golden/get_name_output_structure.expected.ex"));
   }
 
