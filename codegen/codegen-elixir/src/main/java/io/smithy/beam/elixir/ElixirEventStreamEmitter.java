@@ -1,9 +1,9 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Module;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamEventStreamIndex;
-import io.smithy.beam.ir.elixir.ExModule;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.UnionShape;
@@ -24,11 +24,8 @@ public final class ElixirEventStreamEmitter {
 
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
-    ExModule module = ElixirEventStreamIr.eventStreamModule(ctx, service);
-
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.eventStreamModuleFile(), writer -> writer.write("$L", module.asString()));
+    Module module = ElixirEventStreamIr.eventStreamModule(ctx, service);
+    ElixirCodecEmission.writeModule(ctx, layout.eventStreamModuleFile(), module);
   }
 
   static String helperName(SymbolProvider sp, UnionShape union) {
