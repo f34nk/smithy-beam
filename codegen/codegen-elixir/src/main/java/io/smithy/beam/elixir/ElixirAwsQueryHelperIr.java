@@ -1,56 +1,61 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AnonFun;
+import io.beam.ir.elixir.AnonFunClause;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.AndGuard;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.ComparisonGuard;
+import io.beam.ir.elixir.ConsListPattern;
+import io.beam.ir.elixir.Expression;
 import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.IfExpr;
+import io.beam.ir.elixir.InfixExpr;
+import io.beam.ir.elixir.IntegerExpr;
+import io.beam.ir.elixir.IsTypeGuard;
+import io.beam.ir.elixir.ListExpr;
+import io.beam.ir.elixir.ListPattern;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.NilExpr;
+import io.beam.ir.elixir.NilPattern;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.PipeExpr;
+import io.beam.ir.elixir.PipeStep;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
+import io.beam.ir.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamXmlDecoder;
-import io.smithy.beam.ir.elixir.ExAnonymousFn;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExBinaryTemplate;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExCase;
-import io.smithy.beam.ir.elixir.ExCaseBranch;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExConsPattern;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExExprBlock;
-import io.smithy.beam.ir.elixir.ExFor;
-import io.smithy.beam.ir.elixir.ExForFilter;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExGuard;
-import io.smithy.beam.ir.elixir.ExIf;
-import io.smithy.beam.ir.elixir.ExInteger;
-import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExListPattern;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExNil;
-import io.smithy.beam.ir.elixir.ExNilPattern;
-import io.smithy.beam.ir.elixir.ExOp;
-import io.smithy.beam.ir.elixir.ExPipeline;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStringPattern;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 final class ElixirAwsQueryHelperIr {
   private ElixirAwsQueryHelperIr() {}
 
-  private static final ExVarPattern W = ExVarPattern.var("_");
+  private static final Pattern W = WildcardPattern.of();
 
-  static List<ExFunction> queryHelperFunctions(boolean ec2Query) {
-    return List.of(flattenMember(ec2Query), enc());
+  static List<Function> queryHelperFunctions(boolean ec2Query) {
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(flattenMemberFunctions(ec2Query));
+    functions.addAll(encFunctions());
+    return functions;
   }
 
-  static List<ExFunction> xmlHelperFunctions(boolean ec2Query) {
-    List<ExFunction> functions = new ArrayList<>();
+  static List<Function> xmlHelperFunctions(boolean ec2Query) {
+    List<Function> functions = new ArrayList<>();
     functions.add(unwrapQueryResult());
-    functions.add(normalizeXmlElement());
+    functions.addAll(normalizeXmlElement());
     functions.add(queryResultElement());
     functions.addAll(awsQueryXmlElementHelpers());
     functions.add(awsQueryXmlChildStructList());
@@ -60,43 +65,29 @@ final class ElixirAwsQueryHelperIr {
     return functions;
   }
 
-  private static List<ExFunction> decodeXmlTextHelpers() {
-    return List.of(decodeXmlBoolean(), decodeXmlInteger(), decodeXmlFloat());
+  private static List<Function> decodeXmlTextHelpers() {
+    return List.of(
+        defp("decode_xml_boolean", List.of(NilPattern.of()), NilExpr.of(), true),
+        defp("decode_xml_boolean", List.of(VariablePattern.of("true")), AtomExpr.of("true"), true),
+        defp("decode_xml_boolean", List.of(VariablePattern.of("false")), AtomExpr.of("false"), true),
+        defp("decode_xml_integer", List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            "decode_xml_integer",
+            List.of(VariablePattern.of("text")),
+            IsTypeGuard.of("is_binary", "text"),
+            RemoteCallExpr.of("String", "to_integer", List.of(Variable.of("text"))),
+            true),
+        defp("decode_xml_float", List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            "decode_xml_float",
+            List.of(VariablePattern.of("text")),
+            IsTypeGuard.of("is_binary", "text"),
+            RemoteCallExpr.of("String", "to_float", List.of(Variable.of("text"))),
+            true));
   }
 
-  private static ExFunction decodeXmlBoolean() {
-    return ExFunction.defpFunction(
-        "decode_xml_boolean",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExNil.nil()),
-            ExClause.inlineClause(List.of(ExStringPattern.string("true")), ExAtom.atom("true")),
-            ExClause.inlineClause(List.of(ExStringPattern.string("false")), ExAtom.atom("false"))));
-  }
-
-  private static ExFunction decodeXmlInteger() {
-    return ExFunction.defpFunction(
-        "decode_xml_integer",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExNil.nil()),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("text")),
-                List.of(ExGuard.guard("is_binary", ExVar.var("text"))),
-                ExCall.call("String", "to_integer", ExVar.var("text")))));
-  }
-
-  private static ExFunction decodeXmlFloat() {
-    return ExFunction.defpFunction(
-        "decode_xml_float",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExNil.nil()),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("text")),
-                List.of(ExGuard.guard("is_binary", ExVar.var("text"))),
-                ExCall.call("String", "to_float", ExVar.var("text")))));
-  }
-
-  static List<ExFunction> serverDecodeHelpers(boolean ec2Query) {
-    List<ExFunction> functions = new ArrayList<>();
+  static List<Function> serverDecodeHelpers(boolean ec2Query) {
+    List<Function> functions = new ArrayList<>();
     functions.add(parseQueryParams());
     functions.add(formValue());
     functions.add(ec2Query ? formListValuesEc2() : formListValuesAws());
@@ -104,663 +95,823 @@ final class ElixirAwsQueryHelperIr {
     return functions;
   }
 
-  static List<ExFunction> serverXmlEncodeHelpers(boolean ec2Query) {
-    List<ExFunction> functions = new ArrayList<>();
+  static List<Function> serverXmlEncodeHelpers(Optional<String> serviceNamespace, boolean ec2Query) {
+    List<Function> functions = new ArrayList<>();
     if (!ec2Query) {
       functions.add(wrapAwsQueryResponse());
     }
-    @SuppressWarnings("unused")
-    List<Function> xmlEncodeHelpers = new ArrayList<>();
-    xmlEncodeHelpers.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
+    functions.addAll(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
+    functions.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
     return functions;
   }
 
-  private static List<ExFunction> awsQueryXmlElementHelpers() {
-    @SuppressWarnings("unused")
-    List<Function> xmlElementHelpers = new ArrayList<>();
-    xmlElementHelpers.addAll(ElixirXmlCodecIr.collectText());
-    xmlElementHelpers.addAll(ElixirXmlCodecIr.elementText());
-    xmlElementHelpers.addAll(ElixirXmlCodecIr.isElementString());
-    return List.of(
-        elementContent(),
-        awsQueryFindElement(),
-        isElement(),
-        awsQueryElementName(),
-        xmlChildText());
+  private static List<Function> awsQueryXmlElementHelpers() {
+    List<Function> helpers = new ArrayList<>();
+    helpers.addAll(ElixirXmlCodecIr.collectText());
+    helpers.addAll(ElixirXmlCodecIr.elementText());
+    helpers.addAll(ElixirXmlCodecIr.isElementString());
+    helpers.addAll(elementContent());
+    helpers.add(awsQueryFindElement());
+    helpers.addAll(isElement());
+    helpers.addAll(elementName());
+    helpers.add(xmlChildText());
+    return helpers;
   }
 
-  private static ExFunction flattenMember(boolean ec2Query) {
+  private static List<Function> flattenMemberFunctions(boolean ec2Query) {
     String listSuffix = ec2Query ? "." : ".member.";
-    ExExpr listBody = ExCall.call("List", "flatten", flattenMemberListComprehension(listSuffix));
-    ExExpr mapBody = ExCall.call("List", "flatten", flattenMemberMapComprehension());
+    Expression listBody =
+        RemoteCallExpr.of("List", "flatten", List.of(flattenMemberListFlatMap(listSuffix)));
+    Expression mapBody =
+        RemoteCallExpr.of("List", "flatten", List.of(flattenMemberMapFlatMap()));
 
-    return ExFunction.defpFunction(
-        "flatten_member",
+    return List.of(
+        defp(
+            "flatten_member",
+            List.of(VariablePattern.of("_key"), NilPattern.of()),
+            ListExpr.of(List.of()),
+            true),
+        defp(
+            "flatten_member",
+            List.of(VariablePattern.of("key"), VariablePattern.of("value")),
+            IsTypeGuard.of("is_list", "value"),
+            listBody,
+            false),
+        defp(
+            "flatten_member",
+            List.of(VariablePattern.of("key"), VariablePattern.of("value")),
+            IsTypeGuard.of("is_struct", "value"),
+            LocalCallExpr.of(
+                "flatten_structure", List.of(Variable.of("key"), Variable.of("value"))),
+            false),
+        defp(
+            "flatten_member",
+            List.of(VariablePattern.of("key"), VariablePattern.of("value")),
+            IsTypeGuard.of("is_map", "value"),
+            mapBody,
+            false),
+        defp(
+            "flatten_member",
+            List.of(VariablePattern.of("key"), VariablePattern.of("value")),
+            ListExpr.of(
+                List.of(TupleExpr.of(List.of(Variable.of("key"), Variable.of("value"))))),
+            true));
+  }
+
+  private static Expression flattenMemberListFlatMap(String listSuffix) {
+    return RemoteCallExpr.of(
+        "Enum",
+        "flat_map",
         List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("_key"), ExNilPattern.nil()), ExList.list()),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("key"), ExVarPattern.var("value")),
-                List.of(ExGuard.guard("is_list", ExVar.var("value"))),
-                listBody),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("key"), ExVarPattern.var("value")),
-                List.of(ExGuard.guard("is_struct", ExVar.var("value"))),
-                ExCallLocal.callLocal("flatten_structure", ExVar.var("key"), ExVar.var("value"))),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("key"), ExVarPattern.var("value")),
-                List.of(ExGuard.guard("is_map", ExVar.var("value"))),
-                mapBody),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("key"), ExVarPattern.var("value")),
-                ExList.list(ExTuple.tuple(ExVar.var("key"), ExVar.var("value"))))));
+            RemoteCallExpr.of(
+                "Enum", "with_index", List.of(Variable.of("value"), IntegerExpr.of(1))),
+            new AnonFun(
+                List.of(
+                    AnonFunClause.of(
+                        List.of(
+                            TuplePattern.of(
+                                List.of(VariablePattern.of("v"), VariablePattern.of("i")))),
+                        new ComparisonGuard(Variable.of("v"), "!=", AtomExpr.of("nil")),
+                        LocalCallExpr.of(
+                            "flatten_member",
+                            List.of(flattenMemberIndexedKey(listSuffix), Variable.of("v"))))))));
   }
 
-  private static ExFor flattenMemberListComprehension(String listSuffix) {
-    return ExFor.forExpr(
-        ExCallLocal.callLocal(
-            "flatten_member", flattenMemberIndexedKey(listSuffix), ExVar.var("v")),
-        ExTuplePattern.tuple(ExVarPattern.var("v"), ExVarPattern.var("i")),
-        ExCall.call("Enum", "with_index", ExVar.var("value"), ExInteger.integer(1)),
-        ExForFilter.filter(ExOp.op("!=", ExVar.var("v"), ExAtom.atom("nil"))));
+  private static Expression flattenMemberMapFlatMap() {
+    return RemoteCallExpr.of(
+        "Enum",
+        "flat_map",
+        List.of(
+            RemoteCallExpr.of(
+                "Enum",
+                "with_index",
+                List.of(
+                    RemoteCallExpr.of("Map", "to_list", List.of(Variable.of("value"))),
+                    IntegerExpr.of(1))),
+            new AnonFun(
+                List.of(
+                    AnonFunClause.of(
+                        List.of(
+                            TuplePattern.of(
+                                List.of(
+                                    TuplePattern.of(
+                                        List.of(
+                                            VariablePattern.of("k"), VariablePattern.of("v"))),
+                                    VariablePattern.of("i")))),
+                        AndGuard.of(
+                            List.of(
+                                new ComparisonGuard(Variable.of("k"), "!=", AtomExpr.of("nil")),
+                                new ComparisonGuard(
+                                    Variable.of("v"), "!=", AtomExpr.of("nil")))),
+                        new InfixExpr(
+                            LocalCallExpr.of(
+                                "flatten_member",
+                                List.of(flattenMemberEntryKey(".key"), Variable.of("k"))),
+                            "++",
+                            LocalCallExpr.of(
+                                "flatten_member",
+                                List.of(flattenMemberEntryKey(".value"), Variable.of("v")))))))));
   }
 
-  private static ExFor flattenMemberMapComprehension() {
-    return ExFor.forExpr(
-        ExOp.op(
-            "++",
-            ExCallLocal.callLocal("flatten_member", flattenMemberEntryKey(".key"), ExVar.var("k")),
-            ExCallLocal.callLocal(
-                "flatten_member", flattenMemberEntryKey(".value"), ExVar.var("v"))),
-        ExTuplePattern.tuple(
-            ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v")),
-            ExVarPattern.var("i")),
-        ExCall.call(
-            "Enum",
-            "with_index",
-            ExCall.call("Map", "to_list", ExVar.var("value")),
-            ExInteger.integer(1)),
-        ExForFilter.filter(ExOp.op("!=", ExVar.var("k"), ExAtom.atom("nil"))),
-        ExForFilter.filter(ExOp.op("!=", ExVar.var("v"), ExAtom.atom("nil"))));
-  }
-
-  private static ExExpr flattenMemberIndexedKey(String listSuffix) {
-    return ExOp.op(
+  private static Expression flattenMemberIndexedKey(String listSuffix) {
+    return new InfixExpr(
+        new InfixExpr(Variable.of("key"), "<>", StringExpr.of(listSuffix)),
         "<>",
-        ExOp.op("<>", ExVar.var("key"), ExString.string(listSuffix)),
-        ExCall.call("Integer", "to_string", ExVar.var("i")));
+        RemoteCallExpr.of("Integer", "to_string", List.of(Variable.of("i"))));
   }
 
-  private static ExExpr flattenMemberEntryKey(String suffix) {
-    return ExOp.op(
-        "<>",
-        ExOp.op(
+  private static Expression flattenMemberEntryKey(String suffix) {
+    return new InfixExpr(
+        new InfixExpr(
+            new InfixExpr(Variable.of("key"), "<>", StringExpr.of(".entry.")),
             "<>",
-            ExOp.op("<>", ExVar.var("key"), ExString.string(".entry.")),
-            ExCall.call("Integer", "to_string", ExVar.var("i"))),
-        ExString.string(suffix));
+            RemoteCallExpr.of("Integer", "to_string", List.of(Variable.of("i")))),
+        "<>",
+        StringExpr.of(suffix));
   }
 
-  private static ExFunction enc() {
-    return ExFunction.defpFunction(
-        "enc",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("value")),
-                List.of(ExGuard.guard("is_boolean", ExVar.var("value"))),
-                ExCall.call("Atom", "to_string", ExVar.var("value"))),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("value")),
-                List.of(ExGuard.guard("is_integer", ExVar.var("value"))),
-                ExCall.call("Integer", "to_string", ExVar.var("value"))),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("value")),
-                List.of(ExGuard.guard("is_float", ExVar.var("value"))),
-                ExCall.call("Float", "to_string", ExVar.var("value"))),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("value")),
-                List.of(ExGuard.guard("is_binary", ExVar.var("value"))),
-                ExVar.var("value")),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("value")),
-                List.of(ExGuard.guard("is_atom", ExVar.var("value"))),
-                ExCall.call("Atom", "to_string", ExVar.var("value")))));
+  private static List<Function> encFunctions() {
+    return List.of(
+        defp(
+            "enc",
+            List.of(VariablePattern.of("value")),
+            IsTypeGuard.of("is_boolean", "value"),
+            RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("value"))),
+            true),
+        defp(
+            "enc",
+            List.of(VariablePattern.of("value")),
+            IsTypeGuard.of("is_integer", "value"),
+            RemoteCallExpr.of("Integer", "to_string", List.of(Variable.of("value"))),
+            true),
+        defp(
+            "enc",
+            List.of(VariablePattern.of("value")),
+            IsTypeGuard.of("is_float", "value"),
+            RemoteCallExpr.of("Float", "to_string", List.of(Variable.of("value"))),
+            true),
+        defp(
+            "enc",
+            List.of(VariablePattern.of("value")),
+            IsTypeGuard.of("is_binary", "value"),
+            Variable.of("value"),
+            true),
+        defp(
+            "enc",
+            List.of(VariablePattern.of("value")),
+            IsTypeGuard.of("is_atom", "value"),
+            RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("value"))),
+            true));
   }
 
-  private static ExFunction parseQueryParams() {
-    return ExFunction.defpFunction(
+  private static Function parseQueryParams() {
+    return defp(
         "parse_query_params",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("body")),
-                ExPipeline.pipeChain(
-                    ExVar.var("body"),
-                    ExCall.call("URI", "decode_query"),
-                    ExCall.call("Map", "new")))));
+        List.of(VariablePattern.of("body")),
+        new PipeExpr(
+            Variable.of("body"),
+            List.of(
+                new PipeStep(RemoteCallExpr.of("URI", "decode_query", List.of()), List.of()),
+                new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of()))),
+        false);
   }
 
-  private static ExFunction formValue() {
-    return ExFunction.defpFunction(
+  private static Function formValue() {
+    return defp(
         "form_value",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("params"), ExVarPattern.var("key")),
-                ExCall.call("Map", "get", ExVar.var("params"), ExVar.var("key")))));
+        List.of(VariablePattern.of("params"), VariablePattern.of("key")),
+        RemoteCallExpr.of("Map", "get", List.of(Variable.of("params"), Variable.of("key"))),
+        true);
   }
 
-  private static ExFunction formListValuesAws() {
-    return ExFunction.defpFunction(
+  private static Function formListValuesAws() {
+    return defp(
         "form_list_values_aws",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("params"), ExVarPattern.var("key")),
-                ExMatch.match(
-                    ExVarPattern.var("prefix"),
-                    ExBinaryTemplate.binaryTemplate(ExVar.var("key"), ExString.string(".member."))),
-                ExCallLocal.callLocal(
-                    "indexed_form_values", ExVar.var("params"), ExVar.var("prefix")))));
+        List.of(VariablePattern.of("params"), VariablePattern.of("key")),
+        new BlockExpr(
+            List.of(
+                MatchExpr.bind(
+                    "prefix",
+                    new InfixExpr(Variable.of("key"), "<>", StringExpr.of(".member."))),
+                LocalCallExpr.of(
+                    "indexed_form_values", List.of(Variable.of("params"), Variable.of("prefix"))))),
+        false);
   }
 
-  private static ExFunction formListValuesEc2() {
-    return ExFunction.defpFunction(
+  private static Function formListValuesEc2() {
+    return defp(
         "form_list_values_ec2",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("params"), ExVarPattern.var("key")),
-                ExMatch.match(
-                    ExVarPattern.var("prefix"),
-                    ExBinaryTemplate.binaryTemplate(ExVar.var("key"), ExString.string("."))),
-                ExCallLocal.callLocal(
-                    "indexed_form_values", ExVar.var("params"), ExVar.var("prefix")))));
+        List.of(VariablePattern.of("params"), VariablePattern.of("key")),
+        new BlockExpr(
+            List.of(
+                MatchExpr.bind(
+                    "prefix", new InfixExpr(Variable.of("key"), "<>", StringExpr.of("."))),
+                LocalCallExpr.of(
+                    "indexed_form_values", List.of(Variable.of("params"), Variable.of("prefix"))))),
+        false);
   }
 
-  private static ExFunction indexedFormValues() {
-    ExAnonymousFn startsWithFn =
-        ExAnonymousFn.compactFn(
-            ExClause.inlineClause(
-                List.of(ExTuplePattern.tuple(ExVarPattern.var("k"), W)),
-                ExCall.call("String", "starts_with?", ExVar.var("k"), ExVar.var("prefix"))));
-    ExAnonymousFn sortFn =
-        ExAnonymousFn.compactFn(
-            ExClause.inlineClause(
-                List.of(ExTuplePattern.tuple(ExVarPattern.var("k"), W)),
-                ExCall.call(
-                    "String",
-                    "to_integer",
-                    ExCall.call(
+  private static Function indexedFormValues() {
+    AnonFun startsWithFn =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(TuplePattern.of(List.of(VariablePattern.of("k"), W))),
+                    RemoteCallExpr.of(
                         "String",
-                        "replace_prefix",
-                        ExVar.var("k"),
-                        ExVar.var("prefix"),
-                        ExString.string("")))));
-    ExAnonymousFn mapFn =
-        ExAnonymousFn.compactFn(
-            ExClause.inlineClause(
-                List.of(ExTuplePattern.tuple(W, ExVarPattern.var("v"))), ExVar.var("v")));
-    return ExFunction.defpFunction(
+                        "starts_with?",
+                        List.of(Variable.of("k"), Variable.of("prefix"))))));
+
+    AnonFun sortFn =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(TuplePattern.of(List.of(VariablePattern.of("k"), W))),
+                    RemoteCallExpr.of(
+                        "String",
+                        "to_integer",
+                        List.of(
+                            RemoteCallExpr.of(
+                                "String",
+                                "replace_prefix",
+                                List.of(
+                                    Variable.of("k"),
+                                    Variable.of("prefix"),
+                                    StringExpr.of(""))))))));
+
+    AnonFun mapFn =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(TuplePattern.of(List.of(W, VariablePattern.of("v")))),
+                    Variable.of("v"))));
+
+    return defp(
         "indexed_form_values",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("params"), ExVarPattern.var("prefix")),
-                ExPipeline.pipeline(
+        List.of(VariablePattern.of("params"), VariablePattern.of("prefix")),
+        new BlockExpr(
+            List.of(
+                MatchExpr.bind(
                     "values",
-                    ExVar.var("params"),
-                    ExCall.call("Enum", "filter", startsWithFn),
-                    ExCall.call("Enum", "sort_by", sortFn),
-                    ExCall.call("Enum", "map", mapFn)),
-                ExCase.caseExpr(
-                    ExVar.var("values"),
-                    ExCaseBranch.branch(ExListPattern.list(), ExNil.nil()),
-                    ExCaseBranch.branch(ExVarPattern.var("values"), ExVar.var("values"))))));
+                    new PipeExpr(
+                        Variable.of("params"),
+                        List.of(
+                            new PipeStep(
+                                RemoteCallExpr.of("Enum", "filter", List.of(startsWithFn)),
+                                List.of()),
+                            new PipeStep(
+                                RemoteCallExpr.of("Enum", "sort_by", List.of(sortFn)), List.of()),
+                            new PipeStep(
+                                RemoteCallExpr.of("Enum", "map", List.of(mapFn)), List.of())))),
+                new CaseExpr(
+                    Variable.of("values"),
+                    List.of(
+                        Clause.of(ListPattern.of(List.of()), NilExpr.of()),
+                        Clause.of(VariablePattern.of("values"), Variable.of("values")))))),
+        false);
   }
 
-  private static ExFunction wrapAwsQueryResponse() {
-    return ExFunction.defpFunction(
+  private static Function wrapAwsQueryResponse() {
+    return defp(
         "wrap_aws_query_response",
         List.of(
-            ExClause.inlineClause(
-                List.of(
-                    ExVarPattern.var("result_name"),
-                    ExVarPattern.var("result_content"),
-                    ExVarPattern.var("response_name"),
-                    ExVarPattern.var("xml_ns")),
-                ExCallLocal.callLocal(
-                    "encode_xml",
-                    ExMap.map(
-                        ExMapEntry.entry(
-                            ExVar.var("response_name"),
-                            ExMap.map(
-                                ExMapEntry.entry(
-                                    ExVar.var("result_name"), ExVar.var("result_content"))))),
-                    ExVar.var("xml_ns")))));
+            VariablePattern.of("result_name"),
+            VariablePattern.of("result_content"),
+            VariablePattern.of("response_name"),
+            VariablePattern.of("xml_ns")),
+        LocalCallExpr.of(
+            "encode_xml",
+            List.of(
+                MapExpr.of(
+                    List.of(
+                        MapEntry.pair(
+                            Variable.of("response_name"),
+                            MapExpr.of(
+                                List.of(
+                                    MapEntry.pair(
+                                        Variable.of("result_name"),
+                                        Variable.of("result_content"))))))),
+                Variable.of("xml_ns"))),
+        true);
   }
 
-  private static ExFunction unwrapQueryResult() {
-    ExCase resultLookup =
-        ExCase.caseExpr(
-            ExCallLocal.callLocal(
-                "query_result_element", ExVar.var("root"), ExVar.var("result_name")),
-            ExCaseBranch.branch(ExNilPattern.nil(), errorMissingResult()),
-            ExCaseBranch.branch(
-                ExVarPattern.var("result"), ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("result"))));
+  private static Function unwrapQueryResult() {
+    Expression resultLookup =
+        new CaseExpr(
+            LocalCallExpr.of(
+                "query_result_element", List.of(Variable.of("root"), Variable.of("result_name"))),
+            List.of(
+                Clause.of(NilPattern.of(), errorMissingResult()),
+                Clause.of(
+                    VariablePattern.of("result"),
+                    TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("result"))))));
 
-    ExCase scanCase =
-        ExCase.caseExpr(
-            ExCall.call(
+    Expression scanCase =
+        new CaseExpr(
+            RemoteCallExpr.of(
                 ":xmerl_scan",
                 "string",
-                ExCall.call(":erlang", "binary_to_list", ExVar.var("body"))),
-            ExCaseBranch.branch(
-                ExTuplePattern.tuple(ExVarPattern.var("xml"), W),
-                ExExprBlock.block(
-                    ExMatch.match(
-                        ExVarPattern.var("root"), normalizeXmlElementBody(ExVar.var("xml"))),
-                    resultLookup)),
-            ExCaseBranch.branch(
-                W, ExTuple.tuple(ExAtom.atom("error"), ExAtom.atom("xml_parse_error"))));
+                List.of(RemoteCallExpr.of(":erlang", "binary_to_list", List.of(Variable.of("body"))))),
+            List.of(
+                Clause.of(
+                    TuplePattern.of(List.of(VariablePattern.of("xml"), W)),
+                    new BlockExpr(
+                        List.of(
+                            MatchExpr.bind(
+                                "root",
+                                LocalCallExpr.of("normalize_xml_element", List.of(Variable.of("xml")))),
+                            resultLookup))),
+                Clause.of(
+                    W,
+                    TupleExpr.of(List.of(AtomExpr.of("error"), AtomExpr.of("xml_parse_error"))))));
 
-    return ExFunction.defpFunction(
+    return defp(
         "unwrap_query_result",
+        List.of(VariablePattern.of("body"), VariablePattern.of("result_name")),
+        scanCase,
+        false);
+  }
+
+  private static TupleExpr errorMissingResult() {
+    return TupleExpr.of(
         List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("body"), ExVarPattern.var("result_name")), scanCase)));
+            AtomExpr.of("error"),
+            TupleExpr.of(List.of(AtomExpr.of("missing_result"), Variable.of("result_name")))));
   }
 
-  private static ExTuple errorMissingResult() {
-    return ExTuple.tuple(
-        ExAtom.atom("error"),
-        ExTuple.tuple(ExAtom.atom("missing_result"), ExVar.var("result_name")));
+  private static List<Function> normalizeXmlElement() {
+    return List.of(
+        defp(
+            "normalize_xml_element",
+            List.of(ConsListPattern.of(VariablePattern.of("h"), W)),
+            LocalCallExpr.of("normalize_xml_element", List.of(Variable.of("h"))),
+            false),
+        defp(
+            "normalize_xml_element",
+            List.of(VariablePattern.of("element")),
+            Variable.of("element"),
+            true));
   }
 
-  private static ExCallLocal normalizeXmlElementBody(ExExpr element) {
-    return ExCallLocal.callLocal("normalize_xml_element", element);
-  }
-
-  private static ExFunction normalizeXmlElement() {
-    return ExFunction.defpFunction(
-        "normalize_xml_element",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExConsPattern.consPattern(ExVarPattern.var("h"), W)),
-                ExCallLocal.callLocal("normalize_xml_element", ExVar.var("h"))),
-            ExClause.inlineClause(List.of(ExVarPattern.var("element")), ExVar.var("element"))));
-  }
-
-  private static ExFunction queryResultElement() {
-    return ExFunction.defpFunction(
+  private static Function queryResultElement() {
+    return defp(
         "query_result_element",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("element"), ExVarPattern.var("result_name")),
-                ExIf.ifBlock(
-                    ExOp.op(
-                        "and",
-                        ExCallLocal.callLocal("is_element", ExVar.var("element")),
-                        ExOp.op(
-                            "==",
-                            ExCallLocal.callLocal("element_name", ExVar.var("element")),
-                            ExVar.var("result_name"))),
-                    ExVar.var("element"),
-                    ExCallLocal.callLocal(
-                        "find_element",
-                        ExVar.var("result_name"),
-                        ExCallLocal.callLocal("element_content", ExVar.var("element")))))));
-  }
-
-  private static ExFunction elementContent() {
-    ExTuplePattern xmlElementContent =
-        ExTuplePattern.tuple(
-            ExAtomPattern.atom("xmlElement"),
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            ExVarPattern.var("content"),
-            W,
-            W,
-            W);
-    ExTuplePattern sixTupleContent =
-        ExTuplePattern.tuple(W, W, ExVarPattern.var("content"), W, W, W);
-
-    return ExFunction.defpFunction(
-        "element_content",
-        List.of(
-            ExClause.inlineClause(List.of(xmlElementContent), ExVar.var("content")),
-            ExClause.inlineClause(
-                List.of(sixTupleContent),
-                List.of(ExGuard.guard("is_list", ExVar.var("content"))),
-                ExVar.var("content")),
-            ExClause.blockClause(
-                List.of(ExConsPattern.consPattern(ExVarPattern.var("h"), W)),
-                ExCallLocal.callLocal("element_content", ExVar.var("h"))),
-            ExClause.inlineClause(List.of(W), ExList.list())));
-  }
-
-  private static ExFunction awsQueryFindElement() {
-    ExAnonymousFn findFn =
-        ExAnonymousFn.compactFn(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("item")),
-                ExOp.op(
-                    "and",
-                    ExCallLocal.callLocal("is_element", ExVar.var("item")),
-                    ExOp.op(
-                        "==",
-                        ExCallLocal.callLocal("element_name", ExVar.var("item")),
-                        ExVar.var("name")))));
-
-    return ExFunction.defpFunction(
-        "find_element",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("name"), ExVarPattern.var("content")),
-                ExCall.call("Enum", "find", ExVar.var("content"), findFn))));
-  }
-
-  private static ExFunction isElement() {
-    ExTuplePattern xmlElement =
-        ExTuplePattern.tuple(ExAtomPattern.atom("xmlElement"), W, W, W, W, W, W, W, W, W, W, W);
-    ExTuplePattern sixTuple = ExTuplePattern.tuple(W, W, ExVarPattern.var("content"), W, W, W);
-
-    return ExFunction.defpFunction(
-        "is_element",
-        List.of(
-            ExClause.inlineClause(List.of(xmlElement), ExAtom.atom("true")),
-            ExClause.inlineClause(
-                List.of(sixTuple),
-                List.of(ExGuard.guard("is_list", ExVar.var("content"))),
-                ExAtom.atom("true")),
-            ExClause.inlineClause(List.of(W), ExAtom.atom("false"))));
-  }
-
-  private static ExFunction awsQueryElementName() {
-    ExTuplePattern xmlElementName =
-        ExTuplePattern.tuple(
-            ExAtomPattern.atom("xmlElement"),
-            ExVarPattern.var("name"),
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W);
-    ExTuplePattern sixTupleName = ExTuplePattern.tuple(ExVarPattern.var("name"), W, W, W, W, W);
-
-    return ExFunction.defpFunction(
-        "element_name",
-        List.of(
-            ExClause.inlineClause(
-                List.of(xmlElementName),
-                List.of(ExGuard.guard("is_atom", ExVar.var("name"))),
-                ExCall.call("Atom", "to_string", ExVar.var("name"))),
-            ExClause.inlineClause(
-                List.of(xmlElementName),
-                List.of(ExGuard.guard("is_list", ExVar.var("name"))),
-                ExCall.call("List", "to_string", ExVar.var("name"))),
-            ExClause.inlineClause(
-                List.of(xmlElementName),
-                List.of(ExGuard.guard("is_binary", ExVar.var("name"))),
-                ExVar.var("name")),
-            ExClause.inlineClause(
-                List.of(sixTupleName),
-                List.of(ExGuard.guard("is_atom", ExVar.var("name"))),
-                ExCall.call("Atom", "to_string", ExVar.var("name"))),
-            ExClause.inlineClause(
-                List.of(sixTupleName),
-                List.of(ExGuard.guard("is_list", ExVar.var("name"))),
-                ExCall.call("List", "to_string", ExVar.var("name"))),
-            ExClause.inlineClause(
-                List.of(sixTupleName),
-                List.of(ExGuard.guard("is_binary", ExVar.var("name"))),
-                ExVar.var("name"))));
-  }
-
-  private static ExFunction xmlChildText() {
-    return ExFunction.defpFunction(
-        "xml_child_text",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("parent"), ExVarPattern.var("name")),
-                ExCase.caseExpr(
-                    ExCallLocal.callLocal(
-                        "find_element",
-                        ExVar.var("name"),
-                        ExCallLocal.callLocal("element_content", ExVar.var("parent"))),
-                    ExCaseBranch.branch(ExNilPattern.nil(), ExNil.nil()),
-                    ExCaseBranch.branch(
-                        ExVarPattern.var("element"),
-                        ExCase.caseExpr(
-                            ExCallLocal.callLocal("element_text", ExVar.var("element")),
-                            ExCaseBranch.branch(ExListPattern.list(), ExNil.nil()),
-                            ExCaseBranch.branch(
-                                ExListPattern.cons(ExVarPattern.var("text"), W),
-                                ExCall.call("List", "to_string", ExVar.var("text")))))))));
-  }
-
-  private static ExFunction awsQueryXmlChildStructList() {
-    ExAnonymousFn filterFn =
-        ExAnonymousFn.compactFn(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("item")),
-                ExOp.op(
-                    "and",
-                    ExCallLocal.callLocal("is_element", ExVar.var("item")),
-                    ExOp.op(
-                        "==",
-                        ExCallLocal.callLocal("element_name", ExVar.var("item")),
-                        ExVar.var("item_name")))));
-
-    ExPipeline decodePipeline =
-        ExPipeline.pipeChain(
-            ExCallLocal.callLocal("element_content", ExVar.var("list_element")),
-            ExCall.call("Enum", "filter", filterFn),
-            ExCall.call("Enum", "map", ExVar.var("decode_fun")));
-
-    return ExFunction.defpFunction(
-        "xml_child_struct_list",
-        List.of(
-            ExClause.blockClause(
-                List.of(
-                    ExVarPattern.var("parent"),
-                    ExVarPattern.var("list_name"),
-                    ExVarPattern.var("item_name"),
-                    ExVarPattern.var("decode_fun")),
-                ExCase.caseExpr(
-                    ExCallLocal.callLocal(
-                        "find_element",
-                        ExVar.var("list_name"),
-                        ExCallLocal.callLocal("element_content", ExVar.var("parent"))),
-                    ExCaseBranch.branch(ExNilPattern.nil(), ExNil.nil()),
-                    ExCaseBranch.branch(ExVarPattern.var("list_element"), decodePipeline)))));
-  }
-
-  private static ExFunction awsQueryXmlChildList() {
-    ExAnonymousFn mapFn =
-        ExAnonymousFn.fn(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("item")),
-                ExCase.caseExpr(
-                    ExCallLocal.callLocal("element_text", ExVar.var("item")),
-                    ExCaseBranch.branch(ExListPattern.list(), ExNil.nil()),
-                    ExCaseBranch.branch(
-                        ExListPattern.cons(ExVarPattern.var("text"), W),
-                        ExCall.call("List", "to_string", ExVar.var("text"))))));
-
-    ExAnonymousFn rejectFn =
-        ExAnonymousFn.compactFn(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("x")), ExCall.call("Kernel", "is_nil", ExVar.var("x"))));
-
-    ExPipeline childPipeline =
-        ExPipeline.pipeChain(
-            ExCallLocal.callLocal("element_content", ExVar.var("list_element")),
-            ExCall.call("Enum", "filter", filterFnForChildList()),
-            ExCall.call("Enum", "map", mapFn),
-            ExCall.call("Enum", "reject", rejectFn));
-
-    return ExFunction.defpFunction(
-        "xml_child_list",
-        List.of(
-            ExClause.blockClause(
-                List.of(
-                    ExVarPattern.var("parent"),
-                    ExVarPattern.var("list_name"),
-                    ExVarPattern.var("item_name")),
-                ExCase.caseExpr(
-                    ExCallLocal.callLocal(
-                        "find_element",
-                        ExVar.var("list_name"),
-                        ExCallLocal.callLocal("element_content", ExVar.var("parent"))),
-                    ExCaseBranch.branch(ExNilPattern.nil(), ExNil.nil()),
-                    ExCaseBranch.branch(ExVarPattern.var("list_element"), childPipeline)))));
-  }
-
-  private static ExAnonymousFn filterFnForChildList() {
-    return ExAnonymousFn.compactFn(
-        ExClause.inlineClause(
-            List.of(ExVarPattern.var("item")),
-            ExOp.op(
+        List.of(VariablePattern.of("element"), VariablePattern.of("result_name")),
+        new IfExpr(
+            new InfixExpr(
+                LocalCallExpr.of("is_element", List.of(Variable.of("element"))),
                 "and",
-                ExCallLocal.callLocal("is_element", ExVar.var("item")),
-                ExOp.op(
+                new InfixExpr(
+                    LocalCallExpr.of("element_name", List.of(Variable.of("element"))),
                     "==",
-                    ExCallLocal.callLocal("element_name", ExVar.var("item")),
-                    ExVar.var("item_name")))));
+                    Variable.of("result_name"))),
+            Variable.of("element"),
+            LocalCallExpr.of(
+                "find_element",
+                List.of(
+                    Variable.of("result_name"),
+                    LocalCallExpr.of("element_content", List.of(Variable.of("element"))))),
+            false),
+        false);
   }
 
-  private static ExFunction decodeQueryError(boolean ec2Query) {
+  private static Function awsQueryFindElement() {
+    AnonFun findFn =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(VariablePattern.of("item")),
+                    new InfixExpr(
+                        LocalCallExpr.of("is_element", List.of(Variable.of("item"))),
+                        "and",
+                        new InfixExpr(
+                            LocalCallExpr.of("element_name", List.of(Variable.of("item"))),
+                            "==",
+                            Variable.of("name"))))));
+
+    return defp(
+        "find_element",
+        List.of(VariablePattern.of("name"), VariablePattern.of("content")),
+        RemoteCallExpr.of("Enum", "find", List.of(Variable.of("content"), findFn)),
+        false);
+  }
+
+  private static Function decodeQueryError(boolean ec2Query) {
     if (ec2Query) {
       return decodeEc2QueryError();
     }
     return decodeAwsQueryError();
   }
 
-  private static ExFunction decodeAwsQueryError() {
-    return ExFunction.defpFunction(
+  private static Function decodeAwsQueryError() {
+    return defp(
         "decode_query_error",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("status"), ExVarPattern.var("body")),
-                decodeQueryErrorBody(
-                    BeamXmlDecoder.ERROR_RESPONSE_ELEMENT,
-                    BeamXmlDecoder.ERROR_ELEMENT,
-                    BeamXmlDecoder.ERROR_CODE_ELEMENT,
-                    BeamXmlDecoder.ERROR_MESSAGE_ELEMENT))));
+        List.of(VariablePattern.of("status"), VariablePattern.of("body")),
+        decodeQueryErrorBody(
+            BeamXmlDecoder.ERROR_RESPONSE_ELEMENT,
+            BeamXmlDecoder.ERROR_ELEMENT,
+            BeamXmlDecoder.ERROR_CODE_ELEMENT,
+            BeamXmlDecoder.ERROR_MESSAGE_ELEMENT),
+        false);
   }
 
-  private static ExFunction decodeEc2QueryError() {
-    return ExFunction.defpFunction(
+  private static Function decodeEc2QueryError() {
+    return defp(
         "decode_query_error",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("status"), ExVarPattern.var("body")),
-                decodeQueryErrorBodyEc2())));
+        List.of(VariablePattern.of("status"), VariablePattern.of("body")),
+        decodeQueryErrorBodyEc2(),
+        false);
   }
 
-  private static ExCase decodeQueryErrorBody(
+  private static Expression decodeQueryErrorBody(
       String responseElement, String errorElement, String codeElement, String messageElement) {
-    ExCase errorLookup =
-        ExCase.caseExpr(
-            ExCallLocal.callLocal(
+    Expression errorLookup =
+        new CaseExpr(
+            LocalCallExpr.of(
                 "find_element",
-                ExString.string(errorElement),
-                ExCallLocal.callLocal("element_content", ExVar.var("error_response"))),
-            ExCaseBranch.branch(W, unknownQueryError()),
-            ExCaseBranch.branch(
-                ExVarPattern.var("error"),
-                ExTuple.tuple(
-                    ExAtom.atom("error"),
-                    ExTuple.tuple(
-                        ExCallLocal.callLocal(
-                            "xml_child_text", ExVar.var("error"), ExString.string(codeElement)),
-                        ExCallLocal.callLocal(
-                            "xml_child_text",
-                            ExVar.var("error"),
-                            ExString.string(messageElement))))));
+                List.of(
+                    StringExpr.of(errorElement),
+                    LocalCallExpr.of("element_content", List.of(Variable.of("error_response"))))),
+            List.of(
+                Clause.of(W, unknownQueryError()),
+                Clause.of(
+                    VariablePattern.of("error"),
+                    TupleExpr.of(
+                        List.of(
+                            AtomExpr.of("error"),
+                            TupleExpr.of(
+                                List.of(
+                                    LocalCallExpr.of(
+                                        "xml_child_text",
+                                        List.of(Variable.of("error"), StringExpr.of(codeElement))),
+                                    LocalCallExpr.of(
+                                        "xml_child_text",
+                                        List.of(
+                                            Variable.of("error"),
+                                            StringExpr.of(messageElement))))))))));
 
-    ExCase responseLookup =
-        ExCase.caseExpr(
-            ExCallLocal.callLocal(
-                "query_result_element", ExVar.var("xml"), ExString.string(responseElement)),
-            ExCaseBranch.branch(W, unknownQueryError()),
-            ExCaseBranch.branch(ExVarPattern.var("error_response"), errorLookup));
+    Expression responseLookup =
+        new CaseExpr(
+            LocalCallExpr.of(
+                "query_result_element", List.of(Variable.of("xml"), StringExpr.of(responseElement))),
+            List.of(
+                Clause.of(W, unknownQueryError()),
+                Clause.of(VariablePattern.of("error_response"), errorLookup)));
 
     return scanAndLookup(responseLookup);
   }
 
-  private static ExCase decodeQueryErrorBodyEc2() {
-    ExCase errorLookup =
-        ExCase.caseExpr(
-            ExCallLocal.callLocal(
+  private static Expression decodeQueryErrorBodyEc2() {
+    Expression errorLookup =
+        new CaseExpr(
+            LocalCallExpr.of(
                 "find_element",
-                ExString.string(BeamXmlDecoder.ERROR_ELEMENT),
-                ExCallLocal.callLocal("element_content", ExVar.var("error"))),
-            ExCaseBranch.branch(W, unknownQueryError()),
-            ExCaseBranch.branch(
-                ExVarPattern.var("error"),
-                ExTuple.tuple(
-                    ExAtom.atom("error"),
-                    ExTuple.tuple(
-                        ExCallLocal.callLocal(
-                            "xml_child_text",
-                            ExVar.var("error"),
-                            ExString.string(BeamXmlDecoder.ERROR_CODE_ELEMENT)),
-                        ExCallLocal.callLocal(
-                            "xml_child_text",
-                            ExVar.var("error"),
-                            ExString.string(BeamXmlDecoder.ERROR_MESSAGE_ELEMENT))))));
+                List.of(
+                    StringExpr.of(BeamXmlDecoder.ERROR_ELEMENT),
+                    LocalCallExpr.of("element_content", List.of(Variable.of("error"))))),
+            List.of(
+                Clause.of(W, unknownQueryError()),
+                Clause.of(
+                    VariablePattern.of("error"),
+                    TupleExpr.of(
+                        List.of(
+                            AtomExpr.of("error"),
+                            TupleExpr.of(
+                                List.of(
+                                    LocalCallExpr.of(
+                                        "xml_child_text",
+                                        List.of(
+                                            Variable.of("error"),
+                                            StringExpr.of(BeamXmlDecoder.ERROR_CODE_ELEMENT))),
+                                    LocalCallExpr.of(
+                                        "xml_child_text",
+                                        List.of(
+                                            Variable.of("error"),
+                                            StringExpr.of(
+                                                BeamXmlDecoder.ERROR_MESSAGE_ELEMENT))))))))));
 
-    ExCase errorsLookup =
-        ExCase.caseExpr(
-            ExCallLocal.callLocal(
+    Expression errorsLookup =
+        new CaseExpr(
+            LocalCallExpr.of(
                 "find_element",
-                ExString.string(BeamXmlDecoder.EC2_ERRORS_ELEMENT),
-                ExCallLocal.callLocal("element_content", ExVar.var("response"))),
-            ExCaseBranch.branch(W, unknownQueryError()),
-            ExCaseBranch.branch(
-                ExVarPattern.var("errors"),
-                ExCase.caseExpr(
-                    ExCallLocal.callLocal(
-                        "find_element",
-                        ExString.string(BeamXmlDecoder.ERROR_ELEMENT),
-                        ExCallLocal.callLocal("element_content", ExVar.var("errors"))),
-                    ExCaseBranch.branch(W, unknownQueryError()),
-                    ExCaseBranch.branch(ExVarPattern.var("error"), errorLookup))));
+                List.of(
+                    StringExpr.of(BeamXmlDecoder.EC2_ERRORS_ELEMENT),
+                    LocalCallExpr.of("element_content", List.of(Variable.of("response"))))),
+            List.of(
+                Clause.of(W, unknownQueryError()),
+                Clause.of(
+                    VariablePattern.of("errors"),
+                    new CaseExpr(
+                        LocalCallExpr.of(
+                            "find_element",
+                            List.of(
+                                StringExpr.of(BeamXmlDecoder.ERROR_ELEMENT),
+                                LocalCallExpr.of("element_content", List.of(Variable.of("errors"))))),
+                        List.of(
+                            Clause.of(W, unknownQueryError()),
+                            Clause.of(VariablePattern.of("error"), errorLookup))))));
 
-    ExCase responseLookup =
-        ExCase.caseExpr(
-            ExCallLocal.callLocal(
+    Expression responseLookup =
+        new CaseExpr(
+            LocalCallExpr.of(
                 "query_result_element",
-                ExVar.var("root"),
-                ExString.string(BeamXmlDecoder.EC2_RESPONSE_ELEMENT)),
-            ExCaseBranch.branch(W, unknownQueryError()),
-            ExCaseBranch.branch(ExVarPattern.var("response"), errorsLookup));
+                List.of(Variable.of("root"), StringExpr.of(BeamXmlDecoder.EC2_RESPONSE_ELEMENT))),
+            List.of(
+                Clause.of(W, unknownQueryError()),
+                Clause.of(VariablePattern.of("response"), errorsLookup)));
 
     return scanAndLookup(responseLookup);
   }
 
-  private static ExCase scanAndLookup(ExCase lookup) {
-    return ExCase.caseExpr(
-        ExCall.call(
-            ":xmerl_scan", "string", ExCall.call(":erlang", "binary_to_list", ExVar.var("body"))),
-        ExCaseBranch.branch(
-            ExTuplePattern.tuple(ExVarPattern.var("xml"), W),
-            ExExprBlock.block(
-                ExMatch.match(ExVarPattern.var("root"), normalizeXmlElementBody(ExVar.var("xml"))),
-                lookup)),
-        ExCaseBranch.branch(W, unknownQueryError()));
+  private static Expression scanAndLookup(Expression lookup) {
+    return new CaseExpr(
+        RemoteCallExpr.of(
+            ":xmerl_scan",
+            "string",
+            List.of(RemoteCallExpr.of(":erlang", "binary_to_list", List.of(Variable.of("body"))))),
+        List.of(
+            Clause.of(
+                TuplePattern.of(List.of(VariablePattern.of("xml"), W)),
+                new BlockExpr(
+                    List.of(
+                        MatchExpr.bind(
+                            "root",
+                            LocalCallExpr.of("normalize_xml_element", List.of(Variable.of("xml")))),
+                        lookup))),
+            Clause.of(W, unknownQueryError())));
   }
 
-  private static ExTuple unknownQueryError() {
-    return ExTuple.tuple(
-        ExAtom.atom("error"),
-        ExTuple.tuple(ExAtom.atom("unknown_error"), ExVar.var("status"), ExVar.var("body")));
+  private static TupleExpr unknownQueryError() {
+    return TupleExpr.of(
+        List.of(
+            AtomExpr.of("error"),
+            TupleExpr.of(
+                List.of(AtomExpr.of("unknown_error"), Variable.of("status"), Variable.of("body")))));
+  }
+
+  private static List<Function> elementContent() {
+    TuplePattern xmlElementContent = xmlElementContentPattern("content");
+    TuplePattern sixTupleContent =
+        TuplePattern.of(List.of(W, W, VariablePattern.of("content"), W, W, W));
+    return List.of(
+        defp("element_content", List.of(xmlElementContent), Variable.of("content"), true),
+        defp(
+            "element_content",
+            List.of(sixTupleContent),
+            IsTypeGuard.of("is_list", "content"),
+            Variable.of("content"),
+            true),
+        defp(
+            "element_content",
+            List.of(ConsListPattern.of(VariablePattern.of("h"), W)),
+            LocalCallExpr.of("element_content", List.of(Variable.of("h"))),
+            false),
+        defp("element_content", List.of(W), ListExpr.of(List.of()), true));
+  }
+
+  private static List<Function> isElement() {
+    TuplePattern xmlElement = xmlElementWildPattern();
+    TuplePattern sixTuple =
+        TuplePattern.of(List.of(W, W, VariablePattern.of("content"), W, W, W));
+    return List.of(
+        defp("is_element", List.of(xmlElement), AtomExpr.of("true"), true),
+        defp(
+            "is_element",
+            List.of(sixTuple),
+            IsTypeGuard.of("is_list", "content"),
+            AtomExpr.of("true"),
+            true),
+        defp("is_element", List.of(W), AtomExpr.of("false"), true));
+  }
+
+  private static List<Function> elementName() {
+    TuplePattern xmlElementName =
+        TuplePattern.of(
+            List.of(
+                AtomPattern.of("xmlElement"),
+                VariablePattern.of("name"),
+                W,
+                W,
+                W,
+                W,
+                W,
+                W,
+                W,
+                W,
+                W,
+                W));
+    TuplePattern sixTupleName =
+        TuplePattern.of(List.of(VariablePattern.of("name"), W, W, W, W, W));
+    return List.of(
+        defp(
+            "element_name",
+            List.of(xmlElementName),
+            IsTypeGuard.of("is_atom", "name"),
+            RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("name"))),
+            true),
+        defp(
+            "element_name",
+            List.of(xmlElementName),
+            IsTypeGuard.of("is_list", "name"),
+            RemoteCallExpr.of("List", "to_string", List.of(Variable.of("name"))),
+            true),
+        defp(
+            "element_name",
+            List.of(xmlElementName),
+            IsTypeGuard.of("is_binary", "name"),
+            Variable.of("name"),
+            true),
+        defp(
+            "element_name",
+            List.of(sixTupleName),
+            IsTypeGuard.of("is_atom", "name"),
+            RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("name"))),
+            true),
+        defp(
+            "element_name",
+            List.of(sixTupleName),
+            IsTypeGuard.of("is_list", "name"),
+            RemoteCallExpr.of("List", "to_string", List.of(Variable.of("name"))),
+            true),
+        defp(
+            "element_name",
+            List.of(sixTupleName),
+            IsTypeGuard.of("is_binary", "name"),
+            Variable.of("name"),
+            true));
+  }
+
+  private static Function xmlChildText() {
+    return defp(
+        "xml_child_text",
+        List.of(VariablePattern.of("parent"), VariablePattern.of("name")),
+        new CaseExpr(
+            LocalCallExpr.of(
+                "find_element",
+                List.of(
+                    Variable.of("name"),
+                    LocalCallExpr.of("element_content", List.of(Variable.of("parent"))))),
+            List.of(
+                Clause.of(NilPattern.of(), NilExpr.of()),
+                Clause.of(
+                    VariablePattern.of("element"),
+                    new CaseExpr(
+                        LocalCallExpr.of("element_text", List.of(Variable.of("element"))),
+                        List.of(
+                            Clause.of(ListPattern.of(List.of()), NilExpr.of()),
+                            Clause.of(
+                                ConsListPattern.of(VariablePattern.of("text"), W),
+                                RemoteCallExpr.of(
+                                    "List", "to_string", List.of(Variable.of("text"))))))))),
+        false);
+  }
+
+  private static Function awsQueryXmlChildStructList() {
+    AnonFun filterFn =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(VariablePattern.of("item")),
+                    new InfixExpr(
+                        LocalCallExpr.of("is_element", List.of(Variable.of("item"))),
+                        "and",
+                        new InfixExpr(
+                            LocalCallExpr.of("element_name", List.of(Variable.of("item"))),
+                            "==",
+                            Variable.of("item_name"))))));
+
+    Expression decodePipeline =
+        new PipeExpr(
+            LocalCallExpr.of("element_content", List.of(Variable.of("list_element"))),
+            List.of(
+                new PipeStep(RemoteCallExpr.of("Enum", "filter", List.of(filterFn)), List.of()),
+                new PipeStep(
+                    RemoteCallExpr.of("Enum", "map", List.of(Variable.of("decode_fun"))),
+                    List.of())));
+
+    return defp(
+        "xml_child_struct_list",
+        List.of(
+            VariablePattern.of("parent"),
+            VariablePattern.of("list_name"),
+            VariablePattern.of("item_name"),
+            VariablePattern.of("decode_fun")),
+        new CaseExpr(
+            LocalCallExpr.of(
+                "find_element",
+                List.of(
+                    Variable.of("list_name"),
+                    LocalCallExpr.of("element_content", List.of(Variable.of("parent"))))),
+            List.of(
+                Clause.of(NilPattern.of(), NilExpr.of()),
+                Clause.of(VariablePattern.of("list_element"), decodePipeline))),
+        false);
+  }
+
+  private static Function awsQueryXmlChildList() {
+    AnonFun mapFn =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(VariablePattern.of("item")),
+                    new CaseExpr(
+                        LocalCallExpr.of("element_text", List.of(Variable.of("item"))),
+                        List.of(
+                            Clause.of(ListPattern.of(List.of()), NilExpr.of()),
+                            Clause.of(
+                                ConsListPattern.of(VariablePattern.of("text"), W),
+                                RemoteCallExpr.of(
+                                    "List", "to_string", List.of(Variable.of("text")))))))));
+
+    AnonFun rejectFn =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(VariablePattern.of("x")),
+                    RemoteCallExpr.of("Kernel", "is_nil", List.of(Variable.of("x"))))));
+
+    Expression childPipeline =
+        new PipeExpr(
+            LocalCallExpr.of("element_content", List.of(Variable.of("list_element"))),
+            List.of(
+                new PipeStep(
+                    RemoteCallExpr.of("Enum", "filter", List.of(filterFnForChildList())), List.of()),
+                new PipeStep(RemoteCallExpr.of("Enum", "map", List.of(mapFn)), List.of()),
+                new PipeStep(RemoteCallExpr.of("Enum", "reject", List.of(rejectFn)), List.of())));
+
+    return defp(
+        "xml_child_list",
+        List.of(
+            VariablePattern.of("parent"),
+            VariablePattern.of("list_name"),
+            VariablePattern.of("item_name")),
+        new CaseExpr(
+            LocalCallExpr.of(
+                "find_element",
+                List.of(
+                    Variable.of("list_name"),
+                    LocalCallExpr.of("element_content", List.of(Variable.of("parent"))))),
+            List.of(
+                Clause.of(NilPattern.of(), NilExpr.of()),
+                Clause.of(VariablePattern.of("list_element"), childPipeline))),
+        false);
+  }
+
+  private static AnonFun filterFnForChildList() {
+    return new AnonFun(
+        List.of(
+            AnonFunClause.of(
+                List.of(VariablePattern.of("item")),
+                new InfixExpr(
+                    LocalCallExpr.of("is_element", List.of(Variable.of("item"))),
+                    "and",
+                    new InfixExpr(
+                        LocalCallExpr.of("element_name", List.of(Variable.of("item"))),
+                        "==",
+                        Variable.of("item_name"))))));
+  }
+
+  private static TuplePattern xmlElementContentPattern(String contentVar) {
+    return TuplePattern.of(
+        List.of(
+            AtomPattern.of("xmlElement"),
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            VariablePattern.of(contentVar),
+            W,
+            W,
+            W));
+  }
+
+  private static TuplePattern xmlElementWildPattern() {
+    return TuplePattern.of(
+        List.of(
+            AtomPattern.of("xmlElement"),
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            W,
+            W));
+  }
+
+  private static Function defp(String name, List<Pattern> params, Expression body, boolean oneLiner) {
+    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, IsTypeGuard guard, Expression body, boolean oneLiner) {
+    return new Function(
+        name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
   }
 }

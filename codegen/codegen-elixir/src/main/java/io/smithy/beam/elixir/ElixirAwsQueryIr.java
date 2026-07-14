@@ -1,14 +1,13 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Alias;
 import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Moduledoc;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamXmlBindingIndex;
-import io.smithy.beam.ir.elixir.ExAliasAttr;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModule;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -35,7 +34,7 @@ final class ElixirAwsQueryIr {
     return layout(ctx, service).serverCodecModuleName(protocolTraitId) + ".ex";
   }
 
-  static ExModule buildClientCodecModule(
+  static Module buildClientCodecModule(
       ElixirContext ctx, ServiceShape service, ShapeId protocolTraitId) {
     boolean ec2Query = BeamProtocolIds.EC2_QUERY.equals(protocolTraitId);
     BeamAwsServiceMetadata.from(service).orElseThrow();
@@ -49,21 +48,25 @@ final class ElixirAwsQueryIr {
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
 
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
-    List<ExFunction> functions =
+    List<Function> functions =
         clientCodecFunctions(
             model, service, operations, httpIndex, sp, typesMod, runtimeMod, ec2Query);
 
-    return ExModule.module(
+    return new Module(
         moduleName,
+        Moduledoc.of(
+            "AWS Query codecs for " + service.getId() + " (generated). Do not edit."),
+        List.of(),
         List.of(
-            ExModuledoc.moduledoc(
-                "AWS Query codecs for " + service.getId() + " (generated). Do not edit.")),
-        List.of(
-            ExAliasAttr.alias(runtimeMod, "RuntimeTypes"), ExAliasAttr.alias(typesMod, "Types")),
+            Alias.of(runtimeMod, "RuntimeTypes"),
+            Alias.of(typesMod, "Types")),
+        List.of(),
+        List.of(),
+        List.of(),
         functions);
   }
 
-  static ExModule buildServerCodecModule(
+  static Module buildServerCodecModule(
       ElixirContext ctx, ServiceShape service, ShapeId protocolTraitId) {
     boolean ec2Query = BeamProtocolIds.EC2_QUERY.equals(protocolTraitId);
     Model model = ctx.model();
@@ -73,9 +76,10 @@ final class ElixirAwsQueryIr {
         ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName(protocolTraitId));
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+    Optional<String> serviceNamespace = BeamXmlBindingIndex.xmlNamespaceUri(service);
 
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
-    List<ExFunction> functions =
+    List<Function> functions =
         serverCodecFunctions(
             model,
             service,
@@ -83,31 +87,33 @@ final class ElixirAwsQueryIr {
             sp,
             typesMod,
             runtimeMod,
-            BeamXmlBindingIndex.xmlNamespaceUri(service),
+            serviceNamespace,
             ec2Query);
 
-    return ExModule.module(
+    return new Module(
         moduleName,
+        Moduledoc.of(
+            "Server AWS Query codecs for " + service.getId() + " (generated). Do not edit."),
+        List.of(),
         List.of(
-            ExModuledoc.moduledoc(
-                "Server AWS Query codecs for " + service.getId() + " (generated). Do not edit.")),
-        List.of(
-            ExAliasAttr.alias(runtimeMod, "RuntimeTypes"), ExAliasAttr.alias(typesMod, "Types")),
+            Alias.of(runtimeMod, "RuntimeTypes"),
+            Alias.of(typesMod, "Types")),
+        List.of(),
+        List.of(),
+        List.of(),
         functions);
   }
 
   static void emitClientCodecModule(
       ElixirContext ctx, ServiceShape service, ShapeId protocolTraitId) {
-    ExModule module = buildClientCodecModule(ctx, service, protocolTraitId);
     ElixirCodecEmission.writeModule(
-        ctx, clientCodecFileName(ctx, service, protocolTraitId), module);
+        ctx, clientCodecFileName(ctx, service, protocolTraitId), buildClientCodecModule(ctx, service, protocolTraitId));
   }
 
   static void emitServerCodecModule(
       ElixirContext ctx, ServiceShape service, ShapeId protocolTraitId) {
-    ExModule module = buildServerCodecModule(ctx, service, protocolTraitId);
     ElixirCodecEmission.writeModule(
-        ctx, serverCodecFileName(ctx, service, protocolTraitId), module);
+        ctx, serverCodecFileName(ctx, service, protocolTraitId), buildServerCodecModule(ctx, service, protocolTraitId));
   }
 
   static List<StructureShape> inputShapes(Model model, ServiceShape service) {
@@ -126,7 +132,7 @@ final class ElixirAwsQueryIr {
     return new ArrayList<>(shapes);
   }
 
-  static List<ExFunction> clientCodecFunctions(
+  static List<Function> clientCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -135,19 +141,19 @@ final class ElixirAwsQueryIr {
       String typesMod,
       String runtimeMod,
       boolean ec2Query) {
-    List<ExFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (OperationShape op : operations) {
-      functions.add(
+      functions.addAll(
           ElixirAwsQueryOperationIr.buildEncodeRequest(
               model, service, op, httpIndex, sp, typesMod, runtimeMod));
-      functions.add(
+      functions.addAll(
           ElixirAwsQueryOperationIr.buildDecodeResponse(
               model, service, op, sp, typesMod, runtimeMod, ec2Query));
     }
-    functions.add(
+    functions.addAll(
         ElixirAwsQueryOperationIr.buildFlattenQueryInput(
             model, httpIndex, sp, inputShapes(model, service), ec2Query));
-    functions.add(
+    functions.addAll(
         ElixirAwsQueryOperationIr.buildFlattenStructure(
             sp,
             ElixirAwsQueryOperationIr.nestedQueryStructures(model, inputShapes(model, service)),
@@ -157,7 +163,7 @@ final class ElixirAwsQueryIr {
     return functions;
   }
 
-  static List<ExFunction> serverCodecFunctions(
+  static List<Function> serverCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -166,26 +172,23 @@ final class ElixirAwsQueryIr {
       String runtimeMod,
       Optional<String> serviceNamespace,
       boolean ec2Query) {
-    List<ExFunction> functions = new ArrayList<>();
-    @SuppressWarnings("unused")
-    List<Function> xmlHelpers = new ArrayList<>();
-    xmlHelpers.addAll(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
+    List<Function> functions = new ArrayList<>();
     for (OperationShape op : operations) {
-      functions.add(
+      functions.addAll(
           ElixirAwsQueryOperationIr.buildServerDecodeRequest(model, op, sp, typesMod, runtimeMod));
-      functions.add(
+      functions.addAll(
           ElixirAwsQueryOperationIr.buildServerEncodeResponse(
               model, service, op, sp, typesMod, runtimeMod, ec2Query));
     }
     for (StructureShape input : inputShapes(model, service)) {
-      functions.add(
+      functions.addAll(
           ElixirAwsQueryOperationIr.buildParseInputFromForm(model, sp, typesMod, input, ec2Query));
     }
     for (StructureShape output : outputShapes(model, service)) {
-      functions.add(ElixirAwsQueryOperationIr.buildOutputToResultMap(model, sp, output));
+      functions.addAll(ElixirAwsQueryOperationIr.buildOutputToResultMap(model, sp, output));
     }
     functions.addAll(ElixirAwsQueryHelperIr.serverDecodeHelpers(ec2Query));
-    functions.addAll(ElixirAwsQueryHelperIr.serverXmlEncodeHelpers(ec2Query));
+    functions.addAll(ElixirAwsQueryHelperIr.serverXmlEncodeHelpers(serviceNamespace, ec2Query));
     return functions;
   }
 
