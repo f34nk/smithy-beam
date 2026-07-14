@@ -148,8 +148,10 @@ final class ElixirRestJsonIr {
   static List<ExFunction> mapHelperFunctions(Model model, ServiceShape service, SymbolProvider sp) {
     List<ExFunction> functions = new ArrayList<>();
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+    @SuppressWarnings("unused")
+    List<Function> mapHelpers = new ArrayList<>();
     for (MapShape map : ElixirRestJsonSupport.reachableTypedMapShapes(model, service)) {
-      functions.addAll(ElixirMapHelperIr.mapDecodeEncode(model, httpIndex, map, sp));
+      mapHelpers.addAll(ElixirMapHelperIr.mapDecodeEncode(model, httpIndex, map, sp));
     }
     return functions;
   }

@@ -184,7 +184,14 @@ final class ElixirJsonCodecIr {
       return ExCallLocal.callLocal(helper, raw);
     }
     if (target instanceof MapShape mapShape) {
-      return ElixirMapHelperIr.mapDecodeExpr(model, sp, httpIndex, mapShape, raw);
+      if (ElixirMapHelperIr.mapNeedsTypedHelper(model, mapShape)) {
+        return ExCallLocal.callLocal(
+            "decode_" + ElixirMapHelperIr.mapHelperName(mapShape), raw);
+      }
+      if (mapShape.hasTrait(SparseTrait.class)) {
+        return ExCallLocal.callLocal("decode_sparse_map", raw);
+      }
+      return raw;
     }
     return raw;
   }
@@ -222,7 +229,14 @@ final class ElixirJsonCodecIr {
       return binding;
     }
     if (target instanceof MapShape mapShape) {
-      return ElixirMapHelperIr.mapEncodeExpr(model, sp, httpIndex, mapShape, binding);
+      if (ElixirMapHelperIr.mapNeedsTypedHelper(model, mapShape)) {
+        return ExCallLocal.callLocal(
+            "encode_" + ElixirMapHelperIr.mapHelperName(mapShape), binding);
+      }
+      if (mapShape.hasTrait(SparseTrait.class)) {
+        return ExCallLocal.callLocal("encode_sparse_map", binding);
+      }
+      return binding;
     }
     return binding;
   }
