@@ -1,28 +1,30 @@
 package io.smithy.beam.elixir;
 
-import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExDoc;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExInteger;
-import io.smithy.beam.ir.elixir.ExIntegerPattern;
-import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStruct;
-import io.smithy.beam.ir.elixir.ExStructFieldPattern;
-import io.smithy.beam.ir.elixir.ExStructPattern;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
+import io.beam.ir.elixir.AssignPattern;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.Expression;
 import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionDoc;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.IntegerPattern;
+import io.beam.ir.elixir.ListExpr;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StructExpr;
+import io.beam.ir.elixir.StructField;
+import io.beam.ir.elixir.StructPattern;
+import io.beam.ir.elixir.StructPatternField;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
+import io.smithy.beam.core.BeamNameUtils;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -37,7 +39,7 @@ import software.amazon.smithy.model.shapes.UnionShape;
 final class ElixirAwsJsonOperationIr {
   private ElixirAwsJsonOperationIr() {}
 
-  static ExFunction buildEncodeRequest(
+  static List<Function> buildEncodeRequest(
       Model model,
       OperationShape op,
       HttpBindingIndex httpIndex,
@@ -55,30 +57,35 @@ final class ElixirAwsJsonOperationIr {
     List<MemberShape> members = ElixirJsonCodecIr.documentMembers(httpIndex, op, input, true);
     String amzTarget = targetPrefix + "." + op.getId().getName();
 
-    ExSpec spec = ExSpec.functionSpec("encode_" + opName + "_request", inputType, httpRequestType);
-    ExStructPattern inputPattern = new ExStructPattern("Types." + inputStruct, List.of(), "input");
-
-    List<ExExpr> body = new ArrayList<>();
+    List<Expression> body = new ArrayList<>();
     body.add(
-        ElixirBeamIrBridge.expr(
+        MatchExpr.bind(
+            "body_map",
             ElixirJsonCodecIr.rejectNilMapPipeline(
                 "body_map",
                 ElixirJsonCodecIr.bodyMapEntries(
                     model, httpIndex, sp, typesMod, members, "input", eventStreamModule))));
     body.add(
-        ExMatch.match(
-            ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
+        MatchExpr.bind(
+            "body",
+            RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
     body.add(buildAwsJsonHttpRequestExpr(runtimeMod, amzTarget, contentType));
 
-    return ExFunction.functionWithDocAndSpec(
-        "def",
-        "encode_" + opName + "_request",
-        ExDoc.doc("Encode AWS JSON request for " + op.getId() + "."),
-        spec,
-        List.of(ExClause.blockClause(List.of(inputPattern), body.toArray(ExExpr[]::new))));
+    Spec spec = Spec.of("encode_" + opName + "_request(" + inputType + ") -> " + httpRequestType);
+
+    return List.of(
+        def(
+            "encode_" + opName + "_request",
+            List.of(
+                AssignPattern.of(
+                    "input", StructPattern.of("Types." + inputStruct, List.of()))),
+            block(body),
+            spec,
+            FunctionDoc.of("Encode AWS JSON request for " + op.getId() + "."),
+            false));
   }
 
-  static ExFunction buildDecodeResponse(
+  static List<Function> buildDecodeResponse(
       Model model,
       OperationShape op,
       HttpBindingIndex httpIndex,
@@ -92,72 +99,84 @@ final class ElixirAwsJsonOperationIr {
     String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
     List<MemberShape> members = ElixirJsonCodecIr.documentMembers(httpIndex, op, output, false);
 
-    ExSpec spec =
-        ExSpec.functionSpec(
-            "decode_" + opName + "_response",
-            "map()",
-            "{:ok, " + outputType + "} | {:error, term()}");
+    Spec spec =
+        Spec.of(
+            "decode_"
+                + opName
+                + "_response(map()) -> {:ok, "
+                + outputType
+                + "} | {:error, term()}");
 
-    ExStructPattern successPattern =
-        new ExStructPattern(
+    Pattern successPattern =
+        StructPattern.of(
             runtimeMod + ".HttpResponse",
             List.of(
-                ExStructFieldPattern.fieldPattern("status", ExIntegerPattern.integer(200)),
-                ExStructFieldPattern.fieldPattern("body", ExVarPattern.var("body"))));
+                StructPatternField.of("status", IntegerPattern.of(200)),
+                StructPatternField.of("body", VariablePattern.of("body"))));
 
-    ExStructPattern errorPattern =
-        new ExStructPattern(
+    Pattern errorPattern =
+        StructPattern.of(
             runtimeMod + ".HttpResponse",
             List.of(
-                ExStructFieldPattern.fieldPattern("status", ExVarPattern.var("status")),
-                ExStructFieldPattern.fieldPattern("headers", ExVarPattern.var("headers")),
-                ExStructFieldPattern.fieldPattern("body", ExVarPattern.var("body"))));
+                StructPatternField.of("status", VariablePattern.of("status")),
+                StructPatternField.of("headers", VariablePattern.of("headers")),
+                StructPatternField.of("body", VariablePattern.of("body"))));
 
-    List<ExExpr> successBody = new ArrayList<>();
+    List<Expression> successBody = new ArrayList<>();
     if (ElixirJsonCodecIr.isEventStreamPayload(members, model)) {
       MemberShape member = members.get(0);
       UnionShape union = model.expectShape(member.getTarget(), UnionShape.class);
       String helper = ElixirEventStreamEmitter.helperName(sp, union);
       String fieldName = memberFieldName(sp, member);
       successBody.add(
-          ExTuple.tuple(
-              ExAtom.atom("ok"),
-              ExStruct.struct(
-                  "Types." + outputStruct,
-                  ExMapEntry.entry(
-                      ExAtom.atom(fieldName),
-                      ExCall.call(eventStreamModule, "decode_" + helper, ExVar.var("body"))))));
+          TupleExpr.of(
+              List.of(
+                  AtomExpr.of("ok"),
+                  StructExpr.of(
+                      "Types." + outputStruct,
+                      List.of(
+                          StructField.of(
+                              fieldName,
+                              RemoteCallExpr.of(
+                                  eventStreamModule,
+                                  "decode_" + helper,
+                                  List.of(Variable.of("body")))))))));
     } else {
-      successBody.addAll(
-          ElixirJsonCodecIr.decodedBodyPrelude().stream().map(ElixirBeamIrBridge::statement).toList());
+      successBody.addAll(ElixirJsonCodecIr.decodedBodyPrelude());
       successBody.add(
-          ExTuple.tuple(
-              ExAtom.atom("ok"),
-              ExStruct.struct(
-                  "Types." + outputStruct,
-                  ElixirBeamIrBridge.mapEntries(
+          TupleExpr.of(
+              List.of(
+                  AtomExpr.of("ok"),
+                  StructExpr.of(
+                      "Types." + outputStruct,
+                      structFields(
                           ElixirJsonCodecIr.structFieldEntriesFromDecoded(
-                              model, httpIndex, sp, typesMod, members, eventStreamModule))
-                      .toArray(ExMapEntry[]::new))));
+                              model, httpIndex, sp, typesMod, members, eventStreamModule))))));
     }
 
-    return ExFunction.functionWithDocAndSpec(
-        "def",
-        "decode_" + opName + "_response",
-        ExDoc.doc("Decode AWS JSON response for " + op.getId() + "."),
-        spec,
-        List.of(
-            ExClause.blockClause(List.of(successPattern), successBody.toArray(ExExpr[]::new)),
-            ExClause.clause(
-                List.of(errorPattern),
-                ExCallLocal.callLocal(
-                    "decode_" + opName + "_response_error",
-                    ExVar.var("status"),
-                    ExVar.var("headers"),
-                    ExVar.var("body")))));
+    return List.of(
+        def(
+            "decode_" + opName + "_response",
+            List.of(successPattern),
+            block(successBody),
+            spec,
+            FunctionDoc.of("Decode AWS JSON response for " + op.getId() + "."),
+            false),
+        def(
+            "decode_" + opName + "_response",
+            List.of(errorPattern),
+            LocalCallExpr.of(
+                "decode_" + opName + "_response_error",
+                List.of(
+                    Variable.of("status"),
+                    Variable.of("headers"),
+                    Variable.of("body"))),
+            null,
+            null,
+            true));
   }
 
-  static ExFunction buildDecodeRequest(
+  static List<Function> buildDecodeRequest(
       Model model,
       OperationShape op,
       HttpBindingIndex httpIndex,
@@ -171,44 +190,44 @@ final class ElixirAwsJsonOperationIr {
     String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
     List<MemberShape> members = ElixirJsonCodecIr.documentMembers(httpIndex, op, input, true);
 
-    ExSpec spec = ExSpec.functionSpec("decode_" + opName + "_request", "map()", inputType);
-    ExStructPattern pattern =
-        new ExStructPattern(
-            runtimeMod + ".HttpRequest",
-            List.of(ExStructFieldPattern.fieldPattern("body", ExVarPattern.var("body"))));
+    Spec spec = Spec.of("decode_" + opName + "_request(map()) -> " + inputType);
 
-    List<ExExpr> body = new ArrayList<>();
+    Pattern pattern =
+        StructPattern.of(
+            runtimeMod + ".HttpRequest",
+            List.of(StructPatternField.of("body", VariablePattern.of("body"))));
+
+    List<Expression> body = new ArrayList<>();
     if (ElixirJsonCodecIr.isEventStreamPayload(members, model)) {
       body.add(
-          ExStruct.struct(
+          StructExpr.of(
               "Types." + inputStruct,
-              ElixirBeamIrBridge.mapEntries(
-                      ElixirJsonCodecIr.structFieldEntriesFromDecoded(
-                          model, httpIndex, sp, typesMod, members, eventStreamModule))
-                  .toArray(ExMapEntry[]::new)));
+              structFields(
+                  ElixirJsonCodecIr.structFieldEntriesFromDecoded(
+                      model, httpIndex, sp, typesMod, members, eventStreamModule))));
     } else {
       body.add(
-          ExMatch.match(
-              ExVarPattern.var("decoded"),
-              ExCallLocal.callLocal("decode_json_body", ExVar.var("body"))));
+          MatchExpr.bind(
+              "decoded", LocalCallExpr.of("decode_json_body", List.of(Variable.of("body")))));
       body.add(
-          ExStruct.struct(
+          StructExpr.of(
               "Types." + inputStruct,
-              ElixirBeamIrBridge.mapEntries(
-                      ElixirJsonCodecIr.structFieldEntriesFromDecoded(
-                          model, httpIndex, sp, typesMod, members, eventStreamModule))
-                  .toArray(ExMapEntry[]::new)));
+              structFields(
+                  ElixirJsonCodecIr.structFieldEntriesFromDecoded(
+                      model, httpIndex, sp, typesMod, members, eventStreamModule))));
     }
 
-    return ExFunction.functionWithDocAndSpec(
-        "def",
-        "decode_" + opName + "_request",
-        ExDoc.doc("Decode AWS JSON request for " + op.getId() + "."),
-        spec,
-        List.of(ExClause.blockClause(List.of(pattern), body.toArray(ExExpr[]::new))));
+    return List.of(
+        def(
+            "decode_" + opName + "_request",
+            List.of(pattern),
+            block(body),
+            spec,
+            FunctionDoc.of("Decode AWS JSON request for " + op.getId() + "."),
+            false));
   }
 
-  static ExFunction buildEncodeResponse(
+  static List<Function> buildEncodeResponse(
       Model model,
       OperationShape op,
       HttpBindingIndex httpIndex,
@@ -223,36 +242,45 @@ final class ElixirAwsJsonOperationIr {
     String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
     List<MemberShape> members = ElixirJsonCodecIr.documentMembers(httpIndex, op, output, false);
 
-    ExSpec spec = ExSpec.functionSpec("encode_" + opName + "_response", outputType, "map()");
-    ExStructPattern pattern = new ExStructPattern("Types." + outputStruct, List.of(), "output");
+    Spec spec = Spec.of("encode_" + opName + "_response(" + outputType + ") -> map()");
 
-    List<ExExpr> body = new ArrayList<>();
+    List<Expression> body = new ArrayList<>();
     body.add(
-        ElixirBeamIrBridge.expr(
+        MatchExpr.bind(
+            "body_map",
             ElixirJsonCodecIr.rejectNilMapPipeline(
                 "body_map",
                 ElixirJsonCodecIr.bodyMapEntries(
                     model, httpIndex, sp, typesMod, members, "output", eventStreamModule))));
     body.add(
-        ExMatch.match(
-            ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
+        MatchExpr.bind(
+            "body",
+            RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
     body.add(
-        ExMatch.match(
-            ExVarPattern.var("headers"),
-            ExList.list(
-                ExTuple.tuple(ExString.string("Content-Type"), ExString.string(contentType)))));
+        MatchExpr.bind(
+            "headers",
+            ListExpr.of(
+                List.of(
+                    TupleExpr.of(
+                        List.of(
+                            StringExpr.of("Content-Type"), StringExpr.of(contentType)))))));
     body.add(
-        ExMap.map(
-            ExMapEntry.entry(ExAtom.atom("status"), ExInteger.integer(200)),
-            ExMapEntry.entry(ExAtom.atom("headers"), ExVar.var("headers")),
-            ExMapEntry.entry(ExAtom.atom("body"), ExVar.var("body"))));
+        MapExpr.of(
+            List.of(
+                MapEntry.atomKey("status", io.beam.ir.elixir.IntegerExpr.of(200)),
+                MapEntry.atomKey("headers", Variable.of("headers")),
+                MapEntry.atomKey("body", Variable.of("body")))));
 
-    return ExFunction.functionWithDocAndSpec(
-        "def",
-        "encode_" + opName + "_response",
-        ExDoc.doc("Encode AWS JSON response for " + op.getId() + "."),
-        spec,
-        List.of(ExClause.blockClause(List.of(pattern), body.toArray(ExExpr[]::new))));
+    return List.of(
+        def(
+            "encode_" + opName + "_response",
+            List.of(
+                AssignPattern.of(
+                    "output", StructPattern.of("Types." + outputStruct, List.of()))),
+            block(body),
+            spec,
+            FunctionDoc.of("Encode AWS JSON response for " + op.getId() + "."),
+            false));
   }
 
   static List<Function> buildErrorDispatch(
@@ -266,18 +294,56 @@ final class ElixirAwsJsonOperationIr {
         .orElseGet(() -> BeamNameUtils.toSnakeCase(member.getMemberName()));
   }
 
-  private static ExStruct buildAwsJsonHttpRequestExpr(
+  private static Expression buildAwsJsonHttpRequestExpr(
       String runtimeMod, String amzTarget, String contentType) {
-    return ExStruct.struct(
+    return StructExpr.of(
         runtimeMod + ".HttpRequest",
-        ExMapEntry.entry(ExAtom.atom("method"), ExString.string("POST")),
-        ExMapEntry.entry(ExAtom.atom("path"), ExString.string("/")),
-        ExMapEntry.entry(ExAtom.atom("query"), ExMap.map()),
-        ExMapEntry.entry(
-            ExAtom.atom("headers"),
-            ExList.list(
-                ExTuple.tuple(ExString.string("Content-Type"), ExString.string(contentType)),
-                ExTuple.tuple(ExString.string("X-Amz-Target"), ExString.string(amzTarget)))),
-        ExMapEntry.entry(ExAtom.atom("body"), ExVar.var("body")));
+        List.of(
+            StructField.of("method", StringExpr.of("POST")),
+            StructField.of("path", StringExpr.of("/")),
+            StructField.of("query", MapExpr.of(List.of())),
+            StructField.of(
+                "headers",
+                ListExpr.of(
+                    List.of(
+                        TupleExpr.of(
+                            List.of(
+                                StringExpr.of("Content-Type"), StringExpr.of(contentType))),
+                        TupleExpr.of(
+                            List.of(
+                                StringExpr.of("X-Amz-Target"), StringExpr.of(amzTarget)))))),
+            StructField.of("body", Variable.of("body"))));
+  }
+
+  private static List<StructField> structFields(List<MapEntry> entries) {
+    List<StructField> fields = new ArrayList<>();
+    for (MapEntry entry : entries) {
+      String name =
+          entry.key() instanceof AtomExpr atom
+              ? atom.value()
+              : ((StringExpr) entry.key()).value();
+      fields.add(StructField.of(name, entry.value()));
+    }
+    return fields;
+  }
+
+  private static Function def(
+      String name,
+      List<Pattern> params,
+      Expression body,
+      Spec spec,
+      FunctionDoc doc,
+      boolean oneLiner) {
+    return new Function(name, false, List.of(FunctionHead.of(params)), body, spec, doc, oneLiner);
+  }
+
+  private static Expression block(List<Expression> statements) {
+    if (statements.isEmpty()) {
+      return io.beam.ir.elixir.NilExpr.of();
+    }
+    if (statements.size() == 1) {
+      return statements.get(0);
+    }
+    return new BlockExpr(statements);
   }
 }

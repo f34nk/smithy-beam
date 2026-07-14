@@ -7,7 +7,6 @@ import io.beam.ir.elixir.Function;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.elixir.ExFunction;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -81,7 +80,7 @@ class ElixirEnumHelperIrTest {
     Model model = model();
     ServiceShape service =
         model.expectShape(ShapeId.from("com.example#StringService"), ServiceShape.class);
-    List<ExFunction> functions = ElixirRestJsonIr.enumHelperFunctions(model, service, provider);
+    List<Function> functions = ElixirRestJsonIr.enumHelperFunctions(model, service, provider);
     assertThat(functions).isEmpty();
   }
 
@@ -90,7 +89,7 @@ class ElixirEnumHelperIrTest {
     Model model = model();
     ServiceShape service =
         model.expectShape(ShapeId.from("com.example#StringService"), ServiceShape.class);
-    List<ExFunction> functions = ElixirRestXmlIr.enumHelperFunctions(model, service, provider);
+    List<Function> functions = ElixirRestXmlIr.enumHelperFunctions(model, service, provider);
     assertThat(functions).isEmpty();
   }
 

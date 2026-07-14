@@ -1,14 +1,12 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Alias;
 import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Moduledoc;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamProtocolIds;
-import io.smithy.beam.ir.elixir.ExAliasAttr;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModule;
-import io.smithy.beam.ir.elixir.ExModuleEntry;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +38,7 @@ final class ElixirAwsJsonIr {
     return layout(ctx, service).serverCodecModuleName(protocol) + ".ex";
   }
 
-  static ExModule buildClientCodecModule(
+  static Module buildClientCodecModule(
       ElixirContext ctx, ServiceShape service, ShapeId protocol) {
     BeamAwsServiceMetadata.from(service).orElseThrow();
     Model model = ctx.model();
@@ -56,7 +54,7 @@ final class ElixirAwsJsonIr {
     String versionLabel = versionLabel(protocol);
 
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
-    List<ExModuleEntry> functions =
+    List<Function> functions =
         clientCodecFunctions(
             model,
             service,
@@ -69,21 +67,25 @@ final class ElixirAwsJsonIr {
             contentType,
             eventStreamMod);
 
-    return ExModule.module(
+    return new Module(
         moduleName,
+        Moduledoc.of(
+            "AWS JSON "
+                + versionLabel
+                + " codecs for "
+                + service.getId()
+                + " (generated). Do not edit."),
+        List.of(),
         List.of(
-            ExModuledoc.moduledoc(
-                "AWS JSON "
-                    + versionLabel
-                    + " codecs for "
-                    + service.getId()
-                    + " (generated). Do not edit.")),
-        List.of(
-            ExAliasAttr.alias(runtimeMod, "RuntimeTypes"), ExAliasAttr.alias(typesMod, "Types")),
+            Alias.of(runtimeMod, "RuntimeTypes"),
+            Alias.of(typesMod, "Types")),
+        List.of(),
+        List.of(),
+        List.of(),
         functions);
   }
 
-  static ExModule buildServerCodecModule(
+  static Module buildServerCodecModule(
       ElixirContext ctx, ServiceShape service, ShapeId protocol) {
     Model model = ctx.model();
     BeamElixirLayout layout = layout(ctx, service);
@@ -97,7 +99,7 @@ final class ElixirAwsJsonIr {
     String versionLabel = versionLabel(protocol);
 
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
-    List<ExModuleEntry> functions =
+    List<Function> functions =
         serverCodecFunctions(
             model,
             service,
@@ -109,28 +111,32 @@ final class ElixirAwsJsonIr {
             contentType,
             eventStreamMod);
 
-    return ExModule.module(
+    return new Module(
         moduleName,
+        Moduledoc.of(
+            "Server AWS JSON "
+                + versionLabel
+                + " codecs for "
+                + service.getId()
+                + " (generated)."),
+        List.of(),
         List.of(
-            ExModuledoc.moduledoc(
-                "Server AWS JSON "
-                    + versionLabel
-                    + " codecs for "
-                    + service.getId()
-                    + " (generated).")),
-        List.of(
-            ExAliasAttr.alias(runtimeMod, "RuntimeTypes"), ExAliasAttr.alias(typesMod, "Types")),
+            Alias.of(runtimeMod, "RuntimeTypes"),
+            Alias.of(typesMod, "Types")),
+        List.of(),
+        List.of(),
+        List.of(),
         functions);
   }
 
   static void emitClientCodecModule(ElixirContext ctx, ServiceShape service, ShapeId protocol) {
-    ExModule module = buildClientCodecModule(ctx, service, protocol);
-    ElixirCodecEmission.writeModule(ctx, clientCodecFileName(ctx, service, protocol), module);
+    ElixirCodecEmission.writeModule(
+        ctx, clientCodecFileName(ctx, service, protocol), buildClientCodecModule(ctx, service, protocol));
   }
 
   static void emitServerCodecModule(ElixirContext ctx, ServiceShape service, ShapeId protocol) {
-    ExModule module = buildServerCodecModule(ctx, service, protocol);
-    ElixirCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service, protocol), module);
+    ElixirCodecEmission.writeModule(
+        ctx, serverCodecFileName(ctx, service, protocol), buildServerCodecModule(ctx, service, protocol));
   }
 
   static String contentType(ShapeId protocol) {
@@ -141,12 +147,11 @@ final class ElixirAwsJsonIr {
     return contentType;
   }
 
-  static List<ExModuleEntry> sharedCodecHelpers(Model model, ServiceShape service, SymbolProvider sp) {
-    return ElixirBeamIrBridge.renderedFunctions(
-        ElixirRestJsonIr.sharedCodecHelpers(model, service, sp));
+  static List<Function> sharedCodecHelpers(Model model, ServiceShape service, SymbolProvider sp) {
+    return ElixirRestJsonIr.sharedCodecHelpers(model, service, sp);
   }
 
-  static List<ExFunction> clientOperationCodecFunctions(
+  static List<Function> clientOperationCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -157,9 +162,9 @@ final class ElixirAwsJsonIr {
       String targetPrefix,
       String contentType,
       String eventStreamModule) {
-    List<ExFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (OperationShape op : operations) {
-      functions.add(
+      functions.addAll(
           ElixirAwsJsonOperationIr.buildEncodeRequest(
               model,
               op,
@@ -170,14 +175,14 @@ final class ElixirAwsJsonIr {
               targetPrefix,
               contentType,
               eventStreamModule));
-      functions.add(
+      functions.addAll(
           ElixirAwsJsonOperationIr.buildDecodeResponse(
               model, op, httpIndex, sp, typesMod, runtimeMod, eventStreamModule));
     }
     return functions;
   }
 
-  static List<ExModuleEntry> clientCodecFunctions(
+  static List<Function> clientCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -188,7 +193,8 @@ final class ElixirAwsJsonIr {
       String targetPrefix,
       String contentType,
       String eventStreamModule) {
-    List<ExFunction> functions =
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(
         clientOperationCodecFunctions(
             model,
             service,
@@ -199,21 +205,12 @@ final class ElixirAwsJsonIr {
             runtimeMod,
             targetPrefix,
             contentType,
-            eventStreamModule);
-    List<Function> errorDispatchFunctions = new ArrayList<>();
+            eventStreamModule));
     for (OperationShape op : operations) {
-      errorDispatchFunctions.addAll(
-          ElixirAwsJsonOperationIr.buildErrorDispatch(model, op, sp, typesMod));
+      functions.addAll(ElixirAwsJsonOperationIr.buildErrorDispatch(model, op, sp, typesMod));
     }
-    return ElixirBeamIrBridge.moduleEntries(
-        functions, concat(errorDispatchFunctions, codecHelperFunctions(model, service, sp)));
-  }
-
-  private static List<Function> concat(List<Function> left, List<Function> right) {
-    List<Function> combined = new ArrayList<>(left.size() + right.size());
-    combined.addAll(left);
-    combined.addAll(right);
-    return combined;
+    functions.addAll(codecHelperFunctions(model, service, sp));
+    return functions;
   }
 
   private static List<Function> codecHelperFunctions(
@@ -227,7 +224,7 @@ final class ElixirAwsJsonIr {
     return helpers;
   }
 
-  static List<ExModuleEntry> serverCodecFunctions(
+  static List<Function> serverCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -237,16 +234,17 @@ final class ElixirAwsJsonIr {
       String runtimeMod,
       String contentType,
       String eventStreamModule) {
-    List<ExFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (OperationShape op : operations) {
-      functions.add(
+      functions.addAll(
           ElixirAwsJsonOperationIr.buildDecodeRequest(
               model, op, httpIndex, sp, typesMod, runtimeMod, eventStreamModule));
-      functions.add(
+      functions.addAll(
           ElixirAwsJsonOperationIr.buildEncodeResponse(
               model, op, httpIndex, sp, typesMod, runtimeMod, contentType, eventStreamModule));
     }
-    return ElixirBeamIrBridge.moduleEntries(functions, codecHelperFunctions(model, service, sp));
+    functions.addAll(codecHelperFunctions(model, service, sp));
+    return functions;
   }
 
   private static BeamElixirLayout layout(ElixirContext ctx, ServiceShape service) {
