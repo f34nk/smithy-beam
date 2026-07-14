@@ -28,4 +28,9 @@ demo: build terraform test
 .PHONY: terraform
 terraform:
 	@echo "AWS_DEFAULT_REGION is $$AWS_DEFAULT_REGION"
-	cd terraform && terraform init && terraform apply -auto-approve
+	cd terraform && terraform init
+	@cd terraform && \
+	  if ! terraform state list 2>/dev/null | grep -q 'aws_s3_bucket.config_bucket'; then \
+	    terraform import aws_s3_bucket.config_bucket smithy-beam-minimal-s3-erlang || true; \
+	  fi
+	cd terraform && terraform apply -auto-approve
