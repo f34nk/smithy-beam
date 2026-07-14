@@ -2,10 +2,11 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.elixir.ElixirRenderer;
+import io.beam.ir.elixir.Function;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.elixir.ExFunction;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -21,55 +22,57 @@ import software.amazon.smithy.model.shapes.ShapeId;
 class ElixirRestXmlIrTest {
   @Test
   void decodeGetNameRequestMatchesGolden() throws IOException {
-    ExFunction fn = decodeGetNameRequest();
+    Function fn = decodeGetNameRequest();
     ElixirIrTestSupport.assertStructural(fn);
-    assertThat(fn.asString())
+    assertThat(ElixirRenderer.renderFunction(fn))
         .isEqualTo(readExpectedString("ir/rest_xml_decode_get_name_request.expected.ex"));
   }
 
   @Test
   void decodeGetNameResponseMatchesGolden() throws IOException {
-    ExFunction fn = decodeGetNameResponse();
+    Function fn = decodeGetNameResponse();
     ElixirIrTestSupport.assertStructural(fn);
-    assertThat(fn.asString())
+    assertThat(ElixirRenderer.renderFunction(fn))
         .isEqualTo(readExpectedString("ir/rest_xml_decode_get_name_response.expected.ex"));
   }
 
   @Test
   void encodeGetNameRequestMatchesGolden() throws IOException {
-    ExFunction fn = encodeGetNameRequest();
+    Function fn = encodeGetNameRequest();
     ElixirIrTestSupport.assertStructural(fn);
-    assertThat(fn.asString())
+    assertThat(ElixirRenderer.renderFunction(fn))
         .isEqualTo(readExpectedString("ir/rest_xml_encode_get_name_request.expected.ex"));
   }
 
   @Test
   void encodeGetNameResponseMatchesGolden() throws IOException {
-    ExFunction fn = encodeGetNameResponse();
+    Function fn = encodeGetNameResponse();
     ElixirIrTestSupport.assertStructural(fn);
-    assertThat(fn.asString())
+    assertThat(ElixirRenderer.renderFunction(fn))
         .isEqualTo(readExpectedString("ir/rest_xml_encode_get_name_response.expected.ex"));
   }
 
-  private static ExFunction decodeGetNameRequest() {
+  private static Function decodeGetNameRequest() {
     Model model = httpModel();
     OperationShape op =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
     ElixirSymbolProvider sp = symbolProvider(model);
     return ElixirRestXmlOperationIr.buildDecodeRequest(
-        model, op, HttpBindingIndex.of(model), sp, typesMod(model));
+            model, op, HttpBindingIndex.of(model), sp, typesMod(model))
+        .get(0);
   }
 
-  private static ExFunction decodeGetNameResponse() {
+  private static Function decodeGetNameResponse() {
     Model model = httpModel();
     OperationShape op =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
     ElixirSymbolProvider sp = symbolProvider(model);
     return ElixirRestXmlOperationIr.buildDecodeResponse(
-        model, op, HttpBindingIndex.of(model), sp, typesMod(model));
+            model, op, HttpBindingIndex.of(model), sp, typesMod(model))
+        .get(0);
   }
 
-  private static ExFunction encodeGetNameRequest() {
+  private static Function encodeGetNameRequest() {
     Model model = httpModel();
     ServiceShape service =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
@@ -77,23 +80,25 @@ class ElixirRestXmlIrTest {
         model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
     ElixirSymbolProvider sp = symbolProvider(model);
     return ElixirRestXmlOperationIr.buildEncodeRequest(
-        model,
-        service,
-        op,
-        HttpBindingIndex.of(model),
-        sp,
-        typesMod(model),
-        runtimeMod(model),
-        false);
+            model,
+            service,
+            op,
+            HttpBindingIndex.of(model),
+            sp,
+            typesMod(model),
+            runtimeMod(model),
+            false)
+        .get(0);
   }
 
-  private static ExFunction encodeGetNameResponse() {
+  private static Function encodeGetNameResponse() {
     Model model = httpModel();
     OperationShape op =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
     ElixirSymbolProvider sp = symbolProvider(model);
     return ElixirRestXmlOperationIr.buildEncodeResponse(
-        model, op, HttpBindingIndex.of(model), sp, typesMod(model), runtimeMod(model));
+            model, op, HttpBindingIndex.of(model), sp, typesMod(model), runtimeMod(model))
+        .get(0);
   }
 
   private static Model httpModel() {
