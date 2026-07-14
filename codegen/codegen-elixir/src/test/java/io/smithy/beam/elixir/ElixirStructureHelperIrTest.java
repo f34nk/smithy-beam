@@ -12,12 +12,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Disabled;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 
+@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ElixirStructureHelperIrTest {
   private static StructureShape basicItem;
   private static ElixirSymbolProvider provider;

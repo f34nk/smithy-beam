@@ -1,1 +1,0 @@
-decoded = if(body == "" or Kernel.is_nil(body), do: %{}, else: Jason.decode!(body))

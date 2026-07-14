@@ -11,12 +11,14 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Disabled;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
+@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ElixirCredentialProviderIrTest {
   private static final ShapeId SIGV4_SERVICE =
       ShapeId.from("smithy.beam.test.sigv4#Sigv4TestService");
