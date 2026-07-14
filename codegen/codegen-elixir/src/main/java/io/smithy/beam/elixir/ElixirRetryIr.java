@@ -1,14 +1,16 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.StructPattern;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamRetryIndex;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExCapturedBlock;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExStructPattern;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -27,77 +29,87 @@ final class ElixirRetryIr {
     return !retryableErrors(model, service).isEmpty();
   }
 
-  static List<ExFunction> clientPredicateFunctions(
+  static List<Function> clientPredicateFunctions(
       Model model, ServiceShape service, SymbolProvider sp, BeamElixirLayout layout) {
     List<StructureShape> retryableErrors = retryableErrors(model, service);
     if (retryableErrors.isEmpty()) {
       return List.of();
     }
     List<StructureShape> modeledErrors = modeledErrors(model, service);
-    return List.of(
-        shouldRetry(retryableErrors, sp, layout),
-        retryable(modeledErrors, sp, layout),
-        throttling(modeledErrors, sp, layout));
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(shouldRetry(retryableErrors, sp, layout));
+    functions.addAll(retryable(modeledErrors, sp, layout));
+    functions.addAll(throttling(modeledErrors, sp, layout));
+    return functions;
   }
 
-  static ExFunction shouldRetry(
+  static List<Function> shouldRetry(
       List<StructureShape> retryableErrors, SymbolProvider sp, BeamElixirLayout layout) {
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-    List<ExClause> clauses = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (StructureShape error : retryableErrors) {
       String exceptionMod = sp.toSymbol(error).getName();
-      clauses.add(
-          ExClause.inlineClause(
-              List.of(
-                  ExTuplePattern.tuple(
-                      ExAtomPattern.atom("error"),
-                      ExStructPattern.struct(typesMod + "." + exceptionMod, List.of()))),
-              ExCapturedBlock.capturedBlock("true")));
+      functions.add(
+          predicateClause(
+              "should_retry?",
+              false,
+              TuplePattern.of(
+                  List.of(
+                      AtomPattern.of("error"),
+                      StructPattern.of(typesMod + "." + exceptionMod, List.of()))),
+              AtomExpr.of("true")));
     }
-    clauses.add(
-        ExClause.inlineClause(
-            List.of(ExVarPattern.var("_")), ExCapturedBlock.capturedBlock("false")));
-    return ExFunction.defFunction("should_retry?", clauses);
+    functions.add(
+        predicateClause("should_retry?", false, WildcardPattern.of(), AtomExpr.of("false")));
+    return functions;
   }
 
-  static ExFunction retryable(
+  static List<Function> retryable(
       List<StructureShape> modeledErrors, SymbolProvider sp, BeamElixirLayout layout) {
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-    List<ExClause> clauses = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (StructureShape error : modeledErrors) {
       Optional<BeamRetryIndex.RetryInfo> info = BeamRetryIndex.forError(error);
       if (info.isPresent() && info.get().retryable()) {
         String exceptionMod = sp.toSymbol(error).getName();
-        clauses.add(
-            ExClause.inlineClause(
-                List.of(ExStructPattern.struct(typesMod + "." + exceptionMod, List.of())),
-                ExCapturedBlock.capturedBlock("true")));
+        functions.add(
+            predicateClause(
+                "retryable?",
+                true,
+                StructPattern.of(typesMod + "." + exceptionMod, List.of()),
+                AtomExpr.of("true")));
       }
     }
-    clauses.add(
-        ExClause.inlineClause(
-            List.of(ExVarPattern.var("_")), ExCapturedBlock.capturedBlock("false")));
-    return ExFunction.defpFunction("retryable?", clauses);
+    functions.add(
+        predicateClause("retryable?", true, WildcardPattern.of(), AtomExpr.of("false")));
+    return functions;
   }
 
-  static ExFunction throttling(
+  static List<Function> throttling(
       List<StructureShape> modeledErrors, SymbolProvider sp, BeamElixirLayout layout) {
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-    List<ExClause> clauses = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (StructureShape error : modeledErrors) {
       Optional<BeamRetryIndex.RetryInfo> info = BeamRetryIndex.forError(error);
       if (info.isPresent() && info.get().throttling()) {
         String exceptionMod = sp.toSymbol(error).getName();
-        clauses.add(
-            ExClause.inlineClause(
-                List.of(ExStructPattern.struct(typesMod + "." + exceptionMod, List.of())),
-                ExCapturedBlock.capturedBlock("true")));
+        functions.add(
+            predicateClause(
+                "throttling?",
+                true,
+                StructPattern.of(typesMod + "." + exceptionMod, List.of()),
+                AtomExpr.of("true")));
       }
     }
-    clauses.add(
-        ExClause.inlineClause(
-            List.of(ExVarPattern.var("_")), ExCapturedBlock.capturedBlock("false")));
-    return ExFunction.defpFunction("throttling?", clauses);
+    functions.add(
+        predicateClause("throttling?", true, WildcardPattern.of(), AtomExpr.of("false")));
+    return functions;
+  }
+
+  private static Function predicateClause(
+      String name, boolean defp, Pattern pattern, Expression body) {
+    return new Function(
+        name, defp, List.of(FunctionHead.of(List.of(pattern))), body, null, null, true);
   }
 
   private static List<StructureShape> modeledErrors(Model model, ServiceShape service) {
