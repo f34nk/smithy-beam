@@ -60,8 +60,8 @@ class RetryEmissionTest {
     assertThat(manifest.getFileString("error_fixture_service_retry.ex")).isEmpty();
 
     String client = manifest.expectFileString("error_fixture_service_client.ex");
-    assertThat(client).contains("defp should_retry?({:error, %ErrorFixtureServiceTypes.NotFoundError{}})");
-    assertThat(client).contains("defp should_retry?({:error, %ErrorFixtureServiceTypes.ThrottlingError{}})");
+    assertThat(client).contains("def should_retry?({:error, %ErrorFixtureServiceTypes.NotFoundError{}})");
+    assertThat(client).contains("def should_retry?({:error, %ErrorFixtureServiceTypes.ThrottlingError{}})");
     assertThat(client).contains("RuntimeHttp.with_retry(");
     assertThat(client).contains("{:should_retry, &ErrorFixtureServiceClient.should_retry?/1}");
   }

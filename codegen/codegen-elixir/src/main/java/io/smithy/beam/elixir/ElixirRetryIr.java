@@ -59,7 +59,7 @@ final class ElixirRetryIr {
     clauses.add(
         ExClause.inlineClause(
             List.of(ExVarPattern.var("_")), ExCapturedBlock.capturedBlock("false")));
-    return ExFunction.defpFunction("should_retry?", clauses);
+    return ExFunction.defFunction("should_retry?", clauses);
   }
 
   static ExFunction retryable(
