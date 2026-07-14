@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.MapEntry;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
@@ -200,7 +201,8 @@ final class ElixirRestJsonOperationIr {
 
     List<ExExpr> body = new ArrayList<>();
     if (!docMembers.isEmpty()) {
-      body.addAll(ElixirJsonCodecIr.decodedBodyPrelude());
+      body.addAll(
+          ElixirJsonCodecIr.decodedBodyPrelude().stream().map(ElixirBeamIrBridge::statement).toList());
     }
     body.add(
         buildInputStruct(
@@ -509,7 +511,7 @@ final class ElixirRestJsonOperationIr {
     }
 
     List<ExExpr> body = new ArrayList<>();
-    body.add(ElixirJsonCodecIr.rejectNilMapPipeline("body_map", bodyEntries));
+    body.add(ElixirBeamIrBridge.rejectNilMapPipeline("body_map", bodyEntries));
     body.add(
         ExMatch.match(
             ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
@@ -552,7 +554,8 @@ final class ElixirRestJsonOperationIr {
       boolean streamingResponsePayload) {
     List<ExExpr> body = new ArrayList<>();
     if (!respDoc.isEmpty()) {
-      body.addAll(ElixirJsonCodecIr.decodedBodyPrelude());
+      body.addAll(
+          ElixirJsonCodecIr.decodedBodyPrelude().stream().map(ElixirBeamIrBridge::statement).toList());
     }
 
     for (HttpBinding hb : respHeaders) {
@@ -718,10 +721,12 @@ final class ElixirRestJsonOperationIr {
       }
     } else if (!respDoc.isEmpty()) {
       List<MemberShape> docMemberShapes = respDoc.stream().map(HttpBinding::getMember).toList();
-      List<ExMapEntry> entries =
+      List<MapEntry> entries =
           ElixirJsonCodecIr.bodyMapEntries(
               model, httpIndex, sp, "Types", docMemberShapes, recordVar, "event_stream");
-      body.add(ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries));
+      body.add(
+          ElixirBeamIrBridge.expr(
+              ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries)));
       body.add(
           ExMatch.match(
               ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
@@ -1004,10 +1009,12 @@ final class ElixirRestJsonOperationIr {
 
     if (hasBody) {
       List<MemberShape> docMemberShapes = docMembers.stream().map(HttpBinding::getMember).toList();
-      List<ExMapEntry> entries =
+      List<MapEntry> entries =
           ElixirJsonCodecIr.bodyMapEntries(
               model, httpIndex, sp, "Types", docMemberShapes, recordVar, eventStreamModule);
-      exprs.add(ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries));
+      exprs.add(
+          ElixirBeamIrBridge.expr(
+              ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries)));
       exprs.add(
           ExMatch.match(
               ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
@@ -1122,8 +1129,18 @@ final class ElixirRestJsonOperationIr {
 
   private static ExExpr decodeDocumentFieldExpr(
       Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member) {
-    ExExpr raw = ExCall.call("Map", "get", ExVar.var("decoded"), ExString.string(jsonKey(member)));
-    return ElixirJsonCodecIr.decodeJsonExpr(model, sp, httpIndex, member, raw);
+    return ElixirBeamIrBridge.expr(
+        ElixirJsonCodecIr.decodeJsonExpr(
+            model,
+            sp,
+            httpIndex,
+            member,
+            io.beam.ir.elixir.RemoteCallExpr.of(
+                "Map",
+                "get",
+                List.of(
+                    io.beam.ir.elixir.Variable.of("decoded"),
+                    io.beam.ir.elixir.StringExpr.of(jsonKey(member))))));
   }
 
   private static ExTuple buildErrorTuple(

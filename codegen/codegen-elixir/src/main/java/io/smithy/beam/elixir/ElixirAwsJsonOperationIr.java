@@ -59,10 +59,11 @@ final class ElixirAwsJsonOperationIr {
 
     List<ExExpr> body = new ArrayList<>();
     body.add(
-        ElixirJsonCodecIr.rejectNilMapPipeline(
-            "body_map",
-            ElixirJsonCodecIr.bodyMapEntries(
-                model, httpIndex, sp, typesMod, members, "input", eventStreamModule)));
+        ElixirBeamIrBridge.expr(
+            ElixirJsonCodecIr.rejectNilMapPipeline(
+                "body_map",
+                ElixirJsonCodecIr.bodyMapEntries(
+                    model, httpIndex, sp, typesMod, members, "input", eventStreamModule))));
     body.add(
         ExMatch.match(
             ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
@@ -126,14 +127,17 @@ final class ElixirAwsJsonOperationIr {
                       ExAtom.atom(fieldName),
                       ExCall.call(eventStreamModule, "decode_" + helper, ExVar.var("body"))))));
     } else {
-      successBody.addAll(ElixirJsonCodecIr.decodedBodyPrelude());
+      successBody.addAll(
+          ElixirJsonCodecIr.decodedBodyPrelude().stream().map(ElixirBeamIrBridge::statement).toList());
       successBody.add(
           ExTuple.tuple(
               ExAtom.atom("ok"),
               ExStruct.struct(
                   "Types." + outputStruct,
-                  ElixirJsonCodecIr.structFieldEntriesFromDecoded(
-                      model, httpIndex, sp, typesMod, members, eventStreamModule))));
+                  ElixirBeamIrBridge.mapEntries(
+                          ElixirJsonCodecIr.structFieldEntriesFromDecoded(
+                              model, httpIndex, sp, typesMod, members, eventStreamModule))
+                      .toArray(ExMapEntry[]::new))));
     }
 
     return ExFunction.functionWithDocAndSpec(
@@ -177,8 +181,10 @@ final class ElixirAwsJsonOperationIr {
       body.add(
           ExStruct.struct(
               "Types." + inputStruct,
-              ElixirJsonCodecIr.structFieldEntriesFromDecoded(
-                  model, httpIndex, sp, typesMod, members, eventStreamModule)));
+              ElixirBeamIrBridge.mapEntries(
+                      ElixirJsonCodecIr.structFieldEntriesFromDecoded(
+                          model, httpIndex, sp, typesMod, members, eventStreamModule))
+                  .toArray(ExMapEntry[]::new)));
     } else {
       body.add(
           ExMatch.match(
@@ -187,8 +193,10 @@ final class ElixirAwsJsonOperationIr {
       body.add(
           ExStruct.struct(
               "Types." + inputStruct,
-              ElixirJsonCodecIr.structFieldEntriesFromDecoded(
-                  model, httpIndex, sp, typesMod, members, eventStreamModule)));
+              ElixirBeamIrBridge.mapEntries(
+                      ElixirJsonCodecIr.structFieldEntriesFromDecoded(
+                          model, httpIndex, sp, typesMod, members, eventStreamModule))
+                  .toArray(ExMapEntry[]::new)));
     }
 
     return ExFunction.functionWithDocAndSpec(
@@ -219,10 +227,11 @@ final class ElixirAwsJsonOperationIr {
 
     List<ExExpr> body = new ArrayList<>();
     body.add(
-        ElixirJsonCodecIr.rejectNilMapPipeline(
-            "body_map",
-            ElixirJsonCodecIr.bodyMapEntries(
-                model, httpIndex, sp, typesMod, members, "output", eventStreamModule)));
+        ElixirBeamIrBridge.expr(
+            ElixirJsonCodecIr.rejectNilMapPipeline(
+                "body_map",
+                ElixirJsonCodecIr.bodyMapEntries(
+                    model, httpIndex, sp, typesMod, members, "output", eventStreamModule))));
     body.add(
         ExMatch.match(
             ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));

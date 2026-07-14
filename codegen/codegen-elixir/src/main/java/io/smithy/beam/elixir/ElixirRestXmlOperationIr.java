@@ -810,7 +810,7 @@ final class ElixirRestXmlOperationIr {
               ExString.string(qb.getLocationName()),
               ExStructAccess.structAccess(ExVar.var("input"), field)));
     }
-    return List.of(ElixirJsonCodecIr.rejectNilMapPipeline("query", entries));
+    return List.of(ElixirBeamIrBridge.rejectNilMapPipeline("query", entries));
   }
 
   private static List<ExExpr> buildRequestHeadersExprs(
