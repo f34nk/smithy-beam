@@ -2,10 +2,11 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.elixir.ElixirRenderer;
+import io.beam.ir.elixir.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.elixir.ExModule;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
@@ -36,10 +37,10 @@ class ElixirRouterIrTest {
                 BeamCodegenKind.SERVER));
     List<software.amazon.smithy.model.shapes.OperationShape> operations =
         ElixirTopDown.containedOperationsSorted(model, service);
-    ExModule module =
+    Module module =
         ElixirRouterIr.routerModule(
             model, service, layout, ShapeId.from("aws.protocols#restJson1"), operations, sp);
-    String router = module.asString();
+    String router = ElixirRenderer.render(module);
     assertThat(router).contains("defmodule BasicServiceRouter do");
     assertThat(router).contains("def dispatch(");
     assertThat(router).contains("route(request.method, request.path, handler, request)");

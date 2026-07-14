@@ -1,8 +1,8 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Module;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamProtocolSupport;
-import io.smithy.beam.ir.elixir.ExModule;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
@@ -19,7 +19,7 @@ public final class ElixirRouterEmitter {
     }
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
-    ExModule module =
+    Module module =
         ElixirRouterIr.routerModule(
             ctx.model(),
             service,
