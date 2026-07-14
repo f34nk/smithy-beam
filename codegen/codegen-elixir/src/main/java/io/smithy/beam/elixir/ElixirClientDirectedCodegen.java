@@ -164,16 +164,15 @@ final class ElixirClientDirectedCodegen
     ElixirClientModuleBuilder builder = ctx.clientModuleBuilderOrNull();
     if (builder != null) {
       String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-      List<Function> beamIrFunctions = new ArrayList<>(builder.operationFunctions());
+      List<Function> functions = new ArrayList<>();
       if (ElixirRetryIr.serviceHasRetryableErrors(ctx.model(), service)) {
-        beamIrFunctions.addAll(
+        functions.addAll(
             ElixirRetryIr.clientPredicateFunctions(ctx.model(), service, sp, layout));
       }
+      functions.addAll(builder.operationFunctions());
       Module module =
-          ElixirClientIr.clientModule(
-              layout, service, typesModuleName, List.of());
-      ElixirCodecEmission.writeModule(
-          ctx, ctx.definitionFile(), module, List.of(), beamIrFunctions);
+          ElixirClientIr.clientModule(layout, service, typesModuleName, functions);
+      ElixirCodecEmission.writeModule(ctx, ctx.definitionFile(), module);
       if (ctx.protocolCodegen() != null) {
         List<OperationShape> operations =
             ElixirTopDown.containedOperationsSorted(ctx.model(), service);
