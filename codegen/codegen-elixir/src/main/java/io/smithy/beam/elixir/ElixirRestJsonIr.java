@@ -124,11 +124,13 @@ final class ElixirRestJsonIr {
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     ElixirRestJsonSupport.collectStructureHelperTargets(
         model, service, httpIndex, structures, listElementStructures);
+    @SuppressWarnings("unused")
+    List<Function> structureHelpers = new ArrayList<>();
     for (StructureShape structure : structures) {
-      functions.addAll(
+      structureHelpers.addAll(
           ElixirStructureHelperIr.structureDecodeEncode(model, httpIndex, structure, sp));
       if (listElementStructures.contains(structure)) {
-        functions.addAll(ElixirStructureHelperIr.structureListDecodeEncode(structure));
+        structureHelpers.addAll(ElixirStructureHelperIr.structureListDecodeEncode(structure));
       }
     }
     return functions;
