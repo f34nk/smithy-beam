@@ -1,14 +1,30 @@
 package io.smithy.beam.elixir;
 
-import io.smithy.beam.ir.elixir.ExCapturedBlock;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModule;
-import io.smithy.beam.ir.elixir.ExModuledoc;
-import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStringPattern;
-import io.smithy.beam.ir.elixir.ExVarPattern;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.InterpolatedExpr;
+import io.beam.ir.elixir.InterpolatedLiteral;
+import io.beam.ir.elixir.InterpolatedStringExpr;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.Moduledoc;
+import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StringPattern;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
+import io.beam.ir.elixir.WildcardPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.model.shapes.ServiceShape;
@@ -16,98 +32,204 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 final class ElixirS3EndpointIr {
   private ElixirS3EndpointIr() {}
 
-  static ExModule s3EndpointModule(ServiceShape service) {
-    List<ExFunction> functions = new ArrayList<>();
+  static Module s3EndpointModule(ServiceShape service) {
+    List<Function> functions = new ArrayList<>();
     functions.add(regionHost());
     functions.add(resolveBucketUrl());
     functions.addAll(helperFunctions());
-    return ExModule.module(
-        "S3Endpoint", List.of(ExModuledoc.moduledoc("false")), List.of(), functions);
+    return new Module(
+        "S3Endpoint",
+        Moduledoc.falseLiteral(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        functions);
   }
 
-  static ExFunction regionHost() {
-    return ExFunction.functionWithSpec(
-        "def",
+  static Function regionHost() {
+    return new Function(
         "region_host",
-        ExSpec.functionSpec("region_host", "map()", "String.t()"),
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("config")),
-                ExCapturedBlock.capturedBlock(
-                    """
-                    base_url = Map.get(config, :base_url, "")
-                    {_scheme, authority} = Utils.split_base_url(base_url)
-                    authority"""))));
+        false,
+        List.of(FunctionHead.of(List.of(VariablePattern.of("config")))),
+        new BlockExpr(
+            List.of(
+                MatchExpr.bind(
+                    "base_url",
+                    RemoteCallExpr.of(
+                        "Map",
+                        "get",
+                        List.of(
+                            Variable.of("config"),
+                            AtomExpr.of("base_url"),
+                            StringExpr.of("")))),
+                MatchExpr.bind(
+                    TuplePattern.of(
+                        List.of(
+                            VariablePattern.of("_scheme"),
+                            VariablePattern.of("authority"))),
+                    RemoteCallExpr.of(
+                        "Utils", "split_base_url", List.of(Variable.of("base_url")))),
+                Variable.of("authority"))),
+        Spec.of("@spec region_host(map()) :: String.t()"),
+        null,
+        false);
   }
 
-  static ExFunction resolveBucketUrl() {
-    return ExFunction.functionWithSpec(
-        "def",
+  static Function resolveBucketUrl() {
+    return new Function(
         "resolve_bucket_url",
-        ExSpec.functionSpec(
-            "resolve_bucket_url", "map(), String.t(), String.t()", "{String.t(), String.t()}"),
+        false,
         List.of(
-            ExClause.blockClause(
+            FunctionHead.of(
                 List.of(
-                    ExVarPattern.var("config"),
-                    ExVarPattern.var("bucket"),
-                    ExVarPattern.var("key")),
-                ExCapturedBlock.capturedBlock(
-                    """
-                    style = Map.get(config, :s3_addressing_style, :virtual_host)
-                    region_host = region_host(config)
-                    key_path = key_path(key)
-                    case style do
-                      :virtual_host ->
-                        {virtual_host(config, bucket, region_host), key_path}
-
-                      :path_style ->
-                        {region_host, "/#{bucket}#{key_path}"}
-
-                      _ ->
-                        {virtual_host(config, bucket, region_host), key_path}
-                    end"""))));
+                    VariablePattern.of("config"),
+                    VariablePattern.of("bucket"),
+                    VariablePattern.of("key")))),
+        new BlockExpr(
+            List.of(
+                MatchExpr.bind(
+                    "style",
+                    RemoteCallExpr.of(
+                        "Map",
+                        "get",
+                        List.of(
+                            Variable.of("config"),
+                            AtomExpr.of("s3_addressing_style"),
+                            AtomExpr.of("virtual_host")))),
+                MatchExpr.bind(
+                    "region_host",
+                    LocalCallExpr.of("region_host", List.of(Variable.of("config")))),
+                MatchExpr.bind(
+                    "key_path",
+                    LocalCallExpr.of("key_path", List.of(Variable.of("key")))),
+                new CaseExpr(
+                    Variable.of("style"),
+                    List.of(
+                        Clause.of(
+                            AtomPattern.of("virtual_host"),
+                            virtualHostBucketUrlBody()),
+                        Clause.of(
+                            AtomPattern.of("path_style"),
+                            TupleExpr.of(
+                                List.of(
+                                    Variable.of("region_host"),
+                                    pathStyleUrlExpr()))),
+                        Clause.of(
+                            WildcardPattern.of(),
+                            virtualHostBucketUrlBody()))))),
+        Spec.of(
+            "@spec resolve_bucket_url(map(), String.t(), String.t()) :: {String.t(), String.t()}"),
+        null,
+        false);
   }
 
-  static List<ExFunction> helperFunctions() {
-    return List.of(keyPath(), virtualHost(), s3HostSuffix());
+  static List<Function> helperFunctions() {
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(keyPathFunctions());
+    functions.add(virtualHost());
+    functions.add(s3HostSuffix());
+    return functions;
   }
 
-  private static ExFunction keyPath() {
-    return ExFunction.defpFunction(
-        "key_path",
+  private static List<Function> keyPathFunctions() {
+    return List.of(
+        defp("key_path", List.of(StringPattern.of("")), StringExpr.of(""), true),
+        defp(
+            "key_path",
+            List.of(VariablePattern.of("key")),
+            new InterpolatedStringExpr(
+                List.of(
+                    new InterpolatedLiteral("/"),
+                    new InterpolatedExpr(Variable.of("key")))),
+            true));
+  }
+
+  private static Expression virtualHostBucketUrlBody() {
+    return MatchExpr.bind(
+        "host",
+        LocalCallExpr.of(
+            "virtual_host",
+            List.of(
+                Variable.of("config"),
+                Variable.of("bucket"),
+                Variable.of("region_host"))),
+        TupleExpr.of(List.of(Variable.of("host"), Variable.of("key_path"))));
+  }
+
+  private static Expression pathStyleUrlExpr() {
+    return new InterpolatedStringExpr(
         List.of(
-            ExClause.inlineClause(List.of(ExStringPattern.string("")), ExString.string("")),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("key")), ExCapturedBlock.capturedBlock("\"/#{key}\""))));
+            new InterpolatedLiteral("/"),
+            new InterpolatedExpr(Variable.of("bucket")),
+            new InterpolatedExpr(Variable.of("key_path"))));
   }
 
-  private static ExFunction virtualHost() {
-    return ExFunction.defpFunction(
+  private static Function virtualHost() {
+    return new Function(
         "virtual_host",
+        true,
         List.of(
-            ExClause.blockClauseSingleLineHead(
+            FunctionHead.of(
                 List.of(
-                    ExVarPattern.var("config"),
-                    ExVarPattern.var("bucket"),
-                    ExVarPattern.var("region_host")),
-                ExCapturedBlock.capturedBlock(
-                    """
-                    if Map.get(config, :s3_use_accelerate, false) do
-                      "#{bucket}.s3-accelerate.amazonaws.com"
-                    else
-                      suffix = s3_host_suffix(config)
-                      "#{bucket}#{suffix}#{region_host}"
-                    end"""))));
+                    VariablePattern.of("config"),
+                    VariablePattern.of("bucket"),
+                    VariablePattern.of("region_host")))),
+        new CaseExpr(
+            RemoteCallExpr.of(
+                "Map",
+                "get",
+                List.of(
+                    Variable.of("config"),
+                    AtomExpr.of("s3_use_accelerate"),
+                    AtomExpr.of("false"))),
+            List.of(
+                Clause.of(
+                    AtomPattern.of("true"),
+                    new InterpolatedStringExpr(
+                        List.of(
+                            new InterpolatedExpr(Variable.of("bucket")),
+                            new InterpolatedLiteral(".s3-accelerate.amazonaws.com")))),
+                Clause.of(
+                    WildcardPattern.of(),
+                    MatchExpr.bind(
+                        "suffix",
+                        LocalCallExpr.of("s3_host_suffix", List.of(Variable.of("config"))),
+                        new InterpolatedStringExpr(
+                            List.of(
+                                new InterpolatedExpr(Variable.of("bucket")),
+                                new InterpolatedExpr(Variable.of("suffix")),
+                                new InterpolatedExpr(Variable.of("region_host")))))))),
+        null,
+        null,
+        false);
   }
 
-  private static ExFunction s3HostSuffix() {
-    return ExFunction.defpFunction(
+  private static Function s3HostSuffix() {
+    return new Function(
         "s3_host_suffix",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("config")),
-                ExCapturedBlock.capturedBlock(
-                    "if Map.get(config, :s3_use_dualstack, false), do: \".s3.dualstack.\", else: \".s3.\""))));
+        true,
+        List.of(FunctionHead.of(List.of(VariablePattern.of("config")))),
+        new CaseExpr(
+            RemoteCallExpr.of(
+                "Map",
+                "get",
+                List.of(
+                    Variable.of("config"),
+                    AtomExpr.of("s3_use_dualstack"),
+                    AtomExpr.of("false"))),
+            List.of(
+                Clause.of(AtomPattern.of("true"), StringExpr.of(".s3.dualstack.")),
+                Clause.of(WildcardPattern.of(), StringExpr.of(".s3.")))),
+        null,
+        null,
+        false);
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, Expression body, boolean oneLiner) {
+    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 }

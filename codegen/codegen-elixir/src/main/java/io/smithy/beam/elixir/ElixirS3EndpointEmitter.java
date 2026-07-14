@@ -1,7 +1,7 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Module;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
-import io.smithy.beam.ir.elixir.ExModule;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /** Emits {@code S3Endpoint} bucket virtual-host and path-style helpers for S3 REST-XML clients. */
@@ -14,8 +14,7 @@ public final class ElixirS3EndpointEmitter {
       return;
     }
 
-    ExModule module = ElixirS3EndpointIr.s3EndpointModule(service);
-    ctx.writerDelegator()
-        .useFileWriter("s3_endpoint.ex", writer -> writer.write("$L", module.asString()));
+    Module module = ElixirS3EndpointIr.s3EndpointModule(service);
+    ElixirCodecEmission.writeModule(ctx, "s3_endpoint.ex", module);
   }
 }
