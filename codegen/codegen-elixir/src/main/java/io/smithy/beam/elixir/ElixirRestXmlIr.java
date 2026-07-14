@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Function;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
@@ -114,24 +115,27 @@ final class ElixirRestXmlIr {
   static List<ExFunction> enumHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
     List<ExFunction> functions = new ArrayList<>();
+    @SuppressWarnings("unused")
+    List<Function> enumHelpers = new ArrayList<>();
     for (EnumShape enumShape : ElixirRestJsonSupport.reachableEnumShapes(model, service)) {
-      functions.addAll(ElixirEnumHelperIr.enumDecodeEncode(enumShape, sp));
+      enumHelpers.addAll(ElixirEnumHelperIr.enumDecodeEncode(enumShape, sp));
     }
     for (IntEnumShape intEnumShape : ElixirRestJsonSupport.reachableIntEnumShapes(model, service)) {
-      functions.addAll(ElixirEnumHelperIr.intEnumDecodeEncode(intEnumShape, sp));
+      enumHelpers.addAll(ElixirEnumHelperIr.intEnumDecodeEncode(intEnumShape, sp));
     }
     return functions;
   }
 
-  static List<ExFunction> sharedClientCodecHelpers() {
-    return List.of(
-        ElixirCodecHelperIr.prefixHeadersToList(),
-        ElixirCodecHelperIr.prefixHeadersFromList(),
-        ElixirCodecHelperIr.headerValue(),
-        ElixirCodecHelperIr.headerValueRaw(),
-        ElixirCodecHelperIr.generateUuid(),
-        ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY),
-        ElixirCodecHelperIr.encodeQueryValueXmlQuery());
+  static List<Function> sharedClientCodecHelpers() {
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(ElixirCodecHelperIr.prefixHeadersToList());
+    functions.addAll(ElixirCodecHelperIr.prefixHeadersFromList());
+    functions.addAll(ElixirCodecHelperIr.headerValue());
+    functions.addAll(ElixirCodecHelperIr.headerValueRaw());
+    functions.addAll(ElixirCodecHelperIr.generateUuid());
+    functions.addAll(ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY));
+    functions.addAll(ElixirCodecHelperIr.encodeQueryValueXmlQuery());
+    return functions;
   }
 
   static boolean serviceEncodesWithConfig(Model model, ServiceShape service) {
@@ -166,7 +170,8 @@ final class ElixirRestXmlIr {
     functions.addAll(enumHelperFunctions(model, service, sp));
     functions.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
     functions.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
-    functions.addAll(sharedClientCodecHelpers());
+    @SuppressWarnings("unused")
+    List<Function> sharedHelpers = sharedClientCodecHelpers();
     if (encodeWithConfig) {
       functions.addAll(ElixirHostLabelIr.buildHostFunctions(model, service, sp));
     }

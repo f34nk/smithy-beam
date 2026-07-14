@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.ElixirRenderer;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamElixirLayout;
@@ -13,6 +14,7 @@ import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExAtomPattern;
 import io.smithy.beam.ir.elixir.ExCallLocal;
+import io.smithy.beam.ir.elixir.ExCapturedBlock;
 import io.smithy.beam.ir.elixir.ExClause;
 import io.smithy.beam.ir.elixir.ExComment;
 import io.smithy.beam.ir.elixir.ExDefexception;
@@ -439,7 +441,9 @@ final class ElixirDirectedCodegen
         ExClause.blockClause(
             List.of(ExVarPattern.var("v")),
             List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
-            ElixirEnumHelperIr.enumStringDecodeFallbackBody(fromFunction)));
+            ExCapturedBlock.capturedBlock(
+                ElixirRenderer.renderStatement(
+                    ElixirEnumHelperIr.enumStringDecodeFallbackBody(fromFunction)))));
     functions.add(
         ExFunction.functionWithSpec(
             "def",

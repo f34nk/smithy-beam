@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Function;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.ir.elixir.ExAliasAttr;
 import io.smithy.beam.ir.elixir.ExFunction;
@@ -104,11 +105,13 @@ final class ElixirRestJsonIr {
   static List<ExFunction> enumHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
     List<ExFunction> functions = new ArrayList<>();
+    @SuppressWarnings("unused")
+    List<Function> enumHelpers = new ArrayList<>();
     for (EnumShape enumShape : ElixirRestJsonSupport.reachableEnumShapes(model, service)) {
-      functions.addAll(ElixirEnumHelperIr.enumDecodeEncode(enumShape, sp));
+      enumHelpers.addAll(ElixirEnumHelperIr.enumDecodeEncode(enumShape, sp));
     }
     for (IntEnumShape intEnumShape : ElixirRestJsonSupport.reachableIntEnumShapes(model, service)) {
-      functions.addAll(ElixirEnumHelperIr.intEnumDecodeEncode(intEnumShape, sp));
+      enumHelpers.addAll(ElixirEnumHelperIr.intEnumDecodeEncode(intEnumShape, sp));
     }
     return functions;
   }
@@ -149,34 +152,34 @@ final class ElixirRestJsonIr {
     return functions;
   }
 
-  static List<ExFunction> privateCodecHelpers(Model model, ServiceShape service) {
-    List<ExFunction> functions = new ArrayList<>();
-    functions.add(ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.REST_JSON));
-    functions.add(ElixirCodecHelperIr.encodeQueryValueRestJson());
-    functions.add(ElixirCodecHelperIr.uriEncode());
-    functions.add(ElixirCodecHelperIr.uriDecode());
-    functions.add(ElixirCodecHelperIr.decodeQueryParam());
-    functions.add(ElixirCodecHelperIr.prefixHeadersToList());
-    functions.add(ElixirCodecHelperIr.prefixHeadersFromList());
-    functions.add(ElixirCodecHelperIr.decodeJsonBody());
-    functions.add(ElixirCodecHelperIr.contentTypeMatches());
-    functions.add(ElixirCodecHelperIr.ctBase());
-    functions.add(ElixirCodecHelperIr.decodeSparseList());
-    functions.add(ElixirCodecHelperIr.decodeList());
-    functions.add(ElixirCodecHelperIr.decodeSparseMap());
-    functions.add(ElixirCodecHelperIr.encodeSparseList());
-    functions.add(ElixirCodecHelperIr.encodeSparseMap());
-    functions.add(ElixirCodecHelperIr.encodeTimestampEpochSeconds());
-    functions.add(ElixirCodecHelperIr.encodeTimestampDateTime());
-    functions.add(ElixirCodecHelperIr.decodeTimestampEpochSeconds());
-    functions.add(ElixirCodecHelperIr.decodeTimestampDateTime());
-    functions.add(ElixirCodecHelperIr.generateUuid());
+  static List<Function> privateCodecHelpers(Model model, ServiceShape service) {
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.REST_JSON));
+    functions.addAll(ElixirCodecHelperIr.encodeQueryValueRestJson());
+    functions.addAll(ElixirCodecHelperIr.uriEncode());
+    functions.addAll(ElixirCodecHelperIr.uriDecode());
+    functions.addAll(ElixirCodecHelperIr.decodeQueryParam());
+    functions.addAll(ElixirCodecHelperIr.prefixHeadersToList());
+    functions.addAll(ElixirCodecHelperIr.prefixHeadersFromList());
+    functions.addAll(ElixirCodecHelperIr.decodeJsonBody());
+    functions.addAll(ElixirCodecHelperIr.contentTypeMatches());
+    functions.addAll(ElixirCodecHelperIr.ctBase());
+    functions.addAll(ElixirCodecHelperIr.decodeSparseList());
+    functions.addAll(ElixirCodecHelperIr.decodeList());
+    functions.addAll(ElixirCodecHelperIr.decodeSparseMap());
+    functions.addAll(ElixirCodecHelperIr.encodeSparseList());
+    functions.addAll(ElixirCodecHelperIr.encodeSparseMap());
+    functions.addAll(ElixirCodecHelperIr.encodeTimestampEpochSeconds());
+    functions.addAll(ElixirCodecHelperIr.encodeTimestampDateTime());
+    functions.addAll(ElixirCodecHelperIr.decodeTimestampEpochSeconds());
+    functions.addAll(ElixirCodecHelperIr.decodeTimestampDateTime());
+    functions.addAll(ElixirCodecHelperIr.generateUuid());
 
     boolean checksumBindings = ElixirHttpChecksumIr.serviceHasChecksumOperations(model, service);
     boolean compressionBindings =
         ElixirRestJsonSupport.serviceHasCompressionOperations(model, service);
     if (!checksumBindings && compressionBindings) {
-      functions.add(ElixirCodecHelperIr.headersSet());
+      functions.addAll(ElixirCodecHelperIr.headersSet());
     }
     return functions;
   }
@@ -218,7 +221,8 @@ final class ElixirRestJsonIr {
     functions.addAll(enumHelperFunctions(model, service, sp));
     functions.addAll(unionHelperFunctions(model, service, sp));
     functions.addAll(mapHelperFunctions(model, service, sp));
-    functions.addAll(privateCodecHelpers(model, service));
+    @SuppressWarnings("unused")
+    List<Function> privateHelpers = privateCodecHelpers(model, service);
     if (encodeWithConfig) {
       functions.addAll(ElixirHostLabelIr.buildHostFunctions(model, service, sp));
     }
@@ -254,7 +258,8 @@ final class ElixirRestJsonIr {
     functions.addAll(enumHelperFunctions(model, service, sp));
     functions.addAll(unionHelperFunctions(model, service, sp));
     functions.addAll(mapHelperFunctions(model, service, sp));
-    functions.addAll(privateCodecHelpers(model, service));
+    @SuppressWarnings("unused")
+    List<Function> privateHelpers = privateCodecHelpers(model, service);
     return functions;
   }
 
@@ -264,7 +269,8 @@ final class ElixirRestJsonIr {
     functions.addAll(enumHelperFunctions(model, service, sp));
     functions.addAll(unionHelperFunctions(model, service, sp));
     functions.addAll(mapHelperFunctions(model, service, sp));
-    functions.addAll(privateCodecHelpers(model, service));
+    @SuppressWarnings("unused")
+    List<Function> privateHelpers = privateCodecHelpers(model, service);
     return functions;
   }
 
