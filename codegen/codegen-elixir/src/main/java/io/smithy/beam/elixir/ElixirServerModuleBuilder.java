@@ -1,26 +1,26 @@
 package io.smithy.beam.elixir;
 
-import io.smithy.beam.ir.elixir.ExFunction;
+import io.beam.ir.elixir.Function;
 import java.util.ArrayList;
 import java.util.List;
 
 final class ElixirServerModuleBuilder {
-  private final List<ExFunction> operationFunctions = new ArrayList<>();
-  private final List<ExFunction> discoveryFunctions = new ArrayList<>();
+  private final List<Function> operationFunctions = new ArrayList<>();
+  private final List<Function> discoveryFunctions = new ArrayList<>();
 
-  void addOperationFunction(ExFunction function) {
+  void addOperationFunction(Function function) {
     operationFunctions.add(function);
   }
 
-  void addDiscoveryFunctions(List<ExFunction> functions) {
+  void addDiscoveryFunctions(List<Function> functions) {
     discoveryFunctions.addAll(functions);
   }
 
-  List<ExFunction> operationFunctions() {
+  List<Function> operationFunctions() {
     return operationFunctions;
   }
 
-  List<ExFunction> discoveryFunctions() {
+  List<Function> discoveryFunctions() {
     return discoveryFunctions;
   }
 }

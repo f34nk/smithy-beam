@@ -1,141 +1,210 @@
 package io.smithy.beam.elixir;
 
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExCase;
-import io.smithy.beam.ir.elixir.ExCaseBranch;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExDotCall;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExExprBlock;
-import io.smithy.beam.ir.elixir.ExFor;
-import io.smithy.beam.ir.elixir.ExForFilter;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExGuard;
-import io.smithy.beam.ir.elixir.ExInteger;
-import io.smithy.beam.ir.elixir.ExIntegerPattern;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
+import io.beam.ir.elixir.AnonFun;
+import io.beam.ir.elixir.AnonFunClause;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.DotCallExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.ExpressionGuard;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionArityGuard;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.IntegerExpr;
+import io.beam.ir.elixir.IntegerPattern;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
+import io.beam.ir.elixir.WildcardPattern;
 import java.util.List;
 
 final class ElixirHandlerDiscoveryIr {
   private ElixirHandlerDiscoveryIr() {}
 
-  static ExFunction resolveImpl(String behaviourMod) {
-    ExExpr handlers =
-        ExFor.forIntoExpr(
-            ExTuple.tuple(
-                ExVar.var("fun"),
-                ExCall.call(
-                    "Function",
-                    "capture",
-                    ExVar.var("impl"),
-                    ExVar.var("fun"),
-                    ExInteger.integer(3))),
-            ExTuplePattern.tuple(ExVarPattern.var("fun"), ExIntegerPattern.integer(3)),
-            ExCall.call(behaviourMod, "callbacks"),
-            ExMap.map(),
-            ExForFilter.filter(
-                ExCallLocal.callLocal(
-                    "function_exported?",
-                    ExVar.var("impl"),
-                    ExVar.var("fun"),
-                    ExInteger.integer(3))));
-    ExCase ensureLoaded =
-        ExCase.caseExpr(
-            ExCall.call("Code", "ensure_loaded", ExVar.var("impl")),
-            ExCaseBranch.branch(
-                ExTuplePattern.tuple(ExAtomPattern.atom("module"), ExVarPattern.var("_")),
-                ExExprBlock.block(
-                    ExMatch.match(ExVarPattern.var("handlers"), handlers),
-                    ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("handlers")))),
-            ExCaseBranch.branch(
-                ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("_")),
-                ExTuple.tuple(
-                    ExAtom.atom("error"),
-                    ExTuple.tuple(ExAtom.atom("impl_not_loaded"), ExVar.var("impl")))));
-    return ExFunction.defpFunction(
+  static Function resolveImpl(String behaviourMod) {
+    Expression handlers =
+        RemoteCallExpr.of(
+            "Enum",
+            "reduce",
+            List.of(
+                RemoteCallExpr.of(behaviourMod, "callbacks", List.of()),
+                MapExpr.of(List.of()),
+                new AnonFun(
+                    List.of(
+                        AnonFunClause.of(
+                            List.of(
+                                TuplePattern.of(
+                                    List.of(
+                                        VariablePattern.of("fun"), IntegerPattern.of(3))),
+                                VariablePattern.of("acc")),
+                            ExpressionGuard.of(
+                                LocalCallExpr.of(
+                                    "function_exported?",
+                                    List.of(
+                                        Variable.of("impl"),
+                                        Variable.of("fun"),
+                                        IntegerExpr.of(3)))),
+                            MapExpr.of(
+                                Variable.of("acc"),
+                                List.of(
+                                    MapEntry.pair(
+                                        Variable.of("fun"),
+                                        RemoteCallExpr.of(
+                                            "Function",
+                                            "capture",
+                                            List.of(
+                                                Variable.of("impl"),
+                                                Variable.of("fun"),
+                                                IntegerExpr.of(3))))))),
+                        AnonFunClause.of(
+                            List.of(
+                                VariablePattern.of("_item"), VariablePattern.of("acc")),
+                            Variable.of("acc"))))));
+    Expression ensureLoaded =
+        new CaseExpr(
+            RemoteCallExpr.of("Code", "ensure_loaded", List.of(Variable.of("impl"))),
+            List.of(
+                Clause.of(
+                    TuplePattern.of(
+                        List.of(AtomPattern.of("module"), WildcardPattern.of())),
+                    new BlockExpr(
+                        List.of(
+                            MatchExpr.bind("handlers", handlers),
+                            TupleExpr.of(
+                                List.of(AtomExpr.of("ok"), Variable.of("handlers")))))),
+                Clause.of(
+                    TuplePattern.of(List.of(AtomPattern.of("error"), WildcardPattern.of())),
+                    TupleExpr.of(
+                        List.of(
+                            AtomExpr.of("error"),
+                            TupleExpr.of(
+                                List.of(
+                                    AtomExpr.of("impl_not_loaded"),
+                                    Variable.of("impl"))))))));
+    return new Function(
         "resolve_impl",
-        List.of(ExClause.blockClause(List.of(ExVarPattern.var("impl")), ensureLoaded)));
+        true,
+        List.of(FunctionHead.of(List.of(VariablePattern.of("impl")))),
+        ensureLoaded,
+        null,
+        null,
+        false);
   }
 
-  static ExFunction initHandlers() {
-    ExCase resolveCase =
-        ExCase.caseExpr(
-            ExCallLocal.callLocal("resolve_impl", ExVar.var("@default_impl")),
-            ExCaseBranch.branch(
-                ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("handlers")),
-                ExExprBlock.block(
-                    ExCall.call(
-                        ":persistent_term",
-                        "put",
-                        ExVar.var("@handlers_key"),
-                        ExVar.var("handlers")),
-                    ExAtom.atom("ok"))),
-            ExCaseBranch.branch(
-                ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
-                ExExprBlock.block(
-                    ExCall.call(":persistent_term", "put", ExVar.var("@handlers_key"), ExMap.map()),
-                    ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason")))));
-    return ExFunction.functionWithSpec(
-        "def",
+  static Function initHandlers() {
+    Expression resolveCase =
+        new CaseExpr(
+            LocalCallExpr.of("resolve_impl", List.of(Variable.of("@default_impl"))),
+            List.of(
+                Clause.of(
+                    TuplePattern.of(
+                        List.of(AtomPattern.of("ok"), VariablePattern.of("handlers"))),
+                    new BlockExpr(
+                        List.of(
+                            RemoteCallExpr.of(
+                                ":persistent_term",
+                                "put",
+                                List.of(
+                                    Variable.of("@handlers_key"), Variable.of("handlers"))),
+                            AtomExpr.of("ok")))),
+                Clause.of(
+                    TuplePattern.of(
+                        List.of(AtomPattern.of("error"), VariablePattern.of("reason"))),
+                    new BlockExpr(
+                        List.of(
+                            RemoteCallExpr.of(
+                                ":persistent_term",
+                                "put",
+                                List.of(Variable.of("@handlers_key"), MapExpr.of(List.of()))),
+                            TupleExpr.of(
+                                List.of(AtomExpr.of("error"), Variable.of("reason"))))))));
+    return new Function(
         "init_handlers",
-        ExSpec.functionSpec("init_handlers", "", ":ok | {:error, term()}"),
-        List.of(ExClause.blockClause(List.of(), resolveCase)));
+        false,
+        List.of(FunctionHead.of(List.of())),
+        resolveCase,
+        Spec.of("init_handlers() -> :ok | {:error, term()}"),
+        null,
+        false);
   }
 
-  static ExFunction dispatchHandler() {
-    ExCase lookupCase =
-        ExCase.caseExpr(
-            ExCall.call("Map", "get", ExVar.var("handlers"), ExVar.var("fun")),
-            ExCaseBranch.branch(
-                ExVarPattern.var("handler"),
-                List.of(ExGuard.guard("is_function", ExVar.var("handler"), ExInteger.integer(3))),
-                ExDotCall.dotCall(
-                    ExVar.var("handler"), ExVar.var("ctx"), ExVar.var("input"), ExVar.var("meta"))),
-            ExCaseBranch.branch(
-                ExVarPattern.var("_"),
-                ExTuple.tuple(ExAtom.atom("error"), ExAtom.atom("not_implemented"))));
-    return ExFunction.defpFunction(
+  static Function dispatchHandler() {
+    Expression lookupCase =
+        new CaseExpr(
+            RemoteCallExpr.of(
+                "Map", "get", List.of(Variable.of("handlers"), Variable.of("fun"))),
+            List.of(
+                Clause.of(
+                    VariablePattern.of("handler"),
+                    FunctionArityGuard.of("handler", 3),
+                    new DotCallExpr(
+                        Variable.of("handler"),
+                        "()",
+                        List.of(
+                            Variable.of("ctx"),
+                            Variable.of("input"),
+                            Variable.of("meta")))),
+                Clause.of(
+                    WildcardPattern.of(),
+                    TupleExpr.of(
+                        List.of(AtomExpr.of("error"), AtomExpr.of("not_implemented"))))));
+    return new Function(
         "dispatch_handler",
+        true,
         List.of(
-            ExClause.blockClause(
+            FunctionHead.of(
                 List.of(
-                    ExVarPattern.var("fun"),
-                    ExVarPattern.var("ctx"),
-                    ExVarPattern.var("input"),
-                    ExVarPattern.var("meta")),
-                ExExprBlock.block(
-                    ExMatch.match(
-                        ExVarPattern.var("handlers"),
-                        ExCall.call(
-                            ":persistent_term", "get", ExVar.var("@handlers_key"), ExMap.map())),
-                    lookupCase))));
+                    VariablePattern.of("fun"),
+                    VariablePattern.of("ctx"),
+                    VariablePattern.of("input"),
+                    VariablePattern.of("meta")))),
+        new BlockExpr(
+            List.of(
+                MatchExpr.bind(
+                    "handlers",
+                    RemoteCallExpr.of(
+                        ":persistent_term",
+                        "get",
+                        List.of(Variable.of("@handlers_key"), MapExpr.of(List.of())))),
+                lookupCase)),
+        null,
+        null,
+        false);
   }
 
-  static ExFunction operationDispatch(String handler) {
-    return ExFunction.defFunction(
+  static Function operationDispatch(String handler) {
+    return new Function(
         handler,
+        false,
         List.of(
-            ExClause.blockClause(
+            FunctionHead.of(
                 List.of(
-                    ExVarPattern.var("ctx"), ExVarPattern.var("input"), ExVarPattern.var("meta")),
-                ExCallLocal.callLocal(
-                    "dispatch_handler",
-                    ExAtom.atom(handler),
-                    ExVar.var("ctx"),
-                    ExVar.var("input"),
-                    ExVar.var("meta")))));
+                    VariablePattern.of("ctx"),
+                    VariablePattern.of("input"),
+                    VariablePattern.of("meta")))),
+        LocalCallExpr.of(
+            "dispatch_handler",
+            List.of(
+                AtomExpr.of(handler),
+                Variable.of("ctx"),
+                Variable.of("input"),
+                Variable.of("meta"))),
+        null,
+        null,
+        false);
   }
 
-  static List<ExFunction> discoveryFunctions(String behaviourMod) {
+  static List<Function> discoveryFunctions(String behaviourMod) {
     return List.of(resolveImpl(behaviourMod), initHandlers(), dispatchHandler());
   }
 }
