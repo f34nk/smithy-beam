@@ -103,7 +103,8 @@ final class ElixirSigV4Ir {
                         ExMapEntry.entry(ExAtom.atom("unsigned_payload"), ExVar.var("unsigned")),
                         ExMapEntry.entry(
                             ExAtom.atom("endpoint_host"),
-                            ExCall.call("Utils", "endpoint_host_from_config", ExVar.var("config"))))),
+                            ExCall.call(
+                                "Utils", "endpoint_host_from_config", ExVar.var("config"))))),
                 ExCallLocal.callLocal(
                     "sign_request",
                     ExVar.var("request"),

@@ -3,8 +3,8 @@ package io.smithy.beam.elixir;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExTypesModule;
 import io.smithy.beam.ir.elixir.ExModuledoc;
+import io.smithy.beam.ir.elixir.ExTypesModule;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;

@@ -13,7 +13,8 @@ public record BeamElixirStaticRuntimeModule(
   }
 
   public static final BeamElixirStaticRuntimeModule HTTP_TYPES =
-      module("lib/runtime_types.ex", "runtime_types.ex", "RuntimeTypes", RuntimeFeature.HTTP_CLIENT);
+      module(
+          "lib/runtime_types.ex", "runtime_types.ex", "RuntimeTypes", RuntimeFeature.HTTP_CLIENT);
 
   public static final BeamElixirStaticRuntimeModule HTTP_RUNTIME =
       module("lib/runtime_http.ex", "runtime_http.ex", "RuntimeHttp", RuntimeFeature.HTTP_CLIENT);

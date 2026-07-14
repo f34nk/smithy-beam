@@ -73,7 +73,9 @@ final class ElixirRouterIr {
                   "Handler must export handle_<operation>/3; typically "
                       + serverMod
                       + " after init_handlers/0."));
-      functions = new ArrayList<>(List.of(awsJsonDispatch(), awsJsonRoute(service, operations, sp, codecMod)));
+      functions =
+          new ArrayList<>(
+              List.of(awsJsonDispatch(), awsJsonRoute(service, operations, sp, codecMod)));
     } else {
       preamble =
           List.of(
@@ -231,11 +233,7 @@ final class ElixirRouterIr {
   }
 
   private static ExCase labeledRouteBody(
-      String uriTemplate,
-      String codecMod,
-      String opName,
-      String handlerFn,
-      String method) {
+      String uriTemplate, String codecMod, String opName, String handlerFn, String method) {
     return ExCase.caseExpr(
         ExCallLocal.callLocal("parse_labels", ExVar.var("path"), ExString.string(uriTemplate)),
         ExCaseBranch.branch(

@@ -54,9 +54,7 @@ final class ElixirHttpDispatchIr {
         List.of(
             ExModuledoc.moduledoc(
                 "Generated HTTP dispatcher for Smithy service clients. Uses Req.")),
-        List.of(
-            ExAliasAttr.alias(runtimeMod, RUNTIME_TYPES),
-            ExAliasAttr.alias("Utils", "Utils")),
+        List.of(ExAliasAttr.alias(runtimeMod, RUNTIME_TYPES), ExAliasAttr.alias("Utils", "Utils")),
         List.of(),
         functions,
         List.of(reqClientModule()));

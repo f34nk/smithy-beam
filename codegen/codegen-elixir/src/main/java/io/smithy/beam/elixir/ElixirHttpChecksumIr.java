@@ -12,8 +12,8 @@ import io.smithy.beam.ir.elixir.ExExprBlock;
 import io.smithy.beam.ir.elixir.ExList;
 import io.smithy.beam.ir.elixir.ExMatch;
 import io.smithy.beam.ir.elixir.ExNilPattern;
-import io.smithy.beam.ir.elixir.ExStructAccess;
 import io.smithy.beam.ir.elixir.ExString;
+import io.smithy.beam.ir.elixir.ExStructAccess;
 import io.smithy.beam.ir.elixir.ExTuple;
 import io.smithy.beam.ir.elixir.ExTuplePattern;
 import io.smithy.beam.ir.elixir.ExVar;
@@ -92,10 +92,7 @@ final class ElixirHttpChecksumIr {
                   HTTP_CHECKSUM,
                   "headers_set",
                   ExString.string(cb.headerName()),
-                  ExCall.call(
-                      HTTP_CHECKSUM,
-                      "checksum_header_encode",
-                      ExVar.var(checksumVar)),
+                  ExCall.call(HTTP_CHECKSUM, "checksum_header_encode", ExVar.var(checksumVar)),
                   ExVar.var(headersIn))));
     }
     return Optional.of(ExExprBlock.block(exprs.toArray(ExExpr[]::new)));

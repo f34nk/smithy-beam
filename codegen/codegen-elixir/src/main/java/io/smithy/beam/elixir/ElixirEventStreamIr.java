@@ -4,7 +4,6 @@ import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.ir.elixir.ExAliasAttr;
-import io.smithy.beam.ir.elixir.ExAnonymousFn;
 import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExAtomPattern;
 import io.smithy.beam.ir.elixir.ExCall;
@@ -16,7 +15,6 @@ import io.smithy.beam.ir.elixir.ExExpr;
 import io.smithy.beam.ir.elixir.ExExprBlock;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExGuard;
-import io.smithy.beam.ir.elixir.ExList;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMapEntry;
 import io.smithy.beam.ir.elixir.ExMapFieldPattern;
@@ -190,8 +188,7 @@ final class ElixirEventStreamIr {
                 encodeMemberPayload(model, target, "value", sp, typesMod)),
             ExMatch.match(
                 ExVarPattern.var("headers"),
-                ExCall.call(
-                    "AwsEventStream", "encode_event_headers", ExString.string(eventType))),
+                ExCall.call("AwsEventStream", "encode_event_headers", ExString.string(eventType))),
             ExCall.call("AwsEventStream", "frame", ExVar.var("headers"), ExVar.var("payload"))));
   }
 

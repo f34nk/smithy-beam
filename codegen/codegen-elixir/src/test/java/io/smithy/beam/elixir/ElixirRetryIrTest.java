@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.ir.elixir.ExFunction;
 import java.io.IOException;
@@ -13,8 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
-import software.amazon.smithy.build.MockManifest;
-import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
@@ -31,8 +28,7 @@ class ElixirRetryIrTest {
     BeamElixirLayout layout =
         new BeamElixirLayout(settings, service.getId().getNamespace(), service);
     ElixirSymbolProvider sp = sp(model, service);
-    List<ExFunction> functions =
-        ElixirRetryIr.clientPredicateFunctions(model, service, sp, layout);
+    List<ExFunction> functions = ElixirRetryIr.clientPredicateFunctions(model, service, sp, layout);
     assertThat(functions).hasSize(3);
     String combined =
         functions.stream().map(ExFunction::asString).collect(Collectors.joining("\n\n"));

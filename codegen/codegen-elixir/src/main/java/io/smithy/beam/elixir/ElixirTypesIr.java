@@ -27,8 +27,7 @@ final class ElixirTypesIr {
     entries.add(
         ExSourceLine.line(
             "Module.register_attribute(__MODULE__, :endpoint_rule_set, persist: true)"));
-    entries.add(
-        ExSourceLine.line("@endpoint_rule_set Jason.decode!(@endpoint_rule_set_json)"));
+    entries.add(ExSourceLine.line("@endpoint_rule_set Jason.decode!(@endpoint_rule_set_json)"));
     return entries;
   }
 
