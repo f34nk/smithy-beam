@@ -153,7 +153,9 @@ final class ElixirRestXmlIr {
       Optional<String> serviceNamespace,
       boolean encodeWithConfig) {
     List<ExFunction> functions = new ArrayList<>();
-    functions.add(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
+    @SuppressWarnings("unused")
+    List<Function> xmlHelpers = new ArrayList<>();
+    xmlHelpers.addAll(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
     for (OperationShape op : operations) {
       functions.add(
           ElixirRestXmlOperationIr.buildEncodeRequest(
@@ -168,8 +170,8 @@ final class ElixirRestXmlIr {
       }
     }
     functions.addAll(enumHelperFunctions(model, service, sp));
-    functions.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
-    functions.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
+    xmlHelpers.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
+    xmlHelpers.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
     @SuppressWarnings("unused")
     List<Function> sharedHelpers = sharedClientCodecHelpers();
     if (encodeWithConfig) {
@@ -188,7 +190,9 @@ final class ElixirRestXmlIr {
       String runtimeMod,
       Optional<String> serviceNamespace) {
     List<ExFunction> functions = new ArrayList<>();
-    functions.add(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
+    @SuppressWarnings("unused")
+    List<Function> xmlHelpers = new ArrayList<>();
+    xmlHelpers.addAll(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
     for (OperationShape op : operations) {
       functions.add(
           ElixirRestXmlOperationIr.buildDecodeRequest(model, op, httpIndex, sp, typesMod));
@@ -197,8 +201,8 @@ final class ElixirRestXmlIr {
               model, op, httpIndex, sp, typesMod, runtimeMod));
     }
     functions.addAll(enumHelperFunctions(model, service, sp));
-    functions.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
-    functions.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
+    xmlHelpers.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
+    xmlHelpers.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
     return functions;
   }
 

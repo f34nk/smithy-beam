@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Function;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamProtocolIds;
@@ -166,7 +167,9 @@ final class ElixirAwsQueryIr {
       Optional<String> serviceNamespace,
       boolean ec2Query) {
     List<ExFunction> functions = new ArrayList<>();
-    functions.add(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
+    @SuppressWarnings("unused")
+    List<Function> xmlHelpers = new ArrayList<>();
+    xmlHelpers.addAll(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
     for (OperationShape op : operations) {
       functions.add(
           ElixirAwsQueryOperationIr.buildServerDecodeRequest(model, op, sp, typesMod, runtimeMod));

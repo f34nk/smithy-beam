@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Function;
 import io.smithy.beam.core.BeamXmlDecoder;
 import io.smithy.beam.ir.elixir.ExAnonymousFn;
 import io.smithy.beam.ir.elixir.ExAtom;
@@ -108,20 +109,24 @@ final class ElixirAwsQueryHelperIr {
     if (!ec2Query) {
       functions.add(wrapAwsQueryResponse());
     }
-    functions.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
+    @SuppressWarnings("unused")
+    List<Function> xmlEncodeHelpers = new ArrayList<>();
+    xmlEncodeHelpers.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
     return functions;
   }
 
   private static List<ExFunction> awsQueryXmlElementHelpers() {
+    @SuppressWarnings("unused")
+    List<Function> xmlElementHelpers = new ArrayList<>();
+    xmlElementHelpers.addAll(ElixirXmlCodecIr.collectText());
+    xmlElementHelpers.addAll(ElixirXmlCodecIr.elementText());
+    xmlElementHelpers.addAll(ElixirXmlCodecIr.isElementString());
     return List.of(
         elementContent(),
         awsQueryFindElement(),
         isElement(),
         awsQueryElementName(),
-        xmlChildText(),
-        ElixirXmlCodecIr.collectText(),
-        ElixirXmlCodecIr.elementText(),
-        ElixirXmlCodecIr.isElementString());
+        xmlChildText());
   }
 
   private static ExFunction flattenMember(boolean ec2Query) {
