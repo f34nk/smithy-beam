@@ -8,6 +8,7 @@ import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExAtomPattern;
 import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExCallLocal;
+import io.smithy.beam.ir.elixir.ExCapturedBlock;
 import io.smithy.beam.ir.elixir.ExCase;
 import io.smithy.beam.ir.elixir.ExCaseBranch;
 import io.smithy.beam.ir.elixir.ExClause;
@@ -47,14 +48,13 @@ final class ElixirClientDispatchOperationIr {
       OperationShape op,
       BeamElixirLayout layout,
       boolean wrapWithRetry,
-      String retryModule,
+      String clientModule,
       boolean paginated,
       DispatchBodyMode mode,
       Symbol opSym,
       String opName,
       String codecModule,
       String runtimeHttpModule,
-      String sigv4Module,
       boolean sigv4,
       boolean encodeWithConfig) {}
 
@@ -63,11 +63,11 @@ final class ElixirClientDispatchOperationIr {
       OperationShape op,
       BeamElixirLayout layout,
       boolean wrapWithRetry,
-      String retryModule,
+      String clientModule,
       boolean paginated,
       DispatchBodyMode mode) {
     DispatchContext dispatch =
-        buildContext(ctx, op, layout, wrapWithRetry, retryModule, paginated, mode);
+        buildContext(ctx, op, layout, wrapWithRetry, clientModule, paginated, mode);
     List<ExExpr> core = new ArrayList<>();
     core.add(buildEncodeRequestMatch(dispatch));
     if (dispatch.sigv4()) {
@@ -150,7 +150,7 @@ final class ElixirClientDispatchOperationIr {
       OperationShape op,
       BeamElixirLayout layout,
       boolean wrapWithRetry,
-      String retryModule,
+      String clientModule,
       boolean paginated,
       DispatchBodyMode mode) {
     SymbolProvider sp = ctx.symbolProvider();
@@ -164,7 +164,7 @@ final class ElixirClientDispatchOperationIr {
         op,
         layout,
         wrapWithRetry,
-        retryModule,
+        clientModule,
         paginated,
         mode,
         opSym,
@@ -172,7 +172,6 @@ final class ElixirClientDispatchOperationIr {
         ElixirSymbolProvider.toModuleName(
             layout.clientCodecModuleName(ctx.resolvedProtocolTraitId(), ctx.integrations())),
         ElixirSymbolProvider.toModuleName(layout.runtimeHttpModuleName()),
-        ElixirSymbolProvider.toModuleName(layout.sigv4ModuleName()),
         sigv4,
         encodeWithConfig);
   }
@@ -198,7 +197,7 @@ final class ElixirClientDispatchOperationIr {
             ExCaseBranch.branch(
                 ExVarPattern.var("_"),
                 ExCall.call(
-                    ctx.sigv4Module(),
+                    "AwsSigv4",
                     "sign",
                     ExVar.var("config"),
                     ExAtom.atom(ctx.opName()),
@@ -272,11 +271,19 @@ final class ElixirClientDispatchOperationIr {
             ExCall.call("Map", "get", ExVar.var("config"), ExAtom.atom("retry"), ExList.list())));
     body.add(
         ExCall.call(
-            ctx.retryModule(),
+            "RuntimeHttp",
             "with_retry",
             ExAnonymousFn.fn(
                 ExClause.blockClause(List.of(), ExExprBlock.block(core.toArray(ExExpr[]::new)))),
-            ExVar.var("retry_opts")));
+            ExCall.call(
+                "Keyword",
+                "merge",
+                ExList.list(
+                    ExTuple.tuple(
+                        ExAtom.atom("should_retry"),
+                        ExCapturedBlock.capturedBlock(
+                            "&" + ctx.clientModule() + ".should_retry?/1"))),
+                ExVar.var("retry_opts"))));
     return body;
   }
 }

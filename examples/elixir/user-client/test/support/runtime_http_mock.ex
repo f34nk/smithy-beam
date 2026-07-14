@@ -4,11 +4,10 @@ defmodule RuntimeHttpMock do
   def request(req_opts) do
     method = Keyword.fetch!(req_opts, :method)
     url = Keyword.fetch!(req_opts, :url)
-    params = Keyword.get(req_opts, :params, %{})
     headers = Keyword.get(req_opts, :headers, [])
 
-    case {method, url, params, headers} do
-      {:get, "https://api.example/items", params, headers} when map_size(params) == 0 ->
+    case {method, url, headers} do
+      {:get, "https://api.example/items", headers} ->
         case List.keyfind(headers, "Content-Type", 0) do
           {"Content-Type", "application/json"} ->
             {:ok, %{status: 200, headers: [{"etag", "\"v1\""}], body: ~s({"ok":true})}}
@@ -17,10 +16,10 @@ defmodule RuntimeHttpMock do
             {:error, {:unexpected_request, req_opts}}
         end
 
-      {:get, "https://api.example/items", %{"verbose" => "true"}, _} ->
+      {:get, "https://api.example/items?" <> _query, _} ->
         {:ok, %{status: 200, headers: [], body: ""}}
 
-      {:get, "https://api.example/fail", _, _} ->
+      {:get, "https://api.example/fail", _} ->
         {:error, :timeout}
 
       _ ->

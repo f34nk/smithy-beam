@@ -34,14 +34,10 @@ class EndpointResolutionTest {
   @Test
   void elixirHttpDispatchFallsBackToResolveBaseUrl() {
     MockManifest manifest = runElixirClient();
-    String http = manifest.expectFileString("runtime_http.ex");
+    String utils = manifest.expectFileString("utils.ex");
 
-    assertThat(http).contains("case Map.get(config, :base_url) do");
-    assertThat(http).contains("RuntimeHelpers.resolve_base_url(config)");
-
-    String helpers = manifest.expectFileString("runtime_helpers.ex");
-    assertThat(helpers).contains("def resolve_base_url(config) do");
-    assertThat(helpers).contains("Map.fetch!(config, :endpoint_prefix)");
+    assertThat(utils).contains("def resolve_base_url(config) do");
+    assertThat(utils).contains("Map.fetch!(config, :endpoint_prefix)");
   }
 
   private static MockManifest runErlangClient() {

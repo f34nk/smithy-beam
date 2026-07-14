@@ -17,7 +17,6 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
 class ElixirHttpDispatchIrTest {
-  private static final String ENDPOINTS_MOD = "Endpoints";
   private static final String CREDENTIALS_MOD = "Credentials";
 
   @Test
@@ -28,12 +27,6 @@ class ElixirHttpDispatchIrTest {
     ExModule module = ElixirHttpDispatchIr.httpDispatchModule(testContext(model, service), service);
     assertThat(module.asString())
         .isEqualTo(readExpectedString("ir/http_dispatch_module.expected.ex"));
-  }
-
-  @Test
-  void splitBaseUrlAsStringMatchesGolden() throws IOException {
-    assertThat(ElixirHostLabelIr.splitBaseUrl().asString())
-        .isEqualTo(readExpectedString("ir/http_dispatch_split_base_url.expected.ex"));
   }
 
   @Test
@@ -50,41 +43,14 @@ class ElixirHttpDispatchIrTest {
 
   @Test
   void dispatchSignedBasicAsStringMatchesGolden() throws IOException {
-    assertThat(
-            ElixirHttpDispatchIr.dispatchSigned(
-                    false, false, "config", ENDPOINTS_MOD, CREDENTIALS_MOD)
-                .asString())
+    assertThat(ElixirHttpDispatchIr.dispatchSigned(false, "config", CREDENTIALS_MOD).asString())
         .isEqualTo(readExpectedString("ir/http_dispatch_dispatch_signed_basic.expected.ex"));
   }
 
   @Test
   void dispatchSignedSigv4AsStringMatchesGolden() throws IOException {
-    assertThat(
-            ElixirHttpDispatchIr.dispatchSigned(
-                    true, false, "config1", ENDPOINTS_MOD, CREDENTIALS_MOD)
-                .asString())
+    assertThat(ElixirHttpDispatchIr.dispatchSigned(true, "config1", CREDENTIALS_MOD).asString())
         .isEqualTo(readExpectedString("ir/http_dispatch_dispatch_signed_sigv4.expected.ex"));
-  }
-
-  @Test
-  void dispatchSignedEndpointRulesAsStringMatchesGolden() throws IOException {
-    assertThat(
-            ElixirHttpDispatchIr.dispatchSigned(
-                    false, true, "config", ENDPOINTS_MOD, CREDENTIALS_MOD)
-                .asString())
-        .isEqualTo(
-            readExpectedString("ir/http_dispatch_dispatch_signed_endpoint_rules.expected.ex"));
-  }
-
-  @Test
-  void dispatchSignedSigv4EndpointRulesAsStringMatchesGolden() throws IOException {
-    assertThat(
-            ElixirHttpDispatchIr.dispatchSigned(
-                    true, true, "config1", ENDPOINTS_MOD, CREDENTIALS_MOD)
-                .asString())
-        .isEqualTo(
-            readExpectedString(
-                "ir/http_dispatch_dispatch_signed_sigv4_endpoint_rules.expected.ex"));
   }
 
   private static ElixirContext testContext(Model model, ServiceShape service) {

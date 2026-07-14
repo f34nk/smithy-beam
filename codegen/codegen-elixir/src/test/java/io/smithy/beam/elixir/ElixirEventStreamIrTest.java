@@ -50,18 +50,6 @@ class ElixirEventStreamIrTest {
   }
 
   @Test
-  void encodeEventHeadersAsStringMatchesGolden() throws IOException {
-    assertThat(ElixirEventStreamIr.encodeEventHeaders().asString())
-        .isEqualTo(readExpectedString("ir/event_stream_encode_event_headers.expected.ex"));
-  }
-
-  @Test
-  void headerValueAsStringMatchesGolden() throws IOException {
-    assertThat(ElixirEventStreamIr.headerValue().asString())
-        .isEqualTo(readExpectedString("ir/event_stream_header_value.expected.ex"));
-  }
-
-  @Test
   void unionHelpersAsStringMatchesGolden() throws IOException {
     String typesMod = typesModuleName();
     List<ExFunction> functions =

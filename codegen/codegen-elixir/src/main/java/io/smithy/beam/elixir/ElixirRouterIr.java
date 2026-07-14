@@ -8,14 +8,17 @@ import io.smithy.beam.ir.elixir.ExAtomPattern;
 import io.smithy.beam.ir.elixir.ExBinaryConcatPattern;
 import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExCallLocal;
+import io.smithy.beam.ir.elixir.ExCapturedBlock;
 import io.smithy.beam.ir.elixir.ExCase;
 import io.smithy.beam.ir.elixir.ExCaseBranch;
 import io.smithy.beam.ir.elixir.ExClause;
 import io.smithy.beam.ir.elixir.ExComment;
+import io.smithy.beam.ir.elixir.ExConsPattern;
 import io.smithy.beam.ir.elixir.ExExprBlock;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExGuard;
 import io.smithy.beam.ir.elixir.ExInteger;
+import io.smithy.beam.ir.elixir.ExListPattern;
 import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExMatch;
 import io.smithy.beam.ir.elixir.ExModule;
@@ -23,6 +26,7 @@ import io.smithy.beam.ir.elixir.ExModuledoc;
 import io.smithy.beam.ir.elixir.ExOp;
 import io.smithy.beam.ir.elixir.ExPattern;
 import io.smithy.beam.ir.elixir.ExPinPattern;
+import io.smithy.beam.ir.elixir.ExPipeline;
 import io.smithy.beam.ir.elixir.ExPreambleEntry;
 import io.smithy.beam.ir.elixir.ExRemoteCall;
 import io.smithy.beam.ir.elixir.ExSpec;
@@ -56,7 +60,6 @@ final class ElixirRouterIr {
       SymbolProvider sp) {
     String codecMod = ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName(protocol));
     String routerMod = ElixirSymbolProvider.toModuleName(layout.routerModuleName());
-    String helpersMod = ElixirSymbolProvider.toModuleName(layout.runtimeHelpersModuleName());
     String serverMod = ElixirSymbolProvider.toModuleName(layout.serverModuleName());
 
     List<ExPreambleEntry> preamble;
@@ -70,7 +73,7 @@ final class ElixirRouterIr {
                   "Handler must export handle_<operation>/3; typically "
                       + serverMod
                       + " after init_handlers/0."));
-      functions = List.of(awsJsonDispatch(), awsJsonRoute(service, operations, sp, codecMod));
+      functions = new ArrayList<>(List.of(awsJsonDispatch(), awsJsonRoute(service, operations, sp, codecMod)));
     } else {
       preamble =
           List.of(
@@ -81,7 +84,10 @@ final class ElixirRouterIr {
                       + " after init_handlers/0."));
       HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
       functions =
-          List.of(httpDispatch(), httpRoute(httpIndex, operations, sp, codecMod, helpersMod));
+          new ArrayList<>(List.of(httpDispatch(), httpRoute(httpIndex, operations, sp, codecMod)));
+    }
+    if (serviceHasLabelBindings(model, operations)) {
+      functions.addAll(labelParsingFunctions());
     }
 
     return ExModule.module(routerMod, preamble, List.of(), functions);
@@ -124,12 +130,11 @@ final class ElixirRouterIr {
       HttpBindingIndex httpIndex,
       List<OperationShape> operations,
       SymbolProvider sp,
-      String codecMod,
-      String helpersMod) {
+      String codecMod) {
     List<ExClause> clauses = new ArrayList<>();
     for (OperationShape op : operations) {
       List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
-      clauses.add(routeClause(op, httpIndex, sp, codecMod, helpersMod, !labels.isEmpty()));
+      clauses.add(routeClause(op, httpIndex, sp, codecMod, !labels.isEmpty()));
     }
     clauses.add(notFoundClause(4));
     return ExFunction.defpFunction("route", clauses);
@@ -194,7 +199,6 @@ final class ElixirRouterIr {
       HttpBindingIndex httpIndex,
       SymbolProvider sp,
       String codecMod,
-      String helpersMod,
       boolean labeled) {
     HttpTrait httpTrait = op.expectTrait(HttpTrait.class);
     String method = httpTrait.getMethod().toUpperCase();
@@ -213,7 +217,7 @@ final class ElixirRouterIr {
               ExVarPattern.var("handler"),
               ExVarPattern.var("request")),
           guards,
-          labeledRouteBody(helpersMod, uriTemplate, codecMod, opName, handlerFn, method));
+          labeledRouteBody(uriTemplate, codecMod, opName, handlerFn, method));
     }
 
     return ExClause.blockClause(
@@ -227,14 +231,13 @@ final class ElixirRouterIr {
   }
 
   private static ExCase labeledRouteBody(
-      String helpersMod,
       String uriTemplate,
       String codecMod,
       String opName,
       String handlerFn,
       String method) {
     return ExCase.caseExpr(
-        ExCall.call(helpersMod, "parse_labels", ExVar.var("path"), ExString.string(uriTemplate)),
+        ExCallLocal.callLocal("parse_labels", ExVar.var("path"), ExString.string(uriTemplate)),
         ExCaseBranch.branch(
             ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("label_map")),
             ExExprBlock.block(
@@ -334,5 +337,128 @@ final class ElixirRouterIr {
       }
     }
     return labelVarName(labelCount - 1);
+  }
+
+  static boolean serviceHasLabelBindings(Model model, List<OperationShape> operations) {
+    HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
+    for (OperationShape op : operations) {
+      if (!httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static List<ExFunction> labelParsingFunctions() {
+    return List.of(parseLabels(), segments(), matchSegments(), labelName());
+  }
+
+  static ExFunction parseLabels() {
+    return ExFunction.functionWithSpec(
+        "defp",
+        "parse_labels",
+        ExSpec.functionSpec(
+            "parse_labels", "String.t(), String.t()", "{:ok, map()} | {:error, :path_mismatch}"),
+        List.of(
+            ExClause.blockClause(
+                List.of(ExVarPattern.var("path"), ExVarPattern.var("template")),
+                ExCase.caseExpr(
+                    ExCallLocal.callLocal(
+                        "match_segments",
+                        ExCallLocal.callLocal("segments", ExVar.var("path")),
+                        ExCallLocal.callLocal("segments", ExVar.var("template")),
+                        ExMap.map()),
+                    List.of(
+                        ExCaseBranch.branch(
+                            ExTuplePattern.tuple(
+                                ExAtomPattern.atom("ok"), ExVarPattern.var("labels")),
+                            ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("labels"))),
+                        ExCaseBranch.branch(
+                            ExVarPattern.var("_"),
+                            ExTuple.tuple(ExAtom.atom("error"), ExAtom.atom("path_mismatch")))),
+                    true))));
+  }
+
+  static ExFunction segments() {
+    return ExFunction.defpFunction(
+        "segments",
+        List.of(
+            ExClause.blockClause(
+                List.of(ExVarPattern.var("path")),
+                ExPipeline.pipeChain(
+                    ExVar.var("path"),
+                    ExCapturedBlock.capturedBlock("String.split(\"/\", trim: true)")))));
+  }
+
+  static ExFunction matchSegments() {
+    return ExFunction.defpFunction(
+        "match_segments",
+        List.of(
+            ExClause.inlineClause(
+                List.of(ExListPattern.list(), ExListPattern.list(), ExVarPattern.var("acc")),
+                ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("acc"))),
+            ExClause.blockClause(
+                List.of(
+                    ExConsPattern.consPattern(
+                        ExVarPattern.var("seg"), ExVarPattern.var("rest_path")),
+                    ExConsPattern.consPattern(
+                        ExVarPattern.var("tpl_seg"), ExVarPattern.var("rest_tpl")),
+                    ExVarPattern.var("acc")),
+                ExCase.caseExpr(
+                    ExCallLocal.callLocal("label_name", ExVar.var("tpl_seg")),
+                    List.of(
+                        ExCaseBranch.branch(
+                            ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("key")),
+                            ExExprBlock.block(
+                                ExMatch.match(
+                                    ExVarPattern.var("val"),
+                                    ExCall.call("URI", "decode", ExVar.var("seg"))),
+                                ExCallLocal.callLocal(
+                                    "match_segments",
+                                    ExVar.var("rest_path"),
+                                    ExVar.var("rest_tpl"),
+                                    ExCall.call(
+                                        "Map",
+                                        "put",
+                                        ExVar.var("acc"),
+                                        ExVar.var("key"),
+                                        ExVar.var("val"))))),
+                        ExCaseBranch.branch(
+                            ExVarPattern.var("_"),
+                            List.of(
+                                ExGuard.exprGuard(
+                                    ExOp.op("==", ExVar.var("seg"), ExVar.var("tpl_seg")))),
+                            ExCallLocal.callLocal(
+                                "match_segments",
+                                ExVar.var("rest_path"),
+                                ExVar.var("rest_tpl"),
+                                ExVar.var("acc"))),
+                        ExCaseBranch.branch(ExVarPattern.var("_"), ExAtom.atom("error"))),
+                    true)),
+            ExClause.inlineClause(
+                List.of(ExVarPattern.var("_"), ExVarPattern.var("_"), ExVarPattern.var("_")),
+                ExAtom.atom("error"))));
+  }
+
+  static ExFunction labelName() {
+    return ExFunction.defpFunction(
+        "label_name",
+        List.of(
+            ExClause.blockClause(
+                List.of(
+                    ExBinaryConcatPattern.concat(
+                        ExStringPattern.string("{"), ExVarPattern.var("rest"))),
+                ExCase.caseExpr(
+                    ExCall.call(
+                        "String",
+                        "split",
+                        ExVar.var("rest"),
+                        ExString.string("}"),
+                        ExCapturedBlock.capturedBlock("parts: 2")),
+                    ExCaseBranch.branch(
+                        ExListPattern.list(ExVarPattern.var("label"), ExStringPattern.string("")),
+                        ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("label"))),
+                    ExCaseBranch.branch(ExVarPattern.var("_"), ExAtom.atom("error")))),
+            ExClause.inlineClause(List.of(ExVarPattern.var("_")), ExAtom.atom("error"))));
   }
 }

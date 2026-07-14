@@ -7,7 +7,7 @@ def sign(config, operation, request) do
   opts =
     %{
       unsigned_payload: unsigned,
-      endpoint_host: endpoint_host_from_config(config)
+      endpoint_host: Utils.endpoint_host_from_config(config)
     }
   sign_request(request, credentials, region, service, opts)
 end

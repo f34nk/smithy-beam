@@ -7,14 +7,11 @@ import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExTuple;
 import io.smithy.beam.ir.elixir.ExVar;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -22,16 +19,6 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
 class ElixirHttpChecksumIrTest {
-  @Test
-  void checksumHelperFunctionsMatchGolden() throws IOException {
-    List<ExFunction> functions = ElixirHttpChecksumIr.checksumHelperFunctions();
-    assertThat(helpersAsString(functions))
-        .isEqualTo(readExpectedString("ir/http_checksum_helpers.expected.ex"));
-    for (ExFunction fn : functions) {
-      ElixirIrTestSupport.assertStructural(fn);
-    }
-  }
-
   @Test
   void requestChecksumHeadersExprMatchesGolden() throws IOException {
     Model model = checksumFixtureModel();
@@ -176,10 +163,6 @@ class ElixirHttpChecksumIrTest {
 
   private static String exprAsString(ExExpr expr) {
     return String.join("\n", expr.lines());
-  }
-
-  private static String helpersAsString(List<ExFunction> functions) {
-    return functions.stream().map(ExFunction::asString).collect(Collectors.joining("\n\n"));
   }
 
   private static String readExpectedString(String resourcePath) throws IOException {

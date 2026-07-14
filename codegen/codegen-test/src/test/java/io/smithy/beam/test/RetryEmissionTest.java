@@ -57,15 +57,12 @@ class RetryEmissionTest {
                         .build())
                 .build());
 
-    String retry = manifest.getFileString("error_fixture_service_retry.ex").orElse("");
-    assertThat(retry).contains("defmodule ErrorFixtureServiceRetry");
-    assertThat(retry).contains("def with_retry");
-    assertThat(retry)
-        .contains(
-            "def should_retry?({:error, %ErrorFixtureServiceTypes.NotFoundError{}}), do: true");
-    assertThat(retry)
-        .contains(
-            "def should_retry?({:error, %ErrorFixtureServiceTypes.ThrottlingError{}}), do: true");
-    assertThat(retry).contains("Process.sleep(trunc(base * :math.pow(2, n - 1)))");
+    assertThat(manifest.getFileString("error_fixture_service_retry.ex")).isEmpty();
+
+    String client = manifest.expectFileString("error_fixture_service_client.ex");
+    assertThat(client).contains("def should_retry?({:error, %ErrorFixtureServiceTypes.NotFoundError{}})");
+    assertThat(client).contains("def should_retry?({:error, %ErrorFixtureServiceTypes.ThrottlingError{}})");
+    assertThat(client).contains("RuntimeHttp.with_retry(");
+    assertThat(client).contains("{:should_retry, &ErrorFixtureServiceClient.should_retry?/1}");
   }
 }

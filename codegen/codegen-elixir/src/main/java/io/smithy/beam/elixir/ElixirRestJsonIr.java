@@ -175,9 +175,7 @@ final class ElixirRestJsonIr {
     boolean checksumBindings = ElixirHttpChecksumIr.serviceHasChecksumOperations(model, service);
     boolean compressionBindings =
         ElixirRestJsonSupport.serviceHasCompressionOperations(model, service);
-    if (checksumBindings) {
-      functions.addAll(ElixirHttpChecksumIr.checksumHelperFunctions());
-    } else if (compressionBindings) {
+    if (!checksumBindings && compressionBindings) {
       functions.add(ElixirCodecHelperIr.headersSet());
     }
     return functions;

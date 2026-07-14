@@ -20,8 +20,7 @@ build:
 	tree ~/.m2/repository/io/smithy/beam
 
 .PHONY: test
-test: test/java
-	make -C runtime/erlang test
+test: test/java test/runtime
 
 .PHONY: test/java
 test/java:
@@ -32,6 +31,11 @@ test/java:
 	./gradlew test 2>test-errors.log
 	[ -s test-errors.log ] || rm -rf test-errors.log
 
+.PHONY: test/runtime
+test/runtime:
+	make -C runtime/erlang test
+	make -C runtime/elixir test
+
 .PHONY: format/java
 format/java:
 	#
@@ -39,9 +43,10 @@ format/java:
 	#
 	./gradlew spotlessApply
 	
-.PHONY: format/runtime-erlang
-format/runtime-erlang:
+.PHONY: format/runtime
+format/runtime:
 	make -C runtime/erlang format
+	make -C runtime/elixir format
 
 .PHONY: clean
 clean:

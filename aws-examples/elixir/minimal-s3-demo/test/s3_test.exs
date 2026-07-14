@@ -33,7 +33,7 @@ defmodule S3Test do
       host: "localhost:4566"
     }
 
-    assert {:ok, url} = AmazonS3Presigner.presign_url(config, :get_object, request)
+    assert {:ok, url} = AwsSigv4.presign_url(config, :get_object, request)
     assert String.starts_with?(url, "https://localhost:4566/my-bucket/object.txt?")
     assert url =~ "X-Amz-Algorithm=AWS4-HMAC-SHA256"
     assert url =~ "X-Amz-Credential=AKIAIOSFODNN7EXAMPLE%2F"

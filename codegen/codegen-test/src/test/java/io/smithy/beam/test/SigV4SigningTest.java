@@ -41,6 +41,7 @@ class SigV4SigningTest {
   void erlangClientEmitsSigV4SigningModule() {
     MockManifest manifest = runErlangClient();
 
+    assertThat(manifest.getFileString("sigv4test_service_sigv4.erl")).isEmpty();
     assertThat(manifest.getFileString("sigv4test_service_presigner.erl")).isEmpty();
 
     String client = manifest.expectFileString("sigv4test_service_client.erl");
@@ -50,24 +51,13 @@ class SigV4SigningTest {
   @Test
   void elixirClientEmitsSigV4SigningModule() {
     MockManifest manifest = runElixirClient();
-    String sigv4 = manifest.expectFileString("sigv4test_service_sigv4.ex");
 
-    assertThat(sigv4).contains("defmodule Sigv4testServiceSigv4 do");
-    assertThat(sigv4)
-        .contains(
-            "defp sign_request(request = %HttpRequest{}, credentials, region, service, opts) do");
-    assertThat(sigv4).contains(":aws_signature.sign_v4(");
-    assertThat(sigv4).contains("endpoint_host: endpoint_host_from_config(config)");
-    assertThat(sigv4).contains("def endpoint_host_from_config(config)");
-
-    String presigner = manifest.expectFileString("sigv4test_service_presigner.ex");
-    assertThat(presigner).contains("alias Sigv4testServiceSigv4, as: ServiceSigv4");
-    assertThat(presigner).contains("endpoint_host: ServiceSigv4.endpoint_host_from_config(config)");
-    assertThat(presigner)
-        .contains("ServiceSigv4.presign(request, credentials, region, service, opts)");
+    assertThat(manifest.getFileString("sigv4test_service_sigv4.ex")).isEmpty();
+    assertThat(manifest.getFileString("sigv4test_service_presigner.ex")).isEmpty();
+    assertThat(manifest.getFileString("aws_sigv4.ex")).isPresent();
 
     String client = manifest.expectFileString("sigv4test_service_client.ex");
-    assertThat(client).contains("Sigv4testServiceSigv4.sign(config, :ping, req)");
+    assertThat(client).contains("AwsSigv4.sign(config, :ping, req)");
   }
 
   @Test

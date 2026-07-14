@@ -1,5 +1,5 @@
 @spec parse_labels(String.t(), String.t()) :: {:ok, map()} | {:error, :path_mismatch}
-def parse_labels(path, template) do
+defp parse_labels(path, template) do
   case match_segments(segments(path), segments(template), %{}) do
     {:ok, labels} -> {:ok, labels}
 

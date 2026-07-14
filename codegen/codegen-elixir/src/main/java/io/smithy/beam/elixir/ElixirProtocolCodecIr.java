@@ -40,7 +40,6 @@ final class ElixirProtocolCodecIr {
     if (protocol == null) {
       return;
     }
-    ElixirCodecEmission.emitRuntimeHelpersIfNeeded(ctx, service, true);
     switch (protocol) {
       case ShapeId id when BeamProtocolIds.REST_JSON_1.equals(id) ->
           ElixirRestJsonIr.emitServerCodecModule(ctx, service);

@@ -7,10 +7,10 @@ import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModule;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -23,24 +23,23 @@ class ElixirRetryIrTest {
   private static final ShapeId RETRY_SERVICE = ShapeId.from("smithy.beam.demo.retry#RetryService");
 
   @Test
-  void withRetryFunctionsMatchGolden() throws IOException {
-    String combined =
-        ElixirRetryIr.withRetryFunctions().stream()
-            .map(ExFunction::asString)
-            .collect(Collectors.joining("\n\n"));
-    assertThat(combined).isEqualTo(readExpectedString("ir/retry_with_retry.expected.ex"));
-    for (ExFunction fn : ElixirRetryIr.withRetryFunctions()) {
-      ElixirIrTestSupport.assertStructural(fn);
-    }
-  }
-
-  @Test
-  void retryModuleMatchesGolden() throws IOException {
+  void clientPredicateFunctionsMatchGolden() throws IOException {
     Model model = retryModel();
     ServiceShape service = model.expectShape(RETRY_SERVICE, ServiceShape.class);
-    ExModule module =
-        ElixirRetryIr.retryModule(testContext(model, service), service, model, sp(model, service));
-    assertThat(module.asString()).isEqualTo(readExpectedString("ir/retry_module.expected.ex"));
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    BeamElixirLayout layout =
+        new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+    ElixirSymbolProvider sp = sp(model, service);
+    List<ExFunction> functions =
+        ElixirRetryIr.clientPredicateFunctions(model, service, sp, layout);
+    assertThat(functions).hasSize(3);
+    String combined =
+        functions.stream().map(ExFunction::asString).collect(Collectors.joining("\n\n"));
+    assertThat(combined).isEqualTo(readExpectedString("ir/retry_client_predicates.expected.ex"));
+    for (ExFunction fn : functions) {
+      ElixirIrTestSupport.assertStructural(fn);
+    }
   }
 
   private static ElixirSymbolProvider sp(Model model, ServiceShape service) {
@@ -55,28 +54,6 @@ class ElixirRetryIrTest {
         layout.typesModuleFile(),
         ElixirSymbolProvider.toModuleName(layout.typesModuleName()),
         BeamCodegenKind.CLIENT);
-  }
-
-  private static ElixirContext testContext(Model model, ServiceShape service) {
-    BeamSettings settings = new BeamSettings();
-    settings.edition("2026");
-    BeamElixirLayout layout =
-        new BeamElixirLayout(settings, service.getId().getNamespace(), service);
-    ElixirSymbolProvider symbolProvider = sp(model, service);
-    MockManifest manifest = new MockManifest();
-    return new ElixirContext(
-        model,
-        settings,
-        symbolProvider,
-        manifest,
-        new WriterDelegator<>(manifest, null, ElixirWriter.factory("retry")),
-        java.util.List.of(),
-        service,
-        BeamHttpBindings.from(model),
-        null,
-        null,
-        "retry",
-        "retry.ex");
   }
 
   private static Model retryModel() {

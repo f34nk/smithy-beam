@@ -6,7 +6,6 @@ import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
@@ -112,6 +111,7 @@ final class ElixirClientDirectedCodegen
         definitionFile,
         new java.util.ArrayList<>(),
         new java.util.ArrayList<>(),
+        new java.util.ArrayList<>(),
         new ElixirClientModuleBuilder(),
         null,
         null);
@@ -128,19 +128,6 @@ final class ElixirClientDirectedCodegen
             protocol ->
                 BeamProtocolResolver.assertClosureSupported(
                     directive.model(), service, protocol, edition));
-
-    String ns = service.getId().getNamespace();
-    BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns, service);
-    String runtimeTypesModule = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
-
-    ctx.writerDelegator()
-        .useFileWriter(
-            layout.runtimeTypesModuleFile(),
-            w -> {
-              Optional<String> ruleSet =
-                  BeamEndpointRuleSetEmitter.serializeRuleSetJson(directive.model(), service);
-              ElixirRuntimeTypesEmitter.writeBody(w, runtimeTypesModule, ruleSet);
-            });
   }
 
   @Override
@@ -165,15 +152,8 @@ final class ElixirClientDirectedCodegen
 
     ElixirProtocolCodecIr.emitClientCodec(ctx, service);
 
-    ElixirRuntimeHelpersEmitter.emitIfNeeded(ctx, service);
     ElixirS3EndpointEmitter.emit(ctx, service);
-    ElixirAwsEndpointRulesEmitter.emitIfNeeded(ctx, service);
-    ElixirEndpointRulesEmitter.emit(ctx, service);
-    ElixirHttpDispatchEmitter.emit(ctx, service);
-    ElixirSigV4Emitter.emit(ctx, service);
-    ElixirPresignerEmitter.emit(ctx, service);
     ElixirCredentialProviderEmitter.emit(ctx, service);
-    ElixirRetryEmitter.emit(ctx, service);
     ElixirWaiterEmitter.emit(ctx, service);
     ElixirComplianceTestEmitter.emit(ctx, service);
     ElixirEventStreamEmitter.emit(ctx, service);
@@ -185,6 +165,10 @@ final class ElixirClientDirectedCodegen
     ElixirClientModuleBuilder builder = ctx.clientModuleBuilderOrNull();
     if (builder != null) {
       String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
+      if (ElixirRetryIr.serviceHasRetryableErrors(ctx.model(), service)) {
+        builder.addOperationFunctions(
+            ElixirRetryIr.clientPredicateFunctions(ctx.model(), service, sp, layout));
+      }
       ExModule module =
           ElixirClientIr.clientModule(
               layout, service, typesModuleName, builder.operationFunctions());
@@ -235,7 +219,7 @@ final class ElixirClientDirectedCodegen
         BeamProtocolSupport.hasWireCodegen(
             ctx.resolvedProtocolTraitId(), ctx.protocolCodegen(), ctx.integrations());
     boolean wrapWithRetry = BeamClientRetrySupport.operationHasRetryableErrors(ctx.model(), op);
-    String retryModule = ElixirSymbolProvider.toModuleName(layout.retryModuleName());
+    String clientModule = ElixirSymbolProvider.toModuleName(layout.clientModuleName());
     boolean paginated = BeamClientPaginationSupport.isPaginated(ctx.model(), ctx.service(), op);
     PaginationInfo paginationInfo =
         paginated
@@ -249,7 +233,7 @@ final class ElixirClientDirectedCodegen
     if (paginated) {
       builder.addOperationFunctions(
           ElixirClientPaginationIr.paginatedOperationFunctions(
-              ctx, ctx.service(), op, layout, wrapWithRetry, retryModule, successReturnType, doc));
+              ctx, ctx.service(), op, layout, wrapWithRetry, clientModule, successReturnType, doc));
       return;
     }
 
@@ -263,7 +247,7 @@ final class ElixirClientDirectedCodegen
             successReturnType,
             hasProtocol,
             wrapWithRetry,
-            retryModule,
+            clientModule,
             doc));
   }
 
@@ -320,7 +304,7 @@ final class ElixirClientDirectedCodegen
       String successReturnType,
       boolean hasProtocol,
       boolean wrapWithRetry,
-      String retryModule,
+      String clientModule,
       ExDoc doc) {
     String specOutput = "{:ok, " + successReturnType + "} | {:error, term()}";
     if (!hasProtocol) {
@@ -341,7 +325,7 @@ final class ElixirClientDirectedCodegen
             op,
             layout,
             wrapWithRetry,
-            retryModule,
+            clientModule,
             false,
             ElixirClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
     return ExFunction.functionWithDocAndSpec(

@@ -1,5 +1,5 @@
 retry_opts = Map.get(config, :retry, [])
-RetryMod.with_retry(
+RuntimeHttp.with_retry(
   fn ->
     req = HttpServiceRestJson1.encode_get_name_request(input)
     case RuntimeHttp.dispatch(config, req) do
@@ -7,5 +7,5 @@ RetryMod.with_retry(
       {:error, reason} -> {:error, reason}
     end
   end,
-  retry_opts
+  Keyword.merge([{:should_retry, &HttpServiceClient.should_retry?/1}], retry_opts)
 )

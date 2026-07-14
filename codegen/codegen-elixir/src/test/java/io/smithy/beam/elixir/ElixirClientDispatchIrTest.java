@@ -237,7 +237,7 @@ class ElixirClientDispatchIrTest {
             op,
             layout(model, HTTP_SERVICE),
             true,
-            "RetryMod",
+            "HttpServiceClient",
             false,
             ElixirClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
     assertThat(body.get(0)).isInstanceOf(ExMatch.class);

@@ -35,11 +35,10 @@ class ElixirHostLabelIrTest {
             ElixirSymbolProvider.toModuleName(layout.clientModuleName()),
             BeamCodegenKind.CLIENT);
     List<ExFunction> functions = ElixirHostLabelIr.buildHostFunctions(model, service, sp);
-    assertThat(functions).hasSize(2);
+    assertThat(functions).hasSize(1);
     ElixirIrTestSupport.assertStructural(functions.get(0));
-    ElixirIrTestSupport.assertStructural(functions.get(1));
-    String combined = functions.get(0).asString() + "\n\n" + functions.get(1).asString();
-    assertThat(combined).isEqualTo(readExpectedString("ir/host_label_helpers.expected.ex"));
+    assertThat(functions.get(0).asString())
+        .isEqualTo(readExpectedString("ir/host_label_helpers.expected.ex"));
   }
 
   private static Model hostLabelModel() {

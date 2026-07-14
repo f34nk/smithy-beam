@@ -1,7 +1,7 @@
 defmodule RuntimeHttp do
   @moduledoc "Generated HTTP dispatcher for Smithy service clients. Uses Req."
   alias RuntimeTypes, as: RuntimeTypes
-  alias RuntimeHelpers, as: RuntimeHelpers
+  alias Utils, as: Utils
 
   @spec dispatch(map(), RuntimeTypes.HttpRequest.t()) ::
           {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}
@@ -24,14 +24,14 @@ defmodule RuntimeHttp do
         nil ->
           case Map.get(config, :endpoint_prefix) do
             nil -> ""
-            _ -> RuntimeHelpers.resolve_base_url(config)
+            _ -> Utils.resolve_base_url(config)
           end
     
         url ->
           url
       end
     
-    {scheme, default_authority} = split_base_url(base_url)
+    {scheme, default_authority} = Utils.split_base_url(base_url)
     
     authority =
       case req.host do
@@ -59,25 +59,6 @@ defmodule RuntimeHttp do
     
       {:error, reason} ->
         {:error, reason}
-    end
-  end
-
-  defp split_base_url(""), do: {"", ""}
-  defp split_base_url(base_url) do
-    case URI.parse(base_url) do
-      %URI{scheme: scheme, host: host} = uri when is_binary(host) ->
-        port_suffix =
-          case {uri.scheme, uri.port} do
-            {"https", 443} -> ""
-            {"http", 80} -> ""
-            {_, nil} -> ""
-            {_, port} -> ":#{port}"
-          end
-    
-        {scheme <> "://", host <> port_suffix}
-    
-      _ ->
-        {"", base_url}
     end
   end
 

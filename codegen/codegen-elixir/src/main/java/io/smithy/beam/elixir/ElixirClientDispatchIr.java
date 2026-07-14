@@ -14,11 +14,11 @@ final class ElixirClientDispatchIr {
       OperationShape op,
       BeamElixirLayout layout,
       boolean wrapWithRetry,
-      String retryModule,
+      String clientModule,
       boolean paginated,
       ElixirClientDispatchOperationIr.DispatchBodyMode mode) {
     return ElixirClientDispatchOperationIr.buildDispatchBody(
-        ctx, op, layout, wrapWithRetry, retryModule, paginated, mode);
+        ctx, op, layout, wrapWithRetry, clientModule, paginated, mode);
   }
 
   static String renderBody(List<ExExpr> exprs) {

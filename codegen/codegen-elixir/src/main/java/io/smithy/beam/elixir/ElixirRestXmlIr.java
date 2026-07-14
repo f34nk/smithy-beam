@@ -167,9 +167,6 @@ final class ElixirRestXmlIr {
     functions.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
     functions.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
     functions.addAll(sharedClientCodecHelpers());
-    if (ElixirHttpChecksumIr.serviceHasChecksumOperations(model, service)) {
-      functions.addAll(ElixirHttpChecksumIr.checksumHelperFunctions());
-    }
     if (encodeWithConfig) {
       functions.addAll(ElixirHostLabelIr.buildHostFunctions(model, service, sp));
     }
@@ -197,9 +194,6 @@ final class ElixirRestXmlIr {
     functions.addAll(enumHelperFunctions(model, service, sp));
     functions.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
     functions.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
-    if (ElixirHttpChecksumIr.serviceHasChecksumOperations(model, service)) {
-      functions.addAll(ElixirHttpChecksumIr.checksumHelperFunctions());
-    }
     return functions;
   }
 

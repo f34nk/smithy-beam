@@ -103,11 +103,14 @@ class HttpChecksumEmissionTest {
 
     String codec =
         manifest.getFileString("http_checksum_rest_json_service_rest_json_1.ex").orElse("");
-    assertThat(codec).contains("defp headers_set(");
-    assertThat(codec).contains("Base.encode16(");
-    assertThat(codec).contains("headers = headers_set(\"Content-MD5\"");
+    assertThat(codec).doesNotContain("defp md5_hash(");
+    assertThat(codec).doesNotContain("defp validate_response_checksum(");
+    assertThat(codec).doesNotContain("defp checksum_digest(");
+    assertThat(codec).contains("HttpChecksum.headers_set(\"Content-MD5\"");
+    assertThat(codec).contains("HttpChecksum.checksum_header_encode(");
     assertThat(codec).contains(":crypto.hash(:md5, body)");
-    assertThat(codec).contains("validate_response_checksum(body, headers,");
+    assertThat(codec).contains("HttpChecksum.validate_response_checksum(body, headers,");
+    assertThat(codec).contains("HttpChecksum.crc32c_hash(body)");
   }
 
   @Test
@@ -126,7 +129,8 @@ class HttpChecksumEmissionTest {
                 .build());
 
     String codec = manifest.getFileString("http_checksum_rest_xml_service_rest_xml.ex").orElse("");
-    assertThat(codec).contains("headers = headers_set(\"Content-MD5\"");
+    assertThat(codec).doesNotContain("defp md5_hash(");
+    assertThat(codec).contains("HttpChecksum.headers_set(\"Content-MD5\"");
     assertThat(codec).contains(":crypto.hash(:md5, body)");
   }
 }

@@ -4,7 +4,7 @@ defmodule S3Endpoint do
   @spec region_host(map()) :: String.t()
   def region_host(config) do
     base_url = Map.get(config, :base_url, "")
-    {_scheme, authority} = split_base_url(base_url)
+    {_scheme, authority} = Utils.split_base_url(base_url)
     authority
   end
 
@@ -39,23 +39,5 @@ defmodule S3Endpoint do
 
   defp s3_host_suffix(config) do
     if Map.get(config, :s3_use_dualstack, false), do: ".s3.dualstack.", else: ".s3."
-  end
-
-  defp split_base_url(""), do: {"", ""}
-  defp split_base_url(base_url) do
-    case URI.parse(base_url) do
-      %URI{scheme: scheme, host: host, port: port} when is_binary(host) ->
-        port_suffix =
-          case port do
-            nil -> ""
-    
-            p -> ":#{p}"
-          end
-    
-        {"#{scheme}://", "#{host}#{port_suffix}"}
-    
-      _ ->
-        {"", base_url}
-    end
   end
 end
