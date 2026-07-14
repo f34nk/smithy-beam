@@ -1,44 +1,45 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Alias;
+import io.beam.ir.elixir.AnonFun;
+import io.beam.ir.elixir.AnonFunClause;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.BooleanExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.ConsListPattern;
+import io.beam.ir.elixir.DotCallExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.InfixExpr;
+import io.beam.ir.elixir.IntegerExpr;
+import io.beam.ir.elixir.ListPattern;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StringPattern;
+import io.beam.ir.elixir.StructExpr;
+import io.beam.ir.elixir.StructField;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.UseDirective;
+import io.beam.ir.elixir.UseOption;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpComplianceTests;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.elixir.ExAliasAttr;
-import io.smithy.beam.ir.elixir.ExAnonymousFn;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExBlankBodyLine;
-import io.smithy.beam.ir.elixir.ExBlankModuleAttr;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExCapturedBlock;
-import io.smithy.beam.ir.elixir.ExCase;
-import io.smithy.beam.ir.elixir.ExCaseBranch;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExConsPattern;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExInteger;
-import io.smithy.beam.ir.elixir.ExListPattern;
-import io.smithy.beam.ir.elixir.ExMacroCall;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExModule;
-import io.smithy.beam.ir.elixir.ExOp;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStruct;
-import io.smithy.beam.ir.elixir.ExStructAccess;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExUseAttr;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
-import io.smithy.beam.ir.elixir.IrObject;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -53,7 +54,7 @@ import software.amazon.smithy.model.shapes.StructureShape;
 final class ElixirComplianceTestIr {
   private ElixirComplianceTestIr() {}
 
-  static ExModule complianceTestsModule(ElixirContext ctx, ServiceShape service) {
+  static Module complianceTestsModule(ElixirContext ctx, ServiceShape service) {
     Model model = ctx.model();
     ShapeId protocol = ctx.resolvedProtocolTraitId();
     if (protocol == null) {
@@ -82,10 +83,10 @@ final class ElixirComplianceTestIr {
     boolean encodeWithConfig =
         ElixirRestJsonSupport.serviceHasHostLabelOperations(model, service)
             || ElixirRestXmlSupport.serviceHasHostLabelOperations(model, service);
-    Function<StructureShape, String> structNameFn =
+    java.util.function.Function<StructureShape, String> structNameFn =
         shape -> ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(shape));
 
-    List<ExFunction> tests = new ArrayList<>();
+    List<Function> tests = new ArrayList<>();
     for (BeamHttpComplianceTests.OperationRequestTests binding : requestBindings) {
       OperationShape operation = binding.operation();
       Symbol opSym = sp.toSymbol(operation);
@@ -139,20 +140,25 @@ final class ElixirComplianceTestIr {
     }
     tests.addAll(assertionHelperFunctions());
 
-    return ExModule.module(
+    return new Module(
         moduleName,
-        List.of(),
+        null,
         List.of(
-            ExUseAttr.use("ExUnit.Case", "async: true"),
-            ExBlankModuleAttr.blankLine(),
-            ExAliasAttr.alias(typesMod, "Types"),
-            ExAliasAttr.alias(clientCodecMod),
-            ExAliasAttr.alias(serverCodecMod, "ServerCodec"),
-            ExAliasAttr.alias(runtimeMod, "RuntimeTypes")),
+            new UseDirective(
+                "ExUnit.Case", List.of(new UseOption("async", BooleanExpr.of(true))))),
+        List.of(
+            Alias.of(typesMod, "Types"),
+            Alias.of(clientCodecMod),
+            Alias.of(serverCodecMod, "ServerCodec"),
+            Alias.of(runtimeMod, "RuntimeTypes")),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
         tests);
   }
 
-  static ExFunction clientRequestTest(
+  static Function clientRequestTest(
       Model model,
       BeamHttpComplianceTests.HttpRequestTestCase testCase,
       Symbol opSym,
@@ -160,67 +166,73 @@ final class ElixirComplianceTestIr {
       String codecMod,
       SymbolProvider sp,
       boolean encodeWithConfig,
-      Function<StructureShape, String> structNameFn) {
-    ExExpr inputLiteral =
+      java.util.function.Function<StructureShape, String> structNameFn) {
+    Expression inputLiteral =
         ElixirComplianceLiteralIr.structLiteral(model, input, testCase.params(), sp, structNameFn);
-    ExExpr encodeCall =
+    Expression encodeCall =
         encodeWithConfig
-            ? ExCall.call(
+            ? RemoteCallExpr.of(
                 codecMod,
                 "encode_" + opSym.getName() + "_request",
-                ExMap.map(ExMapEntry.entry(ExAtom.atom("region"), ExString.string("us-east-1"))),
-                inputLiteral)
-            : ExCall.call(codecMod, "encode_" + opSym.getName() + "_request", inputLiteral);
+                List.of(
+                    MapExpr.of(
+                        List.of(MapEntry.atomKey("region", StringExpr.of("us-east-1")))),
+                    inputLiteral))
+            : RemoteCallExpr.of(
+                codecMod, "encode_" + opSym.getName() + "_request", List.of(inputLiteral));
 
-    List<ExExpr> body = new ArrayList<>();
-    body.add(ExMatch.match(ExVarPattern.var("request"), encodeCall));
+    List<Expression> body = new ArrayList<>();
+    body.add(MatchExpr.bind("request", encodeCall));
     body.add(
-        ExMacroCall.assertExpr(
-            ExOp.op(
-                "==",
-                ExStructAccess.structAccess(ExVar.var("request"), "method"),
-                ExString.string(testCase.method()))));
+        LocalCallExpr.of(
+            "assert",
+            List.of(
+                new InfixExpr(
+                    new DotCallExpr(Variable.of("request"), "method", List.of()),
+                    "==",
+                    StringExpr.of(testCase.method())))));
     body.add(
-        ExMacroCall.assertExpr(
-            ExOp.op(
-                "==",
-                ExStructAccess.structAccess(ExVar.var("request"), "path"),
-                ExString.string(testCase.uri()))));
+        LocalCallExpr.of(
+            "assert",
+            List.of(
+                new InfixExpr(
+                    new DotCallExpr(Variable.of("request"), "path", List.of()),
+                    "==",
+                    StringExpr.of(testCase.uri())))));
     if (!testCase.queryParams().isEmpty()) {
       body.add(
-          ExCallLocal.callLocal(
+          LocalCallExpr.of(
               "assert_query_params",
-              ElixirComplianceLiteralIr.queryParamsList(testCase.queryParams()),
-              ExStructAccess.structAccess(ExVar.var("request"), "query")));
+              List.of(
+                  ElixirComplianceLiteralIr.queryParamsList(testCase.queryParams()),
+                  new DotCallExpr(Variable.of("request"), "query", List.of()))));
     }
     if (!testCase.headers().isEmpty()) {
       body.add(
-          ExCallLocal.callLocal(
+          LocalCallExpr.of(
               "assert_headers",
-              ElixirComplianceLiteralIr.headersMap(testCase.headers()),
-              ExStructAccess.structAccess(ExVar.var("request"), "headers")));
+              List.of(
+                  ElixirComplianceLiteralIr.headersMap(testCase.headers()),
+                  new DotCallExpr(Variable.of("request"), "headers", List.of()))));
     }
     if (testCase.body() != null) {
       body.add(
-          ExMacroCall.assertExpr(
-              ExOp.op(
-                  "==",
-                  ExCall.call(
-                      "IO",
-                      "iodata_to_binary",
-                      ExStructAccess.structAccess(ExVar.var("request"), "body")),
-                  ExString.string(testCase.body()))));
+          LocalCallExpr.of(
+              "assert",
+              List.of(
+                  new InfixExpr(
+                      RemoteCallExpr.of(
+                          "IO",
+                          "iodata_to_binary",
+                          List.of(new DotCallExpr(Variable.of("request"), "body", List.of()))),
+                      "==",
+                      StringExpr.of(testCase.body())))));
     }
 
-    return new ExFunction(
-        "test",
-        "\"" + escapeElixir(testCase.id()) + "\"",
-        null,
-        null,
-        List.of(ExClause.blockClause(List.of(), body.toArray(ExExpr[]::new))));
+    return testFunction(escapeElixir(testCase.id()), body);
   }
 
-  static ExFunction serverRequestTest(
+  static Function serverRequestTest(
       Model model,
       BeamHttpComplianceTests.HttpRequestTestCase testCase,
       Symbol opSym,
@@ -230,52 +242,51 @@ final class ElixirComplianceTestIr {
       List<HttpBinding> labels,
       BeamHostLabelIndex hostLabelIndex,
       OperationShape operation,
-      Function<StructureShape, String> structNameFn) {
-    ExStruct requestStruct =
-        ExStruct.struct(
+      java.util.function.Function<StructureShape, String> structNameFn) {
+    Expression requestStruct =
+        StructExpr.of(
             "RuntimeTypes.HttpRequest",
-            ExMapEntry.entry(ExAtom.atom("method"), ExString.string(testCase.method())),
-            ExMapEntry.entry(ExAtom.atom("path"), ExString.string(testCase.uri())),
-            ExMapEntry.entry(
-                ExAtom.atom("query"),
-                ExCallLocal.callLocal(
-                    "query_params_to_map",
-                    ElixirComplianceLiteralIr.queryParamsList(testCase.queryParams()))),
-            ExMapEntry.entry(
-                ExAtom.atom("headers"),
-                ExCallLocal.callLocal(
-                    "headers_to_list", ElixirComplianceLiteralIr.headersMap(testCase.headers()))),
-            ExMapEntry.entry(
-                ExAtom.atom("body"), ElixirComplianceLiteralIr.optionalBinary(testCase.body())));
+            List.of(
+                StructField.of("method", StringExpr.of(testCase.method())),
+                StructField.of("path", StringExpr.of(testCase.uri())),
+                StructField.of(
+                    "query",
+                    LocalCallExpr.of(
+                        "query_params_to_map",
+                        List.of(
+                            ElixirComplianceLiteralIr.queryParamsList(testCase.queryParams())))),
+                StructField.of(
+                    "headers",
+                    LocalCallExpr.of(
+                        "headers_to_list",
+                        List.of(ElixirComplianceLiteralIr.headersMap(testCase.headers())))),
+                StructField.of(
+                    "body", ElixirComplianceLiteralIr.optionalBinary(testCase.body()))));
 
-    ExExpr decodeCall;
+    Expression decodeCall;
     if (labels.isEmpty()) {
       decodeCall =
-          ExCall.call(codecMod, "decode_" + opSym.getName() + "_request", ExVar.var("request"));
+          RemoteCallExpr.of(
+              codecMod, "decode_" + opSym.getName() + "_request", List.of(Variable.of("request")));
     } else {
       decodeCall =
-          ExCall.call(
+          RemoteCallExpr.of(
               codecMod,
               "decode_" + opSym.getName() + "_request",
-              ExVar.var("request"),
-              labelMapExpr(hostLabelIndex, operation, testCase.params()));
+              List.of(
+                  Variable.of("request"),
+                  labelMapExpr(hostLabelIndex, operation, testCase.params())));
     }
 
-    List<ExExpr> body = new ArrayList<>();
-    body.add(structAssign("request", requestStruct));
-    body.add(ExBlankBodyLine.blankLine());
-    body.add(ExMatch.match(ExVarPattern.var("input"), decodeCall));
+    List<Expression> body = new ArrayList<>();
+    body.add(MatchExpr.bind("request", requestStruct));
+    body.add(MatchExpr.bind("input", decodeCall));
     body.addAll(assertMemberAsserts(model, input, testCase.params(), sp, "input", structNameFn));
 
-    return new ExFunction(
-        "test",
-        "\"" + escapeElixir(testCase.id()) + " server\"",
-        null,
-        null,
-        List.of(ExClause.blockClause(List.of(), body.toArray(ExExpr[]::new))));
+    return testFunction(escapeElixir(testCase.id()) + " server", body);
   }
 
-  static ExFunction clientResponseTest(
+  static Function clientResponseTest(
       Model model,
       BeamHttpComplianceTests.HttpResponseTestCase testCase,
       Symbol opSym,
@@ -283,41 +294,40 @@ final class ElixirComplianceTestIr {
       String codecMod,
       SymbolProvider sp,
       boolean errorCase,
-      Function<StructureShape, String> structNameFn) {
-    ExStruct responseStruct =
-        ExStruct.struct(
+      java.util.function.Function<StructureShape, String> structNameFn) {
+    Expression responseStruct =
+        StructExpr.of(
             "RuntimeTypes.HttpResponse",
-            ExMapEntry.entry(ExAtom.atom("status"), ExInteger.integer(testCase.code())),
-            ExMapEntry.entry(
-                ExAtom.atom("headers"),
-                ExCallLocal.callLocal(
-                    "headers_to_list", ElixirComplianceLiteralIr.headersMap(testCase.headers()))),
-            ExMapEntry.entry(
-                ExAtom.atom("body"), ElixirComplianceLiteralIr.optionalBinary(testCase.body())));
+            List.of(
+                StructField.of("status", IntegerExpr.of(testCase.code())),
+                StructField.of(
+                    "headers",
+                    LocalCallExpr.of(
+                        "headers_to_list",
+                        List.of(ElixirComplianceLiteralIr.headersMap(testCase.headers())))),
+                StructField.of(
+                    "body", ElixirComplianceLiteralIr.optionalBinary(testCase.body()))));
 
-    ExExpr decodeCall =
-        ExCall.call(codecMod, "decode_" + opSym.getName() + "_response", ExVar.var("response"));
+    Expression decodeCall =
+        RemoteCallExpr.of(
+            codecMod, "decode_" + opSym.getName() + "_response", List.of(Variable.of("response")));
 
-    List<ExExpr> body = new ArrayList<>();
-    body.add(structAssign("response", responseStruct));
-    body.add(ExBlankBodyLine.blankLine());
+    List<Expression> body = new ArrayList<>();
+    body.add(MatchExpr.bind("response", responseStruct));
     body.add(
-        ExMatch.match(
-            ExTuplePattern.tuple(
-                ExAtomPattern.atom(errorCase ? "error" : "ok"), ExVarPattern.var("output")),
+        MatchExpr.bind(
+            TuplePattern.of(
+                List.of(
+                    AtomPattern.of(errorCase ? "error" : "ok"),
+                    VariablePattern.of("output"))),
             decodeCall));
     body.addAll(
         assertMemberAsserts(model, outputShape, testCase.params(), sp, "output", structNameFn));
 
-    return new ExFunction(
-        "test",
-        "\"" + escapeElixir(testCase.id()) + "\"",
-        null,
-        null,
-        List.of(ExClause.blockClause(List.of(), body.toArray(ExExpr[]::new))));
+    return testFunction(escapeElixir(testCase.id()), body);
   }
 
-  static ExFunction serverResponseTest(
+  static Function serverResponseTest(
       Model model,
       BeamHttpComplianceTests.HttpResponseTestCase testCase,
       Symbol opSym,
@@ -325,8 +335,8 @@ final class ElixirComplianceTestIr {
       String codecMod,
       SymbolProvider sp,
       boolean errorCase,
-      Function<StructureShape, String> structNameFn) {
-    ExExpr outputLiteral =
+      java.util.function.Function<StructureShape, String> structNameFn) {
+    Expression outputLiteral =
         ElixirComplianceLiteralIr.structLiteral(
             model, outputShape, testCase.params(), sp, structNameFn);
     String encodeFn =
@@ -334,51 +344,51 @@ final class ElixirComplianceTestIr {
             ? "encode_" + structName(sp.toSymbol(outputShape)) + "_response"
             : "encode_" + opSym.getName() + "_response";
 
-    List<ExExpr> body = new ArrayList<>();
+    List<Expression> body = new ArrayList<>();
     body.add(
-        ExMatch.match(
-            ExVarPattern.var("response"), ExCall.call(codecMod, encodeFn, outputLiteral)));
+        MatchExpr.bind(
+            "response", RemoteCallExpr.of(codecMod, encodeFn, List.of(outputLiteral))));
     body.add(
-        ExMacroCall.assertExpr(
-            ExOp.op(
-                "==",
-                ExStructAccess.structAccess(ExVar.var("response"), "status"),
-                ExInteger.integer(testCase.code()))));
+        LocalCallExpr.of(
+            "assert",
+            List.of(
+                new InfixExpr(
+                    new DotCallExpr(Variable.of("response"), "status", List.of()),
+                    "==",
+                    IntegerExpr.of(testCase.code())))));
     if (!testCase.headers().isEmpty()) {
       body.add(
-          ExCallLocal.callLocal(
+          LocalCallExpr.of(
               "assert_headers",
-              ElixirComplianceLiteralIr.headersMap(testCase.headers()),
-              ExStructAccess.structAccess(ExVar.var("response"), "headers")));
+              List.of(
+                  ElixirComplianceLiteralIr.headersMap(testCase.headers()),
+                  new DotCallExpr(Variable.of("response"), "headers", List.of()))));
     }
     if (testCase.body() != null) {
       body.add(
-          ExMacroCall.assertExpr(
-              ExOp.op(
-                  "==",
-                  ExCall.call(
-                      "IO",
-                      "iodata_to_binary",
-                      ExStructAccess.structAccess(ExVar.var("response"), "body")),
-                  ExString.string(testCase.body()))));
+          LocalCallExpr.of(
+              "assert",
+              List.of(
+                  new InfixExpr(
+                      RemoteCallExpr.of(
+                          "IO",
+                          "iodata_to_binary",
+                          List.of(new DotCallExpr(Variable.of("response"), "body", List.of()))),
+                      "==",
+                      StringExpr.of(testCase.body())))));
     }
 
-    return new ExFunction(
-        "test",
-        "\"" + escapeElixir(testCase.id()) + " server\"",
-        null,
-        null,
-        List.of(ExClause.blockClause(List.of(), body.toArray(ExExpr[]::new))));
+    return testFunction(escapeElixir(testCase.id()) + " server", body);
   }
 
-  static List<ExExpr> assertMemberAsserts(
+  static List<Expression> assertMemberAsserts(
       Model model,
       StructureShape shape,
       ObjectNode params,
       SymbolProvider sp,
       String structVar,
-      Function<StructureShape, String> structNameFn) {
-    List<ExExpr> asserts = new ArrayList<>();
+      java.util.function.Function<StructureShape, String> structNameFn) {
+    List<Expression> asserts = new ArrayList<>();
     for (var entry : params.getMembers().entrySet()) {
       String memberName = entry.getKey().getValue();
       shape
@@ -386,122 +396,198 @@ final class ElixirComplianceTestIr {
           .ifPresent(
               member -> {
                 String fieldName = BeamNameUtils.toSnakeCase(memberName);
-                ExExpr expected =
+                Expression expected =
                     ElixirComplianceLiteralIr.memberValue(
                         model, member, entry.getValue(), sp, structNameFn);
                 asserts.add(
-                    ExMacroCall.assertExpr(
-                        ExOp.op(
-                            "==",
-                            ExStructAccess.structAccess(ExVar.var(structVar), fieldName),
-                            expected)));
+                    LocalCallExpr.of(
+                        "assert",
+                        List.of(
+                            new InfixExpr(
+                                new DotCallExpr(Variable.of(structVar), fieldName, List.of()),
+                                "==",
+                                expected))));
               });
     }
     return asserts;
   }
 
-  static ExExpr labelMapExpr(
+  static Expression labelMapExpr(
       BeamHostLabelIndex hostLabelIndex, OperationShape operation, ObjectNode params) {
     return ElixirComplianceLiteralIr.labelMap(hostLabelIndex, operation, params);
   }
 
-  static List<ExFunction> assertionHelperFunctions() {
-    return List.of(
-        headersToList(), queryParamsToMap(), queryParam(), assertHeaders(), assertQueryParams());
+  static List<Function> assertionHelperFunctions() {
+    List<Function> helpers = new ArrayList<>();
+    helpers.add(headersToList());
+    helpers.addAll(queryParamsToMap());
+    helpers.add(queryParam());
+    helpers.add(assertHeaders());
+    helpers.add(assertQueryParams());
+    return helpers;
   }
 
-  private static ExFunction headersToList() {
-    return ExFunction.defpFunction(
+  private static Function testFunction(String namePattern, List<Expression> body) {
+    return new Function(
+        "test",
+        false,
+        List.of(FunctionHead.of(List.of(StringPattern.of(namePattern)))),
+        blockBody(body),
+        null,
+        null,
+        false);
+  }
+
+  private static Expression blockBody(List<Expression> statements) {
+    return statements.size() == 1 ? statements.get(0) : new BlockExpr(statements);
+  }
+
+  private static Function headersToList() {
+    return defp(
         "headers_to_list",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("headers")),
-                ExCall.call(
-                    "Enum",
-                    "map",
-                    ExVar.var("headers"),
-                    ExAnonymousFn.compactFn(
-                        ExClause.blockClause(
+        List.of(VariablePattern.of("headers")),
+        RemoteCallExpr.of(
+            "Enum",
+            "map",
+            List.of(
+                Variable.of("headers"),
+                new AnonFun(
+                    List.of(
+                        AnonFunClause.of(
                             List.of(
-                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v"))),
-                            ExTuple.tuple(ExVar.var("k"), ExVar.var("v"))))))));
+                                TuplePattern.of(
+                                    List.of(
+                                        VariablePattern.of("k"),
+                                        VariablePattern.of("v")))),
+                            TupleExpr.of(
+                                List.of(Variable.of("k"), Variable.of("v")))))))),
+        false);
   }
 
-  private static ExFunction queryParamsToMap() {
-    return ExFunction.defpFunction(
-        "query_params_to_map",
-        List.of(
-            ExClause.inlineClause(List.of(ExListPattern.list()), ExMap.map()),
-            ExClause.blockClause(
+  private static List<Function> queryParamsToMap() {
+    return List.of(
+        defp(
+            "query_params_to_map",
+            List.of(ListPattern.of(List.of())),
+            MapExpr.of(List.of()),
+            true),
+        defp(
+            "query_params_to_map",
+            List.of(
+                ConsListPattern.of(
+                    VariablePattern.of("param"), VariablePattern.of("rest"))),
+            RemoteCallExpr.of(
+                "Map",
+                "merge",
                 List.of(
-                    ExConsPattern.consPattern(ExVarPattern.var("param"), ExVarPattern.var("rest"))),
-                ExCall.call(
-                    "Map",
-                    "merge",
-                    ExCallLocal.callLocal("query_param", ExVar.var("param")),
-                    ExCallLocal.callLocal("query_params_to_map", ExVar.var("rest"))))));
+                    LocalCallExpr.of("query_param", List.of(Variable.of("param"))),
+                    LocalCallExpr.of("query_params_to_map", List.of(Variable.of("rest"))))),
+            false));
   }
 
-  private static ExFunction queryParam() {
-    return ExFunction.defpFunction(
+  private static Function queryParam() {
+    return defp(
         "query_param",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("param")),
-                ExCase.caseExpr(
-                    ExCapturedBlock.capturedBlock("String.split(param, \"=\", parts: 2)"),
-                    ExCaseBranch.branch(
-                        ExListPattern.list(ExVarPattern.var("key"), ExVarPattern.var("value")),
-                        ExMap.map(ExMapEntry.entry(ExVar.var("key"), ExVar.var("value")))),
-                    ExCaseBranch.branch(
-                        ExListPattern.list(ExVarPattern.var("key")),
-                        ExMap.map(ExMapEntry.entry(ExVar.var("key"), ExString.string(""))))))));
+        List.of(VariablePattern.of("param")),
+        new CaseExpr(
+            splitQueryParam(Variable.of("param")),
+            List.of(
+                Clause.of(
+                    ListPattern.of(
+                        List.of(
+                            VariablePattern.of("key"), VariablePattern.of("value"))),
+                    MapExpr.of(
+                        List.of(
+                            MapEntry.atomKey("key", Variable.of("key")),
+                            MapEntry.atomKey("value", Variable.of("value"))))),
+                Clause.of(
+                    ListPattern.of(List.of(VariablePattern.of("key"))),
+                    MapExpr.of(
+                        List.of(
+                            MapEntry.atomKey("key", Variable.of("key")),
+                            MapEntry.atomKey("value", StringExpr.of(""))))))),
+        false);
   }
 
-  private static ExFunction assertHeaders() {
-    return ExFunction.defpFunction(
+  private static Function assertHeaders() {
+    Expression assertKeywordMatch =
+        LocalCallExpr.of(
+            "assert",
+            List.of(
+                new InfixExpr(
+                    RemoteCallExpr.of(
+                        "Keyword",
+                        "get",
+                        List.of(Variable.of("actual"), Variable.of("key"))),
+                    "==",
+                    Variable.of("value"))));
+    AnonFun eachFn =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(
+                        TuplePattern.of(
+                            List.of(VariablePattern.of("key"), VariablePattern.of("value")))),
+                    assertKeywordMatch)));
+    return defp(
         "assert_headers",
-        List.of(
-            ExClause.blockClauseSingleLineHead(
-                List.of(ExVarPattern.var("expected"), ExVarPattern.var("actual")),
-                ExCapturedBlock.capturedBlock(
-                    """
-                    Enum.each(expected, fn {key, value} ->
-                      assert Keyword.get(actual, key) == value
-                    end)"""))));
+        List.of(VariablePattern.of("expected"), VariablePattern.of("actual")),
+        RemoteCallExpr.of(
+            "Enum", "each", List.of(Variable.of("expected"), eachFn)),
+        true);
   }
 
-  private static ExFunction assertQueryParams() {
-    return ExFunction.defpFunction(
+  private static Function assertQueryParams() {
+    Expression assertFetchMatch =
+        LocalCallExpr.of(
+            "assert",
+            List.of(
+                new InfixExpr(
+                    RemoteCallExpr.of(
+                        "Map",
+                        "fetch!",
+                        List.of(Variable.of("query"), Variable.of("key"))),
+                    "==",
+                    Variable.of("value"))));
+    Expression assertHasKey =
+        LocalCallExpr.of(
+            "assert",
+            List.of(
+                RemoteCallExpr.of(
+                    "Map",
+                    "has_key?",
+                    List.of(Variable.of("query"), Variable.of("key")))));
+    CaseExpr paramCase =
+        new CaseExpr(
+            splitQueryParam(Variable.of("param")),
+            List.of(
+                Clause.of(
+                    ListPattern.of(
+                        List.of(VariablePattern.of("key"), VariablePattern.of("value"))),
+                    assertFetchMatch),
+                Clause.of(
+                    ListPattern.of(List.of(VariablePattern.of("key"))), assertHasKey)));
+    AnonFun eachFn =
+        new AnonFun(
+            List.of(AnonFunClause.of(List.of(VariablePattern.of("param")), paramCase)));
+    return defp(
         "assert_query_params",
-        List.of(
-            ExClause.blockClauseSingleLineHead(
-                List.of(ExVarPattern.var("expected"), ExVarPattern.var("query")),
-                ExCapturedBlock.capturedBlock(
-                    """
-                    Enum.each(expected, fn param ->
-                      case String.split(param, "=", parts: 2) do
-                        [key, value] -> assert Map.fetch!(query, key) == value
-                        [key] -> assert Map.has_key?(query, key)
-                      end
-                    end)"""))));
+        List.of(VariablePattern.of("expected"), VariablePattern.of("query")),
+        RemoteCallExpr.of(
+            "Enum", "each", List.of(Variable.of("expected"), eachFn)),
+        true);
   }
 
-  private static ExExpr structAssign(String varName, ExStruct struct) {
-    List<String> lines = struct.lines(1);
-    StringBuilder sb = new StringBuilder();
-    sb.append(varName).append(" = ").append(stripIndentStep(lines.get(0)));
-    for (int i = 1; i < lines.size(); i++) {
-      sb.append('\n').append(stripIndentStep(lines.get(i)));
+  private static Expression splitQueryParam(Expression param) {
+    if (!(param instanceof Variable variable)) {
+      throw new IllegalArgumentException("splitQueryParam expects a variable reference");
     }
-    return ExCapturedBlock.capturedBlock(sb.toString());
+    return Variable.of("String.split(" + variable.name() + ", \"=\", parts: 2)");
   }
 
-  private static String stripIndentStep(String line) {
-    if (line.startsWith(IrObject.INDENT_STEP)) {
-      return line.substring(IrObject.INDENT_STEP.length());
-    }
-    return line;
+  private static Function defp(
+      String name, List<Pattern> params, Expression body, boolean oneLiner) {
+    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static String structName(Symbol symbol) {
