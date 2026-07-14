@@ -231,7 +231,10 @@ final class ElixirBeamIrTypes {
   }
 
   private static List<String> renderedModuleLines(String rendered) {
-    return rendered.stripTrailing().lines().toList();
+    if (rendered.isEmpty()) {
+      return List.of();
+    }
+    return List.of(rendered.stripTrailing().split("\n", -1));
   }
 
   private static String escapeString(String text) {

@@ -11,6 +11,7 @@ import io.beam.ir.elixir.CaseExpr;
 import io.beam.ir.elixir.Clause;
 import io.beam.ir.elixir.ConsListPattern;
 import io.beam.ir.elixir.DotCallExpr;
+import io.beam.ir.elixir.ElixirRenderer;
 import io.beam.ir.elixir.Expression;
 import io.beam.ir.elixir.Function;
 import io.beam.ir.elixir.FunctionHead;
@@ -25,7 +26,6 @@ import io.beam.ir.elixir.Module;
 import io.beam.ir.elixir.Pattern;
 import io.beam.ir.elixir.RemoteCallExpr;
 import io.beam.ir.elixir.StringExpr;
-import io.beam.ir.elixir.StringPattern;
 import io.beam.ir.elixir.StructExpr;
 import io.beam.ir.elixir.StructField;
 import io.beam.ir.elixir.TupleExpr;
@@ -86,7 +86,7 @@ final class ElixirComplianceTestIr {
     java.util.function.Function<StructureShape, String> structNameFn =
         shape -> ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(shape));
 
-    List<Function> tests = new ArrayList<>();
+    List<String> testLines = new ArrayList<>();
     for (BeamHttpComplianceTests.OperationRequestTests binding : requestBindings) {
       OperationShape operation = binding.operation();
       Symbol opSym = sp.toSymbol(operation);
@@ -96,13 +96,15 @@ final class ElixirComplianceTestIr {
 
       for (BeamHttpComplianceTests.HttpRequestTestCase testCase :
           BeamHttpComplianceTests.clientRequestTests(binding.cases(), protocol)) {
-        tests.add(
+        addTestLines(
+            testLines,
             clientRequestTest(
                 model, testCase, opSym, input, clientCodecMod, sp, encodeWithConfig, structNameFn));
       }
       for (BeamHttpComplianceTests.HttpRequestTestCase testCase :
           BeamHttpComplianceTests.serverRequestTests(binding.cases(), protocol)) {
-        tests.add(
+        addTestLines(
+            testLines,
             serverRequestTest(
                 model,
                 testCase,
@@ -127,18 +129,20 @@ final class ElixirComplianceTestIr {
 
       for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
           BeamHttpComplianceTests.clientResponseTests(binding.cases(), protocol)) {
-        tests.add(
+        addTestLines(
+            testLines,
             clientResponseTest(
                 model, testCase, opSym, outputShape, clientCodecMod, sp, errorCase, structNameFn));
       }
       for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
           BeamHttpComplianceTests.serverResponseTests(binding.cases(), protocol)) {
-        tests.add(
+        addTestLines(
+            testLines,
             serverResponseTest(
                 model, testCase, opSym, outputShape, serverCodecMod, sp, errorCase, structNameFn));
       }
     }
-    tests.addAll(assertionHelperFunctions());
+    List<Function> helpers = assertionHelperFunctions();
 
     return new Module(
         moduleName,
@@ -151,14 +155,21 @@ final class ElixirComplianceTestIr {
             Alias.of(clientCodecMod),
             Alias.of(serverCodecMod, "ServerCodec"),
             Alias.of(runtimeMod, "RuntimeTypes")),
+        testLines,
         List.of(),
         List.of(),
         List.of(),
-        List.of(),
-        tests);
+        helpers);
   }
 
-  static Function clientRequestTest(
+  private static void addTestLines(List<String> target, List<String> testLines) {
+    if (!target.isEmpty()) {
+      target.add("");
+    }
+    target.addAll(testLines);
+  }
+
+  static List<String> clientRequestTest(
       Model model,
       BeamHttpComplianceTests.HttpRequestTestCase testCase,
       Symbol opSym,
@@ -229,10 +240,10 @@ final class ElixirComplianceTestIr {
                       StringExpr.of(testCase.body())))));
     }
 
-    return testFunction(escapeElixir(testCase.id()), body);
+    return renderTestLines(escapeElixir(testCase.id()), body);
   }
 
-  static Function serverRequestTest(
+  static List<String> serverRequestTest(
       Model model,
       BeamHttpComplianceTests.HttpRequestTestCase testCase,
       Symbol opSym,
@@ -283,10 +294,10 @@ final class ElixirComplianceTestIr {
     body.add(MatchExpr.bind("input", decodeCall));
     body.addAll(assertMemberAsserts(model, input, testCase.params(), sp, "input", structNameFn));
 
-    return testFunction(escapeElixir(testCase.id()) + " server", body);
+    return renderTestLines(escapeElixir(testCase.id()) + " server", body);
   }
 
-  static Function clientResponseTest(
+  static List<String> clientResponseTest(
       Model model,
       BeamHttpComplianceTests.HttpResponseTestCase testCase,
       Symbol opSym,
@@ -324,10 +335,10 @@ final class ElixirComplianceTestIr {
     body.addAll(
         assertMemberAsserts(model, outputShape, testCase.params(), sp, "output", structNameFn));
 
-    return testFunction(escapeElixir(testCase.id()), body);
+    return renderTestLines(escapeElixir(testCase.id()), body);
   }
 
-  static Function serverResponseTest(
+  static List<String> serverResponseTest(
       Model model,
       BeamHttpComplianceTests.HttpResponseTestCase testCase,
       Symbol opSym,
@@ -378,7 +389,7 @@ final class ElixirComplianceTestIr {
                       StringExpr.of(testCase.body())))));
     }
 
-    return testFunction(escapeElixir(testCase.id()) + " server", body);
+    return renderTestLines(escapeElixir(testCase.id()) + " server", body);
   }
 
   static List<Expression> assertMemberAsserts(
@@ -427,15 +438,14 @@ final class ElixirComplianceTestIr {
     return helpers;
   }
 
-  private static Function testFunction(String namePattern, List<Expression> body) {
-    return new Function(
-        "test",
-        false,
-        List.of(FunctionHead.of(List.of(StringPattern.of(namePattern)))),
-        blockBody(body),
-        null,
-        null,
-        false);
+  private static List<String> renderTestLines(String name, List<Expression> body) {
+    List<String> lines = new ArrayList<>();
+    lines.add("test \"" + name + "\" do");
+    for (String line : ElixirRenderer.renderStatement(blockBody(body)).split("\n", -1)) {
+      lines.add(line.isEmpty() ? "" : "  " + line);
+    }
+    lines.add("end");
+    return lines;
   }
 
   private static Expression blockBody(List<Expression> statements) {
