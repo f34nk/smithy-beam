@@ -1,8 +1,8 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Module;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamWaiterIndex;
-import io.smithy.beam.ir.elixir.ExModule;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /** Generates a {@code <Service>Waiters} helper for {@code @waitable} operations. */
@@ -18,9 +18,8 @@ public final class ElixirWaiterEmitter {
 
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
-    ExModule module =
+    Module module =
         ElixirWaiterIr.waitersModule(ctx, service, index, ctx.symbolProvider(), ctx.model());
-    ctx.writerDelegator()
-        .useFileWriter(layout.waitersModuleFile(), writer -> writer.write("$L", module.asString()));
+    ElixirCodecEmission.writeModule(ctx, layout.waitersModuleFile(), module);
   }
 }

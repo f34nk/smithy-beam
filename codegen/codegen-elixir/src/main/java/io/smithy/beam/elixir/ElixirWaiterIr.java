@@ -1,42 +1,57 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AnonFun;
+import io.beam.ir.elixir.AnonFunClause;
+import io.beam.ir.elixir.AndGuard;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.BooleanExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.ComparisonGuard;
+import io.beam.ir.elixir.ConsListPattern;
+import io.beam.ir.elixir.DotCallExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionDoc;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.Guard;
+import io.beam.ir.elixir.IfExpr;
+import io.beam.ir.elixir.InfixExpr;
+import io.beam.ir.elixir.IntegerExpr;
+import io.beam.ir.elixir.IntegerPattern;
+import io.beam.ir.elixir.IsTypeGuard;
+import io.beam.ir.elixir.ListExpr;
+import io.beam.ir.elixir.ListPattern;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.MapPattern;
+import io.beam.ir.elixir.MapPatternEntry;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.Moduledoc;
+import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.NilExpr;
+import io.beam.ir.elixir.NilPattern;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StructExpr;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
+import io.beam.ir.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamWaiterIndex;
 import io.smithy.beam.core.BeamWaiterPaths;
-import io.smithy.beam.ir.elixir.ExAnonymousFn;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExCapturedBlock;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExConsPattern;
-import io.smithy.beam.ir.elixir.ExDoc;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExGuard;
-import io.smithy.beam.ir.elixir.ExIf;
-import io.smithy.beam.ir.elixir.ExInteger;
-import io.smithy.beam.ir.elixir.ExIntegerPattern;
-import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExListPattern;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExMapFieldPattern;
-import io.smithy.beam.ir.elixir.ExMapPattern;
-import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExModule;
-import io.smithy.beam.ir.elixir.ExModuledoc;
-import io.smithy.beam.ir.elixir.ExNil;
-import io.smithy.beam.ir.elixir.ExOp;
-import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStruct;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -46,7 +61,7 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 final class ElixirWaiterIr {
   private ElixirWaiterIr() {}
 
-  static ExModule waitersModule(
+  static Module waitersModule(
       ElixirContext ctx,
       ServiceShape service,
       BeamWaiterIndex index,
@@ -57,20 +72,24 @@ final class ElixirWaiterIr {
     String moduleName = ElixirSymbolProvider.toModuleName(layout.waitersModuleName());
     String clientMod = ElixirSymbolProvider.toModuleName(layout.clientModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-    List<ExFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (BeamWaiterIndex.WaiterBinding binding : index.bindings()) {
       functions.add(waiterFunction(index, binding, clientMod, typesMod, sp));
     }
     functions.addAll(waitUntilHelperFunctions());
-    return ExModule.module(
+    return new Module(
         moduleName,
-        List.of(
-            ExModuledoc.moduledoc("Generated waiters for " + service.getId() + " (generated).")),
+        Moduledoc.of("Generated waiters for " + service.getId() + " (generated)."),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
         List.of(),
         functions);
   }
 
-  static ExFunction waiterFunction(
+  static Function waiterFunction(
       BeamWaiterIndex index,
       BeamWaiterIndex.WaiterBinding binding,
       String clientMod,
@@ -79,363 +98,512 @@ final class ElixirWaiterIr {
     OperationShape operation = binding.operation();
     Symbol opSym = sp.toSymbol(operation);
     String fn = waitFunctionName(binding.name());
-    List<ExExpr> acceptorMaps =
+    List<Expression> acceptorMaps =
         index.acceptors(binding).stream().map(a -> acceptorMap(a, typesMod, sp)).toList();
 
-    return ExFunction.functionWithDocAndSpec(
-        "def",
+    return new Function(
         fn,
-        ExDoc.doc("Waits using the " + binding.name() + " waiter on " + operation.getId() + "."),
-        ExSpec.functionSpec(fn, "term(), map(), keyword()", "{:ok, term()} | {:error, term()}"),
+        false,
         List.of(
-            ExClause.blockClauseSingleLineHead(
+            FunctionHead.of(
                 List.of(
-                    ExVarPattern.var("client"),
-                    ExVarPattern.var("input"),
-                    ExVarPattern.var("opts")),
-                ExMatch.match(
-                    ExVarPattern.var("acceptors"),
-                    ExList.list(acceptorMaps.toArray(ExExpr[]::new))),
-                ExMatch.match(
-                    ExVarPattern.var("wait_opts"),
-                    ExCall.call(
+                    VariablePattern.of("client"),
+                    VariablePattern.of("input"),
+                    VariablePattern.of("opts")))),
+        new BlockExpr(
+            List.of(
+                MatchExpr.bind("acceptors", ListExpr.of(acceptorMaps)),
+                MatchExpr.bind(
+                    "wait_opts",
+                    RemoteCallExpr.of(
                         "Keyword",
                         "merge",
-                        ExList.list(
-                            ExTuple.tuple(
-                                ExAtom.atom("min_delay_ms"),
-                                ExInteger.integer(binding.minDelaySeconds() * 1000L)),
-                            ExTuple.tuple(
-                                ExAtom.atom("max_delay_ms"),
-                                ExInteger.integer(binding.maxDelaySeconds() * 1000L))),
-                        ExVar.var("opts"))),
-                ExCallLocal.callLocal(
+                        List.of(
+                            ListExpr.of(
+                                List.of(
+                                    TupleExpr.of(
+                                        List.of(
+                                            AtomExpr.of("min_delay_ms"),
+                                            IntegerExpr.of(binding.minDelaySeconds() * 1000L))),
+                                    TupleExpr.of(
+                                        List.of(
+                                            AtomExpr.of("max_delay_ms"),
+                                            IntegerExpr.of(binding.maxDelaySeconds() * 1000L))))),
+                            Variable.of("opts")))),
+                LocalCallExpr.of(
                     "wait_until",
-                    ExAnonymousFn.compactFn(
-                        ExClause.inlineClause(
-                            List.of(),
-                            ExCall.call(
-                                clientMod,
-                                opSym.getName(),
-                                ExVar.var("client"),
-                                ExVar.var("input")))),
-                    ExVar.var("acceptors"),
-                    ExVar.var("wait_opts")))));
+                    List.of(
+                        new AnonFun(
+                            List.of(
+                                AnonFunClause.of(
+                                    List.of(),
+                                    RemoteCallExpr.of(
+                                        clientMod,
+                                        opSym.getName(),
+                                        List.of(Variable.of("client"), Variable.of("input")))))),
+                        Variable.of("acceptors"),
+                        Variable.of("wait_opts"))))),
+        Spec.of(
+            "@spec "
+                + fn
+                + "(term(), map(), keyword()) :: {:ok, term()} | {:error, term()}"),
+        FunctionDoc.of(
+            "Waits using the " + binding.name() + " waiter on " + operation.getId() + "."),
+        false);
   }
 
-  static ExExpr acceptorMap(
+  static Expression acceptorMap(
       BeamWaiterIndex.AcceptorInfo acceptor, String typesMod, SymbolProvider sp) {
-    List<ExMapEntry> entries = new ArrayList<>();
-    entries.add(ExMapEntry.entry(ExAtom.atom("state"), ExAtom.atom(acceptor.state())));
+    List<MapEntry> entries = new ArrayList<>();
+    entries.add(MapEntry.atomKey("state", AtomExpr.of(acceptor.state())));
     if (acceptor.successExpected().isPresent()) {
       boolean expected = acceptor.successExpected().get();
-      entries.add(ExMapEntry.entry(ExAtom.atom("matcher"), ExAtom.atom("success")));
-      entries.add(
-          ExMapEntry.entry(
-              ExAtom.atom("expected"), ExCapturedBlock.capturedBlock(expected ? "true" : "false")));
+      entries.add(MapEntry.atomKey("matcher", AtomExpr.of("success")));
+      entries.add(MapEntry.atomKey("expected", BooleanExpr.of(expected)));
     } else if (acceptor.errorTypeName().isPresent()) {
       String errorType = acceptor.errorTypeName().get();
-      entries.add(ExMapEntry.entry(ExAtom.atom("matcher"), ExAtom.atom("errorType")));
+      entries.add(MapEntry.atomKey("matcher", AtomExpr.of("errorType")));
       if (acceptor.resolvedError().isPresent()) {
         String exception = sp.toSymbol(acceptor.resolvedError().get()).getName();
         entries.add(
-            ExMapEntry.entry(
-                ExAtom.atom("expected"), ExStruct.struct(typesMod + "." + exception, List.of())));
+            MapEntry.atomKey("expected", StructExpr.of(typesMod + "." + exception, List.of())));
       } else {
-        entries.add(ExMapEntry.entry(ExAtom.atom("expected"), ExString.string(errorType)));
+        entries.add(MapEntry.atomKey("expected", StringExpr.of(errorType)));
       }
     } else if (acceptor.pathMatcher().isPresent()) {
       BeamWaiterIndex.PathMatcherInfo pathMatcher = acceptor.pathMatcher().get();
-      entries.add(ExMapEntry.entry(ExAtom.atom("matcher"), ExAtom.atom(acceptor.matcherKind())));
-      entries.add(
-          ExMapEntry.entry(
-              ExAtom.atom("path"),
-              ExCapturedBlock.capturedBlock(BeamWaiterPaths.emitElixirPath(pathMatcher.path()))));
-      entries.add(
-          ExMapEntry.entry(ExAtom.atom("comparator"), ExAtom.atom(pathMatcher.comparator())));
-      entries.add(
-          ExMapEntry.entry(ExAtom.atom("expected"), ExString.string(pathMatcher.expected())));
+      entries.add(MapEntry.atomKey("matcher", AtomExpr.of(acceptor.matcherKind())));
+      entries.add(MapEntry.atomKey("path", pathExpr(pathMatcher.path())));
+      entries.add(MapEntry.atomKey("comparator", AtomExpr.of(pathMatcher.comparator())));
+      entries.add(MapEntry.atomKey("expected", StringExpr.of(pathMatcher.expected())));
     } else {
-      entries.add(ExMapEntry.entry(ExAtom.atom("matcher"), ExAtom.atom(acceptor.matcherKind())));
+      entries.add(MapEntry.atomKey("matcher", AtomExpr.of(acceptor.matcherKind())));
     }
-    return ExMap.map(entries.toArray(ExMapEntry[]::new));
+    return MapExpr.of(entries);
   }
 
-  static List<ExFunction> waitUntilHelperFunctions() {
-    return List.of(
-        waitUntilArity3(),
-        waitUntilArity5(),
-        classify(),
-        matchesAcceptor(),
-        errorTypesMatch(),
-        pathStringEquals(),
-        pathValueBinary(),
-        pathValueEmptyList(),
-        pathValueMap(),
-        pathValueStruct(),
-        pathValueFallback(),
-        stringEqualsAtomBinary(),
-        stringEqualsBinaryBinary(),
-        stringEqualsFallback());
+  static List<Function> waitUntilHelperFunctions() {
+    List<Function> functions = new ArrayList<>();
+    functions.add(waitUntilArity3());
+    functions.addAll(waitUntilArity5());
+    functions.addAll(classify());
+    functions.addAll(matchesAcceptor());
+    functions.addAll(errorTypesMatch());
+    functions.add(pathStringEquals());
+    functions.addAll(pathValue());
+    functions.addAll(stringEquals());
+    return functions;
   }
 
-  private static ExFunction waitUntilArity3() {
-    return ExFunction.defpFunction(
+  private static Function waitUntilArity3() {
+    return defp(
         "wait_until",
         List.of(
-            ExClause.blockClauseSingleLineHead(
-                List.of(
-                    ExVarPattern.var("step"),
-                    ExVarPattern.var("acceptors"),
-                    ExVarPattern.var("opts")),
-                ExMatch.match(
-                    ExVarPattern.var("max_attempts"),
-                    ExCall.call(
+            VariablePattern.of("step"),
+            VariablePattern.of("acceptors"),
+            VariablePattern.of("opts")),
+        new BlockExpr(
+            List.of(
+                MatchExpr.bind(
+                    "max_attempts",
+                    RemoteCallExpr.of(
                         "Keyword",
                         "get",
-                        ExVar.var("opts"),
-                        ExAtom.atom("max_attempts"),
-                        ExInteger.integer(25))),
-                ExMatch.match(
-                    ExVarPattern.var("min_delay"),
-                    ExCall.call(
+                        List.of(
+                            Variable.of("opts"),
+                            AtomExpr.of("max_attempts"),
+                            IntegerExpr.of(25)))),
+                MatchExpr.bind(
+                    "min_delay",
+                    RemoteCallExpr.of(
                         "Keyword",
                         "get",
-                        ExVar.var("opts"),
-                        ExAtom.atom("min_delay_ms"),
-                        ExInteger.integer(2000))),
-                ExMatch.match(
-                    ExVarPattern.var("max_delay"),
-                    ExCall.call(
+                        List.of(
+                            Variable.of("opts"),
+                            AtomExpr.of("min_delay_ms"),
+                            IntegerExpr.of(2000)))),
+                MatchExpr.bind(
+                    "max_delay",
+                    RemoteCallExpr.of(
                         "Keyword",
                         "get",
-                        ExVar.var("opts"),
-                        ExAtom.atom("max_delay_ms"),
-                        ExInteger.integer(120_000))),
-                ExCallLocal.callLocal(
+                        List.of(
+                            Variable.of("opts"),
+                            AtomExpr.of("max_delay_ms"),
+                            IntegerExpr.of(120_000)))),
+                LocalCallExpr.of(
                     "wait_until",
-                    ExVar.var("step"),
-                    ExVar.var("acceptors"),
-                    ExVar.var("max_attempts"),
-                    ExVar.var("min_delay"),
-                    ExVar.var("max_delay")))));
+                    List.of(
+                        Variable.of("step"),
+                        Variable.of("acceptors"),
+                        Variable.of("max_attempts"),
+                        Variable.of("min_delay"),
+                        Variable.of("max_delay"))))),
+        false);
   }
 
-  private static ExFunction waitUntilArity5() {
-    return ExFunction.defpFunction(
-        "wait_until",
-        List.of(
-            ExClause.inlineClause(
+  private static List<Function> waitUntilArity5() {
+    Expression pollCase =
+        new CaseExpr(
+            LocalCallExpr.of(
+                "classify", List.of(Variable.of("acceptors"), Variable.of("result"))),
+            List.of(
+                Clause.of(
+                    AtomPattern.of("success"),
+                    TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("result")))),
+                Clause.of(
+                    AtomPattern.of("failure"),
+                    TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("result")))),
+                Clause.of(
+                    AtomPattern.of("retry"),
+                    new ComparisonGuard(Variable.of("attempts"), "<=", IntegerExpr.of(1)),
+                    TupleExpr.of(
+                        List.of(AtomExpr.of("error"), AtomExpr.of("max_attempts_exceeded")))),
+                Clause.of(
+                    AtomPattern.of("retry"),
+                    new BlockExpr(
+                        List.of(
+                            RemoteCallExpr.of(
+                                "Process", "sleep", List.of(Variable.of("delay"))),
+                            MatchExpr.bind(
+                                "next_delay",
+                                RemoteCallExpr.of(
+                                    "Kernel",
+                                    "min",
+                                    List.of(
+                                        new InfixExpr(
+                                            Variable.of("delay"), "*", IntegerExpr.of(2)),
+                                        Variable.of("max_delay"))),
+                                LocalCallExpr.of(
+                                    "wait_until",
+                                    List.of(
+                                        Variable.of("step"),
+                                        Variable.of("acceptors"),
+                                        new InfixExpr(
+                                            Variable.of("attempts"), "-", IntegerExpr.of(1)),
+                                        Variable.of("next_delay"),
+                                        Variable.of("max_delay")))))))));
+    return List.of(
+        defp(
+            "wait_until",
+            List.of(
+                VariablePattern.of("_step"),
+                VariablePattern.of("_acceptors"),
+                IntegerPattern.of(0),
+                VariablePattern.of("_delay"),
+                VariablePattern.of("_max_delay")),
+            TupleExpr.of(List.of(AtomExpr.of("error"), AtomExpr.of("max_attempts_exceeded"))),
+            true),
+        defp(
+            "wait_until",
+            List.of(
+                VariablePattern.of("step"),
+                VariablePattern.of("acceptors"),
+                VariablePattern.of("attempts"),
+                VariablePattern.of("delay"),
+                VariablePattern.of("max_delay")),
+            new BlockExpr(
                 List.of(
-                    ExVarPattern.var("_step"),
-                    ExVarPattern.var("_acceptors"),
-                    ExIntegerPattern.integer(0),
-                    ExVarPattern.var("_delay"),
-                    ExVarPattern.var("_max_delay")),
-                ExTuple.tuple(ExAtom.atom("error"), ExAtom.atom("max_attempts_exceeded"))),
-            ExClause.blockClause(
-                List.of(
-                    ExVarPattern.var("step"),
-                    ExVarPattern.var("acceptors"),
-                    ExVarPattern.var("attempts"),
-                    ExVarPattern.var("delay"),
-                    ExVarPattern.var("max_delay")),
-                ExCapturedBlock.capturedBlock(
-                    """
-                    result = step.()
-                    case classify(acceptors, result) do
-                      :success -> {:ok, result}
-
-                      :failure -> {:error, result}
-
-                      :retry when attempts <= 1 -> {:error, :max_attempts_exceeded}
-
-                      :retry ->
-                        Process.sleep(delay)
-                        next_delay = min(delay * 2, max_delay)
-                        wait_until(step, acceptors, attempts - 1, next_delay, max_delay)
-                    end"""))));
+                    MatchExpr.bind(
+                        "result",
+                        new DotCallExpr(Variable.of("step"), "()", List.of()),
+                        pollCase))),
+            false));
   }
 
-  private static ExFunction classify() {
-    return ExFunction.defpFunction(
-        "classify",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExListPattern.list(), ExVarPattern.var("_result")), ExAtom.atom("retry")),
-            ExClause.blockClauseSingleLineHead(
-                List.of(
-                    ExConsPattern.consPattern(
-                        ExVarPattern.var("acceptor"), ExVarPattern.var("rest")),
-                    ExVarPattern.var("result")),
-                ExIf.ifBlock(
-                    ExCallLocal.callLocal(
-                        "matches_acceptor?", ExVar.var("acceptor"), ExVar.var("result")),
-                    ExCapturedBlock.capturedBlock("acceptor.state"),
-                    ExCallLocal.callLocal("classify", ExVar.var("rest"), ExVar.var("result"))))));
+  private static List<Function> classify() {
+    return List.of(
+        defp(
+            "classify",
+            List.of(ListPattern.of(List.of()), VariablePattern.of("_result")),
+            AtomExpr.of("retry"),
+            true),
+        defp(
+            "classify",
+            List.of(
+                ConsListPattern.of(
+                    VariablePattern.of("acceptor"), VariablePattern.of("rest")),
+                VariablePattern.of("result")),
+            new IfExpr(
+                LocalCallExpr.of(
+                    "matches_acceptor?",
+                    List.of(Variable.of("acceptor"), Variable.of("result"))),
+                RemoteCallExpr.of(
+                    "Map", "get", List.of(Variable.of("acceptor"), AtomExpr.of("state"))),
+                LocalCallExpr.of("classify", List.of(Variable.of("rest"), Variable.of("result"))),
+                false),
+            false));
   }
 
-  private static ExFunction matchesAcceptor() {
-    return ExFunction.defpFunction(
-        "matches_acceptor?",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("acceptor"), ExVarPattern.var("result")),
-                ExCapturedBlock.capturedBlock(
-                    """
-                    case {acceptor, result} do
-                      {%{matcher: :success, expected: true}, {:ok, _}} -> true
-                      {%{matcher: :success, expected: false}, {:error, _}} -> true
-                      {%{matcher: :errorType, expected: expected}, {:error, got}} ->
-                        error_types_match?(expected, got)
-                      {%{matcher: :output, path: path, comparator: :stringEquals, expected: expected}, {:ok, output}} ->
-                        path_string_equals?(path, expected, output)
-                      {%{matcher: :inputOutput, path: path, comparator: :stringEquals, expected: expected}, {:ok, output}} ->
-                        path_string_equals?(path, expected, output)
-                      _ -> false
-                    end"""))));
+  private static List<Function> matchesAcceptor() {
+    List<Function> functions = new ArrayList<>();
+    functions.add(
+        defp(
+            "matches_acceptor?",
+            List.of(
+                MapPattern.of(
+                    List.of(
+                        MapPatternEntry.of(
+                            AtomExpr.of("matcher"), AtomPattern.of("success")),
+                        MapPatternEntry.of(
+                            AtomExpr.of("expected"), VariablePattern.of("expected")))),
+                TuplePattern.of(List.of(AtomPattern.of("ok"), WildcardPattern.of()))),
+            new ComparisonGuard(Variable.of("expected"), "==", BooleanExpr.of(true)),
+            BooleanExpr.of(true),
+            true));
+    functions.add(
+        defp(
+            "matches_acceptor?",
+            List.of(
+                MapPattern.of(
+                    List.of(
+                        MapPatternEntry.of(
+                            AtomExpr.of("matcher"), AtomPattern.of("success")),
+                        MapPatternEntry.of(
+                            AtomExpr.of("expected"), VariablePattern.of("expected")))),
+                TuplePattern.of(List.of(AtomPattern.of("error"), WildcardPattern.of()))),
+            new ComparisonGuard(Variable.of("expected"), "==", BooleanExpr.of(false)),
+            BooleanExpr.of(true),
+            true));
+    functions.add(
+        defp(
+            "matches_acceptor?",
+            List.of(
+                MapPattern.of(
+                    List.of(
+                        MapPatternEntry.of(
+                            AtomExpr.of("matcher"), AtomPattern.of("errorType")),
+                        MapPatternEntry.of(
+                            AtomExpr.of("expected"), VariablePattern.of("expected")))),
+                TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("got")))),
+            LocalCallExpr.of(
+                "error_types_match?", List.of(Variable.of("expected"), Variable.of("got"))),
+            true));
+    functions.add(
+        defp(
+            "matches_acceptor?",
+            List.of(
+                MapPattern.of(
+                    List.of(
+                        MapPatternEntry.of(AtomExpr.of("matcher"), AtomPattern.of("output")),
+                        MapPatternEntry.of(AtomExpr.of("path"), VariablePattern.of("path")),
+                        MapPatternEntry.of(
+                            AtomExpr.of("comparator"), AtomPattern.of("stringEquals")),
+                        MapPatternEntry.of(
+                            AtomExpr.of("expected"), VariablePattern.of("expected")))),
+                TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("output")))),
+            LocalCallExpr.of(
+                "path_string_equals?",
+                List.of(Variable.of("path"), Variable.of("expected"), Variable.of("output"))),
+            true));
+    functions.add(
+        defp(
+            "matches_acceptor?",
+            List.of(
+                MapPattern.of(
+                    List.of(
+                        MapPatternEntry.of(
+                            AtomExpr.of("matcher"), AtomPattern.of("inputOutput")),
+                        MapPatternEntry.of(AtomExpr.of("path"), VariablePattern.of("path")),
+                        MapPatternEntry.of(
+                            AtomExpr.of("comparator"), AtomPattern.of("stringEquals")),
+                        MapPatternEntry.of(
+                            AtomExpr.of("expected"), VariablePattern.of("expected")))),
+                TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("output")))),
+            LocalCallExpr.of(
+                "path_string_equals?",
+                List.of(Variable.of("path"), Variable.of("expected"), Variable.of("output"))),
+            true));
+    functions.add(
+        defp(
+            "matches_acceptor?",
+            List.of(WildcardPattern.of(), WildcardPattern.of()),
+            BooleanExpr.of(false),
+            true));
+    return functions;
   }
 
-  private static ExFunction errorTypesMatch() {
-    return ExFunction.defpFunction(
-        "error_types_match?",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("expected"), ExVarPattern.var("_got")),
-                List.of(ExGuard.guard("is_binary", ExVar.var("expected"))),
-                ExCapturedBlock.capturedBlock("true")),
-            ExClause.inlineClause(
-                List.of(
-                    ExMapPattern.map(
-                        ExMapFieldPattern.field(
-                            ExAtom.atom("__struct__"), ExVarPattern.var("struct"))),
-                    ExMapPattern.map(
-                        ExMapFieldPattern.field(
-                            ExAtom.atom("__struct__"), ExVarPattern.var("struct")))),
-                ExCapturedBlock.capturedBlock("true")),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("expected"), ExVarPattern.var("got")),
-                ExOp.op("==", ExVar.var("expected"), ExVar.var("got")))));
+  private static List<Function> errorTypesMatch() {
+    return List.of(
+        defp(
+            "error_types_match?",
+            List.of(VariablePattern.of("expected"), VariablePattern.of("_got")),
+            IsTypeGuard.of("is_binary", "expected"),
+            BooleanExpr.of(true),
+            true),
+        defp(
+            "error_types_match?",
+            List.of(
+                MapPattern.of(
+                    List.of(
+                        MapPatternEntry.of(
+                            AtomExpr.of("__struct__"), VariablePattern.of("struct")))),
+                MapPattern.of(
+                    List.of(
+                        MapPatternEntry.of(
+                            AtomExpr.of("__struct__"), VariablePattern.of("struct"))))),
+            BooleanExpr.of(true),
+            true),
+        defp(
+            "error_types_match?",
+            List.of(VariablePattern.of("expected"), VariablePattern.of("got")),
+            new InfixExpr(Variable.of("expected"), "==", Variable.of("got")),
+            true));
   }
 
-  private static ExFunction pathStringEquals() {
-    return ExFunction.defpFunction(
+  private static Function pathStringEquals() {
+    return defp(
         "path_string_equals?",
         List.of(
-            ExClause.blockClause(
+            VariablePattern.of("path"),
+            VariablePattern.of("expected"),
+            VariablePattern.of("output")),
+        new CaseExpr(
+            LocalCallExpr.of(
+                "path_value", List.of(Variable.of("path"), Variable.of("output"))),
+            List.of(
+                Clause.of(NilPattern.of(), BooleanExpr.of(false)),
+                Clause.of(
+                    VariablePattern.of("value"),
+                    LocalCallExpr.of(
+                        "string_equals?",
+                        List.of(Variable.of("value"), Variable.of("expected")))))),
+        false);
+  }
+
+  private static List<Function> pathValue() {
+    return List.of(
+        defp(
+            "path_value",
+            List.of(VariablePattern.of("path"), VariablePattern.of("_value")),
+            IsTypeGuard.of("is_binary", "path"),
+            NilExpr.of(),
+            true),
+        defp(
+            "path_value",
+            List.of(ListPattern.of(List.of()), VariablePattern.of("value")),
+            Variable.of("value"),
+            true),
+        defp(
+            "path_value",
+            List.of(
+                ConsListPattern.of(VariablePattern.of("key"), VariablePattern.of("rest")),
+                VariablePattern.of("value")),
+            IsTypeGuard.of("is_map", "value"),
+            new CaseExpr(
+                RemoteCallExpr.of(
+                    "Map", "get", List.of(Variable.of("value"), Variable.of("key"))),
                 List.of(
-                    ExVarPattern.var("path"),
-                    ExVarPattern.var("expected"),
-                    ExVarPattern.var("output")),
-                ExCapturedBlock.capturedBlock(
-                    """
-                    case path_value(path, output) do
-                      nil -> false
-                      value -> string_equals?(value, expected)
-                    end"""))));
-  }
-
-  private static ExFunction pathValueBinary() {
-    return ExFunction.defpFunction(
-        "path_value",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("path"), ExVarPattern.var("_value")),
-                List.of(ExGuard.guard("is_binary", ExVar.var("path"))),
-                ExNil.nil())));
-  }
-
-  private static ExFunction pathValueEmptyList() {
-    return ExFunction.defpFunction(
-        "path_value",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExListPattern.list(), ExVarPattern.var("value")), ExVar.var("value"))));
-  }
-
-  private static ExFunction pathValueMap() {
-    return ExFunction.defpFunction(
-        "path_value",
-        List.of(
-            ExClause.blockClause(
+                    Clause.of(NilPattern.of(), NilExpr.of()),
+                    Clause.of(
+                        VariablePattern.of("next"),
+                        LocalCallExpr.of(
+                            "path_value",
+                            List.of(Variable.of("rest"), Variable.of("next")))))),
+            false),
+        defp(
+            "path_value",
+            List.of(
+                ConsListPattern.of(VariablePattern.of("key"), VariablePattern.of("rest")),
+                VariablePattern.of("value")),
+            IsTypeGuard.of("is_struct", "value"),
+            new CaseExpr(
+                RemoteCallExpr.of(
+                    "Map",
+                    "get",
+                    List.of(
+                        RemoteCallExpr.of(
+                            "Map", "from_struct", List.of(Variable.of("value"))),
+                        Variable.of("key"))),
                 List.of(
-                    ExConsPattern.consPattern(ExVarPattern.var("key"), ExVarPattern.var("rest")),
-                    ExVarPattern.var("value")),
-                List.of(ExGuard.guard("is_map", ExVar.var("value"))),
-                ExCapturedBlock.capturedBlock(
-                    """
-                    case Map.get(value, key) do
-                      nil -> nil
-                      next -> path_value(rest, next)
-                    end"""))));
+                    Clause.of(NilPattern.of(), NilExpr.of()),
+                    Clause.of(
+                        VariablePattern.of("next"),
+                        LocalCallExpr.of(
+                            "path_value",
+                            List.of(Variable.of("rest"), Variable.of("next")))))),
+            false),
+        defp(
+            "path_value",
+            List.of(WildcardPattern.of(), WildcardPattern.of()),
+            NilExpr.of(),
+            true));
   }
 
-  private static ExFunction pathValueStruct() {
-    return ExFunction.defpFunction(
-        "path_value",
-        List.of(
-            ExClause.blockClause(
-                List.of(
-                    ExConsPattern.consPattern(ExVarPattern.var("key"), ExVarPattern.var("rest")),
-                    ExVarPattern.var("value")),
-                List.of(ExGuard.guard("is_struct", ExVar.var("value"))),
-                ExCapturedBlock.capturedBlock(
-                    """
-                    case Map.get(Map.from_struct(value), key) do
-                      nil -> nil
-                      next -> path_value(rest, next)
-                    end"""))));
+  private static List<Function> stringEquals() {
+    return List.of(
+        defp(
+            "string_equals?",
+            List.of(VariablePattern.of("left"), VariablePattern.of("right")),
+            IsTypeGuard.of("is_atom", "left"),
+            IsTypeGuard.of("is_binary", "right"),
+            new InfixExpr(
+                RemoteCallExpr.of(
+                    "String",
+                    "upcase",
+                    List.of(
+                        RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("left"))))),
+                "==",
+                RemoteCallExpr.of("String", "upcase", List.of(Variable.of("right")))),
+            true),
+        defp(
+            "string_equals?",
+            List.of(VariablePattern.of("left"), VariablePattern.of("right")),
+            IsTypeGuard.of("is_binary", "left"),
+            IsTypeGuard.of("is_binary", "right"),
+            new InfixExpr(
+                RemoteCallExpr.of("String", "upcase", List.of(Variable.of("left"))),
+                "==",
+                RemoteCallExpr.of("String", "upcase", List.of(Variable.of("right")))),
+            true),
+        defp(
+            "string_equals?",
+            List.of(VariablePattern.of("left"), VariablePattern.of("right")),
+            new InfixExpr(Variable.of("left"), "==", Variable.of("right")),
+            true));
   }
 
-  private static ExFunction pathValueFallback() {
-    return ExFunction.defpFunction(
-        "path_value",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("_path"), ExVarPattern.var("_value")), ExNil.nil())));
-  }
-
-  private static ExFunction stringEqualsAtomBinary() {
-    return ExFunction.defpFunction(
-        "string_equals?",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("left"), ExVarPattern.var("right")),
-                List.of(
-                    ExGuard.guard("is_atom", ExVar.var("left")),
-                    ExGuard.guard("is_binary", ExVar.var("right"))),
-                ExOp.op(
-                    "==",
-                    ExCall.call(
-                        "String", "upcase", ExCall.call("Atom", "to_string", ExVar.var("left"))),
-                    ExCall.call("String", "upcase", ExVar.var("right"))))));
-  }
-
-  private static ExFunction stringEqualsBinaryBinary() {
-    return ExFunction.defpFunction(
-        "string_equals?",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("left"), ExVarPattern.var("right")),
-                List.of(
-                    ExGuard.guard("is_binary", ExVar.var("left")),
-                    ExGuard.guard("is_binary", ExVar.var("right"))),
-                ExOp.op(
-                    "==",
-                    ExCall.call("String", "upcase", ExVar.var("left")),
-                    ExCall.call("String", "upcase", ExVar.var("right"))))));
-  }
-
-  private static ExFunction stringEqualsFallback() {
-    return ExFunction.defpFunction(
-        "string_equals?",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("left"), ExVarPattern.var("right")),
-                ExOp.op("==", ExVar.var("left"), ExVar.var("right")))));
+  static Expression pathExpr(String path) {
+    if (BeamWaiterPaths.isSimpleDottedPath(path)) {
+      List<Expression> segments =
+          Arrays.stream(path.split("\\."))
+              .map(segment -> AtomExpr.of(BeamNameUtils.toSnakeCase(segment)))
+              .collect(Collectors.toList());
+      return ListExpr.of(segments);
+    }
+    return StringExpr.of(path);
   }
 
   private static String waitFunctionName(String waiterName) {
     return "wait_" + BeamNameUtils.toSnakeCase(waiterName);
   }
+
+  private static Function defp(
+      String name, List<Pattern> params, Expression body, boolean oneLiner) {
+    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, Guard guard, Expression body, boolean oneLiner) {
+    return new Function(
+        name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
+  }
+
+  private static Function defp(
+      String name,
+      List<Pattern> params,
+      Guard guard1,
+      Guard guard2,
+      Expression body,
+      boolean oneLiner) {
+    return new Function(
+        name,
+        true,
+        List.of(FunctionHead.of(params, new AndGuard(List.of(guard1, guard2)))),
+        body,
+        null,
+        null,
+        oneLiner);
+  }
+
 }
