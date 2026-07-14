@@ -1,11 +1,13 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Function;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.ir.elixir.ExAliasAttr;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExModule;
+import io.smithy.beam.ir.elixir.ExModuleEntry;
 import io.smithy.beam.ir.elixir.ExModuledoc;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,7 +56,7 @@ final class ElixirAwsJsonIr {
     String versionLabel = versionLabel(protocol);
 
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
-    List<ExFunction> functions =
+    List<ExModuleEntry> functions =
         clientCodecFunctions(
             model,
             service,
@@ -95,7 +97,7 @@ final class ElixirAwsJsonIr {
     String versionLabel = versionLabel(protocol);
 
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
-    List<ExFunction> functions =
+    List<ExModuleEntry> functions =
         serverCodecFunctions(
             model,
             service,
@@ -139,8 +141,9 @@ final class ElixirAwsJsonIr {
     return contentType;
   }
 
-  static List<ExFunction> sharedCodecHelpers(Model model, ServiceShape service, SymbolProvider sp) {
-    return ElixirRestJsonIr.sharedCodecHelpers(model, service, sp);
+  static List<ExModuleEntry> sharedCodecHelpers(Model model, ServiceShape service, SymbolProvider sp) {
+    return ElixirBeamIrBridge.renderedFunctions(
+        ElixirRestJsonIr.sharedCodecHelpers(model, service, sp));
   }
 
   static List<ExFunction> clientOperationCodecFunctions(
@@ -174,7 +177,7 @@ final class ElixirAwsJsonIr {
     return functions;
   }
 
-  static List<ExFunction> clientCodecFunctions(
+  static List<ExModuleEntry> clientCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -197,14 +200,34 @@ final class ElixirAwsJsonIr {
             targetPrefix,
             contentType,
             eventStreamModule);
+    List<Function> errorDispatchFunctions = new ArrayList<>();
     for (OperationShape op : operations) {
-      functions.add(ElixirAwsJsonOperationIr.buildErrorDispatch(model, op, sp, typesMod));
+      errorDispatchFunctions.addAll(
+          ElixirAwsJsonOperationIr.buildErrorDispatch(model, op, sp, typesMod));
     }
-    functions.addAll(sharedCodecHelpers(model, service, sp));
-    return functions;
+    return ElixirBeamIrBridge.moduleEntries(
+        functions, concat(errorDispatchFunctions, codecHelperFunctions(model, service, sp)));
   }
 
-  static List<ExFunction> serverCodecFunctions(
+  private static List<Function> concat(List<Function> left, List<Function> right) {
+    List<Function> combined = new ArrayList<>(left.size() + right.size());
+    combined.addAll(left);
+    combined.addAll(right);
+    return combined;
+  }
+
+  private static List<Function> codecHelperFunctions(
+      Model model, ServiceShape service, SymbolProvider sp) {
+    List<Function> helpers = new ArrayList<>();
+    helpers.addAll(ElixirRestJsonIr.structureHelperFunctions(model, service, sp));
+    helpers.addAll(ElixirRestJsonIr.enumHelperFunctions(model, service, sp));
+    helpers.addAll(ElixirRestJsonIr.unionHelperFunctions(model, service, sp));
+    helpers.addAll(ElixirRestJsonIr.mapHelperFunctions(model, service, sp));
+    helpers.addAll(ElixirRestJsonIr.privateCodecHelpers(model, service));
+    return helpers;
+  }
+
+  static List<ExModuleEntry> serverCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -223,8 +246,7 @@ final class ElixirAwsJsonIr {
           ElixirAwsJsonOperationIr.buildEncodeResponse(
               model, op, httpIndex, sp, typesMod, runtimeMod, contentType, eventStreamModule));
     }
-    functions.addAll(sharedCodecHelpers(model, service, sp));
-    return functions;
+    return ElixirBeamIrBridge.moduleEntries(functions, codecHelperFunctions(model, service, sp));
   }
 
   private static BeamElixirLayout layout(ElixirContext ctx, ServiceShape service) {

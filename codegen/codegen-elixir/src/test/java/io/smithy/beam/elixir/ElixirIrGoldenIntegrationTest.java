@@ -8,6 +8,7 @@ import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
+import io.beam.ir.elixir.Function;
 import io.smithy.beam.ir.elixir.ExNestedModule;
 import java.io.IOException;
 import java.net.URL;
@@ -93,9 +94,9 @@ class ElixirIrGoldenIntegrationTest {
   @Test
   void clientCodecModuleFromSmithyMatchesGolden() throws IOException {
     var module = ElixirRestJsonIr.buildClientCodecModule(clientContext(), service);
-    assertThat(module.asString())
-        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/golden/http_service_rest_json_1_client_codec.expected.ex"));
-    for (var fn : module.functions()) {
+    IrGoldenAssertions.assertGolden(
+        module, "ir/golden/http_service_rest_json_1_client_codec.expected.ex");
+    for (Function fn : module.functions()) {
       ElixirIrTestSupport.assertStructural(fn);
     }
   }

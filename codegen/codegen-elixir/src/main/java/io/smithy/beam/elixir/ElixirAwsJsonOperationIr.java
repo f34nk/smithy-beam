@@ -22,6 +22,7 @@ import io.smithy.beam.ir.elixir.ExStructPattern;
 import io.smithy.beam.ir.elixir.ExTuple;
 import io.smithy.beam.ir.elixir.ExVar;
 import io.smithy.beam.ir.elixir.ExVarPattern;
+import io.beam.ir.elixir.Function;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -254,7 +255,7 @@ final class ElixirAwsJsonOperationIr {
         List.of(ExClause.blockClause(List.of(pattern), body.toArray(ExExpr[]::new))));
   }
 
-  static ExFunction buildErrorDispatch(
+  static List<Function> buildErrorDispatch(
       Model model, OperationShape op, SymbolProvider sp, String typesMod) {
     return ElixirRestJsonOperationIr.buildErrorDispatch(model, op, sp, typesMod);
   }

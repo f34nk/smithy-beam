@@ -9,6 +9,7 @@ import io.smithy.beam.ir.elixir.ExAliasAttr;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExModule;
 import io.smithy.beam.ir.elixir.ExModuleAttribute;
+import io.smithy.beam.ir.elixir.ExModuleEntry;
 import io.smithy.beam.ir.elixir.ExModuledoc;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +44,7 @@ final class ElixirRestXmlIr {
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
     boolean encodeWithConfig = ElixirRestXmlSupport.serviceEncodesWithConfig(model, service);
-    List<ExFunction> functions =
+    List<ExModuleEntry> functions =
         clientCodecFunctions(
             model,
             service,
@@ -81,7 +82,7 @@ final class ElixirRestXmlIr {
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
-    List<ExFunction> functions =
+    List<ExModuleEntry> functions =
         serverCodecFunctions(
             model,
             service,
@@ -112,16 +113,14 @@ final class ElixirRestXmlIr {
     ElixirCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service), module);
   }
 
-  static List<ExFunction> enumHelperFunctions(
+  static List<Function> enumHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
-    List<ExFunction> functions = new ArrayList<>();
-    @SuppressWarnings("unused")
-    List<Function> enumHelpers = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (EnumShape enumShape : ElixirRestJsonSupport.reachableEnumShapes(model, service)) {
-      enumHelpers.addAll(ElixirEnumHelperIr.enumDecodeEncode(enumShape, sp));
+      functions.addAll(ElixirEnumHelperIr.enumDecodeEncode(enumShape, sp));
     }
     for (IntEnumShape intEnumShape : ElixirRestJsonSupport.reachableIntEnumShapes(model, service)) {
-      enumHelpers.addAll(ElixirEnumHelperIr.intEnumDecodeEncode(intEnumShape, sp));
+      functions.addAll(ElixirEnumHelperIr.intEnumDecodeEncode(intEnumShape, sp));
     }
     return functions;
   }
@@ -138,11 +137,19 @@ final class ElixirRestXmlIr {
     return functions;
   }
 
+  static List<Function> xmlHelperFunctions(Optional<String> serviceNamespace) {
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
+    functions.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
+    functions.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
+    return functions;
+  }
+
   static boolean serviceEncodesWithConfig(Model model, ServiceShape service) {
     return ElixirRestXmlSupport.serviceEncodesWithConfig(model, service);
   }
 
-  static List<ExFunction> clientCodecFunctions(
+  static List<ExModuleEntry> clientCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -152,35 +159,31 @@ final class ElixirRestXmlIr {
       String runtimeMod,
       Optional<String> serviceNamespace,
       boolean encodeWithConfig) {
-    List<ExFunction> functions = new ArrayList<>();
-    @SuppressWarnings("unused")
-    List<Function> xmlHelpers = new ArrayList<>();
-    xmlHelpers.addAll(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
+    List<ExFunction> operationFunctions = new ArrayList<>();
     for (OperationShape op : operations) {
-      functions.add(
+      operationFunctions.add(
           ElixirRestXmlOperationIr.buildEncodeRequest(
               model, service, op, httpIndex, sp, typesMod, runtimeMod, encodeWithConfig));
       ExFunction decodeResponse =
           ElixirRestXmlOperationIr.buildDecodeResponse(model, op, httpIndex, sp, typesMod);
-      functions.add(decodeResponse);
+      operationFunctions.add(decodeResponse);
       ExFunction errorDispatch =
           ElixirRestXmlOperationIr.buildErrorDispatch(model, op, sp, typesMod);
       if (errorDispatch != null) {
-        functions.add(errorDispatch);
+        operationFunctions.add(errorDispatch);
       }
     }
-    functions.addAll(enumHelperFunctions(model, service, sp));
-    xmlHelpers.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
-    xmlHelpers.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
-    @SuppressWarnings("unused")
-    List<Function> sharedHelpers = sharedClientCodecHelpers();
+    List<Function> helperFunctions = new ArrayList<>();
+    helperFunctions.addAll(enumHelperFunctions(model, service, sp));
+    helperFunctions.addAll(xmlHelperFunctions(serviceNamespace));
+    helperFunctions.addAll(sharedClientCodecHelpers());
     if (encodeWithConfig) {
-      functions.addAll(ElixirHostLabelIr.buildHostFunctions(model, service, sp));
+      helperFunctions.addAll(ElixirHostLabelIr.buildHostFunctions(model, service, sp));
     }
-    return functions;
+    return ElixirBeamIrBridge.moduleEntries(operationFunctions, helperFunctions);
   }
 
-  static List<ExFunction> serverCodecFunctions(
+  static List<ExModuleEntry> serverCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -189,21 +192,25 @@ final class ElixirRestXmlIr {
       String typesMod,
       String runtimeMod,
       Optional<String> serviceNamespace) {
-    List<ExFunction> functions = new ArrayList<>();
-    @SuppressWarnings("unused")
-    List<Function> xmlHelpers = new ArrayList<>();
-    xmlHelpers.addAll(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
+    List<ExFunction> operationFunctions = new ArrayList<>();
     for (OperationShape op : operations) {
-      functions.add(
+      operationFunctions.add(
           ElixirRestXmlOperationIr.buildDecodeRequest(model, op, httpIndex, sp, typesMod));
-      functions.add(
+      operationFunctions.add(
           ElixirRestXmlOperationIr.buildEncodeResponse(
               model, op, httpIndex, sp, typesMod, runtimeMod));
     }
-    functions.addAll(enumHelperFunctions(model, service, sp));
-    xmlHelpers.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
-    xmlHelpers.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
-    return functions;
+    List<Function> helperFunctions = new ArrayList<>();
+    helperFunctions.addAll(enumHelperFunctions(model, service, sp));
+    helperFunctions.addAll(xmlHelperFunctions(serviceNamespace));
+    return ElixirBeamIrBridge.moduleEntries(operationFunctions, helperFunctions);
+  }
+
+  private static List<ExFunction> concat(List<ExFunction> left, List<ExFunction> right) {
+    List<ExFunction> combined = new ArrayList<>(left.size() + right.size());
+    combined.addAll(left);
+    combined.addAll(right);
+    return combined;
   }
 
   private static BeamElixirLayout layout(ElixirContext ctx, ServiceShape service) {

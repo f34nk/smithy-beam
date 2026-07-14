@@ -1,20 +1,22 @@
 package io.smithy.beam.elixir;
 
-import io.smithy.beam.core.BeamHostLabelIndex;
-import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExExprBlock;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExOp;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStructFieldPattern;
-import io.smithy.beam.ir.elixir.ExStructPattern;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.DotCallExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.InfixExpr;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StructPattern;
+import io.beam.ir.elixir.StructPatternField;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,9 +33,10 @@ import software.amazon.smithy.model.traits.EndpointTrait;
 final class ElixirHostLabelIr {
   private ElixirHostLabelIr() {}
 
-  static List<ExFunction> buildHostFunctions(Model model, ServiceShape service, SymbolProvider sp) {
-    List<ExFunction> functions = new ArrayList<>();
-    BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
+  static List<Function> buildHostFunctions(Model model, ServiceShape service, SymbolProvider sp) {
+    List<Function> functions = new ArrayList<>();
+    io.smithy.beam.core.BeamHostLabelIndex hostLabelIndex =
+        io.smithy.beam.core.BeamHostLabelIndex.of(model);
     for (OperationShape op : ElixirTopDown.containedOperationsSorted(model, service)) {
       List<MemberShape> hostLabels = hostLabelIndex.hostLabelMembers(op);
       if (hostLabels.isEmpty() || !op.hasTrait(EndpointTrait.class)) {
@@ -44,72 +47,87 @@ final class ElixirHostLabelIr {
     return functions;
   }
 
-  private static ExFunction buildHostFunction(
+  private static Function buildHostFunction(
       Model model, OperationShape op, List<MemberShape> hostLabels, SymbolProvider sp) {
     StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
     String inputStruct = sp.toSymbol(input).getName();
     SmithyPattern hostPrefix = op.expectTrait(EndpointTrait.class).getHostPrefix();
 
-    List<ExStructFieldPattern> fields = new ArrayList<>();
+    List<StructPatternField> fields = new ArrayList<>();
     for (MemberShape member : hostLabels) {
       String field = fieldName(sp, member);
-      fields.add(ExStructFieldPattern.fieldPattern(field, ExVarPattern.var(field)));
+      fields.add(StructPatternField.of(field, VariablePattern.of(field)));
     }
 
-    io.smithy.beam.ir.elixir.ExExpr prefixExpr =
-        buildHostPrefixExpression(hostPrefix, hostLabels, sp);
+    Expression prefixExpr = buildHostPrefixExpression(hostPrefix, hostLabels, sp);
 
-    return ExFunction.defpFunction(
+    return new Function(
         "build_host",
+        true,
         List.of(
-            ExClause.blockClause(
+            FunctionHead.of(
                 List.of(
-                    ExStructPattern.struct("Types." + inputStruct, fields),
-                    ExVarPattern.var("config")),
-                ExExprBlock.block(
-                    ExMatch.match(
-                        ExVarPattern.var("base_url"),
-                        ExCall.call(
-                            "Map",
-                            "get",
-                            ExVar.var("config"),
-                            ExAtom.atom("base_url"),
-                            ExString.string(""))),
-                    ExMatch.match(
-                        ExTuplePattern.tuple(
-                            ExVarPattern.var("_scheme"), ExVarPattern.var("authority")),
-                        ExCall.call("Utils", "split_base_url", ExVar.var("base_url"))),
-                    ExMatch.match(ExVarPattern.var("prefix"), prefixExpr),
-                    ExOp.op("<>", ExVar.var("prefix"), ExVar.var("authority"))))));
+                    StructPattern.of("Types." + inputStruct, fields),
+                    VariablePattern.of("config")))),
+        new BlockExpr(
+            List.of(
+                MatchExpr.bind(
+                    "base_url",
+                    RemoteCallExpr.of(
+                        "Map",
+                        "get",
+                        List.of(
+                            Variable.of("config"),
+                            AtomExpr.of("base_url"),
+                            StringExpr.of("")))),
+                MatchExpr.bind(
+                    TuplePattern.of(
+                        List.of(
+                            VariablePattern.of("_scheme"),
+                            VariablePattern.of("authority"))),
+                    RemoteCallExpr.of(
+                        "Utils", "split_base_url", List.of(Variable.of("base_url")))),
+                MatchExpr.bind("prefix", prefixExpr),
+                new InfixExpr(Variable.of("prefix"), "<>", Variable.of("authority")))),
+        null,
+        null,
+        false);
   }
 
-  private static io.smithy.beam.ir.elixir.ExExpr buildHostPrefixExpression(
+  private static Expression buildHostPrefixExpression(
       SmithyPattern hostPrefix, List<MemberShape> hostLabels, SymbolProvider sp) {
     if (hostPrefix.getSegments().isEmpty()) {
-      return ExString.string("");
+      return StringExpr.of("");
     }
     Map<String, String> labelFields = new HashMap<>();
     for (MemberShape member : hostLabels) {
       labelFields.put(member.getMemberName(), fieldName(sp, member));
     }
-    io.smithy.beam.ir.elixir.ExExpr expr = null;
+    Expression expr = null;
     List<SmithyPattern.Segment> segments = hostPrefix.getSegments();
     for (SmithyPattern.Segment segment : segments) {
-      io.smithy.beam.ir.elixir.ExExpr part;
+      Expression part;
       if (segment.isLabel()) {
         String field =
             labelFields.getOrDefault(
-                segment.getContent(), BeamNameUtils.toSnakeCase(segment.getContent()));
-        part = ExCall.call("URI", "encode", ExCall.call("Kernel", "to_string", ExVar.var(field)));
+                segment.getContent(),
+                io.smithy.beam.core.BeamNameUtils.toSnakeCase(segment.getContent()));
+        part =
+            RemoteCallExpr.of(
+                "URI",
+                "encode",
+                List.of(
+                    RemoteCallExpr.of(
+                        "Kernel", "to_string", List.of(Variable.of(field)))));
       } else {
-        part = ExString.string(segment.getContent());
+        part = StringExpr.of(segment.getContent());
       }
-      expr = expr == null ? part : ExOp.op("<>", expr, part);
+      expr = expr == null ? part : new InfixExpr(expr, "<>", part);
     }
     return expr;
   }
 
   private static String fieldName(SymbolProvider sp, MemberShape member) {
-    return BeamNameUtils.toSnakeCase(member.getMemberName());
+    return io.smithy.beam.core.BeamNameUtils.toSnakeCase(member.getMemberName());
   }
 }

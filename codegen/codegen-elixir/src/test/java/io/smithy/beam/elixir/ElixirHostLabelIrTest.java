@@ -2,10 +2,11 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.elixir.ElixirRenderer;
+import io.beam.ir.elixir.Function;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.elixir.ExFunction;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -36,10 +37,10 @@ class ElixirHostLabelIrTest {
             layout.clientModuleFile(),
             ElixirSymbolProvider.toModuleName(layout.clientModuleName()),
             BeamCodegenKind.CLIENT);
-    List<ExFunction> functions = ElixirHostLabelIr.buildHostFunctions(model, service, sp);
+    List<Function> functions = ElixirHostLabelIr.buildHostFunctions(model, service, sp);
     assertThat(functions).hasSize(1);
     ElixirIrTestSupport.assertStructural(functions.get(0));
-    assertThat(functions.get(0).asString())
+    assertThat(ElixirRenderer.renderFunction(functions.get(0)))
         .isEqualTo(readExpectedString("ir/host_label_helpers.expected.ex"));
   }
 

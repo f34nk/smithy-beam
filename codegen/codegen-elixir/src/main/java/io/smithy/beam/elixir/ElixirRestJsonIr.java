@@ -1,11 +1,10 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Alias;
 import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Moduledoc;
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.ir.elixir.ExAliasAttr;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModule;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -33,7 +32,7 @@ final class ElixirRestJsonIr {
     return layout(ctx, service).serverCodecModuleName(ctx.resolvedProtocolTraitId()) + ".ex";
   }
 
-  static ExModule buildClientCodecModule(ElixirContext ctx, ServiceShape service) {
+  static Module buildClientCodecModule(ElixirContext ctx, ServiceShape service) {
     Model model = ctx.model();
     ShapeId protocol = ctx.resolvedProtocolTraitId();
     BeamElixirLayout layout = layout(ctx, service);
@@ -45,7 +44,7 @@ final class ElixirRestJsonIr {
     String eventStreamModule = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
     boolean encodeWithConfig = ElixirRestJsonSupport.serviceHasHostLabelOperations(model, service);
-    List<ExFunction> functions =
+    List<Function> functions =
         clientCodecFunctions(
             model,
             service,
@@ -57,17 +56,21 @@ final class ElixirRestJsonIr {
             eventStreamModule,
             encodeWithConfig);
 
-    return ExModule.module(
+    return new Module(
         moduleName,
+        Moduledoc.of(
+            "REST JSON 1 codecs for " + service.getId() + " (generated). Do not edit."),
+        List.of(),
         List.of(
-            ExModuledoc.moduledoc(
-                "REST JSON 1 codecs for " + service.getId() + " (generated). Do not edit.")),
-        List.of(
-            ExAliasAttr.alias(runtimeMod, "RuntimeTypes"), ExAliasAttr.alias(typesMod, "Types")),
+            Alias.of(runtimeMod, "RuntimeTypes"),
+            Alias.of(typesMod, "Types")),
+        List.of(),
+        List.of(),
+        List.of(),
         functions);
   }
 
-  static ExModule buildServerCodecModule(ElixirContext ctx, ServiceShape service) {
+  static Module buildServerCodecModule(ElixirContext ctx, ServiceShape service) {
     Model model = ctx.model();
     ShapeId protocol = ctx.resolvedProtocolTraitId();
     BeamElixirLayout layout = layout(ctx, service);
@@ -78,82 +81,76 @@ final class ElixirRestJsonIr {
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     String eventStreamModule = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
-    List<ExFunction> functions =
+    List<Function> functions =
         serverCodecFunctions(
             model, service, operations, httpIndex, sp, typesMod, runtimeMod, eventStreamModule);
 
-    return ExModule.module(
+    return new Module(
         moduleName,
+        Moduledoc.of(
+            "Server REST JSON 1 codecs for " + service.getId() + " (generated). Do not edit."),
+        List.of(),
         List.of(
-            ExModuledoc.moduledoc(
-                "Server REST JSON 1 codecs for " + service.getId() + " (generated). Do not edit.")),
-        List.of(
-            ExAliasAttr.alias(runtimeMod, "RuntimeTypes"), ExAliasAttr.alias(typesMod, "Types")),
+            Alias.of(runtimeMod, "RuntimeTypes"),
+            Alias.of(typesMod, "Types")),
+        List.of(),
+        List.of(),
+        List.of(),
         functions);
   }
 
   static void emitClientCodecModule(ElixirContext ctx, ServiceShape service) {
-    ExModule module = buildClientCodecModule(ctx, service);
-    ElixirCodecEmission.writeModule(ctx, clientCodecFileName(ctx, service), module);
+    ElixirCodecEmission.writeModule(ctx, clientCodecFileName(ctx, service), buildClientCodecModule(ctx, service));
   }
 
   static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
-    ExModule module = buildServerCodecModule(ctx, service);
-    ElixirCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service), module);
+    ElixirCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service), buildServerCodecModule(ctx, service));
   }
 
-  static List<ExFunction> enumHelperFunctions(
+  static List<Function> enumHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
-    List<ExFunction> functions = new ArrayList<>();
-    @SuppressWarnings("unused")
-    List<Function> enumHelpers = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (EnumShape enumShape : ElixirRestJsonSupport.reachableEnumShapes(model, service)) {
-      enumHelpers.addAll(ElixirEnumHelperIr.enumDecodeEncode(enumShape, sp));
+      functions.addAll(ElixirEnumHelperIr.enumDecodeEncode(enumShape, sp));
     }
     for (IntEnumShape intEnumShape : ElixirRestJsonSupport.reachableIntEnumShapes(model, service)) {
-      enumHelpers.addAll(ElixirEnumHelperIr.intEnumDecodeEncode(intEnumShape, sp));
+      functions.addAll(ElixirEnumHelperIr.intEnumDecodeEncode(intEnumShape, sp));
     }
     return functions;
   }
 
-  static List<ExFunction> structureHelperFunctions(
+  static List<Function> structureHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
-    List<ExFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     Set<StructureShape> structures = new LinkedHashSet<>();
     Set<StructureShape> listElementStructures = new LinkedHashSet<>();
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     ElixirRestJsonSupport.collectStructureHelperTargets(
         model, service, httpIndex, structures, listElementStructures);
-    @SuppressWarnings("unused")
-    List<Function> structureHelpers = new ArrayList<>();
     for (StructureShape structure : structures) {
-      structureHelpers.addAll(
+      functions.addAll(
           ElixirStructureHelperIr.structureDecodeEncode(model, httpIndex, structure, sp));
       if (listElementStructures.contains(structure)) {
-        structureHelpers.addAll(ElixirStructureHelperIr.structureListDecodeEncode(structure));
+        functions.addAll(ElixirStructureHelperIr.structureListDecodeEncode(structure));
       }
     }
     return functions;
   }
 
-  static List<ExFunction> unionHelperFunctions(
+  static List<Function> unionHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
-    List<ExFunction> functions = new ArrayList<>();
-    @SuppressWarnings("unused")
-    List<Function> unionHelpers = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (UnionShape union : ElixirRestJsonSupport.reachableUnionShapes(model, service)) {
-      unionHelpers.addAll(ElixirUnionHelperIr.unionDecodeEncode(union, sp));
+      functions.addAll(ElixirUnionHelperIr.unionDecodeEncode(union, sp));
     }
     return functions;
   }
 
-  static List<ExFunction> mapHelperFunctions(Model model, ServiceShape service, SymbolProvider sp) {
-    List<ExFunction> functions = new ArrayList<>();
+  static List<Function> mapHelperFunctions(Model model, ServiceShape service, SymbolProvider sp) {
+    List<Function> functions = new ArrayList<>();
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-    @SuppressWarnings("unused")
-    List<Function> mapHelpers = new ArrayList<>();
     for (MapShape map : ElixirRestJsonSupport.reachableTypedMapShapes(model, service)) {
-      mapHelpers.addAll(ElixirMapHelperIr.mapDecodeEncode(model, httpIndex, map, sp));
+      functions.addAll(ElixirMapHelperIr.mapDecodeEncode(model, httpIndex, map, sp));
     }
     return functions;
   }
@@ -190,7 +187,17 @@ final class ElixirRestJsonIr {
     return functions;
   }
 
-  static List<ExFunction> clientCodecFunctions(
+  static List<Function> codecHelperFunctions(Model model, ServiceShape service, SymbolProvider sp) {
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(structureHelperFunctions(model, service, sp));
+    functions.addAll(enumHelperFunctions(model, service, sp));
+    functions.addAll(unionHelperFunctions(model, service, sp));
+    functions.addAll(mapHelperFunctions(model, service, sp));
+    functions.addAll(privateCodecHelpers(model, service));
+    return functions;
+  }
+
+  static List<Function> clientCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -200,9 +207,9 @@ final class ElixirRestJsonIr {
       String runtimeMod,
       String eventStreamModule,
       boolean encodeWithConfig) {
-    List<ExFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (OperationShape op : operations) {
-      functions.add(
+      functions.addAll(
           ElixirRestJsonOperationIr.buildEncodeRequest(
               model,
               service,
@@ -213,29 +220,24 @@ final class ElixirRestJsonIr {
               runtimeMod,
               encodeWithConfig,
               eventStreamModule));
-      functions.add(
+      functions.addAll(
           ElixirRestJsonOperationIr.buildDecodeRequest(
               model, op, httpIndex, sp, typesMod, runtimeMod, eventStreamModule));
-      functions.add(
+      functions.addAll(
           ElixirRestJsonOperationIr.buildDecodeResponse(
               model, service, op, httpIndex, sp, typesMod, runtimeMod));
     }
     for (OperationShape op : operations) {
-      functions.add(ElixirRestJsonOperationIr.buildErrorDispatch(model, op, sp, typesMod));
+      functions.addAll(ElixirRestJsonOperationIr.buildErrorDispatch(model, op, sp, typesMod));
     }
-    functions.addAll(structureHelperFunctions(model, service, sp));
-    functions.addAll(enumHelperFunctions(model, service, sp));
-    functions.addAll(unionHelperFunctions(model, service, sp));
-    functions.addAll(mapHelperFunctions(model, service, sp));
-    @SuppressWarnings("unused")
-    List<Function> privateHelpers = privateCodecHelpers(model, service);
     if (encodeWithConfig) {
       functions.addAll(ElixirHostLabelIr.buildHostFunctions(model, service, sp));
     }
+    functions.addAll(codecHelperFunctions(model, service, sp));
     return functions;
   }
 
-  static List<ExFunction> serverCodecFunctions(
+  static List<Function> serverCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -244,40 +246,28 @@ final class ElixirRestJsonIr {
       String typesMod,
       String runtimeMod,
       String eventStreamModule) {
-    List<ExFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     Set<ShapeId> emittedErrorEncoders = new LinkedHashSet<>();
     for (OperationShape op : operations) {
-      functions.add(
+      functions.addAll(
           ElixirRestJsonOperationIr.buildDecodeRequest(
               model, op, httpIndex, sp, typesMod, runtimeMod, eventStreamModule));
-      functions.add(
+      functions.addAll(
           ElixirRestJsonOperationIr.buildEncodeResponse(
               model, op, httpIndex, sp, typesMod, runtimeMod));
       for (ShapeId errorId : op.getErrors()) {
         if (emittedErrorEncoders.add(errorId)) {
-          functions.add(
+          functions.addAll(
               ElixirRestJsonOperationIr.buildErrorResponseEncoder(model, errorId, sp, typesMod));
         }
       }
     }
-    functions.addAll(structureHelperFunctions(model, service, sp));
-    functions.addAll(enumHelperFunctions(model, service, sp));
-    functions.addAll(unionHelperFunctions(model, service, sp));
-    functions.addAll(mapHelperFunctions(model, service, sp));
-    @SuppressWarnings("unused")
-    List<Function> privateHelpers = privateCodecHelpers(model, service);
+    functions.addAll(codecHelperFunctions(model, service, sp));
     return functions;
   }
 
-  static List<ExFunction> sharedCodecHelpers(Model model, ServiceShape service, SymbolProvider sp) {
-    List<ExFunction> functions = new ArrayList<>();
-    functions.addAll(structureHelperFunctions(model, service, sp));
-    functions.addAll(enumHelperFunctions(model, service, sp));
-    functions.addAll(unionHelperFunctions(model, service, sp));
-    functions.addAll(mapHelperFunctions(model, service, sp));
-    @SuppressWarnings("unused")
-    List<Function> privateHelpers = privateCodecHelpers(model, service);
-    return functions;
+  static List<Function> sharedCodecHelpers(Model model, ServiceShape service, SymbolProvider sp) {
+    return codecHelperFunctions(model, service, sp);
   }
 
   private static BeamElixirLayout layout(ElixirContext ctx, ServiceShape service) {
