@@ -18,8 +18,8 @@ import io.smithy.beam.core.BeamSettings;
 import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExClause;
 import io.smithy.beam.ir.elixir.ExDoc;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExExprBlock;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.Expression;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExSpec;
 import io.smithy.beam.ir.elixir.ExTuple;
@@ -318,7 +318,7 @@ final class ElixirClientDirectedCodegen
                   ExTuple.tuple(ExAtom.atom("error"), ExAtom.atom("not_implemented")))));
     }
 
-    List<ExExpr> body =
+    List<Expression> body =
         ElixirClientDispatchIr.operationBodyExprs(
             ctx,
             op,
@@ -327,6 +327,7 @@ final class ElixirClientDirectedCodegen
             clientModule,
             false,
             ElixirClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
+    Expression block = body.size() == 1 ? body.get(0) : new BlockExpr(body);
     return ExFunction.functionWithDocAndSpec(
         "def",
         opSym.getName(),
@@ -335,7 +336,7 @@ final class ElixirClientDirectedCodegen
         List.of(
             ExClause.blockClause(
                 List.of(ExVarPattern.var("config"), ExVarPattern.var("input")),
-                ExExprBlock.block(body.toArray(ExExpr[]::new)))));
+                ElixirBeamIrBridge.statement(block))));
   }
 
   @Override

@@ -2,16 +2,16 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.RemoteCallExpr;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCase;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExMatch;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -214,7 +214,7 @@ class ElixirClientDispatchIrTest {
     Model model = httpModel();
     OperationShape op =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
-    List<ExExpr> body =
+    List<Expression> body =
         ElixirClientDispatchIr.operationBodyExprs(
             testContext(model, HTTP_SERVICE),
             op,
@@ -233,7 +233,7 @@ class ElixirClientDispatchIrTest {
     Model model = httpModel();
     OperationShape op =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
-    List<ExExpr> body =
+    List<Expression> body =
         ElixirClientDispatchIr.operationBodyExprs(
             testContext(model, HTTP_SERVICE),
             op,
@@ -242,9 +242,9 @@ class ElixirClientDispatchIrTest {
             "HttpServiceClient",
             false,
             ElixirClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
-    assertThat(body.get(0)).isInstanceOf(ExMatch.class);
-    assertThat(body.get(body.size() - 1)).isInstanceOf(ExCall.class);
-    assertThat(((ExCall) body.get(body.size() - 1)).function()).isEqualTo("with_retry");
+    assertThat(body.get(0)).isInstanceOf(MatchExpr.class);
+    assertThat(body.get(body.size() - 1)).isInstanceOf(RemoteCallExpr.class);
+    assertThat(((RemoteCallExpr) body.get(body.size() - 1)).function()).isEqualTo("with_retry");
     assertThat(ElixirClientDispatchIr.renderBody(body))
         .isEqualTo(readExpectedString("ir/client_dispatch_get_name_retry.expected.ex"));
   }
@@ -254,7 +254,7 @@ class ElixirClientDispatchIrTest {
     Model model = sigv4HttpModel();
     OperationShape op =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
-    List<ExExpr> body =
+    List<Expression> body =
         ElixirClientDispatchIr.operationBodyExprs(
             testContext(model, HTTP_SERVICE),
             op,
@@ -274,7 +274,7 @@ class ElixirClientDispatchIrTest {
     OperationShape op =
         model.expectShape(
             ShapeId.from("smithy.beam.test.paginated#ListWidgets"), OperationShape.class);
-    List<ExExpr> body =
+    List<Expression> body =
         ElixirClientDispatchIr.operationBodyExprs(
             testContext(model, PAGINATED_SERVICE),
             op,
@@ -288,12 +288,10 @@ class ElixirClientDispatchIrTest {
         .isEqualTo(readExpectedString("ir/client_dispatch_list_widgets_page.expected.ex"));
   }
 
-  private static void assertStructural(List<ExExpr> body) {
+  private static void assertStructural(List<Expression> body) {
     assertThat(body).isNotEmpty();
-    assertThat(body.get(0)).isInstanceOf(ExMatch.class);
-    assertThat(body.get(body.size() - 1)).isInstanceOf(ExExpr.class);
-    ExExpr dispatch = body.get(body.size() - 1);
-    assertThat(dispatch).isInstanceOf(ExCase.class);
+    assertThat(body.get(0)).isInstanceOf(MatchExpr.class);
+    assertThat(body.get(body.size() - 1)).isInstanceOf(CaseExpr.class);
   }
 
   private static String readExpectedString(String resourcePath) throws IOException {

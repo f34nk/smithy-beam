@@ -1,26 +1,26 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AnonFun;
+import io.beam.ir.elixir.AnonFunClause;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.ir.elixir.ExAnonymousFn;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExCapturedBlock;
-import io.smithy.beam.ir.elixir.ExCase;
-import io.smithy.beam.ir.elixir.ExCaseBranch;
 import io.smithy.beam.ir.elixir.ExClause;
 import io.smithy.beam.ir.elixir.ExDoc;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExExprBlock;
 import io.smithy.beam.ir.elixir.ExFunction;
 import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExMatch;
 import io.smithy.beam.ir.elixir.ExPattern;
 import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
 import io.smithy.beam.ir.elixir.ExVar;
 import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
@@ -64,7 +64,7 @@ final class ElixirClientPaginationIr {
                     ExCallLocal.callLocal(
                         opName, ExVar.var("config"), ExVar.var("input"), ExList.list()))));
 
-    List<ExExpr> pageBody =
+    List<Expression> pageBody =
         ElixirClientDispatchIr.operationBodyExprs(
             ctx,
             op,
@@ -92,7 +92,7 @@ final class ElixirClientPaginationIr {
       OperationShape op,
       boolean wrapWithRetry,
       String clientModule,
-      List<ExExpr> pageBody,
+      List<Expression> pageBody,
       SymbolProvider sp,
       String opName) {
     List<ExPattern> patterns =
@@ -100,65 +100,59 @@ final class ElixirClientPaginationIr {
     if (wrapWithRetry) {
       return ExClause.blockClause(
           patterns,
-          ExExprBlock.block(
-              retryWrappedPageBody(ctx, service, op, clientModule, pageBody, sp, opName)
-                  .toArray(ExExpr[]::new)));
+          ElixirBeamIrBridge.statement(
+              blockExpr(
+                  retryWrappedPageBody(ctx, service, op, clientModule, pageBody, sp, opName))));
     }
-    return ExClause.blockClause(patterns, ExExprBlock.block(pageBody.toArray(ExExpr[]::new)));
+    return ExClause.blockClause(
+        patterns, ElixirBeamIrBridge.statement(blockExpr(pageBody)));
   }
 
-  private static List<ExExpr> retryWrappedPageBody(
+  private static Expression blockExpr(List<Expression> exprs) {
+    return exprs.size() == 1 ? exprs.get(0) : new BlockExpr(exprs);
+  }
+
+  private static List<Expression> retryWrappedPageBody(
       ElixirContext ctx,
       ServiceShape service,
       OperationShape op,
       String clientModule,
-      List<ExExpr> pageBody,
+      List<Expression> pageBody,
       SymbolProvider sp,
       String opName) {
     PaginationInfo pi = BeamClientPaginationSupport.requirePaginationInfo(ctx.model(), service, op);
     StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
     String inputToken = ElixirClientDispatchOperationIr.fieldName(sp, pi.getInputTokenMember());
-    ExExpr outputTokenExpr =
+    Expression outputTokenExpr =
         ElixirClientDispatchOperationIr.buildFieldAccessExpr(
             "output", output, pi.getOutputTokenMemberPath(), ctx.model(), sp);
     boolean hasItems = BeamClientPaginationSupport.hasItemsMember(pi);
-    ExExpr itemsExpr =
+    Expression itemsExpr =
         hasItems
             ? ElixirClientDispatchOperationIr.buildItemsAccessExpr(
                 "output", output, pi.getItemsMemberPath(), ctx.model(), sp)
             : null;
 
-    List<ExExpr> body = new ArrayList<>();
-    body.add(
-        ExMatch.match(
-            ExVarPattern.var("retry_opts"),
-            ExCall.call("Map", "get", ExVar.var("config"), ExAtom.atom("retry"), ExList.list())));
-    ExCase retryCase =
-        ExCase.caseExpr(
-            ExCall.call(
-                "RuntimeHttp",
-                "with_retry",
-                ExAnonymousFn.fn(
-                    ExClause.blockClause(
-                        List.of(), ExExprBlock.block(pageBody.toArray(ExExpr[]::new)))),
-                ExCall.call(
-                    "Keyword",
-                    "merge",
-                    ExList.list(
-                        ExTuple.tuple(
-                            ExAtom.atom("should_retry"),
-                            ExCapturedBlock.capturedBlock(
-                                "&" + clientModule + ".should_retry?/1"))),
-                    ExVar.var("retry_opts"))),
-            ExCaseBranch.branch(
-                ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("output")),
-                ExExprBlock.block(
-                    ElixirClientDispatchOperationIr.buildAccumulationAndRecursion(
-                            opName, hasItems, itemsExpr, outputTokenExpr, inputToken)
-                        .toArray(ExExpr[]::new))),
-            ExCaseBranch.branch(
-                ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
-                ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason"))));
+    Expression pageFun =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(),
+                    pageBody.size() == 1 ? pageBody.get(0) : new BlockExpr(pageBody))));
+    Expression retryCase =
+        new CaseExpr(
+            ElixirClientDispatchOperationIr.withRetryCall(clientModule, pageFun),
+            List.of(
+                Clause.of(
+                    TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("output"))),
+                    new BlockExpr(
+                        ElixirClientDispatchOperationIr.buildAccumulationAndRecursion(
+                            opName, hasItems, itemsExpr, outputTokenExpr, inputToken))),
+                Clause.of(
+                    TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("reason"))),
+                    TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("reason"))))));
+    List<Expression> body = new ArrayList<>();
+    body.add(ElixirClientDispatchOperationIr.retryOptsBinding());
     body.add(retryCase);
     return body;
   }
