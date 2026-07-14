@@ -1,158 +1,127 @@
 package io.smithy.beam.elixir;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import io.smithy.beam.ir.elixir.ExFunction;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import org.junit.jupiter.api.Test;
+import io.beam.ir.elixir.Function;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ElixirCodecHelperIrTest {
   @Test
-  void generateUuidAsStringMatchGolden() throws IOException {
-    assertGolden(ElixirCodecHelperIr.generateUuid(), "ir/generate_uuid.expected.ex");
+  void generateUuidIsStructural() {
+    assertStructural(ElixirCodecHelperIr.generateUuid());
   }
 
   @Test
-  void uriEncodeAsStringMatchGolden() throws IOException {
-    assertGolden(ElixirCodecHelperIr.uriEncode(), "ir/uri_encode.expected.ex");
+  void uriEncodeIsStructural() {
+    assertStructural(ElixirCodecHelperIr.uriEncode());
   }
 
   @Test
-  void uriDecodeAsStringMatchGolden() throws IOException {
-    assertGolden(ElixirCodecHelperIr.uriDecode(), "ir/uri_decode.expected.ex");
+  void uriDecodeIsStructural() {
+    assertStructural(ElixirCodecHelperIr.uriDecode());
   }
 
   @Test
-  void decodeQueryParamAsStringMatchGolden() throws IOException {
-    assertGolden(ElixirCodecHelperIr.decodeQueryParam(), "ir/decode_query_param.expected.ex");
+  void decodeQueryParamIsStructural() {
+    assertStructural(ElixirCodecHelperIr.decodeQueryParam());
   }
 
   @Test
-  void toBinaryRestJsonAsStringMatchGolden() throws IOException {
-    assertGolden(
-        ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.REST_JSON),
-        "ir/to_binary_rest_json.expected.ex");
+  void toBinaryRestJsonIsStructural() {
+    assertStructural(
+        ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.REST_JSON));
   }
 
   @Test
-  void toBinaryXmlQueryAsStringMatchGolden() throws IOException {
-    assertGolden(
-        ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY),
-        "ir/to_binary_xml_query.expected.ex");
+  void toBinaryXmlQueryIsStructural() {
+    assertStructural(
+        ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY));
   }
 
   @Test
-  void encodeQueryValueRestJsonAsStringMatchGolden() throws IOException {
-    assertGolden(
-        ElixirCodecHelperIr.encodeQueryValueRestJson(),
-        "ir/encode_query_value_rest_json.expected.ex");
+  void encodeQueryValueRestJsonIsStructural() {
+    assertStructural(ElixirCodecHelperIr.encodeQueryValueRestJson());
   }
 
   @Test
-  void encodeQueryValueXmlQueryAsStringMatchGolden() throws IOException {
-    assertGolden(
-        ElixirCodecHelperIr.encodeQueryValueXmlQuery(),
-        "ir/encode_query_value_xml_query.expected.ex");
+  void encodeQueryValueXmlQueryIsStructural() {
+    assertStructural(ElixirCodecHelperIr.encodeQueryValueXmlQuery());
   }
 
   @Test
-  void decodeListAsStringMatchGolden() throws IOException {
-    assertGolden(ElixirCodecHelperIr.decodeList(), "ir/decode_list.expected.ex");
+  void decodeListIsStructural() {
+    assertStructural(ElixirCodecHelperIr.decodeList());
   }
 
   @Test
-  void decodeSparseListAsStringMatchGolden() throws IOException {
-    assertGolden(ElixirCodecHelperIr.decodeSparseList(), "ir/decode_sparse_list.expected.ex");
+  void decodeSparseListIsStructural() {
+    assertStructural(ElixirCodecHelperIr.decodeSparseList());
   }
 
   @Test
-  void encodeSparseListAsStringMatchGolden() throws IOException {
-    assertGolden(ElixirCodecHelperIr.encodeSparseList(), "ir/encode_sparse_list.expected.ex");
+  void encodeSparseListIsStructural() {
+    assertStructural(ElixirCodecHelperIr.encodeSparseList());
   }
 
   @Test
-  void encodeSparseMapAsStringMatchGolden() throws IOException {
-    assertGolden(ElixirCodecHelperIr.encodeSparseMap(), "ir/encode_sparse_map.expected.ex");
+  void encodeSparseMapIsStructural() {
+    assertStructural(ElixirCodecHelperIr.encodeSparseMap());
   }
 
   @Test
-  void decodeJsonBodyAsStringMatchGolden() throws IOException {
-    assertGolden(ElixirCodecHelperIr.decodeJsonBody(), "ir/decode_json_body.expected.ex");
+  void decodeJsonBodyIsStructural() {
+    assertStructural(ElixirCodecHelperIr.decodeJsonBody());
   }
 
   @Test
-  void contentTypeMatchesAsStringMatchGolden() throws IOException {
-    assertGolden(ElixirCodecHelperIr.contentTypeMatches(), "ir/content_type_matches.expected.ex");
+  void contentTypeMatchesIsStructural() {
+    assertStructural(ElixirCodecHelperIr.contentTypeMatches());
   }
 
   @Test
-  void ctBaseAsStringMatchGolden() throws IOException {
-    assertGolden(ElixirCodecHelperIr.ctBase(), "ir/ct_base.expected.ex");
+  void ctBaseIsStructural() {
+    assertStructural(ElixirCodecHelperIr.ctBase());
   }
 
   @Test
-  void prefixHeadersToListAsStringMatchGolden() throws IOException {
-    assertGolden(
-        ElixirCodecHelperIr.prefixHeadersToList(), "ir/prefix_headers_to_list.expected.ex");
+  void prefixHeadersToListIsStructural() {
+    assertStructural(ElixirCodecHelperIr.prefixHeadersToList());
   }
 
   @Test
-  void prefixHeadersFromListAsStringMatchGolden() throws IOException {
-    assertGolden(
-        ElixirCodecHelperIr.prefixHeadersFromList(), "ir/prefix_headers_from_list.expected.ex");
+  void prefixHeadersFromListIsStructural() {
+    assertStructural(ElixirCodecHelperIr.prefixHeadersFromList());
   }
 
   @Test
-  void encodeTimestampEpochSecondsAsStringMatchGolden() throws IOException {
-    assertGolden(
-        ElixirCodecHelperIr.encodeTimestampEpochSeconds(),
-        "ir/encode_timestamp_epoch_seconds.expected.ex");
+  void encodeTimestampEpochSecondsIsStructural() {
+    assertStructural(ElixirCodecHelperIr.encodeTimestampEpochSeconds());
   }
 
   @Test
-  void encodeTimestampDateTimeAsStringMatchGolden() throws IOException {
-    assertGolden(
-        ElixirCodecHelperIr.encodeTimestampDateTime(), "ir/encode_timestamp_date_time.expected.ex");
+  void encodeTimestampDateTimeIsStructural() {
+    assertStructural(ElixirCodecHelperIr.encodeTimestampDateTime());
   }
 
   @Test
-  void decodeTimestampEpochSecondsAsStringMatchGolden() throws IOException {
-    assertGolden(
-        ElixirCodecHelperIr.decodeTimestampEpochSeconds(),
-        "ir/decode_timestamp_epoch_seconds.expected.ex");
+  void decodeTimestampEpochSecondsIsStructural() {
+    assertStructural(ElixirCodecHelperIr.decodeTimestampEpochSeconds());
   }
 
   @Test
-  void decodeTimestampDateTimeAsStringMatchGolden() throws IOException {
-    assertGolden(
-        ElixirCodecHelperIr.decodeTimestampDateTime(), "ir/decode_timestamp_date_time.expected.ex");
+  void decodeTimestampDateTimeIsStructural() {
+    assertStructural(ElixirCodecHelperIr.decodeTimestampDateTime());
   }
 
   @Test
-  void headersSetAsStringMatchGolden() throws IOException {
-    assertGolden(ElixirCodecHelperIr.headersSet(), "ir/headers_set.expected.ex");
+  void headersSetIsStructural() {
+    assertStructural(ElixirCodecHelperIr.headersSet());
   }
 
-  private static void assertGolden(ExFunction fn, String resourcePath) throws IOException {
-    ElixirIrTestSupport.assertStructural(fn);
-    assertThat(fn.asString()).isEqualTo(readExpectedString(resourcePath));
-  }
-
-  private static String readExpectedString(String resourcePath) throws IOException {
-    try (InputStream in =
-        ElixirCodecHelperIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
-      if (in == null) {
-        return "";
-      }
-      String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-      if (text.endsWith("\n")) {
-        text = text.substring(0, text.length() - 1);
-      }
-      return text;
+  private static void assertStructural(List<Function> functions) {
+    for (Function fn : functions) {
+      ElixirIrTestSupport.assertStructural(fn);
     }
   }
 }
