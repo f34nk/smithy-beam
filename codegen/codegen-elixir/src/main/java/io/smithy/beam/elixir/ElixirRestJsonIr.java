@@ -137,8 +137,10 @@ final class ElixirRestJsonIr {
   static List<ExFunction> unionHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
     List<ExFunction> functions = new ArrayList<>();
+    @SuppressWarnings("unused")
+    List<Function> unionHelpers = new ArrayList<>();
     for (UnionShape union : ElixirRestJsonSupport.reachableUnionShapes(model, service)) {
-      functions.addAll(ElixirUnionHelperIr.unionDecodeEncode(union, sp));
+      unionHelpers.addAll(ElixirUnionHelperIr.unionDecodeEncode(union, sp));
     }
     return functions;
   }
