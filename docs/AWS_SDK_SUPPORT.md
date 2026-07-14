@@ -2,7 +2,7 @@
 
 This document lists AWS-oriented features from the [Smithy AWS integrations](https://smithy.io/2.0/aws/index.html) specification and how they relate to **generated** Erlang and Elixir code in smithy-beam today.
 
-smithy-beam is a Smithy DirectedCodegen project for the BEAM. AWS service clients are a long-term goal; the current baseline implements REST JSON 1, AWS JSON 1.0 and 1.1, AWS Query, EC2 Query, and REST-XML protocol stacks with generated codecs, dispatch, routers, wired client pagination for `@paginated` operations, retry wrappers, waiters, and optional HTTP compliance tests. Generated SigV4 clients emit signing hooks, a default credential resolution chain, endpoint resolution (rules engine when an endpoint rule set is present, static regional fallback otherwise), and S3 bucket addressing helpers when the model requires them.
+smithy-beam is a Smithy DirectedCodegen project for the BEAM. AWS service clients are a long-term goal; the current baseline implements REST JSON 1, AWS JSON 1.0 and 1.1, AWS Query, EC2 Query, and REST-XML protocol stacks with generated codecs, dispatch, routers, wired client pagination for `@paginated` operations, retry wrappers, waiters, and optional HTTP compliance tests. SigV4 clients copy shared runtime modules from packaged runtime/elixir or runtime/erlang trees as needed: signing hooks, credential resolution, endpoint host helpers with static regional fallback when `base_url` is unset, and S3 bucket addressing helpers when the model requires them.
 
 For trait-level detail across all Smithy specs, see [TRAITS.md](TRAITS.md).
 
@@ -47,7 +47,7 @@ Output from `erlang-client-codegen` and `elixir-client-codegen`.
 | REST JSON 1 request encoding | ✅ | Per-service codec module encodes path labels, query params, headers, and JSON document members into an `http_request` record or map. |
 | REST JSON 1 response decoding | ✅ | Codec decodes JSON document, header, and payload bindings into typed output records or structs. |
 | HTTP dispatch | ✅ | Erlang uses OTP `httpc` via a generated `<prefix>_http` module. Elixir uses `Req`. Both honor a configurable HTTP client module in client config for tests. |
-| Default endpoint in generated config | ✅ | Generated clients emit `default_config/0` and endpoint resolution helpers. HTTP dispatch merges a resolved base URL when `base_url` is unset: rules engine evaluation when `@endpointRuleSet` is present, static regional fallback from `endpointPrefix` and region otherwise. |
+| Default endpoint in generated config | ✅ | Generated clients emit `default_config/0` and endpoint resolution helpers. HTTP dispatch merges a resolved base URL when `base_url` is unset: Elixir uses `Utils.resolve_base_url/1` from packaged runtime/elixir static modules; Erlang uses shared utils helpers with static regional fallback from `endpointPrefix` and region. |
 | Pagination | ✅ | `@paginated` operations emit a page loop in the generated client operation that walks output tokens and returns accumulated items. |
 | Operation documentation | ✅ | `@documentation` on operations is emitted into generated client function docs. |
 | Type and shape documentation | ✅ | Types plugins emit shape and member docs into generated type files alongside operation docs on client stubs. |
@@ -181,11 +181,11 @@ Endpoint resolution and regional configuration.
 |---------|--------|-------|
 | [Partition Support](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
 | [Region Configuration](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ✅ | Generated `default_config/0` seeds a default region. Callers override via client config. |
-| [Static Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ⚠️ | Elixir generated clients expose `resolve_base_url/1` and apply it when `base_url` is unset. Erlang HTTP dispatch reads `base_url` from client config; callers supply the endpoint URL explicitly. |
+| [Static Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ⚠️ | Elixir HTTP dispatch calls `Utils.resolve_base_url/1` from packaged runtime/elixir static modules when `base_url` is unset. Erlang HTTP dispatch reads `base_url` from client config; callers supply the endpoint URL explicitly. |
 | [Dual-Stack Endpoints](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-dualstackonlyendpoints-trait) | ❌ | Not implemented for general services. S3 dual-stack host suffix is available via client config (see S3 customizations). |
 | [FIPS Endpoints](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
 | [Declarative Endpoint Traits](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
-| [Rules-Based Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-rulesbasedendpoints-trait) | ⚠️ | Elixir generated endpoint modules evaluate `@endpointRuleSet` at runtime when present. Erlang clients embed serialized rule sets in service types headers but do not evaluate them at runtime yet. |
+| [Rules-Based Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-rulesbasedendpoints-trait) | ⚠️ | BEAM clients embed serialized rule sets in generated service types but do not evaluate them at runtime yet. Elixir HTTP dispatch falls back to `Utils.resolve_base_url/1` from packaged runtime/elixir static modules when `base_url` is unset. |
 
 ---
 
@@ -222,8 +222,8 @@ Endpoint rules engine for dynamic endpoint resolution.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [Rules Engine Specification](https://smithy.io/2.0/aws/rules-engine/index.html) | ⚠️ | Elixir clients evaluate embedded `@endpointRuleSet` data through generated endpoint modules. Erlang clients embed rule sets in service types headers but do not evaluate them at runtime. Full AWS rules engine surface is not otherwise exposed. |
-| [`@endpointRuleSet`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ⚠️ | Rule set serialized into generated service types headers. Elixir clients evaluate it through generated endpoint modules; Erlang runtime evaluation is not implemented yet. |
+| [Rules Engine Specification](https://smithy.io/2.0/aws/rules-engine/index.html) | ⚠️ | BEAM clients serialize `@endpointRuleSet` data into generated service types. Runtime rules engine evaluation is not implemented yet; Elixir HTTP dispatch uses `Utils.resolve_base_url/1` from packaged runtime/elixir static modules for regional fallback. |
+| [`@endpointRuleSet`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ⚠️ | Rule set serialized into generated service types modules (Erlang headers, Elixir types modules). Runtime evaluation is not implemented yet for either language. |
 | [`@contextParam`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ➖ | Model metadata for rule parameters; operation input binding is not generated yet. |
 | [`@staticContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ➖ | Model metadata for rule parameters; static values are not merged into generated resolvers yet. |
 | [`@clientContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ✅ | Client config keys are merged into rule evaluation parameters. |

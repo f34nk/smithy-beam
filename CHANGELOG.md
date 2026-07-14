@@ -3,6 +3,12 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+### Changed
+- Elixir codegen no longer emits per-service runtime_types.ex, runtime_helpers.ex,
+  runtime_http.ex, aws_endpoint_rules.ex, endpoint modules, SigV4 modules, presigners, or
+  retry helpers. Plugins emit only the shared runtime/elixir modules a service needs based on
+  model requirements.
+
 ## 2026-07-10
 
 ### Changed
