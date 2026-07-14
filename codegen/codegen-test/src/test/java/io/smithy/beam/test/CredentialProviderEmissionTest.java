@@ -31,15 +31,14 @@ class CredentialProviderEmissionTest {
   }
 
   @Test
-  void elixirSigV4ServiceEmitsCredentialsModuleAndDispatchResolves() {
+  void elixirSigV4ServiceOmitsCredentialsModuleAndDispatchLazyFetches() {
     MockManifest manifest = runElixir(SIGV4_SERVICE, "/model/sigv4_fixture.smithy");
 
-    String credentials = manifest.expectFileString("sigv4test_service_credentials.ex");
-    assertThat(credentials).contains("defmodule Sigv4testServiceCredentials do");
-    assertThat(credentials).contains("def resolve(config)");
+    assertThat(manifest.getFileString("sigv4test_service_credentials.ex")).isEmpty();
 
     String client = manifest.expectFileString("sigv4test_service_client.ex");
-    assertThat(client).contains("RuntimeHttp.dispatch");
+    assertThat(client).contains(":aws_credentials.get_credentials()");
+    assertThat(client).contains("session_token: Map.get(creds0, :token)");
   }
 
   @Test

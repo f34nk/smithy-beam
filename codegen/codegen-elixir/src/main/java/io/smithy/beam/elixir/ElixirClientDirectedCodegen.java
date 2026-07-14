@@ -154,7 +154,6 @@ final class ElixirClientDirectedCodegen
     ElixirProtocolCodecIr.emitClientCodec(ctx, service);
 
     ElixirS3EndpointEmitter.emit(ctx, service);
-    ElixirCredentialProviderEmitter.emit(ctx, service);
     ElixirWaiterEmitter.emit(ctx, service);
     ElixirComplianceTestEmitter.emit(ctx, service);
     ElixirEventStreamEmitter.emit(ctx, service);

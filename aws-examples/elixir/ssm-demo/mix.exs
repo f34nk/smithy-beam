@@ -19,7 +19,8 @@ defmodule Demo.MixProject do
     [
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
-      {:aws_signature, "~> 0.3.2"}
+      {:aws_signature, "~> 0.3.2"},
+      {:aws_credentials, "~> 1.0.5"}
     ]
   end
 end

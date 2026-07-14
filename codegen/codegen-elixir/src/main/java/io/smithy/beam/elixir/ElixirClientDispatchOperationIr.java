@@ -6,6 +6,7 @@ import io.smithy.beam.core.BeamSigV4Metadata;
 import io.smithy.beam.ir.elixir.ExAnonymousFn;
 import io.smithy.beam.ir.elixir.ExAtom;
 import io.smithy.beam.ir.elixir.ExAtomPattern;
+import io.smithy.beam.ir.elixir.ExMap;
 import io.smithy.beam.ir.elixir.ExCall;
 import io.smithy.beam.ir.elixir.ExCallLocal;
 import io.smithy.beam.ir.elixir.ExCapturedBlock;
@@ -190,18 +191,43 @@ final class ElixirClientDispatchOperationIr {
   }
 
   private static ExMatch buildSignedRequestMatch(DispatchContext ctx) {
+    String opName = ctx.opName();
+    ExExpr signWithConfig =
+        ExCall.call(
+            "AwsSigv4", "sign", ExVar.var("config"), ExAtom.atom(opName), ExVar.var("req"));
+    ExExpr credsMap =
+        ExMap.map(
+            ExMapEntry.entry(
+                ExAtom.atom("access_key_id"),
+                ExCall.call("Map", "get", ExVar.var("creds0"), ExAtom.atom("access_key_id"))),
+            ExMapEntry.entry(
+                ExAtom.atom("secret_access_key"),
+                ExCall.call("Map", "get", ExVar.var("creds0"), ExAtom.atom("secret_access_key"))),
+            ExMapEntry.entry(
+                ExAtom.atom("session_token"),
+                ExCall.call("Map", "get", ExVar.var("creds0"), ExAtom.atom("token"))));
+    ExExpr signWithMergedCreds =
+        ExCall.call(
+            "AwsSigv4",
+            "sign",
+            ExMapUpdate.mapUpdate(
+                ExVar.var("config"),
+                ExMapEntry.entry(ExAtom.atom("credentials"), ExVar.var("creds"))),
+            ExAtom.atom(opName),
+            ExVar.var("req"));
+    ExCase undefinedCredentialsBranch =
+        ExCase.caseExpr(
+            ExCall.call(":aws_credentials", "get_credentials"),
+            ExCaseBranch.branch(ExAtomPattern.atom("undefined"), ExVar.var("req")),
+            ExCaseBranch.branch(
+                ExVarPattern.var("creds0"),
+                ExExprBlock.block(
+                    ExMatch.match(ExVarPattern.var("creds"), credsMap), signWithMergedCreds)));
     ExCase credentialsCase =
         ExCase.caseExpr(
             ExCall.call("Map", "get", ExVar.var("config"), ExAtom.atom("credentials")),
-            ExCaseBranch.branch(ExNilPattern.nil(), ExVar.var("req")),
-            ExCaseBranch.branch(
-                ExVarPattern.var("_"),
-                ExCall.call(
-                    "AwsSigv4",
-                    "sign",
-                    ExVar.var("config"),
-                    ExAtom.atom(ctx.opName()),
-                    ExVar.var("req"))));
+            ExCaseBranch.branch(ExNilPattern.nil(), undefinedCredentialsBranch),
+            ExCaseBranch.branch(ExVarPattern.var("_"), signWithConfig));
     return ExMatch.match(ExVarPattern.var("signed_req"), credentialsCase);
   }
 
