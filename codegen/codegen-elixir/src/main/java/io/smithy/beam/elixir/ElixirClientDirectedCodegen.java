@@ -2,6 +2,7 @@ package io.smithy.beam.elixir;
 
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamClientRetrySupport;
+import io.beam.ir.elixir.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamEdition;
@@ -19,7 +20,6 @@ import io.smithy.beam.ir.elixir.ExDoc;
 import io.smithy.beam.ir.elixir.ExExpr;
 import io.smithy.beam.ir.elixir.ExExprBlock;
 import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModule;
 import io.smithy.beam.ir.elixir.ExSpec;
 import io.smithy.beam.ir.elixir.ExTuple;
 import io.smithy.beam.ir.elixir.ExVarPattern;
@@ -169,11 +169,11 @@ final class ElixirClientDirectedCodegen
         builder.addOperationFunctions(
             ElixirRetryIr.clientPredicateFunctions(ctx.model(), service, sp, layout));
       }
-      ExModule module =
+      Module module =
           ElixirClientIr.clientModule(
-              layout, service, typesModuleName, builder.operationFunctions());
-      ctx.writerDelegator()
-          .useFileWriter(ctx.definitionFile(), writer -> writer.write("$L", module.asString()));
+              layout, service, typesModuleName, List.of());
+      ElixirCodecEmission.writeModule(
+          ctx, ctx.definitionFile(), module, builder.operationFunctions());
       if (ctx.protocolCodegen() != null) {
         List<OperationShape> operations =
             ElixirTopDown.containedOperationsSorted(ctx.model(), service);
