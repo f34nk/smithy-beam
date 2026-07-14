@@ -1,5 +1,23 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.DotCallExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.ListExpr;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.NilPattern;
+import io.beam.ir.elixir.RaiseExpr;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.ir.elixir.ExAtom;
@@ -98,6 +116,97 @@ final class ElixirHttpChecksumIr {
     return Optional.of(ExExprBlock.block(exprs.toArray(ExExpr[]::new)));
   }
 
+  static Optional<Expression> requestChecksumHeadersStatement(
+      Model model, OperationShape op, SymbolProvider sp, String headersVar) {
+    BeamHttpChecksumIndex checksumIndex = BeamHttpChecksumIndex.of(model);
+    List<BeamHttpChecksumIndex.ChecksumBinding> bindings = checksumIndex.requestChecksums(op);
+    if (bindings.isEmpty()) {
+      return Optional.empty();
+    }
+
+    Optional<String> algorithmMember = checksumIndex.requestAlgorithmMemberName(op);
+    if (algorithmMember.isPresent()) {
+      String field = BeamNameUtils.toSnakeCase(algorithmMember.get());
+      List<Clause> branches = new ArrayList<>();
+      branches.add(Clause.of(NilPattern.of(), Variable.of(headersVar)));
+      for (BeamHttpChecksumIndex.ChecksumBinding binding : bindings) {
+        String enumAtom = enumAtomForAlgorithm(model, op, sp, checksumIndex, binding.algorithm());
+        branches.add(
+            Clause.of(AtomPattern.of(enumAtom), checksumBranchStatement(binding, headersVar)));
+      }
+      branches.add(
+          Clause.of(
+              VariablePattern.of("other"),
+              new RaiseExpr(
+                  AtomExpr.of("ArgumentError"),
+                  TupleExpr.of(
+                      List.of(
+                          AtomExpr.of("unsupported_checksum_algorithm"),
+                          Variable.of("other"))),
+                  false)));
+      return Optional.of(
+          MatchExpr.bind(
+              VariablePattern.of(headersVar),
+              new CaseExpr(
+                  new DotCallExpr(Variable.of("input"), field, List.of()), branches)));
+    }
+
+    List<Expression> statements = new ArrayList<>();
+    for (int i = 0; i < bindings.size(); i++) {
+      BeamHttpChecksumIndex.ChecksumBinding cb = bindings.get(i);
+      String checksumVar = "checksum" + i;
+      statements.add(checksumComputationStatement(cb, checksumVar));
+      statements.add(
+          MatchExpr.bind(
+              VariablePattern.of(headersVar),
+              RemoteCallExpr.of(
+                  HTTP_CHECKSUM,
+                  "headers_set",
+                  List.of(
+                      StringExpr.of(cb.headerName()),
+                      RemoteCallExpr.of(
+                          HTTP_CHECKSUM,
+                          "checksum_header_encode",
+                          List.of(Variable.of(checksumVar))),
+                      Variable.of(headersVar)))));
+    }
+    return Optional.of(new BlockExpr(statements));
+  }
+
+  static Expression responseChecksumGuardExpr(
+      Model model, OperationShape op, Expression successExpr) {
+    BeamHttpChecksumIndex checksumIndex = BeamHttpChecksumIndex.of(model);
+    List<BeamHttpChecksumIndex.ChecksumBinding> bindings = checksumIndex.responseChecksums(op);
+    if (bindings.isEmpty()) {
+      return successExpr;
+    }
+
+    List<Expression> headerNames = new ArrayList<>();
+    for (BeamHttpChecksumIndex.ChecksumBinding binding : bindings) {
+      headerNames.add(StringExpr.of(binding.headerName()));
+    }
+    return new CaseExpr(
+        RemoteCallExpr.of(
+            HTTP_CHECKSUM,
+            "validate_response_checksum",
+            List.of(
+                Variable.of("body"),
+                Variable.of("headers"),
+                ListExpr.of(headerNames))),
+        List.of(
+            Clause.of(AtomPattern.of("ok"), successExpr),
+            Clause.of(
+                TuplePattern.of(
+                    List.of(AtomPattern.of("error"), VariablePattern.of("reason"))),
+                TupleExpr.of(
+                    List.of(
+                        AtomExpr.of("error"),
+                        TupleExpr.of(
+                            List.of(
+                                AtomExpr.of("checksum_validation_failed"),
+                                Variable.of("reason"))))))));
+  }
+
   static ExExpr responseChecksumGuardExpr(Model model, OperationShape op, ExExpr successExpr) {
     BeamHttpChecksumIndex checksumIndex = BeamHttpChecksumIndex.of(model);
     List<BeamHttpChecksumIndex.ChecksumBinding> bindings = checksumIndex.responseChecksums(op);
@@ -122,6 +231,38 @@ final class ElixirHttpChecksumIr {
             ExTuple.tuple(
                 ExAtom.atom("error"),
                 ExTuple.tuple(ExAtom.atom("checksum_validation_failed"), ExVar.var("reason")))));
+  }
+
+  private static Expression checksumBranchStatement(
+      BeamHttpChecksumIndex.ChecksumBinding cb, String headersVar) {
+    return new BlockExpr(
+        List.of(
+            checksumComputationStatement(cb, "checksum"),
+            RemoteCallExpr.of(
+                HTTP_CHECKSUM,
+                "headers_set",
+                List.of(
+                    StringExpr.of(cb.headerName()),
+                    RemoteCallExpr.of(
+                        HTTP_CHECKSUM,
+                        "checksum_header_encode",
+                        List.of(Variable.of("checksum"))),
+                    Variable.of(headersVar)))));
+  }
+
+  private static Expression checksumComputationStatement(
+      BeamHttpChecksumIndex.ChecksumBinding cb, String checksumVar) {
+    if (cb.usesCryptoHash()) {
+      return MatchExpr.bind(
+          VariablePattern.of(checksumVar),
+          RemoteCallExpr.of(
+              ":crypto",
+              "hash",
+              List.of(AtomExpr.of(cb.algorithmErlangAtom()), Variable.of("body"))));
+    }
+    return MatchExpr.bind(
+        VariablePattern.of(checksumVar),
+        RemoteCallExpr.of(HTTP_CHECKSUM, cb.hashHelperName(), List.of(Variable.of("body"))));
   }
 
   private static ExExpr checksumBranchExpr(

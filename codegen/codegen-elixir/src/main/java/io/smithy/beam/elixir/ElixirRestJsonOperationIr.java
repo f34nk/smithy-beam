@@ -1,50 +1,54 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AnonFun;
+import io.beam.ir.elixir.AnonFunClause;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.AndGuard;
+import io.beam.ir.elixir.AssignPattern;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.ComparisonGuard;
+import io.beam.ir.elixir.DotCallExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionDoc;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.Guard;
+import io.beam.ir.elixir.IfExpr;
+import io.beam.ir.elixir.InfixExpr;
+import io.beam.ir.elixir.IntegerExpr;
+import io.beam.ir.elixir.IntegerPattern;
+import io.beam.ir.elixir.IsTypeGuard;
+import io.beam.ir.elixir.ListExpr;
+import io.beam.ir.elixir.LocalCallExpr;
 import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.NilExpr;
+import io.beam.ir.elixir.NilPattern;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.PipeExpr;
+import io.beam.ir.elixir.PipeStep;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StringPattern;
+import io.beam.ir.elixir.StructExpr;
+import io.beam.ir.elixir.StructField;
+import io.beam.ir.elixir.StructPattern;
+import io.beam.ir.elixir.StructPatternField;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
+import io.beam.ir.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamRequestCompressionIndex;
-import io.smithy.beam.ir.elixir.ExAnonymousFn;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExCase;
-import io.smithy.beam.ir.elixir.ExCaseBranch;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExDoc;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExExprBlock;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExGuard;
-import io.smithy.beam.ir.elixir.ExIfInList;
-import io.smithy.beam.ir.elixir.ExInteger;
-import io.smithy.beam.ir.elixir.ExIntegerPattern;
-import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExMapUpdate;
-import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExNilPattern;
-import io.smithy.beam.ir.elixir.ExOp;
-import io.smithy.beam.ir.elixir.ExPattern;
-import io.smithy.beam.ir.elixir.ExPipeCase;
-import io.smithy.beam.ir.elixir.ExPipeline;
-import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStringPattern;
-import io.smithy.beam.ir.elixir.ExStruct;
-import io.smithy.beam.ir.elixir.ExStructAccess;
-import io.smithy.beam.ir.elixir.ExStructFieldPattern;
-import io.smithy.beam.ir.elixir.ExStructPattern;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
-import io.smithy.beam.ir.elixir.ExWith;
-import io.smithy.beam.ir.elixir.ExWithClause;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -75,7 +79,7 @@ import software.amazon.smithy.model.traits.StreamingTrait;
 final class ElixirRestJsonOperationIr {
   private ElixirRestJsonOperationIr() {}
 
-  static ExFunction buildEncodeRequest(
+  static List<Function> buildEncodeRequest(
       Model model,
       ServiceShape service,
       OperationShape op,
@@ -109,60 +113,61 @@ final class ElixirRestJsonOperationIr {
     String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
     String httpRequestType = "%" + runtimeMod + ".HttpRequest{}";
 
-    List<ExPattern> patterns =
+    List<Pattern> patterns =
         encodeWithConfig
-            ? List.of(ExVarPattern.var("config"), ExVarPattern.var("input"))
-            : List.of(ExVarPattern.var("input"));
+            ? List.of(VariablePattern.of("config"), VariablePattern.of("input"))
+            : List.of(VariablePattern.of("input"));
 
-    List<ExExpr> body = new ArrayList<>();
-    body.addAll(buildIdempotencyTokenExprs(input, typesMod, sp));
-    body.add(
-        ExMatch.match(
-            ExVarPattern.var("path"), buildPathExpression(uriTemplate, labels, sp, "input")));
+    List<Expression> body = new ArrayList<>();
+    body.addAll(buildIdempotencyTokenExprs(input, sp));
+    body.add(MatchExpr.bind("path", buildPathExpression(uriTemplate, labels, sp, "input")));
     body.addAll(buildQueryExprs(model, queries, sp));
     body.addAll(buildQueryParamsExprs(queryParams, sp));
     body.addAll(buildRequestHeadersExprs(model, op, headers, prefixHeaders, sp, "input"));
     body.addAll(
         buildRequestBodyExprs(
             model, httpIndex, reqPayload, docMembers, method, sp, "input", eventStreamModule));
-    ElixirHttpChecksumIr.requestChecksumHeadersExpr(model, op, sp, "headers").ifPresent(body::add);
+    ElixirHttpChecksumIr.requestChecksumHeadersStatement(model, op, sp, "headers")
+        .ifPresent(body::add);
     body.addAll(buildRequestCompressionExprs(op));
 
     if (streamingRequestPayload) {
       HttpBinding payload = reqPayload.get(0);
       String field = fieldName(sp, payload.getMember());
       body.add(
-          ExMatch.match(
-              ExVarPattern.var("stream"), ExStructAccess.structAccess(ExVar.var("input"), field)));
-      body.add(ExMatch.match(ExVarPattern.var("body"), ExString.string("")));
+          MatchExpr.bind(
+              "stream",
+              new DotCallExpr(Variable.of("input"), field, List.of())));
+      body.add(MatchExpr.bind("body", StringExpr.of("")));
     }
 
     if (hasHostLabels) {
       body.add(
-          ExMatch.match(
-              ExVarPattern.var("host"),
-              ExCallLocal.callLocal("build_host", ExVar.var("input"), ExVar.var("config"))));
+          MatchExpr.bind(
+              "host",
+              LocalCallExpr.of("build_host", List.of(Variable.of("input"), Variable.of("config")))));
     }
 
     body.add(buildHttpRequestStruct(runtimeMod, method, streamingRequestPayload, hasHostLabels));
 
-    ExSpec spec =
+    Spec spec =
         encodeWithConfig
-            ? ExSpec.functionSpec(
-                "encode_" + opName + "_request", "map(), " + inputType, httpRequestType)
-            : ExSpec.functionSpec("encode_" + opName + "_request", inputType, httpRequestType);
+            ? Spec.of(
+                "encode_" + opName + "_request(map(), " + inputType + ") -> " + httpRequestType)
+            : Spec.of("encode_" + opName + "_request(" + inputType + ") -> " + httpRequestType);
 
-    return ExFunction.functionWithSpec(
-        "def",
-        "encode_" + opName + "_request",
-        spec,
-        List.of(
-            encodeWithConfig
-                ? ExClause.blockClauseSingleLineHead(patterns, body.toArray(ExExpr[]::new))
-                : ExClause.blockClause(patterns, body.toArray(ExExpr[]::new))));
+    return List.of(
+        new Function(
+            "encode_" + opName + "_request",
+            false,
+            List.of(FunctionHead.of(patterns)),
+            block(body),
+            spec,
+            null,
+            encodeWithConfig));
   }
 
-  static ExFunction buildDecodeRequest(
+  static List<Function> buildDecodeRequest(
       Model model,
       OperationShape op,
       HttpBindingIndex httpIndex,
@@ -185,24 +190,23 @@ final class ElixirRestJsonOperationIr {
     List<HttpBinding> reqPayload = httpIndex.getRequestBindings(op, HttpBinding.Location.PAYLOAD);
     boolean streamingRequestPayload = hasStreamingRequestPayload(model, reqPayload, null);
 
-    List<ExStructFieldPattern> requestFields = new ArrayList<>();
-    requestFields.add(ExStructFieldPattern.fieldPattern("query", ExVarPattern.var("query")));
-    requestFields.add(ExStructFieldPattern.fieldPattern("headers", ExVarPattern.var("headers")));
-    requestFields.add(ExStructFieldPattern.fieldPattern("body", ExVarPattern.var("body")));
+    List<StructPatternField> requestFields = new ArrayList<>();
+    requestFields.add(field("query", VariablePattern.of("query")));
+    requestFields.add(field("headers", VariablePattern.of("headers")));
+    requestFields.add(field("body", VariablePattern.of("body")));
     if (streamingRequestPayload) {
-      requestFields.add(ExStructFieldPattern.fieldPattern("stream", ExVarPattern.var("stream")));
+      requestFields.add(field("stream", VariablePattern.of("stream")));
     }
 
-    List<ExPattern> patterns = new ArrayList<>();
-    patterns.add(ExStructPattern.struct(runtimeMod + ".HttpRequest", requestFields));
+    List<Pattern> patterns = new ArrayList<>();
+    patterns.add(StructPattern.of(runtimeMod + ".HttpRequest", requestFields));
     if (!labels.isEmpty()) {
-      patterns.add(ExVarPattern.var("label_map"));
+      patterns.add(VariablePattern.of("label_map"));
     }
 
-    List<ExExpr> body = new ArrayList<>();
+    List<Expression> body = new ArrayList<>();
     if (!docMembers.isEmpty()) {
-      body.addAll(
-          ElixirJsonCodecIr.decodedBodyPrelude().stream().map(ElixirBeamIrBridge::statement).toList());
+      body.addAll(ElixirJsonCodecIr.decodedBodyPrelude());
     }
     body.add(
         buildInputStruct(
@@ -222,24 +226,29 @@ final class ElixirRestJsonOperationIr {
             streamingRequestPayload));
 
     String returnType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
-    ExSpec spec =
+    Spec spec =
         labels.isEmpty()
-            ? ExSpec.functionSpec(
-                "decode_" + opName + "_request", "%" + runtimeMod + ".HttpRequest{}", returnType)
-            : ExSpec.functionSpec(
-                "decode_" + opName + "_request",
-                "%" + runtimeMod + ".HttpRequest{}, map()",
-                returnType);
+            ? Spec.of(
+                "decode_" + opName + "_request(%" + runtimeMod + ".HttpRequest{}) -> " + returnType)
+            : Spec.of(
+                "decode_"
+                    + opName
+                    + "_request(%"
+                    + runtimeMod
+                    + ".HttpRequest{}, map()) -> "
+                    + returnType);
 
-    return ExFunction.functionWithDocAndSpec(
-        "def",
-        "decode_" + opName + "_request",
-        ExDoc.doc("Decode HTTP request for " + op.getId() + "."),
-        spec,
-        List.of(ExClause.blockClause(patterns, body.toArray(ExExpr[]::new))));
+    return List.of(
+        def(
+            "decode_" + opName + "_request",
+            patterns,
+            block(body),
+            spec,
+            FunctionDoc.of("Decode HTTP request for " + op.getId() + "."),
+            false));
   }
 
-  static ExFunction buildDecodeResponse(
+  static List<Function> buildDecodeResponse(
       Model model,
       ServiceShape service,
       OperationShape op,
@@ -262,42 +271,37 @@ final class ElixirRestJsonOperationIr {
     boolean streamingResponsePayload =
         !respPayload.isEmpty() && isStreamingBlob(model, respPayload.get(0).getMember());
 
-    List<ExStructFieldPattern> successFields = new ArrayList<>();
+    List<StructPatternField> successFields = new ArrayList<>();
     if (!respCode.isEmpty()) {
-      successFields.add(
-          ExStructFieldPattern.fieldPattern("status", ExVarPattern.var("http_status")));
+      successFields.add(field("status", VariablePattern.of("http_status")));
     } else {
-      successFields.add(
-          ExStructFieldPattern.fieldPattern("status", ExIntegerPattern.integer(successCode)));
+      successFields.add(field("status", IntegerPattern.of(successCode)));
     }
-    successFields.add(ExStructFieldPattern.fieldPattern("headers", ExVarPattern.var("headers")));
-    successFields.add(ExStructFieldPattern.fieldPattern("body", ExVarPattern.var("body")));
+    successFields.add(field("headers", VariablePattern.of("headers")));
+    successFields.add(field("body", VariablePattern.of("body")));
     if (streamingResponsePayload) {
-      successFields.add(ExStructFieldPattern.fieldPattern("stream", ExVarPattern.var("stream")));
+      successFields.add(field("stream", VariablePattern.of("stream")));
     }
 
-    List<ExGuard> successGuards = new ArrayList<>();
+    List<Guard> successGuards = new ArrayList<>();
     if (!respCode.isEmpty()) {
       successGuards.add(
-          ExGuard.exprGuard(ExOp.op(">=", ExVar.var("http_status"), ExInteger.integer(200))));
-      successGuards.add(
-          ExGuard.exprGuard(ExOp.op("<", ExVar.var("http_status"), ExInteger.integer(300))));
+          new ComparisonGuard(Variable.of("http_status"), ">=", IntegerExpr.of(200)));
+      successGuards.add(new ComparisonGuard(Variable.of("http_status"), "<", IntegerExpr.of(300)));
     }
 
-    List<ExExpr> successBody = new ArrayList<>();
+    List<Expression> successBody = new ArrayList<>();
     boolean needsContentTypeCheck = responsePayloadRequiresContentTypeCheck(model, respPayload);
     if (needsContentTypeCheck) {
       String expectedContentType = resolvedResponseContentType(model, op);
       successBody.add(
-          ExWith.withExpr(
-              List.of(
-                  ExWithClause.clause(
-                      ExAtomPattern.atom("ok"),
-                      ExCallLocal.callLocal(
-                          "content_type_matches",
-                          ExVar.var("headers"),
-                          ExString.string(expectedContentType)))),
-              buildDecodeResponseSuccessBody(
+          MatchExpr.bind(
+              AtomPattern.of("ok"),
+              LocalCallExpr.of(
+                  "content_type_matches",
+                  List.of(Variable.of("headers"), StringExpr.of(expectedContentType))),
+              block(
+                  buildDecodeResponseSuccessBody(
                       model,
                       op,
                       httpIndex,
@@ -309,8 +313,7 @@ final class ElixirRestJsonOperationIr {
                       respDoc,
                       respPayload,
                       respCode,
-                      streamingResponsePayload)
-                  .toArray(ExExpr[]::new)));
+                      streamingResponsePayload))));
     } else {
       successBody.addAll(
           buildDecodeResponseSuccessBody(
@@ -328,43 +331,51 @@ final class ElixirRestJsonOperationIr {
               streamingResponsePayload));
     }
 
-    ExClause successClause =
+    List<Function> functions = new ArrayList<>();
+    FunctionHead successHead =
         successGuards.isEmpty()
-            ? ExClause.blockClause(
-                List.of(ExStructPattern.struct(runtimeMod + ".HttpResponse", successFields)),
-                successBody.toArray(ExExpr[]::new))
-            : new ExClause(
-                List.of(ExStructPattern.struct(runtimeMod + ".HttpResponse", successFields)),
-                successGuards,
-                successBody,
-                false,
-                true);
+            ? FunctionHead.of(List.of(StructPattern.of(runtimeMod + ".HttpResponse", successFields)))
+            : FunctionHead.of(
+                List.of(StructPattern.of(runtimeMod + ".HttpResponse", successFields)),
+                AndGuard.of(successGuards));
+    functions.add(
+        new Function(
+            "decode_" + opName + "_response",
+            false,
+            List.of(successHead),
+            block(successBody),
+            null,
+            null,
+            false));
 
-    ExClause errorClause =
-        ExClause.clause(
-            List.of(
-                ExStructPattern.struct(
-                    runtimeMod + ".HttpResponse",
-                    List.of(
-                        ExStructFieldPattern.fieldPattern("status", ExVarPattern.var("status")),
-                        ExStructFieldPattern.fieldPattern("headers", ExVarPattern.var("headers")),
-                        ExStructFieldPattern.fieldPattern("body", ExVarPattern.var("body"))))),
-            ExCallLocal.callLocal(
+    List<StructPatternField> errorFields =
+        List.of(
+            field("status", VariablePattern.of("status")),
+            field("headers", VariablePattern.of("headers")),
+            field("body", VariablePattern.of("body")));
+    functions.add(
+        new Function(
+            "decode_" + opName + "_response",
+            false,
+            List.of(FunctionHead.of(List.of(StructPattern.of(runtimeMod + ".HttpResponse", errorFields)))),
+            LocalCallExpr.of(
                 "decode_" + opName + "_response_error",
-                ExVar.var("status"),
-                ExVar.var("headers"),
-                ExVar.var("body")));
-
-    return ExFunction.defFunction(
-        "decode_" + opName + "_response", List.of(successClause, errorClause));
+                List.of(
+                    Variable.of("status"),
+                    Variable.of("headers"),
+                    Variable.of("body"))),
+            null,
+            null,
+            true));
+    return functions;
   }
 
-  static ExFunction buildErrorDispatch(
+  static List<Function> buildErrorDispatch(
       Model model, OperationShape op, SymbolProvider sp, String typesMod) {
     String opName = sp.toSymbol(op).getName();
     List<ShapeId> errors = new ArrayList<>(op.getErrors());
 
-    List<ExClause> clauses = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
 
     for (ShapeId errorId : errors) {
       StructureShape errShape = model.expectShape(errorId, StructureShape.class);
@@ -376,16 +387,19 @@ final class ElixirRestJsonOperationIr {
         continue;
       }
       String modName = sp.toSymbol(errShape).getName();
-      clauses.add(
-          ExClause.blockClauseSingleLineHead(
+      functions.add(
+          defp(
+              "decode_" + opName + "_response_error",
               List.of(
-                  ExIntegerPattern.integer(httpStatus),
-                  ExVarPattern.var("_headers"),
-                  ExVarPattern.var("body")),
-              ExMatch.match(
-                  ExVarPattern.var("decoded"),
-                  ExCallLocal.callLocal("decode_json_body", ExVar.var("body"))),
-              buildErrorTuple(typesMod, modName, model, errShape, sp)));
+                  IntegerPattern.of(httpStatus),
+                  VariablePattern.of("_headers"),
+                  VariablePattern.of("body")),
+              block(
+                  List.of(
+                      MatchExpr.bind(
+                          "decoded", LocalCallExpr.of("decode_json_body", List.of(Variable.of("body")))),
+                      buildErrorTuple(typesMod, modName, model, errShape, sp))),
+              true));
     }
 
     boolean hasTypeDiscriminated =
@@ -394,7 +408,7 @@ final class ElixirRestJsonOperationIr {
                 e -> !model.expectShape(e, StructureShape.class).hasTrait(HttpErrorTrait.class));
 
     if (hasTypeDiscriminated) {
-      List<ExCaseBranch> typeBranches = new ArrayList<>();
+      List<Clause> typeBranches = new ArrayList<>();
       for (ShapeId errorId : errors) {
         StructureShape errShape = model.expectShape(errorId, StructureShape.class);
         if (errShape.hasTrait(HttpErrorTrait.class)) {
@@ -402,54 +416,64 @@ final class ElixirRestJsonOperationIr {
         }
         String modName = sp.toSymbol(errShape).getName();
         typeBranches.add(
-            ExCaseBranch.branch(
-                ExStringPattern.string(errorId.getName()),
+            Clause.of(
+                StringPattern.of(errorId.getName()),
                 buildErrorTuple(typesMod, modName, model, errShape, sp)));
       }
-      typeBranches.add(
-          ExCaseBranch.branch(
-              ExVarPattern.var("_"),
-              ExTuple.tuple(
-                  ExAtom.atom("error"),
-                  ExTuple.tuple(
-                      ExAtom.atom("unknown_error"), ExVar.var("status"), ExVar.var("body")))));
+      Expression unknownError =
+          TupleExpr.of(
+              List.of(
+                  AtomExpr.of("error"),
+                  TupleExpr.of(
+                      List.of(
+                          AtomExpr.of("unknown_error"),
+                          Variable.of("status"),
+                          Variable.of("body")))));
+      typeBranches.add(Clause.of(WildcardPattern.of(), unknownError));
 
-      clauses.add(
-          new ExClause(
+      functions.add(
+          defp(
+              "decode_" + opName + "_response_error",
               List.of(
-                  ExVarPattern.var("status"),
-                  ExVarPattern.var("_headers"),
-                  ExVarPattern.var("body")),
-              List.of(
-                  ExGuard.exprGuard(ExOp.op(">=", ExVar.var("status"), ExInteger.integer(400)))),
-              List.of(
-                  ExMatch.match(
-                      ExVarPattern.var("decoded"),
-                      ExCallLocal.callLocal("decode_json_body", ExVar.var("body"))),
-                  ExMatch.match(
-                      ExVarPattern.var("error_type"),
-                      ExCall.call("Map", "get", ExVar.var("decoded"), ExString.string("__type"))),
-                  ExCase.caseExpr(
-                      ExVar.var("error_type"), typeBranches.toArray(ExCaseBranch[]::new))),
-              false,
-              true));
+                  VariablePattern.of("status"),
+                  VariablePattern.of("_headers"),
+                  VariablePattern.of("body")),
+              new ComparisonGuard(Variable.of("status"), ">=", IntegerExpr.of(400)),
+              block(
+                  List.of(
+                      MatchExpr.bind(
+                          "decoded", LocalCallExpr.of("decode_json_body", List.of(Variable.of("body")))),
+                      MatchExpr.bind(
+                          "error_type",
+                          RemoteCallExpr.of(
+                              "Map",
+                              "get",
+                              List.of(Variable.of("decoded"), StringExpr.of("__type")))),
+                      new CaseExpr(Variable.of("error_type"), typeBranches))),
+              false));
     } else {
-      clauses.add(
-          ExClause.blockClauseSingleLineHead(
+      functions.add(
+          defp(
+              "decode_" + opName + "_response_error",
               List.of(
-                  ExVarPattern.var("status"),
-                  ExVarPattern.var("_headers"),
-                  ExVarPattern.var("body")),
-              ExTuple.tuple(
-                  ExAtom.atom("error"),
-                  ExTuple.tuple(
-                      ExAtom.atom("unknown_error"), ExVar.var("status"), ExVar.var("body")))));
+                  VariablePattern.of("status"),
+                  VariablePattern.of("_headers"),
+                  VariablePattern.of("body")),
+              TupleExpr.of(
+                  List.of(
+                      AtomExpr.of("error"),
+                      TupleExpr.of(
+                          List.of(
+                              AtomExpr.of("unknown_error"),
+                              Variable.of("status"),
+                              Variable.of("body"))))),
+              true));
     }
 
-    return ExFunction.defpFunction("decode_" + opName + "_response_error", clauses);
+    return functions;
   }
 
-  static ExFunction buildEncodeResponse(
+  static List<Function> buildEncodeResponse(
       Model model,
       OperationShape op,
       HttpBindingIndex httpIndex,
@@ -467,25 +491,23 @@ final class ElixirRestJsonOperationIr {
     List<HttpBinding> respDoc = httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT);
     List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
 
-    List<ExStructFieldPattern> patternFields = new ArrayList<>();
+    List<StructPatternField> patternFields = new ArrayList<>();
     for (HttpBinding binding : concat(respHeaders, respPrefixHeaders, respDoc, respPayload)) {
       String field = fieldName(sp, binding.getMember());
-      patternFields.add(ExStructFieldPattern.fieldPattern(field, ExVarPattern.unusedVar(field)));
+      patternFields.add(field(field, VariablePattern.of("_" + field)));
     }
 
-    return ExFunction.functionWithDocAndSpec(
-        "def",
-        "encode_" + opName + "_response",
-        ExDoc.doc("Encode response for " + op.getId() + "."),
-        ExSpec.functionSpec("encode_" + opName + "_response", outputType, "map()"),
-        List.of(
-            ExClause.blockClause(
-                List.of(new ExStructPattern("Types." + outputStruct, patternFields, "output")),
-                buildEncodeResponseBodyExprs(model, op, httpIndex, sp, "output")
-                    .toArray(ExExpr[]::new))));
+    return List.of(
+        def(
+            "encode_" + opName + "_response",
+            List.of(AssignPattern.of("output", StructPattern.of("Types." + outputStruct, patternFields))),
+            block(buildEncodeResponseBodyExprs(model, op, httpIndex, sp, "output")),
+            Spec.of("encode_" + opName + "_response(" + outputType + ") -> map()"),
+            FunctionDoc.of("Encode response for " + op.getId() + "."),
+            false));
   }
 
-  static ExFunction buildErrorResponseEncoder(
+  static List<Function> buildErrorResponseEncoder(
       Model model, ShapeId errorId, SymbolProvider sp, String typesMod) {
     StructureShape errShape = model.expectShape(errorId, StructureShape.class);
     String modName = sp.toSymbol(errShape).getName();
@@ -494,52 +516,52 @@ final class ElixirRestJsonOperationIr {
             ? errShape.expectTrait(HttpErrorTrait.class).getCode()
             : 500;
 
-    List<ExStructFieldPattern> patternFields = new ArrayList<>();
-    List<ExMapEntry> bodyEntries = new ArrayList<>();
-    bodyEntries.add(
-        ExMapEntry.entry(ExString.string("__type"), ExString.string(errorId.getName())));
+    List<StructPatternField> patternFields = new ArrayList<>();
+    List<MapEntry> bodyEntries = new ArrayList<>();
+    bodyEntries.add(MapEntry.stringKey("__type", StringExpr.of(errorId.getName())));
     for (MemberShape member : errShape.members()) {
       if (member.getMemberName().equals("__beam_error_kind")) {
         continue;
       }
       String field = fieldName(sp, member);
-      patternFields.add(ExStructFieldPattern.fieldPattern(field, ExVarPattern.unusedVar(field)));
+      patternFields.add(field(field, VariablePattern.of("_" + field)));
       bodyEntries.add(
-          ExMapEntry.entry(
-              ExString.string(member.getMemberName()),
-              ExStructAccess.structAccess(ExVar.var("error"), field)));
+          MapEntry.stringKey(
+              member.getMemberName(),
+              new DotCallExpr(Variable.of("error"), field, List.of())));
     }
 
-    List<ExExpr> body = new ArrayList<>();
-    body.add(ElixirBeamIrBridge.rejectNilMapPipeline("body_map", bodyEntries));
+    List<Expression> body = new ArrayList<>();
+    body.add(MatchExpr.bind("body_map", ElixirJsonCodecIr.rejectNilMapPipeline("body_map", bodyEntries)));
     body.add(
-        ExMatch.match(
-            ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
+        MatchExpr.bind(
+            "body", RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
     body.add(
-        ExMatch.match(
-            ExVarPattern.var("headers"),
-            ExList.list(
-                ExTuple.tuple(
-                    ExString.string("Content-Type"), ExString.string("application/json")))));
+        MatchExpr.bind(
+            "headers",
+            ListExpr.of(
+                List.of(
+                    TupleExpr.of(
+                        List.of(StringExpr.of("Content-Type"), StringExpr.of("application/json")))))));
     body.add(
-        ExMap.map(
-            ExMapEntry.entry(ExAtom.atom("status"), ExInteger.integer(status)),
-            ExMapEntry.entry(ExAtom.atom("headers"), ExVar.var("headers")),
-            ExMapEntry.entry(ExAtom.atom("body"), ExVar.var("body"))));
+        MapExpr.of(
+            List.of(
+                MapEntry.atomKey("status", IntegerExpr.of(status)),
+                MapEntry.atomKey("headers", Variable.of("headers")),
+                MapEntry.atomKey("body", Variable.of("body")))));
 
     String errorType = typesMod + "." + modName + ".t()";
-    return ExFunction.functionWithDocAndSpec(
-        "def",
-        "encode_" + modName + "_response",
-        ExDoc.doc("Encode HTTP error response for " + errorId + "."),
-        ExSpec.functionSpec("encode_" + modName + "_response", errorType, "map()"),
-        List.of(
-            ExClause.blockClause(
-                List.of(new ExStructPattern("Types." + modName, patternFields, "error")),
-                body.toArray(ExExpr[]::new))));
+    return List.of(
+        def(
+            "encode_" + modName + "_response",
+            List.of(AssignPattern.of("error", StructPattern.of("Types." + modName, patternFields))),
+            block(body),
+            Spec.of("encode_" + modName + "_response(" + errorType + ") -> map()"),
+            FunctionDoc.of("Encode HTTP error response for " + errorId + "."),
+            false));
   }
 
-  private static List<ExExpr> buildDecodeResponseSuccessBody(
+  private static List<Expression> buildDecodeResponseSuccessBody(
       Model model,
       OperationShape op,
       HttpBindingIndex httpIndex,
@@ -552,61 +574,59 @@ final class ElixirRestJsonOperationIr {
       List<HttpBinding> respPayload,
       List<HttpBinding> respCode,
       boolean streamingResponsePayload) {
-    List<ExExpr> body = new ArrayList<>();
+    List<Expression> body = new ArrayList<>();
     if (!respDoc.isEmpty()) {
-      body.addAll(
-          ElixirJsonCodecIr.decodedBodyPrelude().stream().map(ElixirBeamIrBridge::statement).toList());
+      body.addAll(ElixirJsonCodecIr.decodedBodyPrelude());
     }
 
     for (HttpBinding hb : respHeaders) {
       String field = fieldName(sp, hb.getMember());
       body.add(
-          ExMatch.match(
-              ExVarPattern.var(field), headerValuePipeCase("headers", hb.getLocationName())));
+          MatchExpr.bind(
+              field, headerValuePipeCase("headers", hb.getLocationName())));
     }
 
-    List<ExMapEntry> structFields = new ArrayList<>();
+    List<StructField> structFields = new ArrayList<>();
     for (HttpBinding hb : respHeaders) {
       String field = fieldName(sp, hb.getMember());
-      structFields.add(ExMapEntry.entry(ExAtom.atom(field), ExVar.var(field)));
+      structFields.add(StructField.of(field, Variable.of(field)));
     }
     for (HttpBinding ph : respPrefixHeaders) {
       String field = fieldName(sp, ph.getMember());
       structFields.add(
-          ExMapEntry.entry(
-              ExAtom.atom(field),
-              ExCallLocal.callLocal(
+          StructField.of(
+              field,
+              LocalCallExpr.of(
                   "prefix_headers_from_list",
-                  ExVar.var("headers"),
-                  ExString.string(ph.getLocationName()))));
+                  List.of(Variable.of("headers"), StringExpr.of(ph.getLocationName())))));
     }
     for (HttpBinding db : respDoc) {
       String field = fieldName(sp, db.getMember());
       structFields.add(
-          ExMapEntry.entry(
-              ExAtom.atom(field), decodeDocumentFieldExpr(model, sp, httpIndex, db.getMember())));
+          StructField.of(field, decodeDocumentFieldExpr(model, sp, httpIndex, db.getMember())));
     }
     for (HttpBinding pb : respPayload) {
       String field = fieldName(sp, pb.getMember());
       if (isStreamingBlob(model, pb.getMember())) {
-        structFields.add(ExMapEntry.entry(ExAtom.atom(field), ExVar.var("stream")));
+        structFields.add(StructField.of(field, Variable.of("stream")));
       } else {
-        structFields.add(ExMapEntry.entry(ExAtom.atom(field), ExVar.var("body")));
+        structFields.add(StructField.of(field, Variable.of("body")));
       }
     }
     for (HttpBinding rcb : respCode) {
       String field = fieldName(sp, rcb.getMember());
-      structFields.add(ExMapEntry.entry(ExAtom.atom(field), ExVar.var("http_status")));
+      structFields.add(StructField.of(field, Variable.of("http_status")));
     }
 
-    ExExpr success =
-        ExTuple.tuple(ExAtom.atom("ok"), ExStruct.struct("Types." + outputStruct, structFields));
-    body.add(ExMatch.match(ExVarPattern.var("result"), success));
-    body.add(ElixirHttpChecksumIr.responseChecksumGuardExpr(model, op, ExVar.var("result")));
+    Expression success =
+        TupleExpr.of(
+            List.of(AtomExpr.of("ok"), StructExpr.of("Types." + outputStruct, structFields)));
+    body.add(MatchExpr.bind("result", success));
+    body.add(ElixirHttpChecksumIr.responseChecksumGuardExpr(model, op, Variable.of("result")));
     return body;
   }
 
-  private static ExStruct buildInputStruct(
+  private static StructExpr buildInputStruct(
       String typesMod,
       String inputStruct,
       Model model,
@@ -621,75 +641,78 @@ final class ElixirRestJsonOperationIr {
       List<HttpBinding> docMembers,
       List<HttpBinding> reqPayload,
       boolean streamingRequestPayload) {
-    List<ExMapEntry> fields = new ArrayList<>();
+    List<StructField> fields = new ArrayList<>();
     for (HttpBinding lb : labels) {
       String field = fieldName(sp, lb.getMember());
       fields.add(
-          ExMapEntry.entry(
-              ExAtom.atom(field),
-              ExCallLocal.callLocal(
+          StructField.of(
+              field,
+              LocalCallExpr.of(
                   "uri_decode",
-                  ExCall.call(
-                      "Map",
-                      "get",
-                      ExVar.var("label_map"),
-                      ExString.string(lb.getMember().getMemberName())))));
+                  List.of(
+                      RemoteCallExpr.of(
+                          "Map",
+                          "get",
+                          List.of(
+                              Variable.of("label_map"),
+                              StringExpr.of(lb.getMember().getMemberName())))))));
     }
     for (HttpBinding qb : queries) {
       String field = fieldName(sp, qb.getMember());
       fields.add(
-          ExMapEntry.entry(
-              ExAtom.atom(field),
-              ExCallLocal.callLocal(
+          StructField.of(
+              field,
+              LocalCallExpr.of(
                   "decode_query_param",
-                  ExCall.call(
-                      "Map", "get", ExVar.var("query"), ExString.string(qb.getLocationName())))));
+                  List.of(
+                      RemoteCallExpr.of(
+                          "Map",
+                          "get",
+                          List.of(Variable.of("query"), StringExpr.of(qb.getLocationName())))))));
     }
     for (HttpBinding qp : queryParams) {
       String field = fieldName(sp, qp.getMember());
-      fields.add(ExMapEntry.entry(ExAtom.atom(field), ExVar.var("query")));
+      fields.add(StructField.of(field, Variable.of("query")));
     }
     for (HttpBinding hb : headers) {
       String field = fieldName(sp, hb.getMember());
       fields.add(
-          ExMapEntry.entry(
-              ExAtom.atom(field), headerValuePipeCase("headers", hb.getLocationName())));
+          StructField.of(field, headerValuePipeCase("headers", hb.getLocationName())));
     }
     for (HttpBinding ph : prefixHeaders) {
       String field = fieldName(sp, ph.getMember());
       fields.add(
-          ExMapEntry.entry(
-              ExAtom.atom(field),
-              ExCallLocal.callLocal(
+          StructField.of(
+              field,
+              LocalCallExpr.of(
                   "prefix_headers_from_list",
-                  ExVar.var("headers"),
-                  ExString.string(ph.getLocationName()))));
+                  List.of(Variable.of("headers"), StringExpr.of(ph.getLocationName())))));
     }
     for (HttpBinding db : docMembers) {
       String field = fieldName(sp, db.getMember());
       fields.add(
-          ExMapEntry.entry(
-              ExAtom.atom(field), decodeDocumentFieldExpr(model, sp, httpIndex, db.getMember())));
+          StructField.of(field, decodeDocumentFieldExpr(model, sp, httpIndex, db.getMember())));
     }
     for (HttpBinding pb : reqPayload) {
       String field = fieldName(sp, pb.getMember());
       if (isStreamingBlob(model, pb.getMember())) {
-        fields.add(ExMapEntry.entry(ExAtom.atom(field), ExVar.var("stream")));
+        fields.add(StructField.of(field, Variable.of("stream")));
       } else if (BeamEventStreamIndex.of(model).isEventStreamMember(pb.getMember())) {
         UnionShape union = model.expectShape(pb.getMember().getTarget(), UnionShape.class);
         String helper = ElixirEventStreamEmitter.helperName(sp, union);
         fields.add(
-            ExMapEntry.entry(
-                ExAtom.atom(field),
-                ExCall.call(eventStreamModule, "decode_" + helper, ExVar.var("body"))));
+            StructField.of(
+                field,
+                RemoteCallExpr.of(
+                    eventStreamModule, "decode_" + helper, List.of(Variable.of("body")))));
       } else {
-        fields.add(ExMapEntry.entry(ExAtom.atom(field), ExVar.var("body")));
+        fields.add(StructField.of(field, Variable.of("body")));
       }
     }
-    return ExStruct.struct("Types." + inputStruct, fields);
+    return StructExpr.of("Types." + inputStruct, fields);
   }
 
-  private static List<ExExpr> buildEncodeResponseBodyExprs(
+  private static List<Expression> buildEncodeResponseBodyExprs(
       Model model,
       OperationShape op,
       HttpBindingIndex httpIndex,
@@ -703,186 +726,212 @@ final class ElixirRestJsonOperationIr {
     List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
     String responseContentType = resolvedResponseContentType(model, op);
 
-    List<ExExpr> body = new ArrayList<>();
+    List<Expression> body = new ArrayList<>();
     if (!respPayload.isEmpty()) {
       HttpBinding pb = respPayload.get(0);
       String field = fieldName(sp, pb.getMember());
       if (isStreamingBlob(model, pb.getMember())) {
         body.add(
-            ExMatch.match(
-                ExVarPattern.var("stream"),
-                ExStructAccess.structAccess(ExVar.var(recordVar), field)));
-        body.add(ExMatch.match(ExVarPattern.var("body"), ExString.string("")));
+            MatchExpr.bind(
+                "stream",
+                new DotCallExpr(Variable.of(recordVar), field, List.of())));
+        body.add(MatchExpr.bind("body", StringExpr.of("")));
       } else {
         body.add(
-            ExMatch.match(
-                ExVarPattern.var("body"),
-                ExStructAccess.structAccess(ExVar.var(recordVar), field)));
+            MatchExpr.bind(
+                "body",
+                new DotCallExpr(Variable.of(recordVar), field, List.of())));
       }
     } else if (!respDoc.isEmpty()) {
       List<MemberShape> docMemberShapes = respDoc.stream().map(HttpBinding::getMember).toList();
       List<MapEntry> entries =
           ElixirJsonCodecIr.bodyMapEntries(
               model, httpIndex, sp, "Types", docMemberShapes, recordVar, "event_stream");
+      body.add(MatchExpr.bind("body_map", ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries)));
       body.add(
-          ElixirBeamIrBridge.expr(
-              ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries)));
-      body.add(
-          ExMatch.match(
-              ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
+          MatchExpr.bind(
+              "body", RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
     } else {
-      body.add(ExMatch.match(ExVarPattern.var("body"), ExString.string("")));
+      body.add(MatchExpr.bind("body", StringExpr.of("")));
     }
 
     if (!respHeaders.isEmpty()) {
       body.addAll(extraHeadersPipeline(sp, recordVar, respHeaders));
       body.add(
-          ExMatch.match(
-              ExVarPattern.var("headers"),
-              ExList.cons(
-                  ExTuple.tuple(
-                      ExString.string("Content-Type"), ExString.string(responseContentType)),
-                  ExVar.var("extra_headers"))));
+          MatchExpr.bind(
+              "headers",
+              RemoteCallExpr.of(
+                  "Enum",
+                  "concat",
+                  List.of(
+                      ListExpr.of(
+                          List.of(
+                              TupleExpr.of(
+                                  List.of(
+                                      StringExpr.of("Content-Type"),
+                                      StringExpr.of(responseContentType))))),
+                      Variable.of("extra_headers")))));
     } else {
       body.add(
-          ExMatch.match(
-              ExVarPattern.var("headers"),
-              ExList.list(
-                  ExTuple.tuple(
-                      ExString.string("Content-Type"), ExString.string(responseContentType)))));
+          MatchExpr.bind(
+              "headers",
+              ListExpr.of(
+                  List.of(
+                      TupleExpr.of(
+                          List.of(
+                              StringExpr.of("Content-Type"),
+                              StringExpr.of(responseContentType)))))));
     }
 
     for (HttpBinding ph : respPrefixHeaders) {
       String field = fieldName(sp, ph.getMember());
       body.add(
-          ExMatch.match(
-              ExVarPattern.var("headers"),
-              ExOp.op(
+          MatchExpr.bind(
+              "headers",
+              new InfixExpr(
+                  Variable.of("headers"),
                   "++",
-                  ExVar.var("headers"),
-                  ExCallLocal.callLocal(
+                  LocalCallExpr.of(
                       "prefix_headers_to_list",
-                      ExString.string(ph.getLocationName()),
-                      ExStructAccess.structAccess(ExVar.var(recordVar), field)))));
+                      List.of(
+                          StringExpr.of(ph.getLocationName()),
+                          new DotCallExpr(Variable.of(recordVar), field, List.of()))))));
     }
 
-    List<ExMapEntry> responseFields = new ArrayList<>();
-    responseFields.add(ExMapEntry.entry(ExAtom.atom("status"), ExInteger.integer(successCode)));
-    responseFields.add(ExMapEntry.entry(ExAtom.atom("headers"), ExVar.var("headers")));
-    responseFields.add(ExMapEntry.entry(ExAtom.atom("body"), ExVar.var("body")));
+    List<MapEntry> responseFields = new ArrayList<>();
+    responseFields.add(MapEntry.atomKey("status", IntegerExpr.of(successCode)));
+    responseFields.add(MapEntry.atomKey("headers", Variable.of("headers")));
+    responseFields.add(MapEntry.atomKey("body", Variable.of("body")));
     if (!respPayload.isEmpty() && isStreamingBlob(model, respPayload.get(0).getMember())) {
-      responseFields.add(ExMapEntry.entry(ExAtom.atom("stream"), ExVar.var("stream")));
+      responseFields.add(MapEntry.atomKey("stream", Variable.of("stream")));
     }
-    body.add(ExMap.map(responseFields.toArray(ExMapEntry[]::new)));
+    body.add(MapExpr.of(responseFields));
     return body;
   }
 
-  private static List<ExExpr> buildIdempotencyTokenExprs(
-      StructureShape input, String typesMod, SymbolProvider sp) {
+  private static List<Expression> buildIdempotencyTokenExprs(
+      StructureShape input, SymbolProvider sp) {
     List<MemberShape> idempotencyMembers =
         input.members().stream().filter(m -> m.hasTrait(IdempotencyTokenTrait.class)).toList();
     if (idempotencyMembers.isEmpty()) {
       return List.of();
     }
-    List<ExExpr> exprs = new ArrayList<>();
+    List<Expression> exprs = new ArrayList<>();
     for (MemberShape member : idempotencyMembers) {
       String field = fieldName(sp, member);
       exprs.add(
-          ExMatch.match(
-              ExVarPattern.var("input"),
-              ExCase.caseExpr(
-                  ExStructAccess.structAccess(ExVar.var("input"), field),
-                  ExCaseBranch.branch(
-                      ExNilPattern.nil(),
-                      ExMapUpdate.mapUpdate(
-                          ExVar.var("input"),
-                          ExMapEntry.entry(
-                              ExAtom.atom(field), ExCallLocal.callLocal("generate_uuid")))),
-                  ExCaseBranch.branch(ExVarPattern.var("_"), ExVar.var("input")))));
+          MatchExpr.bind(
+              "input",
+              new CaseExpr(
+                  new DotCallExpr(Variable.of("input"), field, List.of()),
+                  List.of(
+                      Clause.of(
+                          NilPattern.of(),
+                          MapExpr.of(
+                              Variable.of("input"),
+                              List.of(
+                                  MapEntry.atomKey(
+                                      field,
+                                      LocalCallExpr.of("generate_uuid", List.of()))))),
+                      Clause.of(WildcardPattern.of(), Variable.of("input"))))));
     }
     return exprs;
   }
 
-  private static List<ExExpr> buildQueryExprs(
+  private static List<Expression> buildQueryExprs(
       Model model, List<HttpBinding> queries, SymbolProvider sp) {
     if (queries.isEmpty()) {
-      return List.of(ExMatch.match(ExVarPattern.var("query"), ExMap.map()));
+      return List.of(MatchExpr.bind("query", MapExpr.of(List.of())));
     }
-    List<ExExpr> parts = new ArrayList<>();
+    List<Expression> parts = new ArrayList<>();
     for (HttpBinding qb : queries) {
       parts.add(buildQueryBindingExpr(model, qb, sp));
     }
-    ExExpr queryEntries = parts.get(0);
+    Expression queryEntries = parts.get(0);
     for (int i = 1; i < parts.size(); i++) {
-      queryEntries = ExCall.call("Enum", "concat", queryEntries, parts.get(i));
+      queryEntries =
+          RemoteCallExpr.of("Enum", "concat", List.of(queryEntries, parts.get(i)));
     }
     return List.of(
-        ExMatch.match(ExVarPattern.var("query"), ExCall.call("Map", "new", queryEntries)));
+        MatchExpr.bind(
+            "query", RemoteCallExpr.of("Map", "new", List.of(queryEntries))));
   }
 
-  private static ExExpr buildQueryBindingExpr(Model model, HttpBinding qb, SymbolProvider sp) {
+  private static Expression buildQueryBindingExpr(Model model, HttpBinding qb, SymbolProvider sp) {
     String field = fieldName(sp, qb.getMember());
-    ExExpr binding = ExStructAccess.structAccess(ExVar.var("input"), field);
+    Expression binding = new DotCallExpr(Variable.of("input"), field, List.of());
     String paramName = qb.getLocationName();
     Shape target = model.expectShape(qb.getMember().getTarget());
-    ExExpr listArg =
+    Expression listArg =
         target instanceof ListShape
-            ? ExCase.caseExpr(
+            ? new CaseExpr(
                 binding,
-                ExCaseBranch.branch(ExNilPattern.nil(), ExList.list()),
-                ExCaseBranch.branch(ExVarPattern.var("v"), ExVar.var("v")))
-            : ExList.list(binding);
-    return ExCall.call(
+                List.of(
+                    Clause.of(NilPattern.of(), ListExpr.of(List.of())),
+                    Clause.of(VariablePattern.of("v"), Variable.of("v"))))
+            : ListExpr.of(List.of(binding));
+    return RemoteCallExpr.of(
         "Enum",
         "flat_map",
-        listArg,
-        ExAnonymousFn.compactFn(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                ExCase.caseExpr(
-                    ExVar.var("v"),
-                    ExCaseBranch.branch(ExNilPattern.nil(), ExList.list()),
-                    ExCaseBranch.branch(
-                        ExVarPattern.var("item"),
-                        ExList.list(
-                            ExTuple.tuple(
-                                ExString.string(paramName),
-                                ExCallLocal.callLocal(
-                                    "encode_query_value", ExVar.var("item")))))))));
+        List.of(
+            listArg,
+            new AnonFun(
+                List.of(
+                    AnonFunClause.of(
+                        List.of(VariablePattern.of("v")),
+                        new CaseExpr(
+                            Variable.of("v"),
+                            List.of(
+                                Clause.of(NilPattern.of(), ListExpr.of(List.of())),
+                                Clause.of(
+                                    VariablePattern.of("item"),
+                                    ListExpr.of(
+                                        List.of(
+                                            TupleExpr.of(
+                                                List.of(
+                                                    StringExpr.of(paramName),
+                                                    LocalCallExpr.of(
+                                                        "encode_query_value",
+                                                        List.of(Variable.of("item")))))))))))))));
   }
 
-  private static List<ExExpr> buildQueryParamsExprs(
+  private static List<Expression> buildQueryParamsExprs(
       List<HttpBinding> queryParams, SymbolProvider sp) {
     if (queryParams.isEmpty()) {
       return List.of();
     }
-    List<ExExpr> exprs = new ArrayList<>();
+    List<Expression> exprs = new ArrayList<>();
     for (HttpBinding qp : queryParams) {
       String field = fieldName(sp, qp.getMember());
       exprs.add(
-          ExMatch.match(
-              ExVarPattern.var("query_extra"),
-              ExCase.caseExpr(
-                  ExStructAccess.structAccess(ExVar.var("input"), field),
-                  ExCaseBranch.branch(ExNilPattern.nil(), ExList.list()),
-                  ExCaseBranch.branch(
-                      ExVarPattern.var("m"),
-                      List.of(ExGuard.guard("is_map", ExVar.var("m"))),
-                      ExCall.call("Map", "to_list", ExVar.var("m"))))));
+          MatchExpr.bind(
+              "query_extra",
+              new CaseExpr(
+                  new DotCallExpr(Variable.of("input"), field, List.of()),
+                  List.of(
+                      Clause.of(NilPattern.of(), ListExpr.of(List.of())),
+                      Clause.of(
+                          VariablePattern.of("m"),
+                          IsTypeGuard.of("is_map", "m"),
+                          RemoteCallExpr.of("Map", "to_list", List.of(Variable.of("m"))))))));
       exprs.add(
-          ExMatch.match(
-              ExVarPattern.var("query"),
-              ExPipeline.pipeline(
-                  "query",
-                  ExVar.var("query"),
-                  ExCall.call("Map", "to_list"),
-                  ExCall.call("Enum", "concat", ExVar.var("query_extra")),
-                  ExCall.call("Map", "new"))));
+          MatchExpr.bind(
+              "query",
+              new PipeExpr(
+                  Variable.of("query"),
+                  List.of(
+                      new PipeStep(
+                          RemoteCallExpr.of("Map", "to_list", List.of()), List.of()),
+                      new PipeStep(
+                          RemoteCallExpr.of(
+                              "Enum", "concat", List.of(Variable.of("query_extra"))),
+                          List.of()),
+                      new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of())))));
     }
     return exprs;
   }
 
-  private static List<ExExpr> buildRequestHeadersExprs(
+  private static List<Expression> buildRequestHeadersExprs(
       Model model,
       OperationShape op,
       List<HttpBinding> headers,
@@ -890,72 +939,93 @@ final class ElixirRestJsonOperationIr {
       SymbolProvider sp,
       String recordVar) {
     String requestContentType = resolvedRequestContentType(model, op);
-    List<ExExpr> exprs = new ArrayList<>();
+    List<Expression> exprs = new ArrayList<>();
     if (headers.isEmpty()) {
       exprs.add(
-          ExMatch.match(
-              ExVarPattern.var("headers"),
-              ExList.list(
-                  ExTuple.tuple(
-                      ExString.string("Content-Type"), ExString.string(requestContentType)))));
+          MatchExpr.bind(
+              "headers",
+              ListExpr.of(
+                  List.of(
+                      TupleExpr.of(
+                          List.of(
+                              StringExpr.of("Content-Type"),
+                              StringExpr.of(requestContentType)))))));
     } else {
       exprs.addAll(extraHeadersPipeline(sp, recordVar, headers));
       exprs.add(
-          ExMatch.match(
-              ExVarPattern.var("headers"),
-              ExList.cons(
-                  ExTuple.tuple(
-                      ExString.string("Content-Type"), ExString.string(requestContentType)),
-                  ExVar.var("extra_headers"))));
+          MatchExpr.bind(
+              "headers",
+              RemoteCallExpr.of(
+                  "Enum",
+                  "concat",
+                  List.of(
+                      ListExpr.of(
+                          List.of(
+                              TupleExpr.of(
+                                  List.of(
+                                      StringExpr.of("Content-Type"),
+                                      StringExpr.of(requestContentType))))),
+                      Variable.of("extra_headers")))));
     }
     for (HttpBinding ph : prefixHeaders) {
       String field = fieldName(sp, ph.getMember());
       exprs.add(
-          ExMatch.match(
-              ExVarPattern.var("headers"),
-              ExOp.op(
+          MatchExpr.bind(
+              "headers",
+              new InfixExpr(
+                  Variable.of("headers"),
                   "++",
-                  ExVar.var("headers"),
-                  ExCallLocal.callLocal(
+                  LocalCallExpr.of(
                       "prefix_headers_to_list",
-                      ExString.string(ph.getLocationName()),
-                      ExStructAccess.structAccess(ExVar.var(recordVar), field)))));
+                      List.of(
+                          StringExpr.of(ph.getLocationName()),
+                          new DotCallExpr(Variable.of(recordVar), field, List.of()))))));
     }
     return exprs;
   }
 
-  private static List<ExExpr> extraHeadersPipeline(
+  private static List<Expression> extraHeadersPipeline(
       SymbolProvider sp, String recordVar, List<HttpBinding> headers) {
-    List<ExExpr> entries = new ArrayList<>();
+    List<Expression> entries = new ArrayList<>();
     for (HttpBinding hb : headers) {
       String field = fieldName(sp, hb.getMember());
       entries.add(
-          ExIfInList.ifInList(
-              ExOp.op(
+          new IfExpr(
+              new InfixExpr(
+                  new DotCallExpr(Variable.of(recordVar), field, List.of()),
                   "!=",
-                  ExStructAccess.structAccess(ExVar.var(recordVar), field),
-                  ExAtom.atom("nil")),
-              ExTuple.tuple(
-                  ExString.string(hb.getLocationName()),
-                  ExCall.call(
-                      "Kernel",
-                      "to_string",
-                      ExStructAccess.structAccess(ExVar.var(recordVar), field)))));
+                  AtomExpr.of("nil")),
+              TupleExpr.of(
+                  List.of(
+                      StringExpr.of(hb.getLocationName()),
+                      RemoteCallExpr.of(
+                          "Kernel",
+                          "to_string",
+                          List.of(new DotCallExpr(Variable.of(recordVar), field, List.of()))))),
+              NilExpr.of(),
+              false));
     }
     return List.of(
-        ExPipeline.pipeline(
+        MatchExpr.bind(
             "extra_headers",
-            ExList.list(entries.toArray(ExExpr[]::new)),
-            ExCall.call(
-                "Enum",
-                "reject",
-                ExAnonymousFn.compactFn(
-                    ExClause.inlineClause(
-                        List.of(ExVarPattern.var("x")),
-                        ExCall.call("Kernel", "is_nil", ExVar.var("x")))))));
+            new PipeExpr(
+                ListExpr.of(entries),
+                List.of(
+                    new PipeStep(
+                        RemoteCallExpr.of(
+                            "Enum",
+                            "reject",
+                            List.of(
+                                new AnonFun(
+                                    List.of(
+                                        AnonFunClause.of(
+                                            List.of(VariablePattern.of("x")),
+                                            LocalCallExpr.of(
+                                                "is_nil", List.of(Variable.of("x")))))))),
+                        List.of())))));
   }
 
-  private static List<ExExpr> buildRequestBodyExprs(
+  private static List<Expression> buildRequestBodyExprs(
       Model model,
       HttpBindingIndex httpIndex,
       List<HttpBinding> reqPayload,
@@ -964,7 +1034,7 @@ final class ElixirRestJsonOperationIr {
       SymbolProvider sp,
       String recordVar,
       String eventStreamModule) {
-    List<ExExpr> exprs = new ArrayList<>();
+    List<Expression> exprs = new ArrayList<>();
     boolean hasBody =
         !docMembers.isEmpty()
             && !method.equals("GET")
@@ -979,30 +1049,30 @@ final class ElixirRestJsonOperationIr {
       MemberShape member = payload.getMember();
       String field = fieldName(sp, member);
       if (isStreamingBlob(model, member)) {
-        exprs.add(ExMatch.match(ExVarPattern.var("body"), ExString.string("")));
+        exprs.add(MatchExpr.bind("body", StringExpr.of("")));
         return exprs;
       }
       if (BeamEventStreamIndex.of(model).isEventStreamMember(member)) {
         UnionShape union = model.expectShape(member.getTarget(), UnionShape.class);
         String helper = ElixirEventStreamEmitter.helperName(sp, union);
         exprs.add(
-            ExMatch.match(
-                ExVarPattern.var("body"),
-                ExCall.call(
+            MatchExpr.bind(
+                "body",
+                RemoteCallExpr.of(
                     eventStreamModule,
                     "encode_" + helper,
-                    ExStructAccess.structAccess(ExVar.var(recordVar), field))));
+                    List.of(new DotCallExpr(Variable.of(recordVar), field, List.of())))));
         return exprs;
       }
       Shape target = model.expectShape(member.getTarget());
       if (target instanceof BlobShape || target instanceof StringShape) {
         exprs.add(
-            ExMatch.match(
-                ExVarPattern.var("body"),
-                ExOp.op(
+            MatchExpr.bind(
+                "body",
+                new InfixExpr(
+                    new DotCallExpr(Variable.of(recordVar), field, List.of()),
                     "||",
-                    ExStructAccess.structAccess(ExVar.var(recordVar), field),
-                    ExString.string(""))));
+                    StringExpr.of(""))));
         return exprs;
       }
     }
@@ -1012,85 +1082,91 @@ final class ElixirRestJsonOperationIr {
       List<MapEntry> entries =
           ElixirJsonCodecIr.bodyMapEntries(
               model, httpIndex, sp, "Types", docMemberShapes, recordVar, eventStreamModule);
+      exprs.add(MatchExpr.bind("body_map", ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries)));
       exprs.add(
-          ElixirBeamIrBridge.expr(
-              ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries)));
-      exprs.add(
-          ExMatch.match(
-              ExVarPattern.var("body"), ExCall.call("Jason", "encode!", ExVar.var("body_map"))));
+          MatchExpr.bind(
+              "body", RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
     } else {
-      exprs.add(ExMatch.match(ExVarPattern.var("body"), ExString.string("")));
+      exprs.add(MatchExpr.bind("body", StringExpr.of("")));
     }
     return exprs;
   }
 
-  private static List<ExExpr> buildRequestCompressionExprs(OperationShape op) {
+  private static List<Expression> buildRequestCompressionExprs(OperationShape op) {
     if (!supportsGzipCompression(op)) {
       return List.of();
     }
+    Expression gzipCase =
+        new CaseExpr(
+            new InfixExpr(
+                RemoteCallExpr.of(":erlang", "byte_size", List.of(Variable.of("body"))),
+                ">=",
+                IntegerExpr.of(10240)),
+            List.of(
+                Clause.of(
+                    AtomPattern.of("true"),
+                    new BlockExpr(
+                        List.of(
+                            MatchExpr.bind(
+                                "compressed",
+                                RemoteCallExpr.of(":zlib", "gzip", List.of(Variable.of("body")))),
+                            TupleExpr.of(
+                                List.of(
+                                    Variable.of("compressed"),
+                                    LocalCallExpr.of(
+                                        "headers_set",
+                                        List.of(
+                                            StringExpr.of("Content-Encoding"),
+                                            StringExpr.of("gzip"),
+                                            Variable.of("headers1")))))))),
+                Clause.of(
+                    AtomPattern.of("false"),
+                    TupleExpr.of(
+                        List.of(Variable.of("body"), Variable.of("headers1"))))));
     return List.of(
-        ExMatch.match(ExVarPattern.var("headers1"), ExVar.var("headers")),
-        ExMatch.match(
-            ExTuplePattern.tuple(ExVarPattern.var("body"), ExVarPattern.var("headers")),
-            ExCase.caseExpr(
-                ExOp.op(
-                    ">=",
-                    ExCall.call(":erlang", "byte_size", ExVar.var("body")),
-                    ExInteger.integer(10240)),
-                ExCaseBranch.branch(
-                    ExAtomPattern.atom("true"),
-                    ExExprBlock.block(
-                        ExMatch.match(
-                            ExVarPattern.var("compressed"),
-                            ExCall.call(":zlib", "gzip", ExVar.var("body"))),
-                        ExTuple.tuple(
-                            ExVar.var("compressed"),
-                            ExCallLocal.callLocal(
-                                "headers_set",
-                                ExString.string("Content-Encoding"),
-                                ExString.string("gzip"),
-                                ExVar.var("headers1"))))),
-                ExCaseBranch.branch(
-                    ExAtomPattern.atom("false"),
-                    ExTuple.tuple(ExVar.var("body"), ExVar.var("headers1"))))));
+        MatchExpr.bind("headers1", Variable.of("headers")),
+        MatchExpr.bind(
+            TuplePattern.of(
+                List.of(VariablePattern.of("body"), VariablePattern.of("headers"))),
+            gzipCase));
   }
 
-  private static ExStruct buildHttpRequestStruct(
+  private static StructExpr buildHttpRequestStruct(
       String runtimeMod, String method, boolean streamingRequestPayload, boolean hasHostLabels) {
-    List<ExMapEntry> fields = new ArrayList<>();
-    fields.add(ExMapEntry.entry(ExAtom.atom("method"), ExString.string(method)));
-    fields.add(ExMapEntry.entry(ExAtom.atom("path"), ExVar.var("path")));
-    fields.add(ExMapEntry.entry(ExAtom.atom("query"), ExVar.var("query")));
-    fields.add(ExMapEntry.entry(ExAtom.atom("headers"), ExVar.var("headers")));
-    fields.add(ExMapEntry.entry(ExAtom.atom("body"), ExVar.var("body")));
+    List<StructField> fields = new ArrayList<>();
+    fields.add(StructField.of("method", StringExpr.of(method)));
+    fields.add(StructField.of("path", Variable.of("path")));
+    fields.add(StructField.of("query", Variable.of("query")));
+    fields.add(StructField.of("headers", Variable.of("headers")));
+    fields.add(StructField.of("body", Variable.of("body")));
     if (streamingRequestPayload) {
-      fields.add(ExMapEntry.entry(ExAtom.atom("stream"), ExVar.var("stream")));
+      fields.add(StructField.of("stream", Variable.of("stream")));
     }
     if (hasHostLabels) {
-      fields.add(ExMapEntry.entry(ExAtom.atom("host"), ExVar.var("host")));
+      fields.add(StructField.of("host", Variable.of("host")));
     }
-    return ExStruct.struct(runtimeMod + ".HttpRequest", fields);
+    return StructExpr.of(runtimeMod + ".HttpRequest", fields);
   }
 
-  private static ExExpr buildPathExpression(
+  private static Expression buildPathExpression(
       String uriTemplate, List<HttpBinding> labels, SymbolProvider sp, String inputVar) {
     if (labels.isEmpty()) {
-      return ExString.string(uriTemplate);
+      return StringExpr.of(uriTemplate);
     }
     Map<String, HttpBinding> byLocation = new HashMap<>();
     for (HttpBinding lb : labels) {
       byLocation.put(lb.getLocationName(), lb);
     }
-    ExExpr expr = null;
+    Expression expr = null;
     int pos = 0;
     while (pos < uriTemplate.length()) {
       int start = uriTemplate.indexOf('{', pos);
       if (start < 0) {
-        expr = appendPathSegment(expr, ExString.string(uriTemplate.substring(pos)));
+        expr = appendPathSegment(expr, StringExpr.of(uriTemplate.substring(pos)));
         break;
       }
       if (start > pos) {
-        expr = appendPathSegment(expr, ExString.string(uriTemplate.substring(pos, start)));
+        expr = appendPathSegment(expr, StringExpr.of(uriTemplate.substring(pos, start)));
       }
       int end = uriTemplate.indexOf('}', start);
       String labelName = uriTemplate.substring(start + 1, end);
@@ -1100,69 +1176,118 @@ final class ElixirRestJsonOperationIr {
         expr =
             appendPathSegment(
                 expr,
-                ExCallLocal.callLocal(
-                    "uri_encode", ExStructAccess.structAccess(ExVar.var(inputVar), field)));
+                LocalCallExpr.of(
+                    "uri_encode",
+                    List.of(new DotCallExpr(Variable.of(inputVar), field, List.of()))));
       } else {
-        expr = appendPathSegment(expr, ExString.string("{" + labelName + "}"));
+        expr = appendPathSegment(expr, StringExpr.of("{" + labelName + "}"));
       }
       pos = end + 1;
     }
     return expr;
   }
 
-  private static ExExpr appendPathSegment(ExExpr current, ExExpr segment) {
-    return current == null ? segment : ExOp.op("<>", current, segment);
+  private static Expression appendPathSegment(Expression current, Expression segment) {
+    return current == null ? segment : new InfixExpr(current, "<>", segment);
   }
 
-  private static ExPipeCase headerValuePipeCase(String headersVar, String locationName) {
-    return ExPipeCase.pipeCase(
-        ExCall.call(
-            "List",
-            "keyfind",
-            ExVar.var(headersVar),
-            ExString.string(locationName),
-            ExInteger.integer(0)),
-        ExCaseBranch.branch(
-            ExTuplePattern.tuple(ExVarPattern.var("_"), ExVarPattern.var("v")), ExVar.var("v")),
-        ExCaseBranch.branch(ExNilPattern.nil(), ExAtom.atom("nil")));
+  private static Expression headerValuePipeCase(String headersVar, String locationName) {
+    return new PipeExpr(
+        Variable.of(headersVar),
+        List.of(
+            new PipeStep(
+                RemoteCallExpr.of(
+                    "List",
+                    "keyfind",
+                    List.of(
+                        Variable.of(headersVar),
+                        StringExpr.of(locationName),
+                        IntegerExpr.of(0))),
+                List.of()),
+            new PipeStep(
+                CaseExpr.piped(
+                    List.of(
+                        Clause.of(
+                            TuplePattern.of(
+                                List.of(
+                                    VariablePattern.of("_"), VariablePattern.of("v"))),
+                            Variable.of("v")),
+                        Clause.of(NilPattern.of(), NilExpr.of()))),
+                List.of())));
   }
 
-  private static ExExpr decodeDocumentFieldExpr(
+  private static Expression decodeDocumentFieldExpr(
       Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member) {
-    return ElixirBeamIrBridge.expr(
-        ElixirJsonCodecIr.decodeJsonExpr(
-            model,
-            sp,
-            httpIndex,
-            member,
-            io.beam.ir.elixir.RemoteCallExpr.of(
-                "Map",
-                "get",
-                List.of(
-                    io.beam.ir.elixir.Variable.of("decoded"),
-                    io.beam.ir.elixir.StringExpr.of(jsonKey(member))))));
+    return ElixirJsonCodecIr.decodeJsonExpr(
+        model,
+        sp,
+        httpIndex,
+        member,
+        RemoteCallExpr.of(
+            "Map",
+            "get",
+            List.of(Variable.of("decoded"), StringExpr.of(jsonKey(member)))));
   }
 
-  private static ExTuple buildErrorTuple(
+  private static Expression buildErrorTuple(
       String typesMod, String modName, Model model, StructureShape errShape, SymbolProvider sp) {
-    List<ExMapEntry> fields = new ArrayList<>();
+    List<MapEntry> fields = new ArrayList<>();
     for (MemberShape member : errShape.members()) {
       if (member.getMemberName().equals("__beam_error_kind")) {
         continue;
       }
       String field = fieldName(sp, member);
       fields.add(
-          ExMapEntry.entry(
-              ExAtom.atom(field),
-              ExCall.call(
-                  "Map", "get", ExVar.var("decoded"), ExString.string(member.getMemberName()))));
+          MapEntry.atomKey(
+              field,
+              RemoteCallExpr.of(
+                  "Map",
+                  "get",
+                  List.of(Variable.of("decoded"), StringExpr.of(member.getMemberName())))));
     }
-    return ExTuple.tuple(
-        ExAtom.atom("error"),
-        ExCallLocal.callLocal(
-            "struct!",
-            ExVar.var(typesMod + "." + modName),
-            ExMap.map(fields.toArray(ExMapEntry[]::new))));
+    return TupleExpr.of(
+        List.of(
+            AtomExpr.of("error"),
+            LocalCallExpr.of(
+                "struct!",
+                List.of(
+                    Variable.of(typesMod + "." + modName),
+                    MapExpr.of(fields)))));
+  }
+
+  private static StructPatternField field(String name, Pattern pattern) {
+    return StructPatternField.of(name, pattern);
+  }
+
+  private static Function def(
+      String name,
+      List<Pattern> params,
+      Expression body,
+      Spec spec,
+      FunctionDoc doc,
+      boolean oneLiner) {
+    return new Function(name, false, List.of(FunctionHead.of(params)), body, spec, doc, oneLiner);
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, Expression body, boolean oneLiner) {
+    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, Guard guard, Expression body, boolean oneLiner) {
+    return new Function(
+        name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
+  }
+
+  private static Expression block(List<Expression> statements) {
+    if (statements.isEmpty()) {
+      return NilExpr.of();
+    }
+    if (statements.size() == 1) {
+      return statements.get(0);
+    }
+    return new BlockExpr(statements);
   }
 
   private static String fieldName(SymbolProvider sp, MemberShape member) {
