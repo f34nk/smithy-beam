@@ -1,7 +1,7 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Module;
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.ir.elixir.ExModule;
 import java.util.List;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -35,7 +35,7 @@ final class ElixirBehaviourEmitter {
     }
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), ctx.service().getId().getNamespace(), ctx.service());
-    ExModule module =
+    Module module =
         ElixirBehaviourIr.behaviourModule(
             layout, ctx.service(), builder.callbacks(), operations, sp);
     ElixirCodecEmission.writeModule(ctx, layout.behaviourModuleFile(), module);

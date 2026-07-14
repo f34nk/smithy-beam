@@ -69,6 +69,7 @@ final class ElixirRestXmlIr {
         List.of(),
         List.of(),
         List.of(),
+        List.of(),
         functions);
   }
 
@@ -101,6 +102,7 @@ final class ElixirRestXmlIr {
         List.of(
             Alias.of(runtimeMod, "RuntimeTypes"),
             Alias.of(typesMod, "Types")),
+        List.of(),
         List.of(),
         List.of(),
         List.of(),

@@ -2,12 +2,13 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.elixir.Callback;
+import io.beam.ir.elixir.ElixirRenderer;
+import io.beam.ir.elixir.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.elixir.ExCallbackSpec;
-import io.smithy.beam.ir.elixir.ExModule;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
@@ -54,10 +55,10 @@ class ElixirBehaviourIrTest {
             ElixirSymbolProvider.toModuleName(layout.serverModuleName()),
             layout.serverModuleFile());
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
-    List<ExCallbackSpec> callbacks =
+    List<Callback> callbacks =
         operations.stream().map(op -> ElixirBehaviourIr.operationCallback(ctx, op, sp)).toList();
-    ExModule module = ElixirBehaviourIr.behaviourModule(layout, service, callbacks, operations, sp);
-    String source = module.asString();
+    Module module = ElixirBehaviourIr.behaviourModule(layout, service, callbacks, operations, sp);
+    String source = ElixirRenderer.render(module);
     assertThat(source).contains("defmodule BasicServiceBehaviour do");
     assertThat(source).contains("alias BasicServiceTypes, as: Types");
     assertThat(source).contains("@callback handle_get_type_closure(");
