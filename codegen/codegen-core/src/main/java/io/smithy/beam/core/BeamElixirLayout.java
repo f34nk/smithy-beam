@@ -81,14 +81,6 @@ public final class BeamElixirLayout {
     return serviceSnakeName() + "_router";
   }
 
-  public String restJson1ModuleFile() {
-    return codecModuleFile();
-  }
-
-  public String codecModuleFile() {
-    return clientCodecModuleName() + ".ex";
-  }
-
   public String clientCodecModuleName() {
     return clientCodecModuleName(BeamProtocolIds.REST_JSON_1);
   }
@@ -104,44 +96,12 @@ public final class BeamElixirLayout {
         + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId, integrations);
   }
 
-  public String runtimeTypesModuleFile() {
-    return runtimeTypesModuleName() + ".ex";
-  }
-
   public String runtimeTypesModuleName() {
     return "runtime_types";
   }
 
-  public String runtimeHelpersModuleFile() {
-    return runtimeHelpersModuleName() + ".ex";
-  }
-
-  public String runtimeHelpersModuleName() {
-    return "runtime_utils";
-  }
-
-  public String runtimeHttpModuleFile() {
-    return runtimeHttpModuleName() + ".ex";
-  }
-
   public String runtimeHttpModuleName() {
     return "runtime_http";
-  }
-
-  public String paginatorsModuleFile() {
-    return paginatorsModuleName() + ".ex";
-  }
-
-  public String paginatorsModuleName() {
-    return serviceSnakeName() + "_paginators";
-  }
-
-  public String retryModuleFile() {
-    return retryModuleName() + ".ex";
-  }
-
-  public String retryModuleName() {
-    return serviceSnakeName() + "_retry";
   }
 
   public String waitersModuleFile() {
@@ -158,30 +118,6 @@ public final class BeamElixirLayout {
 
   public String complianceTestsModuleName() {
     return serviceSnakeName() + "_compliance_tests";
-  }
-
-  public String presignerModuleFile() {
-    return presignerModuleName() + ".ex";
-  }
-
-  public String presignerModuleName() {
-    return serviceSnakeName() + "_presigner";
-  }
-
-  public String credentialsModuleFile() {
-    return credentialsModuleName() + ".ex";
-  }
-
-  public String credentialsModuleName() {
-    return serviceSnakeName() + "_credentials";
-  }
-
-  public String endpointsModuleFile() {
-    return endpointsModuleName() + ".ex";
-  }
-
-  public String endpointsModuleName() {
-    return serviceSnakeName() + "_endpoints";
   }
 
   public String eventStreamModuleFile() {
@@ -206,10 +142,6 @@ public final class BeamElixirLayout {
 
   public String resourceServerModuleName(String resourceSnakeName) {
     return resourceSnakeName + "_resource";
-  }
-
-  public String serverCodecModuleFile() {
-    return serverCodecModuleName() + ".ex";
   }
 
   public String serverCodecModuleName() {
