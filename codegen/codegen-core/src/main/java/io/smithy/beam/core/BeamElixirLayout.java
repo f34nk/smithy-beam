@@ -160,14 +160,6 @@ public final class BeamElixirLayout {
     return serviceSnakeName() + "_compliance_tests";
   }
 
-  public String sigv4ModuleFile() {
-    return sigv4ModuleName() + ".ex";
-  }
-
-  public String sigv4ModuleName() {
-    return serviceSnakeName() + "_sigv4";
-  }
-
   public String presignerModuleFile() {
     return presignerModuleName() + ".ex";
   }

@@ -170,14 +170,6 @@ public final class BeamErlangLayout {
     return serviceSnakeName() + "_compliance_tests";
   }
 
-  public String sigv4ModuleFile() {
-    return sigv4ModuleName() + ".erl";
-  }
-
-  public String sigv4ModuleName() {
-    return serviceSnakeName() + "_sigv4";
-  }
-
   public String presignerModuleFile() {
     return presignerModuleName() + ".erl";
   }
