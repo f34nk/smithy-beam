@@ -57,7 +57,7 @@ class ElixirComplianceTestIrTest {
     assertThat(ElixirRenderer.render(module))
         .isEqualTo(
             DslGoldenAssertions.readExpectedString(
-                "dsl/compliance_service_compliance_tests.expected.ex"));
+                "dsl/compliance_service_compliance_test.expected.ex"));
     String text = ElixirRenderer.render(module);
     assertThat(text).contains("use ExUnit.Case, async: true");
     assertThat(text).contains("test \"GetItemRequest\"");
@@ -82,7 +82,7 @@ class ElixirComplianceTestIrTest {
         BeamHttpBindings.from(model),
         null,
         REST_JSON,
-        "ComplianceServiceComplianceTests",
-        "test/compliance_service_compliance_tests.ex");
+        "ComplianceServiceComplianceTest",
+        "test/compliance_service_compliance_test.ex");
   }
 }
