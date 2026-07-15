@@ -46,13 +46,16 @@ class ComplianceEmissionTest {
                         .build())
                 .build());
 
-    String tests =
-        manifest.getFileString("test/compliance_service_compliance_tests.erl").orElse("");
-    assertThat(tests).contains("-module(compliance_service_compliance_tests).");
-    assertThat(tests).contains("get_item_request_test_");
+    String tests = manifest.getFileString("test/compliance_service_compliance_test.erl").orElse("");
+    assertThat(tests).contains("-module(compliance_service_compliance_test).");
+    assertThat(tests).contains("get_item_request_test");
     assertThat(tests).contains("encode_get_item_request");
-    assertThat(tests).contains("get_item_response_test_");
+    assertThat(tests).contains("get_item_response_test");
     assertThat(tests).contains("decode_get_item_response");
+    assertThat(tests).contains("headers_to_proplist");
+    assertThat(tests).contains("assert_headers");
+    assertThat(tests).doesNotContain("query_params_to_map");
+    assertThat(tests).doesNotContain("assert_query_params");
   }
 
   @Test
@@ -70,12 +73,16 @@ class ComplianceEmissionTest {
                         .build())
                 .build());
 
-    String tests = manifest.getFileString("test/compliance_service_compliance_tests.ex").orElse("");
-    assertThat(tests).contains("defmodule ComplianceServiceComplianceTests");
+    String tests = manifest.getFileString("test/compliance_service_compliance_test.ex").orElse("");
+    assertThat(tests).contains("defmodule ComplianceServiceComplianceTest");
     assertThat(tests).contains("test \"GetItemRequest\"");
     assertThat(tests).contains("encode_get_item_request");
     assertThat(tests).contains("test \"GetItemResponse\"");
     assertThat(tests).contains("decode_get_item_response");
+    assertThat(tests).contains("defp headers_to_list");
+    assertThat(tests).contains("defp assert_headers");
+    assertThat(tests).doesNotContain("defp query_params_to_map");
+    assertThat(tests).doesNotContain("defp assert_query_params");
   }
 
   @Test
@@ -93,7 +100,7 @@ class ComplianceEmissionTest {
                         .build())
                 .build());
 
-    assertThat(manifest.getFileString("test/basic_service_compliance_tests.erl")).isEmpty();
+    assertThat(manifest.getFileString("test/basic_service_compliance_test.erl")).isEmpty();
   }
 
   @Test
@@ -111,6 +118,6 @@ class ComplianceEmissionTest {
                         .build())
                 .build());
 
-    assertThat(manifest.getFileString("test/basic_service_compliance_tests.ex")).isEmpty();
+    assertThat(manifest.getFileString("test/basic_service_compliance_test.ex")).isEmpty();
   }
 }
