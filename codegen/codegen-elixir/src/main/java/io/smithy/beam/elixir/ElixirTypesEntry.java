@@ -18,8 +18,5 @@ record ElixirTypesRootLine(String line) implements ElixirTypesEntry {}
 record ElixirTypesStructNested(TypesModule typesModule) implements ElixirTypesEntry {}
 
 record ElixirTypesEmbeddedNested(
-    String name,
-    Moduledoc moduledocOrNull,
-    List<String> extraLines,
-    List<Function> functions)
+    String name, Moduledoc moduledocOrNull, List<String> extraLines, List<Function> functions)
     implements ElixirTypesEntry {}

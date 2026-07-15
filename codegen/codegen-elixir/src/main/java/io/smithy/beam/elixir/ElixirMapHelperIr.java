@@ -83,7 +83,14 @@ final class ElixirMapHelperIr {
     String name = "encode_" + helperName;
     Expression mapBody = mapTransformBody(model, httpIndex, map, sp, true);
     return List.of(
-        new Function(name, true, List.of(FunctionHead.of(List.of(NilPattern.of()))), NilExpr.of(), null, null, true),
+        new Function(
+            name,
+            true,
+            List.of(FunctionHead.of(List.of(NilPattern.of()))),
+            NilExpr.of(),
+            null,
+            null,
+            true),
         new Function(
             name,
             true,
@@ -101,7 +108,14 @@ final class ElixirMapHelperIr {
     String name = "decode_" + helperName;
     Expression mapBody = mapTransformBody(model, httpIndex, map, sp, false);
     return List.of(
-        new Function(name, true, List.of(FunctionHead.of(List.of(NilPattern.of()))), NilExpr.of(), null, null, true),
+        new Function(
+            name,
+            true,
+            List.of(FunctionHead.of(List.of(NilPattern.of()))),
+            NilExpr.of(),
+            null,
+            null,
+            true),
         new Function(
             name,
             true,
@@ -115,11 +129,7 @@ final class ElixirMapHelperIr {
   }
 
   private static Expression mapTransformBody(
-      Model model,
-      HttpBindingIndex httpIndex,
-      MapShape map,
-      SymbolProvider sp,
-      boolean encode) {
+      Model model, HttpBindingIndex httpIndex, MapShape map, SymbolProvider sp, boolean encode) {
     return RemoteCallExpr.of(
         "Map",
         "new",
@@ -145,9 +155,7 @@ final class ElixirMapHelperIr {
     }
     clauses.add(
         AnonFunClause.of(
-            List.of(
-                TuplePattern.of(
-                    List.of(VariablePattern.of("k"), VariablePattern.of("v")))),
+            List.of(TuplePattern.of(List.of(VariablePattern.of("k"), VariablePattern.of("v")))),
             TupleExpr.of(
                 List.of(
                     wireExpr(model, sp, httpIndex, keyMember, Variable.of("k"), encode),

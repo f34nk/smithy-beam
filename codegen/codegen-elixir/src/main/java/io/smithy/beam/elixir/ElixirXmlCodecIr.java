@@ -74,7 +74,8 @@ final class ElixirXmlCodecIr {
     @SuppressWarnings("unused")
     List<Function> codecHelpers = new ArrayList<>();
     codecHelpers.addAll(ElixirCodecHelperIr.encodeQueryValueXmlQuery());
-    codecHelpers.addAll(ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY));
+    codecHelpers.addAll(
+        ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY));
     return functions;
   }
 
@@ -83,10 +84,7 @@ final class ElixirXmlCodecIr {
     return List.of(
         defp(
             name,
-            List.of(
-                VariablePattern.of("parent"),
-                NilPattern.of(),
-                VariablePattern.of("item_name")),
+            List.of(VariablePattern.of("parent"), NilPattern.of(), VariablePattern.of("item_name")),
             childListPipeline(Variable.of("parent")),
             false),
         defp(
@@ -115,8 +113,7 @@ final class ElixirXmlCodecIr {
           defp(
               "xml_namespace",
               List.of(),
-              MapExpr.of(
-                  List.of(MapEntry.atomKey("uri", StringExpr.of(namespaceUri.get())))),
+              MapExpr.of(List.of(MapEntry.atomKey("uri", StringExpr.of(namespaceUri.get())))),
               true));
     }
     return List.of(defp("xml_namespace", List.of(), MapExpr.of(List.of()), true));
@@ -143,13 +140,7 @@ final class ElixirXmlCodecIr {
             name,
             List.of(
                 TuplePattern.of(
-                    List.of(
-                        AtomPattern.of("xmlText"),
-                        W,
-                        W,
-                        W,
-                        VariablePattern.of("text"),
-                        W))),
+                    List.of(AtomPattern.of("xmlText"), W, W, W, VariablePattern.of("text"), W))),
             ListExpr.of(List.of(Variable.of("text"))),
             true),
         defp(
@@ -183,9 +174,7 @@ final class ElixirXmlCodecIr {
             MatchExpr.bind(
                 ConsListPattern.of(
                     TuplePattern.of(
-                        List.of(
-                            VariablePattern.of("root_name"),
-                            VariablePattern.of("content"))),
+                        List.of(VariablePattern.of("root_name"), VariablePattern.of("content"))),
                     NilPattern.of()),
                 RemoteCallExpr.of("Map", "to_list", List.of(Variable.of("root_map"))),
                 MatchExpr.bind(
@@ -208,12 +197,10 @@ final class ElixirXmlCodecIr {
                                     List.of(
                                         TupleExpr.of(
                                             List.of(
-                                                AtomExpr.of("prolog"),
-                                                AtomExpr.of("false"))))))),
+                                                AtomExpr.of("prolog"), AtomExpr.of("false"))))))),
                         List.of(
                             new PipeStep(
-                                RemoteCallExpr.of(
-                                    ":erlang", "iolist_to_binary", List.of()),
+                                RemoteCallExpr.of(":erlang", "iolist_to_binary", List.of()),
                                 List.of())))))));
   }
 
@@ -229,9 +216,7 @@ final class ElixirXmlCodecIr {
                         AnonFunClause.of(
                             List.of(
                                 TuplePattern.of(
-                                    List.of(
-                                        VariablePattern.of("k"),
-                                        VariablePattern.of("v")))),
+                                    List.of(VariablePattern.of("k"), VariablePattern.of("v")))),
                             new ComparisonGuard(Variable.of("v"), "!=", AtomExpr.of("nil")),
                             LocalCallExpr.of(
                                 "build_xml_child",
@@ -292,9 +277,7 @@ final class ElixirXmlCodecIr {
                         AnonFunClause.of(
                             List.of(
                                 TuplePattern.of(
-                                    List.of(
-                                        VariablePattern.of("k"),
-                                        VariablePattern.of("v")))),
+                                    List.of(VariablePattern.of("k"), VariablePattern.of("v")))),
                             new ComparisonGuard(Variable.of("v"), "!=", AtomExpr.of("nil")),
                             LocalCallExpr.of(
                                 "build_xml_element",
@@ -377,10 +360,8 @@ final class ElixirXmlCodecIr {
             name,
             List.of(
                 MapPattern.of(
-                    List.of(
-                        MapPatternEntry.of(AtomExpr.of("uri"), VariablePattern.of("uri"))))),
-            ListExpr.of(
-                List.of(TupleExpr.of(List.of(AtomExpr.of("xmlns"), Variable.of("uri"))))),
+                    List.of(MapPatternEntry.of(AtomExpr.of("uri"), VariablePattern.of("uri"))))),
+            ListExpr.of(List.of(TupleExpr.of(List.of(AtomExpr.of("xmlns"), Variable.of("uri"))))),
             true),
         defp(name, List.of(W), ListExpr.of(List.of()), true));
   }
@@ -414,8 +395,7 @@ final class ElixirXmlCodecIr {
                                 AtomExpr.of("error"),
                                 TupleExpr.of(
                                     List.of(
-                                        AtomExpr.of("missing_root"),
-                                        Variable.of("root_name")))))),
+                                        AtomExpr.of("missing_root"), Variable.of("root_name")))))),
                     Clause.of(
                         VariablePattern.of("root"),
                         TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("root")))))),
@@ -425,8 +405,7 @@ final class ElixirXmlCodecIr {
         new BlockExpr(
             List.of(
                 MatchExpr.bind(
-                    TuplePattern.of(
-                        List.of(VariablePattern.of("xml"), WildcardPattern.of())),
+                    TuplePattern.of(List.of(VariablePattern.of("xml"), WildcardPattern.of())),
                     RemoteCallExpr.of(
                         ":xmerl_scan",
                         "string",
@@ -445,9 +424,7 @@ final class ElixirXmlCodecIr {
                     List.of(
                         AtomExpr.of("error"),
                         TupleExpr.of(
-                            List.of(
-                                AtomExpr.of("xml_parse_error"),
-                                Variable.of("reason"))))))));
+                            List.of(AtomExpr.of("xml_parse_error"), Variable.of("reason"))))))));
   }
 
   private static List<Function> decodePayload() {
@@ -457,13 +434,10 @@ final class ElixirXmlCodecIr {
             List.of(VariablePattern.of("body"), VariablePattern.of("root_name")),
             new CaseExpr(
                 LocalCallExpr.of(
-                    "parse_xml_root",
-                    List.of(Variable.of("body"), Variable.of("root_name"))),
+                    "parse_xml_root", List.of(Variable.of("body"), Variable.of("root_name"))),
                 List.of(
-                    Clause.of(
-                        TuplePattern.of(List.of(AtomPattern.of("ok"), W)), NilExpr.of()),
-                    Clause.of(
-                        TuplePattern.of(List.of(AtomPattern.of("error"), W)), NilExpr.of()))),
+                    Clause.of(TuplePattern.of(List.of(AtomPattern.of("ok"), W)), NilExpr.of()),
+                    Clause.of(TuplePattern.of(List.of(AtomPattern.of("error"), W)), NilExpr.of()))),
             false));
   }
 
@@ -484,9 +458,7 @@ final class ElixirXmlCodecIr {
 
   private static List<Function> elementContent() {
     TuplePattern xmlElement = xmlElementContentPattern("content");
-    TuplePattern sixTuple =
-        TuplePattern.of(
-            List.of(W, W, VariablePattern.of("content"), W, W, W));
+    TuplePattern sixTuple = TuplePattern.of(List.of(W, W, VariablePattern.of("content"), W, W, W));
     String name = "element_content";
     return List.of(
         defp(name, List.of(xmlElement), Variable.of("content"), true),
@@ -525,8 +497,7 @@ final class ElixirXmlCodecIr {
                                         "and",
                                         new InfixExpr(
                                             LocalCallExpr.of(
-                                                "element_name",
-                                                List.of(Variable.of("item"))),
+                                                "element_name", List.of(Variable.of("item"))),
                                             "==",
                                             Variable.of("name"))),
                                     Variable.of("item"),
@@ -537,9 +508,7 @@ final class ElixirXmlCodecIr {
 
   private static List<Function> isElement() {
     TuplePattern xmlElement = xmlElementWildPattern();
-    TuplePattern sixTuple =
-        TuplePattern.of(
-            List.of(W, W, VariablePattern.of("content"), W, W, W));
+    TuplePattern sixTuple = TuplePattern.of(List.of(W, W, VariablePattern.of("content"), W, W, W));
     String name = "is_element";
     return List.of(
         defp(name, List.of(xmlElement), AtomExpr.of("true"), true),
@@ -568,9 +537,7 @@ final class ElixirXmlCodecIr {
                 W,
                 W,
                 W));
-    TuplePattern sixTupleName =
-        TuplePattern.of(
-            List.of(VariablePattern.of("name"), W, W, W, W, W));
+    TuplePattern sixTupleName = TuplePattern.of(List.of(VariablePattern.of("name"), W, W, W, W, W));
     String name = "element_name";
     return List.of(
         defp(
@@ -681,8 +648,7 @@ final class ElixirXmlCodecIr {
     return new PipeExpr(
         root,
         List.of(
-            new PipeStep(
-                LocalCallExpr.of("element_content", List.of()), List.of()),
+            new PipeStep(LocalCallExpr.of("element_content", List.of()), List.of()),
             new PipeStep(elementFilterCall(), List.of()),
             new PipeStep(elementTextMapCall(), List.of()),
             new PipeStep(rejectNilCall(), List.of())));
@@ -701,8 +667,7 @@ final class ElixirXmlCodecIr {
                             LocalCallExpr.of("is_element", List.of(Variable.of("item"))),
                             "and",
                             new InfixExpr(
-                                LocalCallExpr.of(
-                                    "element_name", List.of(Variable.of("item"))),
+                                LocalCallExpr.of("element_name", List.of(Variable.of("item"))),
                                 "==",
                                 Variable.of("item_name"))))))));
   }
@@ -715,8 +680,7 @@ final class ElixirXmlCodecIr {
             new AnonFun(
                 List.of(
                     AnonFunClause.of(
-                        List.of(VariablePattern.of("item")),
-                        elementTextCaseExpr())))));
+                        List.of(VariablePattern.of("item")), elementTextCaseExpr())))));
   }
 
   private static Expression elementTextCaseExpr() {
@@ -726,8 +690,7 @@ final class ElixirXmlCodecIr {
             Clause.of(ListPattern.of(List.of()), NilExpr.of()),
             Clause.of(
                 ConsListPattern.of(VariablePattern.of("text"), W),
-                RemoteCallExpr.of(
-                    "List", "to_string", List.of(Variable.of("text"))))));
+                RemoteCallExpr.of("List", "to_string", List.of(Variable.of("text"))))));
   }
 
   private static Expression rejectNilCall() {
@@ -742,17 +705,14 @@ final class ElixirXmlCodecIr {
                         LocalCallExpr.of("is_nil", List.of(Variable.of("x"))))))));
   }
 
-  private static Expression childListPipelineWithDecodeFun(
-      Expression root, Expression decodeFun) {
+  private static Expression childListPipelineWithDecodeFun(Expression root, Expression decodeFun) {
     return new PipeExpr(
         root,
         List.of(
-            new PipeStep(
-                LocalCallExpr.of("element_content", List.of()), List.of()),
+            new PipeStep(LocalCallExpr.of("element_content", List.of()), List.of()),
             new PipeStep(elementFilterCall(), List.of()),
             new PipeStep(
-                RemoteCallExpr.of("Enum", "map", List.of(Variable.of("decode_fun"))),
-                List.of())));
+                RemoteCallExpr.of("Enum", "map", List.of(Variable.of("decode_fun"))), List.of())));
   }
 
   private static TuplePattern xmlElementContentPattern(String contentVar) {
@@ -773,20 +733,7 @@ final class ElixirXmlCodecIr {
   }
 
   private static TuplePattern xmlElementWildPattern() {
-    return TuplePattern.of(
-        List.of(
-            AtomPattern.of("xmlElement"),
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W,
-            W));
+    return TuplePattern.of(List.of(AtomPattern.of("xmlElement"), W, W, W, W, W, W, W, W, W, W, W));
   }
 
   private static Function defp(

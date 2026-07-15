@@ -13,8 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
@@ -165,7 +165,9 @@ class ElixirAwsQueryIrTest {
   }
 
   private static String helpersAsString(List<Function> functions) {
-    return functions.stream().map(ElixirRenderer::renderFunction).collect(Collectors.joining("\n\n"));
+    return functions.stream()
+        .map(ElixirRenderer::renderFunction)
+        .collect(Collectors.joining("\n\n"));
   }
 
   private static String readExpectedString(String resourcePath) throws IOException {

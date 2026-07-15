@@ -30,8 +30,8 @@ import software.amazon.smithy.model.traits.SparseTrait;
 /**
  * DirectedCodegen implementation for the Elixir types generator.
  *
- * <p>Types are composed as beam-ir {@link io.beam.ir.elixir.Module} trees and emitted from
- * {@link #customizeAfterIntegrations} via {@link ElixirTypesEmission}. By default all types stay in one
+ * <p>Types are composed as beam-ir {@link io.beam.ir.elixir.Module} trees and emitted from {@link
+ * #customizeAfterIntegrations} via {@link ElixirTypesEmission}. By default all types stay in one
  * file; when {@link BeamSettings#typesDefstructSplitThreshold} is lowered, only oversized structure
  * modules are written to separate files under the default {@code types/} directory.
  *
@@ -191,7 +191,9 @@ final class ElixirDirectedCodegen
   }
 
   private static List<String> shapeDocComments(Shape shape) {
-    return BeamDocumentation.forShape(shape).map(ElixirDirectedCodegen::docToCommentLines).orElse(List.of());
+    return BeamDocumentation.forShape(shape)
+        .map(ElixirDirectedCodegen::docToCommentLines)
+        .orElse(List.of());
   }
 
   private static List<String> docToCommentLines(String doc) {
@@ -339,7 +341,9 @@ final class ElixirDirectedCodegen
   public void generateEnumShape(GenerateEnumDirective<ElixirContext, BeamSettings> directive) {
     EnumShape shape = directive.expectEnumShape();
     Symbol symbol = directive.symbolProvider().toSymbol(shape);
-    directive.context().addTypesEmbeddedNested(ElixirTypesNestedIr.buildEnumNestedModule(shape, symbol));
+    directive
+        .context()
+        .addTypesEmbeddedNested(ElixirTypesNestedIr.buildEnumNestedModule(shape, symbol));
   }
 
   @Override
@@ -398,8 +402,7 @@ final class ElixirDirectedCodegen
     ErrorTrait errorTrait = shape.expectTrait(ErrorTrait.class);
     BeamRetryIndex.RetryInfo retryInfo = BeamRetryIndex.forError(shape).orElseThrow();
 
-    ctx.addTypesRootLine(
-        "# Error shape: " + shape.getId() + " (" + errorTrait.getValue() + ")");
+    ctx.addTypesRootLine("# Error shape: " + shape.getId() + " (" + errorTrait.getValue() + ")");
     ctx.addTypesEmbeddedNested(
         ElixirTypesNestedIr.buildErrorNestedModule(
             shape,

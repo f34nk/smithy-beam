@@ -40,7 +40,8 @@ final class ElixirUnionHelperIr {
     return functions;
   }
 
-  private static List<Function> unionDecode(UnionShape shape, SymbolProvider sp, String helperName) {
+  private static List<Function> unionDecode(
+      UnionShape shape, SymbolProvider sp, String helperName) {
     List<Clause> branches = new ArrayList<>();
     for (MemberShape member : shape.members()) {
       String wireKey = member.getMemberName();
@@ -80,7 +81,8 @@ final class ElixirUnionHelperIr {
             true));
   }
 
-  private static List<Function> unionEncode(UnionShape shape, SymbolProvider sp, String helperName) {
+  private static List<Function> unionEncode(
+      UnionShape shape, SymbolProvider sp, String helperName) {
     List<Function> functions = new ArrayList<>();
     String name = "encode_" + helperName;
     for (MemberShape member : shape.members()) {
@@ -96,8 +98,7 @@ final class ElixirUnionHelperIr {
     functions.add(
         defp(
             name,
-            List.of(
-                TuplePattern.of(List.of(AtomPattern.of("unknown"), VariablePattern.of("k")))),
+            List.of(TuplePattern.of(List.of(AtomPattern.of("unknown"), VariablePattern.of("k")))),
             IsTypeGuard.of("is_binary", "k"),
             MapExpr.of(List.of(MapEntry.pair(Variable.of("k"), NilExpr.of()))),
             false));
@@ -110,7 +111,10 @@ final class ElixirUnionHelperIr {
   }
 
   private static Function defp(
-      String name, List<Pattern> params, Guard guard, io.beam.ir.elixir.Expression body,
+      String name,
+      List<Pattern> params,
+      Guard guard,
+      io.beam.ir.elixir.Expression body,
       boolean oneLiner) {
     return new Function(
         name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);

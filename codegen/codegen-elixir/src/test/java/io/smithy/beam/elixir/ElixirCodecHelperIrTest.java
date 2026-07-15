@@ -29,14 +29,12 @@ class ElixirCodecHelperIrTest {
 
   @Test
   void toBinaryRestJsonIsStructural() {
-    assertStructural(
-        ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.REST_JSON));
+    assertStructural(ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.REST_JSON));
   }
 
   @Test
   void toBinaryXmlQueryIsStructural() {
-    assertStructural(
-        ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY));
+    assertStructural(ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY));
   }
 
   @Test

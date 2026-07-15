@@ -70,9 +70,7 @@ final class ElixirComplianceLiteralIr {
       return MapExpr.of(List.of());
     }
     List<MapEntry> entries = new ArrayList<>();
-    headers.forEach(
-        (key, value) ->
-            entries.add(MapEntry.stringKey(key, StringExpr.of(value))));
+    headers.forEach((key, value) -> entries.add(MapEntry.stringKey(key, StringExpr.of(value))));
     return MapExpr.of(entries);
   }
 
@@ -98,8 +96,7 @@ final class ElixirComplianceLiteralIr {
       String memberName = member.getMemberName();
       if (params.getMember(memberName).isPresent()) {
         String field = BeamNameUtils.toSnakeCase(memberName);
-        entries.add(
-            MapEntry.atomKey(field, scalarValue(params.expectMember(memberName))));
+        entries.add(MapEntry.atomKey(field, scalarValue(params.expectMember(memberName))));
       }
     }
     if (entries.isEmpty()) {
@@ -145,9 +142,7 @@ final class ElixirComplianceLiteralIr {
     List<MapEntry> entries = new ArrayList<>();
     objectNode
         .getMembers()
-        .forEach(
-            (key, node) ->
-                entries.add(MapEntry.stringKey(key.getValue(), scalarValue(node))));
+        .forEach((key, node) -> entries.add(MapEntry.stringKey(key.getValue(), scalarValue(node))));
     return MapExpr.of(entries);
   }
 

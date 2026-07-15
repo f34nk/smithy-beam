@@ -1,7 +1,5 @@
 package io.smithy.beam.elixir;
 
-import io.smithy.beam.core.BeamClientPaginationSupport;
-import io.smithy.beam.core.BeamClientRetrySupport;
 import io.beam.ir.elixir.AtomExpr;
 import io.beam.ir.elixir.BlockExpr;
 import io.beam.ir.elixir.Expression;
@@ -12,6 +10,8 @@ import io.beam.ir.elixir.Module;
 import io.beam.ir.elixir.Spec;
 import io.beam.ir.elixir.TupleExpr;
 import io.beam.ir.elixir.VariablePattern;
+import io.smithy.beam.core.BeamClientPaginationSupport;
+import io.smithy.beam.core.BeamClientRetrySupport;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamEdition;
@@ -166,12 +166,10 @@ final class ElixirClientDirectedCodegen
       String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
       List<Function> functions = new ArrayList<>();
       if (ElixirRetryIr.serviceHasRetryableErrors(ctx.model(), service)) {
-        functions.addAll(
-            ElixirRetryIr.clientPredicateFunctions(ctx.model(), service, sp, layout));
+        functions.addAll(ElixirRetryIr.clientPredicateFunctions(ctx.model(), service, sp, layout));
       }
       functions.addAll(builder.operationFunctions());
-      Module module =
-          ElixirClientIr.clientModule(layout, service, typesModuleName, functions);
+      Module module = ElixirClientIr.clientModule(layout, service, typesModuleName, functions);
       ElixirCodecEmission.writeModule(ctx, ctx.definitionFile(), module);
       if (ctx.protocolCodegen() != null) {
         List<OperationShape> operations =
@@ -334,8 +332,7 @@ final class ElixirClientDirectedCodegen
         opSym.getName(),
         false,
         List.of(
-            FunctionHead.of(
-                List.of(VariablePattern.of("config"), VariablePattern.of("input")))),
+            FunctionHead.of(List.of(VariablePattern.of("config"), VariablePattern.of("input")))),
         block,
         spec,
         doc,

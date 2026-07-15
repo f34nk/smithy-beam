@@ -105,11 +105,11 @@ final class ElixirClientDispatchOperationIr {
                     RemoteCallExpr.of("Enum", "reverse", List.of(Variable.of("new_acc")))));
     Expression nextInput =
         MapExpr.of(
-            Variable.of("input"),
-            List.of(MapEntry.atomKey(inputToken, Variable.of("next_token"))));
+            Variable.of("input"), List.of(MapEntry.atomKey(inputToken, Variable.of("next_token"))));
     Expression recurse =
         LocalCallExpr.of(
-            opName, List.of(Variable.of("config"), Variable.of("next_input"), Variable.of("new_acc")));
+            opName,
+            List.of(Variable.of("config"), Variable.of("next_input"), Variable.of("new_acc")));
     body.add(
         new CaseExpr(
             outputTokenExpr,
@@ -117,10 +117,7 @@ final class ElixirClientDispatchOperationIr {
                 Clause.of(NilPattern.of(), undefinedSuccess),
                 Clause.of(
                     VariablePattern.of("next_token"),
-                    new BlockExpr(
-                        List.of(
-                            MatchExpr.bind("next_input", nextInput),
-                            recurse))))));
+                    new BlockExpr(List.of(MatchExpr.bind("next_input", nextInput), recurse))))));
     return body;
   }
 
@@ -135,8 +132,7 @@ final class ElixirClientDispatchOperationIr {
     }
     List<Expression> keys =
         path.stream().map(m -> (Expression) AtomExpr.of(fieldName(sp, m))).toList();
-    return RemoteCallExpr.of(
-        "Kernel", "get_in", List.of(Variable.of(rootVar), ListExpr.of(keys)));
+    return RemoteCallExpr.of("Kernel", "get_in", List.of(Variable.of(rootVar), ListExpr.of(keys)));
   }
 
   static Expression buildItemsAccessExpr(
@@ -159,10 +155,7 @@ final class ElixirClientDispatchOperationIr {
         RemoteCallExpr.of(
             "Map",
             "get",
-            List.of(
-                Variable.of("config"),
-                AtomExpr.of("retry"),
-                ListExpr.of(List.of()))));
+            List.of(Variable.of("config"), AtomExpr.of("retry"), ListExpr.of(List.of()))));
   }
 
   static Expression withRetryCall(String clientModule, Expression retryFun) {
@@ -233,7 +226,9 @@ final class ElixirClientDispatchOperationIr {
     String opName = ctx.opName();
     Expression signWithConfig =
         RemoteCallExpr.of(
-            "AwsSigv4", "sign", List.of(Variable.of("config"), AtomExpr.of(opName), Variable.of("req")));
+            "AwsSigv4",
+            "sign",
+            List.of(Variable.of("config"), AtomExpr.of(opName), Variable.of("req")));
     Expression credsMap =
         MapExpr.of(
             List.of(
@@ -273,7 +268,8 @@ final class ElixirClientDispatchOperationIr {
                     MatchExpr.bind("creds", credsMap, signWithMergedCreds))));
     Expression credentialsCase =
         new CaseExpr(
-            RemoteCallExpr.of("Map", "get", List.of(Variable.of("config"), AtomExpr.of("credentials"))),
+            RemoteCallExpr.of(
+                "Map", "get", List.of(Variable.of("config"), AtomExpr.of("credentials"))),
             List.of(
                 Clause.of(NilPattern.of(), undefinedCredentialsBranch),
                 Clause.of(VariablePattern.of("_"), signWithConfig)));
@@ -288,7 +284,9 @@ final class ElixirClientDispatchOperationIr {
     Expression successExpr = buildDecodeSuccessExpr(ctx);
     return new CaseExpr(
         RemoteCallExpr.of(
-            ctx.runtimeHttpModule(), "dispatch", List.of(Variable.of("config"), dispatchRequestVar(ctx))),
+            ctx.runtimeHttpModule(),
+            "dispatch",
+            List.of(Variable.of("config"), dispatchRequestVar(ctx))),
         List.of(
             Clause.of(
                 TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("resp"))),
@@ -301,7 +299,9 @@ final class ElixirClientDispatchOperationIr {
   private static Expression buildDecodeSuccessExpr(DispatchContext ctx) {
     Expression decode =
         RemoteCallExpr.of(
-            ctx.codecModule(), "decode_" + ctx.opName() + "_response", List.of(Variable.of("resp")));
+            ctx.codecModule(),
+            "decode_" + ctx.opName() + "_response",
+            List.of(Variable.of("resp")));
     if (ctx.mode() == DispatchBodyMode.SINGLE_PAGE) {
       return decode;
     }
@@ -346,9 +346,7 @@ final class ElixirClientDispatchOperationIr {
     Expression retryFun =
         new AnonFun(
             List.of(
-                AnonFunClause.of(
-                    List.of(),
-                    core.size() == 1 ? core.get(0) : new BlockExpr(core))));
+                AnonFunClause.of(List.of(), core.size() == 1 ? core.get(0) : new BlockExpr(core))));
     return List.of(retryOptsBinding(), withRetryCall(ctx.clientModule(), retryFun));
   }
 }

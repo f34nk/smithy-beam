@@ -11,8 +11,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
 import software.amazon.smithy.model.shapes.OperationShape;
@@ -109,15 +109,7 @@ class ElixirRestJsonIrTest {
     String eventStreamModule = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
     Function fn =
         ElixirRestJsonOperationIr.buildEncodeRequest(
-                model,
-                service,
-                op,
-                httpIndex,
-                sp,
-                typesMod,
-                runtimeMod,
-                false,
-                eventStreamModule)
+                model, service, op, httpIndex, sp, typesMod, runtimeMod, false, eventStreamModule)
             .get(0);
     ElixirIrTestSupport.assertStructural(fn);
     assertThat(ElixirRenderer.renderFunction(fn))

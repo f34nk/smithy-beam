@@ -67,8 +67,7 @@ final class ElixirAwsJsonOperationIr {
                     model, httpIndex, sp, typesMod, members, "input", eventStreamModule))));
     body.add(
         MatchExpr.bind(
-            "body",
-            RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
+            "body", RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
     body.add(buildAwsJsonHttpRequestExpr(runtimeMod, amzTarget, contentType));
 
     Spec spec = Spec.of("encode_" + opName + "_request(" + inputType + ") :: " + httpRequestType);
@@ -76,9 +75,7 @@ final class ElixirAwsJsonOperationIr {
     return List.of(
         def(
             "encode_" + opName + "_request",
-            List.of(
-                AssignPattern.of(
-                    "input", StructPattern.of("Types." + inputStruct, List.of()))),
+            List.of(AssignPattern.of("input", StructPattern.of("Types." + inputStruct, List.of()))),
             block(body),
             spec,
             FunctionDoc.of("Encode AWS JSON request for " + op.getId() + "."),
@@ -167,10 +164,7 @@ final class ElixirAwsJsonOperationIr {
             List.of(errorPattern),
             LocalCallExpr.of(
                 "decode_" + opName + "_response_error",
-                List.of(
-                    Variable.of("status"),
-                    Variable.of("headers"),
-                    Variable.of("body"))),
+                List.of(Variable.of("status"), Variable.of("headers"), Variable.of("body"))),
             null,
             null,
             true));
@@ -254,16 +248,14 @@ final class ElixirAwsJsonOperationIr {
                     model, httpIndex, sp, typesMod, members, "output", eventStreamModule))));
     body.add(
         MatchExpr.bind(
-            "body",
-            RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
+            "body", RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
     body.add(
         MatchExpr.bind(
             "headers",
             ListExpr.of(
                 List.of(
                     TupleExpr.of(
-                        List.of(
-                            StringExpr.of("Content-Type"), StringExpr.of(contentType)))))));
+                        List.of(StringExpr.of("Content-Type"), StringExpr.of(contentType)))))));
     body.add(
         MapExpr.of(
             List.of(
@@ -275,8 +267,7 @@ final class ElixirAwsJsonOperationIr {
         def(
             "encode_" + opName + "_response",
             List.of(
-                AssignPattern.of(
-                    "output", StructPattern.of("Types." + outputStruct, List.of()))),
+                AssignPattern.of("output", StructPattern.of("Types." + outputStruct, List.of()))),
             block(body),
             spec,
             FunctionDoc.of("Encode AWS JSON response for " + op.getId() + "."),
@@ -307,11 +298,9 @@ final class ElixirAwsJsonOperationIr {
                 ListExpr.of(
                     List.of(
                         TupleExpr.of(
-                            List.of(
-                                StringExpr.of("Content-Type"), StringExpr.of(contentType))),
+                            List.of(StringExpr.of("Content-Type"), StringExpr.of(contentType))),
                         TupleExpr.of(
-                            List.of(
-                                StringExpr.of("X-Amz-Target"), StringExpr.of(amzTarget)))))),
+                            List.of(StringExpr.of("X-Amz-Target"), StringExpr.of(amzTarget)))))),
             StructField.of("body", Variable.of("body"))));
   }
 
@@ -319,9 +308,7 @@ final class ElixirAwsJsonOperationIr {
     List<StructField> fields = new ArrayList<>();
     for (MapEntry entry : entries) {
       String name =
-          entry.key() instanceof AtomExpr atom
-              ? atom.value()
-              : ((StringExpr) entry.key()).value();
+          entry.key() instanceof AtomExpr atom ? atom.value() : ((StringExpr) entry.key()).value();
       fields.add(StructField.of(name, entry.value()));
     }
     return fields;

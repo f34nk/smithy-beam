@@ -2,14 +2,11 @@ package io.smithy.beam.elixir;
 
 import io.beam.ir.elixir.AtomExpr;
 import io.beam.ir.elixir.BlockExpr;
-import io.beam.ir.elixir.DotCallExpr;
 import io.beam.ir.elixir.Expression;
 import io.beam.ir.elixir.Function;
 import io.beam.ir.elixir.FunctionHead;
 import io.beam.ir.elixir.InfixExpr;
-import io.beam.ir.elixir.LocalCallExpr;
 import io.beam.ir.elixir.MatchExpr;
-import io.beam.ir.elixir.Pattern;
 import io.beam.ir.elixir.RemoteCallExpr;
 import io.beam.ir.elixir.StringExpr;
 import io.beam.ir.elixir.StructPattern;
@@ -77,16 +74,11 @@ final class ElixirHostLabelIr {
                         "Map",
                         "get",
                         List.of(
-                            Variable.of("config"),
-                            AtomExpr.of("base_url"),
-                            StringExpr.of("")))),
+                            Variable.of("config"), AtomExpr.of("base_url"), StringExpr.of("")))),
                 MatchExpr.bind(
                     TuplePattern.of(
-                        List.of(
-                            VariablePattern.of("_scheme"),
-                            VariablePattern.of("authority"))),
-                    RemoteCallExpr.of(
-                        "Utils", "split_base_url", List.of(Variable.of("base_url")))),
+                        List.of(VariablePattern.of("_scheme"), VariablePattern.of("authority"))),
+                    RemoteCallExpr.of("Utils", "split_base_url", List.of(Variable.of("base_url")))),
                 MatchExpr.bind("prefix", prefixExpr),
                 new InfixExpr(Variable.of("prefix"), "<>", Variable.of("authority")))),
         null,
@@ -116,9 +108,7 @@ final class ElixirHostLabelIr {
             RemoteCallExpr.of(
                 "URI",
                 "encode",
-                List.of(
-                    RemoteCallExpr.of(
-                        "Kernel", "to_string", List.of(Variable.of(field)))));
+                List.of(RemoteCallExpr.of("Kernel", "to_string", List.of(Variable.of(field)))));
       } else {
         part = StringExpr.of(segment.getContent());
       }

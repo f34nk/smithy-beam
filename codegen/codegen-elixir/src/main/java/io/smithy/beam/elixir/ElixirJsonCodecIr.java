@@ -2,9 +2,6 @@ package io.smithy.beam.elixir;
 
 import io.beam.ir.elixir.AnonFun;
 import io.beam.ir.elixir.AnonFunClause;
-import io.beam.ir.elixir.AtomExpr;
-import io.beam.ir.elixir.CaseExpr;
-import io.beam.ir.elixir.Clause;
 import io.beam.ir.elixir.DotCallExpr;
 import io.beam.ir.elixir.Expression;
 import io.beam.ir.elixir.IfExpr;
@@ -13,7 +10,6 @@ import io.beam.ir.elixir.LocalCallExpr;
 import io.beam.ir.elixir.MapEntry;
 import io.beam.ir.elixir.MapExpr;
 import io.beam.ir.elixir.MatchExpr;
-import io.beam.ir.elixir.NilExpr;
 import io.beam.ir.elixir.PipeExpr;
 import io.beam.ir.elixir.PipeStep;
 import io.beam.ir.elixir.RemoteCallExpr;
@@ -141,8 +137,7 @@ final class ElixirJsonCodecIr {
         Expression raw =
             RemoteCallExpr.of(
                 "Map", "get", List.of(Variable.of("decoded"), StringExpr.of(jsonKey(member))));
-        fields.add(
-            MapEntry.atomKey(fieldName, decodeJsonExpr(model, sp, httpIndex, member, raw)));
+        fields.add(MapEntry.atomKey(fieldName, decodeJsonExpr(model, sp, httpIndex, member, raw)));
       }
     }
     return fields;
@@ -164,7 +159,11 @@ final class ElixirJsonCodecIr {
   }
 
   static Expression decodeJsonExpr(
-      Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member, Expression raw) {
+      Model model,
+      SymbolProvider sp,
+      HttpBindingIndex httpIndex,
+      MemberShape member,
+      Expression raw) {
     Shape target = model.expectShape(member.getTarget());
     if (target instanceof EnumShape || target instanceof IntEnumShape) {
       return LocalCallExpr.of("decode_" + helperName(sp, target), List.of(raw));
@@ -262,8 +261,7 @@ final class ElixirJsonCodecIr {
                                     List.of(
                                         TuplePattern.of(
                                             List.of(
-                                                VariablePattern.of("_"),
-                                                VariablePattern.of("v")))),
+                                                VariablePattern.of("_"), VariablePattern.of("v")))),
                                     LocalCallExpr.of("is_nil", List.of(Variable.of("v")))))))),
                 List.of()),
             new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of())));

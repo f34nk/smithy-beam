@@ -2,19 +2,15 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.elixir.ElixirRenderer;
 import io.beam.ir.elixir.Function;
-import io.beam.ir.elixir.Moduledoc;
-import io.beam.ir.elixir.Module;
-import io.smithy.beam.core.BeamCodegenKind;
-import io.smithy.beam.core.BeamSettings;
-import io.beam.ir.elixir.AtomExpr;
 import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.Spec;
-import io.beam.ir.elixir.TypeDef;
 import io.beam.ir.elixir.TypesModule;
 import io.beam.ir.elixir.Variable;
 import io.beam.ir.elixir.VariablePattern;
+import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamSettings;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -157,10 +153,7 @@ class ElixirTypesEmissionTest {
     ctx.addTypesStructNested(largeStructure("LargeShape"));
     ctx.addTypesEmbeddedNested(
         new ElixirTypesEmbeddedNested(
-            "OrderStatus",
-            null,
-            List.of("@type t :: :pending | :shipped"),
-            List.of()));
+            "OrderStatus", null, List.of("@type t :: :pending | :shipped"), List.of()));
     return ctx;
   }
 

@@ -3,7 +3,6 @@ package io.smithy.beam.elixir;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.beam.ir.elixir.ElixirRenderer;
-import io.beam.ir.elixir.Function;
 import io.beam.ir.elixir.MapEntry;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;

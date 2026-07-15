@@ -110,7 +110,8 @@ final class ElixirStructureHelperIr {
       String wireKey = jsonKey(member);
       entries.add(
           MapEntry.stringKey(
-              wireKey, encodeFieldValueFromRecord(model, sp, httpIndex, structure, member, "record")));
+              wireKey,
+              encodeFieldValueFromRecord(model, sp, httpIndex, structure, member, "record")));
     }
     String name = "encode_" + helperName;
     return List.of(
@@ -134,7 +135,8 @@ final class ElixirStructureHelperIr {
                                                     List.of(
                                                         VariablePattern.of("_k"),
                                                         VariablePattern.of("v")))),
-                                            LocalCallExpr.of("is_nil", List.of(Variable.of("v")))))))),
+                                            LocalCallExpr.of(
+                                                "is_nil", List.of(Variable.of("v")))))))),
                         List.of()),
                     new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of()))),
             false));
@@ -237,11 +239,7 @@ final class ElixirStructureHelperIr {
       String recordVar) {
     String field = fieldName(member);
     return encodeFieldValue(
-        model,
-        sp,
-        httpIndex,
-        member,
-        new DotCallExpr(Variable.of(recordVar), field, List.of()));
+        model, sp, httpIndex, member, new DotCallExpr(Variable.of(recordVar), field, List.of()));
   }
 
   private static Expression encodeFieldValue(

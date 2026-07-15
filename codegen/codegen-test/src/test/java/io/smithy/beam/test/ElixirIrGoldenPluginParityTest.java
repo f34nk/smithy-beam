@@ -80,7 +80,6 @@ class ElixirIrGoldenPluginParityTest {
         Path.of("src/test/resources/golden/http_service_rest_json_1_client_codec.expected.ex");
     Files.writeString(
         golden,
-        stripTrailingNewline(manifest.expectFileString("http_service_rest_json_1.ex"))
-            + "\n");
+        stripTrailingNewline(manifest.expectFileString("http_service_rest_json_1.ex")) + "\n");
   }
 }

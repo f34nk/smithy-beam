@@ -19,8 +19,8 @@ import io.beam.ir.elixir.MapExpr;
 import io.beam.ir.elixir.MapPattern;
 import io.beam.ir.elixir.MapPatternEntry;
 import io.beam.ir.elixir.MatchExpr;
-import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.Pattern;
 import io.beam.ir.elixir.PipeExpr;
 import io.beam.ir.elixir.PipeStep;
@@ -126,9 +126,7 @@ final class ElixirEventStreamIr {
                     RemoteCallExpr.of("AwsEventStream", "decode_frames", List.of()), List.of()),
                 new PipeStep(
                     RemoteCallExpr.of(
-                        "Enum",
-                        "map",
-                        List.of(CaptureExpr.of("decode_" + helper + "_event", 1))),
+                        "Enum", "map", List.of(CaptureExpr.of("decode_" + helper + "_event", 1))),
                     List.of()))),
         null,
         FunctionDoc.of("Decodes an event stream body into tagged events."),
@@ -145,9 +143,7 @@ final class ElixirEventStreamIr {
     functions.add(
         defp(
             "encode_" + helper + "_event",
-            List.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("unknown"), WildcardPattern.of()))),
+            List.of(TuplePattern.of(List.of(AtomPattern.of("unknown"), WildcardPattern.of()))),
             new RaiseExpr(AtomExpr.of("ArgumentError"), StringExpr.of("unknown event"), true),
             true));
     return functions;
@@ -160,10 +156,8 @@ final class ElixirEventStreamIr {
         List.of(
             MapPattern.of(
                 List.of(
-                    MapPatternEntry.of(
-                        AtomExpr.of("headers"), VariablePattern.of("headers")),
-                    MapPatternEntry.of(
-                        AtomExpr.of("payload"), VariablePattern.of("payload"))))),
+                    MapPatternEntry.of(AtomExpr.of("headers"), VariablePattern.of("headers")),
+                    MapPatternEntry.of(AtomExpr.of("payload"), VariablePattern.of("payload"))))),
         new BlockExpr(
             List.of(
                 MatchExpr.bind(
@@ -211,17 +205,14 @@ final class ElixirEventStreamIr {
     Shape target = model.expectShape(member.getTarget());
     return defp(
         "encode_" + helper + "_event",
-        List.of(
-            TuplePattern.of(List.of(AtomPattern.of(tag), VariablePattern.of("value")))),
+        List.of(TuplePattern.of(List.of(AtomPattern.of(tag), VariablePattern.of("value")))),
         MatchExpr.bind(
             "payload",
             encodeMemberPayload(model, target, "value", sp, typesMod),
             MatchExpr.bind(
                 "headers",
                 RemoteCallExpr.of(
-                    "AwsEventStream",
-                    "encode_event_headers",
-                    List.of(StringExpr.of(eventType))),
+                    "AwsEventStream", "encode_event_headers", List.of(StringExpr.of(eventType))),
                 RemoteCallExpr.of(
                     "AwsEventStream",
                     "frame",
@@ -277,9 +268,7 @@ final class ElixirEventStreamIr {
           MapEntry.stringKey(
               wireKey,
               RemoteCallExpr.of(
-                  "Map",
-                  "get",
-                  List.of(Variable.of(valueVar), AtomExpr.of(fieldName)))));
+                  "Map", "get", List.of(Variable.of(valueVar), AtomExpr.of(fieldName)))));
     }
     return RemoteCallExpr.of("Jason", "encode!", List.of(MapExpr.of(entries)));
   }
@@ -298,9 +287,7 @@ final class ElixirEventStreamIr {
           StructField.of(
               fieldName,
               RemoteCallExpr.of(
-                  "Map",
-                  "get",
-                  List.of(Variable.of("decoded"), StringExpr.of(wireKey)))));
+                  "Map", "get", List.of(Variable.of("decoded"), StringExpr.of(wireKey)))));
     }
     return new CaseExpr(
         RemoteCallExpr.of("Jason", "decode!", List.of(Variable.of(payloadVar))),

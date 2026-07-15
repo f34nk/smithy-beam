@@ -1,8 +1,8 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AndGuard;
 import io.beam.ir.elixir.AnonFun;
 import io.beam.ir.elixir.AnonFunClause;
-import io.beam.ir.elixir.AndGuard;
 import io.beam.ir.elixir.AtomExpr;
 import io.beam.ir.elixir.AtomPattern;
 import io.beam.ir.elixir.BlockExpr;
@@ -30,8 +30,8 @@ import io.beam.ir.elixir.MapExpr;
 import io.beam.ir.elixir.MapPattern;
 import io.beam.ir.elixir.MapPatternEntry;
 import io.beam.ir.elixir.MatchExpr;
-import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.NilExpr;
 import io.beam.ir.elixir.NilPattern;
 import io.beam.ir.elixir.Pattern;
@@ -143,9 +143,7 @@ final class ElixirWaiterIr {
                                         List.of(Variable.of("client"), Variable.of("input")))))),
                         Variable.of("acceptors"),
                         Variable.of("wait_opts"))))),
-        Spec.of(
-            fn
-                + "(term(), map(), keyword()) :: {:ok, term()} | {:error, term()}"),
+        Spec.of(fn + "(term(), map(), keyword()) :: {:ok, term()} | {:error, term()}"),
         FunctionDoc.of(
             "Waits using the " + binding.name() + " waiter on " + operation.getId() + "."),
         false);
@@ -209,9 +207,7 @@ final class ElixirWaiterIr {
                         "Keyword",
                         "get",
                         List.of(
-                            Variable.of("opts"),
-                            AtomExpr.of("max_attempts"),
-                            IntegerExpr.of(25)))),
+                            Variable.of("opts"), AtomExpr.of("max_attempts"), IntegerExpr.of(25)))),
                 MatchExpr.bind(
                     "min_delay",
                     RemoteCallExpr.of(
@@ -244,8 +240,7 @@ final class ElixirWaiterIr {
   private static List<Function> waitUntilArity5() {
     Expression pollCase =
         new CaseExpr(
-            LocalCallExpr.of(
-                "classify", List.of(Variable.of("acceptors"), Variable.of("result"))),
+            LocalCallExpr.of("classify", List.of(Variable.of("acceptors"), Variable.of("result"))),
             List.of(
                 Clause.of(
                     AtomPattern.of("success"),
@@ -262,16 +257,14 @@ final class ElixirWaiterIr {
                     AtomPattern.of("retry"),
                     new BlockExpr(
                         List.of(
-                            RemoteCallExpr.of(
-                                "Process", "sleep", List.of(Variable.of("delay"))),
+                            RemoteCallExpr.of("Process", "sleep", List.of(Variable.of("delay"))),
                             MatchExpr.bind(
                                 "next_delay",
                                 RemoteCallExpr.of(
                                     "Kernel",
                                     "min",
                                     List.of(
-                                        new InfixExpr(
-                                            Variable.of("delay"), "*", IntegerExpr.of(2)),
+                                        new InfixExpr(Variable.of("delay"), "*", IntegerExpr.of(2)),
                                         Variable.of("max_delay"))),
                                 LocalCallExpr.of(
                                     "wait_until",
@@ -320,13 +313,11 @@ final class ElixirWaiterIr {
         defp(
             "classify",
             List.of(
-                ConsListPattern.of(
-                    VariablePattern.of("acceptor"), VariablePattern.of("rest")),
+                ConsListPattern.of(VariablePattern.of("acceptor"), VariablePattern.of("rest")),
                 VariablePattern.of("result")),
             new IfExpr(
                 LocalCallExpr.of(
-                    "matches_acceptor?",
-                    List.of(Variable.of("acceptor"), Variable.of("result"))),
+                    "matches_acceptor?", List.of(Variable.of("acceptor"), Variable.of("result"))),
                 RemoteCallExpr.of(
                     "Map", "get", List.of(Variable.of("acceptor"), AtomExpr.of("state"))),
                 LocalCallExpr.of("classify", List.of(Variable.of("rest"), Variable.of("result"))),
@@ -342,8 +333,7 @@ final class ElixirWaiterIr {
             List.of(
                 MapPattern.of(
                     List.of(
-                        MapPatternEntry.of(
-                            AtomExpr.of("matcher"), AtomPattern.of("success")),
+                        MapPatternEntry.of(AtomExpr.of("matcher"), AtomPattern.of("success")),
                         MapPatternEntry.of(
                             AtomExpr.of("expected"), VariablePattern.of("expected")))),
                 TuplePattern.of(List.of(AtomPattern.of("ok"), WildcardPattern.of()))),
@@ -356,8 +346,7 @@ final class ElixirWaiterIr {
             List.of(
                 MapPattern.of(
                     List.of(
-                        MapPatternEntry.of(
-                            AtomExpr.of("matcher"), AtomPattern.of("success")),
+                        MapPatternEntry.of(AtomExpr.of("matcher"), AtomPattern.of("success")),
                         MapPatternEntry.of(
                             AtomExpr.of("expected"), VariablePattern.of("expected")))),
                 TuplePattern.of(List.of(AtomPattern.of("error"), WildcardPattern.of()))),
@@ -370,8 +359,7 @@ final class ElixirWaiterIr {
             List.of(
                 MapPattern.of(
                     List.of(
-                        MapPatternEntry.of(
-                            AtomExpr.of("matcher"), AtomPattern.of("errorType")),
+                        MapPatternEntry.of(AtomExpr.of("matcher"), AtomPattern.of("errorType")),
                         MapPatternEntry.of(
                             AtomExpr.of("expected"), VariablePattern.of("expected")))),
                 TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("got")))),
@@ -401,8 +389,7 @@ final class ElixirWaiterIr {
             List.of(
                 MapPattern.of(
                     List.of(
-                        MapPatternEntry.of(
-                            AtomExpr.of("matcher"), AtomPattern.of("inputOutput")),
+                        MapPatternEntry.of(AtomExpr.of("matcher"), AtomPattern.of("inputOutput")),
                         MapPatternEntry.of(AtomExpr.of("path"), VariablePattern.of("path")),
                         MapPatternEntry.of(
                             AtomExpr.of("comparator"), AtomPattern.of("stringEquals")),
@@ -458,8 +445,7 @@ final class ElixirWaiterIr {
             VariablePattern.of("expected"),
             VariablePattern.of("output")),
         new CaseExpr(
-            LocalCallExpr.of(
-                "path_value", List.of(Variable.of("path"), Variable.of("output"))),
+            LocalCallExpr.of("path_value", List.of(Variable.of("path"), Variable.of("output"))),
             List.of(
                 Clause.of(NilPattern.of(), BooleanExpr.of(false)),
                 Clause.of(
@@ -490,15 +476,13 @@ final class ElixirWaiterIr {
                 VariablePattern.of("value")),
             IsTypeGuard.of("is_map", "value"),
             new CaseExpr(
-                RemoteCallExpr.of(
-                    "Map", "get", List.of(Variable.of("value"), Variable.of("key"))),
+                RemoteCallExpr.of("Map", "get", List.of(Variable.of("value"), Variable.of("key"))),
                 List.of(
                     Clause.of(NilPattern.of(), NilExpr.of()),
                     Clause.of(
                         VariablePattern.of("next"),
                         LocalCallExpr.of(
-                            "path_value",
-                            List.of(Variable.of("rest"), Variable.of("next")))))),
+                            "path_value", List.of(Variable.of("rest"), Variable.of("next")))))),
             false),
         defp(
             "path_value",
@@ -511,22 +495,17 @@ final class ElixirWaiterIr {
                     "Map",
                     "get",
                     List.of(
-                        RemoteCallExpr.of(
-                            "Map", "from_struct", List.of(Variable.of("value"))),
+                        RemoteCallExpr.of("Map", "from_struct", List.of(Variable.of("value"))),
                         Variable.of("key"))),
                 List.of(
                     Clause.of(NilPattern.of(), NilExpr.of()),
                     Clause.of(
                         VariablePattern.of("next"),
                         LocalCallExpr.of(
-                            "path_value",
-                            List.of(Variable.of("rest"), Variable.of("next")))))),
+                            "path_value", List.of(Variable.of("rest"), Variable.of("next")))))),
             false),
         defp(
-            "path_value",
-            List.of(WildcardPattern.of(), WildcardPattern.of()),
-            NilExpr.of(),
-            true));
+            "path_value", List.of(WildcardPattern.of(), WildcardPattern.of()), NilExpr.of(), true));
   }
 
   private static List<Function> stringEquals() {
@@ -540,8 +519,7 @@ final class ElixirWaiterIr {
                 RemoteCallExpr.of(
                     "String",
                     "upcase",
-                    List.of(
-                        RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("left"))))),
+                    List.of(RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("left"))))),
                 "==",
                 RemoteCallExpr.of("String", "upcase", List.of(Variable.of("right")))),
             true),
@@ -604,5 +582,4 @@ final class ElixirWaiterIr {
         null,
         oneLiner);
   }
-
 }

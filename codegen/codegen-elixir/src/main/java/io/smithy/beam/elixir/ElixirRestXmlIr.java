@@ -62,8 +62,7 @@ final class ElixirRestXmlIr {
 
     return new Module(
         moduleName,
-        Moduledoc.of(
-            "REST-XML codecs for " + service.getId() + " (generated). Do not edit."),
+        Moduledoc.of("REST-XML codecs for " + service.getId() + " (generated). Do not edit."),
         List.of(),
         aliases,
         List.of(),
@@ -99,9 +98,7 @@ final class ElixirRestXmlIr {
         Moduledoc.of(
             "Server REST-XML codecs for " + service.getId() + " (generated). Do not edit."),
         List.of(),
-        List.of(
-            Alias.of(runtimeMod, "RuntimeTypes"),
-            Alias.of(typesMod, "Types")),
+        List.of(Alias.of(runtimeMod, "RuntimeTypes"), Alias.of(typesMod, "Types")),
         List.of(),
         List.of(),
         List.of(),
@@ -110,15 +107,16 @@ final class ElixirRestXmlIr {
   }
 
   static void emitClientCodecModule(ElixirContext ctx, ServiceShape service) {
-    ElixirCodecEmission.writeModule(ctx, clientCodecFileName(ctx, service), buildClientCodecModule(ctx, service));
+    ElixirCodecEmission.writeModule(
+        ctx, clientCodecFileName(ctx, service), buildClientCodecModule(ctx, service));
   }
 
   static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
-    ElixirCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service), buildServerCodecModule(ctx, service));
+    ElixirCodecEmission.writeModule(
+        ctx, serverCodecFileName(ctx, service), buildServerCodecModule(ctx, service));
   }
 
-  static List<Function> enumHelperFunctions(
-      Model model, ServiceShape service, SymbolProvider sp) {
+  static List<Function> enumHelperFunctions(Model model, ServiceShape service, SymbolProvider sp) {
     List<Function> functions = new ArrayList<>();
     for (EnumShape enumShape : ElixirRestJsonSupport.reachableEnumShapes(model, service)) {
       functions.addAll(ElixirEnumHelperIr.enumDecodeEncode(enumShape, sp));

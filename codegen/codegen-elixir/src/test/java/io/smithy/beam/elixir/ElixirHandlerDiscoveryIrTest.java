@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.beam.ir.elixir.ElixirRenderer;
 import io.beam.ir.elixir.Function;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ElixirHandlerDiscoveryIrTest {
@@ -50,7 +50,6 @@ class ElixirHandlerDiscoveryIrTest {
     ElixirIrTestSupport.assertStructural(fn);
     String text = ElixirRenderer.renderFunction(fn);
     assertThat(text).contains("def handle_get_name(ctx, input, meta) do");
-    assertThat(text)
-        .contains("dispatch_handler(:handle_get_name, ctx, input, meta)");
+    assertThat(text).contains("dispatch_handler(:handle_get_name, ctx, input, meta)");
   }
 }

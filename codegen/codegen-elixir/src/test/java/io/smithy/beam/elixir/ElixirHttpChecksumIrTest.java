@@ -88,9 +88,7 @@ class ElixirHttpChecksumIrTest {
 
     Expression guarded =
         ElixirHttpChecksumIr.responseChecksumGuardExpr(
-            model,
-            flexible,
-            TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("output"))));
+            model, flexible, TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("output"))));
     assertThat(ElixirRenderer.renderExpression(guarded))
         .isEqualTo(readExpectedString("ir/http_checksum_response_guard.expected.ex"));
   }

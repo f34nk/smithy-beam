@@ -58,10 +58,7 @@ final class ElixirClientPaginationIr {
                     List.of(VariablePattern.of("config"), VariablePattern.of("input")))),
             LocalCallExpr.of(
                 opName,
-                List.of(
-                    Variable.of("config"),
-                    Variable.of("input"),
-                    ListExpr.of(List.of()))),
+                List.of(Variable.of("config"), Variable.of("input"), ListExpr.of(List.of()))),
             Spec.of(opName + "(map(), " + inType + ") :: " + specOutput),
             docOrNull,
             true);
@@ -88,8 +85,7 @@ final class ElixirClientPaginationIr {
                         VariablePattern.of("acc")))),
             paginatedArity3Body(
                 ctx, service, op, wrapWithRetry, clientModule, pageBody, sp, opName),
-            Spec.of(
-                opName + "(map(), " + inType + ", " + successReturnType + ") :: " + specOutput),
+            Spec.of(opName + "(map(), " + inType + ", " + successReturnType + ") :: " + specOutput),
             null,
             false);
 
@@ -106,8 +102,7 @@ final class ElixirClientPaginationIr {
       SymbolProvider sp,
       String opName) {
     if (wrapWithRetry) {
-      return blockExpr(
-          retryWrappedPageBody(ctx, service, op, clientModule, pageBody, sp, opName));
+      return blockExpr(retryWrappedPageBody(ctx, service, op, clientModule, pageBody, sp, opName));
     }
     return blockExpr(pageBody);
   }
@@ -141,8 +136,7 @@ final class ElixirClientPaginationIr {
         new AnonFun(
             List.of(
                 AnonFunClause.of(
-                    List.of(),
-                    pageBody.size() == 1 ? pageBody.get(0) : new BlockExpr(pageBody))));
+                    List.of(), pageBody.size() == 1 ? pageBody.get(0) : new BlockExpr(pageBody))));
     Expression retryCase =
         new CaseExpr(
             ElixirClientDispatchOperationIr.withRetryCall(clientModule, pageFun),

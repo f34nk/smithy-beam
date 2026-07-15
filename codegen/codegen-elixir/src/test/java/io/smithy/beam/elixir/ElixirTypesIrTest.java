@@ -4,18 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.beam.ir.elixir.ElixirRenderer;
 import io.beam.ir.elixir.Function;
-import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Moduledoc;
 import java.util.List;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 @Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
 class ElixirTypesIrTest {
 
   @Test
   void endpointRuleSetEntriesRendersTypeAliasAndAttributes() {
-    String output = String.join("\n", ElixirTypesIr.endpointRuleSetEntries("{\"region\":\"us-east-1\"}"));
+    String output =
+        String.join("\n", ElixirTypesIr.endpointRuleSetEntries("{\"region\":\"us-east-1\"}"));
 
     assertThat(output)
         .contains("@type endpoint_rule_set :: map()")

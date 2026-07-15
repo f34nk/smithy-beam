@@ -2,8 +2,8 @@ package io.smithy.beam.elixir;
 
 import io.beam.ir.elixir.Alias;
 import io.beam.ir.elixir.Function;
-import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Moduledoc;
 import io.smithy.beam.core.BeamElixirLayout;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,9 +30,7 @@ final class ElixirServerIr {
                 + service.getId()
                 + ".\n\nDiscovers impl callbacks at startup via init_handlers/0."),
         List.of(),
-        List.of(
-            Alias.of(typesMod, "Types"),
-            Alias.of(behaviourMod, "Behaviour")),
+        List.of(Alias.of(typesMod, "Types"), Alias.of(behaviourMod, "Behaviour")),
         List.of(
             "@behaviour " + behaviourMod,
             "@default_impl " + implMod,

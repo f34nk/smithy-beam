@@ -2,12 +2,12 @@ package io.smithy.beam.elixir;
 
 import io.beam.ir.elixir.AtomExpr;
 import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.Expression;
 import io.beam.ir.elixir.Function;
 import io.beam.ir.elixir.FunctionHead;
 import io.beam.ir.elixir.IntegerExpr;
 import io.beam.ir.elixir.IntegerPattern;
 import io.beam.ir.elixir.IsTypeGuard;
-import io.beam.ir.elixir.Expression;
 import io.beam.ir.elixir.ListExpr;
 import io.beam.ir.elixir.LocalCallExpr;
 import io.beam.ir.elixir.Moduledoc;
@@ -23,7 +23,6 @@ import io.beam.ir.elixir.VariablePattern;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamMemberNullability;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.core.BeamRetryIndex;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -67,12 +66,10 @@ final class ElixirTypesNestedIr {
               Variable.of("v")));
       functions.add(
           enumOneLinerFunction(
-              valuesFunction,
-              Spec.of("values() :: [t()]"),
-              List.of(),
-              ListExpr.of(List.of())));
+              valuesFunction, Spec.of("values() :: [t()]"), List.of(), ListExpr.of(List.of())));
     } else {
-      String atomVariants = atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
+      String atomVariants =
+          atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
       extraLines.add("@type t :: " + atomVariants + " | {:unknown, String.t()}");
 
       Spec fromSpec = Spec.of(fromFunction + "(String.t()) :: t()");
@@ -119,8 +116,7 @@ final class ElixirTypesNestedIr {
               valuesFunction,
               Spec.of("values() :: [t()]"),
               List.of(),
-              ListExpr.of(
-                  atoms.stream().<Expression>map(AtomExpr::of).toList())));
+              ListExpr.of(atoms.stream().<Expression>map(AtomExpr::of).toList())));
     }
 
     return new ElixirTypesEmbeddedNested(symbol.getName(), moduledoc, extraLines, functions);
@@ -152,12 +148,10 @@ final class ElixirTypesNestedIr {
               Variable.of("v")));
       functions.add(
           enumOneLinerFunction(
-              valuesFunction,
-              Spec.of("values() :: [t()]"),
-              List.of(),
-              ListExpr.of(List.of())));
+              valuesFunction, Spec.of("values() :: [t()]"), List.of(), ListExpr.of(List.of())));
     } else {
-      String atomVariants = atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
+      String atomVariants =
+          atoms.stream().map(atom -> ":" + atom).collect(Collectors.joining(" | "));
       extraLines.add("@type t :: " + atomVariants + " | {:unknown, integer()}");
 
       Spec fromSpec = Spec.of(fromFunction + "(integer()) :: t()");
@@ -199,8 +193,7 @@ final class ElixirTypesNestedIr {
               valuesFunction,
               Spec.of("values() :: [t()]"),
               List.of(),
-              ListExpr.of(
-                  atoms.stream().<Expression>map(AtomExpr::of).toList())));
+              ListExpr.of(atoms.stream().<Expression>map(AtomExpr::of).toList())));
     }
 
     return new ElixirTypesEmbeddedNested(symbol.getName(), moduledoc, extraLines, functions);
@@ -296,7 +289,8 @@ final class ElixirTypesNestedIr {
       Spec specOrNull,
       List<io.beam.ir.elixir.Pattern> params,
       io.beam.ir.elixir.Expression body) {
-    return new Function(name, false, List.of(FunctionHead.of(params)), body, specOrNull, null, true);
+    return new Function(
+        name, false, List.of(FunctionHead.of(params)), body, specOrNull, null, true);
   }
 
   private static Moduledoc enumModuledoc(Shape shape, boolean stringEnum) {

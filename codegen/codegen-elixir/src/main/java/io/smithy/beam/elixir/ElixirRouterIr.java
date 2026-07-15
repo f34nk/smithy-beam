@@ -1,8 +1,8 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AssignPattern;
 import io.beam.ir.elixir.AtomExpr;
 import io.beam.ir.elixir.AtomPattern;
-import io.beam.ir.elixir.AssignPattern;
 import io.beam.ir.elixir.BlockExpr;
 import io.beam.ir.elixir.CaseExpr;
 import io.beam.ir.elixir.Clause;
@@ -20,8 +20,8 @@ import io.beam.ir.elixir.ListPattern;
 import io.beam.ir.elixir.LocalCallExpr;
 import io.beam.ir.elixir.MapExpr;
 import io.beam.ir.elixir.MatchExpr;
-import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.Pattern;
 import io.beam.ir.elixir.PipeExpr;
 import io.beam.ir.elixir.PipeStep;
@@ -98,8 +98,7 @@ final class ElixirRouterIr {
         "dispatch",
         false,
         List.of(
-            FunctionHead.of(
-                List.of(VariablePattern.of("handler"), VariablePattern.of("request")))),
+            FunctionHead.of(List.of(VariablePattern.of("handler"), VariablePattern.of("request")))),
         LocalCallExpr.of(
             "route",
             List.of(
@@ -117,8 +116,7 @@ final class ElixirRouterIr {
         "dispatch",
         false,
         List.of(
-            FunctionHead.of(
-                List.of(VariablePattern.of("handler"), VariablePattern.of("request")))),
+            FunctionHead.of(List.of(VariablePattern.of("handler"), VariablePattern.of("request")))),
         LocalCallExpr.of(
             "route",
             List.of(
@@ -184,10 +182,7 @@ final class ElixirRouterIr {
             RemoteCallExpr.of(
                 "List",
                 "keyfind",
-                List.of(
-                    Variable.of("headers"),
-                    StringExpr.of("X-Amz-Target"),
-                    IntegerExpr.of(0))),
+                List.of(Variable.of("headers"), StringExpr.of("X-Amz-Target"), IntegerExpr.of(0))),
             targetBranches);
 
     List<Function> functions = new ArrayList<>();
@@ -239,8 +234,7 @@ final class ElixirRouterIr {
   private static Expression labeledRouteBody(
       String uriTemplate, String codecMod, String opName, String handlerFn, String method) {
     return new CaseExpr(
-        LocalCallExpr.of(
-            "parse_labels", List.of(Variable.of("path"), StringExpr.of(uriTemplate))),
+        LocalCallExpr.of("parse_labels", List.of(Variable.of("path"), StringExpr.of(uriTemplate))),
         List.of(
             Clause.of(
                 TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("label_map"))),
@@ -254,8 +248,7 @@ final class ElixirRouterIr {
                                 List.of(Variable.of("request"), Variable.of("label_map"))),
                             handlerCall(handlerFn))))),
             Clause.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("error"), AtomPattern.of("path_mismatch"))),
+                TuplePattern.of(List.of(AtomPattern.of("error"), AtomPattern.of("path_mismatch"))),
                 TupleExpr.of(
                     List.of(
                         AtomExpr.of("error"),
@@ -300,9 +293,7 @@ final class ElixirRouterIr {
                 AtomExpr.of("error"),
                 TupleExpr.of(
                     List.of(
-                        AtomExpr.of("not_found"),
-                        Variable.of("method"),
-                        Variable.of("path"))))),
+                        AtomExpr.of("not_found"), Variable.of("method"), Variable.of("path"))))),
         true);
   }
 
@@ -312,7 +303,8 @@ final class ElixirRouterIr {
       return new Function(
           "route", true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
     }
-    return new Function("route", true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return new Function(
+        "route", true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static Pattern pathMatchPattern(String uriTemplate, List<HttpBinding> labels) {
@@ -391,8 +383,7 @@ final class ElixirRouterIr {
         "parse_labels",
         true,
         List.of(
-            FunctionHead.of(
-                List.of(VariablePattern.of("path"), VariablePattern.of("template")))),
+            FunctionHead.of(List.of(VariablePattern.of("path"), VariablePattern.of("template")))),
         new PipeExpr(
             LocalCallExpr.of(
                 "match_segments",
@@ -406,18 +397,14 @@ final class ElixirRouterIr {
                         List.of(
                             Clause.of(
                                 TuplePattern.of(
-                                    List.of(
-                                        AtomPattern.of("ok"), VariablePattern.of("labels"))),
-                                TupleExpr.of(
-                                    List.of(AtomExpr.of("ok"), Variable.of("labels")))),
+                                    List.of(AtomPattern.of("ok"), VariablePattern.of("labels"))),
+                                TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("labels")))),
                             Clause.of(
                                 WildcardPattern.of(),
                                 TupleExpr.of(
-                                    List.of(
-                                        AtomExpr.of("error"), AtomExpr.of("path_mismatch")))))),
+                                    List.of(AtomExpr.of("error"), AtomExpr.of("path_mismatch")))))),
                     List.of()))),
-        Spec.of(
-            "parse_labels(String.t(), String.t()) :: {:ok, map()} | {:error, :path_mismatch}"),
+        Spec.of("parse_labels(String.t(), String.t()) :: {:ok, map()} | {:error, :path_mismatch}"),
         null,
         false);
   }
@@ -433,9 +420,7 @@ final class ElixirRouterIr {
                 Variable.of("path"),
                 StringExpr.of("/"),
                 ListExpr.of(
-                    List.of(
-                        TupleExpr.of(
-                            List.of(AtomExpr.of("trim"), AtomExpr.of("true"))))))),
+                    List.of(TupleExpr.of(List.of(AtomExpr.of("trim"), AtomExpr.of("true"))))))),
         false);
   }
 
@@ -444,9 +429,7 @@ final class ElixirRouterIr {
         defp(
             "match_segments",
             List.of(
-                ListPattern.of(List.of()),
-                ListPattern.of(List.of()),
-                VariablePattern.of("acc")),
+                ListPattern.of(List.of()), ListPattern.of(List.of()), VariablePattern.of("acc")),
             TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("acc"))),
             true),
         defp(
@@ -491,9 +474,7 @@ final class ElixirRouterIr {
                 LocalCallExpr.of(
                     "match_segments",
                     List.of(
-                        Variable.of("rest_path"),
-                        Variable.of("rest_tpl"),
-                        Variable.of("acc")))),
+                        Variable.of("rest_path"), Variable.of("rest_tpl"), Variable.of("acc")))),
             Clause.of(WildcardPattern.of(), AtomExpr.of("error"))));
   }
 
@@ -514,12 +495,10 @@ final class ElixirRouterIr {
                         StringExpr.of("}"),
                         ListExpr.of(
                             List.of(
-                                TupleExpr.of(
-                                    List.of(AtomExpr.of("parts"), IntegerExpr.of(2))))))),
+                                TupleExpr.of(List.of(AtomExpr.of("parts"), IntegerExpr.of(2))))))),
                 List.of(
                     Clause.of(
-                        ListPattern.of(
-                            List.of(VariablePattern.of("label"), StringPattern.of(""))),
+                        ListPattern.of(List.of(VariablePattern.of("label"), StringPattern.of(""))),
                         TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("label")))),
                     Clause.of(WildcardPattern.of(), AtomExpr.of("error")))),
             false),

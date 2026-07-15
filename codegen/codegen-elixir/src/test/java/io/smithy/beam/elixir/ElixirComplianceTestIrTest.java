@@ -12,8 +12,8 @@ import io.smithy.beam.core.BeamSettings;
 import java.io.IOException;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.codegen.core.WriterDelegator;
 import software.amazon.smithy.model.Model;
@@ -55,7 +55,9 @@ class ElixirComplianceTestIrTest {
   void complianceTestsModuleMatchesGolden() throws IOException {
     Module module = ElixirComplianceTestIr.complianceTestsModule(testContext(), service);
     assertThat(ElixirRenderer.render(module))
-        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/compliance_service_compliance_tests.expected.ex"));
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString(
+                "ir/compliance_service_compliance_tests.expected.ex"));
     String text = ElixirRenderer.render(module);
     assertThat(text).contains("use ExUnit.Case, async: true");
     assertThat(text).contains("test \"GetItemRequest\"");

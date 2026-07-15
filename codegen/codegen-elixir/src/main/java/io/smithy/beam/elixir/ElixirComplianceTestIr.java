@@ -3,7 +3,6 @@ package io.smithy.beam.elixir;
 import io.beam.ir.elixir.Alias;
 import io.beam.ir.elixir.AnonFun;
 import io.beam.ir.elixir.AnonFunClause;
-import io.beam.ir.elixir.AtomExpr;
 import io.beam.ir.elixir.AtomPattern;
 import io.beam.ir.elixir.BlockExpr;
 import io.beam.ir.elixir.BooleanExpr;
@@ -148,8 +147,7 @@ final class ElixirComplianceTestIr {
         moduleName,
         null,
         List.of(
-            new UseDirective(
-                "ExUnit.Case", List.of(new UseOption("async", BooleanExpr.of(true))))),
+            new UseDirective("ExUnit.Case", List.of(new UseOption("async", BooleanExpr.of(true))))),
         List.of(
             Alias.of(typesMod, "Types"),
             Alias.of(clientCodecMod),
@@ -186,8 +184,7 @@ final class ElixirComplianceTestIr {
                 codecMod,
                 "encode_" + opSym.getName() + "_request",
                 List.of(
-                    MapExpr.of(
-                        List.of(MapEntry.atomKey("region", StringExpr.of("us-east-1")))),
+                    MapExpr.of(List.of(MapEntry.atomKey("region", StringExpr.of("us-east-1")))),
                     inputLiteral))
             : RemoteCallExpr.of(
                 codecMod, "encode_" + opSym.getName() + "_request", List.of(inputLiteral));
@@ -271,8 +268,7 @@ final class ElixirComplianceTestIr {
                     LocalCallExpr.of(
                         "headers_to_list",
                         List.of(ElixirComplianceLiteralIr.headersMap(testCase.headers())))),
-                StructField.of(
-                    "body", ElixirComplianceLiteralIr.optionalBinary(testCase.body()))));
+                StructField.of("body", ElixirComplianceLiteralIr.optionalBinary(testCase.body()))));
 
     Expression decodeCall;
     if (labels.isEmpty()) {
@@ -316,8 +312,7 @@ final class ElixirComplianceTestIr {
                     LocalCallExpr.of(
                         "headers_to_list",
                         List.of(ElixirComplianceLiteralIr.headersMap(testCase.headers())))),
-                StructField.of(
-                    "body", ElixirComplianceLiteralIr.optionalBinary(testCase.body()))));
+                StructField.of("body", ElixirComplianceLiteralIr.optionalBinary(testCase.body()))));
 
     Expression decodeCall =
         RemoteCallExpr.of(
@@ -328,9 +323,7 @@ final class ElixirComplianceTestIr {
     body.add(
         MatchExpr.bind(
             TuplePattern.of(
-                List.of(
-                    AtomPattern.of(errorCase ? "error" : "ok"),
-                    VariablePattern.of("output"))),
+                List.of(AtomPattern.of(errorCase ? "error" : "ok"), VariablePattern.of("output"))),
             decodeCall));
     body.addAll(
         assertMemberAsserts(model, outputShape, testCase.params(), sp, "output", structNameFn));
@@ -357,8 +350,7 @@ final class ElixirComplianceTestIr {
 
     List<Expression> body = new ArrayList<>();
     body.add(
-        MatchExpr.bind(
-            "response", RemoteCallExpr.of(codecMod, encodeFn, List.of(outputLiteral))));
+        MatchExpr.bind("response", RemoteCallExpr.of(codecMod, encodeFn, List.of(outputLiteral))));
     body.add(
         LocalCallExpr.of(
             "assert",
@@ -466,26 +458,18 @@ final class ElixirComplianceTestIr {
                         AnonFunClause.of(
                             List.of(
                                 TuplePattern.of(
-                                    List.of(
-                                        VariablePattern.of("k"),
-                                        VariablePattern.of("v")))),
-                            TupleExpr.of(
-                                List.of(Variable.of("k"), Variable.of("v")))))))),
+                                    List.of(VariablePattern.of("k"), VariablePattern.of("v")))),
+                            TupleExpr.of(List.of(Variable.of("k"), Variable.of("v")))))))),
         false);
   }
 
   private static List<Function> queryParamsToMap() {
     return List.of(
         defp(
-            "query_params_to_map",
-            List.of(ListPattern.of(List.of())),
-            MapExpr.of(List.of()),
-            true),
+            "query_params_to_map", List.of(ListPattern.of(List.of())), MapExpr.of(List.of()), true),
         defp(
             "query_params_to_map",
-            List.of(
-                ConsListPattern.of(
-                    VariablePattern.of("param"), VariablePattern.of("rest"))),
+            List.of(ConsListPattern.of(VariablePattern.of("param"), VariablePattern.of("rest"))),
             RemoteCallExpr.of(
                 "Map",
                 "merge",
@@ -503,9 +487,7 @@ final class ElixirComplianceTestIr {
             splitQueryParam(Variable.of("param")),
             List.of(
                 Clause.of(
-                    ListPattern.of(
-                        List.of(
-                            VariablePattern.of("key"), VariablePattern.of("value"))),
+                    ListPattern.of(List.of(VariablePattern.of("key"), VariablePattern.of("value"))),
                     MapExpr.of(
                         List.of(
                             MapEntry.atomKey("key", Variable.of("key")),
@@ -526,9 +508,7 @@ final class ElixirComplianceTestIr {
             List.of(
                 new InfixExpr(
                     RemoteCallExpr.of(
-                        "Keyword",
-                        "get",
-                        List.of(Variable.of("actual"), Variable.of("key"))),
+                        "Keyword", "get", List.of(Variable.of("actual"), Variable.of("key"))),
                     "==",
                     Variable.of("value"))));
     AnonFun eachFn =
@@ -542,8 +522,7 @@ final class ElixirComplianceTestIr {
     return defp(
         "assert_headers",
         List.of(VariablePattern.of("expected"), VariablePattern.of("actual")),
-        RemoteCallExpr.of(
-            "Enum", "each", List.of(Variable.of("expected"), eachFn)),
+        RemoteCallExpr.of("Enum", "each", List.of(Variable.of("expected"), eachFn)),
         true);
   }
 
@@ -554,9 +533,7 @@ final class ElixirComplianceTestIr {
             List.of(
                 new InfixExpr(
                     RemoteCallExpr.of(
-                        "Map",
-                        "fetch!",
-                        List.of(Variable.of("query"), Variable.of("key"))),
+                        "Map", "fetch!", List.of(Variable.of("query"), Variable.of("key"))),
                     "==",
                     Variable.of("value"))));
     Expression assertHasKey =
@@ -564,27 +541,21 @@ final class ElixirComplianceTestIr {
             "assert",
             List.of(
                 RemoteCallExpr.of(
-                    "Map",
-                    "has_key?",
-                    List.of(Variable.of("query"), Variable.of("key")))));
+                    "Map", "has_key?", List.of(Variable.of("query"), Variable.of("key")))));
     CaseExpr paramCase =
         new CaseExpr(
             splitQueryParam(Variable.of("param")),
             List.of(
                 Clause.of(
-                    ListPattern.of(
-                        List.of(VariablePattern.of("key"), VariablePattern.of("value"))),
+                    ListPattern.of(List.of(VariablePattern.of("key"), VariablePattern.of("value"))),
                     assertFetchMatch),
-                Clause.of(
-                    ListPattern.of(List.of(VariablePattern.of("key"))), assertHasKey)));
+                Clause.of(ListPattern.of(List.of(VariablePattern.of("key"))), assertHasKey)));
     AnonFun eachFn =
-        new AnonFun(
-            List.of(AnonFunClause.of(List.of(VariablePattern.of("param")), paramCase)));
+        new AnonFun(List.of(AnonFunClause.of(List.of(VariablePattern.of("param")), paramCase)));
     return defp(
         "assert_query_params",
         List.of(VariablePattern.of("expected"), VariablePattern.of("query")),
-        RemoteCallExpr.of(
-            "Enum", "each", List.of(Variable.of("expected"), eachFn)),
+        RemoteCallExpr.of("Enum", "each", List.of(Variable.of("expected"), eachFn)),
         true);
   }
 

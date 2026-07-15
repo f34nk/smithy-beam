@@ -13,8 +13,8 @@ import io.beam.ir.elixir.InterpolatedLiteral;
 import io.beam.ir.elixir.InterpolatedStringExpr;
 import io.beam.ir.elixir.LocalCallExpr;
 import io.beam.ir.elixir.MatchExpr;
-import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.Pattern;
 import io.beam.ir.elixir.RemoteCallExpr;
 import io.beam.ir.elixir.Spec;
@@ -62,16 +62,11 @@ final class ElixirS3EndpointIr {
                         "Map",
                         "get",
                         List.of(
-                            Variable.of("config"),
-                            AtomExpr.of("base_url"),
-                            StringExpr.of("")))),
+                            Variable.of("config"), AtomExpr.of("base_url"), StringExpr.of("")))),
                 MatchExpr.bind(
                     TuplePattern.of(
-                        List.of(
-                            VariablePattern.of("_scheme"),
-                            VariablePattern.of("authority"))),
-                    RemoteCallExpr.of(
-                        "Utils", "split_base_url", List.of(Variable.of("base_url")))),
+                        List.of(VariablePattern.of("_scheme"), VariablePattern.of("authority"))),
+                    RemoteCallExpr.of("Utils", "split_base_url", List.of(Variable.of("base_url")))),
                 Variable.of("authority"))),
         Spec.of("region_host(map()) :: String.t()"),
         null,
@@ -100,28 +95,18 @@ final class ElixirS3EndpointIr {
                             AtomExpr.of("s3_addressing_style"),
                             AtomExpr.of("virtual_host")))),
                 MatchExpr.bind(
-                    "region_host",
-                    LocalCallExpr.of("region_host", List.of(Variable.of("config")))),
+                    "region_host", LocalCallExpr.of("region_host", List.of(Variable.of("config")))),
                 MatchExpr.bind(
-                    "key_path",
-                    LocalCallExpr.of("key_path", List.of(Variable.of("key")))),
+                    "key_path", LocalCallExpr.of("key_path", List.of(Variable.of("key")))),
                 new CaseExpr(
                     Variable.of("style"),
                     List.of(
-                        Clause.of(
-                            AtomPattern.of("virtual_host"),
-                            virtualHostBucketUrlBody()),
+                        Clause.of(AtomPattern.of("virtual_host"), virtualHostBucketUrlBody()),
                         Clause.of(
                             AtomPattern.of("path_style"),
-                            TupleExpr.of(
-                                List.of(
-                                    Variable.of("region_host"),
-                                    pathStyleUrlExpr()))),
-                        Clause.of(
-                            WildcardPattern.of(),
-                            virtualHostBucketUrlBody()))))),
-        Spec.of(
-            "resolve_bucket_url(map(), String.t(), String.t()) :: {String.t(), String.t()}"),
+                            TupleExpr.of(List.of(Variable.of("region_host"), pathStyleUrlExpr()))),
+                        Clause.of(WildcardPattern.of(), virtualHostBucketUrlBody()))))),
+        Spec.of("resolve_bucket_url(map(), String.t(), String.t()) :: {String.t(), String.t()}"),
         null,
         false);
   }
@@ -141,9 +126,7 @@ final class ElixirS3EndpointIr {
             "key_path",
             List.of(VariablePattern.of("key")),
             new InterpolatedStringExpr(
-                List.of(
-                    new InterpolatedLiteral("/"),
-                    new InterpolatedExpr(Variable.of("key")))),
+                List.of(new InterpolatedLiteral("/"), new InterpolatedExpr(Variable.of("key")))),
             true));
   }
 
@@ -152,10 +135,7 @@ final class ElixirS3EndpointIr {
         "host",
         LocalCallExpr.of(
             "virtual_host",
-            List.of(
-                Variable.of("config"),
-                Variable.of("bucket"),
-                Variable.of("region_host"))),
+            List.of(Variable.of("config"), Variable.of("bucket"), Variable.of("region_host"))),
         TupleExpr.of(List.of(Variable.of("host"), Variable.of("key_path"))));
   }
 
@@ -182,9 +162,7 @@ final class ElixirS3EndpointIr {
                 "Map",
                 "get",
                 List.of(
-                    Variable.of("config"),
-                    AtomExpr.of("s3_use_accelerate"),
-                    AtomExpr.of("false"))),
+                    Variable.of("config"), AtomExpr.of("s3_use_accelerate"), AtomExpr.of("false"))),
             List.of(
                 Clause.of(
                     AtomPattern.of("true"),
@@ -217,9 +195,7 @@ final class ElixirS3EndpointIr {
                 "Map",
                 "get",
                 List.of(
-                    Variable.of("config"),
-                    AtomExpr.of("s3_use_dualstack"),
-                    AtomExpr.of("false"))),
+                    Variable.of("config"), AtomExpr.of("s3_use_dualstack"), AtomExpr.of("false"))),
             List.of(
                 Clause.of(AtomPattern.of("true"), StringExpr.of(".s3.dualstack.")),
                 Clause.of(WildcardPattern.of(), StringExpr.of(".s3.")))),

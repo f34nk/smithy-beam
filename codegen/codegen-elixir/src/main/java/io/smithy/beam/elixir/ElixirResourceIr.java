@@ -7,8 +7,8 @@ import io.beam.ir.elixir.FunctionDoc;
 import io.beam.ir.elixir.FunctionHead;
 import io.beam.ir.elixir.MapEntry;
 import io.beam.ir.elixir.MapExpr;
-import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Moduledoc;
 import io.beam.ir.elixir.Pattern;
 import io.beam.ir.elixir.RemoteCallExpr;
 import io.beam.ir.elixir.Spec;
@@ -87,9 +87,7 @@ final class ElixirResourceIr {
         mod,
         moduledoc,
         List.of(),
-        List.of(
-            Alias.of(delegateMod, server ? "Server" : "Client"),
-            Alias.of(typesMod, "Types")),
+        List.of(Alias.of(delegateMod, server ? "Server" : "Client"), Alias.of(typesMod, "Types")),
         List.of(),
         List.of(),
         List.of(),
@@ -201,9 +199,7 @@ final class ElixirResourceIr {
       }
       List<MapEntry> updates =
           plan.identifierArgs().stream()
-              .map(
-                  arg ->
-                      MapEntry.atomKey(arg.fieldName(), Variable.of(arg.paramName())))
+              .map(arg -> MapEntry.atomKey(arg.fieldName(), Variable.of(arg.paramName())))
               .toList();
       return MapExpr.of(Variable.of("input"), updates);
     }

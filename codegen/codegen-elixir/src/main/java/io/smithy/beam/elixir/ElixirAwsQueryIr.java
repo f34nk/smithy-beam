@@ -54,12 +54,9 @@ final class ElixirAwsQueryIr {
 
     return new Module(
         moduleName,
-        Moduledoc.of(
-            "AWS Query codecs for " + service.getId() + " (generated). Do not edit."),
+        Moduledoc.of("AWS Query codecs for " + service.getId() + " (generated). Do not edit."),
         List.of(),
-        List.of(
-            Alias.of(runtimeMod, "RuntimeTypes"),
-            Alias.of(typesMod, "Types")),
+        List.of(Alias.of(runtimeMod, "RuntimeTypes"), Alias.of(typesMod, "Types")),
         List.of(),
         List.of(),
         List.of(),
@@ -82,23 +79,14 @@ final class ElixirAwsQueryIr {
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
     List<Function> functions =
         serverCodecFunctions(
-            model,
-            service,
-            operations,
-            sp,
-            typesMod,
-            runtimeMod,
-            serviceNamespace,
-            ec2Query);
+            model, service, operations, sp, typesMod, runtimeMod, serviceNamespace, ec2Query);
 
     return new Module(
         moduleName,
         Moduledoc.of(
             "Server AWS Query codecs for " + service.getId() + " (generated). Do not edit."),
         List.of(),
-        List.of(
-            Alias.of(runtimeMod, "RuntimeTypes"),
-            Alias.of(typesMod, "Types")),
+        List.of(Alias.of(runtimeMod, "RuntimeTypes"), Alias.of(typesMod, "Types")),
         List.of(),
         List.of(),
         List.of(),
@@ -109,13 +97,17 @@ final class ElixirAwsQueryIr {
   static void emitClientCodecModule(
       ElixirContext ctx, ServiceShape service, ShapeId protocolTraitId) {
     ElixirCodecEmission.writeModule(
-        ctx, clientCodecFileName(ctx, service, protocolTraitId), buildClientCodecModule(ctx, service, protocolTraitId));
+        ctx,
+        clientCodecFileName(ctx, service, protocolTraitId),
+        buildClientCodecModule(ctx, service, protocolTraitId));
   }
 
   static void emitServerCodecModule(
       ElixirContext ctx, ServiceShape service, ShapeId protocolTraitId) {
     ElixirCodecEmission.writeModule(
-        ctx, serverCodecFileName(ctx, service, protocolTraitId), buildServerCodecModule(ctx, service, protocolTraitId));
+        ctx,
+        serverCodecFileName(ctx, service, protocolTraitId),
+        buildServerCodecModule(ctx, service, protocolTraitId));
   }
 
   static List<StructureShape> inputShapes(Model model, ServiceShape service) {

@@ -38,8 +38,7 @@ final class ElixirAwsJsonIr {
     return layout(ctx, service).serverCodecModuleName(protocol) + ".ex";
   }
 
-  static Module buildClientCodecModule(
-      ElixirContext ctx, ServiceShape service, ShapeId protocol) {
+  static Module buildClientCodecModule(ElixirContext ctx, ServiceShape service, ShapeId protocol) {
     BeamAwsServiceMetadata.from(service).orElseThrow();
     Model model = ctx.model();
     BeamElixirLayout layout = layout(ctx, service);
@@ -76,9 +75,7 @@ final class ElixirAwsJsonIr {
                 + service.getId()
                 + " (generated). Do not edit."),
         List.of(),
-        List.of(
-            Alias.of(runtimeMod, "RuntimeTypes"),
-            Alias.of(typesMod, "Types")),
+        List.of(Alias.of(runtimeMod, "RuntimeTypes"), Alias.of(typesMod, "Types")),
         List.of(),
         List.of(),
         List.of(),
@@ -86,8 +83,7 @@ final class ElixirAwsJsonIr {
         functions);
   }
 
-  static Module buildServerCodecModule(
-      ElixirContext ctx, ServiceShape service, ShapeId protocol) {
+  static Module buildServerCodecModule(ElixirContext ctx, ServiceShape service, ShapeId protocol) {
     Model model = ctx.model();
     BeamElixirLayout layout = layout(ctx, service);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
@@ -115,15 +111,9 @@ final class ElixirAwsJsonIr {
     return new Module(
         moduleName,
         Moduledoc.of(
-            "Server AWS JSON "
-                + versionLabel
-                + " codecs for "
-                + service.getId()
-                + " (generated)."),
+            "Server AWS JSON " + versionLabel + " codecs for " + service.getId() + " (generated)."),
         List.of(),
-        List.of(
-            Alias.of(runtimeMod, "RuntimeTypes"),
-            Alias.of(typesMod, "Types")),
+        List.of(Alias.of(runtimeMod, "RuntimeTypes"), Alias.of(typesMod, "Types")),
         List.of(),
         List.of(),
         List.of(),
@@ -133,12 +123,16 @@ final class ElixirAwsJsonIr {
 
   static void emitClientCodecModule(ElixirContext ctx, ServiceShape service, ShapeId protocol) {
     ElixirCodecEmission.writeModule(
-        ctx, clientCodecFileName(ctx, service, protocol), buildClientCodecModule(ctx, service, protocol));
+        ctx,
+        clientCodecFileName(ctx, service, protocol),
+        buildClientCodecModule(ctx, service, protocol));
   }
 
   static void emitServerCodecModule(ElixirContext ctx, ServiceShape service, ShapeId protocol) {
     ElixirCodecEmission.writeModule(
-        ctx, serverCodecFileName(ctx, service, protocol), buildServerCodecModule(ctx, service, protocol));
+        ctx,
+        serverCodecFileName(ctx, service, protocol),
+        buildServerCodecModule(ctx, service, protocol));
   }
 
   static String contentType(ShapeId protocol) {

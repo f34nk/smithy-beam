@@ -1,11 +1,11 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AndGuard;
 import io.beam.ir.elixir.AnonFun;
 import io.beam.ir.elixir.AnonFunClause;
+import io.beam.ir.elixir.AssignPattern;
 import io.beam.ir.elixir.AtomExpr;
 import io.beam.ir.elixir.AtomPattern;
-import io.beam.ir.elixir.AndGuard;
-import io.beam.ir.elixir.AssignPattern;
 import io.beam.ir.elixir.BlockExpr;
 import io.beam.ir.elixir.CaseExpr;
 import io.beam.ir.elixir.Clause;
@@ -127,17 +127,13 @@ final class ElixirRestJsonOperationIr {
     body.addAll(
         buildRequestBodyExprs(
             model, httpIndex, reqPayload, docMembers, method, sp, "input", eventStreamModule));
-    ElixirHttpChecksumIr.requestChecksumHeadersExpr(model, op, sp, "headers")
-        .ifPresent(body::add);
+    ElixirHttpChecksumIr.requestChecksumHeadersExpr(model, op, sp, "headers").ifPresent(body::add);
     body.addAll(buildRequestCompressionExprs(op));
 
     if (streamingRequestPayload) {
       HttpBinding payload = reqPayload.get(0);
       String field = fieldName(sp, payload.getMember());
-      body.add(
-          MatchExpr.bind(
-              "stream",
-              new DotCallExpr(Variable.of("input"), field, List.of())));
+      body.add(MatchExpr.bind("stream", new DotCallExpr(Variable.of("input"), field, List.of())));
       body.add(MatchExpr.bind("body", StringExpr.of("")));
     }
 
@@ -145,7 +141,8 @@ final class ElixirRestJsonOperationIr {
       body.add(
           MatchExpr.bind(
               "host",
-              LocalCallExpr.of("build_host", List.of(Variable.of("input"), Variable.of("config")))));
+              LocalCallExpr.of(
+                  "build_host", List.of(Variable.of("input"), Variable.of("config")))));
     }
 
     body.add(buildHttpRequestStruct(runtimeMod, method, streamingRequestPayload, hasHostLabels));
@@ -285,8 +282,7 @@ final class ElixirRestJsonOperationIr {
 
     List<Guard> successGuards = new ArrayList<>();
     if (!respCode.isEmpty()) {
-      successGuards.add(
-          new ComparisonGuard(Variable.of("http_status"), ">=", IntegerExpr.of(200)));
+      successGuards.add(new ComparisonGuard(Variable.of("http_status"), ">=", IntegerExpr.of(200)));
       successGuards.add(new ComparisonGuard(Variable.of("http_status"), "<", IntegerExpr.of(300)));
     }
 
@@ -334,7 +330,8 @@ final class ElixirRestJsonOperationIr {
     List<Function> functions = new ArrayList<>();
     FunctionHead successHead =
         successGuards.isEmpty()
-            ? FunctionHead.of(List.of(StructPattern.of(runtimeMod + ".HttpResponse", successFields)))
+            ? FunctionHead.of(
+                List.of(StructPattern.of(runtimeMod + ".HttpResponse", successFields)))
             : FunctionHead.of(
                 List.of(StructPattern.of(runtimeMod + ".HttpResponse", successFields)),
                 AndGuard.of(successGuards));
@@ -357,13 +354,12 @@ final class ElixirRestJsonOperationIr {
         new Function(
             "decode_" + opName + "_response",
             false,
-            List.of(FunctionHead.of(List.of(StructPattern.of(runtimeMod + ".HttpResponse", errorFields)))),
+            List.of(
+                FunctionHead.of(
+                    List.of(StructPattern.of(runtimeMod + ".HttpResponse", errorFields)))),
             LocalCallExpr.of(
                 "decode_" + opName + "_response_error",
-                List.of(
-                    Variable.of("status"),
-                    Variable.of("headers"),
-                    Variable.of("body"))),
+                List.of(Variable.of("status"), Variable.of("headers"), Variable.of("body"))),
             null,
             null,
             true));
@@ -397,7 +393,8 @@ final class ElixirRestJsonOperationIr {
               block(
                   List.of(
                       MatchExpr.bind(
-                          "decoded", LocalCallExpr.of("decode_json_body", List.of(Variable.of("body")))),
+                          "decoded",
+                          LocalCallExpr.of("decode_json_body", List.of(Variable.of("body")))),
                       buildErrorTuple(typesMod, modName, model, errShape, sp))),
               false));
     }
@@ -442,7 +439,8 @@ final class ElixirRestJsonOperationIr {
               block(
                   List.of(
                       MatchExpr.bind(
-                          "decoded", LocalCallExpr.of("decode_json_body", List.of(Variable.of("body")))),
+                          "decoded",
+                          LocalCallExpr.of("decode_json_body", List.of(Variable.of("body")))),
                       MatchExpr.bind(
                           "error_type",
                           RemoteCallExpr.of(
@@ -500,7 +498,9 @@ final class ElixirRestJsonOperationIr {
     return List.of(
         def(
             "encode_" + opName + "_response",
-            List.of(AssignPattern.of("output", StructPattern.of("Types." + outputStruct, patternFields))),
+            List.of(
+                AssignPattern.of(
+                    "output", StructPattern.of("Types." + outputStruct, patternFields))),
             block(buildEncodeResponseBodyExprs(model, op, httpIndex, sp, "output")),
             Spec.of("encode_" + opName + "_response(" + outputType + ") :: map()"),
             FunctionDoc.of("Encode response for " + op.getId() + "."),
@@ -527,12 +527,13 @@ final class ElixirRestJsonOperationIr {
       patternFields.add(field(field, VariablePattern.of("_" + field)));
       bodyEntries.add(
           MapEntry.stringKey(
-              member.getMemberName(),
-              new DotCallExpr(Variable.of("error"), field, List.of())));
+              member.getMemberName(), new DotCallExpr(Variable.of("error"), field, List.of())));
     }
 
     List<Expression> body = new ArrayList<>();
-    body.add(MatchExpr.bind("body_map", ElixirJsonCodecIr.rejectNilMapPipeline("body_map", bodyEntries)));
+    body.add(
+        MatchExpr.bind(
+            "body_map", ElixirJsonCodecIr.rejectNilMapPipeline("body_map", bodyEntries)));
     body.add(
         MatchExpr.bind(
             "body", RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
@@ -542,7 +543,8 @@ final class ElixirRestJsonOperationIr {
             ListExpr.of(
                 List.of(
                     TupleExpr.of(
-                        List.of(StringExpr.of("Content-Type"), StringExpr.of("application/json")))))));
+                        List.of(
+                            StringExpr.of("Content-Type"), StringExpr.of("application/json")))))));
     body.add(
         MapExpr.of(
             List.of(
@@ -739,22 +741,18 @@ final class ElixirRestJsonOperationIr {
       String field = fieldName(sp, pb.getMember());
       if (isStreamingBlob(model, pb.getMember())) {
         body.add(
-            MatchExpr.bind(
-                "stream",
-                new DotCallExpr(Variable.of(recordVar), field, List.of())));
+            MatchExpr.bind("stream", new DotCallExpr(Variable.of(recordVar), field, List.of())));
         body.add(MatchExpr.bind("body", StringExpr.of("")));
       } else {
-        body.add(
-            MatchExpr.bind(
-                "body",
-                new DotCallExpr(Variable.of(recordVar), field, List.of())));
+        body.add(MatchExpr.bind("body", new DotCallExpr(Variable.of(recordVar), field, List.of())));
       }
     } else if (!respDoc.isEmpty()) {
       List<MemberShape> docMemberShapes = respDoc.stream().map(HttpBinding::getMember).toList();
       List<MapEntry> entries =
           ElixirJsonCodecIr.bodyMapEntries(
               model, httpIndex, sp, "Types", docMemberShapes, recordVar, "event_stream");
-      body.add(MatchExpr.bind("body_map", ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries)));
+      body.add(
+          MatchExpr.bind("body_map", ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries)));
       body.add(
           MatchExpr.bind(
               "body", RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
@@ -838,8 +836,7 @@ final class ElixirRestJsonOperationIr {
                               Variable.of("input"),
                               List.of(
                                   MapEntry.atomKey(
-                                      field,
-                                      LocalCallExpr.of("generate_uuid", List.of()))))),
+                                      field, LocalCallExpr.of("generate_uuid", List.of()))))),
                       Clause.of(WildcardPattern.of(), Variable.of("input"))))));
     }
     return exprs;
@@ -856,12 +853,9 @@ final class ElixirRestJsonOperationIr {
     }
     Expression queryEntries = parts.get(0);
     for (int i = 1; i < parts.size(); i++) {
-      queryEntries =
-          RemoteCallExpr.of("Enum", "concat", List.of(queryEntries, parts.get(i)));
+      queryEntries = RemoteCallExpr.of("Enum", "concat", List.of(queryEntries, parts.get(i)));
     }
-    return List.of(
-        MatchExpr.bind(
-            "query", RemoteCallExpr.of("Map", "new", List.of(queryEntries))));
+    return List.of(MatchExpr.bind("query", RemoteCallExpr.of("Map", "new", List.of(queryEntries))));
   }
 
   private static Expression buildQueryBindingExpr(Model model, HttpBinding qb, SymbolProvider sp) {
@@ -927,11 +921,9 @@ final class ElixirRestJsonOperationIr {
               new PipeExpr(
                   Variable.of("query"),
                   List.of(
+                      new PipeStep(RemoteCallExpr.of("Map", "to_list", List.of()), List.of()),
                       new PipeStep(
-                          RemoteCallExpr.of("Map", "to_list", List.of()), List.of()),
-                      new PipeStep(
-                          RemoteCallExpr.of(
-                              "Enum", "concat", List.of(Variable.of("query_extra"))),
+                          RemoteCallExpr.of("Enum", "concat", List.of(Variable.of("query_extra"))),
                           List.of()),
                       new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of())))));
     }
@@ -1089,7 +1081,8 @@ final class ElixirRestJsonOperationIr {
       List<MapEntry> entries =
           ElixirJsonCodecIr.bodyMapEntries(
               model, httpIndex, sp, "Types", docMemberShapes, recordVar, eventStreamModule);
-      exprs.add(MatchExpr.bind("body_map", ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries)));
+      exprs.add(
+          MatchExpr.bind("body_map", ElixirJsonCodecIr.rejectNilMapPipeline("body_map", entries)));
       exprs.add(
           MatchExpr.bind(
               "body", RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
@@ -1128,13 +1121,11 @@ final class ElixirRestJsonOperationIr {
                                             Variable.of("headers1")))))))),
                 Clause.of(
                     AtomPattern.of("false"),
-                    TupleExpr.of(
-                        List.of(Variable.of("body"), Variable.of("headers1"))))));
+                    TupleExpr.of(List.of(Variable.of("body"), Variable.of("headers1"))))));
     return List.of(
         MatchExpr.bind("headers1", Variable.of("headers")),
         MatchExpr.bind(
-            TuplePattern.of(
-                List.of(VariablePattern.of("body"), VariablePattern.of("headers"))),
+            TuplePattern.of(List.of(VariablePattern.of("body"), VariablePattern.of("headers"))),
             gzipCase));
   }
 
@@ -1206,9 +1197,7 @@ final class ElixirRestJsonOperationIr {
         httpIndex,
         member,
         RemoteCallExpr.of(
-            "Map",
-            "get",
-            List.of(Variable.of("decoded"), StringExpr.of(jsonKey(member)))));
+            "Map", "get", List.of(Variable.of("decoded"), StringExpr.of(jsonKey(member)))));
   }
 
   private static Expression buildErrorTuple(
@@ -1231,10 +1220,7 @@ final class ElixirRestJsonOperationIr {
         List.of(
             AtomExpr.of("error"),
             LocalCallExpr.of(
-                "struct!",
-                List.of(
-                    Variable.of(typesMod + "." + modName),
-                    MapExpr.of(fields)))));
+                "struct!", List.of(Variable.of(typesMod + "." + modName), MapExpr.of(fields)))));
   }
 
   private static StructPatternField field(String name, Pattern pattern) {

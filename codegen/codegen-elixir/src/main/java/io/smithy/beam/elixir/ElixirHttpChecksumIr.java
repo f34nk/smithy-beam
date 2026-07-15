@@ -69,15 +69,12 @@ final class ElixirHttpChecksumIr {
               new RaiseExpr(
                   AtomExpr.of("ArgumentError"),
                   TupleExpr.of(
-                      List.of(
-                          AtomExpr.of("unsupported_checksum_algorithm"),
-                          Variable.of("other"))),
+                      List.of(AtomExpr.of("unsupported_checksum_algorithm"), Variable.of("other"))),
                   false)));
       return Optional.of(
           MatchExpr.bind(
               VariablePattern.of(headersVar),
-              new CaseExpr(
-                  new DotCallExpr(Variable.of("input"), field, List.of()), branches)));
+              new CaseExpr(new DotCallExpr(Variable.of("input"), field, List.of()), branches)));
     }
 
     List<Expression> statements = new ArrayList<>();
@@ -118,15 +115,11 @@ final class ElixirHttpChecksumIr {
         RemoteCallExpr.of(
             HTTP_CHECKSUM,
             "validate_response_checksum",
-            List.of(
-                Variable.of("body"),
-                Variable.of("headers"),
-                ListExpr.of(headerNames))),
+            List.of(Variable.of("body"), Variable.of("headers"), ListExpr.of(headerNames))),
         List.of(
             Clause.of(AtomPattern.of("ok"), successExpr),
             Clause.of(
-                TuplePattern.of(
-                    List.of(AtomPattern.of("error"), VariablePattern.of("reason"))),
+                TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("reason"))),
                 TupleExpr.of(
                     List.of(
                         AtomExpr.of("error"),
@@ -147,9 +140,7 @@ final class ElixirHttpChecksumIr {
                 List.of(
                     StringExpr.of(cb.headerName()),
                     RemoteCallExpr.of(
-                        HTTP_CHECKSUM,
-                        "checksum_header_encode",
-                        List.of(Variable.of("checksum"))),
+                        HTTP_CHECKSUM, "checksum_header_encode", List.of(Variable.of("checksum"))),
                     Variable.of(headersVar)))));
   }
 

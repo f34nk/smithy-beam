@@ -80,8 +80,7 @@ final class ElixirRetryIr {
                 AtomExpr.of("true")));
       }
     }
-    functions.add(
-        predicateClause("retryable?", true, WildcardPattern.of(), AtomExpr.of("false")));
+    functions.add(predicateClause("retryable?", true, WildcardPattern.of(), AtomExpr.of("false")));
     return functions;
   }
 
@@ -101,8 +100,7 @@ final class ElixirRetryIr {
                 AtomExpr.of("true")));
       }
     }
-    functions.add(
-        predicateClause("throttling?", true, WildcardPattern.of(), AtomExpr.of("false")));
+    functions.add(predicateClause("throttling?", true, WildcardPattern.of(), AtomExpr.of("false")));
     return functions;
   }
 

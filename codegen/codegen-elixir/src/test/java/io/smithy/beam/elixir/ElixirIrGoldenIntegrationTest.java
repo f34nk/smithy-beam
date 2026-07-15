@@ -2,23 +2,23 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.elixir.ElixirRenderer;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.TypesModule;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamSettings;
-import io.beam.ir.elixir.ElixirRenderer;
-import io.beam.ir.elixir.Function;
-import io.beam.ir.elixir.TypesModule;
 import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
@@ -89,7 +89,9 @@ class ElixirIrGoldenIntegrationTest {
         ElixirTypesNestedIr.buildStructureNestedModule(
             getNameOutput, sp.toSymbol(getNameOutput), ctx, sp, NullableIndex.of(model), members);
     assertThat(ElixirRenderer.render(nested))
-        .isEqualTo(IrGoldenAssertions.readExpectedString("ir/golden/get_name_output_structure.expected.ex"));
+        .isEqualTo(
+            IrGoldenAssertions.readExpectedString(
+                "ir/golden/get_name_output_structure.expected.ex"));
   }
 
   @Test
