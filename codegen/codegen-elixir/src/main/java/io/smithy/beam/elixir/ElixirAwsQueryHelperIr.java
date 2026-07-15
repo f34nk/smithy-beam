@@ -30,6 +30,7 @@ import io.beam.ir.elixir.PipeExpr;
 import io.beam.ir.elixir.PipeStep;
 import io.beam.ir.elixir.RemoteCallExpr;
 import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StringPattern;
 import io.beam.ir.elixir.TupleExpr;
 import io.beam.ir.elixir.TuplePattern;
 import io.beam.ir.elixir.Variable;
@@ -70,6 +71,16 @@ final class ElixirAwsQueryHelperIr {
         defp("decode_xml_boolean", List.of(NilPattern.of()), NilExpr.of(), true),
         defp("decode_xml_boolean", List.of(VariablePattern.of("true")), AtomExpr.of("true"), true),
         defp("decode_xml_boolean", List.of(VariablePattern.of("false")), AtomExpr.of("false"), true),
+        defp(
+            "decode_xml_boolean",
+            List.of(VariablePattern.of("text")),
+            IsTypeGuard.of("is_binary", "text"),
+            new CaseExpr(
+                Variable.of("text"),
+                List.of(
+                    Clause.of(StringPattern.of("true"), AtomExpr.of("true")),
+                    Clause.of(StringPattern.of("false"), AtomExpr.of("false")))),
+            false),
         defp("decode_xml_integer", List.of(NilPattern.of()), NilExpr.of(), true),
         defp(
             "decode_xml_integer",
