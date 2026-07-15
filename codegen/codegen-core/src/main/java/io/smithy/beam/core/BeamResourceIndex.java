@@ -33,12 +33,6 @@ public final class BeamResourceIndex {
     return resources;
   }
 
-  public List<ResourceShape> childResourcesSorted(ResourceShape resource) {
-    List<ResourceShape> children = new ArrayList<>(topDown.getContainedResources(resource));
-    children.sort(Comparator.comparing(r -> r.getId().toString()));
-    return children;
-  }
-
   public List<ShapeId> identifierChain(ResourceShape resource) {
     List<ShapeId> chain = new ArrayList<>();
     ResourceShape current = resource;

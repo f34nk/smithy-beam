@@ -2,7 +2,6 @@ package io.smithy.beam.core;
 
 import java.util.ArrayList;
 import java.util.List;
-import software.amazon.smithy.model.knowledge.HttpBinding;
 
 /** Builds language-specific HTTP path match patterns from Smithy @http uri templates. */
 public final class BeamHttpPathPatterns {
@@ -36,9 +35,5 @@ public final class BeamHttpPathPatterns {
       pos = end + 1;
     }
     return out;
-  }
-
-  public static boolean hasLabels(List<HttpBinding> labels) {
-    return labels != null && !labels.isEmpty();
   }
 }

@@ -4,7 +4,6 @@ import java.util.List;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.TopDownIndex;
 import software.amazon.smithy.model.shapes.OperationShape;
-import software.amazon.smithy.model.shapes.ResourceShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
 /**
@@ -25,9 +24,5 @@ public final class BeamServiceIndex {
 
   public List<OperationShape> containedOperations(ServiceShape service) {
     return List.copyOf(index.getContainedOperations(service));
-  }
-
-  public List<ResourceShape> containedResources(ServiceShape service) {
-    return List.copyOf(index.getContainedResources(service));
   }
 }
