@@ -195,7 +195,7 @@ final class ElixirComplianceTestIr {
         LocalCallExpr.of(
             "assert",
             List.of(
-                new InfixExpr(
+                InfixExpr.of(
                     new DotCallExpr(Variable.of("request"), "method", List.of()),
                     "==",
                     StringExpr.of(testCase.method())))));
@@ -203,7 +203,7 @@ final class ElixirComplianceTestIr {
         LocalCallExpr.of(
             "assert",
             List.of(
-                new InfixExpr(
+                InfixExpr.of(
                     new DotCallExpr(Variable.of("request"), "path", List.of()),
                     "==",
                     StringExpr.of(testCase.uri())))));
@@ -228,7 +228,7 @@ final class ElixirComplianceTestIr {
           LocalCallExpr.of(
               "assert",
               List.of(
-                  new InfixExpr(
+                  InfixExpr.of(
                       RemoteCallExpr.of(
                           "IO",
                           "iodata_to_binary",
@@ -355,7 +355,7 @@ final class ElixirComplianceTestIr {
         LocalCallExpr.of(
             "assert",
             List.of(
-                new InfixExpr(
+                InfixExpr.of(
                     new DotCallExpr(Variable.of("response"), "status", List.of()),
                     "==",
                     IntegerExpr.of(testCase.code())))));
@@ -372,7 +372,7 @@ final class ElixirComplianceTestIr {
           LocalCallExpr.of(
               "assert",
               List.of(
-                  new InfixExpr(
+                  InfixExpr.of(
                       RemoteCallExpr.of(
                           "IO",
                           "iodata_to_binary",
@@ -406,7 +406,7 @@ final class ElixirComplianceTestIr {
                     LocalCallExpr.of(
                         "assert",
                         List.of(
-                            new InfixExpr(
+                            InfixExpr.of(
                                 new DotCallExpr(Variable.of(structVar), fieldName, List.of()),
                                 "==",
                                 expected))));
@@ -506,7 +506,7 @@ final class ElixirComplianceTestIr {
         LocalCallExpr.of(
             "assert",
             List.of(
-                new InfixExpr(
+                InfixExpr.of(
                     RemoteCallExpr.of(
                         "Keyword", "get", List.of(Variable.of("actual"), Variable.of("key"))),
                     "==",
@@ -531,7 +531,7 @@ final class ElixirComplianceTestIr {
         LocalCallExpr.of(
             "assert",
             List.of(
-                new InfixExpr(
+                InfixExpr.of(
                     RemoteCallExpr.of(
                         "Map", "fetch!", List.of(Variable.of("query"), Variable.of("key"))),
                     "==",

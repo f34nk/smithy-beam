@@ -366,7 +366,7 @@ final class ElixirCodecHelperIr {
                         TuplePattern.of(List.of(WildcardPattern.of(), VariablePattern.of("ct"))),
                         IsTypeGuard.of("is_binary", "ct"),
                         new IfExpr(
-                            new InfixExpr(
+                            InfixExpr.of(
                                 LocalCallExpr.of("ct_base", List.of(Variable.of("ct"))),
                                 "==",
                                 LocalCallExpr.of("ct_base", List.of(Variable.of("expected")))),
@@ -662,7 +662,7 @@ final class ElixirCodecHelperIr {
   }
 
   private static InfixExpr concat(Expression left, Expression right) {
-    return new InfixExpr(left, "<>", right);
+    return InfixExpr.of(left, "<>", right);
   }
 
   private static Expression prefixHeadersFromListBody() {
@@ -691,7 +691,7 @@ final class ElixirCodecHelperIr {
                                 List.of(
                                     Variable.of("name"),
                                     LocalCallExpr.of("byte_size", List.of(Variable.of("prefix"))),
-                                    new InfixExpr(
+                                    InfixExpr.of(
                                         LocalCallExpr.of("byte_size", List.of(Variable.of("name"))),
                                         "-",
                                         LocalCallExpr.of(

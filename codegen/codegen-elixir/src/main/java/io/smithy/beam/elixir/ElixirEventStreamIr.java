@@ -185,7 +185,7 @@ final class ElixirEventStreamIr {
             List.of(VariablePattern.of("event_type"), VariablePattern.of("_payload")),
             new RaiseExpr(
                 AtomExpr.of("ArgumentError"),
-                new InfixExpr(
+                InfixExpr.of(
                     StringExpr.of("unknown event type: "),
                     "<>",
                     RemoteCallExpr.of("Kernel", "inspect", List.of(Variable.of("event_type")))),

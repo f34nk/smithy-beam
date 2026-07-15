@@ -13,6 +13,7 @@ import io.beam.dsl.elixir.Expression;
 import io.beam.dsl.elixir.Function;
 import io.beam.dsl.elixir.FunctionDoc;
 import io.beam.dsl.elixir.FunctionHead;
+import io.beam.dsl.elixir.InfixExpr;
 import io.beam.dsl.elixir.IntegerExpr;
 import io.beam.dsl.elixir.IntegerPattern;
 import io.beam.dsl.elixir.ListExpr;
@@ -104,12 +105,10 @@ final class ElixirAwsQueryOperationIr {
     body.add(
         MatchExpr.bind(
             "pairs",
-            new io.beam.dsl.elixir.InfixExpr(
-                ListExpr.of(
-                    List.of(
-                        TupleExpr.of(List.of(StringExpr.of("Action"), StringExpr.of(action))),
-                        TupleExpr.of(List.of(StringExpr.of("Version"), StringExpr.of(version))))),
-                "++",
+            ListExpr.of(
+                List.of(
+                    TupleExpr.of(List.of(StringExpr.of("Action"), StringExpr.of(action))),
+                    TupleExpr.of(List.of(StringExpr.of("Version"), StringExpr.of(version)))),
                 LocalCallExpr.of("flatten_query_input", List.of(Variable.of("input"))))));
     body.add(
         MatchExpr.bind(
@@ -457,9 +456,8 @@ final class ElixirAwsQueryOperationIr {
       String field = fieldName(sp, member);
       String wireKey = queryFormKey(member, ec2Query);
       Expression memberKey =
-          new io.beam.dsl.elixir.InfixExpr(
-              new io.beam.dsl.elixir.InfixExpr(
-                  Variable.of("wire_prefix"), "<>", StringExpr.of(".")),
+          InfixExpr.of(
+              InfixExpr.of(Variable.of("wire_prefix"), "<>", StringExpr.of(".")),
               "<>",
               StringExpr.of(wireKey));
       memberCalls.add(LocalCallExpr.of("flatten_member", List.of(memberKey, Variable.of(field))));

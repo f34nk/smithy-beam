@@ -88,13 +88,11 @@ final class ElixirClientDispatchOperationIr {
       String inputToken) {
     List<Expression> body = new ArrayList<>();
     if (hasItems) {
-      body.add(MatchExpr.bind("new_acc", new InfixExpr(Variable.of("acc"), "++", itemsExpr)));
+      body.add(MatchExpr.bind("new_acc", InfixExpr.of(Variable.of("acc"), "++", itemsExpr)));
     } else {
       body.add(
           MatchExpr.bind(
-              "new_acc",
-              new InfixExpr(
-                  ListExpr.of(List.of(Variable.of("output"))), "++", Variable.of("acc"))));
+              "new_acc", ListExpr.of(List.of(Variable.of("output")), Variable.of("acc"))));
     }
     Expression undefinedSuccess =
         hasItems
@@ -142,7 +140,7 @@ final class ElixirClientDispatchOperationIr {
       Model model,
       SymbolProvider sp) {
     Expression access = buildFieldAccessExpr(rootVar, rootShape, path, model, sp);
-    return new InfixExpr(access, "||", ListExpr.of(List.of()));
+    return InfixExpr.of(access, "||", ListExpr.of(List.of()));
   }
 
   static String fieldName(SymbolProvider sp, MemberShape member) {

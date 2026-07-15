@@ -212,7 +212,7 @@ final class ElixirAwsQueryHelperIr {
                             List.of(
                                 new ComparisonGuard(Variable.of("k"), "!=", AtomExpr.of("nil")),
                                 new ComparisonGuard(Variable.of("v"), "!=", AtomExpr.of("nil")))),
-                        new InfixExpr(
+                        InfixExpr.of(
                             LocalCallExpr.of(
                                 "flatten_member",
                                 List.of(flattenMemberEntryKey(".key"), Variable.of("k"))),
@@ -223,16 +223,16 @@ final class ElixirAwsQueryHelperIr {
   }
 
   private static Expression flattenMemberIndexedKey(String listSuffix) {
-    return new InfixExpr(
-        new InfixExpr(Variable.of("key"), "<>", StringExpr.of(listSuffix)),
+    return InfixExpr.of(
+        InfixExpr.of(Variable.of("key"), "<>", StringExpr.of(listSuffix)),
         "<>",
         RemoteCallExpr.of("Integer", "to_string", List.of(Variable.of("i"))));
   }
 
   private static Expression flattenMemberEntryKey(String suffix) {
-    return new InfixExpr(
-        new InfixExpr(
-            new InfixExpr(Variable.of("key"), "<>", StringExpr.of(".entry.")),
+    return InfixExpr.of(
+        InfixExpr.of(
+            InfixExpr.of(Variable.of("key"), "<>", StringExpr.of(".entry.")),
             "<>",
             RemoteCallExpr.of("Integer", "to_string", List.of(Variable.of("i")))),
         "<>",
@@ -300,7 +300,7 @@ final class ElixirAwsQueryHelperIr {
         new BlockExpr(
             List.of(
                 MatchExpr.bind(
-                    "prefix", new InfixExpr(Variable.of("key"), "<>", StringExpr.of(".member."))),
+                    "prefix", InfixExpr.of(Variable.of("key"), "<>", StringExpr.of(".member."))),
                 LocalCallExpr.of(
                     "indexed_form_values", List.of(Variable.of("params"), Variable.of("prefix"))))),
         false);
@@ -313,7 +313,7 @@ final class ElixirAwsQueryHelperIr {
         new BlockExpr(
             List.of(
                 MatchExpr.bind(
-                    "prefix", new InfixExpr(Variable.of("key"), "<>", StringExpr.of("."))),
+                    "prefix", InfixExpr.of(Variable.of("key"), "<>", StringExpr.of("."))),
                 LocalCallExpr.of(
                     "indexed_form_values", List.of(Variable.of("params"), Variable.of("prefix"))))),
         false);
@@ -468,10 +468,10 @@ final class ElixirAwsQueryHelperIr {
         "query_result_element",
         List.of(VariablePattern.of("element"), VariablePattern.of("result_name")),
         new IfExpr(
-            new InfixExpr(
+            InfixExpr.of(
                 LocalCallExpr.of("is_element", List.of(Variable.of("element"))),
                 "and",
-                new InfixExpr(
+                InfixExpr.of(
                     LocalCallExpr.of("element_name", List.of(Variable.of("element"))),
                     "==",
                     Variable.of("result_name"))),
@@ -491,10 +491,10 @@ final class ElixirAwsQueryHelperIr {
             List.of(
                 AnonFunClause.of(
                     List.of(VariablePattern.of("item")),
-                    new InfixExpr(
+                    InfixExpr.of(
                         LocalCallExpr.of("is_element", List.of(Variable.of("item"))),
                         "and",
-                        new InfixExpr(
+                        InfixExpr.of(
                             LocalCallExpr.of("element_name", List.of(Variable.of("item"))),
                             "==",
                             Variable.of("name"))))));
@@ -783,10 +783,10 @@ final class ElixirAwsQueryHelperIr {
             List.of(
                 AnonFunClause.of(
                     List.of(VariablePattern.of("item")),
-                    new InfixExpr(
+                    InfixExpr.of(
                         LocalCallExpr.of("is_element", List.of(Variable.of("item"))),
                         "and",
-                        new InfixExpr(
+                        InfixExpr.of(
                             LocalCallExpr.of("element_name", List.of(Variable.of("item"))),
                             "==",
                             Variable.of("item_name"))))));
@@ -874,10 +874,10 @@ final class ElixirAwsQueryHelperIr {
         List.of(
             AnonFunClause.of(
                 List.of(VariablePattern.of("item")),
-                new InfixExpr(
+                InfixExpr.of(
                     LocalCallExpr.of("is_element", List.of(Variable.of("item"))),
                     "and",
-                    new InfixExpr(
+                    InfixExpr.of(
                         LocalCallExpr.of("element_name", List.of(Variable.of("item"))),
                         "==",
                         Variable.of("item_name"))))));

@@ -668,7 +668,7 @@ final class ElixirRestXmlOperationIr {
         body.add(
             MatchExpr.bind(
                 "body",
-                new InfixExpr(
+                InfixExpr.of(
                     RemoteCallExpr.of(
                         "Map", "get", List.of(Variable.of("output"), AtomExpr.of(field))),
                     "||",
@@ -932,7 +932,7 @@ final class ElixirRestXmlOperationIr {
       Expression fieldValue = new DotCallExpr(Variable.of(recordVar), field, List.of());
       entries.add(
           new IfExpr(
-              new InfixExpr(fieldValue, "!=", AtomExpr.of("nil")),
+              InfixExpr.of(fieldValue, "!=", AtomExpr.of("nil")),
               TupleExpr.of(
                   List.of(
                       StringExpr.of(hb.getLocationName()),
@@ -1194,7 +1194,7 @@ final class ElixirRestXmlOperationIr {
   }
 
   private static Expression appendPathSegment(Expression current, Expression segment) {
-    return current == null ? segment : new InfixExpr(current, "<>", segment);
+    return current == null ? segment : InfixExpr.of(current, "<>", segment);
   }
 
   private static Function defp(

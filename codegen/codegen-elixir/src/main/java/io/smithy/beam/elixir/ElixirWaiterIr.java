@@ -264,14 +264,14 @@ final class ElixirWaiterIr {
                                     "Kernel",
                                     "min",
                                     List.of(
-                                        new InfixExpr(Variable.of("delay"), "*", IntegerExpr.of(2)),
+                                        InfixExpr.of(Variable.of("delay"), "*", IntegerExpr.of(2)),
                                         Variable.of("max_delay"))),
                                 LocalCallExpr.of(
                                     "wait_until",
                                     List.of(
                                         Variable.of("step"),
                                         Variable.of("acceptors"),
-                                        new InfixExpr(
+                                        InfixExpr.of(
                                             Variable.of("attempts"), "-", IntegerExpr.of(1)),
                                         Variable.of("next_delay"),
                                         Variable.of("max_delay")))))))));
@@ -433,7 +433,7 @@ final class ElixirWaiterIr {
         defp(
             "error_types_match?",
             List.of(VariablePattern.of("expected"), VariablePattern.of("got")),
-            new InfixExpr(Variable.of("expected"), "==", Variable.of("got")),
+            InfixExpr.of(Variable.of("expected"), "==", Variable.of("got")),
             true));
   }
 
@@ -515,7 +515,7 @@ final class ElixirWaiterIr {
             List.of(VariablePattern.of("left"), VariablePattern.of("right")),
             IsTypeGuard.of("is_atom", "left"),
             IsTypeGuard.of("is_binary", "right"),
-            new InfixExpr(
+            InfixExpr.of(
                 RemoteCallExpr.of(
                     "String",
                     "upcase",
@@ -528,7 +528,7 @@ final class ElixirWaiterIr {
             List.of(VariablePattern.of("left"), VariablePattern.of("right")),
             IsTypeGuard.of("is_binary", "left"),
             IsTypeGuard.of("is_binary", "right"),
-            new InfixExpr(
+            InfixExpr.of(
                 RemoteCallExpr.of("String", "upcase", List.of(Variable.of("left"))),
                 "==",
                 RemoteCallExpr.of("String", "upcase", List.of(Variable.of("right")))),
@@ -536,7 +536,7 @@ final class ElixirWaiterIr {
         defp(
             "string_equals?",
             List.of(VariablePattern.of("left"), VariablePattern.of("right")),
-            new InfixExpr(Variable.of("left"), "==", Variable.of("right")),
+            InfixExpr.of(Variable.of("left"), "==", Variable.of("right")),
             true));
   }
 

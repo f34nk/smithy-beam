@@ -149,8 +149,8 @@ final class ElixirJsonCodecIr {
 
   static Expression decodedBodyExpr() {
     return new IfExpr(
-        new InfixExpr(
-            new InfixExpr(Variable.of("body"), "==", StringExpr.of("")),
+        InfixExpr.of(
+            InfixExpr.of(Variable.of("body"), "==", StringExpr.of("")),
             "or",
             RemoteCallExpr.of("Kernel", "is_nil", List.of(Variable.of("body")))),
         MapExpr.of(List.of()),

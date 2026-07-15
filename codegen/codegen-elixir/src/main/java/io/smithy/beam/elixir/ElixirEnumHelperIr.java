@@ -73,7 +73,7 @@ final class ElixirEnumHelperIr {
                     "replace",
                     List.of(Variable.of("v"), StringExpr.of("_"), StringExpr.of(".")))),
             new IfExpr(
-                new InfixExpr(Variable.of("normalized"), "==", Variable.of("v")),
+                InfixExpr.of(Variable.of("normalized"), "==", Variable.of("v")),
                 TupleExpr.of(List.of(AtomExpr.of("unknown"), Variable.of("v"))),
                 new CaseExpr(
                     LocalCallExpr.of(decodeFunctionName, List.of(Variable.of("normalized"))),

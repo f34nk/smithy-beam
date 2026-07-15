@@ -80,7 +80,7 @@ final class ElixirHostLabelIr {
                         List.of(VariablePattern.of("_scheme"), VariablePattern.of("authority"))),
                     RemoteCallExpr.of("Utils", "split_base_url", List.of(Variable.of("base_url")))),
                 MatchExpr.bind("prefix", prefixExpr),
-                new InfixExpr(Variable.of("prefix"), "<>", Variable.of("authority")))),
+                InfixExpr.of(Variable.of("prefix"), "<>", Variable.of("authority")))),
         null,
         null,
         false);
@@ -112,7 +112,7 @@ final class ElixirHostLabelIr {
       } else {
         part = StringExpr.of(segment.getContent());
       }
-      expr = expr == null ? part : new InfixExpr(expr, "<>", part);
+      expr = expr == null ? part : InfixExpr.of(expr, "<>", part);
     }
     return expr;
   }

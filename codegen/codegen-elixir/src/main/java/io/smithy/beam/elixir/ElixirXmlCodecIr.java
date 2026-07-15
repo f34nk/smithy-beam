@@ -446,10 +446,10 @@ final class ElixirXmlCodecIr {
         defp(
             "xml_element_named",
             List.of(VariablePattern.of("element"), VariablePattern.of("name")),
-            new InfixExpr(
+            InfixExpr.of(
                 LocalCallExpr.of("is_element", List.of(Variable.of("element"))),
                 "and",
-                new InfixExpr(
+                InfixExpr.of(
                     LocalCallExpr.of("element_name", List.of(Variable.of("element"))),
                     "==",
                     Variable.of("name"))),
@@ -491,11 +491,11 @@ final class ElixirXmlCodecIr {
                             AnonFunClause.of(
                                 List.of(VariablePattern.of("item")),
                                 new IfExpr(
-                                    new InfixExpr(
+                                    InfixExpr.of(
                                         LocalCallExpr.of(
                                             "is_element", List.of(Variable.of("item"))),
                                         "and",
-                                        new InfixExpr(
+                                        InfixExpr.of(
                                             LocalCallExpr.of(
                                                 "element_name", List.of(Variable.of("item"))),
                                             "==",
@@ -663,10 +663,10 @@ final class ElixirXmlCodecIr {
                 List.of(
                     AnonFunClause.of(
                         List.of(VariablePattern.of("item")),
-                        new InfixExpr(
+                        InfixExpr.of(
                             LocalCallExpr.of("is_element", List.of(Variable.of("item"))),
                             "and",
-                            new InfixExpr(
+                            InfixExpr.of(
                                 LocalCallExpr.of("element_name", List.of(Variable.of("item"))),
                                 "==",
                                 Variable.of("item_name"))))))));

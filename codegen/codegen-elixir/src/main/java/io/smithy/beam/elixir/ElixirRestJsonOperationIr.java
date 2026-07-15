@@ -793,7 +793,7 @@ final class ElixirRestJsonOperationIr {
       body.add(
           MatchExpr.bind(
               "headers",
-              new InfixExpr(
+              InfixExpr.of(
                   Variable.of("headers"),
                   "++",
                   LocalCallExpr.of(
@@ -971,7 +971,7 @@ final class ElixirRestJsonOperationIr {
       exprs.add(
           MatchExpr.bind(
               "headers",
-              new InfixExpr(
+              InfixExpr.of(
                   Variable.of("headers"),
                   "++",
                   LocalCallExpr.of(
@@ -990,7 +990,7 @@ final class ElixirRestJsonOperationIr {
       String field = fieldName(sp, hb.getMember());
       entries.add(
           new IfExpr(
-              new InfixExpr(
+              InfixExpr.of(
                   new DotCallExpr(Variable.of(recordVar), field, List.of()),
                   "!=",
                   AtomExpr.of("nil")),
@@ -1068,7 +1068,7 @@ final class ElixirRestJsonOperationIr {
         exprs.add(
             MatchExpr.bind(
                 "body",
-                new InfixExpr(
+                InfixExpr.of(
                     new DotCallExpr(Variable.of(recordVar), field, List.of()),
                     "||",
                     StringExpr.of(""))));
@@ -1098,7 +1098,7 @@ final class ElixirRestJsonOperationIr {
     }
     Expression gzipCase =
         new CaseExpr(
-            new InfixExpr(
+            InfixExpr.of(
                 RemoteCallExpr.of(":erlang", "byte_size", List.of(Variable.of("body"))),
                 ">=",
                 IntegerExpr.of(10240)),
@@ -1186,7 +1186,7 @@ final class ElixirRestJsonOperationIr {
   }
 
   private static Expression appendPathSegment(Expression current, Expression segment) {
-    return current == null ? segment : new InfixExpr(current, "<>", segment);
+    return current == null ? segment : InfixExpr.of(current, "<>", segment);
   }
 
   private static Expression decodeDocumentFieldExpr(
