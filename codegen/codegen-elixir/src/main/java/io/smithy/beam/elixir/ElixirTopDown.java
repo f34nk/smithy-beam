@@ -31,8 +31,16 @@ final class ElixirTopDown {
     }
     String typeKind = structureSym.getProperty("typeKind", String.class).orElse("module");
     if ("module".equals(typeKind)) {
-      return typesModuleName + "." + structureSym.getName() + ".t()";
+      return structureModuleName(typesModuleName, structureSym) + ".t()";
     }
     return typesModuleName + "." + structureSym.getName() + "()";
+  }
+
+  static String structureModuleName(String typesModuleName, Symbol structureSym) {
+    boolean builtIn = structureSym.getProperty("builtIn", Boolean.class).orElse(false);
+    if (builtIn) {
+      return structureSym.getName();
+    }
+    return typesModuleName + "." + structureSym.getName();
   }
 }
