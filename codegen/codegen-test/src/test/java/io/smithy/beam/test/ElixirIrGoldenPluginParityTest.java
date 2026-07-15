@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.amazon.smithy.build.MockManifest;
@@ -72,11 +74,13 @@ class ElixirIrGoldenPluginParityTest {
   @Disabled(
       "One-time golden capture helper; run locally then copy printed paths to test/resources/golden/")
   @Test
-  void captureGoldens() {
+  void captureGoldens() throws IOException {
     MockManifest manifest = runClientPlugin(loadModel());
-    System.out.println("=== http_service_rest_json_1.ex ===");
-    System.out.println(manifest.expectFileString("http_service_rest_json_1.ex"));
-    System.out.println("=== http_service_types.ex (structure slice marker) ===");
-    System.out.println(manifest.expectFileString("http_service_types.ex"));
+    Path golden =
+        Path.of("src/test/resources/golden/http_service_rest_json_1_client_codec.expected.ex");
+    Files.writeString(
+        golden,
+        stripTrailingNewline(manifest.expectFileString("http_service_rest_json_1.ex"))
+            + "\n");
   }
 }

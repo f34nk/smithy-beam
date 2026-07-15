@@ -100,7 +100,8 @@ class ElixirRestJson1CodecTest {
         runElixirClient(model, "smithy.beam.demo.error_shapes#ErrorFixtureService")
             .getFileString("error_fixture_service_rest_json_1.ex")
             .orElse("");
-    assertThat(codec).contains("defp decode_get_item_response_error(404,");
+    assertThat(codec).contains("defp decode_get_item_response_error(404, _headers, body) do");
+    assertThat(codec).doesNotContain("do: decoded = decode_json_body(body)");
     assertThat(codec).contains("struct!(ErrorFixtureServiceTypes.NotFoundError");
     assertThat(codec).contains("__type");
     assertThat(codec).contains("unknown_error");

@@ -167,6 +167,8 @@ final class ElixirRestJsonIr {
     functions.addAll(ElixirCodecHelperIr.prefixHeadersToList());
     functions.addAll(ElixirCodecHelperIr.prefixHeadersFromList());
     functions.addAll(ElixirCodecHelperIr.decodeJsonBody());
+    functions.addAll(ElixirCodecHelperIr.headerValue());
+    functions.addAll(ElixirCodecHelperIr.headerValueRaw());
     functions.addAll(ElixirCodecHelperIr.contentTypeMatches());
     functions.addAll(ElixirCodecHelperIr.ctBase());
     functions.addAll(ElixirCodecHelperIr.decodeSparseList());

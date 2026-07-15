@@ -153,8 +153,8 @@ final class ElixirRestJsonOperationIr {
     Spec spec =
         encodeWithConfig
             ? Spec.of(
-                "encode_" + opName + "_request(map(), " + inputType + ") -> " + httpRequestType)
-            : Spec.of("encode_" + opName + "_request(" + inputType + ") -> " + httpRequestType);
+                "encode_" + opName + "_request(map(), " + inputType + ") :: " + httpRequestType)
+            : Spec.of("encode_" + opName + "_request(" + inputType + ") :: " + httpRequestType);
 
     return List.of(
         new Function(
@@ -164,7 +164,7 @@ final class ElixirRestJsonOperationIr {
             block(body),
             spec,
             null,
-            encodeWithConfig));
+            false));
   }
 
   static List<Function> buildDecodeRequest(
@@ -229,13 +229,13 @@ final class ElixirRestJsonOperationIr {
     Spec spec =
         labels.isEmpty()
             ? Spec.of(
-                "decode_" + opName + "_request(%" + runtimeMod + ".HttpRequest{}) -> " + returnType)
+                "decode_" + opName + "_request(%" + runtimeMod + ".HttpRequest{}) :: " + returnType)
             : Spec.of(
                 "decode_"
                     + opName
                     + "_request(%"
                     + runtimeMod
-                    + ".HttpRequest{}, map()) -> "
+                    + ".HttpRequest{}, map()) :: "
                     + returnType);
 
     return List.of(
@@ -399,7 +399,7 @@ final class ElixirRestJsonOperationIr {
                       MatchExpr.bind(
                           "decoded", LocalCallExpr.of("decode_json_body", List.of(Variable.of("body")))),
                       buildErrorTuple(typesMod, modName, model, errShape, sp))),
-              true));
+              false));
     }
 
     boolean hasTypeDiscriminated =
@@ -502,7 +502,7 @@ final class ElixirRestJsonOperationIr {
             "encode_" + opName + "_response",
             List.of(AssignPattern.of("output", StructPattern.of("Types." + outputStruct, patternFields))),
             block(buildEncodeResponseBodyExprs(model, op, httpIndex, sp, "output")),
-            Spec.of("encode_" + opName + "_response(" + outputType + ") -> map()"),
+            Spec.of("encode_" + opName + "_response(" + outputType + ") :: map()"),
             FunctionDoc.of("Encode response for " + op.getId() + "."),
             false));
   }
@@ -556,7 +556,7 @@ final class ElixirRestJsonOperationIr {
             "encode_" + modName + "_response",
             List.of(AssignPattern.of("error", StructPattern.of("Types." + modName, patternFields))),
             block(body),
-            Spec.of("encode_" + modName + "_response(" + errorType + ") -> map()"),
+            Spec.of("encode_" + modName + "_response(" + errorType + ") :: map()"),
             FunctionDoc.of("Encode HTTP error response for " + errorId + "."),
             false));
   }
@@ -583,7 +583,10 @@ final class ElixirRestJsonOperationIr {
       String field = fieldName(sp, hb.getMember());
       body.add(
           MatchExpr.bind(
-              field, headerValuePipeCase("headers", hb.getLocationName())));
+              field,
+              LocalCallExpr.of(
+                  "header_value",
+                  List.of(Variable.of("headers"), StringExpr.of(hb.getLocationName())))));
     }
 
     List<StructField> structFields = new ArrayList<>();
@@ -677,7 +680,11 @@ final class ElixirRestJsonOperationIr {
     for (HttpBinding hb : headers) {
       String field = fieldName(sp, hb.getMember());
       fields.add(
-          StructField.of(field, headerValuePipeCase("headers", hb.getLocationName())));
+          StructField.of(
+              field,
+              LocalCallExpr.of(
+                  "header_value",
+                  List.of(Variable.of("headers"), StringExpr.of(hb.getLocationName())))));
     }
     for (HttpBinding ph : prefixHeaders) {
       String field = fieldName(sp, ph.getMember());
@@ -1189,31 +1196,6 @@ final class ElixirRestJsonOperationIr {
 
   private static Expression appendPathSegment(Expression current, Expression segment) {
     return current == null ? segment : new InfixExpr(current, "<>", segment);
-  }
-
-  private static Expression headerValuePipeCase(String headersVar, String locationName) {
-    return new PipeExpr(
-        Variable.of(headersVar),
-        List.of(
-            new PipeStep(
-                RemoteCallExpr.of(
-                    "List",
-                    "keyfind",
-                    List.of(
-                        Variable.of(headersVar),
-                        StringExpr.of(locationName),
-                        IntegerExpr.of(0))),
-                List.of()),
-            new PipeStep(
-                CaseExpr.piped(
-                    List.of(
-                        Clause.of(
-                            TuplePattern.of(
-                                List.of(
-                                    VariablePattern.of("_"), VariablePattern.of("v"))),
-                            Variable.of("v")),
-                        Clause.of(NilPattern.of(), NilExpr.of()))),
-                List.of())));
   }
 
   private static Expression decodeDocumentFieldExpr(
