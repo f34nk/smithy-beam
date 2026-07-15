@@ -19,10 +19,6 @@ public final class BeamEndpointRuleSetEmitter {
     return resolveRuleSetTrait(model, service).map(RuleSetSerializer::toErlangMap);
   }
 
-  public static Optional<String> serializeRuleSetElixirMap(Model model, ServiceShape service) {
-    return resolveRuleSetTrait(model, service).map(RuleSetSerializer::toElixirMap);
-  }
-
   public static Optional<String> serializeRuleSetJson(Model model, ServiceShape service) {
     return resolveRuleSetTrait(model, service).map(trait -> RuleSetSerializer.toJson(model, trait));
   }

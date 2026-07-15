@@ -56,10 +56,6 @@ public final class BeamHttpBindings {
     return delegate.determineResponseContentType(operation, mediaRangeFromTrait);
   }
 
-  public boolean hasRequestBody(ToShapeId operation) {
-    return delegate.hasRequestBody(operation);
-  }
-
   public boolean hasResponseBody(ToShapeId operation) {
     return delegate.hasResponseBody(operation);
   }

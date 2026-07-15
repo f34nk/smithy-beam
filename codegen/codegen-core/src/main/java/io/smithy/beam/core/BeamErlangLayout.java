@@ -76,14 +76,6 @@ public final class BeamErlangLayout {
     return serviceSnakeName() + "_router";
   }
 
-  public String codecModuleFile() {
-    return clientCodecModuleName() + ".erl";
-  }
-
-  public String codecModuleName() {
-    return clientCodecModuleName();
-  }
-
   public String clientCodecModuleName() {
     return clientCodecModuleName(BeamProtocolIds.REST_JSON_1);
   }
@@ -97,10 +89,6 @@ public final class BeamErlangLayout {
     return serviceSnakeName()
         + "_"
         + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId, integrations);
-  }
-
-  public String serverCodecModuleFile() {
-    return serverCodecModuleName() + ".erl";
   }
 
   public String serverCodecModuleName() {
@@ -122,36 +110,8 @@ public final class BeamErlangLayout {
     return "runtime_types.hrl";
   }
 
-  public String runtimeHelpersModuleFile() {
-    return runtimeHelpersModuleName() + ".erl";
-  }
-
-  public String runtimeHelpersModuleName() {
-    return "runtime_utils";
-  }
-
-  public String runtimeHttpModuleFile() {
-    return runtimeHttpModuleName() + ".erl";
-  }
-
   public String runtimeHttpModuleName() {
     return "runtime_http";
-  }
-
-  public String paginatorsModuleFile() {
-    return paginatorsModuleName() + ".erl";
-  }
-
-  public String paginatorsModuleName() {
-    return serviceSnakeName() + "_paginators";
-  }
-
-  public String retryModuleFile() {
-    return retryModuleName() + ".erl";
-  }
-
-  public String retryModuleName() {
-    return serviceSnakeName() + "_retry";
   }
 
   public String waitersModuleFile() {
@@ -168,30 +128,6 @@ public final class BeamErlangLayout {
 
   public String complianceTestsModuleName() {
     return serviceSnakeName() + "_compliance_tests";
-  }
-
-  public String sigv4ModuleFile() {
-    return sigv4ModuleName() + ".erl";
-  }
-
-  public String sigv4ModuleName() {
-    return serviceSnakeName() + "_sigv4";
-  }
-
-  public String presignerModuleFile() {
-    return presignerModuleName() + ".erl";
-  }
-
-  public String presignerModuleName() {
-    return serviceSnakeName() + "_presigner";
-  }
-
-  public String endpointsModuleFile() {
-    return endpointsModuleName() + ".erl";
-  }
-
-  public String endpointsModuleName() {
-    return serviceSnakeName() + "_endpoints";
   }
 
   public String eventStreamModuleFile() {

@@ -39,7 +39,7 @@ class BeamElixirLayoutTest {
 
     assertThat(layout.clientModuleFile()).isEqualTo("aws_lambda_client.ex");
     assertThat(layout.typesModuleFile()).isEqualTo("aws_lambda_types.ex");
-    assertThat(layout.sigv4ModuleFile()).isEqualTo("aws_lambda_sigv4.ex");
+    assertThat(layout.waitersModuleName()).startsWith("aws_lambda_");
   }
 
   @Test

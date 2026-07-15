@@ -45,13 +45,6 @@ final class ErlangXmlCodecDsl {
 
   private static final WildcardPattern W = WildcardPattern.of();
 
-  public static List<Function> restXmlHelpers() {
-    List<Function> functions = new ArrayList<>();
-    functions.addAll(restXmlDecodeHelpers());
-    functions.addAll(restXmlEncodeHelpers());
-    return functions;
-  }
-
   public static List<Function> restXmlDecodeHelpers() {
     return List.of(
         parseXmlRoot(),

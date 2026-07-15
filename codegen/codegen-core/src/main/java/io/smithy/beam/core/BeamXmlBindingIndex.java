@@ -55,10 +55,6 @@ public final class BeamXmlBindingIndex {
     return shape.getTrait(XmlNamespaceTrait.class).map(XmlNamespaceTrait::getUri);
   }
 
-  public static Optional<String> xmlNamespacePrefix(Shape shape) {
-    return shape.getTrait(XmlNamespaceTrait.class).flatMap(XmlNamespaceTrait::getPrefix);
-  }
-
   public static String listItemElementName(ListShape listShape) {
     MemberShape member = listShape.getMember();
     if (isXmlFlattened(listShape) || member.hasTrait(XmlNameTrait.class)) {
