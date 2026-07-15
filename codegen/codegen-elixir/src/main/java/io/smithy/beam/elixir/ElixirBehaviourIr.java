@@ -1,21 +1,20 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Alias;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.Callback;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionDoc;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.IntegerExpr;
+import io.beam.ir.elixir.ListExpr;
+import io.beam.ir.elixir.Moduledoc;
+import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.TupleExpr;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.ir.elixir.ExAliasAttr;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExCallbackSpec;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExDoc;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExInteger;
-import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExModule;
-import io.smithy.beam.ir.elixir.ExModuledoc;
-import io.smithy.beam.ir.elixir.ExPreambleEntry;
-import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExTuple;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -27,27 +26,27 @@ import software.amazon.smithy.model.shapes.StructureShape;
 final class ElixirBehaviourIr {
   private ElixirBehaviourIr() {}
 
-  static ExModule behaviourModule(
+  static Module behaviourModule(
       BeamElixirLayout layout,
       ServiceShape service,
-      List<ExCallbackSpec> callbacks,
+      List<Callback> callbacks,
       List<OperationShape> operations,
       SymbolProvider sp) {
     String behaviourMod = ElixirSymbolProvider.toModuleName(layout.behaviourModuleName());
     String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-    List<ExPreambleEntry> preamble =
-        List.of(
-            ExModuledoc.moduledoc(
-                "Generated Elixir server behaviour for " + service.getId() + "."));
-    return ExModule.module(
+    return new Module(
         behaviourMod,
-        preamble,
-        List.of(ExAliasAttr.alias(typesModuleName, "Types")),
+        Moduledoc.of("Generated Elixir server behaviour for " + service.getId() + "."),
+        List.of(),
+        List.of(Alias.of(typesModuleName, "Types")),
+        List.of(),
+        List.of(),
         callbacks,
+        List.of(),
         List.of(callbacksFunction(operations, sp)));
   }
 
-  static ExCallbackSpec operationCallback(ElixirContext ctx, OperationShape op, SymbolProvider sp) {
+  static Callback operationCallback(ElixirContext ctx, OperationShape op, SymbolProvider sp) {
     Symbol opSym = sp.toSymbol(op);
     StructureShape input = ctx.model().expectShape(op.getInputShape(), StructureShape.class);
     StructureShape output = ctx.model().expectShape(op.getOutputShape(), StructureShape.class);
@@ -59,24 +58,27 @@ final class ElixirBehaviourIr {
                 .typesModuleName());
     String inType = ElixirTopDown.structureSpecType(typesModuleName, sp.toSymbol(input));
     String outType = ElixirTopDown.structureSpecType(typesModuleName, sp.toSymbol(output));
-    ExDoc doc = BeamDocumentation.forShape(op).map(ExDoc::doc).orElse(null);
-    return ExCallbackSpec.callbackSpec(
+    FunctionDoc doc = BeamDocumentation.forShape(op).map(FunctionDoc::of).orElse(null);
+    return Callback.of(
         handler,
         List.of("term()", inType, "term()"),
         "{:ok, " + outType + "} | {:error, term()}",
         doc);
   }
 
-  static ExFunction callbacksFunction(List<OperationShape> operations, SymbolProvider sp) {
-    List<ExExpr> entries = new ArrayList<>();
+  static Function callbacksFunction(List<OperationShape> operations, SymbolProvider sp) {
+    List<Expression> entries = new ArrayList<>();
     for (OperationShape op : operations) {
       String name = sp.toSymbol(op).getName();
-      entries.add(ExTuple.tuple(ExAtom.atom("handle_" + name), ExInteger.integer(3)));
+      entries.add(TupleExpr.of(List.of(AtomExpr.of("handle_" + name), IntegerExpr.of(3))));
     }
-    return ExFunction.functionWithSpec(
-        "def",
+    return new Function(
         "callbacks",
-        ExSpec.functionSpec("callbacks", "", "[{atom(), non_neg_integer()}]"),
-        List.of(ExClause.blockClause(List.of(), ExList.list(entries.toArray(ExExpr[]::new)))));
+        false,
+        List.of(FunctionHead.of(List.of())),
+        ListExpr.of(entries),
+        Spec.of("callbacks() :: [{atom(), non_neg_integer()}]"),
+        null,
+        false);
   }
 }

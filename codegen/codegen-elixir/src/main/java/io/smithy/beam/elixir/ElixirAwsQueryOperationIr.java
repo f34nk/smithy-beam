@@ -1,40 +1,46 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AssignPattern;
+import io.beam.ir.elixir.AnonFun;
+import io.beam.ir.elixir.AnonFunClause;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.DotCallExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionDoc;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.IntegerExpr;
+import io.beam.ir.elixir.IntegerPattern;
+import io.beam.ir.elixir.ListExpr;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.NilExpr;
+import io.beam.ir.elixir.NilPattern;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.PipeExpr;
+import io.beam.ir.elixir.PipeStep;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StructExpr;
+import io.beam.ir.elixir.StructField;
+import io.beam.ir.elixir.StructPattern;
+import io.beam.ir.elixir.StructPatternField;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
+import io.beam.ir.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamAwsQueryFormEncoder;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamXmlBindingIndex;
 import io.smithy.beam.core.BeamXmlDecoder;
-import io.smithy.beam.ir.elixir.ExAnonymousFn;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExCase;
-import io.smithy.beam.ir.elixir.ExCaseBranch;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExDoc;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExInteger;
-import io.smithy.beam.ir.elixir.ExIntegerPattern;
-import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExNil;
-import io.smithy.beam.ir.elixir.ExNilPattern;
-import io.smithy.beam.ir.elixir.ExOp;
-import io.smithy.beam.ir.elixir.ExPipeline;
-import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStruct;
-import io.smithy.beam.ir.elixir.ExStructAccess;
-import io.smithy.beam.ir.elixir.ExStructFieldPattern;
-import io.smithy.beam.ir.elixir.ExStructPattern;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -64,12 +70,12 @@ import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.traits.XmlNameTrait;
 
 final class ElixirAwsQueryOperationIr {
-  private static final ExVarPattern W = ExVarPattern.var("_");
+  private static final Pattern W = WildcardPattern.of();
   private static final String CONTENT_TYPE = "application/x-www-form-urlencoded";
 
   private ElixirAwsQueryOperationIr() {}
 
-  static ExFunction buildEncodeRequest(
+  static List<Function> buildEncodeRequest(
       Model model,
       ServiceShape service,
       OperationShape op,
@@ -84,66 +90,75 @@ final class ElixirAwsQueryOperationIr {
     String action = BeamAwsQueryFormEncoder.operationAction(op, service);
     String version = BeamAwsQueryFormEncoder.serviceVersion(service);
 
-    ExSpec spec =
-        ExSpec.functionSpec(
-            "encode_" + opName + "_request", inputType, "%" + runtimeMod + ".HttpRequest{}");
-    ExStructPattern inputPattern =
-        new ExStructPattern("Types." + inputStruct, inputFieldPatterns(input, sp, true), "input");
+    Spec spec =
+        Spec.of("encode_" + opName + "_request(" + inputType + ") :: %" + runtimeMod + ".HttpRequest{}");
 
-    List<ExExpr> body = new ArrayList<>();
+    List<Expression> body = new ArrayList<>();
     body.add(
-        ExMatch.match(
-            ExVarPattern.var("pairs"),
-            ExOp.op(
+        MatchExpr.bind(
+            "pairs",
+            new io.beam.ir.elixir.InfixExpr(
+                ListExpr.of(
+                    List.of(
+                        TupleExpr.of(List.of(StringExpr.of("Action"), StringExpr.of(action))),
+                        TupleExpr.of(List.of(StringExpr.of("Version"), StringExpr.of(version))))),
                 "++",
-                ExList.list(
-                    ExTuple.tuple(ExString.string("Action"), ExString.string(action)),
-                    ExTuple.tuple(ExString.string("Version"), ExString.string(version))),
-                ExCallLocal.callLocal("flatten_query_input", ExVar.var("input")))));
+                LocalCallExpr.of("flatten_query_input", List.of(Variable.of("input"))))));
     body.add(
-        ExMatch.match(
-            ExVarPattern.var("body"),
-            ExPipeline.pipeChain(
-                ExVar.var("pairs"),
-                ExCall.call("Enum", "reject", rejectNilPairsFn()),
-                ExCall.call("Enum", "map", encodePairsFn()),
-                ExCall.call("URI", "encode_query"))));
-    body.add(buildHttpRequestStruct(runtimeMod, ExVar.var("body")));
+        MatchExpr.bind(
+            "body",
+            new PipeExpr(
+                Variable.of("pairs"),
+                List.of(
+                    new PipeStep(
+                        RemoteCallExpr.of("Enum", "reject", List.of(rejectNilPairsFn())), List.of()),
+                    new PipeStep(
+                        RemoteCallExpr.of("Enum", "map", List.of(encodePairsFn())), List.of()),
+                    new PipeStep(RemoteCallExpr.of("URI", "encode_query", List.of()), List.of())))));
+    body.add(buildHttpRequestStruct(runtimeMod, Variable.of("body")));
 
-    return ExFunction.functionWithDocAndSpec(
-        "def",
-        "encode_" + opName + "_request",
-        ExDoc.doc("Encode AWS Query request for " + op.getId() + "."),
-        spec,
-        List.of(ExClause.blockClause(List.of(inputPattern), body.toArray(ExExpr[]::new))));
+    return List.of(
+        def(
+            "encode_" + opName + "_request",
+            List.of(AssignPattern.of("input", inputPattern(input, sp, true))),
+            block(body),
+            spec,
+            FunctionDoc.of("Encode AWS Query request for " + op.getId() + "."),
+            false));
   }
 
-  static ExFunction buildFlattenQueryInput(
+  static List<Function> buildFlattenQueryInput(
       Model model,
       HttpBindingIndex httpIndex,
       SymbolProvider sp,
       List<StructureShape> inputs,
       boolean ec2Query) {
-    List<ExClause> clauses = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (StructureShape input : inputs) {
-      clauses.add(buildFlattenInputClause(model, httpIndex, sp, input, ec2Query));
+      functions.add(buildFlattenInputFunction(model, httpIndex, sp, input, ec2Query));
     }
-    return ExFunction.defpFunction("flatten_query_input", clauses);
+    return functions;
   }
 
-  static ExFunction buildFlattenStructure(
+  static List<Function> buildFlattenStructure(
       SymbolProvider sp, Set<StructureShape> structures, boolean ec2Query) {
-    List<ExClause> clauses = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (StructureShape structure : structures) {
-      clauses.add(buildFlattenStructureClause(sp, structure, ec2Query));
+      functions.add(buildFlattenStructureFunction(sp, structure, ec2Query));
     }
-    clauses.add(
-        ExClause.inlineClause(
-            List.of(ExVarPattern.var("_wire_prefix"), ExNilPattern.nil()), ExList.list()));
-    clauses.add(
-        ExClause.inlineClause(
-            List.of(ExVarPattern.var("_wire_prefix"), ExVarPattern.var("_value")), ExList.list()));
-    return ExFunction.defpFunction("flatten_structure", clauses);
+    functions.add(
+        defp(
+            "flatten_structure",
+            List.of(VariablePattern.of("_wire_prefix"), NilPattern.of()),
+            ListExpr.of(List.of()),
+            true));
+    functions.add(
+        defp(
+            "flatten_structure",
+            List.of(VariablePattern.of("_wire_prefix"), VariablePattern.of("_value")),
+            ListExpr.of(List.of()),
+            true));
+    return functions;
   }
 
   static Set<StructureShape> nestedQueryStructures(Model model, List<StructureShape> inputs) {
@@ -170,7 +185,7 @@ final class ElixirAwsQueryOperationIr {
     return nested;
   }
 
-  static ExFunction buildDecodeResponse(
+  static List<Function> buildDecodeResponse(
       Model model,
       ServiceShape service,
       OperationShape op,
@@ -187,69 +202,79 @@ final class ElixirAwsQueryOperationIr {
             ? BeamXmlDecoder.ec2QueryResultElementName(op, service)
             : BeamXmlDecoder.queryResultElementName(op, service);
 
-    ExSpec spec =
-        ExSpec.functionSpec(
+    Spec spec =
+        Spec.of(
+            "decode_"
+                + opName
+                + "_response(map()) :: {:ok, "
+                + outputType
+                + "} | {:error, term()}");
+
+    Pattern successPattern =
+        StructPattern.of(
+            runtimeMod + ".HttpResponse",
+            List.of(
+                StructPatternField.of("status", IntegerPattern.of(200)),
+                StructPatternField.of("body", VariablePattern.of("body"))));
+
+    Pattern fallbackPattern =
+        StructPattern.of(
+            runtimeMod + ".HttpResponse",
+            List.of(
+                StructPatternField.of("status", VariablePattern.of("status")),
+                StructPatternField.of("body", VariablePattern.of("body"))));
+
+    return List.of(
+        def(
             "decode_" + opName + "_response",
-            "map()",
-            "{:ok, " + outputType + "} | {:error, term()}");
-
-    ExStructPattern successPattern =
-        new ExStructPattern(
-            runtimeMod + ".HttpResponse",
-            List.of(
-                ExStructFieldPattern.fieldPattern("status", ExIntegerPattern.integer(200)),
-                ExStructFieldPattern.fieldPattern("body", ExVarPattern.var("body"))));
-
-    ExStructPattern fallbackPattern =
-        new ExStructPattern(
-            runtimeMod + ".HttpResponse",
-            List.of(
-                ExStructFieldPattern.fieldPattern("status", ExVarPattern.var("status")),
-                ExStructFieldPattern.fieldPattern("body", ExVarPattern.var("body"))));
-
-    return ExFunction.functionWithDocAndSpec(
-        "def",
-        "decode_" + opName + "_response",
-        ExDoc.doc("Decode AWS Query response for " + op.getId() + "."),
-        spec,
-        List.of(
-            ExClause.blockClause(
-                List.of(successPattern),
-                buildDecodeSuccessBody(model, output, outputStruct, resultElement, sp, ec2Query)),
-            ExClause.blockClause(
-                List.of(fallbackPattern),
-                ExCallLocal.callLocal(
-                    "decode_query_error", ExVar.var("status"), ExVar.var("body")))));
+            List.of(successPattern),
+            buildDecodeSuccessBody(model, output, outputStruct, resultElement, sp, ec2Query),
+            spec,
+            FunctionDoc.of("Decode AWS Query response for " + op.getId() + "."),
+            false),
+        def(
+            "decode_" + opName + "_response",
+            List.of(fallbackPattern),
+            LocalCallExpr.of(
+                "decode_query_error", List.of(Variable.of("status"), Variable.of("body"))),
+            null,
+            null,
+            true));
   }
 
-  static ExFunction buildServerDecodeRequest(
+  static List<Function> buildServerDecodeRequest(
       Model model, OperationShape op, SymbolProvider sp, String typesMod, String runtimeMod) {
     String opName = sp.toSymbol(op).getName();
     StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
     String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
 
-    ExSpec spec = ExSpec.functionSpec("decode_" + opName + "_request", "map()", inputType);
-    ExStructPattern pattern =
-        new ExStructPattern(
+    Spec spec = Spec.of("decode_" + opName + "_request(map()) :: " + inputType);
+    Pattern pattern =
+        StructPattern.of(
             runtimeMod + ".HttpRequest",
-            List.of(ExStructFieldPattern.fieldPattern("body", ExVarPattern.var("body"))));
+            List.of(StructPatternField.of("body", VariablePattern.of("body"))));
 
-    List<ExExpr> body =
-        List.of(
-            ExPipeline.pipeChain(
-                ExVar.var("body"),
-                ExCallLocal.callLocal("parse_query_params"),
-                ExCallLocal.callLocal("parse_" + recordName(sp.toSymbol(input)) + "_input")));
+    Expression body =
+        new PipeExpr(
+            Variable.of("body"),
+            List.of(
+                new PipeStep(LocalCallExpr.of("parse_query_params", List.of()), List.of()),
+                new PipeStep(
+                    LocalCallExpr.of(
+                        "parse_" + recordName(sp.toSymbol(input)) + "_input", List.of()),
+                    List.of())));
 
-    return ExFunction.functionWithDocAndSpec(
-        "def",
-        "decode_" + opName + "_request",
-        ExDoc.doc("Decode AWS Query server request for " + op.getId() + "."),
-        spec,
-        List.of(ExClause.blockClause(List.of(pattern), body.toArray(ExExpr[]::new))));
+    return List.of(
+        def(
+            "decode_" + opName + "_request",
+            List.of(pattern),
+            body,
+            spec,
+            FunctionDoc.of("Decode AWS Query server request for " + op.getId() + "."),
+            false));
   }
 
-  static ExFunction buildServerEncodeResponse(
+  static List<Function> buildServerEncodeResponse(
       Model model,
       ServiceShape service,
       OperationShape op,
@@ -267,273 +292,306 @@ final class ElixirAwsQueryOperationIr {
             : BeamXmlDecoder.queryResultElementName(op, service);
     String responseElement = operationWireName(op, service) + "Response";
 
-    ExSpec spec =
-        ExSpec.functionSpec(
-            "encode_" + opName + "_response", outputType, "%" + runtimeMod + ".HttpResponse{}");
-    ExStructPattern pattern =
-        new ExStructPattern(
-            "Types." + outputStruct, outputFieldPatterns(output, sp, true), "output");
+    Spec spec =
+        Spec.of("encode_" + opName + "_response(" + outputType + ") :: %" + runtimeMod + ".HttpResponse{}");
+    Pattern pattern = outputPattern(output, sp, true);
 
-    List<ExExpr> body = new ArrayList<>();
+    List<Expression> body = new ArrayList<>();
     body.add(
-        ExMatch.match(
-            ExVarPattern.var("result_content"),
-            ExPipeline.pipeChain(
-                ExCallLocal.callLocal(
-                    recordName(sp.toSymbol(output)) + "_to_result_map", ExVar.var("output")),
-                ExCall.call("Enum", "reject", rejectNilMapFn()),
-                ExCall.call("Map", "new"))));
+        MatchExpr.bind(
+            "result_content",
+            new PipeExpr(
+                LocalCallExpr.of(
+                    recordName(sp.toSymbol(output)) + "_to_result_map", List.of(Variable.of("output"))),
+                List.of(
+                    new PipeStep(
+                        RemoteCallExpr.of("Enum", "reject", List.of(rejectNilMapFn())), List.of()),
+                    new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of())))));
     if (ec2Query) {
       body.add(
-          ExMatch.match(
-              ExVarPattern.var("body"),
-              ExCallLocal.callLocal(
+          MatchExpr.bind(
+              "body",
+              LocalCallExpr.of(
                   "encode_xml",
-                  ExMap.map(
-                      ExMapEntry.entry(
-                          ExString.string(resultElement), ExVar.var("result_content"))),
-                  ExCallLocal.callLocal("xml_namespace"))));
+                  List.of(
+                      MapExpr.of(
+                          List.of(
+                              MapEntry.stringKey(resultElement, Variable.of("result_content")))),
+                      LocalCallExpr.of("xml_namespace", List.of())))));
     } else {
       body.add(
-          ExMatch.match(
-              ExVarPattern.var("body"),
-              ExCallLocal.callLocal(
+          MatchExpr.bind(
+              "body",
+              LocalCallExpr.of(
                   "wrap_aws_query_response",
-                  ExString.string(resultElement),
-                  ExVar.var("result_content"),
-                  ExString.string(responseElement),
-                  ExCallLocal.callLocal("xml_namespace"))));
+                  List.of(
+                      StringExpr.of(resultElement),
+                      Variable.of("result_content"),
+                      StringExpr.of(responseElement),
+                      LocalCallExpr.of("xml_namespace", List.of())))));
     }
     body.add(
-        ExStruct.struct(
+        StructExpr.of(
             runtimeMod + ".HttpResponse",
-            ExMapEntry.entry(ExAtom.atom("status"), ExInteger.integer(200)),
-            ExMapEntry.entry(
-                ExAtom.atom("headers"),
-                ExList.list(
-                    ExTuple.tuple(ExString.string("Content-Type"), ExString.string("text/xml")))),
-            ExMapEntry.entry(ExAtom.atom("body"), ExVar.var("body"))));
+            List.of(
+                StructField.of("status", IntegerExpr.of(200)),
+                StructField.of(
+                    "headers",
+                    ListExpr.of(
+                        List.of(
+                            TupleExpr.of(
+                                List.of(
+                                    StringExpr.of("Content-Type"),
+                                    StringExpr.of("text/xml")))))),
+                StructField.of("body", Variable.of("body")))));
 
-    return ExFunction.functionWithDocAndSpec(
-        "def",
-        "encode_" + opName + "_response",
-        ExDoc.doc("Encode AWS Query server response for " + op.getId() + "."),
-        spec,
-        List.of(ExClause.blockClause(List.of(pattern), body.toArray(ExExpr[]::new))));
+    return List.of(
+        def(
+            "encode_" + opName + "_response",
+            List.of(pattern),
+            block(body),
+            spec,
+            FunctionDoc.of("Encode AWS Query server response for " + op.getId() + "."),
+            false));
   }
 
-  static ExFunction buildParseInputFromForm(
+  static List<Function> buildParseInputFromForm(
       Model model, SymbolProvider sp, String typesMod, StructureShape input, boolean ec2Query) {
     String inputRecord = recordName(sp.toSymbol(input));
     List<MemberShape> members = new ArrayList<>(input.members());
 
-    List<ExMapEntry> fields = new ArrayList<>();
+    List<MapEntry> fields = new ArrayList<>();
     for (MemberShape member : members) {
       String field = fieldName(sp, member);
       String wireKey = queryFormKey(member, ec2Query);
       Shape target = model.expectShape(member.getTarget());
-      ExExpr valueExpr;
+      Expression valueExpr;
       if (target instanceof ListShape) {
         valueExpr =
             ec2Query
-                ? ExCallLocal.callLocal(
-                    "form_list_values_ec2", ExVar.var("params"), ExString.string(wireKey))
-                : ExCallLocal.callLocal(
-                    "form_list_values_aws", ExVar.var("params"), ExString.string(wireKey));
+                ? LocalCallExpr.of(
+                    "form_list_values_ec2", List.of(Variable.of("params"), StringExpr.of(wireKey)))
+                : LocalCallExpr.of(
+                    "form_list_values_aws", List.of(Variable.of("params"), StringExpr.of(wireKey)));
       } else {
         valueExpr =
-            ExCallLocal.callLocal("form_value", ExVar.var("params"), ExString.string(wireKey));
+            LocalCallExpr.of("form_value", List.of(Variable.of("params"), StringExpr.of(wireKey)));
       }
-      fields.add(ExMapEntry.entry(ExAtom.atom(field), valueExpr));
+      fields.add(MapEntry.atomKey(field, valueExpr));
     }
 
-    return ExFunction.defpFunction(
-        "parse_" + inputRecord + "_input",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("params")),
-                ExStruct.struct("Types." + structName(sp, input), fields))));
+    return List.of(
+        defp(
+            "parse_" + inputRecord + "_input",
+            List.of(VariablePattern.of("params")),
+            StructExpr.of("Types." + structName(sp, input), structFields(fields)),
+            true));
   }
 
-  static ExFunction buildOutputToResultMap(Model model, SymbolProvider sp, StructureShape output) {
+  static List<Function> buildOutputToResultMap(Model model, SymbolProvider sp, StructureShape output) {
     String outputRecord = recordName(sp.toSymbol(output));
-    List<ExMapEntry> entries = new ArrayList<>();
+    List<MapEntry> entries = new ArrayList<>();
     for (MemberShape member : output.members()) {
       String field = fieldName(sp, member);
       String element = BeamXmlDecoder.memberElementName(member);
       entries.add(
-          ExMapEntry.entry(
-              ExString.string(element), ExStructAccess.structAccess(ExVar.var("output"), field)));
+          MapEntry.stringKey(
+              element, new DotCallExpr(Variable.of("output"), field, List.of())));
     }
-    return ExFunction.defpFunction(
-        outputRecord + "_to_result_map",
-        List.of(
-            ExClause.inlineClause(
-                List.of(
-                    new ExStructPattern("Types." + structName(sp, output), List.of(), "output")),
-                ExMap.map(entries.toArray(ExMapEntry[]::new)))));
+    return List.of(
+        defp(
+            outputRecord + "_to_result_map",
+            List.of(outputPattern(output, sp, false)),
+            MapExpr.of(entries),
+            true));
   }
 
-  private static ExClause buildFlattenInputClause(
+  private static Function buildFlattenInputFunction(
       Model model,
       HttpBindingIndex httpIndex,
       SymbolProvider sp,
       StructureShape input,
       boolean ec2Query) {
     List<MemberShape> members = documentMembers(httpIndex, input);
-    ExStructPattern pattern =
-        new ExStructPattern("Types." + structName(sp, input), inputFieldPatterns(input, sp, false));
-
-    ExExpr body;
+    Expression body;
     if (members.isEmpty()) {
-      body = ExList.list();
+      body = ListExpr.of(List.of());
     } else {
-      List<ExExpr> memberCalls = new ArrayList<>();
+      List<Expression> memberCalls = new ArrayList<>();
       for (MemberShape member : members) {
         String field = fieldName(sp, member);
         String wireKey = queryFormKey(member, ec2Query);
         memberCalls.add(
-            ExCallLocal.callLocal("flatten_member", ExString.string(wireKey), ExVar.var(field)));
+            LocalCallExpr.of(
+                "flatten_member", List.of(StringExpr.of(wireKey), Variable.of(field))));
       }
       body =
-          ExPipeline.pipeChain(
-              ExList.list(memberCalls.toArray(ExExpr[]::new)), ExCall.call("List", "flatten"));
+          new PipeExpr(
+              ListExpr.of(memberCalls),
+              List.of(new PipeStep(RemoteCallExpr.of("List", "flatten", List.of()), List.of())));
     }
-    return ExClause.blockClause(List.of(pattern), body);
+    return defp(
+        "flatten_query_input",
+        List.of(inputPattern(input, sp, false)),
+        body,
+        members.isEmpty());
   }
 
-  private static ExClause buildFlattenStructureClause(
+  private static Function buildFlattenStructureFunction(
       SymbolProvider sp, StructureShape structure, boolean ec2Query) {
-    ExStructPattern pattern =
-        new ExStructPattern(
-            "Types." + structName(sp, structure), inputFieldPatterns(structure, sp, false));
-    List<ExExpr> memberCalls = new ArrayList<>();
+    List<Expression> memberCalls = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String field = fieldName(sp, member);
       String wireKey = queryFormKey(member, ec2Query);
-      ExExpr memberKey =
-          ExOp.op(
+      Expression memberKey =
+          new io.beam.ir.elixir.InfixExpr(
+              new io.beam.ir.elixir.InfixExpr(Variable.of("wire_prefix"), "<>", StringExpr.of(".")),
               "<>",
-              ExOp.op("<>", ExVar.var("wire_prefix"), ExString.string(".")),
-              ExString.string(wireKey));
-      memberCalls.add(ExCallLocal.callLocal("flatten_member", memberKey, ExVar.var(field)));
+              StringExpr.of(wireKey));
+      memberCalls.add(
+          LocalCallExpr.of(
+              "flatten_member", List.of(memberKey, Variable.of(field))));
     }
-    ExExpr body =
+    Expression body =
         memberCalls.isEmpty()
-            ? ExList.list()
-            : ExPipeline.pipeChain(
-                ExList.list(memberCalls.toArray(ExExpr[]::new)), ExCall.call("List", "flatten"));
-    return ExClause.blockClause(List.of(ExVarPattern.var("wire_prefix"), pattern), body);
+            ? ListExpr.of(List.of())
+            : new PipeExpr(
+                ListExpr.of(memberCalls),
+                List.of(new PipeStep(RemoteCallExpr.of("List", "flatten", List.of()), List.of())));
+    return defp(
+        "flatten_structure",
+        List.of(VariablePattern.of("wire_prefix"), inputPattern(structure, sp, false)),
+        body,
+        memberCalls.isEmpty());
   }
 
-  private static ExExpr buildDecodeSuccessBody(
+  private static Expression buildDecodeSuccessBody(
       Model model,
       StructureShape output,
       String outputStruct,
       String resultElement,
       SymbolProvider sp,
       boolean ec2Query) {
-    ExCallLocal unwrap =
-        ExCallLocal.callLocal(
-            "unwrap_query_result", ExVar.var("body"), ExString.string(resultElement));
+    Expression unwrap =
+        LocalCallExpr.of(
+            "unwrap_query_result", List.of(Variable.of("body"), StringExpr.of(resultElement)));
     if (output.members().isEmpty()) {
-      return ExCase.caseExpr(
+      return new CaseExpr(
           unwrap,
-          ExCaseBranch.branch(
-              ExTuplePattern.tuple(ExAtomPattern.atom("ok"), W),
-              ExTuple.tuple(
-                  ExAtom.atom("ok"), ExStruct.struct("Types." + outputStruct, List.of()))),
-          ExCaseBranch.branch(
-              ExTuplePattern.tuple(
-                  ExAtomPattern.atom("error"),
-                  ExTuplePattern.tuple(ExAtomPattern.atom("missing_result"), W)),
-              ExTuple.tuple(
-                  ExAtom.atom("ok"), ExStruct.struct("Types." + outputStruct, List.of()))),
-          ExCaseBranch.branch(
-              ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
-              ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason"))));
+          List.of(
+              Clause.of(
+                  TuplePattern.of(List.of(AtomPattern.of("ok"), W)),
+                  TupleExpr.of(
+                      List.of(
+                          AtomExpr.of("ok"),
+                          StructExpr.of("Types." + outputStruct, List.of())))),
+              Clause.of(
+                  TuplePattern.of(
+                      List.of(
+                          AtomPattern.of("error"),
+                          TuplePattern.of(List.of(AtomPattern.of("missing_result"), W)))),
+                  TupleExpr.of(
+                      List.of(
+                          AtomExpr.of("ok"),
+                          StructExpr.of("Types." + outputStruct, List.of())))),
+              Clause.of(
+                  TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("reason"))),
+                  TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("reason"))))));
     }
-    List<ExMapEntry> fields = buildOutputStructFields(model, sp, output, "result", ec2Query);
-    ExExpr okStruct = ExStruct.struct("Types." + outputStruct, fields);
-    return ExCase.caseExpr(
+    Expression okStruct =
+        StructExpr.of(
+            "Types." + outputStruct, structFields(buildOutputStructFields(model, sp, output, "result", ec2Query)));
+    return new CaseExpr(
         unwrap,
-        ExCaseBranch.branch(
-            ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("result")),
-            ExTuple.tuple(ExAtom.atom("ok"), okStruct)),
-        ExCaseBranch.branch(
-            ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
-            ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason"))));
+        List.of(
+            Clause.of(
+                TuplePattern.of(
+                    List.of(AtomPattern.of("ok"), VariablePattern.of("result"))),
+                TupleExpr.of(List.of(AtomExpr.of("ok"), okStruct))),
+            Clause.of(
+                TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("reason"))),
+                TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("reason"))))));
   }
 
-  private static List<ExMapEntry> buildOutputStructFields(
+  private static List<MapEntry> buildOutputStructFields(
       Model model, SymbolProvider sp, StructureShape output, String resultVar, boolean ec2Query) {
-    List<ExMapEntry> fields = new ArrayList<>();
+    List<MapEntry> fields = new ArrayList<>();
     for (MemberShape member : output.members()) {
       String field = fieldName(sp, member);
       Shape target = model.expectShape(member.getTarget());
       if (target instanceof ListShape listShape) {
         fields.add(
-            ExMapEntry.entry(
-                ExAtom.atom(field),
+            MapEntry.atomKey(
+                field,
                 buildDecodeListFieldExpr(model, member, listShape, resultVar, sp, ec2Query)));
       } else if (target instanceof StructureShape nested) {
         String element = BeamXmlDecoder.memberElementName(member);
         String nestedVar = xmlVarForElement(element);
         fields.add(
-            ExMapEntry.entry(
-                ExAtom.atom(field),
-                ExCase.caseExpr(
-                    ExCallLocal.callLocal(
+            MapEntry.atomKey(
+                field,
+                new CaseExpr(
+                    LocalCallExpr.of(
                         "find_element",
-                        ExString.string(element),
-                        ExCallLocal.callLocal("element_content", ExVar.var(resultVar))),
-                    ExCaseBranch.branch(ExNilPattern.nil(), ExNil.nil()),
-                    ExCaseBranch.branch(
-                        ExVarPattern.var(nestedVar),
-                        buildDecodeStructureExpr(model, nested, nestedVar, sp, ec2Query)))));
+                        List.of(
+                            StringExpr.of(element),
+                            LocalCallExpr.of("element_content", List.of(Variable.of(resultVar))))),
+                    List.of(
+                        Clause.of(NilPattern.of(), NilExpr.of()),
+                        Clause.of(
+                            VariablePattern.of(nestedVar),
+                            buildDecodeStructureExpr(model, nested, nestedVar, sp, ec2Query))))));
       } else {
         fields.add(
-            ExMapEntry.entry(ExAtom.atom(field), decodeXmlChildText(model, sp, member, resultVar)));
+            MapEntry.atomKey(field, decodeXmlChildText(model, sp, member, resultVar)));
       }
     }
     return fields;
   }
 
-  private static ExStruct buildDecodeStructureExpr(
+  private static StructExpr buildDecodeStructureExpr(
       Model model, StructureShape structure, String xmlVar, SymbolProvider sp, boolean ec2Query) {
-    List<ExMapEntry> fields = new ArrayList<>();
+    return StructExpr.of(
+        "Types." + structName(sp, structure),
+        structFields(buildNestedStructFields(model, structure, xmlVar, sp, ec2Query)));
+  }
+
+  private static List<MapEntry> buildNestedStructFields(
+      Model model, StructureShape structure, String xmlVar, SymbolProvider sp, boolean ec2Query) {
+    List<MapEntry> fields = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String field = fieldName(sp, member);
       Shape target = model.expectShape(member.getTarget());
       if (target instanceof ListShape listShape) {
         fields.add(
-            ExMapEntry.entry(
-                ExAtom.atom(field),
+            MapEntry.atomKey(
+                field,
                 buildDecodeListFieldExpr(model, member, listShape, xmlVar, sp, ec2Query)));
       } else if (target instanceof StructureShape nested) {
         String element = BeamXmlDecoder.memberElementName(member);
         String nestedVar = xmlVarForElement(element);
         fields.add(
-            ExMapEntry.entry(
-                ExAtom.atom(field),
-                ExCase.caseExpr(
-                    ExCallLocal.callLocal(
+            MapEntry.atomKey(
+                field,
+                new CaseExpr(
+                    LocalCallExpr.of(
                         "find_element",
-                        ExString.string(element),
-                        ExCallLocal.callLocal("element_content", ExVar.var(xmlVar))),
-                    ExCaseBranch.branch(ExNilPattern.nil(), ExNil.nil()),
-                    ExCaseBranch.branch(
-                        ExVarPattern.var(nestedVar),
-                        buildDecodeStructureExpr(model, nested, nestedVar, sp, ec2Query)))));
+                        List.of(
+                            StringExpr.of(element),
+                            LocalCallExpr.of("element_content", List.of(Variable.of(xmlVar))))),
+                    List.of(
+                        Clause.of(NilPattern.of(), NilExpr.of()),
+                        Clause.of(
+                            VariablePattern.of(nestedVar),
+                            buildDecodeStructureExpr(model, nested, nestedVar, sp, ec2Query))))));
       } else {
-        fields.add(
-            ExMapEntry.entry(ExAtom.atom(field), decodeXmlChildText(model, sp, member, xmlVar)));
+        fields.add(MapEntry.atomKey(field, decodeXmlChildText(model, sp, member, xmlVar)));
       }
     }
-    return ExStruct.struct("Types." + structName(sp, structure), fields);
+    return fields;
   }
 
-  private static ExExpr buildDecodeListFieldExpr(
+  private static Expression buildDecodeListFieldExpr(
       Model model,
       MemberShape member,
       ListShape listShape,
@@ -547,75 +605,96 @@ final class ElixirAwsQueryOperationIr {
             : BeamXmlBindingIndex.listItemElementName(member, listShape, model);
     Shape listMember = model.expectShape(listShape.getMember().getTarget());
     if (listMember instanceof StructureShape nested) {
-      return ExCallLocal.callLocal(
+      return LocalCallExpr.of(
           "xml_child_struct_list",
-          ExVar.var(xmlVar),
-          ExString.string(element),
-          ExString.string(itemElement),
-          ExAnonymousFn.fn(
-              ExClause.inlineClause(
-                  List.of(ExVarPattern.var("item")),
-                  buildDecodeStructureExpr(model, nested, "item", sp, ec2Query))));
+          List.of(
+              Variable.of(xmlVar),
+              StringExpr.of(element),
+              StringExpr.of(itemElement),
+              new AnonFun(
+                  List.of(
+                      AnonFunClause.of(
+                          List.of(VariablePattern.of("item")),
+                          buildDecodeStructureExpr(model, nested, "item", sp, ec2Query))))));
     }
-    return ExCallLocal.callLocal(
+    return LocalCallExpr.of(
         "xml_child_list",
-        ExVar.var(xmlVar),
-        ExString.string(element),
-        ExString.string(itemElement));
+        List.of(Variable.of(xmlVar), StringExpr.of(element), StringExpr.of(itemElement)));
   }
 
-  private static ExStruct buildHttpRequestStruct(String runtimeMod, ExExpr body) {
-    return ExStruct.struct(
+  private static StructExpr buildHttpRequestStruct(String runtimeMod, Expression body) {
+    return StructExpr.of(
         runtimeMod + ".HttpRequest",
-        ExMapEntry.entry(ExAtom.atom("method"), ExString.string("POST")),
-        ExMapEntry.entry(ExAtom.atom("path"), ExString.string("/")),
-        ExMapEntry.entry(ExAtom.atom("query"), ExMap.map()),
-        ExMapEntry.entry(
-            ExAtom.atom("headers"),
-            ExList.list(
-                ExTuple.tuple(ExString.string("Content-Type"), ExString.string(CONTENT_TYPE)))),
-        ExMapEntry.entry(ExAtom.atom("body"), body));
+        List.of(
+            StructField.of("method", StringExpr.of("POST")),
+            StructField.of("path", StringExpr.of("/")),
+            StructField.of("query", MapExpr.of(List.of())),
+            StructField.of(
+                "headers",
+                ListExpr.of(
+                    List.of(
+                        TupleExpr.of(
+                            List.of(
+                                StringExpr.of("Content-Type"),
+                                StringExpr.of(CONTENT_TYPE)))))),
+            StructField.of("body", body)));
   }
 
-  private static ExAnonymousFn rejectNilPairsFn() {
-    return ExAnonymousFn.compactFn(
-        ExClause.inlineClause(
-            List.of(ExTuplePattern.tuple(W, ExVarPattern.var("v"))),
-            ExCall.call("Kernel", "is_nil", ExVar.var("v"))));
+  private static AnonFun rejectNilPairsFn() {
+    return new AnonFun(
+        List.of(
+            AnonFunClause.of(
+                List.of(TuplePattern.of(List.of(W, VariablePattern.of("v")))),
+                RemoteCallExpr.of("Kernel", "is_nil", List.of(Variable.of("v"))))));
   }
 
-  private static ExAnonymousFn encodePairsFn() {
-    return ExAnonymousFn.compactFn(
-        ExClause.inlineClause(
-            List.of(ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v"))),
-            ExTuple.tuple(ExVar.var("k"), ExCallLocal.callLocal("enc", ExVar.var("v")))));
+  private static AnonFun encodePairsFn() {
+    return new AnonFun(
+        List.of(
+            AnonFunClause.of(
+                List.of(TuplePattern.of(List.of(VariablePattern.of("k"), VariablePattern.of("v")))),
+                TupleExpr.of(
+                    List.of(
+                        Variable.of("k"),
+                        LocalCallExpr.of("enc", List.of(Variable.of("v"))))))));
   }
 
-  private static ExAnonymousFn rejectNilMapFn() {
-    return ExAnonymousFn.compactFn(
-        ExClause.inlineClause(
-            List.of(ExTuplePattern.tuple(W, ExVarPattern.var("v"))),
-            ExCall.call("Kernel", "is_nil", ExVar.var("v"))));
+  private static AnonFun rejectNilMapFn() {
+    return new AnonFun(
+        List.of(
+            AnonFunClause.of(
+                List.of(TuplePattern.of(List.of(W, VariablePattern.of("v")))),
+                RemoteCallExpr.of("Kernel", "is_nil", List.of(Variable.of("v"))))));
   }
 
-  private static List<ExStructFieldPattern> inputFieldPatterns(
-      StructureShape input, SymbolProvider sp, boolean unused) {
-    List<ExStructFieldPattern> fields = new ArrayList<>();
+  private static Pattern inputPattern(StructureShape input, SymbolProvider sp, boolean unused) {
+    List<StructPatternField> fields = new ArrayList<>();
     for (MemberShape member : input.members()) {
       String field = fieldName(sp, member);
-      ExVarPattern var = unused ? ExVarPattern.unusedVar(field) : ExVarPattern.var(field);
-      fields.add(ExStructFieldPattern.fieldPattern(field, var));
+      Pattern var = unused ? VariablePattern.of("_" + field) : VariablePattern.of(field);
+      fields.add(StructPatternField.of(field, var));
     }
-    return fields;
+    return StructPattern.of("Types." + structName(sp, input), fields);
   }
 
-  private static List<ExStructFieldPattern> outputFieldPatterns(
-      StructureShape output, SymbolProvider sp, boolean unused) {
-    List<ExStructFieldPattern> fields = new ArrayList<>();
+  private static Pattern outputPattern(StructureShape output, SymbolProvider sp, boolean unused) {
+    List<StructPatternField> fields = new ArrayList<>();
     for (MemberShape member : output.members()) {
       String field = fieldName(sp, member);
-      ExVarPattern var = unused ? ExVarPattern.unusedVar(field) : ExVarPattern.var(field);
-      fields.add(ExStructFieldPattern.fieldPattern(field, var));
+      Pattern var = unused ? VariablePattern.of("_" + field) : VariablePattern.of(field);
+      fields.add(StructPatternField.of(field, var));
+    }
+    return StructPattern.of("Types." + structName(sp, output), fields);
+  }
+
+  private static List<StructField> structFields(List<MapEntry> entries) {
+    List<StructField> fields = new ArrayList<>();
+    for (MapEntry entry : entries) {
+      String name =
+          entry.key() instanceof AtomExpr atom
+              ? atom.value()
+              : ((StringExpr) entry.key()).value();
+      fields.add(StructField.of(name, entry.value()));
     }
     return fields;
   }
@@ -654,56 +733,86 @@ final class ElixirAwsQueryOperationIr {
     return BeamNameUtils.toSnakeCase(element) + "_xml";
   }
 
-  private static ExExpr decodeXmlChildText(
+  private static Expression decodeXmlChildText(
       Model model, SymbolProvider sp, MemberShape member, String xmlVar) {
-    ExExpr text =
-        ExCallLocal.callLocal(
+    Expression text =
+        LocalCallExpr.of(
             "xml_child_text",
-            ExVar.var(xmlVar),
-            ExString.string(BeamXmlDecoder.memberElementName(member)));
+            List.of(
+                Variable.of(xmlVar),
+                StringExpr.of(BeamXmlDecoder.memberElementName(member))));
     return decodeXmlTextValue(model, sp, member, text);
   }
 
-  private static ExExpr decodeXmlTextValue(
-      Model model, SymbolProvider sp, MemberShape member, ExExpr textExpr) {
+  private static Expression decodeXmlTextValue(
+      Model model, SymbolProvider sp, MemberShape member, Expression textExpr) {
     Shape target = model.expectShape(member.getTarget());
     if (target instanceof BooleanShape) {
-      return ExCallLocal.callLocal("decode_xml_boolean", textExpr);
+      return LocalCallExpr.of("decode_xml_boolean", List.of(textExpr));
     }
     if (target instanceof EnumShape enumShape) {
       return decodeXmlTextWithConversion(
           textExpr,
-          ExCall.call("Types." + shapeName(sp, enumShape), "from_string", ExVar.var("text")));
+          RemoteCallExpr.of(
+              "Types." + shapeName(sp, enumShape),
+              "from_string",
+              List.of(Variable.of("text"))));
     }
     if (target instanceof IntEnumShape intEnumShape) {
       return decodeXmlTextWithConversion(
           textExpr,
-          ExCall.call(
+          RemoteCallExpr.of(
               "Types." + shapeName(sp, intEnumShape),
               "from_integer",
-              ExCall.call("String", "to_integer", ExVar.var("text"))));
+              List.of(
+                  RemoteCallExpr.of("String", "to_integer", List.of(Variable.of("text"))))));
     }
     if (target instanceof ByteShape
         || target instanceof ShortShape
         || target instanceof IntegerShape
         || target instanceof LongShape
         || target instanceof BigIntegerShape) {
-      return ExCallLocal.callLocal("decode_xml_integer", textExpr);
+      return LocalCallExpr.of("decode_xml_integer", List.of(textExpr));
     }
     if (target instanceof FloatShape || target instanceof DoubleShape) {
-      return ExCallLocal.callLocal("decode_xml_float", textExpr);
+      return LocalCallExpr.of("decode_xml_float", List.of(textExpr));
     }
     return textExpr;
   }
 
-  private static ExExpr decodeXmlTextWithConversion(ExExpr textExpr, ExExpr convertedExpr) {
-    return ExCase.caseExpr(
+  private static Expression decodeXmlTextWithConversion(Expression textExpr, Expression convertedExpr) {
+    return new CaseExpr(
         textExpr,
-        ExCaseBranch.branch(ExNilPattern.nil(), ExNil.nil()),
-        ExCaseBranch.branch(ExVarPattern.var("text"), convertedExpr));
+        List.of(
+            Clause.of(NilPattern.of(), NilExpr.of()),
+            Clause.of(VariablePattern.of("text"), convertedExpr)));
   }
 
   private static String operationWireName(OperationShape operation, ServiceShape service) {
     return operation.getId().getName(service);
+  }
+
+  private static Function def(
+      String name,
+      List<Pattern> params,
+      Expression body,
+      Spec spec,
+      FunctionDoc doc,
+      boolean oneLiner) {
+    return new Function(name, false, List.of(FunctionHead.of(params)), body, spec, doc, oneLiner);
+  }
+
+  private static Function defp(String name, List<Pattern> params, Expression body, boolean oneLiner) {
+    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+  }
+
+  private static Expression block(List<Expression> statements) {
+    if (statements.isEmpty()) {
+      return NilExpr.of();
+    }
+    if (statements.size() == 1) {
+      return statements.get(0);
+    }
+    return new BlockExpr(statements);
   }
 }

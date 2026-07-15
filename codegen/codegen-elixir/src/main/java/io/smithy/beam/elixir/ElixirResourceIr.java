@@ -1,5 +1,21 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Alias;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionDoc;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.Moduledoc;
+import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.StructExpr;
+import io.beam.ir.elixir.StructField;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamResourceIndex;
@@ -7,25 +23,6 @@ import io.smithy.beam.core.BeamResourceInputBuilder;
 import io.smithy.beam.core.BeamResourceInputBuilder.IdentifierArg;
 import io.smithy.beam.core.BeamResourceInputBuilder.InputPlan;
 import io.smithy.beam.core.BeamResourceLifecycle;
-import io.smithy.beam.ir.elixir.ExAliasAttr;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExBlankLine;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExDoc;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExMapUpdate;
-import io.smithy.beam.ir.elixir.ExModule;
-import io.smithy.beam.ir.elixir.ExModuleEntry;
-import io.smithy.beam.ir.elixir.ExModuledoc;
-import io.smithy.beam.ir.elixir.ExPattern;
-import io.smithy.beam.ir.elixir.ExPreambleEntry;
-import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExStruct;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +39,7 @@ final class ElixirResourceIr {
 
   private record HelperBinding(String helperName, ShapeId operationId) {}
 
-  static ExModule clientModule(
+  static Module clientModule(
       ElixirContext ctx,
       ResourceShape resource,
       BeamResourceIndex index,
@@ -52,7 +49,7 @@ final class ElixirResourceIr {
     return lifecycleModule(ctx, resource, index, layout, delegateMod, typesMod, false);
   }
 
-  static ExModule serverModule(
+  static Module serverModule(
       ElixirContext ctx,
       ResourceShape resource,
       BeamResourceIndex index,
@@ -62,7 +59,7 @@ final class ElixirResourceIr {
     return lifecycleModule(ctx, resource, index, layout, delegateMod, typesMod, true);
   }
 
-  private static ExModule lifecycleModule(
+  private static Module lifecycleModule(
       ElixirContext ctx,
       ResourceShape resource,
       BeamResourceIndex index,
@@ -78,30 +75,26 @@ final class ElixirResourceIr {
                 ? layout.resourceServerModuleName(resourceSnake)
                 : layout.resourceClientModuleName(resourceSnake));
     List<HelperBinding> bindings = collectBindings(index, sp, resource);
-    List<ExFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (HelperBinding binding : bindings) {
       functions.add(helperFunction(index, sp, resource, binding, delegateMod, typesMod, server));
     }
-    List<ExPreambleEntry> preamble = new ArrayList<>();
-    BeamDocumentation.forShape(resource).ifPresent(doc -> preamble.add(ExModuledoc.moduledoc(doc)));
-    if (preamble.isEmpty()) {
-      preamble.add(ExModuledoc.moduledoc("Lifecycle helpers for " + resource.getId() + "."));
-    }
-    List<ExModuleEntry> entries = new ArrayList<>();
-    if (!server) {
-      entries.add(ElixirClientIr.clientConfigTypeDef());
-      entries.add(new ExBlankLine());
-    }
-    entries.addAll(functions);
-    return ExModule.module(
+    Moduledoc moduledoc =
+        BeamDocumentation.forShape(resource)
+            .map(Moduledoc::of)
+            .orElse(Moduledoc.of("Lifecycle helpers for " + resource.getId() + "."));
+    return new Module(
         mod,
-        preamble,
+        moduledoc,
+        List.of(),
         List.of(
-            ExAliasAttr.alias(delegateMod, server ? "Server" : "Client"),
-            ExAliasAttr.alias(typesMod, "Types")),
+            Alias.of(delegateMod, server ? "Server" : "Client"),
+            Alias.of(typesMod, "Types")),
         List.of(),
         List.of(),
-        entries);
+        List.of(),
+        server ? List.of() : ElixirClientIr.clientConfigTrailingAttributes(),
+        functions);
   }
 
   private static List<HelperBinding> collectBindings(
@@ -117,7 +110,7 @@ final class ElixirResourceIr {
     return bindings;
   }
 
-  private static ExFunction helperFunction(
+  private static Function helperFunction(
       BeamResourceIndex index,
       SymbolProvider sp,
       ResourceShape resource,
@@ -133,20 +126,20 @@ final class ElixirResourceIr {
     String opHandler = server ? "handle_" + opSym.getName() : opSym.getName();
     String outType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
 
-    List<ExPattern> patterns = new ArrayList<>();
+    List<Pattern> patterns = new ArrayList<>();
     if (server) {
-      patterns.add(ExVarPattern.var("ctx"));
+      patterns.add(VariablePattern.of("ctx"));
     } else {
-      patterns.add(ExVarPattern.var("config"));
+      patterns.add(VariablePattern.of("config"));
     }
     for (IdentifierArg arg : plan.identifierArgs()) {
-      patterns.add(ExVarPattern.var(arg.paramName()));
+      patterns.add(VariablePattern.of(arg.paramName()));
     }
     if (plan.acceptsFullInput()) {
-      patterns.add(ExVarPattern.var("input"));
+      patterns.add(VariablePattern.of("input"));
     }
     if (server) {
-      patterns.add(ExVarPattern.var("meta"));
+      patterns.add(VariablePattern.of("meta"));
     }
 
     List<String> specParams = new ArrayList<>();
@@ -165,29 +158,34 @@ final class ElixirResourceIr {
       specParams.add("term()");
     }
 
-    ExDoc doc = BeamDocumentation.forShape(op).map(ExDoc::doc).orElse(null);
+    FunctionDoc doc = BeamDocumentation.forShape(op).map(FunctionDoc::of).orElse(null);
 
-    List<ExExpr> callArgs = new ArrayList<>();
+    List<Expression> callArgs = new ArrayList<>();
     if (server) {
-      callArgs.add(ExVar.var("ctx"));
+      callArgs.add(Variable.of("ctx"));
     } else {
-      callArgs.add(ExVar.var("config"));
+      callArgs.add(Variable.of("config"));
     }
     callArgs.add(inputExpression(plan, typesMod));
     if (server) {
-      callArgs.add(ExVar.var("meta"));
+      callArgs.add(Variable.of("meta"));
     }
 
     String delegateAlias = server ? "Server" : "Client";
-    return ExFunction.functionWithDocAndSpec(
-        "def",
+    return new Function(
         helper,
+        false,
+        List.of(FunctionHead.of(patterns)),
+        RemoteCallExpr.of(delegateAlias, opHandler, callArgs),
+        Spec.of(
+            helper
+                + "("
+                + String.join(", ", specParams)
+                + ") :: {:ok, "
+                + outType
+                + "} | {:error, term()}"),
         doc,
-        ExSpec.functionSpec(
-            helper, String.join(", ", specParams), "{:ok, " + outType + "} | {:error, term()}"),
-        List.of(
-            ExClause.inlineClause(
-                patterns, ExCall.call(delegateAlias, opHandler, callArgs.toArray(ExExpr[]::new)))));
+        true);
   }
 
   private static String identifierType(
@@ -196,22 +194,23 @@ final class ElixirResourceIr {
     return ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(shape));
   }
 
-  private static ExExpr inputExpression(InputPlan plan, String typesMod) {
+  private static Expression inputExpression(InputPlan plan, String typesMod) {
     if (plan.acceptsFullInput()) {
       if (plan.identifierArgs().isEmpty()) {
-        return ExVar.var("input");
+        return Variable.of("input");
       }
-      ExMapEntry[] updates =
+      List<MapEntry> updates =
           plan.identifierArgs().stream()
               .map(
-                  arg -> ExMapEntry.entry(ExAtom.atom(arg.fieldName()), ExVar.var(arg.paramName())))
-              .toArray(ExMapEntry[]::new);
-      return ExMapUpdate.mapUpdate(ExVar.var("input"), updates);
+                  arg ->
+                      MapEntry.atomKey(arg.fieldName(), Variable.of(arg.paramName())))
+              .toList();
+      return MapExpr.of(Variable.of("input"), updates);
     }
-    ExMapEntry[] fields =
+    List<StructField> fields =
         plan.identifierArgs().stream()
-            .map(arg -> ExMapEntry.entry(ExAtom.atom(arg.fieldName()), ExVar.var(arg.paramName())))
-            .toArray(ExMapEntry[]::new);
-    return ExStruct.struct(typesMod + "." + plan.inputSymbol().getName(), fields);
+            .map(arg -> StructField.of(arg.fieldName(), Variable.of(arg.paramName())))
+            .toList();
+    return StructExpr.of(typesMod + "." + plan.inputSymbol().getName(), fields);
   }
 }

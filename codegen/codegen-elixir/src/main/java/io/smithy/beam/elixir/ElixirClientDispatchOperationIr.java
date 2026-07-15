@@ -1,30 +1,30 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AnonFun;
+import io.beam.ir.elixir.AnonFunClause;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.CaptureExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.DotCallExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.InfixExpr;
+import io.beam.ir.elixir.ListExpr;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.NilPattern;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamSigV4Metadata;
-import io.smithy.beam.ir.elixir.ExAnonymousFn;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExCapturedBlock;
-import io.smithy.beam.ir.elixir.ExCase;
-import io.smithy.beam.ir.elixir.ExCaseBranch;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExExprBlock;
-import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExMapUpdate;
-import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExNilPattern;
-import io.smithy.beam.ir.elixir.ExOp;
-import io.smithy.beam.ir.elixir.ExStructAccess;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -58,7 +58,7 @@ final class ElixirClientDispatchOperationIr {
       boolean sigv4,
       boolean encodeWithConfig) {}
 
-  static List<ExExpr> buildDispatchBody(
+  static List<Expression> buildDispatchBody(
       ElixirContext ctx,
       OperationShape op,
       BeamElixirLayout layout,
@@ -68,7 +68,7 @@ final class ElixirClientDispatchOperationIr {
       DispatchBodyMode mode) {
     DispatchContext dispatch =
         buildContext(ctx, op, layout, wrapWithRetry, clientModule, paginated, mode);
-    List<ExExpr> core = new ArrayList<>();
+    List<Expression> core = new ArrayList<>();
     core.add(buildEncodeRequestMatch(dispatch));
     if (dispatch.sigv4()) {
       core.add(buildSignedRequestMatch(dispatch));
@@ -80,69 +80,108 @@ final class ElixirClientDispatchOperationIr {
     return core;
   }
 
-  static List<ExExpr> buildAccumulationAndRecursion(
+  static List<Expression> buildAccumulationAndRecursion(
       String opName,
       boolean hasItems,
-      ExExpr itemsExpr,
-      ExExpr outputTokenExpr,
+      Expression itemsExpr,
+      Expression outputTokenExpr,
       String inputToken) {
-    List<ExExpr> body = new ArrayList<>();
+    List<Expression> body = new ArrayList<>();
     if (hasItems) {
-      body.add(
-          ExMatch.match(ExVarPattern.var("new_acc"), ExOp.op("++", ExVar.var("acc"), itemsExpr)));
+      body.add(MatchExpr.bind("new_acc", new InfixExpr(Variable.of("acc"), "++", itemsExpr)));
     } else {
       body.add(
-          ExMatch.match(
-              ExVarPattern.var("new_acc"), ExList.cons(ExVar.var("output"), ExVar.var("acc"))));
+          MatchExpr.bind(
+              "new_acc",
+              new InfixExpr(
+                  ListExpr.of(List.of(Variable.of("output"))), "++", Variable.of("acc"))));
     }
-    ExExpr undefinedSuccess =
+    Expression undefinedSuccess =
         hasItems
-            ? ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("new_acc"))
-            : ExTuple.tuple(
-                ExAtom.atom("ok"), ExCall.call("Enum", "reverse", ExVar.var("new_acc")));
-    ExExpr nextInput =
-        ExMapUpdate.mapUpdate(
-            ExVar.var("input"), ExMapEntry.entry(ExAtom.atom(inputToken), ExVar.var("next_token")));
-    ExExpr recurse =
-        ExCallLocal.callLocal(
-            opName, ExVar.var("config"), ExVar.var("next_input"), ExVar.var("new_acc"));
+            ? TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("new_acc")))
+            : TupleExpr.of(
+                List.of(
+                    AtomExpr.of("ok"),
+                    RemoteCallExpr.of("Enum", "reverse", List.of(Variable.of("new_acc")))));
+    Expression nextInput =
+        MapExpr.of(
+            Variable.of("input"),
+            List.of(MapEntry.atomKey(inputToken, Variable.of("next_token"))));
+    Expression recurse =
+        LocalCallExpr.of(
+            opName, List.of(Variable.of("config"), Variable.of("next_input"), Variable.of("new_acc")));
     body.add(
-        ExCase.caseExpr(
+        new CaseExpr(
             outputTokenExpr,
-            ExCaseBranch.branch(ExNilPattern.nil(), undefinedSuccess),
-            ExCaseBranch.branch(
-                ExVarPattern.var("next_token"),
-                ExExprBlock.block(
-                    ExMatch.match(ExVarPattern.var("next_input"), nextInput), recurse))));
+            List.of(
+                Clause.of(NilPattern.of(), undefinedSuccess),
+                Clause.of(
+                    VariablePattern.of("next_token"),
+                    new BlockExpr(
+                        List.of(
+                            MatchExpr.bind("next_input", nextInput),
+                            recurse))))));
     return body;
   }
 
-  static ExExpr buildFieldAccessExpr(
+  static Expression buildFieldAccessExpr(
       String rootVar,
       StructureShape rootShape,
       List<MemberShape> path,
       Model model,
       SymbolProvider sp) {
     if (path.size() == 1) {
-      return ExStructAccess.structAccess(ExVar.var(rootVar), fieldName(sp, path.get(0)));
+      return new DotCallExpr(Variable.of(rootVar), fieldName(sp, path.get(0)), List.of());
     }
-    ExExpr[] keys =
-        path.stream().map(m -> (ExExpr) ExAtom.atom(fieldName(sp, m))).toArray(ExExpr[]::new);
-    return ExCall.call("Kernel", "get_in", ExVar.var(rootVar), ExList.list(keys));
+    List<Expression> keys =
+        path.stream().map(m -> (Expression) AtomExpr.of(fieldName(sp, m))).toList();
+    return RemoteCallExpr.of(
+        "Kernel", "get_in", List.of(Variable.of(rootVar), ListExpr.of(keys)));
   }
 
-  static ExExpr buildItemsAccessExpr(
+  static Expression buildItemsAccessExpr(
       String rootVar,
       StructureShape rootShape,
       List<MemberShape> path,
       Model model,
       SymbolProvider sp) {
-    ExExpr access = buildFieldAccessExpr(rootVar, rootShape, path, model, sp);
-    return ExOp.op("||", access, ExList.list());
+    Expression access = buildFieldAccessExpr(rootVar, rootShape, path, model, sp);
+    return new InfixExpr(access, "||", ListExpr.of(List.of()));
   }
 
   static String fieldName(SymbolProvider sp, MemberShape member) {
     return sp.toSymbol(member).getProperty("fieldName", String.class).orElseThrow();
+  }
+
+  static Expression retryOptsBinding() {
+    return MatchExpr.bind(
+        "retry_opts",
+        RemoteCallExpr.of(
+            "Map",
+            "get",
+            List.of(
+                Variable.of("config"),
+                AtomExpr.of("retry"),
+                ListExpr.of(List.of()))));
+  }
+
+  static Expression withRetryCall(String clientModule, Expression retryFun) {
+    return RemoteCallExpr.of(
+        "RuntimeHttp",
+        "with_retry",
+        List.of(
+            retryFun,
+            RemoteCallExpr.of(
+                "Keyword",
+                "merge",
+                List.of(
+                    ListExpr.of(
+                        List.of(
+                            TupleExpr.of(
+                                List.of(
+                                    AtomExpr.of("should_retry"),
+                                    CaptureExpr.of(clientModule + ".should_retry?", 1))))),
+                    Variable.of("retry_opts")))));
   }
 
   private static DispatchContext buildContext(
@@ -176,54 +215,93 @@ final class ElixirClientDispatchOperationIr {
         encodeWithConfig);
   }
 
-  private static ExMatch buildEncodeRequestMatch(DispatchContext ctx) {
-    ExExpr encodeCall =
+  private static MatchExpr buildEncodeRequestMatch(DispatchContext ctx) {
+    Expression encodeCall =
         ctx.encodeWithConfig()
-            ? ExCall.call(
+            ? RemoteCallExpr.of(
                 ctx.codecModule(),
                 "encode_" + ctx.opName() + "_request",
-                ExVar.var("config"),
-                ExVar.var("input"))
-            : ExCall.call(
-                ctx.codecModule(), "encode_" + ctx.opName() + "_request", ExVar.var("input"));
-    return ExMatch.match(ExVarPattern.var("req"), encodeCall);
+                List.of(Variable.of("config"), Variable.of("input")))
+            : RemoteCallExpr.of(
+                ctx.codecModule(),
+                "encode_" + ctx.opName() + "_request",
+                List.of(Variable.of("input")));
+    return MatchExpr.bind("req", encodeCall);
   }
 
-  private static ExMatch buildSignedRequestMatch(DispatchContext ctx) {
-    ExCase credentialsCase =
-        ExCase.caseExpr(
-            ExCall.call("Map", "get", ExVar.var("config"), ExAtom.atom("credentials")),
-            ExCaseBranch.branch(ExNilPattern.nil(), ExVar.var("req")),
-            ExCaseBranch.branch(
-                ExVarPattern.var("_"),
-                ExCall.call(
-                    "AwsSigv4",
-                    "sign",
-                    ExVar.var("config"),
-                    ExAtom.atom(ctx.opName()),
-                    ExVar.var("req"))));
-    return ExMatch.match(ExVarPattern.var("signed_req"), credentialsCase);
+  private static MatchExpr buildSignedRequestMatch(DispatchContext ctx) {
+    String opName = ctx.opName();
+    Expression signWithConfig =
+        RemoteCallExpr.of(
+            "AwsSigv4", "sign", List.of(Variable.of("config"), AtomExpr.of(opName), Variable.of("req")));
+    Expression credsMap =
+        MapExpr.of(
+            List.of(
+                MapEntry.atomKey(
+                    "access_key_id",
+                    RemoteCallExpr.of(
+                        "Map",
+                        "get",
+                        List.of(Variable.of("creds0"), AtomExpr.of("access_key_id")))),
+                MapEntry.atomKey(
+                    "secret_access_key",
+                    RemoteCallExpr.of(
+                        "Map",
+                        "get",
+                        List.of(Variable.of("creds0"), AtomExpr.of("secret_access_key")))),
+                MapEntry.atomKey(
+                    "session_token",
+                    RemoteCallExpr.of(
+                        "Map", "get", List.of(Variable.of("creds0"), AtomExpr.of("token"))))));
+    Expression signWithMergedCreds =
+        RemoteCallExpr.of(
+            "AwsSigv4",
+            "sign",
+            List.of(
+                MapExpr.of(
+                    Variable.of("config"),
+                    List.of(MapEntry.atomKey("credentials", Variable.of("creds")))),
+                AtomExpr.of(opName),
+                Variable.of("req")));
+    Expression undefinedCredentialsBranch =
+        new CaseExpr(
+            RemoteCallExpr.of(":aws_credentials", "get_credentials", List.of()),
+            List.of(
+                Clause.of(AtomPattern.of("undefined"), Variable.of("req")),
+                Clause.of(
+                    VariablePattern.of("creds0"),
+                    MatchExpr.bind("creds", credsMap, signWithMergedCreds))));
+    Expression credentialsCase =
+        new CaseExpr(
+            RemoteCallExpr.of("Map", "get", List.of(Variable.of("config"), AtomExpr.of("credentials"))),
+            List.of(
+                Clause.of(NilPattern.of(), undefinedCredentialsBranch),
+                Clause.of(VariablePattern.of("_"), signWithConfig)));
+    return MatchExpr.bind("signed_req", credentialsCase);
   }
 
-  private static ExExpr dispatchRequestVar(DispatchContext ctx) {
-    return ctx.sigv4() ? ExVar.var("signed_req") : ExVar.var("req");
+  private static Expression dispatchRequestVar(DispatchContext ctx) {
+    return ctx.sigv4() ? Variable.of("signed_req") : Variable.of("req");
   }
 
-  private static ExExpr buildDispatchCase(DispatchContext ctx) {
-    ExExpr successExpr = buildDecodeSuccessExpr(ctx);
-    return ExCase.caseExpr(
-        ExCall.call(
-            ctx.runtimeHttpModule(), "dispatch", ExVar.var("config"), dispatchRequestVar(ctx)),
-        ExCaseBranch.branch(
-            ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("resp")), successExpr),
-        ExCaseBranch.branch(
-            ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
-            ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason"))));
+  private static CaseExpr buildDispatchCase(DispatchContext ctx) {
+    Expression successExpr = buildDecodeSuccessExpr(ctx);
+    return new CaseExpr(
+        RemoteCallExpr.of(
+            ctx.runtimeHttpModule(), "dispatch", List.of(Variable.of("config"), dispatchRequestVar(ctx))),
+        List.of(
+            Clause.of(
+                TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("resp"))),
+                successExpr),
+            Clause.of(
+                TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("reason"))),
+                TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("reason"))))));
   }
 
-  private static ExExpr buildDecodeSuccessExpr(DispatchContext ctx) {
-    ExExpr decode =
-        ExCall.call(ctx.codecModule(), "decode_" + ctx.opName() + "_response", ExVar.var("resp"));
+  private static Expression buildDecodeSuccessExpr(DispatchContext ctx) {
+    Expression decode =
+        RemoteCallExpr.of(
+            ctx.codecModule(), "decode_" + ctx.opName() + "_response", List.of(Variable.of("resp")));
     if (ctx.mode() == DispatchBodyMode.SINGLE_PAGE) {
       return decode;
     }
@@ -233,7 +311,7 @@ final class ElixirClientDispatchOperationIr {
     return buildPaginatedDecodeCase(ctx, decode);
   }
 
-  private static ExCase buildPaginatedDecodeCase(DispatchContext ctx, ExExpr decodeCall) {
+  private static CaseExpr buildPaginatedDecodeCase(DispatchContext ctx, Expression decodeCall) {
     PaginationInfo pi =
         BeamClientPaginationSupport.requirePaginationInfo(
             ctx.ctx().model(), ctx.ctx().service(), ctx.op());
@@ -241,49 +319,36 @@ final class ElixirClientDispatchOperationIr {
     StructureShape output =
         ctx.ctx().model().expectShape(ctx.op().getOutputShape(), StructureShape.class);
     String inputToken = fieldName(sp, pi.getInputTokenMember());
-    ExExpr outputTokenExpr =
+    Expression outputTokenExpr =
         buildFieldAccessExpr(
             "output", output, pi.getOutputTokenMemberPath(), ctx.ctx().model(), sp);
     boolean hasItems = BeamClientPaginationSupport.hasItemsMember(pi);
-    ExExpr itemsExpr =
+    Expression itemsExpr =
         hasItems
             ? buildItemsAccessExpr("output", output, pi.getItemsMemberPath(), ctx.ctx().model(), sp)
             : null;
 
-    return ExCase.caseExpr(
+    return new CaseExpr(
         decodeCall,
-        ExCaseBranch.branch(
-            ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("output")),
-            ExExprBlock.block(
-                buildAccumulationAndRecursion(
-                        ctx.opName(), hasItems, itemsExpr, outputTokenExpr, inputToken)
-                    .toArray(ExExpr[]::new))),
-        ExCaseBranch.branch(
-            ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExVarPattern.var("reason")),
-            ExTuple.tuple(ExAtom.atom("error"), ExVar.var("reason"))));
+        List.of(
+            Clause.of(
+                TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("output"))),
+                new BlockExpr(
+                    buildAccumulationAndRecursion(
+                        ctx.opName(), hasItems, itemsExpr, outputTokenExpr, inputToken))),
+            Clause.of(
+                TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("reason"))),
+                TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("reason"))))));
   }
 
-  private static List<ExExpr> buildRetryWrappedBody(DispatchContext ctx, List<ExExpr> core) {
-    List<ExExpr> body = new ArrayList<>();
-    body.add(
-        ExMatch.match(
-            ExVarPattern.var("retry_opts"),
-            ExCall.call("Map", "get", ExVar.var("config"), ExAtom.atom("retry"), ExList.list())));
-    body.add(
-        ExCall.call(
-            "RuntimeHttp",
-            "with_retry",
-            ExAnonymousFn.fn(
-                ExClause.blockClause(List.of(), ExExprBlock.block(core.toArray(ExExpr[]::new)))),
-            ExCall.call(
-                "Keyword",
-                "merge",
-                ExList.list(
-                    ExTuple.tuple(
-                        ExAtom.atom("should_retry"),
-                        ExCapturedBlock.capturedBlock(
-                            "&" + ctx.clientModule() + ".should_retry?/1"))),
-                ExVar.var("retry_opts"))));
-    return body;
+  private static List<Expression> buildRetryWrappedBody(
+      DispatchContext ctx, List<Expression> core) {
+    Expression retryFun =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(),
+                    core.size() == 1 ? core.get(0) : new BlockExpr(core))));
+    return List.of(retryOptsBinding(), withRetryCall(ctx.clientModule(), retryFun));
   }
 }

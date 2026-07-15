@@ -53,8 +53,8 @@ Output from `erlang-client-codegen` and `elixir-client-codegen`.
 | Type and shape documentation | ✅ | Types plugins emit shape and member docs into generated type files alongside operation docs on client stubs. |
 | Error shape types | ✅ | `@error` structures become typed records (Erlang) or `defexception` modules (Elixir) with fault kind metadata. |
 | Retry | ✅ | Generated retry module wraps client calls with exponential backoff for `@retryable` errors. |
-| SigV4 signing | ✅ | Generated signing module invoked from HTTP dispatch when `@aws.auth#sigv4` is present. Golden-vector verified. Callers may supply credentials in client config or rely on the generated credential chain. SigV4A is not supported. |
-| Credential providers | ✅ | SigV4 Erlang clients call aws_credentials:get_credentials/0 before signing when config credentials are unset. Supports ENV, shared credentials file, ECS, EKS, web identity, and EC2 instance credentials with background refresh via the aws_credentials gen_server. |
+| SigV4 signing | ✅ | Generated signing module invoked from HTTP dispatch when `@aws.auth#sigv4` is present. Golden-vector verified. Callers may supply credentials in client config or rely on ambient credentials from the aws_credentials OTP application. SigV4A is not supported. |
+| Credential providers | ✅ | SigV4 Erlang and Elixir clients call aws_credentials:get_credentials/0 before signing when config credentials are unset. Supports ENV, shared credentials file, ECS, EKS, web identity, and EC2 instance credentials with background refresh via the aws_credentials gen_server. Elixir AWS examples and apps using ambient credentials must list aws_credentials in mix.exs. |
 | Endpoint discovery | ❌ | Not implemented. |
 | Input validation helpers | ❌ | `@required` affects generated types only; no runtime `validate_*` helpers. |
 | HTTP prefix headers | ✅ | Map members bound with `@httpPrefixHeaders` expand into prefixed request headers on encode and reconstruct on decode. |

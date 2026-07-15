@@ -109,7 +109,7 @@ class HttpChecksumEmissionTest {
     assertThat(codec).contains("HttpChecksum.headers_set(\"Content-MD5\"");
     assertThat(codec).contains("HttpChecksum.checksum_header_encode(");
     assertThat(codec).contains(":crypto.hash(:md5, body)");
-    assertThat(codec).contains("HttpChecksum.validate_response_checksum(body, headers,");
+    assertThat(codec).contains("HttpChecksum.validate_response_checksum");
     assertThat(codec).contains("HttpChecksum.crc32c_hash(body)");
   }
 

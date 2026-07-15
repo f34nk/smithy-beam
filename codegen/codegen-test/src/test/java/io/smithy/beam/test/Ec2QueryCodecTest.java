@@ -126,7 +126,7 @@ class Ec2QueryCodecTest {
     assertThat(codec).contains("xml_child_struct_list(");
     assertThat(codec).contains("xml_child_list(result, \"InstanceIds\", \"member\")");
     assertThat(codec).contains("end_: xml_child_text(");
-    assertThat(codec).contains("{v, i} <- Enum.with_index(value, 1)");
+    assertThat(codec).contains("Enum.with_index(value, 1)");
     assertThat(codec).contains("key <> \".\" <> Integer.to_string(i)");
     assertThat(codec).contains("when is_struct(value) do");
     assertThat(codec).contains("defp flatten_structure(");

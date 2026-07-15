@@ -154,6 +154,15 @@ class AwsQueryCodecTest {
   }
 
   @Test
+  void elixirClientCodecDecodesXmlBooleanText() {
+    MockManifest manifest = runElixirClient(loadModel());
+    String codec = manifest.expectFileString(findAwsQueryElixirCodec(manifest));
+    assertThat(codec).contains("defp decode_xml_boolean(text) when is_binary(text) do");
+    assertThat(codec).contains("\"true\" -> :true");
+    assertThat(codec).contains("\"false\" -> :false");
+  }
+
+  @Test
   void erlangServerCodecEmitsDecodeAndEncodeFunctions() {
     MockManifest manifest = runErlangServer(loadModel());
     String codec = manifest.expectFileString(findAwsQueryErlangCodec(manifest));

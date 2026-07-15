@@ -1,35 +1,43 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Alias;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.CaptureExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionDoc;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.InfixExpr;
+import io.beam.ir.elixir.IsTypeGuard;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.MapPattern;
+import io.beam.ir.elixir.MapPatternEntry;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.Moduledoc;
+import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.PipeExpr;
+import io.beam.ir.elixir.PipeStep;
+import io.beam.ir.elixir.RaiseExpr;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StringPattern;
+import io.beam.ir.elixir.StructExpr;
+import io.beam.ir.elixir.StructField;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
+import io.beam.ir.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.elixir.ExAliasAttr;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExCapturedBlock;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExDoc;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExExprBlock;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExGuard;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExMapFieldPattern;
-import io.smithy.beam.ir.elixir.ExMapPattern;
-import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExModule;
-import io.smithy.beam.ir.elixir.ExModuledoc;
-import io.smithy.beam.ir.elixir.ExPipeline;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStringPattern;
-import io.smithy.beam.ir.elixir.ExStruct;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -47,7 +55,7 @@ import software.amazon.smithy.model.traits.JsonNameTrait;
 final class ElixirEventStreamIr {
   private ElixirEventStreamIr() {}
 
-  static ExModule eventStreamModule(ElixirContext ctx, ServiceShape service) {
+  static Module eventStreamModule(ElixirContext ctx, ServiceShape service) {
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
     String moduleName = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
@@ -57,217 +65,254 @@ final class ElixirEventStreamIr {
     SymbolProvider sp = ctx.symbolProvider();
     Model model = ctx.model();
 
-    List<ExFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (UnionShape union : unions) {
       functions.addAll(unionHelpers(model, union, sp, typesMod));
     }
 
-    return ExModule.module(
+    return new Module(
         moduleName,
-        List.of(
-            ExModuledoc.moduledoc(
-                "Generated Amazon Event Stream helpers for " + service.getId() + " (generated).")),
-        List.of(ExAliasAttr.alias(typesMod)),
+        Moduledoc.of(
+            "Generated Amazon Event Stream helpers for " + service.getId() + " (generated)."),
+        List.of(),
+        List.of(Alias.of(typesMod)),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
         functions);
   }
 
-  static List<ExFunction> unionHelpers(
+  static List<Function> unionHelpers(
       Model model, UnionShape union, SymbolProvider sp, String typesMod) {
-    return List.of(
-        unionEncodeList(union, sp),
-        unionDecodeList(union, sp),
-        unionEncodeEvent(model, union, sp, typesMod),
-        unionDecodeEvent(union, sp),
-        unionDecodeEventType(model, union, sp, typesMod));
+    List<Function> functions = new ArrayList<>();
+    functions.add(unionEncodeList(union, sp));
+    functions.add(unionDecodeList(union, sp));
+    functions.addAll(unionEncodeEvent(model, union, sp, typesMod));
+    functions.add(unionDecodeEvent(union, sp));
+    functions.addAll(unionDecodeEventType(model, union, sp, typesMod));
+    return functions;
   }
 
-  static ExFunction unionEncodeList(UnionShape union, SymbolProvider sp) {
+  static Function unionEncodeList(UnionShape union, SymbolProvider sp) {
     String helper = helperName(sp, union);
-    return ExFunction.functionWithDocAndSpec(
-        "def",
+    return new Function(
         "encode_" + helper,
-        ExDoc.doc("Encodes a list of event stream events into framed binaries."),
-        null,
+        false,
         List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("events")),
-                List.of(ExGuard.guard("is_list", ExVar.var("events"))),
-                ExCall.call(
-                    "Enum",
-                    "map",
-                    ExVar.var("events"),
-                    ExCapturedBlock.capturedBlock("&encode_" + helper + "_event/1")))));
+            FunctionHead.of(
+                List.of(VariablePattern.of("events")), IsTypeGuard.of("is_list", "events"))),
+        RemoteCallExpr.of(
+            "Enum",
+            "map",
+            List.of(Variable.of("events"), CaptureExpr.of("encode_" + helper + "_event", 1))),
+        null,
+        FunctionDoc.of("Encodes a list of event stream events into framed binaries."),
+        false);
   }
 
-  static ExFunction unionDecodeList(UnionShape union, SymbolProvider sp) {
+  static Function unionDecodeList(UnionShape union, SymbolProvider sp) {
     String helper = helperName(sp, union);
-    return ExFunction.functionWithDocAndSpec(
-        "def",
+    return new Function(
         "decode_" + helper,
-        ExDoc.doc("Decodes an event stream body into tagged events."),
-        null,
+        false,
         List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("body")),
-                List.of(ExGuard.guard("is_binary", ExVar.var("body"))),
-                ExPipeline.pipeChain(
-                    ExVar.var("body"),
-                    ExCapturedBlock.capturedBlock("AwsEventStream.decode_frames()"),
-                    ExCapturedBlock.capturedBlock("Enum.map(&decode_" + helper + "_event/1)")))));
+            FunctionHead.of(
+                List.of(VariablePattern.of("body")), IsTypeGuard.of("is_binary", "body"))),
+        new PipeExpr(
+            Variable.of("body"),
+            List.of(
+                new PipeStep(
+                    RemoteCallExpr.of("AwsEventStream", "decode_frames", List.of()), List.of()),
+                new PipeStep(
+                    RemoteCallExpr.of(
+                        "Enum",
+                        "map",
+                        List.of(CaptureExpr.of("decode_" + helper + "_event", 1))),
+                    List.of()))),
+        null,
+        FunctionDoc.of("Decodes an event stream body into tagged events."),
+        false);
   }
 
-  static ExFunction unionEncodeEvent(
+  static List<Function> unionEncodeEvent(
       Model model, UnionShape union, SymbolProvider sp, String typesMod) {
     String helper = helperName(sp, union);
-    List<ExClause> clauses = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (MemberShape member : union.members()) {
-      clauses.add(encodeEventClause(model, helper, member, sp, typesMod));
+      functions.add(encodeEventClause(model, helper, member, sp, typesMod));
     }
-    clauses.add(
-        ExClause.inlineClause(
-            List.of(ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("_"))),
-            ExCapturedBlock.capturedBlock("raise ArgumentError, \"unknown event\"")));
-    return ExFunction.defpFunction("encode_" + helper + "_event", clauses);
+    functions.add(
+        defp(
+            "encode_" + helper + "_event",
+            List.of(
+                TuplePattern.of(
+                    List.of(AtomPattern.of("unknown"), WildcardPattern.of()))),
+            new RaiseExpr(AtomExpr.of("ArgumentError"), StringExpr.of("unknown event"), true),
+            true));
+    return functions;
   }
 
-  static ExFunction unionDecodeEvent(UnionShape union, SymbolProvider sp) {
+  static Function unionDecodeEvent(UnionShape union, SymbolProvider sp) {
     String helper = helperName(sp, union);
-    return ExFunction.defpFunction(
+    return defp(
         "decode_" + helper + "_event",
         List.of(
-            ExClause.blockClause(
+            MapPattern.of(
                 List.of(
-                    ExMapPattern.map(
-                        ExMapFieldPattern.field(
-                            ExAtom.atom("headers"), ExVarPattern.var("headers")),
-                        ExMapFieldPattern.field(
-                            ExAtom.atom("payload"), ExVarPattern.var("payload")))),
-                ExExprBlock.block(
-                    ExMatch.match(
-                        ExVarPattern.var("event_type"),
-                        ExCall.call(
-                            "AwsEventStream",
-                            "header_value",
-                            ExVar.var("headers"),
-                            ExString.string(":event-type"))),
-                    ExCallLocal.callLocal(
+                    MapPatternEntry.of(
+                        AtomExpr.of("headers"), VariablePattern.of("headers")),
+                    MapPatternEntry.of(
+                        AtomExpr.of("payload"), VariablePattern.of("payload"))))),
+        new BlockExpr(
+            List.of(
+                MatchExpr.bind(
+                    "event_type",
+                    RemoteCallExpr.of(
+                        "AwsEventStream",
+                        "header_value",
+                        List.of(Variable.of("headers"), StringExpr.of(":event-type"))),
+                    LocalCallExpr.of(
                         "decode_" + helper + "_event_type",
-                        ExVar.var("event_type"),
-                        ExVar.var("payload"))))));
+                        List.of(Variable.of("event_type"), Variable.of("payload")))))),
+        false);
   }
 
-  static ExFunction unionDecodeEventType(
+  static List<Function> unionDecodeEventType(
       Model model, UnionShape union, SymbolProvider sp, String typesMod) {
     String helper = helperName(sp, union);
-    List<ExClause> clauses = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (MemberShape member : union.members()) {
-      clauses.add(decodeEventTypeClause(model, helper, member, sp, typesMod));
+      functions.add(decodeEventTypeClause(model, helper, member, sp, typesMod));
     }
-    clauses.add(
-        ExClause.blockClause(
-            List.of(ExVarPattern.var("event_type"), ExVarPattern.var("_payload")),
-            ExCapturedBlock.capturedBlock(
-                "raise ArgumentError, \"unknown event type: \" <> inspect(event_type)")));
-    return ExFunction.defpFunction("decode_" + helper + "_event_type", clauses);
+    functions.add(
+        defp(
+            "decode_" + helper + "_event_type",
+            List.of(VariablePattern.of("event_type"), VariablePattern.of("_payload")),
+            new RaiseExpr(
+                AtomExpr.of("ArgumentError"),
+                new InfixExpr(
+                    StringExpr.of("unknown event type: "),
+                    "<>",
+                    RemoteCallExpr.of("Kernel", "inspect", List.of(Variable.of("event_type")))),
+                false),
+            false));
+    return functions;
   }
 
   static String helperName(SymbolProvider sp, UnionShape union) {
     return sp.toSymbol(union).getName().replace("()", "");
   }
 
-  private static ExClause encodeEventClause(
+  private static Function encodeEventClause(
       Model model, String helper, MemberShape member, SymbolProvider sp, String typesMod) {
     String tag = ElixirUnionHelperIr.unionTagForMember(sp, member);
     String eventType = member.getMemberName();
     Shape target = model.expectShape(member.getTarget());
-    return ExClause.blockClause(
-        List.of(ExTuplePattern.tuple(ExAtomPattern.atom(tag), ExVarPattern.var("value"))),
-        ExExprBlock.block(
-            ExMatch.match(
-                ExVarPattern.var("payload"),
-                encodeMemberPayload(model, target, "value", sp, typesMod)),
-            ExMatch.match(
-                ExVarPattern.var("headers"),
-                ExCall.call("AwsEventStream", "encode_event_headers", ExString.string(eventType))),
-            ExCall.call("AwsEventStream", "frame", ExVar.var("headers"), ExVar.var("payload"))));
+    return defp(
+        "encode_" + helper + "_event",
+        List.of(
+            TuplePattern.of(List.of(AtomPattern.of(tag), VariablePattern.of("value")))),
+        MatchExpr.bind(
+            "payload",
+            encodeMemberPayload(model, target, "value", sp, typesMod),
+            MatchExpr.bind(
+                "headers",
+                RemoteCallExpr.of(
+                    "AwsEventStream",
+                    "encode_event_headers",
+                    List.of(StringExpr.of(eventType))),
+                RemoteCallExpr.of(
+                    "AwsEventStream",
+                    "frame",
+                    List.of(Variable.of("headers"), Variable.of("payload"))))),
+        false);
   }
 
-  private static ExClause decodeEventTypeClause(
+  private static Function decodeEventTypeClause(
       Model model, String helper, MemberShape member, SymbolProvider sp, String typesMod) {
     String tag = ElixirUnionHelperIr.unionTagForMember(sp, member);
     String eventType = member.getMemberName();
     Shape target = model.expectShape(member.getTarget());
-    return ExClause.blockClause(
-        List.of(ExStringPattern.string(eventType), ExVarPattern.var("payload")),
-        ExTuple.tuple(
-            ExAtom.atom(tag), decodeMemberPayload(model, target, "payload", sp, typesMod)));
+    return defp(
+        "decode_" + helper + "_event_type",
+        List.of(StringPattern.of(eventType), VariablePattern.of("payload")),
+        TupleExpr.of(
+            List.of(AtomExpr.of(tag), decodeMemberPayload(model, target, "payload", sp, typesMod))),
+        false);
   }
 
-  private static ExExpr encodeMemberPayload(
+  private static Expression encodeMemberPayload(
       Model model, Shape target, String valueVar, SymbolProvider sp, String typesMod) {
     if (target instanceof StructureShape structure) {
       return encodeStructurePayload(structure, valueVar, sp);
     }
     if (target instanceof BlobShape || target instanceof StringShape) {
-      return ExVar.var(valueVar);
+      return Variable.of(valueVar);
     }
-    return ExCall.call("Jason", "encode!", ExVar.var(valueVar));
+    return RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of(valueVar)));
   }
 
-  private static ExExpr decodeMemberPayload(
+  private static Expression decodeMemberPayload(
       Model model, Shape target, String payloadVar, SymbolProvider sp, String typesMod) {
     if (target instanceof StructureShape structure) {
       return decodeStructurePayload(structure, payloadVar, sp, typesMod);
     }
     if (target instanceof BlobShape || target instanceof StringShape) {
-      return ExVar.var(payloadVar);
+      return Variable.of(payloadVar);
     }
-    return ExCall.call("Jason", "decode!", ExVar.var(payloadVar));
+    return RemoteCallExpr.of("Jason", "decode!", List.of(Variable.of(payloadVar)));
   }
 
-  private static ExExpr encodeStructurePayload(
+  private static Expression encodeStructurePayload(
       StructureShape structure, String valueVar, SymbolProvider sp) {
     if (structure.members().isEmpty()) {
-      return ExCall.call("Jason", "encode!", ExMap.map());
+      return RemoteCallExpr.of("Jason", "encode!", List.of(MapExpr.of(List.of())));
     }
-    List<ExMapEntry> entries = new ArrayList<>();
+    List<MapEntry> entries = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String wireKey = jsonKey(member);
       String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
       entries.add(
-          ExMapEntry.entry(
-              ExString.string(wireKey),
-              ExCall.call("Map", "get", ExVar.var(valueVar), ExAtom.atom(fieldName))));
+          MapEntry.stringKey(
+              wireKey,
+              RemoteCallExpr.of(
+                  "Map",
+                  "get",
+                  List.of(Variable.of(valueVar), AtomExpr.of(fieldName)))));
     }
-    return ExCall.call("Jason", "encode!", ExMap.map(entries.toArray(ExMapEntry[]::new)));
+    return RemoteCallExpr.of("Jason", "encode!", List.of(MapExpr.of(entries)));
   }
 
-  private static ExExpr decodeStructurePayload(
+  private static Expression decodeStructurePayload(
       StructureShape structure, String payloadVar, SymbolProvider sp, String typesMod) {
     String structName = structName(sp.toSymbol(structure));
     if (structure.members().isEmpty()) {
-      return ExStruct.struct(typesMod + "." + structName);
+      return StructExpr.of(typesMod + "." + structName, List.of());
     }
-    StringBuilder body = new StringBuilder();
-    body.append("case Jason.decode!(").append(payloadVar).append(") do\n");
-    body.append("  decoded ->\n");
-    body.append("    %").append(typesMod).append(".").append(structName).append("{\n");
-    List<MemberShape> members = new ArrayList<>(structure.members());
-    for (int i = 0; i < members.size(); i++) {
-      MemberShape member = members.get(i);
+    List<StructField> fields = new ArrayList<>();
+    for (MemberShape member : structure.members()) {
       String wireKey = jsonKey(member);
       String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
-      String comma = i < members.size() - 1 ? "," : "";
-      body.append("      ")
-          .append(fieldName)
-          .append(": Map.get(decoded, \"")
-          .append(wireKey)
-          .append("\")")
-          .append(comma)
-          .append("\n");
+      fields.add(
+          StructField.of(
+              fieldName,
+              RemoteCallExpr.of(
+                  "Map",
+                  "get",
+                  List.of(Variable.of("decoded"), StringExpr.of(wireKey)))));
     }
-    body.append("    }\nend");
-    return ExCapturedBlock.capturedBlock(body.toString());
+    return new CaseExpr(
+        RemoteCallExpr.of("Jason", "decode!", List.of(Variable.of(payloadVar))),
+        List.of(
+            Clause.of(
+                VariablePattern.of("decoded"),
+                StructExpr.of(typesMod + "." + structName, fields))));
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, Expression body, boolean oneLiner) {
+    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static String structName(Symbol symbol) {

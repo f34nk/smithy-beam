@@ -1,24 +1,28 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AnonFun;
+import io.beam.ir.elixir.AnonFunClause;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.DotCallExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.IfExpr;
+import io.beam.ir.elixir.InfixExpr;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.NilExpr;
+import io.beam.ir.elixir.PipeExpr;
+import io.beam.ir.elixir.PipeStep;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.elixir.ExAnonymousFn;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExIf;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExOp;
-import io.smithy.beam.ir.elixir.ExPipeline;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStructAccess;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -77,7 +81,7 @@ final class ElixirJsonCodecIr {
         && BeamEventStreamIndex.of(model).isEventStreamMember(members.get(0));
   }
 
-  static List<ExMapEntry> bodyMapEntries(
+  static List<MapEntry> bodyMapEntries(
       Model model,
       HttpBindingIndex httpIndex,
       SymbolProvider sp,
@@ -85,7 +89,7 @@ final class ElixirJsonCodecIr {
       List<MemberShape> members,
       String recordVar,
       String eventStreamModule) {
-    List<ExMapEntry> entries = new ArrayList<>();
+    List<MapEntry> entries = new ArrayList<>();
     for (MemberShape member : members) {
       String fieldName = fieldName(sp, member);
       Shape target = model.expectShape(member.getTarget());
@@ -93,35 +97,35 @@ final class ElixirJsonCodecIr {
           && BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
         String helper = ElixirEventStreamEmitter.helperName(sp, union);
         entries.add(
-            ExMapEntry.entry(
-                ExString.string(jsonKey(member)),
-                ExCall.call(
+            MapEntry.stringKey(
+                jsonKey(member),
+                RemoteCallExpr.of(
                     eventStreamModule,
                     "encode_" + helper,
-                    ExStructAccess.structAccess(ExVar.var(recordVar), fieldName))));
+                    List.of(new DotCallExpr(Variable.of(recordVar), fieldName, List.of())))));
       } else {
         entries.add(
-            ExMapEntry.entry(
-                ExString.string(jsonKey(member)),
+            MapEntry.stringKey(
+                jsonKey(member),
                 encodeJsonExpr(
                     model,
                     sp,
                     httpIndex,
                     member,
-                    ExStructAccess.structAccess(ExVar.var(recordVar), fieldName))));
+                    new DotCallExpr(Variable.of(recordVar), fieldName, List.of()))));
       }
     }
     return entries;
   }
 
-  static List<ExMapEntry> structFieldEntriesFromDecoded(
+  static List<MapEntry> structFieldEntriesFromDecoded(
       Model model,
       HttpBindingIndex httpIndex,
       SymbolProvider sp,
       String typesMod,
       List<MemberShape> members,
       String eventStreamModule) {
-    List<ExMapEntry> fields = new ArrayList<>();
+    List<MapEntry> fields = new ArrayList<>();
     for (MemberShape member : members) {
       String fieldName = fieldName(sp, member);
       Shape target = model.expectShape(member.getTarget());
@@ -129,116 +133,140 @@ final class ElixirJsonCodecIr {
           && BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
         String helper = ElixirEventStreamEmitter.helperName(sp, union);
         fields.add(
-            ExMapEntry.entry(
-                ExAtom.atom(fieldName),
-                ExCall.call(eventStreamModule, "decode_" + helper, ExVar.var("body"))));
+            MapEntry.atomKey(
+                fieldName,
+                RemoteCallExpr.of(
+                    eventStreamModule, "decode_" + helper, List.of(Variable.of("body")))));
       } else {
-        ExExpr raw =
-            ExCall.call("Map", "get", ExVar.var("decoded"), ExString.string(jsonKey(member)));
+        Expression raw =
+            RemoteCallExpr.of(
+                "Map", "get", List.of(Variable.of("decoded"), StringExpr.of(jsonKey(member))));
         fields.add(
-            ExMapEntry.entry(
-                ExAtom.atom(fieldName), decodeJsonExpr(model, sp, httpIndex, member, raw)));
+            MapEntry.atomKey(fieldName, decodeJsonExpr(model, sp, httpIndex, member, raw)));
       }
     }
     return fields;
   }
 
-  static List<ExExpr> decodedBodyPrelude() {
-    return List.of(ExMatch.match(ExVarPattern.var("decoded"), decodedBodyExpr()));
+  static List<Expression> decodedBodyPrelude() {
+    return List.of(MatchExpr.bind("decoded", decodedBodyExpr()));
   }
 
-  static ExExpr decodedBodyExpr() {
-    return ExIf.ifExpr(
-        ExOp.op(
+  static Expression decodedBodyExpr() {
+    return new IfExpr(
+        new InfixExpr(
+            new InfixExpr(Variable.of("body"), "==", StringExpr.of("")),
             "or",
-            ExOp.op("==", ExVar.var("body"), ExString.string("")),
-            ExCall.call("Kernel", "is_nil", ExVar.var("body"))),
-        ExMap.map(),
-        ExCall.call("Jason", "decode!", ExVar.var("body")));
+            RemoteCallExpr.of("Kernel", "is_nil", List.of(Variable.of("body")))),
+        MapExpr.of(List.of()),
+        RemoteCallExpr.of("Jason", "decode!", List.of(Variable.of("body"))),
+        false);
   }
 
-  static ExExpr decodeJsonExpr(
-      Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member, ExExpr raw) {
+  static Expression decodeJsonExpr(
+      Model model, SymbolProvider sp, HttpBindingIndex httpIndex, MemberShape member, Expression raw) {
     Shape target = model.expectShape(member.getTarget());
     if (target instanceof EnumShape || target instanceof IntEnumShape) {
-      return ExCallLocal.callLocal("decode_" + helperName(sp, target), raw);
+      return LocalCallExpr.of("decode_" + helperName(sp, target), List.of(raw));
     }
     if (target instanceof UnionShape) {
-      return ExCallLocal.callLocal("decode_" + helperName(sp, target), raw);
+      return LocalCallExpr.of("decode_" + helperName(sp, target), List.of(raw));
     }
     if (target instanceof StructureShape) {
-      return ExCallLocal.callLocal("decode_" + helperName(sp, target), raw);
+      return LocalCallExpr.of("decode_" + helperName(sp, target), List.of(raw));
     }
     if (target instanceof TimestampShape) {
-      return ExCallLocal.callLocal(timestampDecodeHelper(httpIndex, member), raw);
+      return LocalCallExpr.of(timestampDecodeHelper(httpIndex, member), List.of(raw));
     }
     if (target instanceof ListShape listShape) {
       Shape element = model.expectShape(listShape.getMember().getTarget());
       if (element instanceof StructureShape) {
-        return ExCallLocal.callLocal("decode_" + helperName(sp, element) + "_list", raw);
+        return LocalCallExpr.of("decode_" + helperName(sp, element) + "_list", List.of(raw));
       }
       if (element instanceof EnumShape || element instanceof IntEnumShape) {
-        return ExCallLocal.callLocal("decode_" + helperName(sp, element) + "_list", raw);
+        return LocalCallExpr.of("decode_" + helperName(sp, element) + "_list", List.of(raw));
       }
       String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
-      return ExCallLocal.callLocal(helper, raw);
+      return LocalCallExpr.of(helper, List.of(raw));
     }
     if (target instanceof MapShape mapShape) {
-      return ElixirMapHelperIr.mapDecodeExpr(model, sp, httpIndex, mapShape, raw);
+      if (ElixirMapHelperIr.mapNeedsTypedHelper(model, mapShape)) {
+        return LocalCallExpr.of(
+            "decode_" + ElixirMapHelperIr.mapHelperName(mapShape), List.of(raw));
+      }
+      if (mapShape.hasTrait(SparseTrait.class)) {
+        return LocalCallExpr.of("decode_sparse_map", List.of(raw));
+      }
+      return raw;
     }
     return raw;
   }
 
-  static ExExpr encodeJsonExpr(
+  static Expression encodeJsonExpr(
       Model model,
       SymbolProvider sp,
       HttpBindingIndex httpIndex,
       MemberShape member,
-      ExExpr binding) {
+      Expression binding) {
     Shape target = model.expectShape(member.getTarget());
     if (target instanceof EnumShape || target instanceof IntEnumShape) {
-      return ExCallLocal.callLocal("encode_" + helperName(sp, target), binding);
+      return LocalCallExpr.of("encode_" + helperName(sp, target), List.of(binding));
     }
     if (target instanceof UnionShape) {
-      return ExCallLocal.callLocal("encode_" + helperName(sp, target), binding);
+      return LocalCallExpr.of("encode_" + helperName(sp, target), List.of(binding));
     }
     if (target instanceof StructureShape) {
-      return ExCallLocal.callLocal("encode_" + helperName(sp, target), binding);
+      return LocalCallExpr.of("encode_" + helperName(sp, target), List.of(binding));
     }
     if (target instanceof TimestampShape) {
-      return ExCallLocal.callLocal(timestampEncodeHelper(httpIndex, member), binding);
+      return LocalCallExpr.of(timestampEncodeHelper(httpIndex, member), List.of(binding));
     }
     if (target instanceof ListShape listShape) {
       Shape element = model.expectShape(listShape.getMember().getTarget());
       if (element instanceof StructureShape) {
-        return ExCallLocal.callLocal("encode_" + helperName(sp, element) + "_list", binding);
+        return LocalCallExpr.of("encode_" + helperName(sp, element) + "_list", List.of(binding));
       }
       if (element instanceof EnumShape || element instanceof IntEnumShape) {
-        return ExCallLocal.callLocal("encode_" + helperName(sp, element) + "_list", binding);
+        return LocalCallExpr.of("encode_" + helperName(sp, element) + "_list", List.of(binding));
       }
       if (target.hasTrait(SparseTrait.class)) {
-        return ExCallLocal.callLocal("encode_sparse_list", binding);
+        return LocalCallExpr.of("encode_sparse_list", List.of(binding));
       }
       return binding;
     }
     if (target instanceof MapShape mapShape) {
-      return ElixirMapHelperIr.mapEncodeExpr(model, sp, httpIndex, mapShape, binding);
+      if (ElixirMapHelperIr.mapNeedsTypedHelper(model, mapShape)) {
+        return LocalCallExpr.of(
+            "encode_" + ElixirMapHelperIr.mapHelperName(mapShape), List.of(binding));
+      }
+      if (mapShape.hasTrait(SparseTrait.class)) {
+        return LocalCallExpr.of("encode_sparse_map", List.of(binding));
+      }
+      return binding;
     }
     return binding;
   }
 
-  static ExPipeline rejectNilMapPipeline(String bindingVar, List<ExMapEntry> entries) {
-    return ExPipeline.pipeline(
-        bindingVar,
-        new ExMap(entries),
-        ExCall.call(
-            "Enum",
-            "reject",
-            ExAnonymousFn.compactFn(
-                ExClause.inlineClause(
-                    List.of(ExTuplePattern.tuple(ExVarPattern.var("_"), ExVarPattern.var("v"))),
-                    ExCall.call("Kernel", "is_nil", ExVar.var("v"))))),
-        ExCall.call("Map", "new"));
+  static Expression rejectNilMapPipeline(String bindingVar, List<MapEntry> entries) {
+    return new PipeExpr(
+        MapExpr.of(entries),
+        List.of(
+            new PipeStep(
+                RemoteCallExpr.of(
+                    "Enum",
+                    "reject",
+                    List.of(
+                        new AnonFun(
+                            List.of(
+                                AnonFunClause.of(
+                                    List.of(
+                                        TuplePattern.of(
+                                            List.of(
+                                                VariablePattern.of("_"),
+                                                VariablePattern.of("v")))),
+                                    LocalCallExpr.of("is_nil", List.of(Variable.of("v")))))))),
+                List.of()),
+            new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of())));
   }
 
   private static String helperName(SymbolProvider sp, Shape shape) {

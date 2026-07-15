@@ -1,14 +1,13 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Alias;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Moduledoc;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
 import io.smithy.beam.core.BeamXmlBindingIndex;
-import io.smithy.beam.ir.elixir.ExAliasAttr;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModule;
-import io.smithy.beam.ir.elixir.ExModuleAttribute;
-import io.smithy.beam.ir.elixir.ExModuledoc;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -31,7 +30,7 @@ final class ElixirRestXmlIr {
     return layout(ctx, service).serverCodecModuleName(BeamProtocolIds.REST_XML) + ".ex";
   }
 
-  static ExModule buildClientCodecModule(ElixirContext ctx, ServiceShape service) {
+  static Module buildClientCodecModule(ElixirContext ctx, ServiceShape service) {
     Model model = ctx.model();
     BeamElixirLayout layout = layout(ctx, service);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
@@ -42,7 +41,7 @@ final class ElixirRestXmlIr {
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
     boolean encodeWithConfig = ElixirRestXmlSupport.serviceEncodesWithConfig(model, service);
-    List<ExFunction> functions =
+    List<Function> functions =
         clientCodecFunctions(
             model,
             service,
@@ -54,23 +53,27 @@ final class ElixirRestXmlIr {
             BeamXmlBindingIndex.xmlNamespaceUri(service),
             encodeWithConfig);
 
-    List<ExModuleAttribute> aliases = new ArrayList<>();
-    aliases.add(ExAliasAttr.alias(runtimeMod, "RuntimeTypes"));
-    aliases.add(ExAliasAttr.alias(typesMod, "Types"));
+    List<Alias> aliases = new ArrayList<>();
+    aliases.add(Alias.of(runtimeMod, "RuntimeTypes"));
+    aliases.add(Alias.of(typesMod, "Types"));
     if (BeamS3CustomizationIndex.isS3Service(service)) {
-      aliases.add(ExAliasAttr.alias("S3Endpoint"));
+      aliases.add(Alias.of("S3Endpoint"));
     }
 
-    return ExModule.module(
+    return new Module(
         moduleName,
-        List.of(
-            ExModuledoc.moduledoc(
-                "REST-XML codecs for " + service.getId() + " (generated). Do not edit.")),
+        Moduledoc.of(
+            "REST-XML codecs for " + service.getId() + " (generated). Do not edit."),
+        List.of(),
         aliases,
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
         functions);
   }
 
-  static ExModule buildServerCodecModule(ElixirContext ctx, ServiceShape service) {
+  static Module buildServerCodecModule(ElixirContext ctx, ServiceShape service) {
     Model model = ctx.model();
     BeamElixirLayout layout = layout(ctx, service);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
@@ -80,7 +83,7 @@ final class ElixirRestXmlIr {
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
-    List<ExFunction> functions =
+    List<Function> functions =
         serverCodecFunctions(
             model,
             service,
@@ -91,29 +94,32 @@ final class ElixirRestXmlIr {
             runtimeMod,
             BeamXmlBindingIndex.xmlNamespaceUri(service));
 
-    return ExModule.module(
+    return new Module(
         moduleName,
+        Moduledoc.of(
+            "Server REST-XML codecs for " + service.getId() + " (generated). Do not edit."),
+        List.of(),
         List.of(
-            ExModuledoc.moduledoc(
-                "Server REST-XML codecs for " + service.getId() + " (generated). Do not edit.")),
-        List.of(
-            ExAliasAttr.alias(runtimeMod, "RuntimeTypes"), ExAliasAttr.alias(typesMod, "Types")),
+            Alias.of(runtimeMod, "RuntimeTypes"),
+            Alias.of(typesMod, "Types")),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
         functions);
   }
 
   static void emitClientCodecModule(ElixirContext ctx, ServiceShape service) {
-    ExModule module = buildClientCodecModule(ctx, service);
-    ElixirCodecEmission.writeModule(ctx, clientCodecFileName(ctx, service), module);
+    ElixirCodecEmission.writeModule(ctx, clientCodecFileName(ctx, service), buildClientCodecModule(ctx, service));
   }
 
   static void emitServerCodecModule(ElixirContext ctx, ServiceShape service) {
-    ExModule module = buildServerCodecModule(ctx, service);
-    ElixirCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service), module);
+    ElixirCodecEmission.writeModule(ctx, serverCodecFileName(ctx, service), buildServerCodecModule(ctx, service));
   }
 
-  static List<ExFunction> enumHelperFunctions(
+  static List<Function> enumHelperFunctions(
       Model model, ServiceShape service, SymbolProvider sp) {
-    List<ExFunction> functions = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (EnumShape enumShape : ElixirRestJsonSupport.reachableEnumShapes(model, service)) {
       functions.addAll(ElixirEnumHelperIr.enumDecodeEncode(enumShape, sp));
     }
@@ -123,22 +129,31 @@ final class ElixirRestXmlIr {
     return functions;
   }
 
-  static List<ExFunction> sharedClientCodecHelpers() {
-    return List.of(
-        ElixirCodecHelperIr.prefixHeadersToList(),
-        ElixirCodecHelperIr.prefixHeadersFromList(),
-        ElixirCodecHelperIr.headerValue(),
-        ElixirCodecHelperIr.headerValueRaw(),
-        ElixirCodecHelperIr.generateUuid(),
-        ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY),
-        ElixirCodecHelperIr.encodeQueryValueXmlQuery());
+  static List<Function> sharedClientCodecHelpers() {
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(ElixirCodecHelperIr.prefixHeadersToList());
+    functions.addAll(ElixirCodecHelperIr.prefixHeadersFromList());
+    functions.addAll(ElixirCodecHelperIr.headerValue());
+    functions.addAll(ElixirCodecHelperIr.headerValueRaw());
+    functions.addAll(ElixirCodecHelperIr.generateUuid());
+    functions.addAll(ElixirCodecHelperIr.toBinary(ElixirCodecHelperIr.ToBinaryVariant.XML_QUERY));
+    functions.addAll(ElixirCodecHelperIr.encodeQueryValueXmlQuery());
+    return functions;
+  }
+
+  static List<Function> xmlHelperFunctions(Optional<String> serviceNamespace) {
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
+    functions.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
+    functions.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
+    return functions;
   }
 
   static boolean serviceEncodesWithConfig(Model model, ServiceShape service) {
     return ElixirRestXmlSupport.serviceEncodesWithConfig(model, service);
   }
 
-  static List<ExFunction> clientCodecFunctions(
+  static List<Function> clientCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -148,24 +163,17 @@ final class ElixirRestXmlIr {
       String runtimeMod,
       Optional<String> serviceNamespace,
       boolean encodeWithConfig) {
-    List<ExFunction> functions = new ArrayList<>();
-    functions.add(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
+    List<Function> functions = new ArrayList<>();
     for (OperationShape op : operations) {
-      functions.add(
+      functions.addAll(
           ElixirRestXmlOperationIr.buildEncodeRequest(
               model, service, op, httpIndex, sp, typesMod, runtimeMod, encodeWithConfig));
-      ExFunction decodeResponse =
-          ElixirRestXmlOperationIr.buildDecodeResponse(model, op, httpIndex, sp, typesMod);
-      functions.add(decodeResponse);
-      ExFunction errorDispatch =
-          ElixirRestXmlOperationIr.buildErrorDispatch(model, op, sp, typesMod);
-      if (errorDispatch != null) {
-        functions.add(errorDispatch);
-      }
+      functions.addAll(
+          ElixirRestXmlOperationIr.buildDecodeResponse(model, op, httpIndex, sp, typesMod));
+      functions.addAll(ElixirRestXmlOperationIr.buildErrorDispatch(model, op, sp, typesMod));
     }
     functions.addAll(enumHelperFunctions(model, service, sp));
-    functions.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
-    functions.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
+    functions.addAll(xmlHelperFunctions(serviceNamespace));
     functions.addAll(sharedClientCodecHelpers());
     if (encodeWithConfig) {
       functions.addAll(ElixirHostLabelIr.buildHostFunctions(model, service, sp));
@@ -173,7 +181,7 @@ final class ElixirRestXmlIr {
     return functions;
   }
 
-  static List<ExFunction> serverCodecFunctions(
+  static List<Function> serverCodecFunctions(
       Model model,
       ServiceShape service,
       List<OperationShape> operations,
@@ -182,18 +190,16 @@ final class ElixirRestXmlIr {
       String typesMod,
       String runtimeMod,
       Optional<String> serviceNamespace) {
-    List<ExFunction> functions = new ArrayList<>();
-    functions.add(ElixirXmlCodecIr.xmlNamespace(serviceNamespace));
+    List<Function> functions = new ArrayList<>();
     for (OperationShape op : operations) {
-      functions.add(
+      functions.addAll(
           ElixirRestXmlOperationIr.buildDecodeRequest(model, op, httpIndex, sp, typesMod));
-      functions.add(
+      functions.addAll(
           ElixirRestXmlOperationIr.buildEncodeResponse(
               model, op, httpIndex, sp, typesMod, runtimeMod));
     }
     functions.addAll(enumHelperFunctions(model, service, sp));
-    functions.addAll(ElixirXmlCodecIr.restXmlEncodeHelpers());
-    functions.addAll(ElixirXmlCodecIr.restXmlDecodeHelpers());
+    functions.addAll(xmlHelperFunctions(serviceNamespace));
     return functions;
   }
 

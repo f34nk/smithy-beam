@@ -1,17 +1,17 @@
 package io.smithy.beam.elixir;
 
-import io.smithy.beam.ir.elixir.ExCallbackSpec;
+import io.beam.ir.elixir.Callback;
 import java.util.ArrayList;
 import java.util.List;
 
 final class ElixirBehaviourModuleBuilder {
-  private final List<ExCallbackSpec> callbacks = new ArrayList<>();
+  private final List<Callback> callbacks = new ArrayList<>();
 
-  void addCallback(ExCallbackSpec callback) {
+  void addCallback(Callback callback) {
     callbacks.add(callback);
   }
 
-  List<ExCallbackSpec> callbacks() {
+  List<Callback> callbacks() {
     return callbacks;
   }
 }

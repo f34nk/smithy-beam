@@ -1,42 +1,42 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.AssignPattern;
+import io.beam.ir.elixir.BlockExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.ComparisonGuard;
+import io.beam.ir.elixir.ConcatPattern;
+import io.beam.ir.elixir.ConsListPattern;
+import io.beam.ir.elixir.DotCallExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.Guard;
+import io.beam.ir.elixir.IntegerExpr;
+import io.beam.ir.elixir.ListExpr;
+import io.beam.ir.elixir.ListPattern;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.Moduledoc;
+import io.beam.ir.elixir.Module;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.PipeExpr;
+import io.beam.ir.elixir.PipeStep;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StringPattern;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
+import io.beam.ir.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpPathPatterns;
 import io.smithy.beam.core.BeamProtocolIds;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExBinaryConcatPattern;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExCapturedBlock;
-import io.smithy.beam.ir.elixir.ExCase;
-import io.smithy.beam.ir.elixir.ExCaseBranch;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExComment;
-import io.smithy.beam.ir.elixir.ExConsPattern;
-import io.smithy.beam.ir.elixir.ExExprBlock;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExGuard;
-import io.smithy.beam.ir.elixir.ExInteger;
-import io.smithy.beam.ir.elixir.ExListPattern;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMatch;
-import io.smithy.beam.ir.elixir.ExModule;
-import io.smithy.beam.ir.elixir.ExModuledoc;
-import io.smithy.beam.ir.elixir.ExOp;
-import io.smithy.beam.ir.elixir.ExPattern;
-import io.smithy.beam.ir.elixir.ExPinPattern;
-import io.smithy.beam.ir.elixir.ExPipeline;
-import io.smithy.beam.ir.elixir.ExPreambleEntry;
-import io.smithy.beam.ir.elixir.ExRemoteCall;
-import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStringPattern;
-import io.smithy.beam.ir.elixir.ExStructAccess;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -51,7 +51,7 @@ import software.amazon.smithy.model.traits.HttpTrait;
 final class ElixirRouterIr {
   private ElixirRouterIr() {}
 
-  static ExModule routerModule(
+  static Module routerModule(
       Model model,
       ServiceShape service,
       BeamElixirLayout layout,
@@ -62,141 +62,151 @@ final class ElixirRouterIr {
     String routerMod = ElixirSymbolProvider.toModuleName(layout.routerModuleName());
     String serverMod = ElixirSymbolProvider.toModuleName(layout.serverModuleName());
 
-    List<ExPreambleEntry> preamble;
-    List<ExFunction> functions;
+    Moduledoc moduledoc;
+    List<Function> functions = new ArrayList<>();
     if (BeamProtocolIds.AWS_JSON_1_0.equals(protocol)
         || BeamProtocolIds.AWS_JSON_1_1.equals(protocol)) {
-      preamble =
-          List.of(
-              ExModuledoc.moduledoc("Generated AWS JSON router for " + service.getId() + "."),
-              ExComment.comment(
-                  "Handler must export handle_<operation>/3; typically "
-                      + serverMod
-                      + " after init_handlers/0."));
-      functions =
-          new ArrayList<>(
-              List.of(awsJsonDispatch(), awsJsonRoute(service, operations, sp, codecMod)));
+      moduledoc = Moduledoc.of("Generated AWS JSON router for " + service.getId() + ".");
+      functions.add(awsJsonDispatch());
+      functions.addAll(awsJsonRoute(service, operations, sp, codecMod));
     } else {
-      preamble =
-          List.of(
-              ExModuledoc.moduledoc("Generated HTTP router for " + service.getId() + "."),
-              ExComment.comment(
-                  "Handler must export handle_<operation>/3; typically "
-                      + serverMod
-                      + " after init_handlers/0."));
+      moduledoc = Moduledoc.of("Generated HTTP router for " + service.getId() + ".");
       HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-      functions =
-          new ArrayList<>(List.of(httpDispatch(), httpRoute(httpIndex, operations, sp, codecMod)));
+      functions.add(httpDispatch());
+      functions.addAll(httpRoute(httpIndex, operations, sp, codecMod));
     }
     if (serviceHasLabelBindings(model, operations)) {
       functions.addAll(labelParsingFunctions());
     }
-
-    return ExModule.module(routerMod, preamble, List.of(), functions);
-  }
-
-  private static ExFunction httpDispatch() {
-    return ExFunction.functionWithSpec(
-        "def",
-        "dispatch",
-        ExSpec.functionSpec("dispatch", "module(), map()", "term()"),
+    return new Module(
+        routerMod,
+        moduledoc,
+        List.of(),
+        List.of(),
         List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("handler"), ExVarPattern.var("request")),
-                ExCallLocal.callLocal(
-                    "route",
-                    ExStructAccess.structAccess(ExVar.var("request"), "method"),
-                    ExStructAccess.structAccess(ExVar.var("request"), "path"),
-                    ExVar.var("handler"),
-                    ExVar.var("request")))));
+            "# Handler must export handle_<operation>/3; typically "
+                + serverMod
+                + " after init_handlers/0."),
+        List.of(),
+        List.of(),
+        List.of(),
+        functions);
   }
 
-  private static ExFunction awsJsonDispatch() {
-    return ExFunction.functionWithSpec(
-        "def",
+  private static Function httpDispatch() {
+    return new Function(
         "dispatch",
-        ExSpec.functionSpec("dispatch", "module(), map()", "term()"),
+        false,
         List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("handler"), ExVarPattern.var("request")),
-                ExCallLocal.callLocal(
-                    "route",
-                    ExStructAccess.structAccess(ExVar.var("request"), "method"),
-                    ExStructAccess.structAccess(ExVar.var("request"), "path"),
-                    ExStructAccess.structAccess(ExVar.var("request"), "headers"),
-                    ExVar.var("handler"),
-                    ExVar.var("request")))));
+            FunctionHead.of(
+                List.of(VariablePattern.of("handler"), VariablePattern.of("request")))),
+        LocalCallExpr.of(
+            "route",
+            List.of(
+                new DotCallExpr(Variable.of("request"), "method", List.of()),
+                new DotCallExpr(Variable.of("request"), "path", List.of()),
+                Variable.of("handler"),
+                Variable.of("request"))),
+        Spec.of("dispatch(module(), map()) :: term()"),
+        null,
+        false);
   }
 
-  private static ExFunction httpRoute(
+  private static Function awsJsonDispatch() {
+    return new Function(
+        "dispatch",
+        false,
+        List.of(
+            FunctionHead.of(
+                List.of(VariablePattern.of("handler"), VariablePattern.of("request")))),
+        LocalCallExpr.of(
+            "route",
+            List.of(
+                new DotCallExpr(Variable.of("request"), "method", List.of()),
+                new DotCallExpr(Variable.of("request"), "path", List.of()),
+                new DotCallExpr(Variable.of("request"), "headers", List.of()),
+                Variable.of("handler"),
+                Variable.of("request"))),
+        Spec.of("dispatch(module(), map()) :: term()"),
+        null,
+        false);
+  }
+
+  private static List<Function> httpRoute(
       HttpBindingIndex httpIndex,
       List<OperationShape> operations,
       SymbolProvider sp,
       String codecMod) {
-    List<ExClause> clauses = new ArrayList<>();
+    List<Function> functions = new ArrayList<>();
     for (OperationShape op : operations) {
       List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
-      clauses.add(routeClause(op, httpIndex, sp, codecMod, !labels.isEmpty()));
+      functions.add(routeClause(op, httpIndex, sp, codecMod, !labels.isEmpty()));
     }
-    clauses.add(notFoundClause(4));
-    return ExFunction.defpFunction("route", clauses);
+    functions.add(notFoundFunction(4));
+    return functions;
   }
 
-  private static ExFunction awsJsonRoute(
+  private static List<Function> awsJsonRoute(
       ServiceShape service, List<OperationShape> operations, SymbolProvider sp, String codecMod) {
     String targetPrefix = service.getId().getName();
-    List<ExCaseBranch> targetBranches = new ArrayList<>();
+    List<Clause> targetBranches = new ArrayList<>();
     for (OperationShape op : operations) {
       String opName = sp.toSymbol(op).getName();
       String handlerFn = "handle_" + opName;
       String amzTarget = targetPrefix + "." + op.getId().getName();
       targetBranches.add(
-          ExCaseBranch.branch(
-              ExTuplePattern.tuple(ExVarPattern.var("_"), ExStringPattern.string(amzTarget)),
-              ExExprBlock.block(
-                  ExMatch.match(
-                      ExVarPattern.var("input"),
-                      ExCall.call(codecMod, "decode_" + opName + "_request", ExVar.var("request"))),
-                  ExRemoteCall.call(
-                      ExVar.var("handler"),
-                      handlerFn,
-                      ExMap.map(),
-                      ExVar.var("input"),
-                      ExMap.map()))));
+          Clause.of(
+              TuplePattern.of(List.of(WildcardPattern.of(), StringPattern.of(amzTarget))),
+              new BlockExpr(
+                  List.of(
+                      MatchExpr.bind(
+                          "input",
+                          RemoteCallExpr.of(
+                              codecMod,
+                              "decode_" + opName + "_request",
+                              List.of(Variable.of("request"))),
+                          handlerCall(handlerFn))))));
     }
     targetBranches.add(
-        ExCaseBranch.branch(
-            ExVarPattern.var("_"),
-            ExTuple.tuple(
-                ExAtom.atom("error"),
-                ExTuple.tuple(
-                    ExAtom.atom("not_found"), ExString.string("POST"), ExString.string("/")))));
+        Clause.of(
+            WildcardPattern.of(),
+            TupleExpr.of(
+                List.of(
+                    AtomExpr.of("error"),
+                    TupleExpr.of(
+                        List.of(
+                            AtomExpr.of("not_found"),
+                            StringExpr.of("POST"),
+                            StringExpr.of("/")))))));
 
-    ExCase targetCase =
-        ExCase.caseExpr(
-            ExCall.call(
+    Expression targetCase =
+        new CaseExpr(
+            RemoteCallExpr.of(
                 "List",
                 "keyfind",
-                ExVar.var("headers"),
-                ExString.string("X-Amz-Target"),
-                ExInteger.integer(0)),
-            targetBranches.toArray(ExCaseBranch[]::new));
+                List.of(
+                    Variable.of("headers"),
+                    StringExpr.of("X-Amz-Target"),
+                    IntegerExpr.of(0))),
+            targetBranches);
 
-    List<ExClause> clauses = new ArrayList<>();
-    clauses.add(
-        ExClause.blockClause(
+    List<Function> functions = new ArrayList<>();
+    functions.add(
+        routeFunction(
             List.of(
-                ExStringPattern.string("POST"),
-                ExStringPattern.string("/"),
-                ExVarPattern.var("headers"),
-                ExVarPattern.var("handler"),
-                ExVarPattern.var("request")),
-            targetCase));
-    clauses.add(notFoundClause(5));
-    return ExFunction.defpFunction("route", clauses);
+                StringPattern.of("POST"),
+                StringPattern.of("/"),
+                VariablePattern.of("headers"),
+                VariablePattern.of("handler"),
+                VariablePattern.of("request")),
+            null,
+            targetCase,
+            false));
+    functions.add(notFoundFunction(5));
+    return functions;
   }
 
-  private static ExClause routeClause(
+  private static Function routeClause(
       OperationShape op,
       HttpBindingIndex httpIndex,
       SymbolProvider sp,
@@ -208,113 +218,133 @@ final class ElixirRouterIr {
     String opName = sp.toSymbol(op).getName();
     String handlerFn = "handle_" + opName;
     List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
-    ExPattern pathPattern = pathMatchPattern(uriTemplate, labels);
-    List<ExGuard> guards = trailingLabelGuard(uriTemplate);
+    Pattern pathPattern = pathMatchPattern(uriTemplate, labels);
+    Guard guard = trailingLabelGuard(uriTemplate);
 
-    if (labeled) {
-      return ExClause.blockClause(
-          List.of(
-              ExStringPattern.string(method),
-              pathPattern,
-              ExVarPattern.var("handler"),
-              ExVarPattern.var("request")),
-          guards,
-          labeledRouteBody(uriTemplate, codecMod, opName, handlerFn, method));
-    }
-
-    return ExClause.blockClause(
+    List<Pattern> params =
         List.of(
-            ExStringPattern.string(method),
+            StringPattern.of(method),
             pathPattern,
-            ExVarPattern.var("handler"),
-            ExVarPattern.var("request")),
-        guards,
-        literalRouteBody(codecMod, opName, handlerFn));
+            VariablePattern.of("handler"),
+            VariablePattern.of("request"));
+
+    Expression body =
+        labeled
+            ? labeledRouteBody(uriTemplate, codecMod, opName, handlerFn, method)
+            : literalRouteBody(codecMod, opName, handlerFn);
+
+    return routeFunction(params, guard, body, false);
   }
 
-  private static ExCase labeledRouteBody(
+  private static Expression labeledRouteBody(
       String uriTemplate, String codecMod, String opName, String handlerFn, String method) {
-    return ExCase.caseExpr(
-        ExCallLocal.callLocal("parse_labels", ExVar.var("path"), ExString.string(uriTemplate)),
-        ExCaseBranch.branch(
-            ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("label_map")),
-            ExExprBlock.block(
-                ExMatch.match(
-                    ExVarPattern.var("input"),
-                    ExCall.call(
-                        codecMod,
-                        "decode_" + opName + "_request",
-                        ExVar.var("request"),
-                        ExVar.var("label_map"))),
-                ExRemoteCall.call(
-                    ExVar.var("handler"),
-                    handlerFn,
-                    ExMap.map(),
-                    ExVar.var("input"),
-                    ExMap.map()))),
-        ExCaseBranch.branch(
-            ExTuplePattern.tuple(ExAtomPattern.atom("error"), ExAtomPattern.atom("path_mismatch")),
-            ExTuple.tuple(
-                ExAtom.atom("error"),
-                ExTuple.tuple(
-                    ExAtom.atom("not_found"), ExString.string(method), ExVar.var("path")))));
+    return new CaseExpr(
+        LocalCallExpr.of(
+            "parse_labels", List.of(Variable.of("path"), StringExpr.of(uriTemplate))),
+        List.of(
+            Clause.of(
+                TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("label_map"))),
+                new BlockExpr(
+                    List.of(
+                        MatchExpr.bind(
+                            "input",
+                            RemoteCallExpr.of(
+                                codecMod,
+                                "decode_" + opName + "_request",
+                                List.of(Variable.of("request"), Variable.of("label_map"))),
+                            handlerCall(handlerFn))))),
+            Clause.of(
+                TuplePattern.of(
+                    List.of(AtomPattern.of("error"), AtomPattern.of("path_mismatch"))),
+                TupleExpr.of(
+                    List.of(
+                        AtomExpr.of("error"),
+                        TupleExpr.of(
+                            List.of(
+                                AtomExpr.of("not_found"),
+                                StringExpr.of(method),
+                                Variable.of("path"))))))));
   }
 
-  private static ExExprBlock literalRouteBody(String codecMod, String opName, String handlerFn) {
-    return ExExprBlock.block(
-        ExMatch.match(
-            ExVarPattern.var("input"),
-            ExCall.call(codecMod, "decode_" + opName + "_request", ExVar.var("request"))),
-        ExRemoteCall.call(
-            ExVar.var("handler"), handlerFn, ExMap.map(), ExVar.var("input"), ExMap.map()));
+  private static Expression literalRouteBody(String codecMod, String opName, String handlerFn) {
+    return new BlockExpr(
+        List.of(
+            MatchExpr.bind(
+                "input",
+                RemoteCallExpr.of(
+                    codecMod, "decode_" + opName + "_request", List.of(Variable.of("request"))),
+                handlerCall(handlerFn))));
   }
 
-  private static ExClause notFoundClause(int arity) {
-    List<ExPattern> patterns = new ArrayList<>();
-    patterns.add(ExVarPattern.var("method"));
-    patterns.add(ExVarPattern.var("path"));
+  private static Expression handlerCall(String handlerFn) {
+    return new DotCallExpr(
+        Variable.of("handler"),
+        handlerFn,
+        List.of(MapExpr.of(List.of()), Variable.of("input"), MapExpr.of(List.of())));
+  }
+
+  private static Function notFoundFunction(int arity) {
+    List<Pattern> patterns = new ArrayList<>();
+    patterns.add(VariablePattern.of("method"));
+    patterns.add(VariablePattern.of("path"));
     if (arity == 5) {
-      patterns.add(ExVarPattern.var("_headers"));
+      patterns.add(VariablePattern.of("_headers"));
     }
-    patterns.add(ExVarPattern.var("_handler"));
-    patterns.add(ExVarPattern.var("_request"));
-    return ExClause.clause(
+    patterns.add(VariablePattern.of("_handler"));
+    patterns.add(VariablePattern.of("_request"));
+    return routeFunction(
         patterns,
-        ExTuple.tuple(
-            ExAtom.atom("error"),
-            ExTuple.tuple(ExAtom.atom("not_found"), ExVar.var("method"), ExVar.var("path"))));
+        null,
+        TupleExpr.of(
+            List.of(
+                AtomExpr.of("error"),
+                TupleExpr.of(
+                    List.of(
+                        AtomExpr.of("not_found"),
+                        Variable.of("method"),
+                        Variable.of("path"))))),
+        true);
   }
 
-  private static ExPattern pathMatchPattern(String uriTemplate, List<HttpBinding> labels) {
-    if (labels.isEmpty()) {
-      return ExStringPattern.string(uriTemplate);
+  private static Function routeFunction(
+      List<Pattern> params, Guard guard, Expression body, boolean oneLiner) {
+    if (guard != null) {
+      return new Function(
+          "route", true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
     }
-    return ExPinPattern.pin(buildPathConcatPattern(uriTemplate), ExVarPattern.var("path"));
+    return new Function("route", true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
-  private static ExPattern buildPathConcatPattern(String uriTemplate) {
+  private static Pattern pathMatchPattern(String uriTemplate, List<HttpBinding> labels) {
+    if (labels.isEmpty()) {
+      return StringPattern.of(uriTemplate);
+    }
+    return AssignPattern.of(buildPathConcatPattern(uriTemplate), VariablePattern.of("path"));
+  }
+
+  private static Pattern buildPathConcatPattern(String uriTemplate) {
     List<BeamHttpPathPatterns.PathSegment> segments =
         BeamHttpPathPatterns.parseTemplate(uriTemplate);
-    ExPattern current = null;
+    Pattern current = null;
     int labelIndex = 0;
     for (BeamHttpPathPatterns.PathSegment seg : segments) {
-      ExPattern next;
+      Pattern next;
       if (seg.kind() == BeamHttpPathPatterns.SegmentKind.LABEL) {
-        next = ExVarPattern.var(labelVarName(labelIndex++));
+        next = VariablePattern.of(labelVarName(labelIndex++));
       } else {
-        next = ExStringPattern.string(seg.value());
+        next = StringPattern.of(seg.value());
       }
-      current = current == null ? next : ExBinaryConcatPattern.concat(current, next);
+      current = current == null ? next : ConcatPattern.of(current, next);
     }
-    return current == null ? ExStringPattern.string("") : current;
+    return current == null ? StringPattern.of("") : current;
   }
 
-  private static List<ExGuard> trailingLabelGuard(String uriTemplate) {
+  private static Guard trailingLabelGuard(String uriTemplate) {
     String var = trailingLabelVarName(uriTemplate);
     if (var == null) {
-      return List.of();
+      return null;
     }
-    return List.of(ExGuard.exprGuard(ExOp.op("!=", ExVar.var(var), ExString.string(""))));
+    return new ComparisonGuard(Variable.of(var), "!=", StringExpr.of(""));
   }
 
   private static String labelVarName(int index) {
@@ -347,116 +377,157 @@ final class ElixirRouterIr {
     return false;
   }
 
-  static List<ExFunction> labelParsingFunctions() {
-    return List.of(parseLabels(), segments(), matchSegments(), labelName());
+  static List<Function> labelParsingFunctions() {
+    List<Function> functions = new ArrayList<>();
+    functions.add(parseLabels());
+    functions.add(segments());
+    functions.addAll(matchSegments());
+    functions.addAll(labelName());
+    return functions;
   }
 
-  static ExFunction parseLabels() {
-    return ExFunction.functionWithSpec(
-        "defp",
+  static Function parseLabels() {
+    return new Function(
         "parse_labels",
-        ExSpec.functionSpec(
-            "parse_labels", "String.t(), String.t()", "{:ok, map()} | {:error, :path_mismatch}"),
+        true,
         List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("path"), ExVarPattern.var("template")),
-                ExCase.caseExpr(
-                    ExCallLocal.callLocal(
-                        "match_segments",
-                        ExCallLocal.callLocal("segments", ExVar.var("path")),
-                        ExCallLocal.callLocal("segments", ExVar.var("template")),
-                        ExMap.map()),
-                    List.of(
-                        ExCaseBranch.branch(
-                            ExTuplePattern.tuple(
-                                ExAtomPattern.atom("ok"), ExVarPattern.var("labels")),
-                            ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("labels"))),
-                        ExCaseBranch.branch(
-                            ExVarPattern.var("_"),
-                            ExTuple.tuple(ExAtom.atom("error"), ExAtom.atom("path_mismatch")))),
-                    true))));
+            FunctionHead.of(
+                List.of(VariablePattern.of("path"), VariablePattern.of("template")))),
+        new PipeExpr(
+            LocalCallExpr.of(
+                "match_segments",
+                List.of(
+                    LocalCallExpr.of("segments", List.of(Variable.of("path"))),
+                    LocalCallExpr.of("segments", List.of(Variable.of("template"))),
+                    MapExpr.of(List.of()))),
+            List.of(
+                new PipeStep(
+                    CaseExpr.piped(
+                        List.of(
+                            Clause.of(
+                                TuplePattern.of(
+                                    List.of(
+                                        AtomPattern.of("ok"), VariablePattern.of("labels"))),
+                                TupleExpr.of(
+                                    List.of(AtomExpr.of("ok"), Variable.of("labels")))),
+                            Clause.of(
+                                WildcardPattern.of(),
+                                TupleExpr.of(
+                                    List.of(
+                                        AtomExpr.of("error"), AtomExpr.of("path_mismatch")))))),
+                    List.of()))),
+        Spec.of(
+            "parse_labels(String.t(), String.t()) :: {:ok, map()} | {:error, :path_mismatch}"),
+        null,
+        false);
   }
 
-  static ExFunction segments() {
-    return ExFunction.defpFunction(
+  static Function segments() {
+    return defp(
         "segments",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("path")),
-                ExPipeline.pipeChain(
-                    ExVar.var("path"),
-                    ExCapturedBlock.capturedBlock("String.split(\"/\", trim: true)")))));
-  }
-
-  static ExFunction matchSegments() {
-    return ExFunction.defpFunction(
-        "match_segments",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExListPattern.list(), ExListPattern.list(), ExVarPattern.var("acc")),
-                ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("acc"))),
-            ExClause.blockClause(
-                List.of(
-                    ExConsPattern.consPattern(
-                        ExVarPattern.var("seg"), ExVarPattern.var("rest_path")),
-                    ExConsPattern.consPattern(
-                        ExVarPattern.var("tpl_seg"), ExVarPattern.var("rest_tpl")),
-                    ExVarPattern.var("acc")),
-                ExCase.caseExpr(
-                    ExCallLocal.callLocal("label_name", ExVar.var("tpl_seg")),
+        List.of(VariablePattern.of("path")),
+        RemoteCallExpr.of(
+            "String",
+            "split",
+            List.of(
+                Variable.of("path"),
+                StringExpr.of("/"),
+                ListExpr.of(
                     List.of(
-                        ExCaseBranch.branch(
-                            ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("key")),
-                            ExExprBlock.block(
-                                ExMatch.match(
-                                    ExVarPattern.var("val"),
-                                    ExCall.call("URI", "decode", ExVar.var("seg"))),
-                                ExCallLocal.callLocal(
-                                    "match_segments",
-                                    ExVar.var("rest_path"),
-                                    ExVar.var("rest_tpl"),
-                                    ExCall.call(
-                                        "Map",
-                                        "put",
-                                        ExVar.var("acc"),
-                                        ExVar.var("key"),
-                                        ExVar.var("val"))))),
-                        ExCaseBranch.branch(
-                            ExVarPattern.var("_"),
-                            List.of(
-                                ExGuard.exprGuard(
-                                    ExOp.op("==", ExVar.var("seg"), ExVar.var("tpl_seg")))),
-                            ExCallLocal.callLocal(
-                                "match_segments",
-                                ExVar.var("rest_path"),
-                                ExVar.var("rest_tpl"),
-                                ExVar.var("acc"))),
-                        ExCaseBranch.branch(ExVarPattern.var("_"), ExAtom.atom("error"))),
-                    true)),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("_"), ExVarPattern.var("_"), ExVarPattern.var("_")),
-                ExAtom.atom("error"))));
+                        TupleExpr.of(
+                            List.of(AtomExpr.of("trim"), AtomExpr.of("true"))))))),
+        false);
   }
 
-  static ExFunction labelName() {
-    return ExFunction.defpFunction(
-        "label_name",
+  static List<Function> matchSegments() {
+    return List.of(
+        defp(
+            "match_segments",
+            List.of(
+                ListPattern.of(List.of()),
+                ListPattern.of(List.of()),
+                VariablePattern.of("acc")),
+            TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("acc"))),
+            true),
+        defp(
+            "match_segments",
+            List.of(
+                ConsListPattern.of(VariablePattern.of("seg"), VariablePattern.of("rest_path")),
+                ConsListPattern.of(VariablePattern.of("tpl_seg"), VariablePattern.of("rest_tpl")),
+                VariablePattern.of("acc")),
+            matchSegmentsConsBody(),
+            false),
+        defp(
+            "match_segments",
+            List.of(WildcardPattern.of(), WildcardPattern.of(), WildcardPattern.of()),
+            AtomExpr.of("error"),
+            true));
+  }
+
+  private static Expression matchSegmentsConsBody() {
+    return new CaseExpr(
+        LocalCallExpr.of("label_name", List.of(Variable.of("tpl_seg"))),
         List.of(
-            ExClause.blockClause(
+            Clause.of(
+                TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("key"))),
+                MatchExpr.bind(
+                    "val",
+                    RemoteCallExpr.of("URI", "decode", List.of(Variable.of("seg"))),
+                    LocalCallExpr.of(
+                        "match_segments",
+                        List.of(
+                            Variable.of("rest_path"),
+                            Variable.of("rest_tpl"),
+                            RemoteCallExpr.of(
+                                "Map",
+                                "put",
+                                List.of(
+                                    Variable.of("acc"),
+                                    Variable.of("key"),
+                                    Variable.of("val"))))))),
+            Clause.of(
+                WildcardPattern.of(),
+                new ComparisonGuard(Variable.of("seg"), "==", Variable.of("tpl_seg")),
+                LocalCallExpr.of(
+                    "match_segments",
+                    List.of(
+                        Variable.of("rest_path"),
+                        Variable.of("rest_tpl"),
+                        Variable.of("acc")))),
+            Clause.of(WildcardPattern.of(), AtomExpr.of("error"))));
+  }
+
+  static List<Function> labelName() {
+    return List.of(
+        defp(
+            "label_name",
+            List.of(
+                AssignPattern.of(
+                    ConcatPattern.of(StringPattern.of("{"), VariablePattern.of("rest")),
+                    VariablePattern.of("tpl_seg"))),
+            new CaseExpr(
+                RemoteCallExpr.of(
+                    "String",
+                    "split",
+                    List.of(
+                        Variable.of("rest"),
+                        StringExpr.of("}"),
+                        ListExpr.of(
+                            List.of(
+                                TupleExpr.of(
+                                    List.of(AtomExpr.of("parts"), IntegerExpr.of(2))))))),
                 List.of(
-                    ExBinaryConcatPattern.concat(
-                        ExStringPattern.string("{"), ExVarPattern.var("rest"))),
-                ExCase.caseExpr(
-                    ExCall.call(
-                        "String",
-                        "split",
-                        ExVar.var("rest"),
-                        ExString.string("}"),
-                        ExCapturedBlock.capturedBlock("parts: 2")),
-                    ExCaseBranch.branch(
-                        ExListPattern.list(ExVarPattern.var("label"), ExStringPattern.string("")),
-                        ExTuple.tuple(ExAtom.atom("ok"), ExVar.var("label"))),
-                    ExCaseBranch.branch(ExVarPattern.var("_"), ExAtom.atom("error")))),
-            ExClause.inlineClause(List.of(ExVarPattern.var("_")), ExAtom.atom("error"))));
+                    Clause.of(
+                        ListPattern.of(
+                            List.of(VariablePattern.of("label"), StringPattern.of(""))),
+                        TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("label")))),
+                    Clause.of(WildcardPattern.of(), AtomExpr.of("error")))),
+            false),
+        defp("label_name", List.of(WildcardPattern.of()), AtomExpr.of("error"), true));
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, Expression body, boolean oneLiner) {
+    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 }

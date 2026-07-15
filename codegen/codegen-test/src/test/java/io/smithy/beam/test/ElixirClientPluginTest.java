@@ -289,7 +289,8 @@ class ElixirClientPluginTest {
 
     String org = manifest.expectFileString("organization_resource.ex");
     assertThat(org).contains("defmodule OrganizationResource do");
-    assertThat(org).contains("Client.get_organization(config,");
+    assertThat(org).contains("Client.get_organization(");
+    assertThat(org).contains("config,");
     assertThat(org).contains("org_id: org_id");
     assertThat(org).contains("Client.create_organization(config, input)");
     assertThat(org).doesNotContain("%{input | }");

@@ -1,13 +1,9 @@
 package io.smithy.beam.elixir;
 
-import io.smithy.beam.ir.elixir.ExBlankLine;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModuleEntry;
-import io.smithy.beam.ir.elixir.ExSourceLine;
-import io.smithy.beam.ir.elixir.ExSpec;
-import io.smithy.beam.ir.elixir.ExTypeDef;
-import io.smithy.beam.ir.elixir.ExVar;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.Variable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,27 +11,25 @@ final class ElixirTypesIr {
 
   private ElixirTypesIr() {}
 
-  static List<ExModuleEntry> endpointRuleSetEntries(String ruleSetJson) {
-    List<ExModuleEntry> entries = new ArrayList<>();
-    entries.add(new ExBlankLine());
-    entries.add(ExTypeDef.alias("endpoint_rule_set", "map()"));
-    entries.add(ExSourceLine.line("@endpoint_rule_set_json ~S\"\"\""));
-    for (String line : ruleSetJson.split("\n", -1)) {
-      entries.add(ExSourceLine.line(line));
-    }
-    entries.add(ExSourceLine.line("\"\"\""));
-    entries.add(
-        ExSourceLine.line(
-            "Module.register_attribute(__MODULE__, :endpoint_rule_set, persist: true)"));
-    entries.add(ExSourceLine.line("@endpoint_rule_set Jason.decode!(@endpoint_rule_set_json)"));
-    return entries;
+  static List<String> endpointRuleSetEntries(String ruleSetJson) {
+    List<String> lines = new ArrayList<>();
+    lines.add("@type endpoint_rule_set :: map()");
+    lines.add("@endpoint_rule_set_json ~S\"\"\"");
+    lines.addAll(List.of(ruleSetJson.split("\n", -1)));
+    lines.add("\"\"\"");
+    lines.add("Module.register_attribute(__MODULE__, :endpoint_rule_set, persist: true)");
+    lines.add("@endpoint_rule_set Jason.decode!(@endpoint_rule_set_json)");
+    return lines;
   }
 
-  static ExFunction endpointRuleSetFunction() {
-    return ExFunction.functionWithSpec(
-        "def",
+  static Function endpointRuleSetFunction() {
+    return new Function(
         "endpoint_rule_set",
-        ExSpec.functionSpec("endpoint_rule_set", "", "endpoint_rule_set()"),
-        List.of(ExClause.inlineClause(List.of(), ExVar.var("@endpoint_rule_set"))));
+        false,
+        List.of(FunctionHead.of(List.of())),
+        Variable.of("@endpoint_rule_set"),
+        Spec.of("endpoint_rule_set() :: endpoint_rule_set()"),
+        null,
+        true);
   }
 }

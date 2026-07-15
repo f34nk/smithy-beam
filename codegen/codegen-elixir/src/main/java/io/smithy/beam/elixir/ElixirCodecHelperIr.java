@@ -1,31 +1,49 @@
 package io.smithy.beam.elixir;
 
-import io.smithy.beam.ir.elixir.ExAnonymousFn;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExCapturedBlock;
-import io.smithy.beam.ir.elixir.ExCase;
-import io.smithy.beam.ir.elixir.ExCaseBranch;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExConsPattern;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExGuard;
-import io.smithy.beam.ir.elixir.ExIf;
-import io.smithy.beam.ir.elixir.ExInteger;
-import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExNil;
-import io.smithy.beam.ir.elixir.ExNilPattern;
-import io.smithy.beam.ir.elixir.ExOp;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStringPattern;
-import io.smithy.beam.ir.elixir.ExStructPattern;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
+import io.beam.ir.elixir.AnonFun;
+import io.beam.ir.elixir.AnonFunClause;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.BinaryExpr;
+import io.beam.ir.elixir.BinaryPattern;
+import io.beam.ir.elixir.BinarySegmentExpr;
+import io.beam.ir.elixir.BinarySegmentPattern;
+import io.beam.ir.elixir.AssignPattern;
+import io.beam.ir.elixir.CaptureExpr;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.ComparisonGuard;
+import io.beam.ir.elixir.ConsListPattern;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.Guard;
+import io.beam.ir.elixir.IfExpr;
+import io.beam.ir.elixir.InfixExpr;
+import io.beam.ir.elixir.IntegerExpr;
+import io.beam.ir.elixir.InterpolatedExpr;
+import io.beam.ir.elixir.InterpolatedLiteral;
+import io.beam.ir.elixir.InterpolatedStringExpr;
+import io.beam.ir.elixir.IsTypeGuard;
+import io.beam.ir.elixir.ListExpr;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.MatchExpr;
+import io.beam.ir.elixir.NilExpr;
+import io.beam.ir.elixir.NilPattern;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.PipeExpr;
+import io.beam.ir.elixir.PipeStep;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StringPattern;
+import io.beam.ir.elixir.StructPattern;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
+import io.beam.ir.elixir.WildcardPattern;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,476 +56,695 @@ final class ElixirCodecHelperIr {
   }
 
   /** Reusable nil tail clauses for wire-optional decoders. */
-  static List<ExClause> nilUndefinedTailClauses() {
+  static List<Function> nilUndefinedTail(String name, Expression nilBody) {
     return List.of(
-        ExClause.clause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-        ExClause.clause(List.of(ExVarPattern.var("other")), ExVar.var("other")));
+        defp(name, List.of(NilPattern.of()), nilBody, true),
+        defp(name, List.of(VariablePattern.of("other")), Variable.of("other"), true));
   }
 
-  public static ExFunction uriEncode() {
-    return ExFunction.defpFunction(
-        "uri_encode",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("value")),
-                ExCall.call(
-                    "URI", "encode", ExCall.call("Kernel", "to_string", ExVar.var("value"))))));
-  }
-
-  public static ExFunction uriDecode() {
-    return ExFunction.defpFunction(
-        "uri_decode",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("value")),
-                ExCall.call("URI", "decode", ExVar.var("value")))));
-  }
-
-  public static ExFunction decodeQueryParam() {
-    return ExFunction.defpFunction(
-        "decode_query_param",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-            ExClause.inlineClause(List.of(ExVarPattern.var("true")), ExVar.var("true")),
-            ExClause.inlineClause(List.of(ExVarPattern.var("false")), ExVar.var("false")),
-            ExClause.inlineClause(List.of(ExStringPattern.string("true")), ExVar.var("true")),
-            ExClause.inlineClause(List.of(ExStringPattern.string("false")), ExVar.var("false")),
-            ExClause.inlineClause(List.of(ExVarPattern.var("value")), ExVar.var("value"))));
-  }
-
-  public static ExFunction prefixHeadersToList() {
-    return ExFunction.defpFunction(
-        "prefix_headers_to_list",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("_prefix"), ExNilPattern.nil()),
-                ExCapturedBlock.capturedBlock("[]")),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("prefix"), ExVarPattern.var("map")),
-                List.of(ExGuard.guard("is_map", ExVar.var("map"))),
-                ExCall.call(
-                    "Enum",
-                    "map",
-                    ExVar.var("map"),
-                    ExAnonymousFn.fn(
-                        ExClause.clause(
-                            List.of(
-                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v"))),
-                            ExTuple.tuple(
-                                ExOp.op("<>", ExVar.var("prefix"), ExVar.var("k")),
-                                ExCall.call("Kernel", "to_string", ExVar.var("v")))))))));
-  }
-
-  public static ExFunction prefixHeadersFromList() {
-    return ExFunction.defpFunction(
-        "prefix_headers_from_list",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("headers"), ExVarPattern.var("prefix")),
-                ExCapturedBlock.capturedBlock(
-                    "headers\n"
-                        + "|> Enum.filter(fn {name, _} -> String.starts_with?(name, prefix) end)\n"
-                        + "|> Map.new(fn {name, val} -> {String.slice(name, byte_size(prefix)..-1//1), val} end)\n"
-                        + "|> case do\n"
-                        + "  map when map == %{} -> nil\n"
-                        + "  map -> map\n"
-                        + "end"))));
-  }
-
-  public static ExFunction decodeSparseList() {
-    return ExFunction.defpFunction(
-        "decode_sparse_list",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExNil.nil()),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("list")),
-                List.of(ExGuard.guard("is_list", ExVar.var("list"))),
-                ExCapturedBlock.capturedBlock("Enum.map(list, fn nil -> nil; v -> v end)"))));
-  }
-
-  public static ExFunction decodeList() {
-    return ExFunction.defpFunction(
-        "decode_list",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("list")),
-                List.of(ExGuard.guard("is_list", ExVar.var("list"))),
-                ExCall.call(
-                    "Enum",
-                    "reject",
-                    ExVar.var("list"),
-                    ExOp.prefix("&", ExCapturedBlock.capturedBlock("is_nil/1"))))));
-  }
-
-  public static ExFunction decodeSparseMap() {
-    return ExFunction.defpFunction(
-        "decode_sparse_map",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("map")),
-                List.of(ExGuard.guard("is_map", ExVar.var("map"))),
-                ExCall.call(
-                    "Map",
-                    "new",
-                    ExVar.var("map"),
-                    ExAnonymousFn.fn(
-                        ExClause.clause(
-                            List.of(
-                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExNilPattern.nil())),
-                            ExTuple.tuple(ExVar.var("k"), ExAtom.atom("nil"))),
-                        ExClause.clause(
-                            List.of(
-                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v"))),
-                            ExTuple.tuple(ExVar.var("k"), ExVar.var("v"))))))));
-  }
-
-  public static ExFunction encodeTimestampEpochSeconds() {
-    return ExFunction.defpFunction(
-        "encode_timestamp_epoch_seconds",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExStructPattern.structFunctionHead("dt", "DateTime", List.of())),
-                ExCall.call("DateTime", "to_unix", ExVar.var("dt"))),
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil"))));
-  }
-
-  public static ExFunction encodeTimestampDateTime() {
-    return ExFunction.defpFunction(
-        "encode_timestamp_date_time",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExStructPattern.structFunctionHead("dt", "DateTime", List.of())),
-                ExCall.call("DateTime", "to_iso8601", ExVar.var("dt"))),
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil"))));
-  }
-
-  public static ExFunction decodeTimestampEpochSeconds() {
-    return ExFunction.defpFunction(
-        "decode_timestamp_epoch_seconds",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                List.of(ExGuard.guard("is_number", ExVar.var("v"))),
-                ExCall.call(
-                    "DateTime", "from_unix!", ExCall.call("Kernel", "trunc", ExVar.var("v"))))));
-  }
-
-  public static ExFunction decodeTimestampDateTime() {
-    return ExFunction.defpFunction(
-        "decode_timestamp_date_time",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                List.of(ExGuard.guard("is_number", ExVar.var("v"))),
-                ExCall.call(
-                    "DateTime", "from_unix!", ExCall.call("Kernel", "trunc", ExVar.var("v")))),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("v")),
-                List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
-                ExCase.caseExpr(
-                    ExCall.call("DateTime", "from_iso8601", ExVar.var("v")),
-                    ExCaseBranch.branch(
-                        ExTuplePattern.tuple(
-                            ExAtomPattern.atom("ok"),
-                            ExVarPattern.var("dt"),
-                            ExVarPattern.var("_")),
-                        ExVar.var("dt")),
-                    ExCaseBranch.branch(ExVarPattern.var("_"), ExAtom.atom("nil"))))));
-  }
-
-  public static ExFunction generateUuid() {
-    return ExFunction.defpFunction(
-        "generate_uuid",
-        List.of(
-            ExClause.blockClause(
-                List.of(),
-                ExCapturedBlock.capturedBlock(
-                    "<<a::32, b::16, _::4, c::12, _::2, d::14, e::48>> = :crypto.strong_rand_bytes(16)\n"
-                        + "<<a::32, b::16, 4::4, c::12, 2::2, d::14, e::48>>\n"
-                        + "|> Base.encode16(case: :lower)\n"
-                        + "|> then(fn hex ->\n"
-                        + "  <<part_a::8, part_b::4, part_c::4, part_d::4, part_e::12>> = hex\n"
-                        + "  \"#{part_a}-#{part_b}-#{part_c}-#{part_d}-#{part_e}\"\n"
-                        + "end)"))));
-  }
-
-  public static ExFunction decodeJsonBody() {
-    return ExFunction.defpFunction(
-        "decode_json_body",
-        List.of(
-            ExClause.inlineClause(List.of(ExStringPattern.string("")), ExMap.map()),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("body")),
-                ExCase.caseExpr(
-                    ExCall.call("Jason", "decode", ExVar.var("body")),
-                    ExCaseBranch.branch(
-                        ExTuplePattern.tuple(ExAtomPattern.atom("ok"), ExVarPattern.var("map")),
-                        List.of(ExGuard.guard("is_map", ExVar.var("map"))),
-                        ExVar.var("map")),
-                    ExCaseBranch.branch(ExVarPattern.var("_"), ExMap.map())))));
-  }
-
-  public static ExFunction contentTypeMatches() {
-    return ExFunction.defpFunction(
-        "content_type_matches",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("headers"), ExVarPattern.var("expected")),
-                ExCase.caseExpr(
-                    ExCall.call(
-                        "List",
-                        "keyfind",
-                        ExVar.var("headers"),
-                        ExString.string("Content-Type"),
-                        ExCapturedBlock.capturedBlock("0")),
-                    ExCaseBranch.branch(
-                        ExTuplePattern.tuple(ExVarPattern.var("_"), ExVarPattern.var("ct")),
-                        List.of(
-                            ExGuard.exprGuard(
-                                ExOp.op("==", ExVar.var("ct"), ExVar.var("expected")))),
-                        ExAtom.atom("ok")),
-                    ExCaseBranch.branch(
-                        ExTuplePattern.tuple(ExVarPattern.var("_"), ExVarPattern.var("ct")),
-                        List.of(ExGuard.guard("is_binary", ExVar.var("ct"))),
-                        ExIf.ifExpr(
-                            ExOp.op(
-                                "==",
-                                ExCallLocal.callLocal("ct_base", ExVar.var("ct")),
-                                ExCallLocal.callLocal("ct_base", ExVar.var("expected"))),
-                            ExAtom.atom("ok"),
-                            ExTuple.tuple(
-                                ExAtom.atom("error"),
-                                ExTuple.tuple(
-                                    ExAtom.atom("invalid_content_type"), ExVar.var("ct"))))),
-                    ExCaseBranch.branch(
-                        ExVarPattern.var("_"),
-                        ExTuple.tuple(
-                            ExAtom.atom("error"),
-                            ExTuple.tuple(
-                                ExAtom.atom("invalid_content_type"), ExAtom.atom("nil"))))))));
-  }
-
-  public static ExFunction ctBase() {
-    return ExFunction.defpFunction(
-        "ct_base",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("ct")),
-                ExCase.caseExpr(
-                    ExCall.call("String", "split", ExVar.var("ct"), ExString.string(";")),
-                    ExCaseBranch.branch(
-                        ExConsPattern.consPattern(ExVarPattern.var("base"), ExVarPattern.var("_")),
-                        ExVar.var("base")),
-                    ExCaseBranch.branch(ExVarPattern.var("_"), ExVar.var("ct"))))));
-  }
-
-  public static ExFunction headersSet() {
-    return ExFunction.defpFunction(
-        "headers_set",
-        List.of(
-            ExClause.inlineClause(
+  public static List<Function> uriEncode() {
+    return List.of(
+        defp(
+            "uri_encode",
+            List.of(VariablePattern.of("value")),
+            RemoteCallExpr.of(
+                "URI",
+                "encode",
                 List.of(
-                    ExVarPattern.var("name"),
-                    ExVarPattern.var("value"),
-                    ExVarPattern.var("headers")),
-                ExCall.call(
+                    RemoteCallExpr.of("Kernel", "to_string", List.of(Variable.of("value"))))),
+            true));
+  }
+
+  public static List<Function> uriDecode() {
+    return List.of(
+        defp("uri_decode", List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            "uri_decode",
+            List.of(VariablePattern.of("value")),
+            RemoteCallExpr.of("URI", "decode", List.of(Variable.of("value"))),
+            true));
+  }
+
+  public static List<Function> decodeQueryParam() {
+    return List.of(
+        defp("decode_query_param", List.of(NilPattern.of()), NilExpr.of(), true),
+        defp("decode_query_param", List.of(VariablePattern.of("true")), Variable.of("true"), true),
+        defp("decode_query_param", List.of(VariablePattern.of("false")), Variable.of("false"), true),
+        defp(
+            "decode_query_param",
+            List.of(StringPattern.of("true")),
+            Variable.of("true"),
+            true),
+        defp(
+            "decode_query_param",
+            List.of(StringPattern.of("false")),
+            Variable.of("false"),
+            true),
+        defp(
+            "decode_query_param",
+            List.of(VariablePattern.of("value")),
+            Variable.of("value"),
+            true));
+  }
+
+  public static List<Function> prefixHeadersToList() {
+    return List.of(
+        defp(
+            "prefix_headers_to_list",
+            List.of(VariablePattern.of("_prefix"), NilPattern.of()),
+            ListExpr.of(List.of()),
+            true),
+        defp(
+            "prefix_headers_to_list",
+            List.of(VariablePattern.of("prefix"), VariablePattern.of("map")),
+            IsTypeGuard.of("is_map", "map"),
+            RemoteCallExpr.of(
+                "Enum",
+                "map",
+                List.of(
+                    Variable.of("map"),
+                    new AnonFun(
+                        List.of(
+                            AnonFunClause.of(
+                                List.of(
+                                    TuplePattern.of(
+                                        List.of(
+                                            VariablePattern.of("k"), VariablePattern.of("v")))),
+                                TupleExpr.of(
+                                    List.of(
+                                        concat(Variable.of("prefix"), Variable.of("k")),
+                                        RemoteCallExpr.of(
+                                            "Kernel",
+                                            "to_string",
+                                            List.of(Variable.of("v")))))))))),
+            false));
+  }
+
+  public static List<Function> prefixHeadersFromList() {
+    return List.of(
+        defp(
+            "prefix_headers_from_list",
+            List.of(VariablePattern.of("headers"), VariablePattern.of("prefix")),
+            prefixHeadersFromListBody(),
+            false));
+  }
+
+  public static List<Function> decodeSparseList() {
+    return List.of(
+        defp("decode_sparse_list", List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            "decode_sparse_list",
+            List.of(VariablePattern.of("list")),
+            IsTypeGuard.of("is_list", "list"),
+            RemoteCallExpr.of(
+                "Enum",
+                "map",
+                List.of(
+                    Variable.of("list"),
+                    new AnonFun(
+                        List.of(
+                            AnonFunClause.of(List.of(NilPattern.of()), NilExpr.of()),
+                            AnonFunClause.of(
+                                List.of(VariablePattern.of("v")), Variable.of("v")))))),
+            false));
+  }
+
+  public static List<Function> decodeList() {
+    return List.of(
+        defp("decode_list", List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            "decode_list",
+            List.of(VariablePattern.of("list")),
+            IsTypeGuard.of("is_list", "list"),
+            RemoteCallExpr.of(
+                "Enum",
+                "reject",
+                List.of(Variable.of("list"), CaptureExpr.of("is_nil", 1))),
+            true));
+  }
+
+  public static List<Function> decodeSparseMap() {
+    return List.of(
+        defp("decode_sparse_map", List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            "decode_sparse_map",
+            List.of(VariablePattern.of("map")),
+            IsTypeGuard.of("is_map", "map"),
+            RemoteCallExpr.of(
+                "Map",
+                "new",
+                List.of(
+                    Variable.of("map"),
+                    new AnonFun(
+                        List.of(
+                            AnonFunClause.of(
+                                List.of(
+                                    TuplePattern.of(
+                                        List.of(VariablePattern.of("k"), NilPattern.of()))),
+                                TupleExpr.of(List.of(Variable.of("k"), NilExpr.of()))),
+                            AnonFunClause.of(
+                                List.of(
+                                    TuplePattern.of(
+                                        List.of(
+                                            VariablePattern.of("k"), VariablePattern.of("v")))),
+                                TupleExpr.of(
+                                    List.of(Variable.of("k"), Variable.of("v")))))))),
+            false));
+  }
+
+  public static List<Function> encodeTimestampEpochSeconds() {
+    return List.of(
+        defp(
+            "encode_timestamp_epoch_seconds",
+            List.of(AssignPattern.of("dt", StructPattern.of("DateTime", List.of()))),
+            RemoteCallExpr.of("DateTime", "to_unix", List.of(Variable.of("dt"))),
+            true),
+        defp("encode_timestamp_epoch_seconds", List.of(NilPattern.of()), NilExpr.of(), true));
+  }
+
+  public static List<Function> encodeTimestampDateTime() {
+    return List.of(
+        defp(
+            "encode_timestamp_date_time",
+            List.of(AssignPattern.of("dt", StructPattern.of("DateTime", List.of()))),
+            RemoteCallExpr.of("DateTime", "to_iso8601", List.of(Variable.of("dt"))),
+            true),
+        defp("encode_timestamp_date_time", List.of(NilPattern.of()), NilExpr.of(), true));
+  }
+
+  public static List<Function> decodeTimestampEpochSeconds() {
+    return List.of(
+        defp("decode_timestamp_epoch_seconds", List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            "decode_timestamp_epoch_seconds",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_number", "v"),
+            RemoteCallExpr.of(
+                "DateTime",
+                "from_unix!",
+                List.of(RemoteCallExpr.of("Kernel", "trunc", List.of(Variable.of("v"))))),
+            true));
+  }
+
+  public static List<Function> decodeTimestampDateTime() {
+    return List.of(
+        defp("decode_timestamp_date_time", List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            "decode_timestamp_date_time",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_number", "v"),
+            RemoteCallExpr.of(
+                "DateTime",
+                "from_unix!",
+                List.of(RemoteCallExpr.of("Kernel", "trunc", List.of(Variable.of("v"))))),
+            true),
+        defp(
+            "decode_timestamp_date_time",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_binary", "v"),
+            new CaseExpr(
+                RemoteCallExpr.of("DateTime", "from_iso8601", List.of(Variable.of("v"))),
+                List.of(
+                    Clause.of(
+                        TuplePattern.of(
+                            List.of(
+                                AtomPattern.of("ok"),
+                                VariablePattern.of("dt"),
+                                WildcardPattern.of())),
+                        Variable.of("dt")),
+                    Clause.of(WildcardPattern.of(), NilExpr.of()))),
+            false));
+  }
+
+  public static List<Function> generateUuid() {
+    BinaryPattern randPattern =
+        BinaryPattern.of(
+            List.of(
+                BinarySegmentPattern.of(VariablePattern.of("a"), "32"),
+                BinarySegmentPattern.of(VariablePattern.of("b"), "16"),
+                BinarySegmentPattern.of(WildcardPattern.of(), "4"),
+                BinarySegmentPattern.of(VariablePattern.of("c"), "12"),
+                BinarySegmentPattern.of(WildcardPattern.of(), "2"),
+                BinarySegmentPattern.of(VariablePattern.of("d"), "14"),
+                BinarySegmentPattern.of(VariablePattern.of("e"), "48")));
+
+    Expression uuidBinary =
+        new BinaryExpr(
+            List.of(
+                new BinarySegmentExpr(Variable.of("a"), "32"),
+                new BinarySegmentExpr(Variable.of("b"), "16"),
+                new BinarySegmentExpr(IntegerExpr.of(4), "4"),
+                new BinarySegmentExpr(Variable.of("c"), "12"),
+                new BinarySegmentExpr(IntegerExpr.of(2), "2"),
+                new BinarySegmentExpr(Variable.of("d"), "14"),
+                new BinarySegmentExpr(Variable.of("e"), "48")));
+
+    Expression keywordOptions =
+        ListExpr.of(
+            List.of(TupleExpr.of(List.of(AtomExpr.of("case"), AtomExpr.of("lower")))));
+
+    Expression formatHex =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(VariablePattern.of("hex")),
+                    MatchExpr.bind(
+                        BinaryPattern.of(
+                            List.of(
+                                BinarySegmentPattern.of(VariablePattern.of("part_a"), "8"),
+                                BinarySegmentPattern.of(VariablePattern.of("part_b"), "4"),
+                                BinarySegmentPattern.of(VariablePattern.of("part_c"), "4"),
+                                BinarySegmentPattern.of(VariablePattern.of("part_d"), "4"),
+                                BinarySegmentPattern.of(VariablePattern.of("part_e"), "12"))),
+                        Variable.of("hex"),
+                        new InterpolatedStringExpr(
+                            List.of(
+                                new InterpolatedExpr(Variable.of("part_a")),
+                                new InterpolatedLiteral("-"),
+                                new InterpolatedExpr(Variable.of("part_b")),
+                                new InterpolatedLiteral("-"),
+                                new InterpolatedExpr(Variable.of("part_c")),
+                                new InterpolatedLiteral("-"),
+                                new InterpolatedExpr(Variable.of("part_d")),
+                                new InterpolatedLiteral("-"),
+                                new InterpolatedExpr(Variable.of("part_e"))))))));
+
+    Expression body =
+        MatchExpr.bind(
+            randPattern,
+            RemoteCallExpr.of(":crypto", "strong_rand_bytes", List.of(IntegerExpr.of(16))),
+            new PipeExpr(
+                uuidBinary,
+                List.of(
+                    new PipeStep(
+                        RemoteCallExpr.of("Base", "encode16", List.of()),
+                        List.of(keywordOptions)),
+                    new PipeStep(
+                        RemoteCallExpr.of("Kernel", "then", List.of()), List.of(formatHex)))));
+
+    return List.of(
+        defp("generate_uuid", List.of(), body, false));
+  }
+
+  public static List<Function> decodeJsonBody() {
+    return List.of(
+        defp("decode_json_body", List.of(StringPattern.of("")), MapExpr.of(List.of()), true),
+        defp(
+            "decode_json_body",
+            List.of(VariablePattern.of("body")),
+            new CaseExpr(
+                RemoteCallExpr.of("Jason", "decode", List.of(Variable.of("body"))),
+                List.of(
+                    Clause.of(
+                        TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("map"))),
+                        IsTypeGuard.of("is_map", "map"),
+                        Variable.of("map")),
+                    Clause.of(WildcardPattern.of(), MapExpr.of(List.of())))),
+            false));
+  }
+
+  public static List<Function> contentTypeMatches() {
+    return List.of(
+        defp(
+            "content_type_matches",
+            List.of(VariablePattern.of("headers"), VariablePattern.of("expected")),
+            new CaseExpr(
+                RemoteCallExpr.of(
                     "List",
-                    "keystore",
-                    ExVar.var("name"),
-                    ExCapturedBlock.capturedBlock("0"),
-                    ExVar.var("headers"),
-                    ExTuple.tuple(ExVar.var("name"), ExVar.var("value"))))));
+                    "keyfind",
+                    List.of(
+                        Variable.of("headers"),
+                        StringExpr.of("Content-Type"),
+                        IntegerExpr.of(0))),
+                List.of(
+                    Clause.of(
+                        TuplePattern.of(List.of(WildcardPattern.of(), VariablePattern.of("ct"))),
+                        new ComparisonGuard(
+                            Variable.of("ct"), "==", Variable.of("expected")),
+                        AtomExpr.of("ok")),
+                    Clause.of(
+                        TuplePattern.of(List.of(WildcardPattern.of(), VariablePattern.of("ct"))),
+                        IsTypeGuard.of("is_binary", "ct"),
+                        new IfExpr(
+                            new InfixExpr(
+                                LocalCallExpr.of("ct_base", List.of(Variable.of("ct"))),
+                                "==",
+                                LocalCallExpr.of(
+                                    "ct_base", List.of(Variable.of("expected")))),
+                            AtomExpr.of("ok"),
+                            TupleExpr.of(
+                                List.of(
+                                    AtomExpr.of("error"),
+                                    TupleExpr.of(
+                                        List.of(
+                                            AtomExpr.of("invalid_content_type"),
+                                            Variable.of("ct"))))),
+                            false)),
+                    Clause.of(
+                        WildcardPattern.of(),
+                        TupleExpr.of(
+                            List.of(
+                                AtomExpr.of("error"),
+                                TupleExpr.of(
+                                    List.of(
+                                        AtomExpr.of("invalid_content_type"), AtomExpr.of("nil")))))))),
+            false));
   }
 
-  public static ExFunction headerValue() {
-    return ExFunction.defpFunction(
-        "header_value",
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("headers"), ExVarPattern.var("name")),
-                ExCase.caseExpr(
-                    ExCall.call(
-                        "List",
-                        "keyfind",
-                        ExVar.var("headers"),
-                        ExVar.var("name"),
-                        ExInteger.integer(0)),
-                    ExCaseBranch.branch(
-                        ExTuplePattern.tuple(ExVarPattern.var("_"), ExVarPattern.var("v")),
-                        ExCallLocal.callLocal("header_value_raw", ExVar.var("v"))),
-                    ExCaseBranch.branch(ExNilPattern.nil(), ExAtom.atom("nil"))))));
+  public static List<Function> ctBase() {
+    return List.of(
+        defp(
+            "ct_base",
+            List.of(VariablePattern.of("ct")),
+            new CaseExpr(
+                RemoteCallExpr.of("String", "split", List.of(Variable.of("ct"), StringExpr.of(";"))),
+                List.of(
+                    Clause.of(
+                        ConsListPattern.of(VariablePattern.of("base"), WildcardPattern.of()),
+                        Variable.of("base")),
+                    Clause.of(WildcardPattern.of(), Variable.of("ct")))),
+            false));
   }
 
-  public static ExFunction headerValueRaw() {
-    ExVarPattern tail = ExVarPattern.var("_");
-    return ExFunction.defpFunction(
-        "header_value_raw",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
-                ExVar.var("v")),
-            ExClause.inlineClause(
-                List.of(ExConsPattern.consPattern(ExVarPattern.var("v"), tail)),
-                List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
-                ExVar.var("v")),
-            ExClause.inlineClause(List.of(ExVarPattern.var("v")), ExVar.var("v"))));
+  public static List<Function> headersSet() {
+    return List.of(
+        defp(
+            "headers_set",
+            List.of(
+                VariablePattern.of("name"),
+                VariablePattern.of("value"),
+                VariablePattern.of("headers")),
+            RemoteCallExpr.of(
+                "List",
+                "keystore",
+                List.of(
+                    Variable.of("name"),
+                    IntegerExpr.of(0),
+                    Variable.of("headers"),
+                    TupleExpr.of(List.of(Variable.of("name"), Variable.of("value"))))),
+            true));
   }
 
-  public static ExFunction toBinary(ToBinaryVariant variant) {
-    List<ExClause> clauses = new ArrayList<>();
-    clauses.add(
-        ExClause.inlineClause(
-            List.of(ExVarPattern.var("v")),
-            List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
-            ExVar.var("v")));
-    clauses.add(
-        ExClause.inlineClause(
-            List.of(ExVarPattern.var("v")),
-            List.of(ExGuard.guard("is_list", ExVar.var("v"))),
-            ExCall.call("IO", "iodata_to_binary", ExVar.var("v"))));
+  public static List<Function> headerValue() {
+    return List.of(
+        defp(
+            "header_value",
+            List.of(VariablePattern.of("headers"), VariablePattern.of("name")),
+            new CaseExpr(
+                RemoteCallExpr.of(
+                    "List",
+                    "keyfind",
+                    List.of(Variable.of("headers"), Variable.of("name"), IntegerExpr.of(0))),
+                List.of(
+                    Clause.of(
+                        TuplePattern.of(List.of(WildcardPattern.of(), VariablePattern.of("v"))),
+                        LocalCallExpr.of("header_value_raw", List.of(Variable.of("v")))),
+                    Clause.of(NilPattern.of(), NilExpr.of()))),
+            false));
+  }
+
+  public static List<Function> headerValueRaw() {
+    return List.of(
+        defp(
+            "header_value_raw",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_binary", "v"),
+            Variable.of("v"),
+            true),
+        defp(
+            "header_value_raw",
+            List.of(ConsListPattern.of(VariablePattern.of("v"), VariablePattern.of("_"))),
+            IsTypeGuard.of("is_binary", "v"),
+            Variable.of("v"),
+            true),
+        defp(
+            "header_value_raw",
+            List.of(VariablePattern.of("v")),
+            Variable.of("v"),
+            true));
+  }
+
+  public static List<Function> toBinary(ToBinaryVariant variant) {
+    List<Function> functions = new ArrayList<>();
+    functions.add(
+        defp(
+            "to_binary",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_binary", "v"),
+            Variable.of("v"),
+            true));
+    functions.add(
+        defp(
+            "to_binary",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_list", "v"),
+            RemoteCallExpr.of("IO", "iodata_to_binary", List.of(Variable.of("v"))),
+            true));
     if (variant == ToBinaryVariant.REST_JSON) {
-      clauses.add(
-          ExClause.inlineClause(List.of(ExVarPattern.var("true")), ExString.string("true")));
-      clauses.add(
-          ExClause.inlineClause(List.of(ExVarPattern.var("false")), ExString.string("false")));
-      clauses.add(
-          ExClause.inlineClause(
-              List.of(ExVarPattern.var("v")),
-              List.of(ExGuard.guard("is_atom", ExVar.var("v"))),
-              ExCall.call("Atom", "to_string", ExVar.var("v"))));
-      clauses.add(
-          ExClause.inlineClause(
-              List.of(ExVarPattern.var("v")),
-              List.of(ExGuard.guard("is_integer", ExVar.var("v"))),
-              ExCall.call("Integer", "to_string", ExVar.var("v"))));
-      clauses.add(
-          ExClause.inlineClause(
-              List.of(ExVarPattern.var("v")),
-              List.of(ExGuard.guard("is_float", ExVar.var("v"))),
-              ExCall.call("Float", "to_string", ExVar.var("v"))));
+      functions.add(
+          defp("to_binary", List.of(VariablePattern.of("true")), StringExpr.of("true"), true));
+      functions.add(
+          defp("to_binary", List.of(VariablePattern.of("false")), StringExpr.of("false"), true));
+      functions.add(
+          defp(
+              "to_binary",
+              List.of(VariablePattern.of("v")),
+              IsTypeGuard.of("is_atom", "v"),
+              RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("v"))),
+              true));
+      functions.add(
+          defp(
+              "to_binary",
+              List.of(VariablePattern.of("v")),
+              IsTypeGuard.of("is_integer", "v"),
+              RemoteCallExpr.of("Integer", "to_string", List.of(Variable.of("v"))),
+              true));
+      functions.add(
+          defp(
+              "to_binary",
+              List.of(VariablePattern.of("v")),
+              IsTypeGuard.of("is_float", "v"),
+              RemoteCallExpr.of("Float", "to_string", List.of(Variable.of("v"))),
+              true));
     } else {
-      clauses.add(
-          ExClause.inlineClause(
-              List.of(ExVarPattern.var("v")),
-              List.of(ExGuard.guard("is_atom", ExVar.var("v"))),
-              ExCall.call("Atom", "to_string", ExVar.var("v"))));
-      clauses.add(
-          ExClause.inlineClause(
-              List.of(ExVarPattern.var("v")),
-              List.of(ExGuard.guard("is_integer", ExVar.var("v"))),
-              ExCall.call("Integer", "to_string", ExVar.var("v"))));
-      clauses.add(
-          ExClause.inlineClause(
-              List.of(ExVarPattern.var("v")),
-              List.of(ExGuard.guard("is_float", ExVar.var("v"))),
-              ExCall.call(
+      functions.add(
+          defp(
+              "to_binary",
+              List.of(VariablePattern.of("v")),
+              IsTypeGuard.of("is_atom", "v"),
+              RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("v"))),
+              true));
+      functions.add(
+          defp(
+              "to_binary",
+              List.of(VariablePattern.of("v")),
+              IsTypeGuard.of("is_integer", "v"),
+              RemoteCallExpr.of("Integer", "to_string", List.of(Variable.of("v"))),
+              true));
+      functions.add(
+          defp(
+              "to_binary",
+              List.of(VariablePattern.of("v")),
+              IsTypeGuard.of("is_float", "v"),
+              RemoteCallExpr.of(
                   ":erlang",
                   "float_to_binary",
-                  ExVar.var("v"),
-                  ExList.list(ExAtom.atom("short")))));
-      clauses.add(
-          ExClause.inlineClause(
-              List.of(ExVarPattern.var("v")),
-              List.of(ExGuard.guard("is_boolean", ExVar.var("v"))),
-              ExCall.call("Atom", "to_string", ExVar.var("v"))));
+                  List.of(
+                      Variable.of("v"),
+                      ListExpr.of(List.of(AtomExpr.of("short"))))),
+              true));
+      functions.add(
+          defp(
+              "to_binary",
+              List.of(VariablePattern.of("v")),
+              IsTypeGuard.of("is_boolean", "v"),
+              RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("v"))),
+              true));
     }
-    return ExFunction.defpFunction("to_binary", clauses);
+    return functions;
   }
 
-  public static ExFunction encodeQueryValueRestJson() {
-    return ExFunction.defpFunction(
-        "encode_query_value",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                List.of(ExGuard.guard("is_boolean", ExVar.var("v"))),
-                ExCall.call("Atom", "to_string", ExVar.var("v"))),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                List.of(ExGuard.guard("is_integer", ExVar.var("v"))),
-                ExCall.call("Integer", "to_string", ExVar.var("v"))),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                List.of(ExGuard.guard("is_float", ExVar.var("v"))),
-                ExCall.call("Float", "to_string", ExVar.var("v"))),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                List.of(ExGuard.guard("is_binary", ExVar.var("v"))),
-                ExVar.var("v")),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                List.of(ExGuard.guard("is_atom", ExVar.var("v"))),
-                ExCall.call("Atom", "to_string", ExVar.var("v")))));
+  public static List<Function> encodeQueryValueRestJson() {
+    return List.of(
+        defp(
+            "encode_query_value",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_boolean", "v"),
+            RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("v"))),
+            true),
+        defp(
+            "encode_query_value",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_integer", "v"),
+            RemoteCallExpr.of("Integer", "to_string", List.of(Variable.of("v"))),
+            true),
+        defp(
+            "encode_query_value",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_float", "v"),
+            RemoteCallExpr.of("Float", "to_string", List.of(Variable.of("v"))),
+            true),
+        defp(
+            "encode_query_value",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_binary", "v"),
+            Variable.of("v"),
+            true),
+        defp(
+            "encode_query_value",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_atom", "v"),
+            RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("v"))),
+            true));
   }
 
-  public static ExFunction encodeQueryValueXmlQuery() {
-    return ExFunction.defpFunction(
-        "encode_query_value",
-        List.of(
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                List.of(ExGuard.guard("is_integer", ExVar.var("v"))),
-                ExCall.call("Integer", "to_string", ExVar.var("v"))),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                List.of(ExGuard.guard("is_float", ExVar.var("v"))),
-                ExCall.call(
-                    ":erlang",
-                    "float_to_binary",
-                    ExVar.var("v"),
-                    ExList.list(ExAtom.atom("short")))),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                List.of(ExGuard.guard("is_boolean", ExVar.var("v"))),
-                ExCall.call("Atom", "to_string", ExVar.var("v"))),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("v")),
-                ExCallLocal.callLocal("to_binary", ExVar.var("v")))));
+  public static List<Function> encodeQueryValueXmlQuery() {
+    return List.of(
+        defp(
+            "encode_query_value",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_integer", "v"),
+            RemoteCallExpr.of("Integer", "to_string", List.of(Variable.of("v"))),
+            true),
+        defp(
+            "encode_query_value",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_float", "v"),
+            RemoteCallExpr.of(
+                ":erlang",
+                "float_to_binary",
+                List.of(
+                    Variable.of("v"),
+                    ListExpr.of(List.of(AtomExpr.of("short"))))),
+            true),
+        defp(
+            "encode_query_value",
+            List.of(VariablePattern.of("v")),
+            IsTypeGuard.of("is_boolean", "v"),
+            RemoteCallExpr.of("Atom", "to_string", List.of(Variable.of("v"))),
+            true),
+        defp(
+            "encode_query_value",
+            List.of(VariablePattern.of("v")),
+            LocalCallExpr.of("to_binary", List.of(Variable.of("v"))),
+            true));
   }
 
-  public static ExFunction encodeSparseList() {
-    return ExFunction.defpFunction(
-        "encode_sparse_list",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("list")),
-                List.of(ExGuard.guard("is_list", ExVar.var("list"))),
-                ExCall.call(
-                    "Enum",
-                    "map",
-                    ExVar.var("list"),
-                    ExAnonymousFn.fn(
-                        ExClause.clause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-                        ExClause.clause(List.of(ExVarPattern.var("v")), ExVar.var("v")))))));
+  public static List<Function> encodeSparseList() {
+    return List.of(
+        defp("encode_sparse_list", List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            "encode_sparse_list",
+            List.of(VariablePattern.of("list")),
+            IsTypeGuard.of("is_list", "list"),
+            RemoteCallExpr.of(
+                "Enum",
+                "map",
+                List.of(
+                    Variable.of("list"),
+                    new AnonFun(
+                        List.of(
+                            AnonFunClause.of(List.of(NilPattern.of()), NilExpr.of()),
+                            AnonFunClause.of(
+                                List.of(VariablePattern.of("v")), Variable.of("v")))))),
+            false));
   }
 
-  public static ExFunction encodeSparseMap() {
-    return ExFunction.defpFunction(
-        "encode_sparse_map",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("map")),
-                List.of(ExGuard.guard("is_map", ExVar.var("map"))),
-                ExCall.call(
-                    "Map",
-                    "new",
-                    ExVar.var("map"),
-                    ExAnonymousFn.fn(
-                        ExClause.clause(
+  public static List<Function> encodeSparseMap() {
+    return List.of(
+        defp("encode_sparse_map", List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            "encode_sparse_map",
+            List.of(VariablePattern.of("map")),
+            IsTypeGuard.of("is_map", "map"),
+            RemoteCallExpr.of(
+                "Map",
+                "new",
+                List.of(
+                    Variable.of("map"),
+                    new AnonFun(
+                        List.of(
+                            AnonFunClause.of(
+                                List.of(
+                                    TuplePattern.of(
+                                        List.of(VariablePattern.of("k"), NilPattern.of()))),
+                                TupleExpr.of(List.of(Variable.of("k"), NilExpr.of()))),
+                            AnonFunClause.of(
+                                List.of(
+                                    TuplePattern.of(
+                                        List.of(
+                                            VariablePattern.of("k"), VariablePattern.of("v")))),
+                                TupleExpr.of(
+                                    List.of(Variable.of("k"), Variable.of("v")))))))),
+            false));
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, Expression body, boolean oneLiner) {
+    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, Guard guard, Expression body, boolean oneLiner) {
+    return new Function(
+        name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
+  }
+
+  private static InfixExpr concat(Expression left, Expression right) {
+    return new InfixExpr(left, "<>", right);
+  }
+
+  private static Expression prefixHeadersFromListBody() {
+    AnonFun filterFn =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(
+                        TuplePattern.of(
+                            List.of(VariablePattern.of("name"), WildcardPattern.of()))),
+                    RemoteCallExpr.of(
+                        "String",
+                        "starts_with?",
+                        List.of(Variable.of("name"), Variable.of("prefix"))))));
+
+    AnonFun mapFn =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(
+                        TuplePattern.of(
                             List.of(
-                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExNilPattern.nil())),
-                            ExTuple.tuple(ExVar.var("k"), ExAtom.atom("nil"))),
-                        ExClause.clause(
-                            List.of(
-                                ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("v"))),
-                            ExTuple.tuple(ExVar.var("k"), ExVar.var("v"))))))));
+                                VariablePattern.of("name"), VariablePattern.of("val")))),
+                    TupleExpr.of(
+                        List.of(
+                            LocalCallExpr.of(
+                                "binary_part",
+                                List.of(
+                                    Variable.of("name"),
+                                    LocalCallExpr.of(
+                                        "byte_size", List.of(Variable.of("prefix"))),
+                                    new InfixExpr(
+                                        LocalCallExpr.of(
+                                            "byte_size", List.of(Variable.of("name"))),
+                                        "-",
+                                        LocalCallExpr.of(
+                                            "byte_size", List.of(Variable.of("prefix")))))),
+                            Variable.of("val"))))));
+
+    return new PipeExpr(
+        Variable.of("headers"),
+        List.of(
+            new PipeStep(
+                RemoteCallExpr.of("Enum", "filter", List.of(filterFn)), List.of()),
+            new PipeStep(RemoteCallExpr.of("Map", "new", List.of(mapFn)), List.of()),
+            new PipeStep(
+                CaseExpr.piped(
+                    List.of(
+                        Clause.of(
+                            VariablePattern.of("map"),
+                            new ComparisonGuard(Variable.of("map"), "==", MapExpr.of(List.of())),
+                            NilExpr.of()),
+                        Clause.of(VariablePattern.of("map"), Variable.of("map")))),
+                List.of())));
   }
 }

@@ -2,16 +2,19 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.beam.ir.elixir.ElixirRenderer;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.Moduledoc;
+import io.beam.ir.elixir.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExDefstruct;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModuledoc;
-import io.smithy.beam.ir.elixir.ExNestedModule;
-import io.smithy.beam.ir.elixir.ExTypeDef;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.Spec;
+import io.beam.ir.elixir.TypeDef;
+import io.beam.ir.elixir.TypesModule;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -76,7 +79,7 @@ class ElixirTypesEmissionTest {
   void keepsSmallEnumNested_inCentralFile() {
     MockManifest manifest = new MockManifest();
     ElixirContext ctx = contextWithEntries(manifest, "FooTypes", "foo_types.ex");
-    ctx.addTypesEntry(smallEnum("SmallStatus"));
+    ctx.addTypesEmbeddedNested(smallEnum("SmallStatus"));
     ElixirTypesEmission.writeTypesModules(ctx, Integer.MAX_VALUE, 50);
     ctx.writerDelegator().flushWriters();
 
@@ -108,7 +111,7 @@ class ElixirTypesEmissionTest {
   void splitsStructuresAndEnumsIndependently() {
     MockManifest manifest = new MockManifest();
     ElixirContext ctx = contextWithEntries(manifest, "FooTypes", "foo_types.ex");
-    ctx.addTypesEntry(largeEnum("LargeStatus"));
+    ctx.addTypesEmbeddedNested(largeEnum("LargeStatus"));
     ElixirTypesEmission.writeTypesModules(ctx, 50, 50);
     ctx.writerDelegator().flushWriters();
 
@@ -148,75 +151,86 @@ class ElixirTypesEmissionTest {
             null,
             moduleName,
             typesFile);
-    ctx.addTypesPreambleEntry(ExModuledoc.moduledoc("Types."));
-    ctx.addTypesEntry(ExTypeDef.alias("root_alias", "String.t()"));
-    ctx.addTypesEntry(smallStructure("SmallShape"));
-    ctx.addTypesEntry(largeStructure("LargeShape"));
-    ctx.addTypesEntry(
-        ExNestedModule.nestedModule(
+    ctx.addTypesModuledoc(Moduledoc.of("Types."));
+    ctx.addTypesRootLine("@type root_alias :: String.t()");
+    ctx.addTypesStructNested(smallStructure("SmallShape"));
+    ctx.addTypesStructNested(largeStructure("LargeShape"));
+    ctx.addTypesEmbeddedNested(
+        new ElixirTypesEmbeddedNested(
             "OrderStatus",
-            List.of(),
-            List.of(ExTypeDef.alias("t", ":pending | :shipped")),
+            null,
+            List.of("@type t :: :pending | :shipped"),
             List.of()));
     return ctx;
   }
 
-  private static ExNestedModule smallStructure(String name) {
-    return ExNestedModule.nestedModule(
+  private static TypesModule smallStructure(String name) {
+    return ElixirBeamIrTypes.structNested(
         name,
-        List.of(),
-        List.of(
-            ExDefstruct.defstruct(List.of(":name")),
-            ExTypeDef.structureType("t", List.of("name: String.t() | nil"))),
-        List.of());
+        null,
+        ElixirBeamIrTypes.structureTypeDef("t", List.of("name: String.t() | nil")),
+        ElixirBeamIrTypes.defstructFields(List.of("name")));
   }
 
-  private static ExNestedModule largeStructure(String name) {
+  private static TypesModule largeStructure(String name) {
     String longField =
         "payload: " + "VeryLongNamespace.VeryLongServiceTypes.AnotherNestedType.t() | nil";
-    return ExNestedModule.nestedModule(
+    return ElixirBeamIrTypes.structNested(
         name,
-        List.of(),
-        List.of(
-            ExDefstruct.defstruct(List.of(":payload")),
-            ExTypeDef.structureType("t", List.of(longField))),
-        List.of());
+        null,
+        ElixirBeamIrTypes.structureTypeDef("t", List.of(longField)),
+        ElixirBeamIrTypes.defstructFields(List.of("payload")));
   }
 
   private static ElixirContext contextWithEnumEntries(
       MockManifest manifest, String moduleName, String typesFile) {
     ElixirContext ctx = contextWithEntries(manifest, moduleName, typesFile);
-    ctx.addTypesEntry(smallEnum("SmallStatus"));
-    ctx.addTypesEntry(largeEnum("LargeStatus"));
+    ctx.addTypesEmbeddedNested(smallEnum("SmallStatus"));
+    ctx.addTypesEmbeddedNested(largeEnum("LargeStatus"));
     return ctx;
   }
 
-  private static ExNestedModule smallEnum(String name) {
-    return ExNestedModule.nestedModule(
+  private static ElixirTypesEmbeddedNested smallEnum(String name) {
+    return new ElixirTypesEmbeddedNested(
         name,
-        List.of(),
-        List.of(ExTypeDef.alias("t", ":open | :closed")),
+        null,
+        List.of("@type t :: :open | :closed"),
         List.of(
-            ExFunction.defFunction(
+            new Function(
                 "from",
-                List.of(ExClause.inlineClause(List.of(ExVarPattern.var("v")), ExVar.var("v"))))));
+                false,
+                List.of(FunctionHead.of(List.of(VariablePattern.of("v")))),
+                Variable.of("v"),
+                null,
+                null,
+                true)));
   }
 
-  private static ExNestedModule largeEnum(String name) {
+  private static ElixirTypesEmbeddedNested largeEnum(String name) {
     String longBody =
         IntStream.range(0, 20).mapToObj(i -> ":v" + i).collect(Collectors.joining(" | "))
             + " | {:unknown, String.t()}";
-    return ExNestedModule.nestedModule(
+    return new ElixirTypesEmbeddedNested(
         name,
-        List.of(),
-        List.of(ExTypeDef.alias("t", longBody)),
+        null,
+        List.of("@type t :: " + longBody),
         List.of(
-            ExFunction.defFunction(
+            new Function(
                 "from",
-                List.of(ExClause.inlineClause(List.of(ExVarPattern.var("v")), ExVar.var("v")))),
-            ExFunction.defFunction(
+                false,
+                List.of(FunctionHead.of(List.of(VariablePattern.of("v")))),
+                Variable.of("v"),
+                Spec.of("from(String.t()) :: t()"),
+                null,
+                true),
+            new Function(
                 "to",
-                List.of(ExClause.inlineClause(List.of(ExVarPattern.var("v")), ExVar.var("v"))))));
+                false,
+                List.of(FunctionHead.of(List.of(VariablePattern.of("v")))),
+                Variable.of("v"),
+                Spec.of("to(t()) :: String.t()"),
+                null,
+                true)));
   }
 
   private static List<String> getFilePaths(MockManifest manifest) {

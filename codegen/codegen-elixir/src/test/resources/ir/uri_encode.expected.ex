@@ -1,1 +1,0 @@
-defp uri_encode(value), do: URI.encode(Kernel.to_string(value))

@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamEdition;
 import io.smithy.beam.core.BeamElixirLayout;
@@ -9,7 +10,6 @@ import io.smithy.beam.core.BeamProtocolCodegenFactory;
 import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.elixir.ExModule;
 import java.util.List;
 import java.util.Optional;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -94,7 +94,6 @@ final class ElixirServerDirectedCodegen
         definitionFile,
         new java.util.ArrayList<>(),
         new java.util.ArrayList<>(),
-        new java.util.ArrayList<>(),
         null,
         new ElixirBehaviourModuleBuilder(),
         new ElixirServerModuleBuilder());
@@ -125,7 +124,7 @@ final class ElixirServerDirectedCodegen
   @Override
   public void customizeAfterIntegrations(
       CustomizeDirective<ElixirContext, BeamSettings> directive) {
-    // Server module is written as a single ExModule in generateService.
+    // Server module shell and legacy operation stubs are written in generateService.
   }
 
   @Override
@@ -152,7 +151,7 @@ final class ElixirServerDirectedCodegen
     if (builder != null) {
       String behaviourMod = ElixirSymbolProvider.toModuleName(layout.behaviourModuleName());
       String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-      ExModule module =
+      Module module =
           ElixirServerIr.serverModule(
               layout,
               service,

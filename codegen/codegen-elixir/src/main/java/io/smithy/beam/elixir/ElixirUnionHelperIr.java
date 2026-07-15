@@ -1,24 +1,27 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.AtomPattern;
+import io.beam.ir.elixir.CaseExpr;
+import io.beam.ir.elixir.Clause;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.Guard;
+import io.beam.ir.elixir.IsTypeGuard;
+import io.beam.ir.elixir.ListPattern;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.NilExpr;
+import io.beam.ir.elixir.NilPattern;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.StringPattern;
+import io.beam.ir.elixir.TupleExpr;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
+import io.beam.ir.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExAtomPattern;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCase;
-import io.smithy.beam.ir.elixir.ExCaseBranch;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExConsPattern;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExGuard;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExNilPattern;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStringPattern;
-import io.smithy.beam.ir.elixir.ExTuple;
-import io.smithy.beam.ir.elixir.ExTuplePattern;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -29,62 +32,93 @@ import software.amazon.smithy.model.shapes.UnionShape;
 final class ElixirUnionHelperIr {
   private ElixirUnionHelperIr() {}
 
-  static List<ExFunction> unionDecodeEncode(UnionShape shape, SymbolProvider sp) {
+  static List<Function> unionDecodeEncode(UnionShape shape, SymbolProvider sp) {
     String helperName = helperName(shape);
-    return List.of(unionDecode(shape, sp, helperName), unionEncode(shape, sp, helperName));
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(unionDecode(shape, sp, helperName));
+    functions.addAll(unionEncode(shape, sp, helperName));
+    return functions;
   }
 
-  private static ExFunction unionDecode(UnionShape shape, SymbolProvider sp, String helperName) {
-    List<ExCaseBranch> branches = new ArrayList<>();
+  private static List<Function> unionDecode(UnionShape shape, SymbolProvider sp, String helperName) {
+    List<Clause> branches = new ArrayList<>();
     for (MemberShape member : shape.members()) {
       String wireKey = member.getMemberName();
       String tag = unionTagForMember(sp, member);
       branches.add(
-          ExCaseBranch.branch(
+          Clause.of(
               singletonListPattern(
-                  ExTuplePattern.tuple(ExStringPattern.string(wireKey), ExVarPattern.var("v"))),
-              ExTuple.tuple(ExAtom.atom(tag), ExVar.var("v"))));
+                  TuplePattern.of(List.of(StringPattern.of(wireKey), VariablePattern.of("v")))),
+              TupleExpr.of(List.of(AtomExpr.of(tag), Variable.of("v")))));
     }
     branches.add(
-        ExCaseBranch.branch(
+        Clause.of(
             singletonListPattern(
-                ExTuplePattern.tuple(ExVarPattern.var("k"), ExVarPattern.var("_v"))),
-            ExTuple.tuple(ExAtom.atom("unknown"), ExVar.var("k"))));
-    branches.add(ExCaseBranch.branch(ExVarPattern.var("_"), ExAtom.atom("nil")));
+                TuplePattern.of(List.of(VariablePattern.of("k"), VariablePattern.of("_v")))),
+            TupleExpr.of(List.of(AtomExpr.of("unknown"), Variable.of("k")))));
+    branches.add(Clause.of(WildcardPattern.of(), NilExpr.of()));
 
-    return ExFunction.defpFunction(
-        "decode_" + helperName,
-        List.of(
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("map")),
-                List.of(ExGuard.guard("is_map", ExVar.var("map"))),
-                ExCase.caseExpr(
-                    ExCall.call("Map", "to_list", ExVar.var("map")),
-                    branches.toArray(ExCaseBranch[]::new))),
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil"))));
+    return List.of(
+        new Function(
+            "decode_" + helperName,
+            true,
+            List.of(
+                FunctionHead.of(
+                    List.of(VariablePattern.of("map")), IsTypeGuard.of("is_map", "map"))),
+            new CaseExpr(
+                RemoteCallExpr.of("Map", "to_list", List.of(Variable.of("map"))), branches),
+            null,
+            null,
+            false),
+        new Function(
+            "decode_" + helperName,
+            true,
+            List.of(FunctionHead.of(List.of(NilPattern.of()))),
+            NilExpr.of(),
+            null,
+            null,
+            true));
   }
 
-  private static ExFunction unionEncode(UnionShape shape, SymbolProvider sp, String helperName) {
-    List<ExClause> clauses = new ArrayList<>();
+  private static List<Function> unionEncode(UnionShape shape, SymbolProvider sp, String helperName) {
+    List<Function> functions = new ArrayList<>();
+    String name = "encode_" + helperName;
     for (MemberShape member : shape.members()) {
       String wireKey = member.getMemberName();
       String tag = unionTagForMember(sp, member);
-      clauses.add(
-          ExClause.inlineClause(
-              List.of(ExTuplePattern.tuple(ExAtomPattern.atom(tag), ExVarPattern.var("v"))),
-              ExMap.map(ExMapEntry.entry(ExString.string(wireKey), ExVar.var("v")))));
+      functions.add(
+          defp(
+              name,
+              List.of(TuplePattern.of(List.of(AtomPattern.of(tag), VariablePattern.of("v")))),
+              MapExpr.of(List.of(MapEntry.stringKey(wireKey, Variable.of("v")))),
+              true));
     }
-    clauses.add(
-        ExClause.inlineClause(
-            List.of(ExTuplePattern.tuple(ExAtomPattern.atom("unknown"), ExVarPattern.var("k"))),
-            List.of(ExGuard.guard("is_binary", ExVar.var("k"))),
-            ExMap.map(ExMapEntry.entry(ExVar.var("k"), ExAtom.atom("nil")))));
-    clauses.add(ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")));
-    return ExFunction.defpFunction("encode_" + helperName, clauses);
+    functions.add(
+        defp(
+            name,
+            List.of(
+                TuplePattern.of(List.of(AtomPattern.of("unknown"), VariablePattern.of("k")))),
+            IsTypeGuard.of("is_binary", "k"),
+            MapExpr.of(List.of(MapEntry.pair(Variable.of("k"), NilExpr.of()))),
+            false));
+    functions.add(defp(name, List.of(NilPattern.of()), NilExpr.of(), true));
+    return functions;
   }
 
-  private static ExConsPattern singletonListPattern(io.smithy.beam.ir.elixir.ExPattern element) {
-    return ExConsPattern.consPattern(element, ExNilPattern.nil());
+  private static ListPattern singletonListPattern(Pattern element) {
+    return ListPattern.of(List.of(element));
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, Guard guard, io.beam.ir.elixir.Expression body,
+      boolean oneLiner) {
+    return new Function(
+        name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, io.beam.ir.elixir.Expression body, boolean oneLiner) {
+    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static String helperName(Shape shape) {

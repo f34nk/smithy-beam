@@ -1,12 +1,12 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.Moduledoc;
+import io.beam.ir.elixir.TypesModule;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamSettings;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExModuleEntry;
-import io.smithy.beam.ir.elixir.ExPreambleEntry;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.build.FileManifest;
@@ -36,9 +36,8 @@ public record ElixirContext(
     ShapeId resolvedProtocolTraitId,
     String moduleName,
     String definitionFile,
-    List<ExPreambleEntry> typesPreambleEntries,
-    List<ExModuleEntry> typesEntries,
-    List<ExFunction> typesFunctions,
+    List<ElixirTypesEntry> typesEntries,
+    List<Function> typesFunctions,
     ElixirClientModuleBuilder clientModuleBuilderOrNull,
     ElixirBehaviourModuleBuilder behaviourModuleBuilderOrNull,
     ElixirServerModuleBuilder serverModuleBuilderOrNull)
@@ -72,21 +71,34 @@ public record ElixirContext(
         definitionFile,
         new ArrayList<>(),
         new ArrayList<>(),
-        new ArrayList<>(),
         null,
         null,
         null);
   }
 
-  public void addTypesPreambleEntry(ExPreambleEntry entry) {
-    typesPreambleEntries.add(entry);
+  public void addTypesModuledoc(Moduledoc moduledoc) {
+    typesEntries.add(new ElixirTypesModuledocEntry(moduledoc));
   }
 
-  public void addTypesEntry(ExModuleEntry entry) {
-    typesEntries.add(entry);
+  public void addTypesRootLines(List<String> lines) {
+    for (String line : lines) {
+      typesEntries.add(new ElixirTypesRootLine(line));
+    }
   }
 
-  public void addTypesFunction(ExFunction function) {
+  public void addTypesRootLine(String line) {
+    typesEntries.add(new ElixirTypesRootLine(line));
+  }
+
+  public void addTypesStructNested(TypesModule typesModule) {
+    typesEntries.add(new ElixirTypesStructNested(typesModule));
+  }
+
+  public void addTypesEmbeddedNested(ElixirTypesEmbeddedNested nested) {
+    typesEntries.add(nested);
+  }
+
+  public void addTypesFunction(Function function) {
     typesFunctions.add(function);
   }
 

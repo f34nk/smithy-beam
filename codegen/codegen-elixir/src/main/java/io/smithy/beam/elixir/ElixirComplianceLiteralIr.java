@@ -1,17 +1,19 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AtomExpr;
+import io.beam.ir.elixir.BooleanExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.IntegerExpr;
+import io.beam.ir.elixir.ListExpr;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.NilExpr;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StructExpr;
+import io.beam.ir.elixir.StructField;
+import io.beam.ir.elixir.Variable;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExCapturedBlock;
-import io.smithy.beam.ir.elixir.ExExpr;
-import io.smithy.beam.ir.elixir.ExInteger;
-import io.smithy.beam.ir.elixir.ExList;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExNil;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStruct;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +41,7 @@ import software.amazon.smithy.model.traits.EnumValueTrait;
 final class ElixirComplianceLiteralIr {
   private ElixirComplianceLiteralIr() {}
 
-  static ExExpr structLiteral(
+  static Expression structLiteral(
       Model model,
       StructureShape shape,
       ObjectNode params,
@@ -47,66 +49,66 @@ final class ElixirComplianceLiteralIr {
       Function<StructureShape, String> structNameFn) {
     String structMod = structNameFn.apply(shape);
     if (params.isEmpty()) {
-      return ExStruct.struct(structMod, List.of());
+      return StructExpr.of(structMod, List.of());
     }
-    List<ExMapEntry> fields = new ArrayList<>();
+    List<StructField> fields = new ArrayList<>();
     for (MemberShape member : shape.members()) {
       String memberName = member.getMemberName();
       if (!params.getMember(memberName).isPresent()) {
         continue;
       }
       fields.add(
-          ExMapEntry.entry(
-              ExAtom.atom(BeamNameUtils.toSnakeCase(memberName)),
+          StructField.of(
+              BeamNameUtils.toSnakeCase(memberName),
               memberValue(model, member, params.expectMember(memberName), sp, structNameFn)));
     }
-    return ExStruct.struct(structMod, fields);
+    return StructExpr.of(structMod, fields);
   }
 
-  static ExExpr headersMap(Map<String, String> headers) {
+  static Expression headersMap(Map<String, String> headers) {
     if (headers.isEmpty()) {
-      return ExMap.map();
+      return MapExpr.of(List.of());
     }
-    List<ExMapEntry> entries = new ArrayList<>();
+    List<MapEntry> entries = new ArrayList<>();
     headers.forEach(
         (key, value) ->
-            entries.add(ExMapEntry.entry(ExString.string(key), ExString.string(value))));
-    return ExMap.map(entries.toArray(ExMapEntry[]::new));
+            entries.add(MapEntry.stringKey(key, StringExpr.of(value))));
+    return MapExpr.of(entries);
   }
 
-  static ExExpr queryParamsList(List<String> queryParams) {
+  static Expression queryParamsList(List<String> queryParams) {
     if (queryParams.isEmpty()) {
-      return ExList.list();
+      return ListExpr.of(List.of());
     }
-    List<ExExpr> entries = new ArrayList<>();
+    List<Expression> entries = new ArrayList<>();
     for (String queryParam : queryParams) {
-      entries.add(ExString.string(queryParam));
+      entries.add(StringExpr.of(queryParam));
     }
-    return ExList.list(entries.toArray(ExExpr[]::new));
+    return ListExpr.of(entries);
   }
 
-  static ExExpr optionalBinary(String value) {
-    return value == null ? ExNil.nil() : ExString.string(value);
+  static Expression optionalBinary(String value) {
+    return value == null ? NilExpr.of() : StringExpr.of(value);
   }
 
-  static ExExpr labelMap(
+  static Expression labelMap(
       BeamHostLabelIndex hostLabelIndex, OperationShape operation, ObjectNode params) {
-    List<ExMapEntry> entries = new ArrayList<>();
+    List<MapEntry> entries = new ArrayList<>();
     for (MemberShape member : hostLabelIndex.hostLabelMembers(operation)) {
       String memberName = member.getMemberName();
       if (params.getMember(memberName).isPresent()) {
         String field = BeamNameUtils.toSnakeCase(memberName);
         entries.add(
-            ExMapEntry.entry(ExAtom.atom(field), scalarValue(params.expectMember(memberName))));
+            MapEntry.atomKey(field, scalarValue(params.expectMember(memberName))));
       }
     }
     if (entries.isEmpty()) {
-      return ExMap.map();
+      return MapExpr.of(List.of());
     }
-    return ExMap.map(entries.toArray(ExMapEntry[]::new));
+    return MapExpr.of(entries);
   }
 
-  static ExExpr memberValue(
+  static Expression memberValue(
       Model model,
       MemberShape member,
       Node value,
@@ -118,55 +120,55 @@ final class ElixirComplianceLiteralIr {
     }
     if (value instanceof ArrayNode arrayNode && target instanceof ListShape listShape) {
       MemberShape listMember = listShape.getMember();
-      List<ExExpr> elements = new ArrayList<>();
+      List<Expression> elements = new ArrayList<>();
       for (Node element : arrayNode.getElements()) {
         elements.add(memberValue(model, listMember, element, sp, structNameFn));
       }
-      return ExList.list(elements.toArray(ExExpr[]::new));
+      return ListExpr.of(elements);
     }
     if (value instanceof ObjectNode objectNode && target instanceof MapShape) {
       return elixirMap(objectNode);
     }
     if (target instanceof EnumShape enumShape && value instanceof StringNode stringNode) {
-      return ExAtom.atom(enumAtom(enumShape, stringNode.getValue(), sp));
+      return AtomExpr.of(enumAtom(enumShape, stringNode.getValue(), sp));
     }
     if (target instanceof IntEnumShape intEnumShape && value instanceof NumberNode numberNode) {
-      return ExAtom.atom(enumAtom(intEnumShape, intEnumMemberName(intEnumShape, numberNode), sp));
+      return AtomExpr.of(enumAtom(intEnumShape, intEnumMemberName(intEnumShape, numberNode), sp));
     }
     return scalarValue(value);
   }
 
-  private static ExExpr elixirMap(ObjectNode objectNode) {
+  private static Expression elixirMap(ObjectNode objectNode) {
     if (objectNode.getMembers().isEmpty()) {
-      return ExMap.map();
+      return MapExpr.of(List.of());
     }
-    List<ExMapEntry> entries = new ArrayList<>();
+    List<MapEntry> entries = new ArrayList<>();
     objectNode
         .getMembers()
         .forEach(
             (key, node) ->
-                entries.add(ExMapEntry.entry(ExString.string(key.getValue()), scalarValue(node))));
-    return ExMap.map(entries.toArray(ExMapEntry[]::new));
+                entries.add(MapEntry.stringKey(key.getValue(), scalarValue(node))));
+    return MapExpr.of(entries);
   }
 
-  private static ExExpr scalarValue(Node value) {
+  private static Expression scalarValue(Node value) {
     if (value instanceof BooleanNode booleanNode) {
-      return ExCapturedBlock.capturedBlock(booleanNode.getValue() ? "true" : "false");
+      return BooleanExpr.of(booleanNode.getValue());
     }
     if (value instanceof NumberNode numberNode) {
       Number number = numberNode.getValue();
       if (number.doubleValue() == Math.floor(number.doubleValue())) {
-        return ExInteger.integer(number.longValue());
+        return IntegerExpr.of(number.longValue());
       }
-      return ExCapturedBlock.capturedBlock(number.toString());
+      return Variable.of(number.toString());
     }
     if (value instanceof StringNode stringNode) {
-      return ExString.string(stringNode.getValue());
+      return StringExpr.of(stringNode.getValue());
     }
     if (value instanceof NullNode) {
-      return ExNil.nil();
+      return NilExpr.of();
     }
-    return ExString.string(value.toString());
+    return StringExpr.of(value.toString());
   }
 
   private static String enumAtom(

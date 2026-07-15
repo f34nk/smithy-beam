@@ -1,24 +1,31 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AnonFun;
+import io.beam.ir.elixir.AnonFunClause;
+import io.beam.ir.elixir.AssignPattern;
+import io.beam.ir.elixir.DotCallExpr;
+import io.beam.ir.elixir.Expression;
+import io.beam.ir.elixir.Function;
+import io.beam.ir.elixir.FunctionHead;
+import io.beam.ir.elixir.IsTypeGuard;
+import io.beam.ir.elixir.LocalCallExpr;
+import io.beam.ir.elixir.MapEntry;
+import io.beam.ir.elixir.MapExpr;
+import io.beam.ir.elixir.NilExpr;
+import io.beam.ir.elixir.NilPattern;
+import io.beam.ir.elixir.Pattern;
+import io.beam.ir.elixir.PipeExpr;
+import io.beam.ir.elixir.PipeStep;
+import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.ir.elixir.StringExpr;
+import io.beam.ir.elixir.StructExpr;
+import io.beam.ir.elixir.StructField;
+import io.beam.ir.elixir.StructPattern;
+import io.beam.ir.elixir.TuplePattern;
+import io.beam.ir.elixir.Variable;
+import io.beam.ir.elixir.VariablePattern;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.ir.elixir.ExAtom;
-import io.smithy.beam.ir.elixir.ExCall;
-import io.smithy.beam.ir.elixir.ExCallLocal;
-import io.smithy.beam.ir.elixir.ExCapturedBlock;
-import io.smithy.beam.ir.elixir.ExClause;
-import io.smithy.beam.ir.elixir.ExFunction;
-import io.smithy.beam.ir.elixir.ExGuard;
-import io.smithy.beam.ir.elixir.ExMap;
-import io.smithy.beam.ir.elixir.ExMapEntry;
-import io.smithy.beam.ir.elixir.ExNilPattern;
-import io.smithy.beam.ir.elixir.ExPipeline;
-import io.smithy.beam.ir.elixir.ExString;
-import io.smithy.beam.ir.elixir.ExStruct;
-import io.smithy.beam.ir.elixir.ExStructAccess;
-import io.smithy.beam.ir.elixir.ExStructPattern;
-import io.smithy.beam.ir.elixir.ExVar;
-import io.smithy.beam.ir.elixir.ExVarPattern;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -41,141 +48,187 @@ import software.amazon.smithy.model.traits.TimestampFormatTrait;
 final class ElixirStructureHelperIr {
   private ElixirStructureHelperIr() {}
 
-  static List<ExFunction> structureDecodeEncode(
+  static List<Function> structureDecodeEncode(
       Model model, HttpBindingIndex httpIndex, StructureShape structure, SymbolProvider sp) {
     String helperName = helperName(structure);
-    return List.of(
-        structureDecode(model, httpIndex, structure, sp, helperName),
-        structureEncode(model, httpIndex, structure, sp, helperName));
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(buildStructureDecode(model, httpIndex, structure, sp, helperName));
+    functions.addAll(buildStructureEncode(model, httpIndex, structure, sp, helperName));
+    return functions;
   }
 
-  static List<ExFunction> structureListDecodeEncode(StructureShape structure) {
+  static List<Function> structureListDecodeEncode(StructureShape structure) {
     String helperName = helperName(structure);
-    return List.of(structureListDecode(helperName), structureListEncode(helperName));
+    List<Function> functions = new ArrayList<>();
+    functions.addAll(structureListDecode(helperName));
+    functions.addAll(structureListEncode(helperName));
+    return functions;
   }
 
-  private static ExFunction structureDecode(
+  private static List<Function> buildStructureDecode(
       Model model,
       HttpBindingIndex httpIndex,
       StructureShape structure,
       SymbolProvider sp,
       String helperName) {
     String structName = sp.toSymbol(structure).getName();
-    List<ExMapEntry> fields = new ArrayList<>();
+    List<StructField> fields = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String fieldName = fieldName(member);
       String wireKey = jsonKey(member);
       fields.add(
-          ExMapEntry.entry(
-              ExAtom.atom(fieldName),
+          StructField.of(
+              fieldName,
               decodeFieldValue(
                   model,
                   sp,
                   httpIndex,
                   member,
-                  ExCall.call("Map", "get", ExVar.var("map"), ExString.string(wireKey)))));
+                  RemoteCallExpr.of(
+                      "Map", "get", List.of(Variable.of("map"), StringExpr.of(wireKey))))));
     }
-    return ExFunction.defpFunction(
-        "decode_" + helperName,
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-            ExClause.blockClause(
-                List.of(ExVarPattern.var("map")),
-                List.of(ExGuard.guard("is_map", ExVar.var("map"))),
-                ExStruct.struct("Types." + structName, fields))));
+    String name = "decode_" + helperName;
+    return List.of(
+        defp(name, List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            name,
+            List.of(VariablePattern.of("map")),
+            IsTypeGuard.of("is_map", "map"),
+            StructExpr.of("Types." + structName, fields),
+            false));
   }
 
-  private static ExFunction structureEncode(
+  private static List<Function> buildStructureEncode(
       Model model,
       HttpBindingIndex httpIndex,
       StructureShape structure,
       SymbolProvider sp,
       String helperName) {
     String structName = sp.toSymbol(structure).getName();
-    List<ExMapEntry> entries = new ArrayList<>();
+    List<MapEntry> entries = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String wireKey = jsonKey(member);
       entries.add(
-          ExMapEntry.entry(
-              ExString.string(wireKey),
-              encodeFieldValueFromRecord(model, sp, httpIndex, structure, member, "record")));
+          MapEntry.stringKey(
+              wireKey, encodeFieldValueFromRecord(model, sp, httpIndex, structure, member, "record")));
     }
-    return ExFunction.defpFunction(
-        "encode_" + helperName,
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-            ExClause.blockClause(
+    String name = "encode_" + helperName;
+    return List.of(
+        defp(name, List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            name,
+            List.of(AssignPattern.of("record", StructPattern.of("Types." + structName, List.of()))),
+            new PipeExpr(
+                MapExpr.of(entries),
                 List.of(
-                    ExStructPattern.structFunctionHead("record", "Types." + structName, List.of())),
-                ExPipeline.pipeline(
-                    "_map",
-                    new ExMap(entries),
-                    ExCapturedBlock.capturedBlock("Enum.reject(fn {_k, v} -> is_nil(v) end)"),
-                    ExCapturedBlock.capturedBlock("Map.new()")))));
+                    new PipeStep(
+                        RemoteCallExpr.of(
+                            "Enum",
+                            "reject",
+                            List.of(
+                                new AnonFun(
+                                    List.of(
+                                        AnonFunClause.of(
+                                            List.of(
+                                                TuplePattern.of(
+                                                    List.of(
+                                                        VariablePattern.of("_k"),
+                                                        VariablePattern.of("v")))),
+                                            LocalCallExpr.of("is_nil", List.of(Variable.of("v")))))))),
+                        List.of()),
+                    new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of()))),
+            false));
   }
 
-  private static ExFunction structureListDecode(String helperName) {
-    return ExFunction.defpFunction(
-        "decode_" + helperName + "_list",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("list")),
-                List.of(ExGuard.guard("is_list", ExVar.var("list"))),
-                ExCapturedBlock.capturedBlock(
-                    "Enum.map(list, fn v -> decode_" + helperName + "(v) end)"))));
+  private static List<Function> structureListDecode(String helperName) {
+    String name = "decode_" + helperName + "_list";
+    return List.of(
+        defp(name, List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            name,
+            List.of(VariablePattern.of("list")),
+            IsTypeGuard.of("is_list", "list"),
+            RemoteCallExpr.of(
+                "Enum",
+                "map",
+                List.of(
+                    Variable.of("list"),
+                    new AnonFun(
+                        List.of(
+                            AnonFunClause.of(
+                                List.of(VariablePattern.of("v")),
+                                LocalCallExpr.of(
+                                    "decode_" + helperName, List.of(Variable.of("v")))))))),
+            false));
   }
 
-  private static ExFunction structureListEncode(String helperName) {
-    return ExFunction.defpFunction(
-        "encode_" + helperName + "_list",
-        List.of(
-            ExClause.inlineClause(List.of(ExNilPattern.nil()), ExAtom.atom("nil")),
-            ExClause.inlineClause(
-                List.of(ExVarPattern.var("list")),
-                List.of(ExGuard.guard("is_list", ExVar.var("list"))),
-                ExCapturedBlock.capturedBlock(
-                    "Enum.map(list, fn v -> encode_" + helperName + "(v) end)"))));
+  private static List<Function> structureListEncode(String helperName) {
+    String name = "encode_" + helperName + "_list";
+    return List.of(
+        defp(name, List.of(NilPattern.of()), NilExpr.of(), true),
+        defp(
+            name,
+            List.of(VariablePattern.of("list")),
+            IsTypeGuard.of("is_list", "list"),
+            RemoteCallExpr.of(
+                "Enum",
+                "map",
+                List.of(
+                    Variable.of("list"),
+                    new AnonFun(
+                        List.of(
+                            AnonFunClause.of(
+                                List.of(VariablePattern.of("v")),
+                                LocalCallExpr.of(
+                                    "encode_" + helperName, List.of(Variable.of("v")))))))),
+            false));
   }
 
-  private static io.smithy.beam.ir.elixir.ExExpr decodeFieldValue(
+  private static Expression decodeFieldValue(
       Model model,
       SymbolProvider sp,
       HttpBindingIndex httpIndex,
       MemberShape member,
-      io.smithy.beam.ir.elixir.ExExpr raw) {
+      Expression raw) {
     Shape target = model.expectShape(member.getTarget());
     if (target instanceof EnumShape || target instanceof IntEnumShape) {
-      return ExCallLocal.callLocal("decode_" + helperName(target), raw);
+      return LocalCallExpr.of("decode_" + helperName(target), List.of(raw));
     }
     if (target instanceof UnionShape union
         && !BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
-      return ExCallLocal.callLocal("decode_" + helperName(target), raw);
+      return LocalCallExpr.of("decode_" + helperName(target), List.of(raw));
     }
     if (target instanceof StructureShape) {
-      return ExCallLocal.callLocal("decode_" + helperName(target), raw);
+      return LocalCallExpr.of("decode_" + helperName(target), List.of(raw));
     }
     if (target instanceof TimestampShape) {
-      return ExCallLocal.callLocal(timestampDecodeHelper(httpIndex, member), raw);
+      return LocalCallExpr.of(timestampDecodeHelper(httpIndex, member), List.of(raw));
     }
     if (target instanceof ListShape listShape) {
       Shape element = model.expectShape(listShape.getMember().getTarget());
       if (element instanceof StructureShape) {
-        return ExCallLocal.callLocal("decode_" + helperName(element) + "_list", raw);
+        return LocalCallExpr.of("decode_" + helperName(element) + "_list", List.of(raw));
       }
       if (element instanceof EnumShape || element instanceof IntEnumShape) {
-        return ExCallLocal.callLocal("decode_" + helperName(element) + "_list", raw);
+        return LocalCallExpr.of("decode_" + helperName(element) + "_list", List.of(raw));
       }
       String helper = target.hasTrait(SparseTrait.class) ? "decode_sparse_list" : "decode_list";
-      return ExCallLocal.callLocal(helper, raw);
+      return LocalCallExpr.of(helper, List.of(raw));
     }
     if (target instanceof MapShape mapShape) {
-      return ElixirMapHelperIr.mapDecodeExpr(model, sp, httpIndex, mapShape, raw);
+      if (ElixirMapHelperIr.mapNeedsTypedHelper(model, mapShape)) {
+        return LocalCallExpr.of(
+            "decode_" + ElixirMapHelperIr.mapHelperName(mapShape), List.of(raw));
+      }
+      if (mapShape.hasTrait(SparseTrait.class)) {
+        return LocalCallExpr.of("decode_sparse_map", List.of(raw));
+      }
+      return raw;
     }
     return raw;
   }
 
-  private static io.smithy.beam.ir.elixir.ExExpr encodeFieldValueFromRecord(
+  private static Expression encodeFieldValueFromRecord(
       Model model,
       SymbolProvider sp,
       HttpBindingIndex httpIndex,
@@ -184,44 +237,55 @@ final class ElixirStructureHelperIr {
       String recordVar) {
     String field = fieldName(member);
     return encodeFieldValue(
-        model, sp, httpIndex, member, ExStructAccess.structAccess(ExVar.var(recordVar), field));
+        model,
+        sp,
+        httpIndex,
+        member,
+        new DotCallExpr(Variable.of(recordVar), field, List.of()));
   }
 
-  private static io.smithy.beam.ir.elixir.ExExpr encodeFieldValue(
+  private static Expression encodeFieldValue(
       Model model,
       SymbolProvider sp,
       HttpBindingIndex httpIndex,
       MemberShape member,
-      io.smithy.beam.ir.elixir.ExExpr binding) {
+      Expression binding) {
     Shape target = model.expectShape(member.getTarget());
     if (target instanceof EnumShape || target instanceof IntEnumShape) {
-      return ExCallLocal.callLocal("encode_" + helperName(target), binding);
+      return LocalCallExpr.of("encode_" + helperName(target), List.of(binding));
     }
     if (target instanceof UnionShape union
         && !BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
-      return ExCallLocal.callLocal("encode_" + helperName(target), binding);
+      return LocalCallExpr.of("encode_" + helperName(target), List.of(binding));
     }
     if (target instanceof StructureShape) {
-      return ExCallLocal.callLocal("encode_" + helperName(target), binding);
+      return LocalCallExpr.of("encode_" + helperName(target), List.of(binding));
     }
     if (target instanceof TimestampShape) {
-      return ExCallLocal.callLocal(timestampEncodeHelper(httpIndex, member), binding);
+      return LocalCallExpr.of(timestampEncodeHelper(httpIndex, member), List.of(binding));
     }
     if (target instanceof ListShape listShape) {
       Shape element = model.expectShape(listShape.getMember().getTarget());
       if (element instanceof StructureShape) {
-        return ExCallLocal.callLocal("encode_" + helperName(element) + "_list", binding);
+        return LocalCallExpr.of("encode_" + helperName(element) + "_list", List.of(binding));
       }
       if (element instanceof EnumShape || element instanceof IntEnumShape) {
-        return ExCallLocal.callLocal("encode_" + helperName(element) + "_list", binding);
+        return LocalCallExpr.of("encode_" + helperName(element) + "_list", List.of(binding));
       }
       if (target.hasTrait(SparseTrait.class)) {
-        return ExCallLocal.callLocal("encode_sparse_list", binding);
+        return LocalCallExpr.of("encode_sparse_list", List.of(binding));
       }
       return binding;
     }
     if (target instanceof MapShape mapShape) {
-      return ElixirMapHelperIr.mapEncodeExpr(model, sp, httpIndex, mapShape, binding);
+      if (ElixirMapHelperIr.mapNeedsTypedHelper(model, mapShape)) {
+        return LocalCallExpr.of(
+            "encode_" + ElixirMapHelperIr.mapHelperName(mapShape), List.of(binding));
+      }
+      if (mapShape.hasTrait(SparseTrait.class)) {
+        return LocalCallExpr.of("encode_sparse_map", List.of(binding));
+      }
+      return binding;
     }
     return binding;
   }
@@ -242,6 +306,17 @@ final class ElixirStructureHelperIr {
     return fmt == TimestampFormatTrait.Format.EPOCH_SECONDS
         ? "decode_timestamp_epoch_seconds"
         : "decode_timestamp_date_time";
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, Expression body, boolean oneLiner) {
+    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+  }
+
+  private static Function defp(
+      String name, List<Pattern> params, IsTypeGuard guard, Expression body, boolean oneLiner) {
+    return new Function(
+        name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
   }
 
   private static String helperName(Shape shape) {

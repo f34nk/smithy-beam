@@ -38,7 +38,7 @@ Shared components that live in `codegen-core`:
 
 Type-generation entry classes **`ErlangTypeGeneration`** and **`ElixirTypeGeneration`** live in **`codegen-erlang`** and **`codegen-elixir`**. Each one configures [CodegenDirector](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html#running-directedcodegen-using-a-codegendirector) for the [DirectedCodegen](https://smithy.io/2.0/guides/building-codegen/implementing-the-generator.html#directedcodegen) implementation of that language. The standalone types plugins call these classes, and later client/server plugins in the same language module call the same class before emitting client or server output. Type generation is implemented once per language and reused; it is not duplicated per plugin.
 
-The **`codegen-ir`** Gradle submodule holds shared structural intermediate representation (IR) nodes for Erlang and Elixir. Language emitters build IR trees for protocol codecs, client and server dispatch, runtime helpers, and type modules, then render them to source text. IR keeps formatting and cross-protocol reuse consistent without string templating in the language modules.
+The **`beam-ir`** library (`io.beam:beam-ir`) holds shared structural intermediate representation (IR) nodes for Erlang and Elixir. Language emitters build IR trees for protocol codecs, client and server dispatch, runtime helpers, and type modules, then render them to source text. IR keeps formatting and cross-protocol reuse consistent without string templating in the language modules.
 
 Without `codegen-core`, each plugin would duplicate shared settings, transforms, and integration scaffolding, causing drift and requiring wide fixes for every bug. The shared module is a compile-time dependency only; it adds no BEAM runtime dependency.
 
@@ -155,10 +155,11 @@ All Java source lives under `io.smithy.beam`:
 | Gradle module | Java package root |
 |---|---|
 | `codegen-core` | `io.smithy.beam.core` |
-| `codegen-ir` | `io.smithy.beam.ir` |
 | `codegen-erlang` | `io.smithy.beam.erlang` |
 | `codegen-elixir` | `io.smithy.beam.elixir` |
 | `codegen-test` | `io.smithy.beam.test` |
+
+External dependency **`io.beam:beam-ir`** provides `io.beam.ir.erlang` and `io.beam.ir.elixir` IR types used by the Erlang and Elixir codegen modules.
 
 [SPI](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/ServiceLoader.html) registration files live at `META-INF/services/software.amazon.smithy.build.SmithyBuildPlugin` inside each language module's JAR.
 
@@ -175,7 +176,7 @@ Code generation passes through three phases, following the Smithy guide:
    - [SymbolProvider](https://smithy.io/2.0/guides/building-codegen/mapping-shapes-to-languages.html) maps each Smithy shape to a target-language symbol.
    - [SymbolWriter](https://smithy.io/2.0/guides/building-codegen/decoupling-codegen-with-symbols.html) renders source files from the symbol graph.
    - [SmithyIntegration](https://smithy.io/2.0/guides/building-codegen/making-codegen-pluggable.html#creating-a-smithyintegrations) hooks allow protocol-specific interceptors to modify the output. Language integrations may implement `createProtocolCodegen` to register custom `BeamProtocolCodegen` implementations for protocol traits.
-   - Language emitters compose structural IR trees from `codegen-ir` and render them to `.erl`/`.hrl` or `.ex` source text.
+   - Language emitters compose structural IR trees from `beam-ir` and render them to `.erl`/`.hrl` or `.ex` source text.
    - Output: generated `.erl`/`.hrl` or `.ex` source files. Consumers maintain their own `rebar.config` or `mix.exs` and declare any third-party OTP or Hex packages (for example `jsone` or `aws_signature`) that generated modules call at runtime.
 
 2. **Compile-time** ([rebar3](https://rebar3.org) or [Mix](https://hexdocs.pm/mix/Mix.html) on the developer's machine)

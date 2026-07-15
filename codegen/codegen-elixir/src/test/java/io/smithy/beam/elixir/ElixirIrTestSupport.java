@@ -2,13 +2,13 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.smithy.beam.ir.elixir.ExFunction;
+import io.beam.ir.elixir.Function;
 
 public final class ElixirIrTestSupport {
   private ElixirIrTestSupport() {}
 
-  public static void assertStructural(ExFunction fn) {
+  public static void assertStructural(Function fn) {
     assertThat(fn.name()).isNotBlank();
-    assertThat(fn.clauses()).isNotEmpty();
+    assertThat(fn.heads()).isNotEmpty();
   }
 }
