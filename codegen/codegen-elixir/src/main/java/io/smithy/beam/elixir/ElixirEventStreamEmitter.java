@@ -24,16 +24,16 @@ public final class ElixirEventStreamEmitter {
 
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
-    Module module = ElixirEventStreamIr.eventStreamModule(ctx, service);
+    Module module = ElixirEventStreamDsl.eventStreamModule(ctx, service);
     ElixirCodecEmission.writeModule(ctx, layout.eventStreamModuleFile(), module);
   }
 
   static String helperName(SymbolProvider sp, UnionShape union) {
-    return ElixirEventStreamIr.helperName(sp, union);
+    return ElixirEventStreamDsl.helperName(sp, union);
   }
 
   static String unionTagForMember(
       SymbolProvider sp, software.amazon.smithy.model.shapes.MemberShape member) {
-    return ElixirUnionHelperIr.unionTagForMember(sp, member);
+    return ElixirUnionHelperDsl.unionTagForMember(sp, member);
   }
 }

@@ -13,7 +13,7 @@ final class ErlangHandlerDiscoveryEmitter {
       return;
     }
     builder.addDiscoveryFunctions(
-        ErlangHandlerDiscoveryIr.discoveryFunctions(layout.behaviourModuleName()));
+        ErlangHandlerDiscoveryDsl.discoveryFunctions(layout.behaviourModuleName()));
   }
 
   static void emitOperationDispatch(ErlangContext ctx, String handler) {
@@ -21,6 +21,6 @@ final class ErlangHandlerDiscoveryEmitter {
     if (builder == null) {
       return;
     }
-    builder.addOperationFunction(ErlangHandlerDiscoveryIr.operationDispatch(handler));
+    builder.addOperationFunction(ErlangHandlerDiscoveryDsl.operationDispatch(handler));
   }
 }

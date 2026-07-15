@@ -21,7 +21,7 @@ public final class ErlangWaiterEmitter {
     ErlangCodecEmission.writeModule(
         ctx,
         layout.waitersModuleFile(),
-        ErlangWaiterIr.waitersModule(
+        ErlangWaiterDsl.waitersModule(
             layout.waitersModuleName(),
             layout.typesHeaderFile(),
             layout.clientModuleName(),

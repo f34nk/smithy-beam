@@ -116,7 +116,7 @@ final class ErlangRestJsonSupport {
     List<MapShape> shapes = new ArrayList<>();
     for (Shape shape : new Walker(model).walkShapes(service)) {
       if (shape instanceof MapShape mapShape
-          && ErlangMapHelperIr.mapNeedsTypedHelper(model, mapShape)
+          && ErlangMapHelperDsl.mapNeedsTypedHelper(model, mapShape)
           && emitted.add(mapShape.getId())) {
         shapes.add(mapShape);
       }

@@ -1,0 +1,184 @@
+package io.smithy.beam.elixir;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.beam.dsl.elixir.ElixirRenderer;
+import io.beam.dsl.elixir.Function;
+import io.smithy.beam.core.BeamCodegenKind;
+import io.smithy.beam.core.BeamElixirLayout;
+import io.smithy.beam.core.BeamSettings;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
+import software.amazon.smithy.model.shapes.StructureShape;
+
+@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
+class ElixirAwsQueryIrTest {
+  @Test
+  void queryHelpersAwsAsStringMatchGolden() throws IOException {
+    assertGolden(
+        ElixirAwsQueryHelperDsl.queryHelperFunctions(false),
+        "dsl/aws_query_flatten_member.expected.ex");
+  }
+
+  @Test
+  void serverQueryDecodeHelpersAwsAsStringMatchGolden() throws IOException {
+    assertGolden(
+        ElixirAwsQueryHelperDsl.serverDecodeHelpers(false),
+        "dsl/aws_query_form_decode_aws.expected.ex");
+  }
+
+  @Test
+  void queryHelpersAwsAreStructural() {
+    for (Function fn : ElixirAwsQueryHelperDsl.queryHelperFunctions(false)) {
+      ElixirDslTestSupport.assertStructural(fn);
+    }
+    String text = helpersAsString(ElixirAwsQueryHelperDsl.queryHelperFunctions(false));
+    assertThat(text).contains("when is_list(value) do");
+    assertThat(text).contains("when is_struct(value) do");
+    assertThat(text).contains("when is_map(value) do");
+  }
+
+  @Test
+  void serverQueryDecodeHelpersAreStructural() {
+    for (Function fn : ElixirAwsQueryHelperDsl.serverDecodeHelpers(false)) {
+      ElixirDslTestSupport.assertStructural(fn);
+    }
+  }
+
+  @Test
+  void xmlHelperFunctionsIncludeCollectText() {
+    String text =
+        ElixirAwsQueryHelperDsl.xmlHelperFunctions(false).stream()
+            .map(ElixirRenderer::renderFunction)
+            .collect(Collectors.joining("\n\n"));
+    assertThat(text).contains("defp collect_text(");
+    assertThat(text).contains("defp element_text(");
+  }
+
+  @Test
+  void flattenStructureUsesWirePrefixForStructuresWithKeyField() {
+    Model model = tagFlattenModel();
+    ServiceShape service =
+        model.expectShape(
+            ShapeId.from("smithy.beam.test.tagflatten#QueryService"), ServiceShape.class);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    BeamElixirLayout layout =
+        new BeamElixirLayout(settings, service.getId().getNamespace(), service);
+    ElixirSymbolProvider provider =
+        new ElixirSymbolProvider(
+            settings,
+            model,
+            service,
+            layout.typesModuleFile(),
+            ElixirSymbolProvider.toModuleName(layout.typesModuleName()),
+            BeamCodegenKind.CLIENT);
+    StructureShape tag =
+        model.expectShape(ShapeId.from("smithy.beam.test.tagflatten#Tag"), StructureShape.class);
+
+    List<Function> functions =
+        ElixirAwsQueryOperationDsl.buildFlattenStructure(provider, Set.of(tag), true);
+    for (Function fn : functions) {
+      ElixirDslTestSupport.assertStructural(fn);
+    }
+
+    String text =
+        functions.stream().map(ElixirRenderer::renderFunction).collect(Collectors.joining("\n\n"));
+    assertThat(text)
+        .contains("defp flatten_structure(wire_prefix, %Types.Tag{key: key, value: value})");
+    assertThat(text).contains("flatten_member(wire_prefix <> \".\" <> \"Key\", key)");
+    assertThat(text).doesNotContain("defp flatten_structure(key, %Types.Tag{key: key");
+  }
+
+  private static Model tagFlattenModel() {
+    String idl =
+        """
+                $version: "2"
+                namespace smithy.beam.test.tagflatten
+
+                use aws.protocols#ec2Query
+                use aws.protocols#ec2QueryName
+                use aws.api#service
+                use smithy.api#http
+                use smithy.api#xmlNamespace
+
+                @ec2Query
+                @xmlNamespace(uri: "https://tagflattentest.amazonaws.com/doc/2020-01-01/")
+                @service(sdkId: "TagFlattenTest", endpointPrefix: "tagflattentest")
+                service QueryService {
+                    version: "2020-01-01"
+                    operations: [RunInstances]
+                }
+
+                @http(method: "POST", uri: "/")
+                operation RunInstances {
+                    input: RunInstancesInput
+                }
+
+                structure RunInstancesInput {
+                    @ec2QueryName("TagSpecification")
+                    tagSpecifications: TagSpecificationList
+                }
+
+                list TagSpecificationList {
+                    member: TagSpecification
+                }
+
+                structure TagSpecification {
+                    @ec2QueryName("ResourceType")
+                    resourceType: String
+                    @ec2QueryName("Tag")
+                    tags: TagList
+                }
+
+                list TagList {
+                    member: Tag
+                }
+
+                structure Tag {
+                    key: String
+                    value: String
+                }
+                """;
+    return Model.assembler()
+        .addUnparsedModel("tag_flatten_fixture.smithy", idl)
+        .discoverModels()
+        .assemble()
+        .unwrap();
+  }
+
+  private static void assertGolden(List<Function> functions, String resourcePath)
+      throws IOException {
+    assertThat(helpersAsString(functions)).isEqualTo(readExpectedString(resourcePath));
+    for (Function fn : functions) {
+      ElixirDslTestSupport.assertStructural(fn);
+    }
+  }
+
+  private static String helpersAsString(List<Function> functions) {
+    return functions.stream()
+        .map(ElixirRenderer::renderFunction)
+        .collect(Collectors.joining("\n\n"));
+  }
+
+  private static String readExpectedString(String resourcePath) throws IOException {
+    try (InputStream in =
+        ElixirAwsQueryIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
+      assertThat(in).as("resource %s", resourcePath).isNotNull();
+      String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+      if (text.endsWith("\n")) {
+        text = text.substring(0, text.length() - 1);
+      }
+      return text;
+    }
+  }
+}

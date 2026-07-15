@@ -25,7 +25,7 @@ final class ElixirBehaviourEmitter {
     if (builder == null) {
       return;
     }
-    builder.addCallback(ElixirBehaviourIr.operationCallback(ctx, op, sp));
+    builder.addCallback(ElixirBehaviourDsl.operationCallback(ctx, op, sp));
   }
 
   static void finishService(ElixirContext ctx, List<OperationShape> operations, SymbolProvider sp) {
@@ -36,7 +36,7 @@ final class ElixirBehaviourEmitter {
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), ctx.service().getId().getNamespace(), ctx.service());
     Module module =
-        ElixirBehaviourIr.behaviourModule(
+        ElixirBehaviourDsl.behaviourModule(
             layout, ctx.service(), builder.callbacks(), operations, sp);
     ElixirCodecEmission.writeModule(ctx, layout.behaviourModuleFile(), module);
   }

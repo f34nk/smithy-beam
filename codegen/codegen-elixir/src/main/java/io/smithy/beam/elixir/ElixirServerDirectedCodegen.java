@@ -132,7 +132,7 @@ final class ElixirServerDirectedCodegen
     ElixirContext ctx = directive.context();
     ServiceShape service = directive.shape();
 
-    ElixirProtocolCodecIr.emitServerCodec(ctx, service);
+    ElixirProtocolCodecDsl.emitServerCodec(ctx, service);
 
     ElixirRouterEmitter.emit(ctx, service);
     ElixirComplianceTestEmitter.emit(ctx, service);
@@ -152,7 +152,7 @@ final class ElixirServerDirectedCodegen
       String behaviourMod = ElixirSymbolProvider.toModuleName(layout.behaviourModuleName());
       String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
       Module module =
-          ElixirServerIr.serverModule(
+          ElixirServerDsl.serverModule(
               layout,
               service,
               behaviourMod,

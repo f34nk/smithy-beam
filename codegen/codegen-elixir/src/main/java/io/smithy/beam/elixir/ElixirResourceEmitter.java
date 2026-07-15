@@ -24,7 +24,7 @@ public final class ElixirResourceEmitter {
     ElixirCodecEmission.writeModule(
         ctx,
         file,
-        ElixirResourceIr.clientModule(ctx, resource, index, layout, delegateMod, typesMod));
+        ElixirResourceDsl.clientModule(ctx, resource, index, layout, delegateMod, typesMod));
   }
 
   public static void emitServer(ElixirContext ctx, ResourceShape resource) {
@@ -41,6 +41,6 @@ public final class ElixirResourceEmitter {
     ElixirCodecEmission.writeModule(
         ctx,
         file,
-        ElixirResourceIr.serverModule(ctx, resource, index, layout, delegateMod, typesMod));
+        ElixirResourceDsl.serverModule(ctx, resource, index, layout, delegateMod, typesMod));
   }
 }

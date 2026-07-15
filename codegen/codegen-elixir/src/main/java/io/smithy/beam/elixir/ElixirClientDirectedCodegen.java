@@ -150,7 +150,7 @@ final class ElixirClientDirectedCodegen
     String ns = service.getId().getNamespace();
     BeamElixirLayout layout = new BeamElixirLayout(ctx.settings(), ns, service);
 
-    ElixirProtocolCodecIr.emitClientCodec(ctx, service);
+    ElixirProtocolCodecDsl.emitClientCodec(ctx, service);
 
     ElixirS3EndpointEmitter.emit(ctx, service);
     ElixirWaiterEmitter.emit(ctx, service);
@@ -165,11 +165,11 @@ final class ElixirClientDirectedCodegen
     if (builder != null) {
       String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
       List<Function> functions = new ArrayList<>();
-      if (ElixirRetryIr.serviceHasRetryableErrors(ctx.model(), service)) {
-        functions.addAll(ElixirRetryIr.clientPredicateFunctions(ctx.model(), service, sp, layout));
+      if (ElixirRetryDsl.serviceHasRetryableErrors(ctx.model(), service)) {
+        functions.addAll(ElixirRetryDsl.clientPredicateFunctions(ctx.model(), service, sp, layout));
       }
       functions.addAll(builder.operationFunctions());
-      Module module = ElixirClientIr.clientModule(layout, service, typesModuleName, functions);
+      Module module = ElixirClientDsl.clientModule(layout, service, typesModuleName, functions);
       ElixirCodecEmission.writeModule(ctx, ctx.definitionFile(), module);
       if (ctx.protocolCodegen() != null) {
         List<OperationShape> operations =
@@ -229,7 +229,7 @@ final class ElixirClientDirectedCodegen
 
     if (paginated) {
       builder.addOperationFunctions(
-          ElixirClientPaginationIr.paginatedOperationFunctions(
+          ElixirClientPaginationDsl.paginatedOperationFunctions(
               ctx, ctx.service(), op, layout, wrapWithRetry, clientModule, successReturnType, doc));
       return;
     }
@@ -319,14 +319,14 @@ final class ElixirClientDirectedCodegen
     }
 
     List<Expression> body =
-        ElixirClientDispatchIr.operationBodyExprs(
+        ElixirClientDispatchDsl.operationBodyExprs(
             ctx,
             op,
             layout,
             wrapWithRetry,
             clientModule,
             false,
-            ElixirClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
+            ElixirClientDispatchOperationDsl.DispatchBodyMode.SINGLE_PAGE);
     Expression block = body.size() == 1 ? body.get(0) : BlockExpr.of(body);
     return Function.of(
         opSym.getName(),

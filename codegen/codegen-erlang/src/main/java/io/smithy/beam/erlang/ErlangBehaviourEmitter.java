@@ -24,7 +24,7 @@ final class ErlangBehaviourEmitter {
     if (builder == null) {
       return;
     }
-    builder.addCallback(ErlangBehaviourIr.operationCallback(ctx, op, sp));
+    builder.addCallback(ErlangBehaviourDsl.operationCallback(ctx, op, sp));
   }
 
   static void finishService(
@@ -38,6 +38,6 @@ final class ErlangBehaviourEmitter {
     ErlangCodecEmission.writeModule(
         ctx,
         layout.behaviourModuleFile(),
-        ErlangBehaviourIr.behaviourModule(layout, service, builder.callbacks()));
+        ErlangBehaviourDsl.behaviourModule(layout, service, builder.callbacks()));
   }
 }

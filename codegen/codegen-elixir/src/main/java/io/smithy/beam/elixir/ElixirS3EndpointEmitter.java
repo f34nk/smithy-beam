@@ -14,7 +14,7 @@ public final class ElixirS3EndpointEmitter {
       return;
     }
 
-    Module module = ElixirS3EndpointIr.s3EndpointModule(service);
+    Module module = ElixirS3EndpointDsl.s3EndpointModule(service);
     ElixirCodecEmission.writeModule(ctx, "s3_endpoint.ex", module);
   }
 }

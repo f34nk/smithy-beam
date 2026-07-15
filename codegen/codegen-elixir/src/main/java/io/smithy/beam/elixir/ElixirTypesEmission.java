@@ -39,7 +39,7 @@ final class ElixirTypesEmission {
     }
 
     Module rootModule =
-        ElixirBeamIrTypes.rootTypesModule(
+        ElixirBeamDslTypes.rootTypesModule(
             ctx.moduleName(), moduledoc, inlineEntries, ctx.typesFunctions());
     writeTypesFile(ctx, ctx.definitionFile(), rootModule);
 
@@ -58,9 +58,9 @@ final class ElixirTypesEmission {
       ElixirTypesEntry entry, int defstructSplitThreshold, int enumSplitThreshold) {
     return switch (entry) {
       case ElixirTypesStructNested(TypesModule typesModule) ->
-          ElixirBeamIrTypes.shouldSplitStruct(typesModule, defstructSplitThreshold);
+          ElixirBeamDslTypes.shouldSplitStruct(typesModule, defstructSplitThreshold);
       case ElixirTypesEmbeddedNested embedded ->
-          ElixirBeamIrTypes.shouldSplitEmbedded(embedded, enumSplitThreshold);
+          ElixirBeamDslTypes.shouldSplitEmbedded(embedded, enumSplitThreshold);
       default -> false;
     };
   }
@@ -70,12 +70,12 @@ final class ElixirTypesEmission {
     switch (entry) {
       case ElixirTypesStructNested(TypesModule typesModule) -> {
         String file = layout.nestedTypeModuleFile(typesModule.name());
-        TypesModule topLevel = ElixirBeamIrTypes.splitStructModule(ctx.moduleName(), typesModule);
+        TypesModule topLevel = ElixirBeamDslTypes.splitStructModule(ctx.moduleName(), typesModule);
         writeTypesSource(ctx, file, ElixirRenderer.render(topLevel));
       }
       case ElixirTypesEmbeddedNested embedded -> {
         String file = layout.nestedTypeModuleFile(embedded.name());
-        Module topLevel = ElixirBeamIrTypes.splitEmbeddedModule(ctx.moduleName(), embedded);
+        Module topLevel = ElixirBeamDslTypes.splitEmbeddedModule(ctx.moduleName(), embedded);
         writeTypesFile(ctx, file, topLevel);
       }
       default -> {}

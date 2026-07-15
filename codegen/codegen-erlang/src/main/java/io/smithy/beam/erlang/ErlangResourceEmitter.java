@@ -21,7 +21,7 @@ public final class ErlangResourceEmitter {
     String resourceSnake = ctx.symbolProvider().toSymbol(resource).getName();
     String file = layout.resourceClientModuleFile(resourceSnake);
     Module module =
-        ErlangResourceIr.clientModule(ctx, resource, index, layout, layout.clientModuleName());
+        ErlangResourceDsl.clientModule(ctx, resource, index, layout, layout.clientModuleName());
     ErlangCodecEmission.writeModule(ctx, file, module);
   }
 
@@ -35,7 +35,7 @@ public final class ErlangResourceEmitter {
     String resourceSnake = ctx.symbolProvider().toSymbol(resource).getName();
     String file = layout.resourceServerModuleFile(resourceSnake);
     Module module =
-        ErlangResourceIr.serverModule(ctx, resource, index, layout, layout.serverModuleName());
+        ErlangResourceDsl.serverModule(ctx, resource, index, layout, layout.serverModuleName());
     ErlangCodecEmission.writeModule(ctx, file, module);
   }
 }

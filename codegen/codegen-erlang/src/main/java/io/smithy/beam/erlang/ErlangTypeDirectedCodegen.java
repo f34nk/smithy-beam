@@ -419,7 +419,7 @@ final class ErlangTypeDirectedCodegen
                     "$L",
                     ErlangRenderer.render(
                         Header.ofEntries(
-                            ErlangTypesIr.endpointRuleSetEntries(ruleSetMap), false))));
+                            ErlangTypesDsl.endpointRuleSetEntries(ruleSetMap), false))));
   }
 
   // ── Service / Resource / Operation stubs ─────────────────────────────────

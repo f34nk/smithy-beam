@@ -41,11 +41,11 @@ public final class ErlangEventStreamEmitter {
     ErlangCodecEmission.writeModule(
         ctx,
         layout.eventStreamModuleFile(),
-        ErlangEventStreamIr.eventStreamModule(
+        ErlangEventStreamDsl.eventStreamModule(
             moduleName, layout.typesHeaderFile(), service, unions, model, sp, exports));
   }
 
   static String helperName(SymbolProvider sp, UnionShape union) {
-    return ErlangEventStreamIr.helperName(sp, union);
+    return ErlangEventStreamDsl.helperName(sp, union);
   }
 }

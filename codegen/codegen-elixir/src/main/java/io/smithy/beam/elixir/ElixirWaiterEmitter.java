@@ -19,7 +19,7 @@ public final class ElixirWaiterEmitter {
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
     Module module =
-        ElixirWaiterIr.waitersModule(ctx, service, index, ctx.symbolProvider(), ctx.model());
+        ElixirWaiterDsl.waitersModule(ctx, service, index, ctx.symbolProvider(), ctx.model());
     ElixirCodecEmission.writeModule(ctx, layout.waitersModuleFile(), module);
   }
 }

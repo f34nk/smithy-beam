@@ -10,7 +10,7 @@ public final class ElixirComplianceTestEmitter {
   private ElixirComplianceTestEmitter() {}
 
   public static void emit(ElixirContext ctx, ServiceShape service) {
-    Module module = ElixirComplianceTestIr.complianceTestsModule(ctx, service);
+    Module module = ElixirComplianceTestDsl.complianceTestsModule(ctx, service);
     if (module == null) {
       return;
     }

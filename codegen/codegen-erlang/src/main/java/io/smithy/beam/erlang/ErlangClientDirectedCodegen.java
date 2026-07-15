@@ -142,7 +142,7 @@ final class ErlangClientDirectedCodegen
     String ns = service.getId().getNamespace();
     BeamErlangLayout layout = new BeamErlangLayout(ctx.settings(), ns, service);
 
-    ErlangProtocolCodecIr.emitClientCodec(ctx, service);
+    ErlangProtocolCodecDsl.emitClientCodec(ctx, service);
 
     ErlangS3EndpointEmitter.emit(ctx, service);
     ErlangWaiterEmitter.emit(ctx, service);
@@ -161,12 +161,12 @@ final class ErlangClientDirectedCodegen
       for (OperationShape op : operations) {
         exports.add(sp.toSymbol(op).getName() + "/2");
       }
-      if (ErlangRetryIr.serviceHasRetryableErrors(ctx.model(), service)) {
+      if (ErlangRetryDsl.serviceHasRetryableErrors(ctx.model(), service)) {
         builder.addOperationFunctions(
-            ErlangRetryIr.clientPredicateFunctions(ctx.model(), service, sp));
+            ErlangRetryDsl.clientPredicateFunctions(ctx.model(), service, sp));
       }
       Module module =
-          ErlangClientIr.clientModule(layout, service, exports, builder.operationFunctions());
+          ErlangClientDsl.clientModule(layout, service, exports, builder.operationFunctions());
       ErlangCodecEmission.writeModule(ctx, ctx.definitionFile(), module);
       if (ctx.protocolCodegen() != null) {
         for (OperationShape op : operations) {
@@ -218,7 +218,7 @@ final class ErlangClientDirectedCodegen
 
     if (paginated) {
       builder.addOperationFunctions(
-          ErlangClientPaginationIr.paginatedOperationFunctions(
+          ErlangClientPaginationDsl.paginatedOperationFunctions(
               ctx,
               ctx.service(),
               op,
@@ -309,13 +309,13 @@ final class ErlangClientDirectedCodegen
     }
 
     List<Expression> body =
-        ErlangClientDispatchIr.operationBodyExprs(
+        ErlangClientDispatchDsl.operationBodyExprs(
             ctx,
             op,
             layout,
             wrapWithRetry,
             false,
-            ErlangClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
+            ErlangClientDispatchOperationDsl.DispatchBodyMode.SINGLE_PAGE);
     Expression clauseBody = body.size() == 1 ? body.get(0) : BlockExpr.commaSeparated(body, false);
     return Function.of(
         opSym.getName(),

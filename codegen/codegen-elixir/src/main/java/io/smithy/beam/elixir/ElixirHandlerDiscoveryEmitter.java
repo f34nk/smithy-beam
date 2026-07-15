@@ -13,7 +13,7 @@ final class ElixirHandlerDiscoveryEmitter {
       return;
     }
     builder.addDiscoveryFunctions(
-        ElixirHandlerDiscoveryIr.discoveryFunctions(
+        ElixirHandlerDiscoveryDsl.discoveryFunctions(
             ElixirSymbolProvider.toModuleName(layout.behaviourModuleName())));
   }
 
@@ -22,6 +22,6 @@ final class ElixirHandlerDiscoveryEmitter {
     if (builder == null) {
       return;
     }
-    builder.addOperationFunction(ElixirHandlerDiscoveryIr.operationDispatch(handler));
+    builder.addOperationFunction(ElixirHandlerDiscoveryDsl.operationDispatch(handler));
   }
 }

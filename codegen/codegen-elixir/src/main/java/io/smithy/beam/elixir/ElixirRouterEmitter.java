@@ -20,7 +20,7 @@ public final class ElixirRouterEmitter {
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
     Module module =
-        ElixirRouterIr.routerModule(
+        ElixirRouterDsl.routerModule(
             ctx.model(),
             service,
             layout,

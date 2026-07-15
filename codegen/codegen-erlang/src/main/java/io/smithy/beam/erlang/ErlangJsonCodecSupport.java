@@ -118,7 +118,7 @@ final class ErlangJsonCodecSupport {
       return helper + "(" + raw + ")";
     }
     if (target instanceof MapShape mapShape) {
-      return ErlangMapHelperIr.mapDecodeExpr(model, sp, httpIndex, mapShape, raw);
+      return ErlangMapHelperDsl.mapDecodeExpr(model, sp, httpIndex, mapShape, raw);
     }
     return raw;
   }
@@ -163,7 +163,7 @@ final class ErlangJsonCodecSupport {
       return binding;
     }
     if (target instanceof MapShape mapShape) {
-      return ErlangMapHelperIr.mapEncodeExpr(model, sp, httpIndex, mapShape, binding);
+      return ErlangMapHelperDsl.mapEncodeExpr(model, sp, httpIndex, mapShape, binding);
     }
     return binding;
   }
@@ -293,7 +293,7 @@ final class ErlangJsonCodecSupport {
                     eventStreamModule, "decode_" + helper, List.of(Variable.of("Body")))));
       } else {
         Expression raw =
-            ErlangCodecHelperIr.mapsGetDefault(
+            ErlangCodecHelperDsl.mapsGetDefault(
                 BinaryExpr.of(jsonKey(member)), Variable.of("Decoded"), AtomExpr.of("undefined"));
         fields.add(RecordField.of(fieldName, decodeJsonExpr(model, sp, httpIndex, member, raw)));
       }
@@ -365,7 +365,7 @@ final class ErlangJsonCodecSupport {
       return LocalCallExpr.of(helper, List.of(raw));
     }
     if (target instanceof MapShape mapShape) {
-      return ErlangMapHelperIr.mapDecodeExpr(model, sp, httpIndex, mapShape, raw);
+      return ErlangMapHelperDsl.mapDecodeExpr(model, sp, httpIndex, mapShape, raw);
     }
     return raw;
   }
@@ -410,7 +410,7 @@ final class ErlangJsonCodecSupport {
       return Variable.of(bindingVar);
     }
     if (target instanceof MapShape mapShape) {
-      return ErlangMapHelperIr.mapEncodeExpr(
+      return ErlangMapHelperDsl.mapEncodeExpr(
           model, sp, httpIndex, mapShape, Variable.of(bindingVar));
     }
     return Variable.of(bindingVar);

@@ -16,6 +16,6 @@ public final class ErlangS3EndpointEmitter {
     }
 
     ErlangCodecEmission.writeModule(
-        ctx, "s3_endpoint.erl", ErlangS3EndpointIr.s3EndpointModule(service));
+        ctx, "s3_endpoint.erl", ErlangS3EndpointDsl.s3EndpointModule(service));
   }
 }

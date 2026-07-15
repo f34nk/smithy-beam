@@ -158,21 +158,21 @@ class ElixirTypesEmissionTest {
   }
 
   private static TypesModule smallStructure(String name) {
-    return ElixirBeamIrTypes.structNested(
+    return ElixirBeamDslTypes.structNested(
         name,
         null,
-        ElixirBeamIrTypes.structureTypeDef("t", List.of("name: String.t() | nil")),
-        ElixirBeamIrTypes.defstructFields(List.of("name")));
+        ElixirBeamDslTypes.structureTypeDef("t", List.of("name: String.t() | nil")),
+        ElixirBeamDslTypes.defstructFields(List.of("name")));
   }
 
   private static TypesModule largeStructure(String name) {
     String longField =
         "payload: " + "VeryLongNamespace.VeryLongServiceTypes.AnotherNestedType.t() | nil";
-    return ElixirBeamIrTypes.structNested(
+    return ElixirBeamDslTypes.structNested(
         name,
         null,
-        ElixirBeamIrTypes.structureTypeDef("t", List.of(longField)),
-        ElixirBeamIrTypes.defstructFields(List.of("payload")));
+        ElixirBeamDslTypes.structureTypeDef("t", List.of(longField)),
+        ElixirBeamDslTypes.defstructFields(List.of("payload")));
   }
 
   private static ElixirContext contextWithEnumEntries(

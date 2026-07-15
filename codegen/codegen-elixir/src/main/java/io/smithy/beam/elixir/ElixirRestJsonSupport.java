@@ -68,7 +68,7 @@ final class ElixirRestJsonSupport {
     List<MapShape> shapes = new ArrayList<>();
     for (Shape shape : new Walker(model).walkShapes(service)) {
       if (shape instanceof MapShape mapShape
-          && ElixirMapHelperIr.mapNeedsTypedHelper(model, mapShape)
+          && ElixirMapHelperDsl.mapNeedsTypedHelper(model, mapShape)
           && emitted.add(mapShape.getId())) {
         shapes.add(mapShape);
       }
@@ -87,11 +87,11 @@ final class ElixirRestJsonSupport {
 
     for (OperationShape op : ElixirTopDown.containedOperationsSorted(model, service)) {
       StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
-      for (MemberShape member : ElixirJsonCodecIr.documentMembers(httpIndex, op, input, true)) {
+      for (MemberShape member : ElixirJsonCodecDsl.documentMembers(httpIndex, op, input, true)) {
         collectStructureTargets(model, member, emitted, listElementIds);
       }
       StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
-      for (MemberShape member : ElixirJsonCodecIr.documentMembers(httpIndex, op, output, false)) {
+      for (MemberShape member : ElixirJsonCodecDsl.documentMembers(httpIndex, op, output, false)) {
         collectStructureTargets(model, member, emitted, listElementIds);
       }
       for (HttpBinding.Location loc : HttpBinding.Location.values()) {

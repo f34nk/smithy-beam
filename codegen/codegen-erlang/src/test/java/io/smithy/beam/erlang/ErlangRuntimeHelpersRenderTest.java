@@ -10,10 +10,10 @@ class ErlangRuntimeHelpersRenderTest {
 
   @Test
   void labelParsingUsesMapUpdateAndSplitTailPattern() {
-    String rendered = IrGoldenAssertions.renderFunctions(ErlangRouterIr.labelParsingFunctions());
+    String rendered = DslGoldenAssertions.renderFunctions(ErlangRouterDsl.labelParsingFunctions());
     assertThat(rendered).contains("Acc#{Key => Val}");
     assertThat(rendered).contains("[Label | [<<>>]]");
-    List<Function> functions = ErlangRouterIr.labelParsingFunctions();
+    List<Function> functions = ErlangRouterDsl.labelParsingFunctions();
     assertThat(functions).hasSize(4);
   }
 }

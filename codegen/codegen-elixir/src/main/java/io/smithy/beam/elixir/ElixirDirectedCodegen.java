@@ -187,7 +187,7 @@ final class ElixirDirectedCodegen
         && sym.getProperty("streamingBlob", Boolean.class).orElse(false)) {
       comments.add("Streaming payload; framing deferred to protocol layer.");
     }
-    ctx.addTypesRootLines(ElixirBeamIrTypes.typeAliasRootLines(sym.getName(), baseType, comments));
+    ctx.addTypesRootLines(ElixirBeamDslTypes.typeAliasRootLines(sym.getName(), baseType, comments));
   }
 
   private static List<String> shapeDocComments(Shape shape) {
@@ -261,7 +261,7 @@ final class ElixirDirectedCodegen
                 elementType = elementType + " | nil";
               }
               ctx.addTypesRootLines(
-                  ElixirBeamIrTypes.typeAliasRootLines(
+                  ElixirBeamDslTypes.typeAliasRootLines(
                       sym.getName(), "[" + elementType + "]", shapeDocComments(s)));
             });
   }
@@ -287,7 +287,7 @@ final class ElixirDirectedCodegen
                 valueType = valueType + " | nil";
               }
               ctx.addTypesRootLines(
-                  ElixirBeamIrTypes.typeAliasRootLines(
+                  ElixirBeamDslTypes.typeAliasRootLines(
                       sym.getName(),
                       "%{" + keyType + " => " + valueType + "}",
                       shapeDocComments(s)));
@@ -319,10 +319,10 @@ final class ElixirDirectedCodegen
     if (BeamEndpointRuleSetEmitter.hasRuleSet(directive.model(), service)) {
       String json =
           BeamEndpointRuleSetEmitter.serializeRuleSetJson(directive.model(), service).orElseThrow();
-      for (String line : ElixirTypesIr.endpointRuleSetEntries(json)) {
+      for (String line : ElixirTypesDsl.endpointRuleSetEntries(json)) {
         directive.context().addTypesRootLine(line);
       }
-      directive.context().addTypesFunction(ElixirTypesIr.endpointRuleSetFunction());
+      directive.context().addTypesFunction(ElixirTypesDsl.endpointRuleSetFunction());
     }
     ElixirTypesEmission.emit(directive.context());
   }
@@ -343,7 +343,7 @@ final class ElixirDirectedCodegen
     Symbol symbol = directive.symbolProvider().toSymbol(shape);
     directive
         .context()
-        .addTypesEmbeddedNested(ElixirTypesNestedIr.buildEnumNestedModule(shape, symbol));
+        .addTypesEmbeddedNested(ElixirTypesNestedDsl.buildEnumNestedModule(shape, symbol));
   }
 
   @Override
@@ -353,7 +353,7 @@ final class ElixirDirectedCodegen
     Symbol symbol = directive.symbolProvider().toSymbol(shape);
     directive
         .context()
-        .addTypesEmbeddedNested(ElixirTypesNestedIr.buildIntEnumNestedModule(shape, symbol));
+        .addTypesEmbeddedNested(ElixirTypesNestedDsl.buildIntEnumNestedModule(shape, symbol));
   }
 
   @Override
@@ -376,8 +376,8 @@ final class ElixirDirectedCodegen
     variants.add("{:unknown, String.t()}");
 
     BeamDocumentation.forShape(shape)
-        .ifPresent(doc -> ctx.addTypesRootLines(ElixirBeamIrTypes.typedocRootLines(doc)));
-    ctx.addTypesRootLines(ElixirBeamIrTypes.unionTypeRootLines(symbol.getName(), variants));
+        .ifPresent(doc -> ctx.addTypesRootLines(ElixirBeamDslTypes.typedocRootLines(doc)));
+    ctx.addTypesRootLines(ElixirBeamDslTypes.unionTypeRootLines(symbol.getName(), variants));
   }
 
   @Override
@@ -390,7 +390,7 @@ final class ElixirDirectedCodegen
     List<MemberShape> members = StreamSupport.stream(shape.members().spliterator(), false).toList();
 
     ctx.addTypesStructNested(
-        ElixirTypesNestedIr.buildStructureNestedModule(
+        ElixirTypesNestedDsl.buildStructureNestedModule(
             shape, symbol, ctx, sp, nullableIndex, members));
   }
 
@@ -404,7 +404,7 @@ final class ElixirDirectedCodegen
 
     ctx.addTypesRootLine("# Error shape: " + shape.getId() + " (" + errorTrait.getValue() + ")");
     ctx.addTypesEmbeddedNested(
-        ElixirTypesNestedIr.buildErrorNestedModule(
+        ElixirTypesNestedDsl.buildErrorNestedModule(
             shape,
             modName,
             errorTrait,

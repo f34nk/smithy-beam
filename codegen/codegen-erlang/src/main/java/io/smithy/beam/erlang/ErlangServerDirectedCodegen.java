@@ -128,7 +128,7 @@ final class ErlangServerDirectedCodegen
     ServiceShape service = directive.shape();
     SymbolProvider sp = directive.symbolProvider();
 
-    ErlangProtocolCodecIr.emitServerCodec(ctx, service);
+    ErlangProtocolCodecDsl.emitServerCodec(ctx, service);
 
     ErlangRouterEmitter.emit(ctx, service);
     ErlangComplianceTestEmitter.emit(ctx, service);
@@ -152,7 +152,7 @@ final class ErlangServerDirectedCodegen
         exports.add("handle_" + sym.getName() + "/3");
       }
       Module module =
-          ErlangServerIr.serverModule(
+          ErlangServerDsl.serverModule(
               layout,
               service,
               layout.behaviourModuleName(),

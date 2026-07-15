@@ -25,7 +25,7 @@ public final class ErlangRouterEmitter {
     ErlangCodecEmission.writeModule(
         ctx,
         layout.routerModuleFile(),
-        ErlangRouterIr.routerModule(
+        ErlangRouterDsl.routerModule(
             ctx.model(),
             service,
             layout,
