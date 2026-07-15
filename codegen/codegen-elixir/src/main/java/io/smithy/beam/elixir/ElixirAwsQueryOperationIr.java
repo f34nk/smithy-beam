@@ -1,5 +1,6 @@
 package io.smithy.beam.elixir;
 
+import io.beam.ir.elixir.AssignPattern;
 import io.beam.ir.elixir.AnonFun;
 import io.beam.ir.elixir.AnonFunClause;
 import io.beam.ir.elixir.AtomExpr;
@@ -90,7 +91,7 @@ final class ElixirAwsQueryOperationIr {
     String version = BeamAwsQueryFormEncoder.serviceVersion(service);
 
     Spec spec =
-        Spec.of("encode_" + opName + "_request(" + inputType + ") -> %" + runtimeMod + ".HttpRequest{}");
+        Spec.of("encode_" + opName + "_request(" + inputType + ") :: %" + runtimeMod + ".HttpRequest{}");
 
     List<Expression> body = new ArrayList<>();
     body.add(
@@ -119,7 +120,7 @@ final class ElixirAwsQueryOperationIr {
     return List.of(
         def(
             "encode_" + opName + "_request",
-            List.of(inputPattern(input, sp, true)),
+            List.of(AssignPattern.of("input", inputPattern(input, sp, true))),
             block(body),
             spec,
             FunctionDoc.of("Encode AWS Query request for " + op.getId() + "."),
@@ -205,7 +206,7 @@ final class ElixirAwsQueryOperationIr {
         Spec.of(
             "decode_"
                 + opName
-                + "_response(map()) -> {:ok, "
+                + "_response(map()) :: {:ok, "
                 + outputType
                 + "} | {:error, term()}");
 
@@ -247,7 +248,7 @@ final class ElixirAwsQueryOperationIr {
     StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
     String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
 
-    Spec spec = Spec.of("decode_" + opName + "_request(map()) -> " + inputType);
+    Spec spec = Spec.of("decode_" + opName + "_request(map()) :: " + inputType);
     Pattern pattern =
         StructPattern.of(
             runtimeMod + ".HttpRequest",
@@ -292,7 +293,7 @@ final class ElixirAwsQueryOperationIr {
     String responseElement = operationWireName(op, service) + "Response";
 
     Spec spec =
-        Spec.of("encode_" + opName + "_response(" + outputType + ") -> %" + runtimeMod + ".HttpResponse{}");
+        Spec.of("encode_" + opName + "_response(" + outputType + ") :: %" + runtimeMod + ".HttpResponse{}");
     Pattern pattern = outputPattern(output, sp, true);
 
     List<Expression> body = new ArrayList<>();
@@ -422,7 +423,7 @@ final class ElixirAwsQueryOperationIr {
         String wireKey = queryFormKey(member, ec2Query);
         memberCalls.add(
             LocalCallExpr.of(
-                "flatten_member", List.of(StringExpr.of(wireKey), new DotCallExpr(Variable.of("input"), field, List.of()))));
+                "flatten_member", List.of(StringExpr.of(wireKey), Variable.of(field))));
       }
       body =
           new PipeExpr(
