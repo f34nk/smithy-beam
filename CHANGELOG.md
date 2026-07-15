@@ -11,7 +11,15 @@ All notable changes to this project will be documented here.
 - Elixir beam-ir migration finished with normalized typespec syntax, REST JSON header_value
   helper wiring, simplified AWS Query operation encoding, improved router label parsing, and
   REST XML request encode helpers emitted as private functions.
+- Remaining Elixir IR emission uses beam-dsl factory methods, including list tails and
+  infix builders.
+- Shared Erlang and Elixir runtime utils modules renamed to runtime_utils.
+- Codegen Java classes and golden fixtures renamed from Ir to Dsl naming to match beam-dsl.
 - Makefile build failure logs include the demo target name.
+
+### Removed
+- Unused credential, context-param, S3 addressing, layout naming, and codec convenience
+  helpers dropped from codegen and Beam utilities.
 
 ### Fixed
 - AWS Query codecs decode XML boolean text correctly; Elixir prefix header parsing emission
