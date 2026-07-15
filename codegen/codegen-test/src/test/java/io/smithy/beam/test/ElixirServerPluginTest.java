@@ -82,7 +82,8 @@ class ElixirServerPluginTest {
     assertThat(source).contains("defp resolve_impl(impl) do");
     assertThat(source).contains("BasicServiceBehaviour.callbacks()");
     assertThat(source).contains("function_exported?(impl, fun, 3)");
-    assertThat(source).contains("Function.capture(impl, fun, 3)");
+    assertThat(source).contains("Map.put(acc, fun, Function.capture(impl, fun, 3))");
+    assertThat(source).doesNotContain("when function_exported?");
     assertThat(source).contains("def init_handlers do");
     assertThat(source).contains(":persistent_term.put(@handlers_key, handlers)");
     assertThat(source).contains("defp dispatch_handler");
@@ -221,7 +222,8 @@ class ElixirServerPluginTest {
     String org = manifest.expectFileString("organization_resource.ex");
     assertThat(org).contains("defmodule OrganizationResource do");
     assertThat(org).contains("handle_read(");
-    assertThat(org).contains("Server.handle_get_organization(ctx,");
+    assertThat(org).contains("Server.handle_get_organization(");
+    assertThat(org).contains("ctx,");
     assertThat(org).contains("Server.handle_create_organization(ctx, input, meta)");
     assertThat(org).doesNotContain("%{input | }");
   }

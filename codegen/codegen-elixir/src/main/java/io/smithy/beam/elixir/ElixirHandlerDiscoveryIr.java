@@ -9,14 +9,13 @@ import io.beam.ir.elixir.CaseExpr;
 import io.beam.ir.elixir.Clause;
 import io.beam.ir.elixir.DotCallExpr;
 import io.beam.ir.elixir.Expression;
-import io.beam.ir.elixir.ExpressionGuard;
+import io.beam.ir.elixir.IfExpr;
 import io.beam.ir.elixir.Function;
 import io.beam.ir.elixir.FunctionArityGuard;
 import io.beam.ir.elixir.FunctionHead;
 import io.beam.ir.elixir.IntegerExpr;
 import io.beam.ir.elixir.IntegerPattern;
 import io.beam.ir.elixir.LocalCallExpr;
-import io.beam.ir.elixir.MapEntry;
 import io.beam.ir.elixir.MapExpr;
 import io.beam.ir.elixir.MatchExpr;
 import io.beam.ir.elixir.RemoteCallExpr;
@@ -47,17 +46,18 @@ final class ElixirHandlerDiscoveryIr {
                                     List.of(
                                         VariablePattern.of("fun"), IntegerPattern.of(3))),
                                 VariablePattern.of("acc")),
-                            ExpressionGuard.of(
+                            new IfExpr(
                                 LocalCallExpr.of(
                                     "function_exported?",
                                     List.of(
                                         Variable.of("impl"),
                                         Variable.of("fun"),
-                                        IntegerExpr.of(3)))),
-                            MapExpr.of(
-                                Variable.of("acc"),
-                                List.of(
-                                    MapEntry.pair(
+                                        IntegerExpr.of(3))),
+                                RemoteCallExpr.of(
+                                    "Map",
+                                    "put",
+                                    List.of(
+                                        Variable.of("acc"),
                                         Variable.of("fun"),
                                         RemoteCallExpr.of(
                                             "Function",
@@ -65,7 +65,9 @@ final class ElixirHandlerDiscoveryIr {
                                             List.of(
                                                 Variable.of("impl"),
                                                 Variable.of("fun"),
-                                                IntegerExpr.of(3))))))),
+                                                IntegerExpr.of(3))))),
+                                Variable.of("acc"),
+                                false)),
                         AnonFunClause.of(
                             List.of(
                                 VariablePattern.of("_item"), VariablePattern.of("acc")),
@@ -133,7 +135,7 @@ final class ElixirHandlerDiscoveryIr {
         false,
         List.of(FunctionHead.of(List.of())),
         resolveCase,
-        Spec.of("init_handlers() -> :ok | {:error, term()}"),
+        Spec.of("init_handlers() :: :ok | {:error, term()}"),
         null,
         false);
   }

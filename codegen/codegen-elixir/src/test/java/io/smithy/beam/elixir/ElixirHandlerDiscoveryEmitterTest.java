@@ -68,6 +68,9 @@ class ElixirHandlerDiscoveryEmitterTest {
     assertThat(resolveBlock).contains("case Code.ensure_loaded(impl) do");
     assertThat(resolveBlock).contains("{:module, _} ->");
     assertThat(resolveBlock).contains("{:error, _} ->");
+    assertThat(resolveBlock).contains("if function_exported?(impl, fun, 3) do");
+    assertThat(resolveBlock).contains("Map.put(acc, fun, Function.capture(impl, fun, 3))");
+    assertThat(resolveBlock).doesNotContain("when function_exported?");
     assertThat(resolveBlock.trim()).endsWith("end");
 
     assertThat(source.substring(initStart, dispatchStart).trim())

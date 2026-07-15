@@ -18,7 +18,8 @@ class ElixirHandlerDiscoveryIrTest {
     assertThat(text).contains("BasicServiceBehaviour.callbacks()");
     assertThat(text).contains("Enum.reduce");
     assertThat(text).contains("function_exported?(impl, fun, 3)");
-    assertThat(text).contains("Function.capture(impl, fun, 3)");
+    assertThat(text).contains("Map.put(acc, fun, Function.capture(impl, fun, 3))");
+    assertThat(text).doesNotContain("when function_exported?");
   }
 
   @Test
