@@ -16,6 +16,7 @@ import io.beam.dsl.elixir.Function;
 import io.beam.dsl.elixir.FunctionHead;
 import io.beam.dsl.elixir.InfixExpr;
 import io.beam.dsl.elixir.IntegerExpr;
+import io.beam.dsl.elixir.ListExpr;
 import io.beam.dsl.elixir.ListPattern;
 import io.beam.dsl.elixir.LocalCallExpr;
 import io.beam.dsl.elixir.MapEntry;
@@ -33,12 +34,14 @@ import io.beam.dsl.elixir.UseDirective;
 import io.beam.dsl.elixir.UseOption;
 import io.beam.dsl.elixir.Variable;
 import io.beam.dsl.elixir.VariablePattern;
+import io.smithy.beam.core.BeamComplianceHelperNeeds;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpComplianceTests;
 import io.smithy.beam.core.BeamNameUtils;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
@@ -83,8 +86,9 @@ final class ElixirComplianceTestDsl {
         ElixirRestJsonSupport.serviceHasHostLabelOperations(model, service)
             || ElixirRestXmlSupport.serviceHasHostLabelOperations(model, service);
     java.util.function.Function<StructureShape, String> structNameFn =
-        shape -> ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(shape));
+        shape -> ElixirTopDown.structureModuleName(typesMod, sp.toSymbol(shape));
 
+    BeamComplianceHelperNeeds helperNeeds = new BeamComplianceHelperNeeds();
     List<String> testLines = new ArrayList<>();
     for (BeamHttpComplianceTests.OperationRequestTests binding : requestBindings) {
       OperationShape operation = binding.operation();
@@ -98,7 +102,15 @@ final class ElixirComplianceTestDsl {
         addTestLines(
             testLines,
             clientRequestTest(
-                model, testCase, opSym, input, clientCodecMod, sp, encodeWithConfig, structNameFn));
+                model,
+                testCase,
+                opSym,
+                input,
+                clientCodecMod,
+                sp,
+                encodeWithConfig,
+                structNameFn,
+                helperNeeds));
       }
       for (BeamHttpComplianceTests.HttpRequestTestCase testCase :
           BeamHttpComplianceTests.serverRequestTests(binding.cases(), protocol)) {
@@ -114,7 +126,8 @@ final class ElixirComplianceTestDsl {
                 labels,
                 hostLabelIndex,
                 operation,
-                structNameFn));
+                structNameFn,
+                helperNeeds));
       }
     }
     for (BeamHttpComplianceTests.OperationResponseTests binding : responseBindings) {
@@ -131,17 +144,33 @@ final class ElixirComplianceTestDsl {
         addTestLines(
             testLines,
             clientResponseTest(
-                model, testCase, opSym, outputShape, clientCodecMod, sp, errorCase, structNameFn));
+                model,
+                testCase,
+                opSym,
+                outputShape,
+                clientCodecMod,
+                sp,
+                errorCase,
+                structNameFn,
+                helperNeeds));
       }
       for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
           BeamHttpComplianceTests.serverResponseTests(binding.cases(), protocol)) {
         addTestLines(
             testLines,
             serverResponseTest(
-                model, testCase, opSym, outputShape, serverCodecMod, sp, errorCase, structNameFn));
+                model,
+                testCase,
+                opSym,
+                outputShape,
+                serverCodecMod,
+                sp,
+                errorCase,
+                structNameFn,
+                helperNeeds));
       }
     }
-    List<Function> helpers = assertionHelperFunctions();
+    List<Function> helpers = assertionHelperFunctions(helperNeeds);
 
     return Module.of(
         moduleName,
@@ -175,7 +204,8 @@ final class ElixirComplianceTestDsl {
       String codecMod,
       SymbolProvider sp,
       boolean encodeWithConfig,
-      java.util.function.Function<StructureShape, String> structNameFn) {
+      java.util.function.Function<StructureShape, String> structNameFn,
+      BeamComplianceHelperNeeds helperNeeds) {
     Expression inputLiteral =
         ElixirComplianceLiteralDsl.structLiteral(model, input, testCase.params(), sp, structNameFn);
     Expression encodeCall =
@@ -208,6 +238,7 @@ final class ElixirComplianceTestDsl {
                     "==",
                     StringExpr.of(testCase.uri())))));
     if (!testCase.queryParams().isEmpty()) {
+      helperNeeds.needAssertQueryParams();
       body.add(
           LocalCallExpr.of(
               "assert_query_params",
@@ -216,6 +247,7 @@ final class ElixirComplianceTestDsl {
                   DotCallExpr.of(Variable.of("request"), "query", List.of()))));
     }
     if (!testCase.headers().isEmpty()) {
+      helperNeeds.needAssertHeaders();
       body.add(
           LocalCallExpr.of(
               "assert_headers",
@@ -250,24 +282,16 @@ final class ElixirComplianceTestDsl {
       List<HttpBinding> labels,
       BeamHostLabelIndex hostLabelIndex,
       OperationShape operation,
-      java.util.function.Function<StructureShape, String> structNameFn) {
+      java.util.function.Function<StructureShape, String> structNameFn,
+      BeamComplianceHelperNeeds helperNeeds) {
     Expression requestStruct =
         StructExpr.of(
             "RuntimeTypes.HttpRequest",
             List.of(
                 StructField.of("method", StringExpr.of(testCase.method())),
                 StructField.of("path", StringExpr.of(testCase.uri())),
-                StructField.of(
-                    "query",
-                    LocalCallExpr.of(
-                        "query_params_to_map",
-                        List.of(
-                            ElixirComplianceLiteralDsl.queryParamsList(testCase.queryParams())))),
-                StructField.of(
-                    "headers",
-                    LocalCallExpr.of(
-                        "headers_to_list",
-                        List.of(ElixirComplianceLiteralDsl.headersMap(testCase.headers())))),
+                StructField.of("query", elixirQueryExpr(testCase, helperNeeds)),
+                StructField.of("headers", elixirHeadersExpr(testCase.headers(), helperNeeds)),
                 StructField.of(
                     "body", ElixirComplianceLiteralDsl.optionalBinary(testCase.body()))));
 
@@ -302,17 +326,14 @@ final class ElixirComplianceTestDsl {
       String codecMod,
       SymbolProvider sp,
       boolean errorCase,
-      java.util.function.Function<StructureShape, String> structNameFn) {
+      java.util.function.Function<StructureShape, String> structNameFn,
+      BeamComplianceHelperNeeds helperNeeds) {
     Expression responseStruct =
         StructExpr.of(
             "RuntimeTypes.HttpResponse",
             List.of(
                 StructField.of("status", IntegerExpr.of(testCase.code())),
-                StructField.of(
-                    "headers",
-                    LocalCallExpr.of(
-                        "headers_to_list",
-                        List.of(ElixirComplianceLiteralDsl.headersMap(testCase.headers())))),
+                StructField.of("headers", elixirHeadersExpr(testCase.headers(), helperNeeds)),
                 StructField.of(
                     "body", ElixirComplianceLiteralDsl.optionalBinary(testCase.body()))));
 
@@ -341,7 +362,8 @@ final class ElixirComplianceTestDsl {
       String codecMod,
       SymbolProvider sp,
       boolean errorCase,
-      java.util.function.Function<StructureShape, String> structNameFn) {
+      java.util.function.Function<StructureShape, String> structNameFn,
+      BeamComplianceHelperNeeds helperNeeds) {
     Expression outputLiteral =
         ElixirComplianceLiteralDsl.structLiteral(
             model, outputShape, testCase.params(), sp, structNameFn);
@@ -362,6 +384,7 @@ final class ElixirComplianceTestDsl {
                     "==",
                     IntegerExpr.of(testCase.code())))));
     if (!testCase.headers().isEmpty()) {
+      helperNeeds.needAssertHeaders();
       body.add(
           LocalCallExpr.of(
               "assert_headers",
@@ -384,6 +407,27 @@ final class ElixirComplianceTestDsl {
     }
 
     return renderTestLines(escapeElixir(testCase.id()) + " server", body);
+  }
+
+  private static Expression elixirHeadersExpr(
+      Map<String, String> headers, BeamComplianceHelperNeeds helperNeeds) {
+    if (headers.isEmpty()) {
+      return ListExpr.of(List.of());
+    }
+    helperNeeds.needHeadersConverter();
+    return LocalCallExpr.of(
+        "headers_to_list", List.of(ElixirComplianceLiteralDsl.headersMap(headers)));
+  }
+
+  private static Expression elixirQueryExpr(
+      BeamHttpComplianceTests.HttpRequestTestCase testCase, BeamComplianceHelperNeeds helperNeeds) {
+    if (testCase.queryParams().isEmpty()) {
+      return MapExpr.of(List.of());
+    }
+    helperNeeds.needQueryParamsConverter();
+    return LocalCallExpr.of(
+        "query_params_to_map",
+        List.of(ElixirComplianceLiteralDsl.queryParamsList(testCase.queryParams())));
   }
 
   static List<Expression> assertMemberAsserts(
@@ -422,13 +466,21 @@ final class ElixirComplianceTestDsl {
     return ElixirComplianceLiteralDsl.labelMap(hostLabelIndex, operation, params);
   }
 
-  static List<Function> assertionHelperFunctions() {
+  static List<Function> assertionHelperFunctions(BeamComplianceHelperNeeds helperNeeds) {
     List<Function> helpers = new ArrayList<>();
-    helpers.add(headersToList());
-    helpers.addAll(queryParamsToMap());
-    helpers.add(queryParam());
-    helpers.add(assertHeaders());
-    helpers.add(assertQueryParams());
+    if (helperNeeds.headersConverter()) {
+      helpers.add(headersToList());
+    }
+    if (helperNeeds.queryParamsConverter()) {
+      helpers.addAll(queryParamsToMap());
+      helpers.add(queryParam());
+    }
+    if (helperNeeds.assertHeaders()) {
+      helpers.add(assertHeaders());
+    }
+    if (helperNeeds.assertQueryParams()) {
+      helpers.add(assertQueryParams());
+    }
     return helpers;
   }
 
