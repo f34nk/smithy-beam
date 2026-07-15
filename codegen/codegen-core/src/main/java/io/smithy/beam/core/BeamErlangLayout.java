@@ -127,7 +127,7 @@ public final class BeamErlangLayout {
   }
 
   public String complianceTestsModuleName() {
-    return serviceSnakeName() + "_compliance_tests";
+    return serviceSnakeName() + "_compliance_test";
   }
 
   public String eventStreamModuleFile() {
