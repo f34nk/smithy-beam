@@ -297,9 +297,7 @@ final class ElixirWaiterIr {
             BlockExpr.of(
                 List.of(
                     MatchExpr.bind(
-                        "result",
-                        DotCallExpr.of(Variable.of("step"), "()", List.of()),
-                        pollCase))),
+                        "result", DotCallExpr.of(Variable.of("step"), "()", List.of()), pollCase))),
             false));
   }
 

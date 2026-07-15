@@ -20,7 +20,8 @@ public record BeamElixirStaticRuntimeModule(
       module("lib/runtime_http.ex", "runtime_http.ex", "RuntimeHttp", RuntimeFeature.HTTP_CLIENT);
 
   public static final BeamElixirStaticRuntimeModule UTILS =
-      module("lib/utils.ex", "utils.ex", "Utils", RuntimeFeature.HTTP_CLIENT);
+      module(
+          "lib/runtime_utils.ex", "runtime_utils.ex", "RuntimeUtils", RuntimeFeature.HTTP_CLIENT);
 
   public static final BeamElixirStaticRuntimeModule AWS_SIGV4 =
       module("lib/aws_sigv4.ex", "aws_sigv4.ex", "AwsSigv4", RuntimeFeature.SIGV4);

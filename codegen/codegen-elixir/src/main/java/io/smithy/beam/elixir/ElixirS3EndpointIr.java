@@ -66,7 +66,8 @@ final class ElixirS3EndpointIr {
                 MatchExpr.bind(
                     TuplePattern.of(
                         List.of(VariablePattern.of("_scheme"), VariablePattern.of("authority"))),
-                    RemoteCallExpr.of("Utils", "split_base_url", List.of(Variable.of("base_url")))),
+                    RemoteCallExpr.of(
+                        "RuntimeUtils", "split_base_url", List.of(Variable.of("base_url")))),
                 Variable.of("authority"))),
         Spec.of("region_host(map()) :: String.t()"),
         null,

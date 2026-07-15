@@ -30,7 +30,7 @@ dispatch(HttpClient, Config, #http_request{
                 Encoded = uri_string:compose_query([{K, V} || {K, V} <- Pairs]),
                 <<"?", Encoded/binary>>
         end,
-    {Scheme, DefaultAuthority} = utils:split_base_url(BaseUrl),
+    {Scheme, DefaultAuthority} = runtime_utils:split_base_url(BaseUrl),
     Authority =
         case Host of
             undefined -> DefaultAuthority;

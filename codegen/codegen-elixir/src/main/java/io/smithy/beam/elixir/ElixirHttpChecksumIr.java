@@ -69,7 +69,8 @@ final class ElixirHttpChecksumIr {
               RaiseExpr.of(
                   AtomExpr.of("ArgumentError"),
                   TupleExpr.of(
-                      List.of(AtomExpr.of("unsupported_checksum_algorithm"), Variable.of("other"))))));
+                      List.of(
+                          AtomExpr.of("unsupported_checksum_algorithm"), Variable.of("other"))))));
       return Optional.of(
           MatchExpr.bind(
               VariablePattern.of(headersVar),

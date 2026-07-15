@@ -66,8 +66,7 @@ final class ElixirUnionHelperIr {
             List.of(
                 FunctionHead.of(
                     List.of(VariablePattern.of("map")), IsTypeGuard.of("is_map", "map"))),
-            CaseExpr.of(
-                RemoteCallExpr.of("Map", "to_list", List.of(Variable.of("map"))), branches),
+            CaseExpr.of(RemoteCallExpr.of("Map", "to_list", List.of(Variable.of("map"))), branches),
             null,
             null,
             false),

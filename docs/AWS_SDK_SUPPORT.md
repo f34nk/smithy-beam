@@ -47,7 +47,7 @@ Output from `erlang-client-codegen` and `elixir-client-codegen`.
 | REST JSON 1 request encoding | ✅ | Per-service codec module encodes path labels, query params, headers, and JSON document members into an `http_request` record or map. |
 | REST JSON 1 response decoding | ✅ | Codec decodes JSON document, header, and payload bindings into typed output records or structs. |
 | HTTP dispatch | ✅ | Erlang uses OTP `httpc` via a generated `<prefix>_http` module. Elixir uses `Req`. Both honor a configurable HTTP client module in client config for tests. |
-| Default endpoint in generated config | ✅ | Generated clients emit `default_config/0` and endpoint resolution helpers. HTTP dispatch merges a resolved base URL when `base_url` is unset: Elixir uses `Utils.resolve_base_url/1` from packaged runtime/elixir static modules; Erlang uses shared utils helpers with static regional fallback from `endpointPrefix` and region. |
+| Default endpoint in generated config | ✅ | Generated clients emit `default_config/0` and endpoint resolution helpers. HTTP dispatch reads `base_url` from client config. SigV4 uses `runtime_utils` / `RuntimeUtils.endpoint_host_from_config/1` for regional host fallback from `endpointPrefix` and region when `base_url` is unset. |
 | Pagination | ✅ | `@paginated` operations emit a page loop in the generated client operation that walks output tokens and returns accumulated items. |
 | Operation documentation | ✅ | `@documentation` on operations is emitted into generated client function docs. |
 | Type and shape documentation | ✅ | Types plugins emit shape and member docs into generated type files alongside operation docs on client stubs. |
@@ -162,7 +162,7 @@ Core AWS service traits and metadata.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [Service Trait (`aws.api#service`)](https://smithy.io/2.0/aws/aws-core.html#aws-api-service-trait) | ✅ | `sdkId`, `endpointPrefix`, and signing name flow into generated `default_config/0` and `resolve_base_url/1` when the trait is present. |
+| [Service Trait (`aws.api#service`)](https://smithy.io/2.0/aws/aws-core.html#aws-api-service-trait) | ✅ | `sdkId`, `endpointPrefix`, and signing name flow into generated `default_config/0` and client config comments when the trait is present. |
 | [Endpoint Discovery](https://smithy.io/2.0/aws/aws-core.html#aws-api-clientendpointdiscovery-trait) | ❌ | Not implemented. |
 | [HTTP Checksum (`aws.protocols#httpChecksum`)](https://smithy.io/2.0/aws/aws-core.html#aws-protocols-httpchecksum-trait) | ⚠️ | Request and response checksum headers are computed and validated in generated codecs when the trait is present. CRC32, CRC32C, MD5, and SHA256 are implemented. CRC64NVME and XXHash variants emit explicit unsupported stubs at runtime. |
 | [ARN References (`aws.api#arnReference`)](https://smithy.io/2.0/aws/aws-core.html#aws-api-arnreference-trait) | ➖ | Server-side resource modeling metadata. |
@@ -181,11 +181,11 @@ Endpoint resolution and regional configuration.
 |---------|--------|-------|
 | [Partition Support](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
 | [Region Configuration](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ✅ | Generated `default_config/0` seeds a default region. Callers override via client config. |
-| [Static Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ⚠️ | Elixir HTTP dispatch calls `Utils.resolve_base_url/1` from packaged runtime/elixir static modules when `base_url` is unset. Erlang HTTP dispatch reads `base_url` from client config; callers supply the endpoint URL explicitly. |
+| [Static Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ⚠️ | HTTP dispatch reads `base_url` from client config; callers supply the endpoint URL explicitly. SigV4 uses `runtime_utils` / `RuntimeUtils.endpoint_host_from_config/1` for regional host fallback when `base_url` is unset. |
 | [Dual-Stack Endpoints](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-dualstackonlyendpoints-trait) | ❌ | Not implemented for general services. S3 dual-stack host suffix is available via client config (see S3 customizations). |
 | [FIPS Endpoints](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
 | [Declarative Endpoint Traits](https://smithy.io/2.0/aws/aws-endpoints-region.html) | ❌ | Not implemented. |
-| [Rules-Based Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-rulesbasedendpoints-trait) | ⚠️ | BEAM clients embed serialized rule sets in generated service types but do not evaluate them at runtime yet. Elixir HTTP dispatch falls back to `Utils.resolve_base_url/1` from packaged runtime/elixir static modules when `base_url` is unset. |
+| [Rules-Based Endpoint Resolution](https://smithy.io/2.0/aws/aws-endpoints-region.html#aws-endpoints-rulesbasedendpoints-trait) | ⚠️ | BEAM clients embed serialized rule sets in generated service types but do not evaluate them at runtime yet. |
 
 ---
 
@@ -222,7 +222,7 @@ Endpoint rules engine for dynamic endpoint resolution.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| [Rules Engine Specification](https://smithy.io/2.0/aws/rules-engine/index.html) | ⚠️ | BEAM clients serialize `@endpointRuleSet` data into generated service types. Runtime rules engine evaluation is not implemented yet; Elixir HTTP dispatch uses `Utils.resolve_base_url/1` from packaged runtime/elixir static modules for regional fallback. |
+| [Rules Engine Specification](https://smithy.io/2.0/aws/rules-engine/index.html) | ⚠️ | BEAM clients serialize `@endpointRuleSet` data into generated service types. Runtime rules engine evaluation is not implemented yet. |
 | [`@endpointRuleSet`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ⚠️ | Rule set serialized into generated service types modules (Erlang headers, Elixir types modules). Runtime evaluation is not implemented yet for either language. |
 | [`@contextParam`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ➖ | Model metadata for rule parameters; operation input binding is not generated yet. |
 | [`@staticContextParams`](https://smithy.io/2.0/additional-specs/rules-engine/specification.html) | ➖ | Model metadata for rule parameters; static values are not merged into generated resolvers yet. |

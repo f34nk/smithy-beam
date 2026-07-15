@@ -289,8 +289,7 @@ final class ElixirTypesNestedIr {
       Spec specOrNull,
       List<io.beam.dsl.elixir.Pattern> params,
       io.beam.dsl.elixir.Expression body) {
-    return Function.of(
-        name, false, List.of(FunctionHead.of(params)), body, specOrNull, null, true);
+    return Function.of(name, false, List.of(FunctionHead.of(params)), body, specOrNull, null, true);
   }
 
   private static Moduledoc enumModuledoc(Shape shape, boolean stringEnum) {

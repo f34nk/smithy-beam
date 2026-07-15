@@ -117,7 +117,7 @@ public final class BeamElixirLayout {
   }
 
   public String runtimeHelpersModuleName() {
-    return "runtime_helpers";
+    return "runtime_utils";
   }
 
   public String runtimeHttpModuleFile() {

@@ -78,7 +78,8 @@ final class ElixirHostLabelIr {
                 MatchExpr.bind(
                     TuplePattern.of(
                         List.of(VariablePattern.of("_scheme"), VariablePattern.of("authority"))),
-                    RemoteCallExpr.of("Utils", "split_base_url", List.of(Variable.of("base_url")))),
+                    RemoteCallExpr.of(
+                        "RuntimeUtils", "split_base_url", List.of(Variable.of("base_url")))),
                 MatchExpr.bind("prefix", prefixExpr),
                 InfixExpr.of(Variable.of("prefix"), "<>", Variable.of("authority")))),
         null,

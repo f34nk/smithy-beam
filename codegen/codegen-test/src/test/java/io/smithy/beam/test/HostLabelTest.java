@@ -94,7 +94,7 @@ class HostLabelTest {
     assertThat(codec).contains("host = Host");
     assertThat(codec).contains("build_host(#get_tenant_data_input{");
     assertThat(codec).contains("uri_encode(to_binary(Tenant))");
-    assertThat(codec).contains("utils:split_base_url(BaseUrl)");
+    assertThat(codec).contains("runtime_utils:split_base_url(BaseUrl)");
     assertThat(codec).doesNotContain("split_base_url(<<>>)");
 
     String client = manifest.getFileString("host_label_service_client.erl").orElse("");
@@ -114,7 +114,7 @@ class HostLabelTest {
 
     String http = manifest.expectFileString("runtime_http.ex");
     assertThat(http).contains("req.host");
-    assertThat(http).contains("Utils.split_base_url");
+    assertThat(http).contains("RuntimeUtils.split_base_url");
 
     String client = manifest.getFileString("host_label_service_client.ex").orElse("");
     assertThat(client).contains("encode_get_tenant_data_request(config, input)");

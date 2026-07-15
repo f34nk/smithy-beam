@@ -25,7 +25,7 @@ class ElixirS3EndpointIrTest {
     ElixirIrTestSupport.assertStructural(fn);
     assertThat(text).contains("@spec region_host(map()) :: String.t()");
     assertThat(text).contains("def region_host(config) do");
-    assertThat(text).contains("Utils.split_base_url(base_url)");
+    assertThat(text).contains("RuntimeUtils.split_base_url(base_url)");
     assertThat(text).contains("{_scheme, authority}");
   }
 

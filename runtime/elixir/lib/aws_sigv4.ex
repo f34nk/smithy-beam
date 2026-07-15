@@ -3,7 +3,7 @@ defmodule AwsSigv4 do
 
   alias RuntimeTypes
   alias RuntimeTypes.HttpRequest
-  alias Utils
+  alias RuntimeUtils
 
   @spec sign(map(), atom(), RuntimeTypes.HttpRequest.t()) :: RuntimeTypes.HttpRequest.t()
   def sign(config, operation, request) do
@@ -14,7 +14,7 @@ defmodule AwsSigv4 do
 
     opts = %{
       unsigned_payload: unsigned,
-      endpoint_host: Utils.endpoint_host_from_config(config)
+      endpoint_host: RuntimeUtils.endpoint_host_from_config(config)
     }
 
     sign_request(request, credentials, region, service, opts)
@@ -32,7 +32,7 @@ defmodule AwsSigv4 do
     opts = %{
       expires: expires,
       unsigned_payload: unsigned,
-      endpoint_host: Utils.endpoint_host_from_config(config)
+      endpoint_host: RuntimeUtils.endpoint_host_from_config(config)
     }
 
     presign(request, credentials, region, service, opts)

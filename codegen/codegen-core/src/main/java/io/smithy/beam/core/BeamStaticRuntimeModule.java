@@ -24,7 +24,11 @@ public record BeamStaticRuntimeModule(
           "src/runtime_http.erl", "runtime_http.erl", "runtime_http", RuntimeFeature.HTTP_CLIENT);
 
   public static final BeamStaticRuntimeModule UTILS =
-      module("src/utils.erl", "utils.erl", "utils", RuntimeFeature.HTTP_CLIENT);
+      module(
+          "src/runtime_utils.erl",
+          "runtime_utils.erl",
+          "runtime_utils",
+          RuntimeFeature.HTTP_CLIENT);
 
   public static final BeamStaticRuntimeModule AWS_SIGV4 =
       module("src/aws_sigv4.erl", "aws_sigv4.erl", "aws_sigv4", RuntimeFeature.SIGV4);

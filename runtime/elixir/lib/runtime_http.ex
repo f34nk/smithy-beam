@@ -2,7 +2,7 @@ defmodule RuntimeHttp do
   @moduledoc "Generated HTTP dispatcher for Smithy service clients. Uses Req."
 
   alias RuntimeTypes
-  alias Utils
+  alias RuntimeUtils
 
   @spec dispatch(map(), RuntimeTypes.HttpRequest.t()) ::
           {:ok, RuntimeTypes.HttpResponse.t()} | {:error, term()}
@@ -22,7 +22,7 @@ defmodule RuntimeHttp do
         pairs -> "?" <> URI.encode_query(pairs)
       end
 
-    {scheme, default_authority} = Utils.split_base_url(base_url || "")
+    {scheme, default_authority} = RuntimeUtils.split_base_url(base_url || "")
 
     authority =
       case req.host do

@@ -1,4 +1,4 @@
-defmodule Utils do
+defmodule RuntimeUtils do
   @moduledoc false
 
   @spec split_base_url(String.t()) :: {String.t(), String.t()}
@@ -20,13 +20,6 @@ defmodule Utils do
       _ ->
         {"", base_url}
     end
-  end
-
-  @spec resolve_base_url(map()) :: String.t()
-  def resolve_base_url(config) do
-    prefix = Map.fetch!(config, :endpoint_prefix)
-    region = Map.get(config, :region, "us-east-1")
-    "https://#{prefix}.#{region}.amazonaws.com"
   end
 
   @spec endpoint_host_from_config(map()) :: String.t() | nil

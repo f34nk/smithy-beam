@@ -1,5 +1,5 @@
 %% Shared smithy-beam Erlang runtime helpers.
--module(utils).
+-module(runtime_utils).
 -export([
     split_base_url/1,
     endpoint_host_from_config/1

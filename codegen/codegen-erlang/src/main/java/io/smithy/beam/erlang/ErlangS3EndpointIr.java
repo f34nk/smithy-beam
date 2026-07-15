@@ -62,7 +62,7 @@ final class ErlangS3EndpointIr {
                         TuplePattern.of(
                             List.of(WildcardPattern.of(), VariablePattern.of("Authority"))),
                         RemoteCallExpr.of(
-                            "utils", "split_base_url", List.of(Variable.of("BaseUrl"))),
+                            "runtime_utils", "split_base_url", List.of(Variable.of("BaseUrl"))),
                         Variable.of("Authority"))))),
         Spec.of("region_host(" + CLIENT_CONFIG + ") -> binary()"));
   }

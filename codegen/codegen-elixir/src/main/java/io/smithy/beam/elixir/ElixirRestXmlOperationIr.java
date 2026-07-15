@@ -685,8 +685,7 @@ final class ElixirRestXmlOperationIr {
         String wireName = BeamXmlBindingIndex.memberElementName(member);
         entries.add(
             MapEntry.stringKey(
-                wireName,
-                DotCallExpr.of(Variable.of("output"), fieldName(sp, member), List.of())));
+                wireName, DotCallExpr.of(Variable.of("output"), fieldName(sp, member), List.of())));
       }
       body.add(MatchExpr.bind("member_map", MapExpr.of(entries)));
       body.add(

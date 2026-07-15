@@ -85,7 +85,7 @@ final class ErlangHostLabelIr {
                                     VariablePattern.of("_Scheme"),
                                     VariablePattern.of("Authority"))),
                             RemoteCallExpr.of(
-                                "utils", "split_base_url", List.of(Variable.of("BaseUrl"))),
+                                "runtime_utils", "split_base_url", List.of(Variable.of("BaseUrl"))),
                             null),
                         MatchExpr.bindValue("Prefix", buildHostPrefixExpression(hostPrefix)),
                         result),

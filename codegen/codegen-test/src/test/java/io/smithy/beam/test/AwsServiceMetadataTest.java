@@ -81,9 +81,9 @@ class AwsServiceMetadataTest {
     assertThat(client).doesNotContain("def default_config");
     assertThat(client).doesNotContain("def resolve_base_url");
 
-    String utils = manifest.expectFileString("utils.ex");
-    assertThat(utils).contains("def resolve_base_url(config) do");
-    assertThat(utils).contains("\"https://#{prefix}.#{region}.amazonaws.com\"");
+    String runtimeUtils = manifest.expectFileString("runtime_utils.ex");
+    assertThat(runtimeUtils).contains("def endpoint_host_from_config(config) do");
+    assertThat(runtimeUtils).contains("#{prefix}.#{region}.amazonaws.com");
   }
 
   @Test

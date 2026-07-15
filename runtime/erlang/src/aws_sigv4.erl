@@ -18,7 +18,7 @@ sign(Config, Operation, Request) ->
     Unsigned = maps:get({unsigned_payload, Operation}, Config, false),
     Opts = #{
         unsigned_payload => Unsigned,
-        endpoint_host => utils:endpoint_host_from_config(Config)
+        endpoint_host => runtime_utils:endpoint_host_from_config(Config)
     },
     sign_request(Request, Credentials, Region, Service, Opts).
 
@@ -34,7 +34,7 @@ presign_url(Config, Operation, Request) ->
     Opts = #{
         expires => Expires,
         unsigned_payload => Unsigned,
-        endpoint_host => utils:endpoint_host_from_config(Config)
+        endpoint_host => runtime_utils:endpoint_host_from_config(Config)
     },
     presign(Request, Credentials, Region, Service, Opts).
 

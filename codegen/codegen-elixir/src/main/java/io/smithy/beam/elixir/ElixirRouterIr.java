@@ -303,8 +303,7 @@ final class ElixirRouterIr {
       return Function.of(
           "route", true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
     }
-    return Function.of(
-        "route", true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of("route", true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static Pattern pathMatchPattern(String uriTemplate, List<HttpBinding> labels) {

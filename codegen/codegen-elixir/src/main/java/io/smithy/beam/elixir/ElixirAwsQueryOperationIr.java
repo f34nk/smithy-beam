@@ -121,8 +121,7 @@ final class ElixirAwsQueryOperationIr {
                         List.of()),
                     PipeStep.of(
                         RemoteCallExpr.of("Enum", "map", List.of(encodePairsFn())), List.of()),
-                    PipeStep.of(
-                        RemoteCallExpr.of("URI", "encode_query", List.of()), List.of())))));
+                    PipeStep.of(RemoteCallExpr.of("URI", "encode_query", List.of()), List.of())))));
     body.add(buildHttpRequestStruct(runtimeMod, Variable.of("body")));
 
     return List.of(

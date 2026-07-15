@@ -216,7 +216,7 @@ class ElixirClientPluginTest {
         .contains("defmodule RuntimeHttp do")
         .contains("http_client = Map.get(config, :http_client, __MODULE__.ReqClient)")
         .contains("req = %RuntimeTypes.HttpRequest{}")
-        .contains("Utils.split_base_url")
+        .contains("RuntimeUtils.split_base_url")
         .contains("case http_client.request(req_opts) do");
     assertThat(manifest.expectFileString("demo_rest_json_client.ex"))
         .contains("HTTP request bindings for smithy.beam.demo.protocoljson#DescribeItem:")
@@ -251,7 +251,7 @@ class ElixirClientPluginTest {
     assertThat(codec).contains("uri_decode(");
     assertThat(codec).contains("decode_query_param(");
     assertThat(manifest.getFileString("runtime_helpers.ex")).isEmpty();
-    assertThat(manifest.expectFileString("utils.ex")).contains("defmodule Utils do");
+    assertThat(manifest.expectFileString("runtime_utils.ex")).contains("defmodule RuntimeUtils do");
     assertThat(codec).contains("def decode_describe_item_request(");
     assertThat(codec).contains("label_map");
     assertThat(codec).doesNotContain("RuntimeHelpers.parse_labels(");
