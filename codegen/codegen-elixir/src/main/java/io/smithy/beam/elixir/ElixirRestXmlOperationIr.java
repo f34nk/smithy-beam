@@ -134,11 +134,11 @@ final class ElixirRestXmlOperationIr {
     Spec spec =
         labels.isEmpty()
             ? Spec.of(
-                "decode_" + opName + "_request(map()) -> {:ok, " + inputType + "} | {:error, term()}")
+                "decode_" + opName + "_request(map()) :: {:ok, " + inputType + "} | {:error, term()}")
             : Spec.of(
                 "decode_"
                     + opName
-                    + "_request(map(), map()) -> {:ok, "
+                    + "_request(map(), map()) :: {:ok, "
                     + inputType
                     + "} | {:error, term()}");
 
@@ -182,7 +182,7 @@ final class ElixirRestXmlOperationIr {
             Spec.of(
                 "decode_"
                     + opName
-                    + "_response(map()) -> {:ok, "
+                    + "_response(map()) :: {:ok, "
                     + outputType
                     + "} | {:error, term()}"),
             null,
@@ -241,7 +241,7 @@ final class ElixirRestXmlOperationIr {
 
     Spec spec =
         Spec.of(
-            "decode_" + opName + "_response_error(integer(), map(), term()) -> {:error, term()}");
+            "decode_" + opName + "_response_error(integer(), map(), term()) :: {:error, term()}");
 
     List<Function> functions = new ArrayList<>();
     boolean first = true;
@@ -400,8 +400,8 @@ final class ElixirRestXmlOperationIr {
     Spec spec =
         encodeWithConfig
             ? Spec.of(
-                "encode_" + opName + "_request(map(), " + inputType + ") -> " + httpRequestType)
-            : Spec.of("encode_" + opName + "_request(" + inputType + ") -> " + httpRequestType);
+                "encode_" + opName + "_request(map(), " + inputType + ") :: " + httpRequestType)
+            : Spec.of("encode_" + opName + "_request(" + inputType + ") :: " + httpRequestType);
 
     return List.of(
         new Function(
@@ -411,7 +411,7 @@ final class ElixirRestXmlOperationIr {
             block(body),
             spec,
             null,
-            encodeWithConfig));
+            false));
   }
 
   static List<Function> buildEncodeResponse(
@@ -427,7 +427,7 @@ final class ElixirRestXmlOperationIr {
     int successCode = httpIndex.getResponseCode(op);
     List<HttpBinding> respPayload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
 
-    Spec spec = Spec.of("encode_" + opName + "_response(" + outputType + ") -> map()");
+    Spec spec = Spec.of("encode_" + opName + "_response(" + outputType + ") :: map()");
 
     return List.of(
         new Function(
