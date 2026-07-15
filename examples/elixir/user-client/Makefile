@@ -12,9 +12,11 @@ build:
 	#
 	# Build
 	#
+	rm -rf build/smithy/source/elixir-*-codegen
 	smithy build
 	tree build/
 	mkdir -p lib/generated
+	rm -rf lib/generated/*
 	#
 	# Copy the generated files to the lib/generated directory
 	#

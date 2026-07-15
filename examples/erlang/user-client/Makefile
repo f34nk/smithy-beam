@@ -8,9 +8,11 @@ build:
 	# 
 	# Build
 	#
+	rm -rf build/smithy/source/erlang-*-codegen
 	smithy build
 	tree build/
 	mkdir -p src/generated
+	rm -rf src/generated/*
 	#
 	# Copy the generated files to the src/generated directory
 	#
