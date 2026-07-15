@@ -109,13 +109,13 @@ final class ElixirClientDispatchOperationIr {
             opName,
             List.of(Variable.of("config"), Variable.of("next_input"), Variable.of("new_acc")));
     body.add(
-        new CaseExpr(
+        CaseExpr.of(
             outputTokenExpr,
             List.of(
                 Clause.of(NilPattern.of(), undefinedSuccess),
                 Clause.of(
                     VariablePattern.of("next_token"),
-                    new BlockExpr(List.of(MatchExpr.bind("next_input", nextInput), recurse))))));
+                    BlockExpr.of(List.of(MatchExpr.bind("next_input", nextInput), recurse))))));
     return body;
   }
 
@@ -126,7 +126,7 @@ final class ElixirClientDispatchOperationIr {
       Model model,
       SymbolProvider sp) {
     if (path.size() == 1) {
-      return new DotCallExpr(Variable.of(rootVar), fieldName(sp, path.get(0)), List.of());
+      return DotCallExpr.of(Variable.of(rootVar), fieldName(sp, path.get(0)), List.of());
     }
     List<Expression> keys =
         path.stream().map(m -> (Expression) AtomExpr.of(fieldName(sp, m))).toList();
@@ -257,7 +257,7 @@ final class ElixirClientDispatchOperationIr {
                 AtomExpr.of(opName),
                 Variable.of("req")));
     Expression undefinedCredentialsBranch =
-        new CaseExpr(
+        CaseExpr.of(
             RemoteCallExpr.of(":aws_credentials", "get_credentials", List.of()),
             List.of(
                 Clause.of(AtomPattern.of("undefined"), Variable.of("req")),
@@ -265,7 +265,7 @@ final class ElixirClientDispatchOperationIr {
                     VariablePattern.of("creds0"),
                     MatchExpr.bind("creds", credsMap, signWithMergedCreds))));
     Expression credentialsCase =
-        new CaseExpr(
+        CaseExpr.of(
             RemoteCallExpr.of(
                 "Map", "get", List.of(Variable.of("config"), AtomExpr.of("credentials"))),
             List.of(
@@ -280,7 +280,7 @@ final class ElixirClientDispatchOperationIr {
 
   private static CaseExpr buildDispatchCase(DispatchContext ctx) {
     Expression successExpr = buildDecodeSuccessExpr(ctx);
-    return new CaseExpr(
+    return CaseExpr.of(
         RemoteCallExpr.of(
             ctx.runtimeHttpModule(),
             "dispatch",
@@ -326,12 +326,12 @@ final class ElixirClientDispatchOperationIr {
             ? buildItemsAccessExpr("output", output, pi.getItemsMemberPath(), ctx.ctx().model(), sp)
             : null;
 
-    return new CaseExpr(
+    return CaseExpr.of(
         decodeCall,
         List.of(
             Clause.of(
                 TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("output"))),
-                new BlockExpr(
+                BlockExpr.of(
                     buildAccumulationAndRecursion(
                         ctx.opName(), hasItems, itemsExpr, outputTokenExpr, inputToken))),
             Clause.of(
@@ -342,9 +342,9 @@ final class ElixirClientDispatchOperationIr {
   private static List<Expression> buildRetryWrappedBody(
       DispatchContext ctx, List<Expression> core) {
     Expression retryFun =
-        new AnonFun(
+        AnonFun.of(
             List.of(
-                AnonFunClause.of(List.of(), core.size() == 1 ? core.get(0) : new BlockExpr(core))));
+                AnonFunClause.of(List.of(), core.size() == 1 ? core.get(0) : BlockExpr.of(core))));
     return List.of(retryOptsBinding(), withRetryCall(ctx.clientModule(), retryFun));
   }
 }

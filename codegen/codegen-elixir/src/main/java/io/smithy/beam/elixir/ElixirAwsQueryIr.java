@@ -52,7 +52,7 @@ final class ElixirAwsQueryIr {
         clientCodecFunctions(
             model, service, operations, httpIndex, sp, typesMod, runtimeMod, ec2Query);
 
-    return new Module(
+    return Module.of(
         moduleName,
         Moduledoc.of("AWS Query codecs for " + service.getId() + " (generated). Do not edit."),
         List.of(),
@@ -81,7 +81,7 @@ final class ElixirAwsQueryIr {
         serverCodecFunctions(
             model, service, operations, sp, typesMod, runtimeMod, serviceNamespace, ec2Query);
 
-    return new Module(
+    return Module.of(
         moduleName,
         Moduledoc.of(
             "Server AWS Query codecs for " + service.getId() + " (generated). Do not edit."),

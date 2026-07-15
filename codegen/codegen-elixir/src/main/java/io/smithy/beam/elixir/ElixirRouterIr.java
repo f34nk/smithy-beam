@@ -78,7 +78,7 @@ final class ElixirRouterIr {
     if (serviceHasLabelBindings(model, operations)) {
       functions.addAll(labelParsingFunctions());
     }
-    return new Module(
+    return Module.of(
         routerMod,
         moduledoc,
         List.of(),
@@ -94,7 +94,7 @@ final class ElixirRouterIr {
   }
 
   private static Function httpDispatch() {
-    return new Function(
+    return Function.of(
         "dispatch",
         false,
         List.of(
@@ -102,8 +102,8 @@ final class ElixirRouterIr {
         LocalCallExpr.of(
             "route",
             List.of(
-                new DotCallExpr(Variable.of("request"), "method", List.of()),
-                new DotCallExpr(Variable.of("request"), "path", List.of()),
+                DotCallExpr.of(Variable.of("request"), "method", List.of()),
+                DotCallExpr.of(Variable.of("request"), "path", List.of()),
                 Variable.of("handler"),
                 Variable.of("request"))),
         Spec.of("dispatch(module(), map()) :: term()"),
@@ -112,7 +112,7 @@ final class ElixirRouterIr {
   }
 
   private static Function awsJsonDispatch() {
-    return new Function(
+    return Function.of(
         "dispatch",
         false,
         List.of(
@@ -120,9 +120,9 @@ final class ElixirRouterIr {
         LocalCallExpr.of(
             "route",
             List.of(
-                new DotCallExpr(Variable.of("request"), "method", List.of()),
-                new DotCallExpr(Variable.of("request"), "path", List.of()),
-                new DotCallExpr(Variable.of("request"), "headers", List.of()),
+                DotCallExpr.of(Variable.of("request"), "method", List.of()),
+                DotCallExpr.of(Variable.of("request"), "path", List.of()),
+                DotCallExpr.of(Variable.of("request"), "headers", List.of()),
                 Variable.of("handler"),
                 Variable.of("request"))),
         Spec.of("dispatch(module(), map()) :: term()"),
@@ -155,7 +155,7 @@ final class ElixirRouterIr {
       targetBranches.add(
           Clause.of(
               TuplePattern.of(List.of(WildcardPattern.of(), StringPattern.of(amzTarget))),
-              new BlockExpr(
+              BlockExpr.of(
                   List.of(
                       MatchExpr.bind(
                           "input",
@@ -178,7 +178,7 @@ final class ElixirRouterIr {
                             StringExpr.of("/")))))));
 
     Expression targetCase =
-        new CaseExpr(
+        CaseExpr.of(
             RemoteCallExpr.of(
                 "List",
                 "keyfind",
@@ -233,12 +233,12 @@ final class ElixirRouterIr {
 
   private static Expression labeledRouteBody(
       String uriTemplate, String codecMod, String opName, String handlerFn, String method) {
-    return new CaseExpr(
+    return CaseExpr.of(
         LocalCallExpr.of("parse_labels", List.of(Variable.of("path"), StringExpr.of(uriTemplate))),
         List.of(
             Clause.of(
                 TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("label_map"))),
-                new BlockExpr(
+                BlockExpr.of(
                     List.of(
                         MatchExpr.bind(
                             "input",
@@ -260,7 +260,7 @@ final class ElixirRouterIr {
   }
 
   private static Expression literalRouteBody(String codecMod, String opName, String handlerFn) {
-    return new BlockExpr(
+    return BlockExpr.of(
         List.of(
             MatchExpr.bind(
                 "input",
@@ -270,7 +270,7 @@ final class ElixirRouterIr {
   }
 
   private static Expression handlerCall(String handlerFn) {
-    return new DotCallExpr(
+    return DotCallExpr.of(
         Variable.of("handler"),
         handlerFn,
         List.of(MapExpr.of(List.of()), Variable.of("input"), MapExpr.of(List.of())));
@@ -300,10 +300,10 @@ final class ElixirRouterIr {
   private static Function routeFunction(
       List<Pattern> params, Guard guard, Expression body, boolean oneLiner) {
     if (guard != null) {
-      return new Function(
+      return Function.of(
           "route", true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
     }
-    return new Function(
+    return Function.of(
         "route", true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
@@ -336,7 +336,7 @@ final class ElixirRouterIr {
     if (var == null) {
       return null;
     }
-    return new ComparisonGuard(Variable.of(var), "!=", StringExpr.of(""));
+    return ComparisonGuard.of(Variable.of(var), "!=", StringExpr.of(""));
   }
 
   private static String labelVarName(int index) {
@@ -379,12 +379,12 @@ final class ElixirRouterIr {
   }
 
   static Function parseLabels() {
-    return new Function(
+    return Function.of(
         "parse_labels",
         true,
         List.of(
             FunctionHead.of(List.of(VariablePattern.of("path"), VariablePattern.of("template")))),
-        new PipeExpr(
+        PipeExpr.of(
             LocalCallExpr.of(
                 "match_segments",
                 List.of(
@@ -392,7 +392,7 @@ final class ElixirRouterIr {
                     LocalCallExpr.of("segments", List.of(Variable.of("template"))),
                     MapExpr.of(List.of()))),
             List.of(
-                new PipeStep(
+                PipeStep.of(
                     CaseExpr.piped(
                         List.of(
                             Clause.of(
@@ -448,7 +448,7 @@ final class ElixirRouterIr {
   }
 
   private static Expression matchSegmentsConsBody() {
-    return new CaseExpr(
+    return CaseExpr.of(
         LocalCallExpr.of("label_name", List.of(Variable.of("tpl_seg"))),
         List.of(
             Clause.of(
@@ -470,7 +470,7 @@ final class ElixirRouterIr {
                                     Variable.of("val"))))))),
             Clause.of(
                 WildcardPattern.of(),
-                new ComparisonGuard(Variable.of("seg"), "==", Variable.of("tpl_seg")),
+                ComparisonGuard.of(Variable.of("seg"), "==", Variable.of("tpl_seg")),
                 LocalCallExpr.of(
                     "match_segments",
                     List.of(
@@ -486,7 +486,7 @@ final class ElixirRouterIr {
                 AssignPattern.of(
                     ConcatPattern.of(StringPattern.of("{"), VariablePattern.of("rest")),
                     VariablePattern.of("tpl_seg"))),
-            new CaseExpr(
+            CaseExpr.of(
                 RemoteCallExpr.of(
                     "String",
                     "split",
@@ -507,6 +507,6 @@ final class ElixirRouterIr {
 
   private static Function defp(
       String name, List<Pattern> params, Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 }

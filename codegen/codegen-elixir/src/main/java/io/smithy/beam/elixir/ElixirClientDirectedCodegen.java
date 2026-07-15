@@ -306,7 +306,7 @@ final class ElixirClientDirectedCodegen
     String specOutput = "{:ok, " + successReturnType + "} | {:error, term()}";
     Spec spec = Spec.of(opSym.getName() + "(map(), " + inType + ") :: " + specOutput);
     if (!hasProtocol) {
-      return new Function(
+      return Function.of(
           opSym.getName(),
           false,
           List.of(
@@ -327,8 +327,8 @@ final class ElixirClientDirectedCodegen
             clientModule,
             false,
             ElixirClientDispatchOperationIr.DispatchBodyMode.SINGLE_PAGE);
-    Expression block = body.size() == 1 ? body.get(0) : new BlockExpr(body);
-    return new Function(
+    Expression block = body.size() == 1 ? body.get(0) : BlockExpr.of(body);
+    return Function.of(
         opSym.getName(),
         false,
         List.of(

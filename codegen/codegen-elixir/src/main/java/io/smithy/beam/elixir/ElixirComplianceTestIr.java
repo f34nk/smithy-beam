@@ -143,11 +143,11 @@ final class ElixirComplianceTestIr {
     }
     List<Function> helpers = assertionHelperFunctions();
 
-    return new Module(
+    return Module.of(
         moduleName,
         null,
         List.of(
-            new UseDirective("ExUnit.Case", List.of(new UseOption("async", BooleanExpr.of(true))))),
+            UseDirective.of("ExUnit.Case", List.of(UseOption.of("async", BooleanExpr.of(true))))),
         List.of(
             Alias.of(typesMod, "Types"),
             Alias.of(clientCodecMod),
@@ -196,7 +196,7 @@ final class ElixirComplianceTestIr {
             "assert",
             List.of(
                 InfixExpr.of(
-                    new DotCallExpr(Variable.of("request"), "method", List.of()),
+                    DotCallExpr.of(Variable.of("request"), "method", List.of()),
                     "==",
                     StringExpr.of(testCase.method())))));
     body.add(
@@ -204,7 +204,7 @@ final class ElixirComplianceTestIr {
             "assert",
             List.of(
                 InfixExpr.of(
-                    new DotCallExpr(Variable.of("request"), "path", List.of()),
+                    DotCallExpr.of(Variable.of("request"), "path", List.of()),
                     "==",
                     StringExpr.of(testCase.uri())))));
     if (!testCase.queryParams().isEmpty()) {
@@ -213,7 +213,7 @@ final class ElixirComplianceTestIr {
               "assert_query_params",
               List.of(
                   ElixirComplianceLiteralIr.queryParamsList(testCase.queryParams()),
-                  new DotCallExpr(Variable.of("request"), "query", List.of()))));
+                  DotCallExpr.of(Variable.of("request"), "query", List.of()))));
     }
     if (!testCase.headers().isEmpty()) {
       body.add(
@@ -221,7 +221,7 @@ final class ElixirComplianceTestIr {
               "assert_headers",
               List.of(
                   ElixirComplianceLiteralIr.headersMap(testCase.headers()),
-                  new DotCallExpr(Variable.of("request"), "headers", List.of()))));
+                  DotCallExpr.of(Variable.of("request"), "headers", List.of()))));
     }
     if (testCase.body() != null) {
       body.add(
@@ -232,7 +232,7 @@ final class ElixirComplianceTestIr {
                       RemoteCallExpr.of(
                           "IO",
                           "iodata_to_binary",
-                          List.of(new DotCallExpr(Variable.of("request"), "body", List.of()))),
+                          List.of(DotCallExpr.of(Variable.of("request"), "body", List.of()))),
                       "==",
                       StringExpr.of(testCase.body())))));
     }
@@ -356,7 +356,7 @@ final class ElixirComplianceTestIr {
             "assert",
             List.of(
                 InfixExpr.of(
-                    new DotCallExpr(Variable.of("response"), "status", List.of()),
+                    DotCallExpr.of(Variable.of("response"), "status", List.of()),
                     "==",
                     IntegerExpr.of(testCase.code())))));
     if (!testCase.headers().isEmpty()) {
@@ -365,7 +365,7 @@ final class ElixirComplianceTestIr {
               "assert_headers",
               List.of(
                   ElixirComplianceLiteralIr.headersMap(testCase.headers()),
-                  new DotCallExpr(Variable.of("response"), "headers", List.of()))));
+                  DotCallExpr.of(Variable.of("response"), "headers", List.of()))));
     }
     if (testCase.body() != null) {
       body.add(
@@ -376,7 +376,7 @@ final class ElixirComplianceTestIr {
                       RemoteCallExpr.of(
                           "IO",
                           "iodata_to_binary",
-                          List.of(new DotCallExpr(Variable.of("response"), "body", List.of()))),
+                          List.of(DotCallExpr.of(Variable.of("response"), "body", List.of()))),
                       "==",
                       StringExpr.of(testCase.body())))));
     }
@@ -407,7 +407,7 @@ final class ElixirComplianceTestIr {
                         "assert",
                         List.of(
                             InfixExpr.of(
-                                new DotCallExpr(Variable.of(structVar), fieldName, List.of()),
+                                DotCallExpr.of(Variable.of(structVar), fieldName, List.of()),
                                 "==",
                                 expected))));
               });
@@ -441,7 +441,7 @@ final class ElixirComplianceTestIr {
   }
 
   private static Expression blockBody(List<Expression> statements) {
-    return statements.size() == 1 ? statements.get(0) : new BlockExpr(statements);
+    return statements.size() == 1 ? statements.get(0) : BlockExpr.of(statements);
   }
 
   private static Function headersToList() {
@@ -453,7 +453,7 @@ final class ElixirComplianceTestIr {
             "map",
             List.of(
                 Variable.of("headers"),
-                new AnonFun(
+                AnonFun.of(
                     List.of(
                         AnonFunClause.of(
                             List.of(
@@ -483,7 +483,7 @@ final class ElixirComplianceTestIr {
     return defp(
         "query_param",
         List.of(VariablePattern.of("param")),
-        new CaseExpr(
+        CaseExpr.of(
             splitQueryParam(Variable.of("param")),
             List.of(
                 Clause.of(
@@ -512,7 +512,7 @@ final class ElixirComplianceTestIr {
                     "==",
                     Variable.of("value"))));
     AnonFun eachFn =
-        new AnonFun(
+        AnonFun.of(
             List.of(
                 AnonFunClause.of(
                     List.of(
@@ -543,7 +543,7 @@ final class ElixirComplianceTestIr {
                 RemoteCallExpr.of(
                     "Map", "has_key?", List.of(Variable.of("query"), Variable.of("key")))));
     CaseExpr paramCase =
-        new CaseExpr(
+        CaseExpr.of(
             splitQueryParam(Variable.of("param")),
             List.of(
                 Clause.of(
@@ -551,7 +551,7 @@ final class ElixirComplianceTestIr {
                     assertFetchMatch),
                 Clause.of(ListPattern.of(List.of(VariablePattern.of("key"))), assertHasKey)));
     AnonFun eachFn =
-        new AnonFun(List.of(AnonFunClause.of(List.of(VariablePattern.of("param")), paramCase)));
+        AnonFun.of(List.of(AnonFunClause.of(List.of(VariablePattern.of("param")), paramCase)));
     return defp(
         "assert_query_params",
         List.of(VariablePattern.of("expected"), VariablePattern.of("query")),
@@ -568,7 +568,7 @@ final class ElixirComplianceTestIr {
 
   private static Function defp(
       String name, List<Pattern> params, Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static String structName(Symbol symbol) {

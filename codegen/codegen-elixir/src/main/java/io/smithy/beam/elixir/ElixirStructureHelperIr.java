@@ -119,15 +119,15 @@ final class ElixirStructureHelperIr {
         defp(
             name,
             List.of(AssignPattern.of("record", StructPattern.of("Types." + structName, List.of()))),
-            new PipeExpr(
+            PipeExpr.of(
                 MapExpr.of(entries),
                 List.of(
-                    new PipeStep(
+                    PipeStep.of(
                         RemoteCallExpr.of(
                             "Enum",
                             "reject",
                             List.of(
-                                new AnonFun(
+                                AnonFun.of(
                                     List.of(
                                         AnonFunClause.of(
                                             List.of(
@@ -138,7 +138,7 @@ final class ElixirStructureHelperIr {
                                             LocalCallExpr.of(
                                                 "is_nil", List.of(Variable.of("v")))))))),
                         List.of()),
-                    new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of()))),
+                    PipeStep.of(RemoteCallExpr.of("Map", "new", List.of()), List.of()))),
             false));
   }
 
@@ -155,7 +155,7 @@ final class ElixirStructureHelperIr {
                 "map",
                 List.of(
                     Variable.of("list"),
-                    new AnonFun(
+                    AnonFun.of(
                         List.of(
                             AnonFunClause.of(
                                 List.of(VariablePattern.of("v")),
@@ -177,7 +177,7 @@ final class ElixirStructureHelperIr {
                 "map",
                 List.of(
                     Variable.of("list"),
-                    new AnonFun(
+                    AnonFun.of(
                         List.of(
                             AnonFunClause.of(
                                 List.of(VariablePattern.of("v")),
@@ -239,7 +239,7 @@ final class ElixirStructureHelperIr {
       String recordVar) {
     String field = fieldName(member);
     return encodeFieldValue(
-        model, sp, httpIndex, member, new DotCallExpr(Variable.of(recordVar), field, List.of()));
+        model, sp, httpIndex, member, DotCallExpr.of(Variable.of(recordVar), field, List.of()));
   }
 
   private static Expression encodeFieldValue(
@@ -308,12 +308,12 @@ final class ElixirStructureHelperIr {
 
   private static Function defp(
       String name, List<Pattern> params, Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static Function defp(
       String name, List<Pattern> params, IsTypeGuard guard, Expression body, boolean oneLiner) {
-    return new Function(
+    return Function.of(
         name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
   }
 

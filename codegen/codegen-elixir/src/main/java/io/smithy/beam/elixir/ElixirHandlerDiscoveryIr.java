@@ -38,14 +38,14 @@ final class ElixirHandlerDiscoveryIr {
             List.of(
                 RemoteCallExpr.of(behaviourMod, "callbacks", List.of()),
                 MapExpr.of(List.of()),
-                new AnonFun(
+                AnonFun.of(
                     List.of(
                         AnonFunClause.of(
                             List.of(
                                 TuplePattern.of(
                                     List.of(VariablePattern.of("fun"), IntegerPattern.of(3))),
                                 VariablePattern.of("acc")),
-                            new IfExpr(
+                            IfExpr.of(
                                 LocalCallExpr.of(
                                     "function_exported?",
                                     List.of(
@@ -71,12 +71,12 @@ final class ElixirHandlerDiscoveryIr {
                             List.of(VariablePattern.of("_item"), VariablePattern.of("acc")),
                             Variable.of("acc"))))));
     Expression ensureLoaded =
-        new CaseExpr(
+        CaseExpr.of(
             RemoteCallExpr.of("Code", "ensure_loaded", List.of(Variable.of("impl"))),
             List.of(
                 Clause.of(
                     TuplePattern.of(List.of(AtomPattern.of("module"), WildcardPattern.of())),
-                    new BlockExpr(
+                    BlockExpr.of(
                         List.of(
                             MatchExpr.bind("handlers", handlers),
                             TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("handlers")))))),
@@ -87,7 +87,7 @@ final class ElixirHandlerDiscoveryIr {
                             AtomExpr.of("error"),
                             TupleExpr.of(
                                 List.of(AtomExpr.of("impl_not_loaded"), Variable.of("impl"))))))));
-    return new Function(
+    return Function.of(
         "resolve_impl",
         true,
         List.of(FunctionHead.of(List.of(VariablePattern.of("impl")))),
@@ -99,12 +99,12 @@ final class ElixirHandlerDiscoveryIr {
 
   static Function initHandlers() {
     Expression resolveCase =
-        new CaseExpr(
+        CaseExpr.of(
             LocalCallExpr.of("resolve_impl", List.of(Variable.of("@default_impl"))),
             List.of(
                 Clause.of(
                     TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("handlers"))),
-                    new BlockExpr(
+                    BlockExpr.of(
                         List.of(
                             RemoteCallExpr.of(
                                 ":persistent_term",
@@ -113,14 +113,14 @@ final class ElixirHandlerDiscoveryIr {
                             AtomExpr.of("ok")))),
                 Clause.of(
                     TuplePattern.of(List.of(AtomPattern.of("error"), VariablePattern.of("reason"))),
-                    new BlockExpr(
+                    BlockExpr.of(
                         List.of(
                             RemoteCallExpr.of(
                                 ":persistent_term",
                                 "put",
                                 List.of(Variable.of("@handlers_key"), MapExpr.of(List.of()))),
                             TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("reason"))))))));
-    return new Function(
+    return Function.of(
         "init_handlers",
         false,
         List.of(FunctionHead.of(List.of())),
@@ -132,20 +132,20 @@ final class ElixirHandlerDiscoveryIr {
 
   static Function dispatchHandler() {
     Expression lookupCase =
-        new CaseExpr(
+        CaseExpr.of(
             RemoteCallExpr.of("Map", "get", List.of(Variable.of("handlers"), Variable.of("fun"))),
             List.of(
                 Clause.of(
                     VariablePattern.of("handler"),
                     FunctionArityGuard.of("handler", 3),
-                    new DotCallExpr(
+                    DotCallExpr.of(
                         Variable.of("handler"),
                         "()",
                         List.of(Variable.of("ctx"), Variable.of("input"), Variable.of("meta")))),
                 Clause.of(
                     WildcardPattern.of(),
                     TupleExpr.of(List.of(AtomExpr.of("error"), AtomExpr.of("not_implemented"))))));
-    return new Function(
+    return Function.of(
         "dispatch_handler",
         true,
         List.of(
@@ -155,7 +155,7 @@ final class ElixirHandlerDiscoveryIr {
                     VariablePattern.of("ctx"),
                     VariablePattern.of("input"),
                     VariablePattern.of("meta")))),
-        new BlockExpr(
+        BlockExpr.of(
             List.of(
                 MatchExpr.bind(
                     "handlers",
@@ -170,7 +170,7 @@ final class ElixirHandlerDiscoveryIr {
   }
 
   static Function operationDispatch(String handler) {
-    return new Function(
+    return Function.of(
         handler,
         false,
         List.of(

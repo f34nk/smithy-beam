@@ -66,7 +66,7 @@ final class ElixirAwsJsonIr {
             contentType,
             eventStreamMod);
 
-    return new Module(
+    return Module.of(
         moduleName,
         Moduledoc.of(
             "AWS JSON "
@@ -108,7 +108,7 @@ final class ElixirAwsJsonIr {
             contentType,
             eventStreamMod);
 
-    return new Module(
+    return Module.of(
         moduleName,
         Moduledoc.of(
             "Server AWS JSON " + versionLabel + " codecs for " + service.getId() + " (generated)."),

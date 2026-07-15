@@ -64,7 +64,7 @@ final class ElixirEnumHelperIr {
   }
 
   static BlockExpr enumStringDecodeFallbackBody(String decodeFunctionName) {
-    return new BlockExpr(
+    return BlockExpr.of(
         List.of(
             MatchExpr.bind(
                 "normalized",
@@ -72,10 +72,10 @@ final class ElixirEnumHelperIr {
                     "String",
                     "replace",
                     List.of(Variable.of("v"), StringExpr.of("_"), StringExpr.of(".")))),
-            new IfExpr(
+            IfExpr.of(
                 InfixExpr.of(Variable.of("normalized"), "==", Variable.of("v")),
                 TupleExpr.of(List.of(AtomExpr.of("unknown"), Variable.of("v"))),
-                new CaseExpr(
+                CaseExpr.of(
                     LocalCallExpr.of(decodeFunctionName, List.of(Variable.of("normalized"))),
                     List.of(
                         Clause.of(
@@ -201,7 +201,7 @@ final class ElixirEnumHelperIr {
                 "map",
                 List.of(
                     Variable.of("list"),
-                    new AnonFun(
+                    AnonFun.of(
                         List.of(
                             AnonFunClause.of(
                                 List.of(VariablePattern.of("v")),
@@ -223,7 +223,7 @@ final class ElixirEnumHelperIr {
                 "map",
                 List.of(
                     Variable.of("list"),
-                    new AnonFun(
+                    AnonFun.of(
                         List.of(
                             AnonFunClause.of(
                                 List.of(VariablePattern.of("v")),
@@ -234,12 +234,12 @@ final class ElixirEnumHelperIr {
 
   private static Function defp(
       String name, List<Pattern> params, Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static Function defp(
       String name, List<Pattern> params, Guard guard, Expression body, boolean oneLiner) {
-    return new Function(
+    return Function.of(
         name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
   }
 

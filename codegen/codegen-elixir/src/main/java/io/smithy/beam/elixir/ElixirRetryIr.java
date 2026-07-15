@@ -106,7 +106,7 @@ final class ElixirRetryIr {
 
   private static Function predicateClause(
       String name, boolean defp, Pattern pattern, Expression body) {
-    return new Function(
+    return Function.of(
         name, defp, List.of(FunctionHead.of(List.of(pattern))), body, null, null, true);
   }
 

@@ -70,7 +70,7 @@ final class ElixirEventStreamIr {
       functions.addAll(unionHelpers(model, union, sp, typesMod));
     }
 
-    return new Module(
+    return Module.of(
         moduleName,
         Moduledoc.of(
             "Generated Amazon Event Stream helpers for " + service.getId() + " (generated)."),
@@ -96,7 +96,7 @@ final class ElixirEventStreamIr {
 
   static Function unionEncodeList(UnionShape union, SymbolProvider sp) {
     String helper = helperName(sp, union);
-    return new Function(
+    return Function.of(
         "encode_" + helper,
         false,
         List.of(
@@ -113,18 +113,18 @@ final class ElixirEventStreamIr {
 
   static Function unionDecodeList(UnionShape union, SymbolProvider sp) {
     String helper = helperName(sp, union);
-    return new Function(
+    return Function.of(
         "decode_" + helper,
         false,
         List.of(
             FunctionHead.of(
                 List.of(VariablePattern.of("body")), IsTypeGuard.of("is_binary", "body"))),
-        new PipeExpr(
+        PipeExpr.of(
             Variable.of("body"),
             List.of(
-                new PipeStep(
+                PipeStep.of(
                     RemoteCallExpr.of("AwsEventStream", "decode_frames", List.of()), List.of()),
-                new PipeStep(
+                PipeStep.of(
                     RemoteCallExpr.of(
                         "Enum", "map", List.of(CaptureExpr.of("decode_" + helper + "_event", 1))),
                     List.of()))),
@@ -144,7 +144,7 @@ final class ElixirEventStreamIr {
         defp(
             "encode_" + helper + "_event",
             List.of(TuplePattern.of(List.of(AtomPattern.of("unknown"), WildcardPattern.of()))),
-            new RaiseExpr(AtomExpr.of("ArgumentError"), StringExpr.of("unknown event"), true),
+            RaiseExpr.parenthesized(AtomExpr.of("ArgumentError"), StringExpr.of("unknown event")),
             true));
     return functions;
   }
@@ -158,7 +158,7 @@ final class ElixirEventStreamIr {
                 List.of(
                     MapPatternEntry.of(AtomExpr.of("headers"), VariablePattern.of("headers")),
                     MapPatternEntry.of(AtomExpr.of("payload"), VariablePattern.of("payload"))))),
-        new BlockExpr(
+        BlockExpr.of(
             List.of(
                 MatchExpr.bind(
                     "event_type",
@@ -183,13 +183,12 @@ final class ElixirEventStreamIr {
         defp(
             "decode_" + helper + "_event_type",
             List.of(VariablePattern.of("event_type"), VariablePattern.of("_payload")),
-            new RaiseExpr(
+            RaiseExpr.of(
                 AtomExpr.of("ArgumentError"),
                 InfixExpr.of(
                     StringExpr.of("unknown event type: "),
                     "<>",
-                    RemoteCallExpr.of("Kernel", "inspect", List.of(Variable.of("event_type")))),
-                false),
+                    RemoteCallExpr.of("Kernel", "inspect", List.of(Variable.of("event_type"))))),
             false));
     return functions;
   }
@@ -289,7 +288,7 @@ final class ElixirEventStreamIr {
               RemoteCallExpr.of(
                   "Map", "get", List.of(Variable.of("decoded"), StringExpr.of(wireKey)))));
     }
-    return new CaseExpr(
+    return CaseExpr.of(
         RemoteCallExpr.of("Jason", "decode!", List.of(Variable.of(payloadVar))),
         List.of(
             Clause.of(
@@ -299,7 +298,7 @@ final class ElixirEventStreamIr {
 
   private static Function defp(
       String name, List<Pattern> params, Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static String structName(Symbol symbol) {

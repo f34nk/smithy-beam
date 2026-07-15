@@ -50,7 +50,7 @@ final class ElixirClientPaginationIr {
     String specOutput = "{:ok, " + successReturnType + "} | {:error, term()}";
 
     Function arity2 =
-        new Function(
+        Function.of(
             opName,
             false,
             List.of(
@@ -74,7 +74,7 @@ final class ElixirClientPaginationIr {
             ElixirClientDispatchOperationIr.DispatchBodyMode.PAGINATED_PAGE);
 
     Function arity3 =
-        new Function(
+        Function.of(
             opName,
             true,
             List.of(
@@ -108,7 +108,7 @@ final class ElixirClientPaginationIr {
   }
 
   private static Expression blockExpr(List<Expression> exprs) {
-    return exprs.size() == 1 ? exprs.get(0) : new BlockExpr(exprs);
+    return exprs.size() == 1 ? exprs.get(0) : BlockExpr.of(exprs);
   }
 
   private static List<Expression> retryWrappedPageBody(
@@ -133,17 +133,17 @@ final class ElixirClientPaginationIr {
             : null;
 
     Expression pageFun =
-        new AnonFun(
+        AnonFun.of(
             List.of(
                 AnonFunClause.of(
-                    List.of(), pageBody.size() == 1 ? pageBody.get(0) : new BlockExpr(pageBody))));
+                    List.of(), pageBody.size() == 1 ? pageBody.get(0) : BlockExpr.of(pageBody))));
     Expression retryCase =
-        new CaseExpr(
+        CaseExpr.of(
             ElixirClientDispatchOperationIr.withRetryCall(clientModule, pageFun),
             List.of(
                 Clause.of(
                     TuplePattern.of(List.of(AtomPattern.of("ok"), VariablePattern.of("output"))),
-                    new BlockExpr(
+                    BlockExpr.of(
                         ElixirClientDispatchOperationIr.buildAccumulationAndRecursion(
                             opName, hasItems, itemsExpr, outputTokenExpr, inputToken))),
                 Clause.of(

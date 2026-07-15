@@ -17,7 +17,7 @@ final class ElixirBeamIrTypes {
 
   static TypesModule structNested(
       String name, Moduledoc moduledocOrNull, TypeDef typeDef, List<DefstructField> fields) {
-    return new TypesModule(name, moduledocOrNull, typeDef, fields);
+    return TypesModule.of(name, moduledocOrNull, typeDef, fields);
   }
 
   static String renderNestedBody(
@@ -26,7 +26,7 @@ final class ElixirBeamIrTypes {
       List<String> extraLines,
       List<Function> functions) {
     Module inner =
-        new Module(
+        Module.of(
             shortName,
             moduledocOrNull,
             List.of(),
@@ -55,7 +55,7 @@ final class ElixirBeamIrTypes {
         default -> {}
       }
     }
-    return new Module(
+    return Module.of(
         moduleName,
         moduledoc,
         List.of(),
@@ -68,7 +68,7 @@ final class ElixirBeamIrTypes {
   }
 
   static Module splitEmbeddedModule(String parentModuleName, ElixirTypesEmbeddedNested nested) {
-    return new Module(
+    return Module.of(
         parentModuleName + "." + nested.name(),
         nested.moduledocOrNull(),
         List.of(),
@@ -81,7 +81,7 @@ final class ElixirBeamIrTypes {
   }
 
   static TypesModule splitStructModule(String parentModuleName, TypesModule typesModule) {
-    return new TypesModule(
+    return TypesModule.of(
         parentModuleName + "." + typesModule.name(),
         typesModule.moduledocOrNull(),
         typesModule.typeDef(),
@@ -217,7 +217,7 @@ final class ElixirBeamIrTypes {
   private static List<String> embeddedNestedModuleLines(ElixirTypesEmbeddedNested nested) {
     String rendered =
         ElixirRenderer.render(
-            new Module(
+            Module.of(
                 nested.name(),
                 nested.moduledocOrNull(),
                 List.of(),

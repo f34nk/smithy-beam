@@ -321,7 +321,7 @@ final class ElixirAwsJsonOperationIr {
       Spec spec,
       FunctionDoc doc,
       boolean oneLiner) {
-    return new Function(name, false, List.of(FunctionHead.of(params)), body, spec, doc, oneLiner);
+    return Function.of(name, false, List.of(FunctionHead.of(params)), body, spec, doc, oneLiner);
   }
 
   private static Expression block(List<Expression> statements) {
@@ -331,6 +331,6 @@ final class ElixirAwsJsonOperationIr {
     if (statements.size() == 1) {
       return statements.get(0);
     }
-    return new BlockExpr(statements);
+    return BlockExpr.of(statements);
   }
 }

@@ -60,18 +60,18 @@ final class ElixirUnionHelperIr {
     branches.add(Clause.of(WildcardPattern.of(), NilExpr.of()));
 
     return List.of(
-        new Function(
+        Function.of(
             "decode_" + helperName,
             true,
             List.of(
                 FunctionHead.of(
                     List.of(VariablePattern.of("map")), IsTypeGuard.of("is_map", "map"))),
-            new CaseExpr(
+            CaseExpr.of(
                 RemoteCallExpr.of("Map", "to_list", List.of(Variable.of("map"))), branches),
             null,
             null,
             false),
-        new Function(
+        Function.of(
             "decode_" + helperName,
             true,
             List.of(FunctionHead.of(List.of(NilPattern.of()))),
@@ -116,13 +116,13 @@ final class ElixirUnionHelperIr {
       Guard guard,
       io.beam.dsl.elixir.Expression body,
       boolean oneLiner) {
-    return new Function(
+    return Function.of(
         name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
   }
 
   private static Function defp(
       String name, List<Pattern> params, io.beam.dsl.elixir.Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static String helperName(Shape shape) {

@@ -133,7 +133,7 @@ final class ElixirRestJsonOperationIr {
     if (streamingRequestPayload) {
       HttpBinding payload = reqPayload.get(0);
       String field = fieldName(sp, payload.getMember());
-      body.add(MatchExpr.bind("stream", new DotCallExpr(Variable.of("input"), field, List.of())));
+      body.add(MatchExpr.bind("stream", DotCallExpr.of(Variable.of("input"), field, List.of())));
       body.add(MatchExpr.bind("body", StringExpr.of("")));
     }
 
@@ -154,7 +154,7 @@ final class ElixirRestJsonOperationIr {
             : Spec.of("encode_" + opName + "_request(" + inputType + ") :: " + httpRequestType);
 
     return List.of(
-        new Function(
+        Function.of(
             "encode_" + opName + "_request",
             false,
             List.of(FunctionHead.of(patterns)),
@@ -282,8 +282,8 @@ final class ElixirRestJsonOperationIr {
 
     List<Guard> successGuards = new ArrayList<>();
     if (!respCode.isEmpty()) {
-      successGuards.add(new ComparisonGuard(Variable.of("http_status"), ">=", IntegerExpr.of(200)));
-      successGuards.add(new ComparisonGuard(Variable.of("http_status"), "<", IntegerExpr.of(300)));
+      successGuards.add(ComparisonGuard.of(Variable.of("http_status"), ">=", IntegerExpr.of(200)));
+      successGuards.add(ComparisonGuard.of(Variable.of("http_status"), "<", IntegerExpr.of(300)));
     }
 
     List<Expression> successBody = new ArrayList<>();
@@ -336,7 +336,7 @@ final class ElixirRestJsonOperationIr {
                 List.of(StructPattern.of(runtimeMod + ".HttpResponse", successFields)),
                 AndGuard.of(successGuards));
     functions.add(
-        new Function(
+        Function.of(
             "decode_" + opName + "_response",
             false,
             List.of(successHead),
@@ -351,7 +351,7 @@ final class ElixirRestJsonOperationIr {
             field("headers", VariablePattern.of("headers")),
             field("body", VariablePattern.of("body")));
     functions.add(
-        new Function(
+        Function.of(
             "decode_" + opName + "_response",
             false,
             List.of(
@@ -435,7 +435,7 @@ final class ElixirRestJsonOperationIr {
                   VariablePattern.of("status"),
                   VariablePattern.of("_headers"),
                   VariablePattern.of("body")),
-              new ComparisonGuard(Variable.of("status"), ">=", IntegerExpr.of(400)),
+              ComparisonGuard.of(Variable.of("status"), ">=", IntegerExpr.of(400)),
               block(
                   List.of(
                       MatchExpr.bind(
@@ -447,7 +447,7 @@ final class ElixirRestJsonOperationIr {
                               "Map",
                               "get",
                               List.of(Variable.of("decoded"), StringExpr.of("__type")))),
-                      new CaseExpr(Variable.of("error_type"), typeBranches))),
+                      CaseExpr.of(Variable.of("error_type"), typeBranches))),
               false));
     } else {
       functions.add(
@@ -527,7 +527,7 @@ final class ElixirRestJsonOperationIr {
       patternFields.add(field(field, VariablePattern.of("_" + field)));
       bodyEntries.add(
           MapEntry.stringKey(
-              member.getMemberName(), new DotCallExpr(Variable.of("error"), field, List.of())));
+              member.getMemberName(), DotCallExpr.of(Variable.of("error"), field, List.of())));
     }
 
     List<Expression> body = new ArrayList<>();
@@ -741,10 +741,10 @@ final class ElixirRestJsonOperationIr {
       String field = fieldName(sp, pb.getMember());
       if (isStreamingBlob(model, pb.getMember())) {
         body.add(
-            MatchExpr.bind("stream", new DotCallExpr(Variable.of(recordVar), field, List.of())));
+            MatchExpr.bind("stream", DotCallExpr.of(Variable.of(recordVar), field, List.of())));
         body.add(MatchExpr.bind("body", StringExpr.of("")));
       } else {
-        body.add(MatchExpr.bind("body", new DotCallExpr(Variable.of(recordVar), field, List.of())));
+        body.add(MatchExpr.bind("body", DotCallExpr.of(Variable.of(recordVar), field, List.of())));
       }
     } else if (!respDoc.isEmpty()) {
       List<MemberShape> docMemberShapes = respDoc.stream().map(HttpBinding::getMember).toList();
@@ -800,7 +800,7 @@ final class ElixirRestJsonOperationIr {
                       "prefix_headers_to_list",
                       List.of(
                           StringExpr.of(ph.getLocationName()),
-                          new DotCallExpr(Variable.of(recordVar), field, List.of()))))));
+                          DotCallExpr.of(Variable.of(recordVar), field, List.of()))))));
     }
 
     List<MapEntry> responseFields = new ArrayList<>();
@@ -827,8 +827,8 @@ final class ElixirRestJsonOperationIr {
       exprs.add(
           MatchExpr.bind(
               "input",
-              new CaseExpr(
-                  new DotCallExpr(Variable.of("input"), field, List.of()),
+              CaseExpr.of(
+                  DotCallExpr.of(Variable.of("input"), field, List.of()),
                   List.of(
                       Clause.of(
                           NilPattern.of(),
@@ -860,12 +860,12 @@ final class ElixirRestJsonOperationIr {
 
   private static Expression buildQueryBindingExpr(Model model, HttpBinding qb, SymbolProvider sp) {
     String field = fieldName(sp, qb.getMember());
-    Expression binding = new DotCallExpr(Variable.of("input"), field, List.of());
+    Expression binding = DotCallExpr.of(Variable.of("input"), field, List.of());
     String paramName = qb.getLocationName();
     Shape target = model.expectShape(qb.getMember().getTarget());
     Expression listArg =
         target instanceof ListShape
-            ? new CaseExpr(
+            ? CaseExpr.of(
                 binding,
                 List.of(
                     Clause.of(NilPattern.of(), ListExpr.of(List.of())),
@@ -876,11 +876,11 @@ final class ElixirRestJsonOperationIr {
         "flat_map",
         List.of(
             listArg,
-            new AnonFun(
+            AnonFun.of(
                 List.of(
                     AnonFunClause.of(
                         List.of(VariablePattern.of("v")),
-                        new CaseExpr(
+                        CaseExpr.of(
                             Variable.of("v"),
                             List.of(
                                 Clause.of(NilPattern.of(), ListExpr.of(List.of())),
@@ -907,8 +907,8 @@ final class ElixirRestJsonOperationIr {
       exprs.add(
           MatchExpr.bind(
               "query_extra",
-              new CaseExpr(
-                  new DotCallExpr(Variable.of("input"), field, List.of()),
+              CaseExpr.of(
+                  DotCallExpr.of(Variable.of("input"), field, List.of()),
                   List.of(
                       Clause.of(NilPattern.of(), ListExpr.of(List.of())),
                       Clause.of(
@@ -918,14 +918,14 @@ final class ElixirRestJsonOperationIr {
       exprs.add(
           MatchExpr.bind(
               "query",
-              new PipeExpr(
+              PipeExpr.of(
                   Variable.of("query"),
                   List.of(
-                      new PipeStep(RemoteCallExpr.of("Map", "to_list", List.of()), List.of()),
-                      new PipeStep(
+                      PipeStep.of(RemoteCallExpr.of("Map", "to_list", List.of()), List.of()),
+                      PipeStep.of(
                           RemoteCallExpr.of("Enum", "concat", List.of(Variable.of("query_extra"))),
                           List.of()),
-                      new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of())))));
+                      PipeStep.of(RemoteCallExpr.of("Map", "new", List.of()), List.of())))));
     }
     return exprs;
   }
@@ -978,7 +978,7 @@ final class ElixirRestJsonOperationIr {
                       "prefix_headers_to_list",
                       List.of(
                           StringExpr.of(ph.getLocationName()),
-                          new DotCallExpr(Variable.of(recordVar), field, List.of()))))));
+                          DotCallExpr.of(Variable.of(recordVar), field, List.of()))))));
     }
     return exprs;
   }
@@ -989,9 +989,9 @@ final class ElixirRestJsonOperationIr {
     for (HttpBinding hb : headers) {
       String field = fieldName(sp, hb.getMember());
       entries.add(
-          new IfExpr(
+          IfExpr.of(
               InfixExpr.of(
-                  new DotCallExpr(Variable.of(recordVar), field, List.of()),
+                  DotCallExpr.of(Variable.of(recordVar), field, List.of()),
                   "!=",
                   AtomExpr.of("nil")),
               TupleExpr.of(
@@ -1000,22 +1000,22 @@ final class ElixirRestJsonOperationIr {
                       RemoteCallExpr.of(
                           "Kernel",
                           "to_string",
-                          List.of(new DotCallExpr(Variable.of(recordVar), field, List.of()))))),
+                          List.of(DotCallExpr.of(Variable.of(recordVar), field, List.of()))))),
               NilExpr.of(),
               false));
     }
     return List.of(
         MatchExpr.bind(
             "extra_headers",
-            new PipeExpr(
+            PipeExpr.of(
                 ListExpr.of(entries),
                 List.of(
-                    new PipeStep(
+                    PipeStep.of(
                         RemoteCallExpr.of(
                             "Enum",
                             "reject",
                             List.of(
-                                new AnonFun(
+                                AnonFun.of(
                                     List.of(
                                         AnonFunClause.of(
                                             List.of(VariablePattern.of("x")),
@@ -1060,7 +1060,7 @@ final class ElixirRestJsonOperationIr {
                 RemoteCallExpr.of(
                     eventStreamModule,
                     "encode_" + helper,
-                    List.of(new DotCallExpr(Variable.of(recordVar), field, List.of())))));
+                    List.of(DotCallExpr.of(Variable.of(recordVar), field, List.of())))));
         return exprs;
       }
       Shape target = model.expectShape(member.getTarget());
@@ -1069,7 +1069,7 @@ final class ElixirRestJsonOperationIr {
             MatchExpr.bind(
                 "body",
                 InfixExpr.of(
-                    new DotCallExpr(Variable.of(recordVar), field, List.of()),
+                    DotCallExpr.of(Variable.of(recordVar), field, List.of()),
                     "||",
                     StringExpr.of(""))));
         return exprs;
@@ -1097,7 +1097,7 @@ final class ElixirRestJsonOperationIr {
       return List.of();
     }
     Expression gzipCase =
-        new CaseExpr(
+        CaseExpr.of(
             InfixExpr.of(
                 RemoteCallExpr.of(":erlang", "byte_size", List.of(Variable.of("body"))),
                 ">=",
@@ -1105,7 +1105,7 @@ final class ElixirRestJsonOperationIr {
             List.of(
                 Clause.of(
                     AtomPattern.of("true"),
-                    new BlockExpr(
+                    BlockExpr.of(
                         List.of(
                             MatchExpr.bind(
                                 "compressed",
@@ -1176,7 +1176,7 @@ final class ElixirRestJsonOperationIr {
                 expr,
                 LocalCallExpr.of(
                     "uri_encode",
-                    List.of(new DotCallExpr(Variable.of(inputVar), field, List.of()))));
+                    List.of(DotCallExpr.of(Variable.of(inputVar), field, List.of()))));
       } else {
         expr = appendPathSegment(expr, StringExpr.of("{" + labelName + "}"));
       }
@@ -1234,17 +1234,17 @@ final class ElixirRestJsonOperationIr {
       Spec spec,
       FunctionDoc doc,
       boolean oneLiner) {
-    return new Function(name, false, List.of(FunctionHead.of(params)), body, spec, doc, oneLiner);
+    return Function.of(name, false, List.of(FunctionHead.of(params)), body, spec, doc, oneLiner);
   }
 
   private static Function defp(
       String name, List<Pattern> params, Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static Function defp(
       String name, List<Pattern> params, Guard guard, Expression body, boolean oneLiner) {
-    return new Function(
+    return Function.of(
         name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
   }
 
@@ -1255,7 +1255,7 @@ final class ElixirRestJsonOperationIr {
     if (statements.size() == 1) {
       return statements.get(0);
     }
-    return new BlockExpr(statements);
+    return BlockExpr.of(statements);
   }
 
   private static String fieldName(SymbolProvider sp, MemberShape member) {

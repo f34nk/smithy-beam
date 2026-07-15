@@ -23,7 +23,7 @@ final class ElixirServerIr {
     String implMod = ElixirSymbolProvider.toModuleName(layout.implModuleName());
     List<Function> functions = new ArrayList<>(operationFunctions);
     functions.addAll(discoveryFunctions);
-    return new Module(
+    return Module.of(
         serverMod,
         Moduledoc.of(
             "Generated Elixir server dispatcher for "

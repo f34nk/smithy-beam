@@ -189,7 +189,7 @@ class ElixirTypesEmissionTest {
         null,
         List.of("@type t :: :open | :closed"),
         List.of(
-            new Function(
+            Function.of(
                 "from",
                 false,
                 List.of(FunctionHead.of(List.of(VariablePattern.of("v")))),
@@ -208,7 +208,7 @@ class ElixirTypesEmissionTest {
         null,
         List.of("@type t :: " + longBody),
         List.of(
-            new Function(
+            Function.of(
                 "from",
                 false,
                 List.of(FunctionHead.of(List.of(VariablePattern.of("v")))),
@@ -216,7 +216,7 @@ class ElixirTypesEmissionTest {
                 Spec.of("from(String.t()) :: t()"),
                 null,
                 true),
-            new Function(
+            Function.of(
                 "to",
                 false,
                 List.of(FunctionHead.of(List.of(VariablePattern.of("v")))),

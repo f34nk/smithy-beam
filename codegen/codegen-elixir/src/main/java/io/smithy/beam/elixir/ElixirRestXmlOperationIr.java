@@ -143,7 +143,7 @@ final class ElixirRestXmlOperationIr {
                     + "} | {:error, term()}");
 
     return List.of(
-        new Function(
+        Function.of(
             "decode_" + opName + "_request",
             false,
             List.of(FunctionHead.of(patterns)),
@@ -173,7 +173,7 @@ final class ElixirRestXmlOperationIr {
 
     List<Function> functions = new ArrayList<>();
     functions.add(
-        new Function(
+        Function.of(
             "decode_" + opName + "_response",
             false,
             List.of(FunctionHead.of(List.of(successPattern))),
@@ -196,7 +196,7 @@ final class ElixirRestXmlOperationIr {
 
     if (op.getErrors().isEmpty()) {
       functions.add(
-          new Function(
+          Function.of(
               "decode_" + opName + "_response",
               false,
               List.of(FunctionHead.of(List.of(fallbackPattern))),
@@ -213,7 +213,7 @@ final class ElixirRestXmlOperationIr {
               true));
     } else {
       functions.add(
-          new Function(
+          Function.of(
               "decode_" + opName + "_response",
               false,
               List.of(FunctionHead.of(List.of(fallbackPattern))),
@@ -259,7 +259,7 @@ final class ElixirRestXmlOperationIr {
         nilFields.add(MapEntry.atomKey(fieldName(sp, member), AtomExpr.of("nil")));
       }
       functions.add(
-          new Function(
+          Function.of(
               "decode_" + opName + "_response_error",
               true,
               List.of(
@@ -345,7 +345,7 @@ final class ElixirRestXmlOperationIr {
                           "Kernel",
                           "to_string",
                           List.of(
-                              new DotCallExpr(
+                              DotCallExpr.of(
                                   Variable.of("input"),
                                   fieldName(sp, binding.getMember()),
                                   List.of()))))
@@ -360,7 +360,7 @@ final class ElixirRestXmlOperationIr {
           RemoteCallExpr.of(
               "Kernel",
               "to_string",
-              List.of(new DotCallExpr(Variable.of("input"), bucketField, List.of()))));
+              List.of(DotCallExpr.of(Variable.of("input"), bucketField, List.of()))));
       resolveArgs.add(keyExpr);
       body.add(
           MatchExpr.bind(
@@ -395,7 +395,7 @@ final class ElixirRestXmlOperationIr {
             : Spec.of("encode_" + opName + "_request(" + inputType + ") :: " + httpRequestType);
 
     return List.of(
-        new Function(
+        Function.of(
             "encode_" + opName + "_request",
             false,
             List.of(FunctionHead.of(patterns)),
@@ -421,7 +421,7 @@ final class ElixirRestXmlOperationIr {
     Spec spec = Spec.of("encode_" + opName + "_response(" + outputType + ") :: map()");
 
     return List.of(
-        new Function(
+        Function.of(
             "encode_" + opName + "_response",
             false,
             List.of(FunctionHead.of(List.of(VariablePattern.of("output")))),
@@ -492,7 +492,7 @@ final class ElixirRestXmlOperationIr {
       body.add(
           MatchExpr.bind(
               "parsed",
-              new CaseExpr(
+              CaseExpr.of(
                   LocalCallExpr.of(
                       "parse_xml_root", List.of(Variable.of("body"), StringExpr.of(rootElement))),
                   List.of(
@@ -576,7 +576,7 @@ final class ElixirRestXmlOperationIr {
     if (BeamXmlBindingIndex.isXmlAttribute(member)) {
       return MatchExpr.bind(
           field,
-          new CaseExpr(
+          CaseExpr.of(
               Variable.of(xmlVar),
               List.of(
                   Clause.of(NilPattern.of(), AtomExpr.of("nil")),
@@ -591,7 +591,7 @@ final class ElixirRestXmlOperationIr {
     if (target instanceof ListShape listShape) {
       return MatchExpr.bind(
           field,
-          new CaseExpr(
+          CaseExpr.of(
               Variable.of(xmlVar),
               List.of(
                   Clause.of(NilPattern.of(), AtomExpr.of("nil")),
@@ -603,13 +603,13 @@ final class ElixirRestXmlOperationIr {
       String nestedVar = field + "_xml";
       return MatchExpr.bind(
           field,
-          new CaseExpr(
+          CaseExpr.of(
               Variable.of(xmlVar),
               List.of(
                   Clause.of(NilPattern.of(), AtomExpr.of("nil")),
                   Clause.of(
                       W,
-                      new CaseExpr(
+                      CaseExpr.of(
                           LocalCallExpr.of(
                               "find_element",
                               List.of(
@@ -625,7 +625,7 @@ final class ElixirRestXmlOperationIr {
     }
     return MatchExpr.bind(
         field,
-        new CaseExpr(
+        CaseExpr.of(
             Variable.of(xmlVar),
             List.of(
                 Clause.of(NilPattern.of(), AtomExpr.of("nil")),
@@ -686,7 +686,7 @@ final class ElixirRestXmlOperationIr {
         entries.add(
             MapEntry.stringKey(
                 wireName,
-                new DotCallExpr(Variable.of("output"), fieldName(sp, member), List.of())));
+                DotCallExpr.of(Variable.of("output"), fieldName(sp, member), List.of())));
       }
       body.add(MatchExpr.bind("member_map", MapExpr.of(entries)));
       body.add(
@@ -724,7 +724,7 @@ final class ElixirRestXmlOperationIr {
     Expression payloadCaseBody;
     if (target instanceof StructureShape structure) {
       payloadCaseBody =
-          new BlockExpr(
+          BlockExpr.of(
               List.of(
                   MatchExpr.bind(
                       "member_map", buildStructureMap(model, structure, "payload_value", sp)),
@@ -749,8 +749,8 @@ final class ElixirRestXmlOperationIr {
     exprs.add(
         MatchExpr.bind(
             "body",
-            new CaseExpr(
-                new DotCallExpr(Variable.of(valueVar), field, List.of()),
+            CaseExpr.of(
+                DotCallExpr.of(Variable.of(valueVar), field, List.of()),
                 List.of(
                     Clause.of(NilPattern.of(), StringExpr.of("")),
                     Clause.of(VariablePattern.of("payload_value"), payloadCaseBody)))));
@@ -785,10 +785,10 @@ final class ElixirRestXmlOperationIr {
       branches.add(
           Clause.of(
               TuplePattern.of(List.of(AtomPattern.of(tag), VariablePattern.of("v"))),
-              blockExprs.size() == 1 ? blockExprs.get(0) : new BlockExpr(blockExprs)));
+              blockExprs.size() == 1 ? blockExprs.get(0) : BlockExpr.of(blockExprs)));
     }
     branches.add(Clause.of(NilPattern.of(), StringExpr.of("")));
-    return new CaseExpr(Variable.of("payload_value"), branches);
+    return CaseExpr.of(Variable.of("payload_value"), branches);
   }
 
   private static List<Expression> buildRequestBodyExprs(
@@ -815,8 +815,8 @@ final class ElixirRestXmlOperationIr {
       exprs.add(
           MatchExpr.bind(
               "body",
-              new CaseExpr(
-                  new DotCallExpr(Variable.of("input"), field, List.of()),
+              CaseExpr.of(
+                  DotCallExpr.of(Variable.of("input"), field, List.of()),
                   List.of(
                       Clause.of(NilPattern.of(), StringExpr.of("")),
                       Clause.of(VariablePattern.of("value"), Variable.of("value"))))));
@@ -827,7 +827,7 @@ final class ElixirRestXmlOperationIr {
     Expression payloadCaseBody;
     if (target instanceof StructureShape structure) {
       payloadCaseBody =
-          new BlockExpr(
+          BlockExpr.of(
               List.of(
                   MatchExpr.bind(
                       "member_map", buildStructureMap(model, structure, "payload_value", sp)),
@@ -852,8 +852,8 @@ final class ElixirRestXmlOperationIr {
     exprs.add(
         MatchExpr.bind(
             "body",
-            new CaseExpr(
-                new DotCallExpr(Variable.of("input"), field, List.of()),
+            CaseExpr.of(
+                DotCallExpr.of(Variable.of("input"), field, List.of()),
                 List.of(
                     Clause.of(NilPattern.of(), StringExpr.of("")),
                     Clause.of(VariablePattern.of("payload_value"), payloadCaseBody)))));
@@ -869,7 +869,7 @@ final class ElixirRestXmlOperationIr {
       String field = fieldName(sp, qb.getMember());
       entries.add(
           MapEntry.stringKey(
-              qb.getLocationName(), new DotCallExpr(Variable.of("input"), field, List.of())));
+              qb.getLocationName(), DotCallExpr.of(Variable.of("input"), field, List.of())));
     }
     return List.of(
         MatchExpr.bind("query", ElixirJsonCodecIr.rejectNilMapPipeline("query", entries)));
@@ -929,9 +929,9 @@ final class ElixirRestXmlOperationIr {
     List<Expression> entries = new ArrayList<>();
     for (HttpBinding hb : headers) {
       String field = fieldName(sp, hb.getMember());
-      Expression fieldValue = new DotCallExpr(Variable.of(recordVar), field, List.of());
+      Expression fieldValue = DotCallExpr.of(Variable.of(recordVar), field, List.of());
       entries.add(
-          new IfExpr(
+          IfExpr.of(
               InfixExpr.of(fieldValue, "!=", AtomExpr.of("nil")),
               TupleExpr.of(
                   List.of(
@@ -943,15 +943,15 @@ final class ElixirRestXmlOperationIr {
     return List.of(
         MatchExpr.bind(
             "extra_headers",
-            new PipeExpr(
+            PipeExpr.of(
                 ListExpr.of(entries),
                 List.of(
-                    new PipeStep(
+                    PipeStep.of(
                         RemoteCallExpr.of(
                             "Enum",
                             "reject",
                             List.of(
-                                new AnonFun(
+                                AnonFun.of(
                                     List.of(
                                         AnonFunClause.of(
                                             List.of(VariablePattern.of("x")),
@@ -971,8 +971,8 @@ final class ElixirRestXmlOperationIr {
       exprs.add(
           MatchExpr.bind(
               "input",
-              new CaseExpr(
-                  new DotCallExpr(Variable.of("input"), field, List.of()),
+              CaseExpr.of(
+                  DotCallExpr.of(Variable.of("input"), field, List.of()),
                   List.of(
                       Clause.of(
                           NilPattern.of(),
@@ -990,7 +990,7 @@ final class ElixirRestXmlOperationIr {
 
   private static Expression payloadBodyDecodeExpr(
       Model model, Shape target, String rootElement, SymbolProvider sp, String typesMod) {
-    return new CaseExpr(
+    return CaseExpr.of(
         LocalCallExpr.of(
             "parse_xml_root", List.of(Variable.of("body"), StringExpr.of(rootElement))),
         List.of(
@@ -1057,7 +1057,7 @@ final class ElixirRestXmlOperationIr {
               Variable.of(xmlVar),
               listNameArg,
               StringExpr.of(itemElement),
-              new AnonFun(
+              AnonFun.of(
                   List.of(
                       AnonFunClause.of(
                           List.of(VariablePattern.of("item")),
@@ -1088,7 +1088,7 @@ final class ElixirRestXmlOperationIr {
     String tag = unionTagForMember(sp, member);
     Expression valueExpr = decodeUnionMemberValue(model, member, "element", sp, typesMod);
     Expression nextArm = buildUnionDecodeCase(model, union, xmlVar, sp, typesMod, memberIndex + 1);
-    return new CaseExpr(
+    return CaseExpr.of(
         LocalCallExpr.of(
             "find_element",
             List.of(
@@ -1117,7 +1117,7 @@ final class ElixirRestXmlOperationIr {
                 Variable.of(elementVar),
                 AtomExpr.of("nil"),
                 StringExpr.of(itemElement),
-                new AnonFun(
+                AnonFun.of(
                     List.of(
                         AnonFunClause.of(
                             List.of(VariablePattern.of("item")),
@@ -1127,7 +1127,7 @@ final class ElixirRestXmlOperationIr {
           "xml_child_list",
           List.of(Variable.of(elementVar), AtomExpr.of("nil"), StringExpr.of(itemElement)));
     }
-    return new CaseExpr(
+    return CaseExpr.of(
         LocalCallExpr.of("element_text", List.of(Variable.of(elementVar))),
         List.of(
             Clause.of(ListPattern.of(List.of()), AtomExpr.of("nil")),
@@ -1144,7 +1144,7 @@ final class ElixirRestXmlOperationIr {
       String field = fieldName(sp, member);
       String wireName = BeamXmlBindingIndex.memberElementName(member);
       entries.add(
-          MapEntry.stringKey(wireName, new DotCallExpr(Variable.of(varName), field, List.of())));
+          MapEntry.stringKey(wireName, DotCallExpr.of(Variable.of(varName), field, List.of())));
     }
     return MapExpr.of(entries);
   }
@@ -1184,7 +1184,7 @@ final class ElixirRestXmlOperationIr {
                         RemoteCallExpr.of(
                             "Kernel",
                             "to_string",
-                            List.of(new DotCallExpr(Variable.of(inputVar), field, List.of()))))));
+                            List.of(DotCallExpr.of(Variable.of(inputVar), field, List.of()))))));
       } else {
         expr = appendPathSegment(expr, StringExpr.of("{" + labelName + "}"));
       }
@@ -1199,7 +1199,7 @@ final class ElixirRestXmlOperationIr {
 
   private static Function defp(
       String name, List<Pattern> params, Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static Expression block(List<Expression> statements) {
@@ -1209,7 +1209,7 @@ final class ElixirRestXmlOperationIr {
     if (statements.size() == 1) {
       return statements.get(0);
     }
-    return new BlockExpr(statements);
+    return BlockExpr.of(statements);
   }
 
   private static String structName(SymbolProvider sp, StructureShape shape) {

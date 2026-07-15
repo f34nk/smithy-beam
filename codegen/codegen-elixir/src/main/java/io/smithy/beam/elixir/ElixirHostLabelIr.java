@@ -58,7 +58,7 @@ final class ElixirHostLabelIr {
 
     Expression prefixExpr = buildHostPrefixExpression(hostPrefix, hostLabels, sp);
 
-    return new Function(
+    return Function.of(
         "build_host",
         true,
         List.of(
@@ -66,7 +66,7 @@ final class ElixirHostLabelIr {
                 List.of(
                     StructPattern.of("Types." + inputStruct, fields),
                     VariablePattern.of("config")))),
-        new BlockExpr(
+        BlockExpr.of(
             List.of(
                 MatchExpr.bind(
                     "base_url",

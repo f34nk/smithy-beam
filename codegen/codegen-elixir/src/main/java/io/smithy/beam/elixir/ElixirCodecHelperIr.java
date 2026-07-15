@@ -114,7 +114,7 @@ final class ElixirCodecHelperIr {
                 "map",
                 List.of(
                     Variable.of("map"),
-                    new AnonFun(
+                    AnonFun.of(
                         List.of(
                             AnonFunClause.of(
                                 List.of(
@@ -151,7 +151,7 @@ final class ElixirCodecHelperIr {
                 "map",
                 List.of(
                     Variable.of("list"),
-                    new AnonFun(
+                    AnonFun.of(
                         List.of(
                             AnonFunClause.of(List.of(NilPattern.of()), NilExpr.of()),
                             AnonFunClause.of(
@@ -183,7 +183,7 @@ final class ElixirCodecHelperIr {
                 "new",
                 List.of(
                     Variable.of("map"),
-                    new AnonFun(
+                    AnonFun.of(
                         List.of(
                             AnonFunClause.of(
                                 List.of(
@@ -248,7 +248,7 @@ final class ElixirCodecHelperIr {
             "decode_timestamp_date_time",
             List.of(VariablePattern.of("v")),
             IsTypeGuard.of("is_binary", "v"),
-            new CaseExpr(
+            CaseExpr.of(
                 RemoteCallExpr.of("DateTime", "from_iso8601", List.of(Variable.of("v"))),
                 List.of(
                     Clause.of(
@@ -275,21 +275,21 @@ final class ElixirCodecHelperIr {
                 BinarySegmentPattern.of(VariablePattern.of("e"), "48")));
 
     Expression uuidBinary =
-        new BinaryExpr(
+        BinaryExpr.of(
             List.of(
-                new BinarySegmentExpr(Variable.of("a"), "32"),
-                new BinarySegmentExpr(Variable.of("b"), "16"),
-                new BinarySegmentExpr(IntegerExpr.of(4), "4"),
-                new BinarySegmentExpr(Variable.of("c"), "12"),
-                new BinarySegmentExpr(IntegerExpr.of(2), "2"),
-                new BinarySegmentExpr(Variable.of("d"), "14"),
-                new BinarySegmentExpr(Variable.of("e"), "48")));
+                BinarySegmentExpr.of(Variable.of("a"), "32"),
+                BinarySegmentExpr.of(Variable.of("b"), "16"),
+                BinarySegmentExpr.of(IntegerExpr.of(4), "4"),
+                BinarySegmentExpr.of(Variable.of("c"), "12"),
+                BinarySegmentExpr.of(IntegerExpr.of(2), "2"),
+                BinarySegmentExpr.of(Variable.of("d"), "14"),
+                BinarySegmentExpr.of(Variable.of("e"), "48")));
 
     Expression keywordOptions =
         ListExpr.of(List.of(TupleExpr.of(List.of(AtomExpr.of("case"), AtomExpr.of("lower")))));
 
     Expression formatHex =
-        new AnonFun(
+        AnonFun.of(
             List.of(
                 AnonFunClause.of(
                     List.of(VariablePattern.of("hex")),
@@ -302,28 +302,28 @@ final class ElixirCodecHelperIr {
                                 BinarySegmentPattern.of(VariablePattern.of("part_d"), "4"),
                                 BinarySegmentPattern.of(VariablePattern.of("part_e"), "12"))),
                         Variable.of("hex"),
-                        new InterpolatedStringExpr(
+                        InterpolatedStringExpr.of(
                             List.of(
-                                new InterpolatedExpr(Variable.of("part_a")),
-                                new InterpolatedLiteral("-"),
-                                new InterpolatedExpr(Variable.of("part_b")),
-                                new InterpolatedLiteral("-"),
-                                new InterpolatedExpr(Variable.of("part_c")),
-                                new InterpolatedLiteral("-"),
-                                new InterpolatedExpr(Variable.of("part_d")),
-                                new InterpolatedLiteral("-"),
-                                new InterpolatedExpr(Variable.of("part_e"))))))));
+                                InterpolatedExpr.of(Variable.of("part_a")),
+                                InterpolatedLiteral.of("-"),
+                                InterpolatedExpr.of(Variable.of("part_b")),
+                                InterpolatedLiteral.of("-"),
+                                InterpolatedExpr.of(Variable.of("part_c")),
+                                InterpolatedLiteral.of("-"),
+                                InterpolatedExpr.of(Variable.of("part_d")),
+                                InterpolatedLiteral.of("-"),
+                                InterpolatedExpr.of(Variable.of("part_e"))))))));
 
     Expression body =
         MatchExpr.bind(
             randPattern,
             RemoteCallExpr.of(":crypto", "strong_rand_bytes", List.of(IntegerExpr.of(16))),
-            new PipeExpr(
+            PipeExpr.of(
                 uuidBinary,
                 List.of(
-                    new PipeStep(
+                    PipeStep.of(
                         RemoteCallExpr.of("Base", "encode16", List.of()), List.of(keywordOptions)),
-                    new PipeStep(
+                    PipeStep.of(
                         RemoteCallExpr.of("Kernel", "then", List.of()), List.of(formatHex)))));
 
     return List.of(defp("generate_uuid", List.of(), body, false));
@@ -335,7 +335,7 @@ final class ElixirCodecHelperIr {
         defp(
             "decode_json_body",
             List.of(VariablePattern.of("body")),
-            new CaseExpr(
+            CaseExpr.of(
                 RemoteCallExpr.of("Jason", "decode", List.of(Variable.of("body"))),
                 List.of(
                     Clause.of(
@@ -351,7 +351,7 @@ final class ElixirCodecHelperIr {
         defp(
             "content_type_matches",
             List.of(VariablePattern.of("headers"), VariablePattern.of("expected")),
-            new CaseExpr(
+            CaseExpr.of(
                 RemoteCallExpr.of(
                     "List",
                     "keyfind",
@@ -360,12 +360,12 @@ final class ElixirCodecHelperIr {
                 List.of(
                     Clause.of(
                         TuplePattern.of(List.of(WildcardPattern.of(), VariablePattern.of("ct"))),
-                        new ComparisonGuard(Variable.of("ct"), "==", Variable.of("expected")),
+                        ComparisonGuard.of(Variable.of("ct"), "==", Variable.of("expected")),
                         AtomExpr.of("ok")),
                     Clause.of(
                         TuplePattern.of(List.of(WildcardPattern.of(), VariablePattern.of("ct"))),
                         IsTypeGuard.of("is_binary", "ct"),
-                        new IfExpr(
+                        IfExpr.of(
                             InfixExpr.of(
                                 LocalCallExpr.of("ct_base", List.of(Variable.of("ct"))),
                                 "==",
@@ -396,7 +396,7 @@ final class ElixirCodecHelperIr {
         defp(
             "ct_base",
             List.of(VariablePattern.of("ct")),
-            new CaseExpr(
+            CaseExpr.of(
                 RemoteCallExpr.of(
                     "String", "split", List.of(Variable.of("ct"), StringExpr.of(";"))),
                 List.of(
@@ -431,7 +431,7 @@ final class ElixirCodecHelperIr {
         defp(
             "header_value",
             List.of(VariablePattern.of("headers"), VariablePattern.of("name")),
-            new CaseExpr(
+            CaseExpr.of(
                 RemoteCallExpr.of(
                     "List",
                     "keyfind",
@@ -615,7 +615,7 @@ final class ElixirCodecHelperIr {
                 "map",
                 List.of(
                     Variable.of("list"),
-                    new AnonFun(
+                    AnonFun.of(
                         List.of(
                             AnonFunClause.of(List.of(NilPattern.of()), NilExpr.of()),
                             AnonFunClause.of(
@@ -635,7 +635,7 @@ final class ElixirCodecHelperIr {
                 "new",
                 List.of(
                     Variable.of("map"),
-                    new AnonFun(
+                    AnonFun.of(
                         List.of(
                             AnonFunClause.of(
                                 List.of(
@@ -652,12 +652,12 @@ final class ElixirCodecHelperIr {
 
   private static Function defp(
       String name, List<Pattern> params, Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static Function defp(
       String name, List<Pattern> params, Guard guard, Expression body, boolean oneLiner) {
-    return new Function(
+    return Function.of(
         name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
   }
 
@@ -667,7 +667,7 @@ final class ElixirCodecHelperIr {
 
   private static Expression prefixHeadersFromListBody() {
     AnonFun filterFn =
-        new AnonFun(
+        AnonFun.of(
             List.of(
                 AnonFunClause.of(
                     List.of(
@@ -678,7 +678,7 @@ final class ElixirCodecHelperIr {
                         List.of(Variable.of("name"), Variable.of("prefix"))))));
 
     AnonFun mapFn =
-        new AnonFun(
+        AnonFun.of(
             List.of(
                 AnonFunClause.of(
                     List.of(
@@ -698,17 +698,17 @@ final class ElixirCodecHelperIr {
                                             "byte_size", List.of(Variable.of("prefix")))))),
                             Variable.of("val"))))));
 
-    return new PipeExpr(
+    return PipeExpr.of(
         Variable.of("headers"),
         List.of(
-            new PipeStep(RemoteCallExpr.of("Enum", "filter", List.of(filterFn)), List.of()),
-            new PipeStep(RemoteCallExpr.of("Map", "new", List.of(mapFn)), List.of()),
-            new PipeStep(
+            PipeStep.of(RemoteCallExpr.of("Enum", "filter", List.of(filterFn)), List.of()),
+            PipeStep.of(RemoteCallExpr.of("Map", "new", List.of(mapFn)), List.of()),
+            PipeStep.of(
                 CaseExpr.piped(
                     List.of(
                         Clause.of(
                             VariablePattern.of("map"),
-                            new ComparisonGuard(Variable.of("map"), "==", MapExpr.of(List.of())),
+                            ComparisonGuard.of(Variable.of("map"), "==", MapExpr.of(List.of())),
                             NilExpr.of()),
                         Clause.of(VariablePattern.of("map"), Variable.of("map")))),
                 List.of())));

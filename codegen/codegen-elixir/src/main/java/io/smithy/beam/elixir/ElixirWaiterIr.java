@@ -77,7 +77,7 @@ final class ElixirWaiterIr {
       functions.add(waiterFunction(index, binding, clientMod, typesMod, sp));
     }
     functions.addAll(waitUntilHelperFunctions());
-    return new Module(
+    return Module.of(
         moduleName,
         Moduledoc.of("Generated waiters for " + service.getId() + " (generated)."),
         List.of(),
@@ -101,7 +101,7 @@ final class ElixirWaiterIr {
     List<Expression> acceptorMaps =
         index.acceptors(binding).stream().map(a -> acceptorMap(a, typesMod, sp)).toList();
 
-    return new Function(
+    return Function.of(
         fn,
         false,
         List.of(
@@ -110,7 +110,7 @@ final class ElixirWaiterIr {
                     VariablePattern.of("client"),
                     VariablePattern.of("input"),
                     VariablePattern.of("opts")))),
-        new BlockExpr(
+        BlockExpr.of(
             List.of(
                 MatchExpr.bind("acceptors", ListExpr.of(acceptorMaps)),
                 MatchExpr.bind(
@@ -133,7 +133,7 @@ final class ElixirWaiterIr {
                 LocalCallExpr.of(
                     "wait_until",
                     List.of(
-                        new AnonFun(
+                        AnonFun.of(
                             List.of(
                                 AnonFunClause.of(
                                     List.of(),
@@ -199,7 +199,7 @@ final class ElixirWaiterIr {
             VariablePattern.of("step"),
             VariablePattern.of("acceptors"),
             VariablePattern.of("opts")),
-        new BlockExpr(
+        BlockExpr.of(
             List.of(
                 MatchExpr.bind(
                     "max_attempts",
@@ -239,7 +239,7 @@ final class ElixirWaiterIr {
 
   private static List<Function> waitUntilArity5() {
     Expression pollCase =
-        new CaseExpr(
+        CaseExpr.of(
             LocalCallExpr.of("classify", List.of(Variable.of("acceptors"), Variable.of("result"))),
             List.of(
                 Clause.of(
@@ -250,12 +250,12 @@ final class ElixirWaiterIr {
                     TupleExpr.of(List.of(AtomExpr.of("error"), Variable.of("result")))),
                 Clause.of(
                     AtomPattern.of("retry"),
-                    new ComparisonGuard(Variable.of("attempts"), "<=", IntegerExpr.of(1)),
+                    ComparisonGuard.of(Variable.of("attempts"), "<=", IntegerExpr.of(1)),
                     TupleExpr.of(
                         List.of(AtomExpr.of("error"), AtomExpr.of("max_attempts_exceeded")))),
                 Clause.of(
                     AtomPattern.of("retry"),
-                    new BlockExpr(
+                    BlockExpr.of(
                         List.of(
                             RemoteCallExpr.of("Process", "sleep", List.of(Variable.of("delay"))),
                             MatchExpr.bind(
@@ -294,11 +294,11 @@ final class ElixirWaiterIr {
                 VariablePattern.of("attempts"),
                 VariablePattern.of("delay"),
                 VariablePattern.of("max_delay")),
-            new BlockExpr(
+            BlockExpr.of(
                 List.of(
                     MatchExpr.bind(
                         "result",
-                        new DotCallExpr(Variable.of("step"), "()", List.of()),
+                        DotCallExpr.of(Variable.of("step"), "()", List.of()),
                         pollCase))),
             false));
   }
@@ -315,7 +315,7 @@ final class ElixirWaiterIr {
             List.of(
                 ConsListPattern.of(VariablePattern.of("acceptor"), VariablePattern.of("rest")),
                 VariablePattern.of("result")),
-            new IfExpr(
+            IfExpr.of(
                 LocalCallExpr.of(
                     "matches_acceptor?", List.of(Variable.of("acceptor"), Variable.of("result"))),
                 RemoteCallExpr.of(
@@ -337,7 +337,7 @@ final class ElixirWaiterIr {
                         MapPatternEntry.of(
                             AtomExpr.of("expected"), VariablePattern.of("expected")))),
                 TuplePattern.of(List.of(AtomPattern.of("ok"), WildcardPattern.of()))),
-            new ComparisonGuard(Variable.of("expected"), "==", BooleanExpr.of(true)),
+            ComparisonGuard.of(Variable.of("expected"), "==", BooleanExpr.of(true)),
             BooleanExpr.of(true),
             true));
     functions.add(
@@ -350,7 +350,7 @@ final class ElixirWaiterIr {
                         MapPatternEntry.of(
                             AtomExpr.of("expected"), VariablePattern.of("expected")))),
                 TuplePattern.of(List.of(AtomPattern.of("error"), WildcardPattern.of()))),
-            new ComparisonGuard(Variable.of("expected"), "==", BooleanExpr.of(false)),
+            ComparisonGuard.of(Variable.of("expected"), "==", BooleanExpr.of(false)),
             BooleanExpr.of(true),
             true));
     functions.add(
@@ -444,7 +444,7 @@ final class ElixirWaiterIr {
             VariablePattern.of("path"),
             VariablePattern.of("expected"),
             VariablePattern.of("output")),
-        new CaseExpr(
+        CaseExpr.of(
             LocalCallExpr.of("path_value", List.of(Variable.of("path"), Variable.of("output"))),
             List.of(
                 Clause.of(NilPattern.of(), BooleanExpr.of(false)),
@@ -475,7 +475,7 @@ final class ElixirWaiterIr {
                 ConsListPattern.of(VariablePattern.of("key"), VariablePattern.of("rest")),
                 VariablePattern.of("value")),
             IsTypeGuard.of("is_map", "value"),
-            new CaseExpr(
+            CaseExpr.of(
                 RemoteCallExpr.of("Map", "get", List.of(Variable.of("value"), Variable.of("key"))),
                 List.of(
                     Clause.of(NilPattern.of(), NilExpr.of()),
@@ -490,7 +490,7 @@ final class ElixirWaiterIr {
                 ConsListPattern.of(VariablePattern.of("key"), VariablePattern.of("rest")),
                 VariablePattern.of("value")),
             IsTypeGuard.of("is_struct", "value"),
-            new CaseExpr(
+            CaseExpr.of(
                 RemoteCallExpr.of(
                     "Map",
                     "get",
@@ -557,12 +557,12 @@ final class ElixirWaiterIr {
 
   private static Function defp(
       String name, List<Pattern> params, Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static Function defp(
       String name, List<Pattern> params, Guard guard, Expression body, boolean oneLiner) {
-    return new Function(
+    return Function.of(
         name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
   }
 
@@ -573,10 +573,10 @@ final class ElixirWaiterIr {
       Guard guard2,
       Expression body,
       boolean oneLiner) {
-    return new Function(
+    return Function.of(
         name,
         true,
-        List.of(FunctionHead.of(params, new AndGuard(List.of(guard1, guard2)))),
+        List.of(FunctionHead.of(params, AndGuard.of(List.of(guard1, guard2)))),
         body,
         null,
         null,

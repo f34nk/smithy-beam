@@ -83,7 +83,7 @@ final class ElixirMapHelperIr {
     String name = "encode_" + helperName;
     Expression mapBody = mapTransformBody(model, httpIndex, map, sp, true);
     return List.of(
-        new Function(
+        Function.of(
             name,
             true,
             List.of(FunctionHead.of(List.of(NilPattern.of()))),
@@ -91,7 +91,7 @@ final class ElixirMapHelperIr {
             null,
             null,
             true),
-        new Function(
+        Function.of(
             name,
             true,
             List.of(
@@ -108,7 +108,7 @@ final class ElixirMapHelperIr {
     String name = "decode_" + helperName;
     Expression mapBody = mapTransformBody(model, httpIndex, map, sp, false);
     return List.of(
-        new Function(
+        Function.of(
             name,
             true,
             List.of(FunctionHead.of(List.of(NilPattern.of()))),
@@ -116,7 +116,7 @@ final class ElixirMapHelperIr {
             null,
             null,
             true),
-        new Function(
+        Function.of(
             name,
             true,
             List.of(
@@ -135,7 +135,7 @@ final class ElixirMapHelperIr {
         "new",
         List.of(
             Variable.of("map"),
-            new AnonFun(mapTransformClauses(model, httpIndex, map, sp, encode))));
+            AnonFun.of(mapTransformClauses(model, httpIndex, map, sp, encode))));
   }
 
   private static List<AnonFunClause> mapTransformClauses(

@@ -34,7 +34,7 @@ final class ElixirBehaviourIr {
       SymbolProvider sp) {
     String behaviourMod = ElixirSymbolProvider.toModuleName(layout.behaviourModuleName());
     String typesModuleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-    return new Module(
+    return Module.of(
         behaviourMod,
         Moduledoc.of("Generated Elixir server behaviour for " + service.getId() + "."),
         List.of(),
@@ -72,7 +72,7 @@ final class ElixirBehaviourIr {
       String name = sp.toSymbol(op).getName();
       entries.add(TupleExpr.of(List.of(AtomExpr.of("handle_" + name), IntegerExpr.of(3))));
     }
-    return new Function(
+    return Function.of(
         "callbacks",
         false,
         List.of(FunctionHead.of(List.of())),

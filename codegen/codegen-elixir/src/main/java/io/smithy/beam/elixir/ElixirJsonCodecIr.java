@@ -98,7 +98,7 @@ final class ElixirJsonCodecIr {
                 RemoteCallExpr.of(
                     eventStreamModule,
                     "encode_" + helper,
-                    List.of(new DotCallExpr(Variable.of(recordVar), fieldName, List.of())))));
+                    List.of(DotCallExpr.of(Variable.of(recordVar), fieldName, List.of())))));
       } else {
         entries.add(
             MapEntry.stringKey(
@@ -108,7 +108,7 @@ final class ElixirJsonCodecIr {
                     sp,
                     httpIndex,
                     member,
-                    new DotCallExpr(Variable.of(recordVar), fieldName, List.of()))));
+                    DotCallExpr.of(Variable.of(recordVar), fieldName, List.of()))));
       }
     }
     return entries;
@@ -148,7 +148,7 @@ final class ElixirJsonCodecIr {
   }
 
   static Expression decodedBodyExpr() {
-    return new IfExpr(
+    return IfExpr.of(
         InfixExpr.of(
             InfixExpr.of(Variable.of("body"), "==", StringExpr.of("")),
             "or",
@@ -247,15 +247,15 @@ final class ElixirJsonCodecIr {
   }
 
   static Expression rejectNilMapPipeline(String bindingVar, List<MapEntry> entries) {
-    return new PipeExpr(
+    return PipeExpr.of(
         MapExpr.of(entries),
         List.of(
-            new PipeStep(
+            PipeStep.of(
                 RemoteCallExpr.of(
                     "Enum",
                     "reject",
                     List.of(
-                        new AnonFun(
+                        AnonFun.of(
                             List.of(
                                 AnonFunClause.of(
                                     List.of(
@@ -264,7 +264,7 @@ final class ElixirJsonCodecIr {
                                                 VariablePattern.of("_"), VariablePattern.of("v")))),
                                     LocalCallExpr.of("is_nil", List.of(Variable.of("v")))))))),
                 List.of()),
-            new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of())));
+            PipeStep.of(RemoteCallExpr.of("Map", "new", List.of()), List.of())));
   }
 
   private static String helperName(SymbolProvider sp, Shape shape) {

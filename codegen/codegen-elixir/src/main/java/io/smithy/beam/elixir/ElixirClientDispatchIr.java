@@ -24,7 +24,7 @@ final class ElixirClientDispatchIr {
 
   /** Test helper; prefer ElixirRenderer.renderStatement / renderExpression in tests. */
   static String renderBody(List<Expression> exprs) {
-    Expression block = exprs.size() == 1 ? exprs.get(0) : new BlockExpr(exprs);
+    Expression block = exprs.size() == 1 ? exprs.get(0) : BlockExpr.of(exprs);
     return ElixirRenderer.renderStatement(block);
   }
 }

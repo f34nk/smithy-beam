@@ -23,7 +23,7 @@ final class ElixirTypesIr {
   }
 
   static Function endpointRuleSetFunction() {
-    return new Function(
+    return Function.of(
         "endpoint_rule_set",
         false,
         List.of(FunctionHead.of(List.of())),

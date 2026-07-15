@@ -113,15 +113,15 @@ final class ElixirAwsQueryOperationIr {
     body.add(
         MatchExpr.bind(
             "body",
-            new PipeExpr(
+            PipeExpr.of(
                 Variable.of("pairs"),
                 List.of(
-                    new PipeStep(
+                    PipeStep.of(
                         RemoteCallExpr.of("Enum", "reject", List.of(rejectNilPairsFn())),
                         List.of()),
-                    new PipeStep(
+                    PipeStep.of(
                         RemoteCallExpr.of("Enum", "map", List.of(encodePairsFn())), List.of()),
-                    new PipeStep(
+                    PipeStep.of(
                         RemoteCallExpr.of("URI", "encode_query", List.of()), List.of())))));
     body.add(buildHttpRequestStruct(runtimeMod, Variable.of("body")));
 
@@ -263,11 +263,11 @@ final class ElixirAwsQueryOperationIr {
             List.of(StructPatternField.of("body", VariablePattern.of("body"))));
 
     Expression body =
-        new PipeExpr(
+        PipeExpr.of(
             Variable.of("body"),
             List.of(
-                new PipeStep(LocalCallExpr.of("parse_query_params", List.of()), List.of()),
-                new PipeStep(
+                PipeStep.of(LocalCallExpr.of("parse_query_params", List.of()), List.of()),
+                PipeStep.of(
                     LocalCallExpr.of(
                         "parse_" + recordName(sp.toSymbol(input)) + "_input", List.of()),
                     List.of())));
@@ -315,14 +315,14 @@ final class ElixirAwsQueryOperationIr {
     body.add(
         MatchExpr.bind(
             "result_content",
-            new PipeExpr(
+            PipeExpr.of(
                 LocalCallExpr.of(
                     recordName(sp.toSymbol(output)) + "_to_result_map",
                     List.of(Variable.of("output"))),
                 List.of(
-                    new PipeStep(
+                    PipeStep.of(
                         RemoteCallExpr.of("Enum", "reject", List.of(rejectNilMapFn())), List.of()),
-                    new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of())))));
+                    PipeStep.of(RemoteCallExpr.of("Map", "new", List.of()), List.of())))));
     if (ec2Query) {
       body.add(
           MatchExpr.bind(
@@ -411,7 +411,7 @@ final class ElixirAwsQueryOperationIr {
       String field = fieldName(sp, member);
       String element = BeamXmlDecoder.memberElementName(member);
       entries.add(
-          MapEntry.stringKey(element, new DotCallExpr(Variable.of("output"), field, List.of())));
+          MapEntry.stringKey(element, DotCallExpr.of(Variable.of("output"), field, List.of())));
     }
     return List.of(
         defp(
@@ -441,9 +441,9 @@ final class ElixirAwsQueryOperationIr {
                 "flatten_member", List.of(StringExpr.of(wireKey), Variable.of(field))));
       }
       body =
-          new PipeExpr(
+          PipeExpr.of(
               ListExpr.of(memberCalls),
-              List.of(new PipeStep(RemoteCallExpr.of("List", "flatten", List.of()), List.of())));
+              List.of(PipeStep.of(RemoteCallExpr.of("List", "flatten", List.of()), List.of())));
     }
     return defp(
         "flatten_query_input", List.of(inputPattern(input, sp, false)), body, members.isEmpty());
@@ -465,9 +465,9 @@ final class ElixirAwsQueryOperationIr {
     Expression body =
         memberCalls.isEmpty()
             ? ListExpr.of(List.of())
-            : new PipeExpr(
+            : PipeExpr.of(
                 ListExpr.of(memberCalls),
-                List.of(new PipeStep(RemoteCallExpr.of("List", "flatten", List.of()), List.of())));
+                List.of(PipeStep.of(RemoteCallExpr.of("List", "flatten", List.of()), List.of())));
     return defp(
         "flatten_structure",
         List.of(VariablePattern.of("wire_prefix"), inputPattern(structure, sp, false)),
@@ -486,7 +486,7 @@ final class ElixirAwsQueryOperationIr {
         LocalCallExpr.of(
             "unwrap_query_result", List.of(Variable.of("body"), StringExpr.of(resultElement)));
     if (output.members().isEmpty()) {
-      return new CaseExpr(
+      return CaseExpr.of(
           unwrap,
           List.of(
               Clause.of(
@@ -510,7 +510,7 @@ final class ElixirAwsQueryOperationIr {
         StructExpr.of(
             "Types." + outputStruct,
             structFields(buildOutputStructFields(model, sp, output, "result", ec2Query)));
-    return new CaseExpr(
+    return CaseExpr.of(
         unwrap,
         List.of(
             Clause.of(
@@ -538,7 +538,7 @@ final class ElixirAwsQueryOperationIr {
         fields.add(
             MapEntry.atomKey(
                 field,
-                new CaseExpr(
+                CaseExpr.of(
                     LocalCallExpr.of(
                         "find_element",
                         List.of(
@@ -579,7 +579,7 @@ final class ElixirAwsQueryOperationIr {
         fields.add(
             MapEntry.atomKey(
                 field,
-                new CaseExpr(
+                CaseExpr.of(
                     LocalCallExpr.of(
                         "find_element",
                         List.of(
@@ -617,7 +617,7 @@ final class ElixirAwsQueryOperationIr {
               Variable.of(xmlVar),
               StringExpr.of(element),
               StringExpr.of(itemElement),
-              new AnonFun(
+              AnonFun.of(
                   List.of(
                       AnonFunClause.of(
                           List.of(VariablePattern.of("item")),
@@ -645,7 +645,7 @@ final class ElixirAwsQueryOperationIr {
   }
 
   private static AnonFun rejectNilPairsFn() {
-    return new AnonFun(
+    return AnonFun.of(
         List.of(
             AnonFunClause.of(
                 List.of(TuplePattern.of(List.of(W, VariablePattern.of("v")))),
@@ -653,7 +653,7 @@ final class ElixirAwsQueryOperationIr {
   }
 
   private static AnonFun encodePairsFn() {
-    return new AnonFun(
+    return AnonFun.of(
         List.of(
             AnonFunClause.of(
                 List.of(TuplePattern.of(List.of(VariablePattern.of("k"), VariablePattern.of("v")))),
@@ -663,7 +663,7 @@ final class ElixirAwsQueryOperationIr {
   }
 
   private static AnonFun rejectNilMapFn() {
-    return new AnonFun(
+    return AnonFun.of(
         List.of(
             AnonFunClause.of(
                 List.of(TuplePattern.of(List.of(W, VariablePattern.of("v")))),
@@ -778,7 +778,7 @@ final class ElixirAwsQueryOperationIr {
 
   private static Expression decodeXmlTextWithConversion(
       Expression textExpr, Expression convertedExpr) {
-    return new CaseExpr(
+    return CaseExpr.of(
         textExpr,
         List.of(
             Clause.of(NilPattern.of(), NilExpr.of()),
@@ -796,12 +796,12 @@ final class ElixirAwsQueryOperationIr {
       Spec spec,
       FunctionDoc doc,
       boolean oneLiner) {
-    return new Function(name, false, List.of(FunctionHead.of(params)), body, spec, doc, oneLiner);
+    return Function.of(name, false, List.of(FunctionHead.of(params)), body, spec, doc, oneLiner);
   }
 
   private static Function defp(
       String name, List<Pattern> params, Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static Expression block(List<Expression> statements) {
@@ -811,6 +811,6 @@ final class ElixirAwsQueryOperationIr {
     if (statements.size() == 1) {
       return statements.get(0);
     }
-    return new BlockExpr(statements);
+    return BlockExpr.of(statements);
   }
 }

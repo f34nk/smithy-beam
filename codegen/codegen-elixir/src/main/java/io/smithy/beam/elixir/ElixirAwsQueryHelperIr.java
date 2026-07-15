@@ -76,7 +76,7 @@ final class ElixirAwsQueryHelperIr {
             "decode_xml_boolean",
             List.of(VariablePattern.of("text")),
             IsTypeGuard.of("is_binary", "text"),
-            new CaseExpr(
+            CaseExpr.of(
                 Variable.of("text"),
                 List.of(
                     Clause.of(StringPattern.of("true"), AtomExpr.of("true")),
@@ -176,13 +176,13 @@ final class ElixirAwsQueryHelperIr {
         List.of(
             RemoteCallExpr.of(
                 "Enum", "with_index", List.of(Variable.of("value"), IntegerExpr.of(1))),
-            new AnonFun(
+            AnonFun.of(
                 List.of(
                     AnonFunClause.of(
                         List.of(
                             TuplePattern.of(
                                 List.of(VariablePattern.of("v"), VariablePattern.of("i")))),
-                        new ComparisonGuard(Variable.of("v"), "!=", AtomExpr.of("nil")),
+                        ComparisonGuard.of(Variable.of("v"), "!=", AtomExpr.of("nil")),
                         LocalCallExpr.of(
                             "flatten_member",
                             List.of(flattenMemberIndexedKey(listSuffix), Variable.of("v"))))))));
@@ -199,7 +199,7 @@ final class ElixirAwsQueryHelperIr {
                 List.of(
                     RemoteCallExpr.of("Map", "to_list", List.of(Variable.of("value"))),
                     IntegerExpr.of(1))),
-            new AnonFun(
+            AnonFun.of(
                 List.of(
                     AnonFunClause.of(
                         List.of(
@@ -210,8 +210,8 @@ final class ElixirAwsQueryHelperIr {
                                     VariablePattern.of("i")))),
                         AndGuard.of(
                             List.of(
-                                new ComparisonGuard(Variable.of("k"), "!=", AtomExpr.of("nil")),
-                                new ComparisonGuard(Variable.of("v"), "!=", AtomExpr.of("nil")))),
+                                ComparisonGuard.of(Variable.of("k"), "!=", AtomExpr.of("nil")),
+                                ComparisonGuard.of(Variable.of("v"), "!=", AtomExpr.of("nil")))),
                         InfixExpr.of(
                             LocalCallExpr.of(
                                 "flatten_member",
@@ -277,11 +277,11 @@ final class ElixirAwsQueryHelperIr {
     return defp(
         "parse_query_params",
         List.of(VariablePattern.of("body")),
-        new PipeExpr(
+        PipeExpr.of(
             Variable.of("body"),
             List.of(
-                new PipeStep(RemoteCallExpr.of("URI", "decode_query", List.of()), List.of()),
-                new PipeStep(RemoteCallExpr.of("Map", "new", List.of()), List.of()))),
+                PipeStep.of(RemoteCallExpr.of("URI", "decode_query", List.of()), List.of()),
+                PipeStep.of(RemoteCallExpr.of("Map", "new", List.of()), List.of()))),
         false);
   }
 
@@ -297,7 +297,7 @@ final class ElixirAwsQueryHelperIr {
     return defp(
         "form_list_values_aws",
         List.of(VariablePattern.of("params"), VariablePattern.of("key")),
-        new BlockExpr(
+        BlockExpr.of(
             List.of(
                 MatchExpr.bind(
                     "prefix", InfixExpr.of(Variable.of("key"), "<>", StringExpr.of(".member."))),
@@ -310,7 +310,7 @@ final class ElixirAwsQueryHelperIr {
     return defp(
         "form_list_values_ec2",
         List.of(VariablePattern.of("params"), VariablePattern.of("key")),
-        new BlockExpr(
+        BlockExpr.of(
             List.of(
                 MatchExpr.bind(
                     "prefix", InfixExpr.of(Variable.of("key"), "<>", StringExpr.of("."))),
@@ -321,7 +321,7 @@ final class ElixirAwsQueryHelperIr {
 
   private static Function indexedFormValues() {
     AnonFun startsWithFn =
-        new AnonFun(
+        AnonFun.of(
             List.of(
                 AnonFunClause.of(
                     List.of(TuplePattern.of(List.of(VariablePattern.of("k"), W))),
@@ -331,7 +331,7 @@ final class ElixirAwsQueryHelperIr {
                         List.of(Variable.of("k"), Variable.of("prefix"))))));
 
     AnonFun sortFn =
-        new AnonFun(
+        AnonFun.of(
             List.of(
                 AnonFunClause.of(
                     List.of(TuplePattern.of(List.of(VariablePattern.of("k"), W))),
@@ -348,7 +348,7 @@ final class ElixirAwsQueryHelperIr {
                                     StringExpr.of(""))))))));
 
     AnonFun mapFn =
-        new AnonFun(
+        AnonFun.of(
             List.of(
                 AnonFunClause.of(
                     List.of(TuplePattern.of(List.of(W, VariablePattern.of("v")))),
@@ -357,21 +357,21 @@ final class ElixirAwsQueryHelperIr {
     return defp(
         "indexed_form_values",
         List.of(VariablePattern.of("params"), VariablePattern.of("prefix")),
-        new BlockExpr(
+        BlockExpr.of(
             List.of(
                 MatchExpr.bind(
                     "values",
-                    new PipeExpr(
+                    PipeExpr.of(
                         Variable.of("params"),
                         List.of(
-                            new PipeStep(
+                            PipeStep.of(
                                 RemoteCallExpr.of("Enum", "filter", List.of(startsWithFn)),
                                 List.of()),
-                            new PipeStep(
+                            PipeStep.of(
                                 RemoteCallExpr.of("Enum", "sort_by", List.of(sortFn)), List.of()),
-                            new PipeStep(
+                            PipeStep.of(
                                 RemoteCallExpr.of("Enum", "map", List.of(mapFn)), List.of())))),
-                new CaseExpr(
+                CaseExpr.of(
                     Variable.of("values"),
                     List.of(
                         Clause.of(ListPattern.of(List.of()), NilExpr.of()),
@@ -405,7 +405,7 @@ final class ElixirAwsQueryHelperIr {
 
   private static Function unwrapQueryResult() {
     Expression resultLookup =
-        new CaseExpr(
+        CaseExpr.of(
             LocalCallExpr.of(
                 "query_result_element", List.of(Variable.of("root"), Variable.of("result_name"))),
             List.of(
@@ -415,7 +415,7 @@ final class ElixirAwsQueryHelperIr {
                     TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("result"))))));
 
     Expression scanCase =
-        new CaseExpr(
+        CaseExpr.of(
             RemoteCallExpr.of(
                 ":xmerl_scan",
                 "string",
@@ -424,7 +424,7 @@ final class ElixirAwsQueryHelperIr {
             List.of(
                 Clause.of(
                     TuplePattern.of(List.of(VariablePattern.of("xml"), W)),
-                    new BlockExpr(
+                    BlockExpr.of(
                         List.of(
                             MatchExpr.bind(
                                 "root",
@@ -467,7 +467,7 @@ final class ElixirAwsQueryHelperIr {
     return defp(
         "query_result_element",
         List.of(VariablePattern.of("element"), VariablePattern.of("result_name")),
-        new IfExpr(
+        IfExpr.of(
             InfixExpr.of(
                 LocalCallExpr.of("is_element", List.of(Variable.of("element"))),
                 "and",
@@ -487,7 +487,7 @@ final class ElixirAwsQueryHelperIr {
 
   private static Function awsQueryFindElement() {
     AnonFun findFn =
-        new AnonFun(
+        AnonFun.of(
             List.of(
                 AnonFunClause.of(
                     List.of(VariablePattern.of("item")),
@@ -536,7 +536,7 @@ final class ElixirAwsQueryHelperIr {
   private static Expression decodeQueryErrorBody(
       String responseElement, String errorElement, String codeElement, String messageElement) {
     Expression errorLookup =
-        new CaseExpr(
+        CaseExpr.of(
             LocalCallExpr.of(
                 "find_element",
                 List.of(
@@ -561,7 +561,7 @@ final class ElixirAwsQueryHelperIr {
                                             StringExpr.of(messageElement))))))))));
 
     Expression responseLookup =
-        new CaseExpr(
+        CaseExpr.of(
             LocalCallExpr.of(
                 "query_result_element",
                 List.of(Variable.of("xml"), StringExpr.of(responseElement))),
@@ -574,7 +574,7 @@ final class ElixirAwsQueryHelperIr {
 
   private static Expression decodeQueryErrorBodyEc2() {
     Expression errorLookup =
-        new CaseExpr(
+        CaseExpr.of(
             LocalCallExpr.of(
                 "find_element",
                 List.of(
@@ -602,7 +602,7 @@ final class ElixirAwsQueryHelperIr {
                                                 BeamXmlDecoder.ERROR_MESSAGE_ELEMENT))))))))));
 
     Expression errorsLookup =
-        new CaseExpr(
+        CaseExpr.of(
             LocalCallExpr.of(
                 "find_element",
                 List.of(
@@ -612,7 +612,7 @@ final class ElixirAwsQueryHelperIr {
                 Clause.of(W, unknownQueryError()),
                 Clause.of(
                     VariablePattern.of("errors"),
-                    new CaseExpr(
+                    CaseExpr.of(
                         LocalCallExpr.of(
                             "find_element",
                             List.of(
@@ -624,7 +624,7 @@ final class ElixirAwsQueryHelperIr {
                             Clause.of(VariablePattern.of("error"), errorLookup))))));
 
     Expression responseLookup =
-        new CaseExpr(
+        CaseExpr.of(
             LocalCallExpr.of(
                 "query_result_element",
                 List.of(Variable.of("root"), StringExpr.of(BeamXmlDecoder.EC2_RESPONSE_ELEMENT))),
@@ -636,7 +636,7 @@ final class ElixirAwsQueryHelperIr {
   }
 
   private static Expression scanAndLookup(Expression lookup) {
-    return new CaseExpr(
+    return CaseExpr.of(
         RemoteCallExpr.of(
             ":xmerl_scan",
             "string",
@@ -644,7 +644,7 @@ final class ElixirAwsQueryHelperIr {
         List.of(
             Clause.of(
                 TuplePattern.of(List.of(VariablePattern.of("xml"), W)),
-                new BlockExpr(
+                BlockExpr.of(
                     List.of(
                         MatchExpr.bind(
                             "root",
@@ -756,7 +756,7 @@ final class ElixirAwsQueryHelperIr {
     return defp(
         "xml_child_text",
         List.of(VariablePattern.of("parent"), VariablePattern.of("name")),
-        new CaseExpr(
+        CaseExpr.of(
             LocalCallExpr.of(
                 "find_element",
                 List.of(
@@ -766,7 +766,7 @@ final class ElixirAwsQueryHelperIr {
                 Clause.of(NilPattern.of(), NilExpr.of()),
                 Clause.of(
                     VariablePattern.of("element"),
-                    new CaseExpr(
+                    CaseExpr.of(
                         LocalCallExpr.of("element_text", List.of(Variable.of("element"))),
                         List.of(
                             Clause.of(ListPattern.of(List.of()), NilExpr.of()),
@@ -779,7 +779,7 @@ final class ElixirAwsQueryHelperIr {
 
   private static Function awsQueryXmlChildStructList() {
     AnonFun filterFn =
-        new AnonFun(
+        AnonFun.of(
             List.of(
                 AnonFunClause.of(
                     List.of(VariablePattern.of("item")),
@@ -792,11 +792,11 @@ final class ElixirAwsQueryHelperIr {
                             Variable.of("item_name"))))));
 
     Expression decodePipeline =
-        new PipeExpr(
+        PipeExpr.of(
             LocalCallExpr.of("element_content", List.of(Variable.of("list_element"))),
             List.of(
-                new PipeStep(RemoteCallExpr.of("Enum", "filter", List.of(filterFn)), List.of()),
-                new PipeStep(
+                PipeStep.of(RemoteCallExpr.of("Enum", "filter", List.of(filterFn)), List.of()),
+                PipeStep.of(
                     RemoteCallExpr.of("Enum", "map", List.of(Variable.of("decode_fun"))),
                     List.of())));
 
@@ -807,7 +807,7 @@ final class ElixirAwsQueryHelperIr {
             VariablePattern.of("list_name"),
             VariablePattern.of("item_name"),
             VariablePattern.of("decode_fun")),
-        new CaseExpr(
+        CaseExpr.of(
             LocalCallExpr.of(
                 "find_element",
                 List.of(
@@ -821,11 +821,11 @@ final class ElixirAwsQueryHelperIr {
 
   private static Function awsQueryXmlChildList() {
     AnonFun mapFn =
-        new AnonFun(
+        AnonFun.of(
             List.of(
                 AnonFunClause.of(
                     List.of(VariablePattern.of("item")),
-                    new CaseExpr(
+                    CaseExpr.of(
                         LocalCallExpr.of("element_text", List.of(Variable.of("item"))),
                         List.of(
                             Clause.of(ListPattern.of(List.of()), NilExpr.of()),
@@ -835,21 +835,21 @@ final class ElixirAwsQueryHelperIr {
                                     "List", "to_string", List.of(Variable.of("text")))))))));
 
     AnonFun rejectFn =
-        new AnonFun(
+        AnonFun.of(
             List.of(
                 AnonFunClause.of(
                     List.of(VariablePattern.of("x")),
                     RemoteCallExpr.of("Kernel", "is_nil", List.of(Variable.of("x"))))));
 
     Expression childPipeline =
-        new PipeExpr(
+        PipeExpr.of(
             LocalCallExpr.of("element_content", List.of(Variable.of("list_element"))),
             List.of(
-                new PipeStep(
+                PipeStep.of(
                     RemoteCallExpr.of("Enum", "filter", List.of(filterFnForChildList())),
                     List.of()),
-                new PipeStep(RemoteCallExpr.of("Enum", "map", List.of(mapFn)), List.of()),
-                new PipeStep(RemoteCallExpr.of("Enum", "reject", List.of(rejectFn)), List.of())));
+                PipeStep.of(RemoteCallExpr.of("Enum", "map", List.of(mapFn)), List.of()),
+                PipeStep.of(RemoteCallExpr.of("Enum", "reject", List.of(rejectFn)), List.of())));
 
     return defp(
         "xml_child_list",
@@ -857,7 +857,7 @@ final class ElixirAwsQueryHelperIr {
             VariablePattern.of("parent"),
             VariablePattern.of("list_name"),
             VariablePattern.of("item_name")),
-        new CaseExpr(
+        CaseExpr.of(
             LocalCallExpr.of(
                 "find_element",
                 List.of(
@@ -870,7 +870,7 @@ final class ElixirAwsQueryHelperIr {
   }
 
   private static AnonFun filterFnForChildList() {
-    return new AnonFun(
+    return AnonFun.of(
         List.of(
             AnonFunClause.of(
                 List.of(VariablePattern.of("item")),
@@ -906,12 +906,12 @@ final class ElixirAwsQueryHelperIr {
 
   private static Function defp(
       String name, List<Pattern> params, Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 
   private static Function defp(
       String name, List<Pattern> params, IsTypeGuard guard, Expression body, boolean oneLiner) {
-    return new Function(
+    return Function.of(
         name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
   }
 }

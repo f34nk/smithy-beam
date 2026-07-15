@@ -66,15 +66,14 @@ final class ElixirHttpChecksumIr {
       branches.add(
           Clause.of(
               VariablePattern.of("other"),
-              new RaiseExpr(
+              RaiseExpr.of(
                   AtomExpr.of("ArgumentError"),
                   TupleExpr.of(
-                      List.of(AtomExpr.of("unsupported_checksum_algorithm"), Variable.of("other"))),
-                  false)));
+                      List.of(AtomExpr.of("unsupported_checksum_algorithm"), Variable.of("other"))))));
       return Optional.of(
           MatchExpr.bind(
               VariablePattern.of(headersVar),
-              new CaseExpr(new DotCallExpr(Variable.of("input"), field, List.of()), branches)));
+              CaseExpr.of(DotCallExpr.of(Variable.of("input"), field, List.of()), branches)));
     }
 
     List<Expression> statements = new ArrayList<>();
@@ -96,7 +95,7 @@ final class ElixirHttpChecksumIr {
                           List.of(Variable.of(checksumVar))),
                       Variable.of(headersVar)))));
     }
-    return Optional.of(new BlockExpr(statements));
+    return Optional.of(BlockExpr.of(statements));
   }
 
   static Expression responseChecksumGuardExpr(
@@ -111,7 +110,7 @@ final class ElixirHttpChecksumIr {
     for (BeamHttpChecksumIndex.ChecksumBinding binding : bindings) {
       headerNames.add(StringExpr.of(binding.headerName()));
     }
-    return new CaseExpr(
+    return CaseExpr.of(
         RemoteCallExpr.of(
             HTTP_CHECKSUM,
             "validate_response_checksum",
@@ -131,7 +130,7 @@ final class ElixirHttpChecksumIr {
 
   private static Expression checksumBranchStatement(
       BeamHttpChecksumIndex.ChecksumBinding cb, String headersVar) {
-    return new BlockExpr(
+    return BlockExpr.of(
         List.of(
             checksumComputationStatement(cb, "checksum"),
             RemoteCallExpr.of(

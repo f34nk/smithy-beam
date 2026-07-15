@@ -83,7 +83,7 @@ final class ElixirResourceIr {
         BeamDocumentation.forShape(resource)
             .map(Moduledoc::of)
             .orElse(Moduledoc.of("Lifecycle helpers for " + resource.getId() + "."));
-    return new Module(
+    return Module.of(
         mod,
         moduledoc,
         List.of(),
@@ -170,7 +170,7 @@ final class ElixirResourceIr {
     }
 
     String delegateAlias = server ? "Server" : "Client";
-    return new Function(
+    return Function.of(
         helper,
         false,
         List.of(FunctionHead.of(patterns)),

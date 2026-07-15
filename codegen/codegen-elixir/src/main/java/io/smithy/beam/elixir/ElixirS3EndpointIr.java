@@ -37,7 +37,7 @@ final class ElixirS3EndpointIr {
     functions.add(regionHost());
     functions.add(resolveBucketUrl());
     functions.addAll(helperFunctions());
-    return new Module(
+    return Module.of(
         "S3Endpoint",
         Moduledoc.falseLiteral(),
         List.of(),
@@ -50,11 +50,11 @@ final class ElixirS3EndpointIr {
   }
 
   static Function regionHost() {
-    return new Function(
+    return Function.of(
         "region_host",
         false,
         List.of(FunctionHead.of(List.of(VariablePattern.of("config")))),
-        new BlockExpr(
+        BlockExpr.of(
             List.of(
                 MatchExpr.bind(
                     "base_url",
@@ -74,7 +74,7 @@ final class ElixirS3EndpointIr {
   }
 
   static Function resolveBucketUrl() {
-    return new Function(
+    return Function.of(
         "resolve_bucket_url",
         false,
         List.of(
@@ -83,7 +83,7 @@ final class ElixirS3EndpointIr {
                     VariablePattern.of("config"),
                     VariablePattern.of("bucket"),
                     VariablePattern.of("key")))),
-        new BlockExpr(
+        BlockExpr.of(
             List.of(
                 MatchExpr.bind(
                     "style",
@@ -98,7 +98,7 @@ final class ElixirS3EndpointIr {
                     "region_host", LocalCallExpr.of("region_host", List.of(Variable.of("config")))),
                 MatchExpr.bind(
                     "key_path", LocalCallExpr.of("key_path", List.of(Variable.of("key")))),
-                new CaseExpr(
+                CaseExpr.of(
                     Variable.of("style"),
                     List.of(
                         Clause.of(AtomPattern.of("virtual_host"), virtualHostBucketUrlBody()),
@@ -125,8 +125,8 @@ final class ElixirS3EndpointIr {
         defp(
             "key_path",
             List.of(VariablePattern.of("key")),
-            new InterpolatedStringExpr(
-                List.of(new InterpolatedLiteral("/"), new InterpolatedExpr(Variable.of("key")))),
+            InterpolatedStringExpr.of(
+                List.of(InterpolatedLiteral.of("/"), InterpolatedExpr.of(Variable.of("key")))),
             true));
   }
 
@@ -140,15 +140,15 @@ final class ElixirS3EndpointIr {
   }
 
   private static Expression pathStyleUrlExpr() {
-    return new InterpolatedStringExpr(
+    return InterpolatedStringExpr.of(
         List.of(
-            new InterpolatedLiteral("/"),
-            new InterpolatedExpr(Variable.of("bucket")),
-            new InterpolatedExpr(Variable.of("key_path"))));
+            InterpolatedLiteral.of("/"),
+            InterpolatedExpr.of(Variable.of("bucket")),
+            InterpolatedExpr.of(Variable.of("key_path"))));
   }
 
   private static Function virtualHost() {
-    return new Function(
+    return Function.of(
         "virtual_host",
         true,
         List.of(
@@ -157,7 +157,7 @@ final class ElixirS3EndpointIr {
                     VariablePattern.of("config"),
                     VariablePattern.of("bucket"),
                     VariablePattern.of("region_host")))),
-        new CaseExpr(
+        CaseExpr.of(
             RemoteCallExpr.of(
                 "Map",
                 "get",
@@ -166,31 +166,31 @@ final class ElixirS3EndpointIr {
             List.of(
                 Clause.of(
                     AtomPattern.of("true"),
-                    new InterpolatedStringExpr(
+                    InterpolatedStringExpr.of(
                         List.of(
-                            new InterpolatedExpr(Variable.of("bucket")),
-                            new InterpolatedLiteral(".s3-accelerate.amazonaws.com")))),
+                            InterpolatedExpr.of(Variable.of("bucket")),
+                            InterpolatedLiteral.of(".s3-accelerate.amazonaws.com")))),
                 Clause.of(
                     WildcardPattern.of(),
                     MatchExpr.bind(
                         "suffix",
                         LocalCallExpr.of("s3_host_suffix", List.of(Variable.of("config"))),
-                        new InterpolatedStringExpr(
+                        InterpolatedStringExpr.of(
                             List.of(
-                                new InterpolatedExpr(Variable.of("bucket")),
-                                new InterpolatedExpr(Variable.of("suffix")),
-                                new InterpolatedExpr(Variable.of("region_host")))))))),
+                                InterpolatedExpr.of(Variable.of("bucket")),
+                                InterpolatedExpr.of(Variable.of("suffix")),
+                                InterpolatedExpr.of(Variable.of("region_host")))))))),
         null,
         null,
         false);
   }
 
   private static Function s3HostSuffix() {
-    return new Function(
+    return Function.of(
         "s3_host_suffix",
         true,
         List.of(FunctionHead.of(List.of(VariablePattern.of("config")))),
-        new CaseExpr(
+        CaseExpr.of(
             RemoteCallExpr.of(
                 "Map",
                 "get",
@@ -206,6 +206,6 @@ final class ElixirS3EndpointIr {
 
   private static Function defp(
       String name, List<Pattern> params, Expression body, boolean oneLiner) {
-    return new Function(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
+    return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 }

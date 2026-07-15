@@ -56,7 +56,7 @@ final class ElixirRestJsonIr {
             eventStreamModule,
             encodeWithConfig);
 
-    return new Module(
+    return Module.of(
         moduleName,
         Moduledoc.of("REST JSON 1 codecs for " + service.getId() + " (generated). Do not edit."),
         List.of(),
@@ -83,7 +83,7 @@ final class ElixirRestJsonIr {
         serverCodecFunctions(
             model, service, operations, httpIndex, sp, typesMod, runtimeMod, eventStreamModule);
 
-    return new Module(
+    return Module.of(
         moduleName,
         Moduledoc.of(
             "Server REST JSON 1 codecs for " + service.getId() + " (generated). Do not edit."),

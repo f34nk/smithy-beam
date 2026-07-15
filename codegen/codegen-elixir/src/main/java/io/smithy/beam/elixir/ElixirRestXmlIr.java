@@ -60,7 +60,7 @@ final class ElixirRestXmlIr {
       aliases.add(Alias.of("S3Endpoint"));
     }
 
-    return new Module(
+    return Module.of(
         moduleName,
         Moduledoc.of("REST-XML codecs for " + service.getId() + " (generated). Do not edit."),
         List.of(),
@@ -93,7 +93,7 @@ final class ElixirRestXmlIr {
             runtimeMod,
             BeamXmlBindingIndex.xmlNamespaceUri(service));
 
-    return new Module(
+    return Module.of(
         moduleName,
         Moduledoc.of(
             "Server REST-XML codecs for " + service.getId() + " (generated). Do not edit."),

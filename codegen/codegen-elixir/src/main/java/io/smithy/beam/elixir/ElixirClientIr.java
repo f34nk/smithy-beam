@@ -33,7 +33,7 @@ final class ElixirClientIr {
               moduleAttributes.add("#   sdkId: " + meta.sdkId());
               moduleAttributes.add("#   endpointPrefix: " + meta.endpointPrefix());
             });
-    return new Module(
+    return Module.of(
         ElixirSymbolProvider.toModuleName(layout.clientModuleName()),
         Moduledoc.of(
             "Generated Elixir client for "

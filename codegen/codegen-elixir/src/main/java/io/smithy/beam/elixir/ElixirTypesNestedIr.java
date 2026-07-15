@@ -83,7 +83,7 @@ final class ElixirTypesNestedIr {
                 AtomExpr.of(atoms.get(i))));
       }
       functions.add(
-          new Function(
+          Function.of(
               fromFunction,
               false,
               List.of(
@@ -289,7 +289,7 @@ final class ElixirTypesNestedIr {
       Spec specOrNull,
       List<io.beam.dsl.elixir.Pattern> params,
       io.beam.dsl.elixir.Expression body) {
-    return new Function(
+    return Function.of(
         name, false, List.of(FunctionHead.of(params)), body, specOrNull, null, true);
   }
 
