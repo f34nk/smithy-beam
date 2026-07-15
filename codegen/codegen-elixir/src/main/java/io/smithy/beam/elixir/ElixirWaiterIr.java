@@ -144,8 +144,7 @@ final class ElixirWaiterIr {
                         Variable.of("acceptors"),
                         Variable.of("wait_opts"))))),
         Spec.of(
-            "@spec "
-                + fn
+            fn
                 + "(term(), map(), keyword()) :: {:ok, term()} | {:error, term()}"),
         FunctionDoc.of(
             "Waits using the " + binding.name() + " waiter on " + operation.getId() + "."),

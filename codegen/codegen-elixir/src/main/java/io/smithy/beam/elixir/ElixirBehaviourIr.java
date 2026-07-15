@@ -77,7 +77,7 @@ final class ElixirBehaviourIr {
         false,
         List.of(FunctionHead.of(List.of())),
         ListExpr.of(entries),
-        Spec.of("@spec callbacks() :: [{atom(), non_neg_integer()}]"),
+        Spec.of("callbacks() :: [{atom(), non_neg_integer()}]"),
         null,
         false);
   }

@@ -62,7 +62,7 @@ final class ElixirClientPaginationIr {
                     Variable.of("config"),
                     Variable.of("input"),
                     ListExpr.of(List.of()))),
-            Spec.of(opName + "(map(), " + inType + ") -> " + specOutput),
+            Spec.of(opName + "(map(), " + inType + ") :: " + specOutput),
             docOrNull,
             true);
 
@@ -89,7 +89,7 @@ final class ElixirClientPaginationIr {
             paginatedArity3Body(
                 ctx, service, op, wrapWithRetry, clientModule, pageBody, sp, opName),
             Spec.of(
-                opName + "(map(), " + inType + ", " + successReturnType + ") -> " + specOutput),
+                opName + "(map(), " + inType + ", " + successReturnType + ") :: " + specOutput),
             null,
             false);
 

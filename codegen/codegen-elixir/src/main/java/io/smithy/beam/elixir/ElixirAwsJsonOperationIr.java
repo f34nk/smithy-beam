@@ -71,7 +71,7 @@ final class ElixirAwsJsonOperationIr {
             RemoteCallExpr.of("Jason", "encode!", List.of(Variable.of("body_map")))));
     body.add(buildAwsJsonHttpRequestExpr(runtimeMod, amzTarget, contentType));
 
-    Spec spec = Spec.of("encode_" + opName + "_request(" + inputType + ") -> " + httpRequestType);
+    Spec spec = Spec.of("encode_" + opName + "_request(" + inputType + ") :: " + httpRequestType);
 
     return List.of(
         def(
@@ -103,7 +103,7 @@ final class ElixirAwsJsonOperationIr {
         Spec.of(
             "decode_"
                 + opName
-                + "_response(map()) -> {:ok, "
+                + "_response(map()) :: {:ok, "
                 + outputType
                 + "} | {:error, term()}");
 
@@ -190,7 +190,7 @@ final class ElixirAwsJsonOperationIr {
     String inputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(input));
     List<MemberShape> members = ElixirJsonCodecIr.documentMembers(httpIndex, op, input, true);
 
-    Spec spec = Spec.of("decode_" + opName + "_request(map()) -> " + inputType);
+    Spec spec = Spec.of("decode_" + opName + "_request(map()) :: " + inputType);
 
     Pattern pattern =
         StructPattern.of(
@@ -242,7 +242,7 @@ final class ElixirAwsJsonOperationIr {
     String outputType = ElixirTopDown.structureSpecType(typesMod, sp.toSymbol(output));
     List<MemberShape> members = ElixirJsonCodecIr.documentMembers(httpIndex, op, output, false);
 
-    Spec spec = Spec.of("encode_" + opName + "_response(" + outputType + ") -> map()");
+    Spec spec = Spec.of("encode_" + opName + "_response(" + outputType + ") :: map()");
 
     List<Expression> body = new ArrayList<>();
     body.add(

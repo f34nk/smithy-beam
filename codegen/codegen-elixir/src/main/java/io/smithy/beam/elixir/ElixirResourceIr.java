@@ -178,8 +178,7 @@ final class ElixirResourceIr {
         List.of(FunctionHead.of(patterns)),
         RemoteCallExpr.of(delegateAlias, opHandler, callArgs),
         Spec.of(
-            "@spec "
-                + helper
+            helper
                 + "("
                 + String.join(", ", specParams)
                 + ") :: {:ok, "

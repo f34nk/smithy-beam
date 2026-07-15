@@ -73,7 +73,7 @@ final class ElixirS3EndpointIr {
                     RemoteCallExpr.of(
                         "Utils", "split_base_url", List.of(Variable.of("base_url")))),
                 Variable.of("authority"))),
-        Spec.of("@spec region_host(map()) :: String.t()"),
+        Spec.of("region_host(map()) :: String.t()"),
         null,
         false);
   }
@@ -121,7 +121,7 @@ final class ElixirS3EndpointIr {
                             WildcardPattern.of(),
                             virtualHostBucketUrlBody()))))),
         Spec.of(
-            "@spec resolve_bucket_url(map(), String.t(), String.t()) :: {String.t(), String.t()}"),
+            "resolve_bucket_url(map(), String.t(), String.t()) :: {String.t(), String.t()}"),
         null,
         false);
   }

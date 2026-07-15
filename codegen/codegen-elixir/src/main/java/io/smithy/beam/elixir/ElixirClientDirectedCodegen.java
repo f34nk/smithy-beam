@@ -306,7 +306,7 @@ final class ElixirClientDirectedCodegen
       String clientModule,
       FunctionDoc doc) {
     String specOutput = "{:ok, " + successReturnType + "} | {:error, term()}";
-    Spec spec = Spec.of(opSym.getName() + "(map(), " + inType + ") -> " + specOutput);
+    Spec spec = Spec.of(opSym.getName() + "(map(), " + inType + ") :: " + specOutput);
     if (!hasProtocol) {
       return new Function(
           opSym.getName(),
