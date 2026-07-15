@@ -3,11 +3,55 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-07-15
+
+### Changed
+- Codegen and tests now depend on beam-dsl instead of beam-ir for structural IR types and
+  rendering; architecture documentation updated accordingly.
+- Elixir beam-ir migration finished with normalized typespec syntax, REST JSON header_value
+  helper wiring, simplified AWS Query operation encoding, improved router label parsing, and
+  REST XML request encode helpers emitted as private functions.
+- Makefile build failure logs include the demo target name.
+
+### Fixed
+- AWS Query codecs decode XML boolean text correctly; Elixir prefix header parsing emission
+  simplified.
+
+## 2026-07-14
+
+### Changed
+- Elixir codegen migrated to beam-ir. Protocol codecs, client and server shells, routers,
+  behaviours, handler discovery, pagination, dispatch, types, waiters, retry, S3 endpoints,
+  event streams, and compliance tests compose through beam-ir expression trees instead of
+  in-project Elixir IR.
+- Elixir SigV4 credentials aligned with the aws_credentials OTP app; handler callback
+  resolution uses if expressions instead of invalid guard forms.
+
+### Removed
+- The codegen-ir module and dead static-runtime emission paths after Elixir structural IR
+  moved to beam-ir.
+
+### Docs
+- Elixir runtime references aligned with static shared modules.
+
+## 2026-07-13
+
+### Added
+- Shared Elixir runtime modules for HTTP dispatch, SigV4 signing, checksums, event streams,
+  retries, and URL helpers, packaged in the codegen-elixir JAR and copied into generated
+  output based on model requirements through the static runtime catalog.
+- Endpoint rule sets emit in the Elixir service types module; generated clients expose
+  should_retry? as a public function.
+
 ### Changed
 - Elixir codegen no longer emits per-service runtime_types.ex, runtime_helpers.ex,
   runtime_http.ex, aws_endpoint_rules.ex, endpoint modules, SigV4 modules, presigners, or
-  retry helpers. Plugins emit only the shared runtime/elixir modules a service needs based on
-  model requirements.
+  retry helpers. Plugins emit only the shared runtime modules a service needs.
+- HTTP dispatch, retry backoff, SigV4 signing, checksum validation, event stream framing, and
+  URL helpers consolidated into static runtime modules; generated endpoint modules removed.
+
+### Fixed
+- RuntimeHttp dispatch encodes query parameters in request URLs correctly.
 
 ## 2026-07-10
 
