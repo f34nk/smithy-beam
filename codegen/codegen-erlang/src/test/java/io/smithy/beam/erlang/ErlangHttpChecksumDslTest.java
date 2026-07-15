@@ -76,7 +76,8 @@ class ErlangHttpChecksumIrTest {
             model, flexible, TupleExpr.of(List.of(AtomExpr.of("ok"), Variable.of("Output"))));
     assertThat(ErlangRenderer.renderExpression(guarded))
         .isEqualTo(
-            DslGoldenAssertions.readExpectedString("dsl/http_checksum_response_guard.expected.erl"));
+            DslGoldenAssertions.readExpectedString(
+                "dsl/http_checksum_response_guard.expected.erl"));
   }
 
   static Model checksumFixtureModel() {

@@ -19,8 +19,7 @@ import software.amazon.smithy.model.node.ObjectNode;
 class ElixirDslGoldenPluginParityTest {
 
   private static Model loadModel() {
-    URL resource =
-        ElixirDslGoldenPluginParityTest.class.getResource("/model/golden_http.smithy");
+    URL resource = ElixirDslGoldenPluginParityTest.class.getResource("/model/golden_http.smithy");
     assertThat(resource).isNotNull();
     return Model.assembler().addImport(resource).discoverModels().assemble().unwrap();
   }
