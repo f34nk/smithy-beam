@@ -695,84 +695,48 @@ final class ElixirCodecHelperIr {
   }
 
   private static Expression prefixHeadersFromListBody() {
+    AnonFun filterFn =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(
+                        TuplePattern.of(
+                            List.of(VariablePattern.of("name"), WildcardPattern.of()))),
+                    RemoteCallExpr.of(
+                        "String",
+                        "starts_with?",
+                        List.of(Variable.of("name"), Variable.of("prefix"))))));
+
+    AnonFun mapFn =
+        new AnonFun(
+            List.of(
+                AnonFunClause.of(
+                    List.of(
+                        TuplePattern.of(
+                            List.of(
+                                VariablePattern.of("name"), VariablePattern.of("val")))),
+                    TupleExpr.of(
+                        List.of(
+                            LocalCallExpr.of(
+                                "binary_part",
+                                List.of(
+                                    Variable.of("name"),
+                                    LocalCallExpr.of(
+                                        "byte_size", List.of(Variable.of("prefix"))),
+                                    new InfixExpr(
+                                        LocalCallExpr.of(
+                                            "byte_size", List.of(Variable.of("name"))),
+                                        "-",
+                                        LocalCallExpr.of(
+                                            "byte_size", List.of(Variable.of("prefix")))))),
+                            Variable.of("val"))))));
+
     return new PipeExpr(
         Variable.of("headers"),
         List.of(
             new PipeStep(
-                RemoteCallExpr.of(
-                    "Enum",
-                    "filter",
-                    List.of(
-                        new AnonFun(
-                            List.of(
-                                AnonFunClause.of(
-                                    List.of(
-                                        TuplePattern.of(
-                                            List.of(
-                                                VariablePattern.of("name"),
-                                                WildcardPattern.of()))),
-                                    new InfixExpr(
-                                        LocalCallExpr.of("byte_size", List.of(Variable.of("name"))),
-                                        ">",
-                                        LocalCallExpr.of(
-                                            "byte_size", List.of(Variable.of("prefix"))))))))),
-                List.of()),
-            new PipeStep(
-                RemoteCallExpr.of(
-                    "Enum",
-                    "filter",
-                    List.of(
-                        new AnonFun(
-                            List.of(
-                                AnonFunClause.of(
-                                    List.of(
-                                        TuplePattern.of(
-                                            List.of(
-                                                VariablePattern.of("name"),
-                                                WildcardPattern.of()))),
-                                    new InfixExpr(
-                                        LocalCallExpr.of(
-                                            "binary_part",
-                                            List.of(
-                                                Variable.of("name"),
-                                                IntegerExpr.of(0),
-                                                LocalCallExpr.of(
-                                                    "byte_size", List.of(Variable.of("prefix"))))),
-                                        "==",
-                                        Variable.of("prefix"))))))),
-                List.of()),
-            new PipeStep(
-                RemoteCallExpr.of(
-                    "Map",
-                    "new",
-                    List.of(
-                        new AnonFun(
-                            List.of(
-                                AnonFunClause.of(
-                                    List.of(
-                                        TuplePattern.of(
-                                            List.of(
-                                                VariablePattern.of("name"),
-                                                VariablePattern.of("val")))),
-                                    TupleExpr.of(
-                                        List.of(
-                                            LocalCallExpr.of(
-                                                "binary_part",
-                                                List.of(
-                                                    Variable.of("name"),
-                                                    LocalCallExpr.of(
-                                                        "byte_size",
-                                                        List.of(Variable.of("prefix"))),
-                                                    new InfixExpr(
-                                                        LocalCallExpr.of(
-                                                            "byte_size",
-                                                            List.of(Variable.of("name"))),
-                                                        "-",
-                                                        LocalCallExpr.of(
-                                                            "byte_size",
-                                                            List.of(Variable.of("prefix")))))),
-                                            Variable.of("val")))))))),
-                List.of()),
+                RemoteCallExpr.of("Enum", "filter", List.of(filterFn)), List.of()),
+            new PipeStep(RemoteCallExpr.of("Map", "new", List.of(mapFn)), List.of()),
             new PipeStep(
                 CaseExpr.piped(
                     List.of(
