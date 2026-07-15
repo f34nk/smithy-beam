@@ -1,42 +1,42 @@
 package io.smithy.beam.elixir;
 
-import io.beam.ir.elixir.AnonFun;
-import io.beam.ir.elixir.AnonFunClause;
-import io.beam.ir.elixir.AssignPattern;
-import io.beam.ir.elixir.AtomExpr;
-import io.beam.ir.elixir.AtomPattern;
-import io.beam.ir.elixir.BlockExpr;
-import io.beam.ir.elixir.CaseExpr;
-import io.beam.ir.elixir.Clause;
-import io.beam.ir.elixir.DotCallExpr;
-import io.beam.ir.elixir.Expression;
-import io.beam.ir.elixir.Function;
-import io.beam.ir.elixir.FunctionDoc;
-import io.beam.ir.elixir.FunctionHead;
-import io.beam.ir.elixir.IntegerExpr;
-import io.beam.ir.elixir.IntegerPattern;
-import io.beam.ir.elixir.ListExpr;
-import io.beam.ir.elixir.LocalCallExpr;
-import io.beam.ir.elixir.MapEntry;
-import io.beam.ir.elixir.MapExpr;
-import io.beam.ir.elixir.MatchExpr;
-import io.beam.ir.elixir.NilExpr;
-import io.beam.ir.elixir.NilPattern;
-import io.beam.ir.elixir.Pattern;
-import io.beam.ir.elixir.PipeExpr;
-import io.beam.ir.elixir.PipeStep;
-import io.beam.ir.elixir.RemoteCallExpr;
-import io.beam.ir.elixir.Spec;
-import io.beam.ir.elixir.StringExpr;
-import io.beam.ir.elixir.StructExpr;
-import io.beam.ir.elixir.StructField;
-import io.beam.ir.elixir.StructPattern;
-import io.beam.ir.elixir.StructPatternField;
-import io.beam.ir.elixir.TupleExpr;
-import io.beam.ir.elixir.TuplePattern;
-import io.beam.ir.elixir.Variable;
-import io.beam.ir.elixir.VariablePattern;
-import io.beam.ir.elixir.WildcardPattern;
+import io.beam.dsl.elixir.AnonFun;
+import io.beam.dsl.elixir.AnonFunClause;
+import io.beam.dsl.elixir.AssignPattern;
+import io.beam.dsl.elixir.AtomExpr;
+import io.beam.dsl.elixir.AtomPattern;
+import io.beam.dsl.elixir.BlockExpr;
+import io.beam.dsl.elixir.CaseExpr;
+import io.beam.dsl.elixir.Clause;
+import io.beam.dsl.elixir.DotCallExpr;
+import io.beam.dsl.elixir.Expression;
+import io.beam.dsl.elixir.Function;
+import io.beam.dsl.elixir.FunctionDoc;
+import io.beam.dsl.elixir.FunctionHead;
+import io.beam.dsl.elixir.IntegerExpr;
+import io.beam.dsl.elixir.IntegerPattern;
+import io.beam.dsl.elixir.ListExpr;
+import io.beam.dsl.elixir.LocalCallExpr;
+import io.beam.dsl.elixir.MapEntry;
+import io.beam.dsl.elixir.MapExpr;
+import io.beam.dsl.elixir.MatchExpr;
+import io.beam.dsl.elixir.NilExpr;
+import io.beam.dsl.elixir.NilPattern;
+import io.beam.dsl.elixir.Pattern;
+import io.beam.dsl.elixir.PipeExpr;
+import io.beam.dsl.elixir.PipeStep;
+import io.beam.dsl.elixir.RemoteCallExpr;
+import io.beam.dsl.elixir.Spec;
+import io.beam.dsl.elixir.StringExpr;
+import io.beam.dsl.elixir.StructExpr;
+import io.beam.dsl.elixir.StructField;
+import io.beam.dsl.elixir.StructPattern;
+import io.beam.dsl.elixir.StructPatternField;
+import io.beam.dsl.elixir.TupleExpr;
+import io.beam.dsl.elixir.TuplePattern;
+import io.beam.dsl.elixir.Variable;
+import io.beam.dsl.elixir.VariablePattern;
+import io.beam.dsl.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamAwsQueryFormEncoder;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamXmlBindingIndex;
@@ -104,7 +104,7 @@ final class ElixirAwsQueryOperationIr {
     body.add(
         MatchExpr.bind(
             "pairs",
-            new io.beam.ir.elixir.InfixExpr(
+            new io.beam.dsl.elixir.InfixExpr(
                 ListExpr.of(
                     List.of(
                         TupleExpr.of(List.of(StringExpr.of("Action"), StringExpr.of(action))),
@@ -457,8 +457,9 @@ final class ElixirAwsQueryOperationIr {
       String field = fieldName(sp, member);
       String wireKey = queryFormKey(member, ec2Query);
       Expression memberKey =
-          new io.beam.ir.elixir.InfixExpr(
-              new io.beam.ir.elixir.InfixExpr(Variable.of("wire_prefix"), "<>", StringExpr.of(".")),
+          new io.beam.dsl.elixir.InfixExpr(
+              new io.beam.dsl.elixir.InfixExpr(
+                  Variable.of("wire_prefix"), "<>", StringExpr.of(".")),
               "<>",
               StringExpr.of(wireKey));
       memberCalls.add(LocalCallExpr.of("flatten_member", List.of(memberKey, Variable.of(field))));

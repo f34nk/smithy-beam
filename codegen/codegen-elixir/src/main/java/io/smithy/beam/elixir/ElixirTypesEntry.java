@@ -1,8 +1,8 @@
 package io.smithy.beam.elixir;
 
-import io.beam.ir.elixir.Function;
-import io.beam.ir.elixir.Moduledoc;
-import io.beam.ir.elixir.TypesModule;
+import io.beam.dsl.elixir.Function;
+import io.beam.dsl.elixir.Moduledoc;
+import io.beam.dsl.elixir.TypesModule;
 import java.util.List;
 
 sealed interface ElixirTypesEntry

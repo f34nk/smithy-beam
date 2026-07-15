@@ -1,8 +1,8 @@
 package io.smithy.beam.erlang;
 
-import io.beam.ir.erlang.BlockExpr;
-import io.beam.ir.erlang.ErlangRenderer;
-import io.beam.ir.erlang.Expression;
+import io.beam.dsl.erlang.BlockExpr;
+import io.beam.dsl.erlang.ErlangRenderer;
+import io.beam.dsl.erlang.Expression;
 import io.smithy.beam.core.BeamErlangLayout;
 import java.util.List;
 import software.amazon.smithy.model.shapes.OperationShape;

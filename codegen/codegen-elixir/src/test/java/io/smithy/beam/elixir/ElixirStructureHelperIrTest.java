@@ -2,7 +2,7 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.elixir.Function;
+import io.beam.dsl.elixir.Function;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamSettings;
@@ -16,7 +16,7 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 
-@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
+@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
 class ElixirStructureHelperIrTest {
   private static StructureShape basicItem;
   private static ElixirSymbolProvider provider;

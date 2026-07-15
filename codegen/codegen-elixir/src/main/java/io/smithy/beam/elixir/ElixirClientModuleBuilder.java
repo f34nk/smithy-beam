@@ -1,6 +1,6 @@
 package io.smithy.beam.elixir;
 
-import io.beam.ir.elixir.Function;
+import io.beam.dsl.elixir.Function;
 import java.util.ArrayList;
 import java.util.List;
 

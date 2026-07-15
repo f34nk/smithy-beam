@@ -2,11 +2,11 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.elixir.AtomExpr;
-import io.beam.ir.elixir.ElixirRenderer;
-import io.beam.ir.elixir.Expression;
-import io.beam.ir.elixir.TupleExpr;
-import io.beam.ir.elixir.Variable;
+import io.beam.dsl.elixir.AtomExpr;
+import io.beam.dsl.elixir.ElixirRenderer;
+import io.beam.dsl.elixir.Expression;
+import io.beam.dsl.elixir.TupleExpr;
+import io.beam.dsl.elixir.Variable;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamSettings;
@@ -21,7 +21,7 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
-@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
+@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
 class ElixirHttpChecksumIrTest {
   @Test
   void requestChecksumHeadersExprMatchesGolden() throws IOException {

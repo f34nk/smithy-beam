@@ -2,10 +2,10 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.elixir.CaseExpr;
-import io.beam.ir.elixir.Expression;
-import io.beam.ir.elixir.MatchExpr;
-import io.beam.ir.elixir.RemoteCallExpr;
+import io.beam.dsl.elixir.CaseExpr;
+import io.beam.dsl.elixir.Expression;
+import io.beam.dsl.elixir.MatchExpr;
+import io.beam.dsl.elixir.RemoteCallExpr;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
@@ -27,7 +27,7 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
-@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
+@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
 class ElixirClientDispatchIrTest {
   private static final String HTTP_SERVICE = "smithy.beam.demo.http#HttpService";
   private static final String PAGINATED_SERVICE = "smithy.beam.test.paginated#PaginatedService";

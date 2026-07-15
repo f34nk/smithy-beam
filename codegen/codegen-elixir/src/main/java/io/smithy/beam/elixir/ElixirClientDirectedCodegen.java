@@ -1,15 +1,15 @@
 package io.smithy.beam.elixir;
 
-import io.beam.ir.elixir.AtomExpr;
-import io.beam.ir.elixir.BlockExpr;
-import io.beam.ir.elixir.Expression;
-import io.beam.ir.elixir.Function;
-import io.beam.ir.elixir.FunctionDoc;
-import io.beam.ir.elixir.FunctionHead;
-import io.beam.ir.elixir.Module;
-import io.beam.ir.elixir.Spec;
-import io.beam.ir.elixir.TupleExpr;
-import io.beam.ir.elixir.VariablePattern;
+import io.beam.dsl.elixir.AtomExpr;
+import io.beam.dsl.elixir.BlockExpr;
+import io.beam.dsl.elixir.Expression;
+import io.beam.dsl.elixir.Function;
+import io.beam.dsl.elixir.FunctionDoc;
+import io.beam.dsl.elixir.FunctionHead;
+import io.beam.dsl.elixir.Module;
+import io.beam.dsl.elixir.Spec;
+import io.beam.dsl.elixir.TupleExpr;
+import io.beam.dsl.elixir.VariablePattern;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamClientRetrySupport;
 import io.smithy.beam.core.BeamCodegenKind;

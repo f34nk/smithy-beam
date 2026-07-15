@@ -2,8 +2,8 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.erlang.Header;
-import io.beam.ir.erlang.Module;
+import io.beam.dsl.erlang.Header;
+import io.beam.dsl.erlang.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
@@ -25,7 +25,7 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 
-@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
+@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
 class ErlangIrGoldenIntegrationTest {
   private static final String SERVICE_ID = "smithy.beam.demo.http#HttpService";
   private static final String GET_NAME_OUTPUT_ID = "smithy.beam.demo.http#GetNameOutput";

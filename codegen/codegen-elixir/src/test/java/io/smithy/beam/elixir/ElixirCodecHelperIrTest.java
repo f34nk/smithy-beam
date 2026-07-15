@@ -1,11 +1,11 @@
 package io.smithy.beam.elixir;
 
-import io.beam.ir.elixir.Function;
+import io.beam.dsl.elixir.Function;
 import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
+@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
 class ElixirCodecHelperIrTest {
   @Test
   void generateUuidIsStructural() {

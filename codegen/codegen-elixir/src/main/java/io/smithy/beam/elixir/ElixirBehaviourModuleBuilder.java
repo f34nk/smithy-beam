@@ -1,6 +1,6 @@
 package io.smithy.beam.elixir;
 
-import io.beam.ir.elixir.Callback;
+import io.beam.dsl.elixir.Callback;
 import java.util.ArrayList;
 import java.util.List;
 

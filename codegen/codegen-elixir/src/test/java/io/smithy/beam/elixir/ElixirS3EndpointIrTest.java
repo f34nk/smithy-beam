@@ -2,9 +2,9 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.elixir.ElixirRenderer;
-import io.beam.ir.elixir.Function;
-import io.beam.ir.elixir.Module;
+import io.beam.dsl.elixir.ElixirRenderer;
+import io.beam.dsl.elixir.Function;
+import io.beam.dsl.elixir.Module;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -12,7 +12,7 @@ import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
-@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
+@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
 class ElixirS3EndpointIrTest {
   private static final ShapeId S3_SERVICE =
       ShapeId.from("smithy.beam.test.s3restxml#S3RestXmlService");

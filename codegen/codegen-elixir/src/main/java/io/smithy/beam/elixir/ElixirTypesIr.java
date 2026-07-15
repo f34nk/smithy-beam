@@ -1,9 +1,9 @@
 package io.smithy.beam.elixir;
 
-import io.beam.ir.elixir.Function;
-import io.beam.ir.elixir.FunctionHead;
-import io.beam.ir.elixir.Spec;
-import io.beam.ir.elixir.Variable;
+import io.beam.dsl.elixir.Function;
+import io.beam.dsl.elixir.FunctionHead;
+import io.beam.dsl.elixir.Spec;
+import io.beam.dsl.elixir.Variable;
 import java.util.ArrayList;
 import java.util.List;
 

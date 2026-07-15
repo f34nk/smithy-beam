@@ -1,15 +1,15 @@
 package io.smithy.beam.erlang;
 
-import io.beam.ir.erlang.ErlangRenderer;
-import io.beam.ir.erlang.Header;
-import io.beam.ir.erlang.HeaderBlankLine;
-import io.beam.ir.erlang.HeaderComment;
-import io.beam.ir.erlang.HeaderEntry;
-import io.beam.ir.erlang.HeaderRecordEntry;
-import io.beam.ir.erlang.HeaderTypeAliasEntry;
-import io.beam.ir.erlang.RecordDef;
-import io.beam.ir.erlang.TypeAlias;
-import io.beam.ir.erlang.TypedField;
+import io.beam.dsl.erlang.ErlangRenderer;
+import io.beam.dsl.erlang.Header;
+import io.beam.dsl.erlang.HeaderBlankLine;
+import io.beam.dsl.erlang.HeaderComment;
+import io.beam.dsl.erlang.HeaderEntry;
+import io.beam.dsl.erlang.HeaderRecordEntry;
+import io.beam.dsl.erlang.HeaderTypeAliasEntry;
+import io.beam.dsl.erlang.RecordDef;
+import io.beam.dsl.erlang.TypeAlias;
+import io.beam.dsl.erlang.TypedField;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamDocumentation.DocTarget;

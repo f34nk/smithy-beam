@@ -1,6 +1,6 @@
 package io.smithy.beam.elixir;
 
-import io.beam.ir.elixir.Module;
+import io.beam.dsl.elixir.Module;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
 import software.amazon.smithy.model.shapes.ServiceShape;
 

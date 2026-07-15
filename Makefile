@@ -153,7 +153,7 @@ aws-examples/% examples/% baseline/%: $(EXAMPLES)
 	echo "Running $$target > $$logfile"; \
 	DEMO=$$target make _demo > $$logfile 2>&1; \
 	if grep -q "make.*Error" $$logfile; then \
-		echo "$$logfile ...failed" >> $$build_log; \
+		echo "$$logfile ...failed ($$target)" >> $$build_log; \
 		exit 1 ; \
 	else \
 		printf ".";\

@@ -2,8 +2,8 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.erlang.ErlangRenderer;
-import io.beam.ir.erlang.Function;
+import io.beam.dsl.erlang.ErlangRenderer;
+import io.beam.dsl.erlang.Function;
 import java.io.IOException;
 import java.util.List;
 import org.junit.jupiter.api.Test;

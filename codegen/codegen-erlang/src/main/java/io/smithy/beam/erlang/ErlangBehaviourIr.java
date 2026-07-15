@@ -1,9 +1,9 @@
 package io.smithy.beam.erlang;
 
-import io.beam.ir.erlang.Callback;
-import io.beam.ir.erlang.Edoc;
-import io.beam.ir.erlang.FunctionDoc;
-import io.beam.ir.erlang.Module;
+import io.beam.dsl.erlang.Callback;
+import io.beam.dsl.erlang.Edoc;
+import io.beam.dsl.erlang.FunctionDoc;
+import io.beam.dsl.erlang.Module;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamErlangLayout;
 import java.util.List;

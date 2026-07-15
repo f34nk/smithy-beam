@@ -2,9 +2,9 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.elixir.ElixirRenderer;
-import io.beam.ir.elixir.Function;
-import io.beam.ir.elixir.TypesModule;
+import io.beam.dsl.elixir.ElixirRenderer;
+import io.beam.dsl.elixir.Function;
+import io.beam.dsl.elixir.TypesModule;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
@@ -29,7 +29,7 @@ import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 
-@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
+@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
 class ElixirIrGoldenIntegrationTest {
   private static final String SERVICE_ID = "smithy.beam.demo.http#HttpService";
   private static final String GET_NAME_OUTPUT_ID = "smithy.beam.demo.http#GetNameOutput";

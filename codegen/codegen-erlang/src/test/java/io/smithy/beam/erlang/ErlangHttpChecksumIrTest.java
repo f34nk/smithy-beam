@@ -2,11 +2,11 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.erlang.AtomExpr;
-import io.beam.ir.erlang.ErlangRenderer;
-import io.beam.ir.erlang.Expression;
-import io.beam.ir.erlang.TupleExpr;
-import io.beam.ir.erlang.Variable;
+import io.beam.dsl.erlang.AtomExpr;
+import io.beam.dsl.erlang.ErlangRenderer;
+import io.beam.dsl.erlang.Expression;
+import io.beam.dsl.erlang.TupleExpr;
+import io.beam.dsl.erlang.Variable;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamSettings;
 import java.io.IOException;
@@ -18,7 +18,7 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
-@Disabled("beam-ir migration: golden fixtures live in beam-ir; re-enable locally if needed")
+@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
 class ErlangHttpChecksumIrTest {
   @Test
   void requestChecksumHeadersExprMatchesGolden() throws IOException {

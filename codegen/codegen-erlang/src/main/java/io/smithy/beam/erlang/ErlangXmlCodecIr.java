@@ -1,41 +1,41 @@
 package io.smithy.beam.erlang;
 
-import io.beam.ir.erlang.ApplyExpr;
-import io.beam.ir.erlang.AtomExpr;
-import io.beam.ir.erlang.AtomPattern;
-import io.beam.ir.erlang.BinaryExpr;
-import io.beam.ir.erlang.CaseExpr;
-import io.beam.ir.erlang.CatchPattern;
-import io.beam.ir.erlang.Clause;
-import io.beam.ir.erlang.Expression;
-import io.beam.ir.erlang.Fun;
-import io.beam.ir.erlang.FunClause;
-import io.beam.ir.erlang.Function;
-import io.beam.ir.erlang.FunctionClause;
-import io.beam.ir.erlang.InfixExpr;
-import io.beam.ir.erlang.IntegerExpr;
-import io.beam.ir.erlang.IsTypeGuard;
-import io.beam.ir.erlang.ListComprehensionExpr;
-import io.beam.ir.erlang.ListComprehensionFilter;
-import io.beam.ir.erlang.ListComprehensionGenerator;
-import io.beam.ir.erlang.ListExpr;
-import io.beam.ir.erlang.ListPattern;
-import io.beam.ir.erlang.LocalCallExpr;
-import io.beam.ir.erlang.MapEntry;
-import io.beam.ir.erlang.MapExpr;
-import io.beam.ir.erlang.MapPattern;
-import io.beam.ir.erlang.MapPatternEntry;
-import io.beam.ir.erlang.MatchExpr;
-import io.beam.ir.erlang.NotExpr;
-import io.beam.ir.erlang.Pattern;
-import io.beam.ir.erlang.QuotedAtomExpr;
-import io.beam.ir.erlang.RemoteCallExpr;
-import io.beam.ir.erlang.TryExpr;
-import io.beam.ir.erlang.TupleExpr;
-import io.beam.ir.erlang.TuplePattern;
-import io.beam.ir.erlang.Variable;
-import io.beam.ir.erlang.VariablePattern;
-import io.beam.ir.erlang.WildcardPattern;
+import io.beam.dsl.erlang.ApplyExpr;
+import io.beam.dsl.erlang.AtomExpr;
+import io.beam.dsl.erlang.AtomPattern;
+import io.beam.dsl.erlang.BinaryExpr;
+import io.beam.dsl.erlang.CaseExpr;
+import io.beam.dsl.erlang.CatchPattern;
+import io.beam.dsl.erlang.Clause;
+import io.beam.dsl.erlang.Expression;
+import io.beam.dsl.erlang.Fun;
+import io.beam.dsl.erlang.FunClause;
+import io.beam.dsl.erlang.Function;
+import io.beam.dsl.erlang.FunctionClause;
+import io.beam.dsl.erlang.InfixExpr;
+import io.beam.dsl.erlang.IntegerExpr;
+import io.beam.dsl.erlang.IsTypeGuard;
+import io.beam.dsl.erlang.ListComprehensionExpr;
+import io.beam.dsl.erlang.ListComprehensionFilter;
+import io.beam.dsl.erlang.ListComprehensionGenerator;
+import io.beam.dsl.erlang.ListExpr;
+import io.beam.dsl.erlang.ListPattern;
+import io.beam.dsl.erlang.LocalCallExpr;
+import io.beam.dsl.erlang.MapEntry;
+import io.beam.dsl.erlang.MapExpr;
+import io.beam.dsl.erlang.MapPattern;
+import io.beam.dsl.erlang.MapPatternEntry;
+import io.beam.dsl.erlang.MatchExpr;
+import io.beam.dsl.erlang.NotExpr;
+import io.beam.dsl.erlang.Pattern;
+import io.beam.dsl.erlang.QuotedAtomExpr;
+import io.beam.dsl.erlang.RemoteCallExpr;
+import io.beam.dsl.erlang.TryExpr;
+import io.beam.dsl.erlang.TupleExpr;
+import io.beam.dsl.erlang.TuplePattern;
+import io.beam.dsl.erlang.Variable;
+import io.beam.dsl.erlang.VariablePattern;
+import io.beam.dsl.erlang.WildcardPattern;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -403,7 +403,7 @@ final class ErlangXmlCodecIr {
   }
 
   private static Function xmlChildList() {
-    List<io.beam.ir.erlang.ListComprehensionQualifier> itemQualifiers =
+    List<io.beam.dsl.erlang.ListComprehensionQualifier> itemQualifiers =
         List.of(
             ListComprehensionGenerator.of(
                 VariablePattern.of("Item"),

@@ -2,10 +2,10 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.ir.erlang.ErlangRenderer;
-import io.beam.ir.erlang.Function;
-import io.beam.ir.erlang.Header;
-import io.beam.ir.erlang.Module;
+import io.beam.dsl.erlang.ErlangRenderer;
+import io.beam.dsl.erlang.Function;
+import io.beam.dsl.erlang.Header;
+import io.beam.dsl.erlang.Module;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;

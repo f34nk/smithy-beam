@@ -1,29 +1,29 @@
 package io.smithy.beam.elixir;
 
-import io.beam.ir.elixir.AssignPattern;
-import io.beam.ir.elixir.AtomExpr;
-import io.beam.ir.elixir.BlockExpr;
-import io.beam.ir.elixir.Expression;
-import io.beam.ir.elixir.Function;
-import io.beam.ir.elixir.FunctionDoc;
-import io.beam.ir.elixir.FunctionHead;
-import io.beam.ir.elixir.IntegerPattern;
-import io.beam.ir.elixir.ListExpr;
-import io.beam.ir.elixir.LocalCallExpr;
-import io.beam.ir.elixir.MapEntry;
-import io.beam.ir.elixir.MapExpr;
-import io.beam.ir.elixir.MatchExpr;
-import io.beam.ir.elixir.Pattern;
-import io.beam.ir.elixir.RemoteCallExpr;
-import io.beam.ir.elixir.Spec;
-import io.beam.ir.elixir.StringExpr;
-import io.beam.ir.elixir.StructExpr;
-import io.beam.ir.elixir.StructField;
-import io.beam.ir.elixir.StructPattern;
-import io.beam.ir.elixir.StructPatternField;
-import io.beam.ir.elixir.TupleExpr;
-import io.beam.ir.elixir.Variable;
-import io.beam.ir.elixir.VariablePattern;
+import io.beam.dsl.elixir.AssignPattern;
+import io.beam.dsl.elixir.AtomExpr;
+import io.beam.dsl.elixir.BlockExpr;
+import io.beam.dsl.elixir.Expression;
+import io.beam.dsl.elixir.Function;
+import io.beam.dsl.elixir.FunctionDoc;
+import io.beam.dsl.elixir.FunctionHead;
+import io.beam.dsl.elixir.IntegerPattern;
+import io.beam.dsl.elixir.ListExpr;
+import io.beam.dsl.elixir.LocalCallExpr;
+import io.beam.dsl.elixir.MapEntry;
+import io.beam.dsl.elixir.MapExpr;
+import io.beam.dsl.elixir.MatchExpr;
+import io.beam.dsl.elixir.Pattern;
+import io.beam.dsl.elixir.RemoteCallExpr;
+import io.beam.dsl.elixir.Spec;
+import io.beam.dsl.elixir.StringExpr;
+import io.beam.dsl.elixir.StructExpr;
+import io.beam.dsl.elixir.StructField;
+import io.beam.dsl.elixir.StructPattern;
+import io.beam.dsl.elixir.StructPatternField;
+import io.beam.dsl.elixir.TupleExpr;
+import io.beam.dsl.elixir.Variable;
+import io.beam.dsl.elixir.VariablePattern;
 import io.smithy.beam.core.BeamNameUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -259,7 +259,7 @@ final class ElixirAwsJsonOperationIr {
     body.add(
         MapExpr.of(
             List.of(
-                MapEntry.atomKey("status", io.beam.ir.elixir.IntegerExpr.of(200)),
+                MapEntry.atomKey("status", io.beam.dsl.elixir.IntegerExpr.of(200)),
                 MapEntry.atomKey("headers", Variable.of("headers")),
                 MapEntry.atomKey("body", Variable.of("body")))));
 
@@ -326,7 +326,7 @@ final class ElixirAwsJsonOperationIr {
 
   private static Expression block(List<Expression> statements) {
     if (statements.isEmpty()) {
-      return io.beam.ir.elixir.NilExpr.of();
+      return io.beam.dsl.elixir.NilExpr.of();
     }
     if (statements.size() == 1) {
       return statements.get(0);
