@@ -4,7 +4,6 @@ import io.beam.ir.elixir.AtomExpr;
 import io.beam.ir.elixir.AtomPattern;
 import io.beam.ir.elixir.AssignPattern;
 import io.beam.ir.elixir.BlockExpr;
-import io.beam.ir.elixir.CaptureExpr;
 import io.beam.ir.elixir.CaseExpr;
 import io.beam.ir.elixir.Clause;
 import io.beam.ir.elixir.ComparisonGuard;
@@ -76,6 +75,9 @@ final class ElixirRouterIr {
       functions.add(httpDispatch());
       functions.addAll(httpRoute(httpIndex, operations, sp, codecMod));
     }
+    if (serviceHasLabelBindings(model, operations)) {
+      functions.addAll(labelParsingFunctions());
+    }
     return new Module(
         routerMod,
         moduledoc,
@@ -105,7 +107,7 @@ final class ElixirRouterIr {
                 new DotCallExpr(Variable.of("request"), "path", List.of()),
                 Variable.of("handler"),
                 Variable.of("request"))),
-        Spec.of("@spec dispatch(module(), map()) :: term()"),
+        Spec.of("dispatch(module(), map()) :: term()"),
         null,
         false);
   }
@@ -125,7 +127,7 @@ final class ElixirRouterIr {
                 new DotCallExpr(Variable.of("request"), "headers", List.of()),
                 Variable.of("handler"),
                 Variable.of("request"))),
-        Spec.of("@spec dispatch(module(), map()) :: term()"),
+        Spec.of("dispatch(module(), map()) :: term()"),
         null,
         false);
   }
@@ -415,7 +417,7 @@ final class ElixirRouterIr {
                                         AtomExpr.of("error"), AtomExpr.of("path_mismatch")))))),
                     List.of()))),
         Spec.of(
-            "@spec parse_labels(String.t(), String.t()) :: {:ok, map()} | {:error, :path_mismatch}"),
+            "parse_labels(String.t(), String.t()) :: {:ok, map()} | {:error, :path_mismatch}"),
         null,
         false);
   }
@@ -424,10 +426,16 @@ final class ElixirRouterIr {
     return defp(
         "segments",
         List.of(VariablePattern.of("path")),
-        new PipeExpr(
-            Variable.of("path"),
+        RemoteCallExpr.of(
+            "String",
+            "split",
             List.of(
-                new PipeStep(CaptureExpr.of("String.split(\"/\", trim: true)", 1), List.of()))),
+                Variable.of("path"),
+                StringExpr.of("/"),
+                ListExpr.of(
+                    List.of(
+                        TupleExpr.of(
+                            List.of(AtomExpr.of("trim"), AtomExpr.of("true"))))))),
         false);
   }
 
