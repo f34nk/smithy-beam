@@ -4,6 +4,8 @@ namespace smithy.beam.demo.user
 
 use aws.protocols#restJson1
 use smithy.api#String
+use smithy.test#httpRequestTests
+use smithy.test#httpResponseTests
 
 @documentation("User management API with full resource lifecycle.")
 @restJson1
@@ -58,6 +60,37 @@ structure CreateUserOutput {
 
 @readonly
 @http(method: "GET", uri: "/users/{userId}", code: 200)
+@httpRequestTests([
+    {
+        id: "GetUserRequest"
+        protocol: restJson1
+        appliesTo: "client"
+        params: {
+            userId: "user-1"
+        }
+        method: "GET"
+        uri: "/users/user-1"
+    }
+])
+@httpResponseTests([
+    {
+        id: "GetUserResponse"
+        protocol: restJson1
+        appliesTo: "client"
+        params: {
+            user: {
+                userId: "user-1"
+                email: "ada@example.com"
+                displayName: "Ada"
+            }
+        }
+        code: 200
+        headers: {
+            "Content-Type": "application/json"
+        }
+        body: "{\"user\":{\"userId\":\"user-1\",\"email\":\"ada@example.com\",\"displayName\":\"Ada\"}}"
+    }
+])
 operation GetUser {
     input: GetUserInput
     output: GetUserOutput
