@@ -4,7 +4,7 @@ import io.beam.dsl.elixir.Module;
 import io.smithy.beam.core.BeamElixirLayout;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
-/** Emits {@code test/<service>_compliance_tests.ex} from HTTP protocol compliance traits. */
+/** Emits {@code test/<service>_compliance_test.ex} from HTTP protocol compliance traits. */
 public final class ElixirComplianceTestEmitter {
 
   private ElixirComplianceTestEmitter() {}
