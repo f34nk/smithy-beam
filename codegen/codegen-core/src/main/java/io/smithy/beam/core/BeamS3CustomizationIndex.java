@@ -1,6 +1,5 @@
 package io.smithy.beam.core;
 
-import java.util.Locale;
 import java.util.Optional;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
@@ -13,11 +12,6 @@ import software.amazon.smithy.model.shapes.ServiceShape;
  * Detects Amazon S3 models and bucket/object key HTTP label bindings for endpoint customization.
  */
 public final class BeamS3CustomizationIndex {
-
-  public enum BucketAddressingStyle {
-    VIRTUAL_HOST,
-    PATH_STYLE
-  }
 
   private static final String S3_SDK_ID = "s3";
   private static final String BUCKET_LABEL = "bucket";
@@ -78,23 +72,5 @@ public final class BeamS3CustomizationIndex {
   public Optional<String> keyMemberSnakeCase(OperationShape operation) {
     return keyLabelBinding(operation)
         .map(binding -> BeamNameUtils.toSnakeCase(binding.getMember().getMemberName()));
-  }
-
-  public String erlangAddressingStyleAtom(BucketAddressingStyle style) {
-    return switch (style) {
-      case VIRTUAL_HOST -> "virtual_host";
-      case PATH_STYLE -> "path_style";
-    };
-  }
-
-  public String elixirAddressingStyleAtom(BucketAddressingStyle style) {
-    return switch (style) {
-      case VIRTUAL_HOST -> ":virtual_host";
-      case PATH_STYLE -> ":path_style";
-    };
-  }
-
-  public static String normalizeLabelName(String locationName) {
-    return locationName == null ? "" : locationName.toLowerCase(Locale.ROOT);
   }
 }
