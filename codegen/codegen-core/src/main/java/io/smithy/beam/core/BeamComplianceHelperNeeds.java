@@ -7,6 +7,11 @@ public final class BeamComplianceHelperNeeds {
   private boolean queryParamsConverter;
   private boolean assertHeaders;
   private boolean assertQueryParams;
+  private boolean assertForbidHeaders;
+  private boolean assertRequireHeaders;
+  private boolean assertForbidQueryParams;
+  private boolean assertRequireQueryParams;
+  private boolean assertResolvedHost;
 
   public void needHeadersConverter() {
     headersConverter = true;
@@ -22,6 +27,26 @@ public final class BeamComplianceHelperNeeds {
 
   public void needAssertQueryParams() {
     assertQueryParams = true;
+  }
+
+  public void needAssertForbidHeaders() {
+    assertForbidHeaders = true;
+  }
+
+  public void needAssertRequireHeaders() {
+    assertRequireHeaders = true;
+  }
+
+  public void needAssertForbidQueryParams() {
+    assertForbidQueryParams = true;
+  }
+
+  public void needAssertRequireQueryParams() {
+    assertRequireQueryParams = true;
+  }
+
+  public void needAssertResolvedHost() {
+    assertResolvedHost = true;
   }
 
   public boolean headersConverter() {
@@ -40,7 +65,35 @@ public final class BeamComplianceHelperNeeds {
     return assertQueryParams;
   }
 
+  public boolean assertForbidHeaders() {
+    return assertForbidHeaders;
+  }
+
+  public boolean assertRequireHeaders() {
+    return assertRequireHeaders;
+  }
+
+  public boolean assertForbidQueryParams() {
+    return assertForbidQueryParams;
+  }
+
+  public boolean assertRequireQueryParams() {
+    return assertRequireQueryParams;
+  }
+
+  public boolean assertResolvedHost() {
+    return assertResolvedHost;
+  }
+
   public boolean any() {
-    return headersConverter || queryParamsConverter || assertHeaders || assertQueryParams;
+    return headersConverter
+        || queryParamsConverter
+        || assertHeaders
+        || assertQueryParams
+        || assertForbidHeaders
+        || assertRequireHeaders
+        || assertForbidQueryParams
+        || assertRequireQueryParams
+        || assertResolvedHost;
   }
 }

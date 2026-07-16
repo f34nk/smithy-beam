@@ -38,6 +38,15 @@ class BeamHttpComplianceTestsTest {
     assertThat(testCase.params().expectStringMember("id").getValue()).isEqualTo("abc");
     assertThat(testCase.appliesTo()).contains(AppliesTo.CLIENT);
     assertThat(testCase.protocol()).isEqualTo(RestJson1Trait.ID);
+    assertThat(testCase.host()).contains("example.com");
+    assertThat(testCase.resolvedHost()).contains("prefix.example.com");
+    assertThat(testCase.queryParams()).containsExactly("filter=active");
+    assertThat(testCase.forbidHeaders()).containsExactly("X-Forbidden");
+    assertThat(testCase.requireHeaders()).containsExactly("X-Required");
+    assertThat(testCase.forbidQueryParams()).isEmpty();
+    assertThat(testCase.requireQueryParams()).isEmpty();
+    assertThat(testCase.bodyMediaType()).contains("application/json");
+    assertThat(testCase.authScheme()).isEmpty();
   }
 
   @Test
@@ -57,6 +66,10 @@ class BeamHttpComplianceTestsTest {
     assertThat(testCase.body()).isEqualTo("{\"name\": \"widget\"}");
     assertThat(testCase.params().expectStringMember("name").getValue()).isEqualTo("widget");
     assertThat(testCase.errorShapeId()).isEmpty();
+    assertThat(testCase.forbidHeaders()).containsExactly("X-Forbidden");
+    assertThat(testCase.requireHeaders()).containsExactly("X-Required");
+    assertThat(testCase.bodyMediaType()).contains("application/json");
+    assertThat(testCase.authScheme()).isEmpty();
   }
 
   @Test

@@ -31,7 +31,15 @@ public final class BeamHttpComplianceTests {
       ObjectNode params,
       List<String> queryParams,
       Optional<AppliesTo> appliesTo,
-      ShapeId protocol) {}
+      ShapeId protocol,
+      Optional<String> host,
+      Optional<String> resolvedHost,
+      List<String> forbidQueryParams,
+      List<String> requireQueryParams,
+      List<String> forbidHeaders,
+      List<String> requireHeaders,
+      Optional<String> bodyMediaType,
+      Optional<ShapeId> authScheme) {}
 
   public record HttpResponseTestCase(
       String id,
@@ -41,7 +49,11 @@ public final class BeamHttpComplianceTests {
       ObjectNode params,
       Optional<AppliesTo> appliesTo,
       ShapeId protocol,
-      Optional<ShapeId> errorShapeId) {}
+      Optional<ShapeId> errorShapeId,
+      List<String> forbidHeaders,
+      List<String> requireHeaders,
+      Optional<String> bodyMediaType,
+      Optional<ShapeId> authScheme) {}
 
   public record OperationRequestTests(OperationShape operation, List<HttpRequestTestCase> cases) {}
 
@@ -181,7 +193,15 @@ public final class BeamHttpComplianceTests {
         testCase.getParams(),
         List.copyOf(testCase.getQueryParams()),
         testCase.getAppliesTo(),
-        testCase.getProtocol());
+        testCase.getProtocol(),
+        testCase.getHost(),
+        testCase.getResolvedHost(),
+        List.copyOf(testCase.getForbidQueryParams()),
+        List.copyOf(testCase.getRequireQueryParams()),
+        List.copyOf(testCase.getForbidHeaders()),
+        List.copyOf(testCase.getRequireHeaders()),
+        testCase.getBodyMediaType(),
+        testCase.getAuthScheme());
   }
 
   private static HttpResponseTestCase mapResponseCase(
@@ -195,7 +215,11 @@ public final class BeamHttpComplianceTests {
         testCase.getParams(),
         testCase.getAppliesTo(),
         testCase.getProtocol(),
-        errorShapeId);
+        errorShapeId,
+        List.copyOf(testCase.getForbidHeaders()),
+        List.copyOf(testCase.getRequireHeaders()),
+        testCase.getBodyMediaType(),
+        testCase.getAuthScheme());
   }
 
   private static Map<String, String> copyHeaders(Map<String, String> headers) {
