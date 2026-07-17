@@ -386,13 +386,13 @@ Traits from additional Smithy specifications.
 
 ### Test Traits (`smithy.test#*`)
 
-[HTTP protocol compliance tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) define expected wire requests and responses. Codegen emits `test/<service>_compliance_test.*` when the model defines `@httpRequestTests` or `@httpResponseTests` for the configured service.
+[HTTP protocol compliance tests](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html) define expected wire requests and responses. Codegen emits `test/<service>_compliance_test.*` when the model defines `@httpRequestTests` or `@httpResponseTests` for the configured service. Generated suites exercise protocol codecs only (no transport). They cover method, URI, headers (including forbid/require), query params (including forbid/require), host/resolvedHost when present on the request shape, body equality, and JSON document compare when `bodyMediaType` is `application/json`. Out of scope for this coverage: `authScheme`-driven wire differences, `vendorParams` / `vendorParamsShape`, and Host resolution beyond what codecs already expose.
 
 | Trait | Erlang | Elixir |
 |-------|--------|--------|
 | [`smithy.test#httpMalformedRequestTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httpmalformedrequesttests-trait) | ➖ | ➖ |
-| [`smithy.test#httpRequestTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httprequesttests-trait) | ⚠️ | ⚠️ |
-| [`smithy.test#httpResponseTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httpresponsetests-trait) | ⚠️ | ⚠️ |
+| [`smithy.test#httpRequestTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httprequesttests-trait) | ✅ | ✅ |
+| [`smithy.test#httpResponseTests`](https://smithy.io/2.0/additional-specs/http-protocol-compliance-tests.html#smithy-test-httpresponsetests-trait) | ✅ | ✅ |
 | [`smithy.test#smokeTests`](https://smithy.io/2.0/additional-specs/smoke-tests.html#smithy-test-smoketests-trait) | ➖ | ➖ |
 
 ### Waiter Traits (`smithy.waiters#*`)
