@@ -20,6 +20,7 @@ codegen-jar:
 build: codegen-jar
 	smithy build
 	mkdir -p lib/generated
+	rm -rf lib/generated/*
 	cp -r build/smithy/source/elixir-*-codegen/* lib/generated/
 
 .PHONY: deps

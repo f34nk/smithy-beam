@@ -6,7 +6,7 @@ all: clean build
 .PHONY: clean
 clean:
 	rebar3 clean
-	rm -rf _build build *.dump *.log src/generated/*
+	rm -rf _build build *.dump *.log src/generated
 	cd $(ROOT) && ./gradlew -p examples/erlang/minimal-custom-protocol/codegen clean
 
 .PHONY: codegen-jar
@@ -18,6 +18,7 @@ codegen-jar:
 build: codegen-jar
 	smithy build
 	mkdir -p src/generated
+	rm -rf src/generated/*
 	cp -r build/smithy/source/erlang-*-codegen/* src/generated/
 
 .PHONY: test

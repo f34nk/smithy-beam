@@ -17,8 +17,8 @@ clean:
 .PHONY: build
 build:
 	smithy build
-	rm -rf lib/generated
 	mkdir -p lib/generated
+	rm -rf lib/generated/*
 	cp -r build/smithy/source/elixir-*-codegen/* lib/generated/
 
 .PHONY: deps

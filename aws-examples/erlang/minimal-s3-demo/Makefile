@@ -14,8 +14,8 @@ clean:
 .PHONY: build
 build:
 	smithy build
-	rm -rf src/generated
 	mkdir -p src/generated
+	rm -rf src/generated/*
 	cp -r build/smithy/source/erlang-*-codegen/* src/generated/
 
 .PHONY: test

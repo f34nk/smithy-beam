@@ -15,6 +15,7 @@ build:
 	smithy build
 	tree build/
 	mkdir -p lib/generated
+	rm -rf lib/generated/*
 	#
 	# Copy the generated files to the lib/generated directory
 	#

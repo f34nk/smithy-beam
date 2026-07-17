@@ -29,6 +29,7 @@ build: copy
 	#
 	smithy build
 	mkdir -p lib/generated
+	rm -rf lib/generated/*
 	cp -r build/smithy/source/elixir-*-codegen/* lib/generated/
 	tree -a lib/generated
 

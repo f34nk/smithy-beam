@@ -1,7 +1,7 @@
 .PHONY: clean
 clean:
 	rebar3 clean
-	rm -rf _build build *.dump *.log src/generated/*
+	rm -rf _build build *.dump *.log src/generated
 	
 .PHONY: build
 build:
@@ -11,6 +11,7 @@ build:
 	smithy build
 	tree build/
 	mkdir -p src/generated
+	rm -rf src/generated/*
 	#
 	# Copy the generated files to the src/generated directory
 	#

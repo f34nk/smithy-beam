@@ -25,8 +25,8 @@ build: copy
 	# Build
 	#
 	smithy build
-	rm -rf src/generated
 	mkdir -p src/generated
+	rm -rf src/generated/*
 	cp -r build/smithy/source/erlang-*-codegen/* src/generated/
 	tree src/generated
 
@@ -72,5 +72,5 @@ run:
 
 .PHONY: clean
 clean:
-	rm -rf build _build src/generated rebar3.crashdump *.dump test/*.beam *.json.*
+	rm -rf build _build src/generated *.crashdump *.dump test/*.beam *.json.*
 	rm -rf model/*.json
