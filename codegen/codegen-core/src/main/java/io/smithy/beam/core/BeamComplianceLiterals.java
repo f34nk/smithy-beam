@@ -40,7 +40,7 @@ public final class BeamComplianceLiterals {
         continue;
       }
       Node value = params.expectMember(memberName);
-      String fieldName = BeamNameUtils.toSnakeCase(memberName);
+      String fieldName = BeamMemberNames.fieldName(symbolProvider, member);
       fields.add(fieldName + " = " + erlangValue(model, member, value, symbolProvider));
     }
     return "#" + recordName + "{" + String.join(", ", fields) + "}";

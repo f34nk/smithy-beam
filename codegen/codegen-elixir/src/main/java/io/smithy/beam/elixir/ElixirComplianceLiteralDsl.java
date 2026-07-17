@@ -12,6 +12,7 @@ import io.beam.dsl.elixir.StringExpr;
 import io.beam.dsl.elixir.StructExpr;
 import io.beam.dsl.elixir.StructField;
 import io.beam.dsl.elixir.Variable;
+import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamNameUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +59,7 @@ final class ElixirComplianceLiteralDsl {
       }
       fields.add(
           StructField.of(
-              BeamNameUtils.toSnakeCase(memberName),
+              BeamMemberNames.fieldName(sp, member),
               memberValue(model, member, params.expectMember(memberName), sp, structNameFn)));
     }
     return StructExpr.of(structMod, fields);

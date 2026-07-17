@@ -39,7 +39,7 @@ import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamComplianceHelperNeeds;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpComplianceTests;
-import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamMemberNames;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -526,7 +526,7 @@ final class ElixirComplianceTestDsl {
           .getMember(memberName)
           .ifPresent(
               member -> {
-                String fieldName = BeamNameUtils.toSnakeCase(memberName);
+                String fieldName = BeamMemberNames.fieldName(sp, member);
                 Expression expected =
                     ElixirComplianceLiteralDsl.memberValue(
                         model, member, entry.getValue(), sp, structNameFn);

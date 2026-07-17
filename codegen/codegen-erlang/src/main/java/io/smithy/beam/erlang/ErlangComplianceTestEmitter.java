@@ -5,6 +5,7 @@ import io.smithy.beam.core.BeamComplianceHelperNeeds;
 import io.smithy.beam.core.BeamComplianceLiterals;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpComplianceTests;
+import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamSettings;
 import java.util.List;
@@ -422,7 +423,7 @@ public final class ErlangComplianceTestEmitter {
           .getMember(memberName)
           .ifPresent(
               member -> {
-                String fieldName = BeamNameUtils.toSnakeCase(memberName);
+                String fieldName = BeamMemberNames.fieldName(sp, member);
                 String expected =
                     BeamComplianceLiterals.erlangMemberValue(model, member, entry.getValue(), sp);
                 writer.write("?assertEqual($L, $L#$L.$L),", expected, recordVar, record, fieldName);
