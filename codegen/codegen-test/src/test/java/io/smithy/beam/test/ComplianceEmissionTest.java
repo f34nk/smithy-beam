@@ -86,6 +86,10 @@ class ComplianceEmissionTest {
     assertThat(tests).contains("defp headers_to_list");
     assertThat(tests).contains("defp assert_headers");
     assertThat(tests).contains("defp assert_query_params");
+    assertThat(tests).contains("defp assert_forbid_headers");
+    assertThat(tests).contains("defp assert_require_headers");
+    assertThat(tests).contains("request.host");
+    assertThat(tests).contains("prefix.example.com");
     assertThat(tests).doesNotContain("defp query_params_to_map");
   }
 

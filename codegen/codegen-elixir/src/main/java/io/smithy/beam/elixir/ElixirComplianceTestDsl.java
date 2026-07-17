@@ -23,6 +23,7 @@ import io.beam.dsl.elixir.MapEntry;
 import io.beam.dsl.elixir.MapExpr;
 import io.beam.dsl.elixir.MatchExpr;
 import io.beam.dsl.elixir.Module;
+import io.beam.dsl.elixir.NilExpr;
 import io.beam.dsl.elixir.Pattern;
 import io.beam.dsl.elixir.RemoteCallExpr;
 import io.beam.dsl.elixir.StringExpr;
@@ -255,6 +256,43 @@ final class ElixirComplianceTestDsl {
                   ElixirComplianceLiteralDsl.headersMap(testCase.headers()),
                   DotCallExpr.of(Variable.of("request"), "headers", List.of()))));
     }
+    if (!testCase.forbidHeaders().isEmpty()) {
+      helperNeeds.needAssertForbidHeaders();
+      body.add(
+          LocalCallExpr.of(
+              "assert_forbid_headers",
+              List.of(
+                  ElixirComplianceLiteralDsl.queryParamsList(testCase.forbidHeaders()),
+                  DotCallExpr.of(Variable.of("request"), "headers", List.of()))));
+    }
+    if (!testCase.requireHeaders().isEmpty()) {
+      helperNeeds.needAssertRequireHeaders();
+      body.add(
+          LocalCallExpr.of(
+              "assert_require_headers",
+              List.of(
+                  ElixirComplianceLiteralDsl.queryParamsList(testCase.requireHeaders()),
+                  DotCallExpr.of(Variable.of("request"), "headers", List.of()))));
+    }
+    if (!testCase.forbidQueryParams().isEmpty()) {
+      helperNeeds.needAssertForbidQueryParams();
+      body.add(
+          LocalCallExpr.of(
+              "assert_forbid_query_params",
+              List.of(
+                  ElixirComplianceLiteralDsl.queryParamsList(testCase.forbidQueryParams()),
+                  DotCallExpr.of(Variable.of("request"), "query", List.of()))));
+    }
+    if (!testCase.requireQueryParams().isEmpty()) {
+      helperNeeds.needAssertRequireQueryParams();
+      body.add(
+          LocalCallExpr.of(
+              "assert_require_query_params",
+              List.of(
+                  ElixirComplianceLiteralDsl.queryParamsList(testCase.requireQueryParams()),
+                  DotCallExpr.of(Variable.of("request"), "query", List.of()))));
+    }
+    hostAssert(testCase).ifPresent(body::add);
     if (testCase.body() != null) {
       body.add(
           LocalCallExpr.of(
@@ -392,6 +430,24 @@ final class ElixirComplianceTestDsl {
                   ElixirComplianceLiteralDsl.headersMap(testCase.headers()),
                   DotCallExpr.of(Variable.of("response"), "headers", List.of()))));
     }
+    if (!testCase.forbidHeaders().isEmpty()) {
+      helperNeeds.needAssertForbidHeaders();
+      body.add(
+          LocalCallExpr.of(
+              "assert_forbid_headers",
+              List.of(
+                  ElixirComplianceLiteralDsl.queryParamsList(testCase.forbidHeaders()),
+                  DotCallExpr.of(Variable.of("response"), "headers", List.of()))));
+    }
+    if (!testCase.requireHeaders().isEmpty()) {
+      helperNeeds.needAssertRequireHeaders();
+      body.add(
+          LocalCallExpr.of(
+              "assert_require_headers",
+              List.of(
+                  ElixirComplianceLiteralDsl.queryParamsList(testCase.requireHeaders()),
+                  DotCallExpr.of(Variable.of("response"), "headers", List.of()))));
+    }
     if (testCase.body() != null) {
       body.add(
           LocalCallExpr.of(
@@ -481,7 +537,35 @@ final class ElixirComplianceTestDsl {
     if (helperNeeds.assertQueryParams()) {
       helpers.add(assertQueryParams());
     }
+    if (helperNeeds.assertForbidHeaders()) {
+      helpers.add(assertForbidHeaders());
+    }
+    if (helperNeeds.assertRequireHeaders()) {
+      helpers.add(assertRequireHeaders());
+    }
+    if (helperNeeds.assertForbidQueryParams()) {
+      helpers.add(assertForbidQueryParams());
+    }
+    if (helperNeeds.assertRequireQueryParams()) {
+      helpers.add(assertRequireQueryParams());
+    }
     return helpers;
+  }
+
+  private static java.util.Optional<Expression> hostAssert(
+      BeamHttpComplianceTests.HttpRequestTestCase testCase) {
+    String expectedHost = testCase.resolvedHost().orElse(testCase.host().orElse(null));
+    if (expectedHost == null) {
+      return java.util.Optional.empty();
+    }
+    return java.util.Optional.of(
+        LocalCallExpr.of(
+            "assert",
+            List.of(
+                InfixExpr.of(
+                    DotCallExpr.of(Variable.of("request"), "host", List.of()),
+                    "==",
+                    StringExpr.of(expectedHost)))));
   }
 
   private static List<String> renderTestLines(String name, List<Expression> body) {
@@ -610,6 +694,79 @@ final class ElixirComplianceTestDsl {
         "assert_query_params",
         List.of(VariablePattern.of("expected"), VariablePattern.of("query")),
         RemoteCallExpr.of("Enum", "each", List.of(Variable.of("expected"), eachFn)),
+        true);
+  }
+
+  private static Function assertForbidHeaders() {
+    Expression assertMissing =
+        LocalCallExpr.of(
+            "assert",
+            List.of(
+                InfixExpr.of(
+                    RemoteCallExpr.of(
+                        "Keyword", "get", List.of(Variable.of("headers"), Variable.of("name"))),
+                    "==",
+                    NilExpr.of())));
+    AnonFun eachFn =
+        AnonFun.of(List.of(AnonFunClause.of(List.of(VariablePattern.of("name")), assertMissing)));
+    return defp(
+        "assert_forbid_headers",
+        List.of(VariablePattern.of("forbidden"), VariablePattern.of("headers")),
+        RemoteCallExpr.of("Enum", "each", List.of(Variable.of("forbidden"), eachFn)),
+        true);
+  }
+
+  private static Function assertRequireHeaders() {
+    Expression assertPresent =
+        LocalCallExpr.of(
+            "assert",
+            List.of(
+                InfixExpr.of(
+                    RemoteCallExpr.of(
+                        "Keyword", "get", List.of(Variable.of("headers"), Variable.of("name"))),
+                    "!=",
+                    NilExpr.of())));
+    AnonFun eachFn =
+        AnonFun.of(List.of(AnonFunClause.of(List.of(VariablePattern.of("name")), assertPresent)));
+    return defp(
+        "assert_require_headers",
+        List.of(VariablePattern.of("required"), VariablePattern.of("headers")),
+        RemoteCallExpr.of("Enum", "each", List.of(Variable.of("required"), eachFn)),
+        true);
+  }
+
+  private static Function assertForbidQueryParams() {
+    Expression assertMissing =
+        LocalCallExpr.of(
+            "assert",
+            List.of(
+                InfixExpr.of(
+                    RemoteCallExpr.of(
+                        "Map", "has_key?", List.of(Variable.of("query"), Variable.of("name"))),
+                    "==",
+                    BooleanExpr.of(false))));
+    AnonFun eachFn =
+        AnonFun.of(List.of(AnonFunClause.of(List.of(VariablePattern.of("name")), assertMissing)));
+    return defp(
+        "assert_forbid_query_params",
+        List.of(VariablePattern.of("forbidden"), VariablePattern.of("query")),
+        RemoteCallExpr.of("Enum", "each", List.of(Variable.of("forbidden"), eachFn)),
+        true);
+  }
+
+  private static Function assertRequireQueryParams() {
+    Expression assertPresent =
+        LocalCallExpr.of(
+            "assert",
+            List.of(
+                RemoteCallExpr.of(
+                    "Map", "has_key?", List.of(Variable.of("query"), Variable.of("name")))));
+    AnonFun eachFn =
+        AnonFun.of(List.of(AnonFunClause.of(List.of(VariablePattern.of("name")), assertPresent)));
+    return defp(
+        "assert_require_query_params",
+        List.of(VariablePattern.of("required"), VariablePattern.of("query")),
+        RemoteCallExpr.of("Enum", "each", List.of(Variable.of("required"), eachFn)),
         true);
   }
 

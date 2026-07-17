@@ -62,6 +62,10 @@ class ElixirComplianceTestIrTest {
     assertThat(text).contains("use ExUnit.Case, async: true");
     assertThat(text).contains("test \"GetItemRequest\"");
     assertThat(text).contains("defp assert_headers");
+    assertThat(text).contains("defp assert_forbid_headers");
+    assertThat(text).contains("defp assert_require_headers");
+    assertThat(text).contains("request.host");
+    assertThat(text).contains("prefix.example.com");
     for (Function fn : module.functions()) {
       ElixirDslTestSupport.assertStructural(fn);
     }

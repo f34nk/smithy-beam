@@ -23,9 +23,21 @@ service ComplianceService {
         }
         method: "GET"
         uri: "/items/abc"
+        host: "example.com"
+        resolvedHost: "prefix.example.com"
         headers: {
             "X-Test": "1"
         }
+        queryParams: [
+            "filter=active"
+        ]
+        forbidHeaders: [
+            "X-Forbidden"
+        ]
+        requireHeaders: [
+            "X-Required"
+        ]
+        bodyMediaType: "application/json"
     }
 ])
 @httpResponseTests([
@@ -41,6 +53,13 @@ service ComplianceService {
             "Content-Type": "application/json"
         }
         body: "{\"name\": \"widget\"}"
+        bodyMediaType: "application/json"
+        forbidHeaders: [
+            "X-Forbidden"
+        ]
+        requireHeaders: [
+            "X-Required"
+        ]
     }
 ])
 operation GetItem {
