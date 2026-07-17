@@ -24,10 +24,9 @@ import io.beam.dsl.elixir.StructPatternField;
 import io.beam.dsl.elixir.TupleExpr;
 import io.beam.dsl.elixir.Variable;
 import io.beam.dsl.elixir.VariablePattern;
-import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamMemberNames;
 import java.util.ArrayList;
 import java.util.List;
-import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBindingIndex;
@@ -280,9 +279,7 @@ final class ElixirAwsJsonOperationDsl {
   }
 
   private static String memberFieldName(SymbolProvider sp, MemberShape member) {
-    Symbol sym = sp.toSymbol(member);
-    return sym.getProperty("fieldName", String.class)
-        .orElseGet(() -> BeamNameUtils.toSnakeCase(member.getMemberName()));
+    return BeamMemberNames.fieldName(sp, member);
   }
 
   private static Expression buildAwsJsonHttpRequestExpr(

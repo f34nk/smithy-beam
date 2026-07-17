@@ -14,6 +14,7 @@ import io.beam.dsl.elixir.StructPatternField;
 import io.beam.dsl.elixir.TuplePattern;
 import io.beam.dsl.elixir.Variable;
 import io.beam.dsl.elixir.VariablePattern;
+import io.smithy.beam.core.BeamMemberNames;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -119,6 +120,6 @@ final class ElixirHostLabelDsl {
   }
 
   private static String fieldName(SymbolProvider sp, MemberShape member) {
-    return io.smithy.beam.core.BeamNameUtils.toSnakeCase(member.getMemberName());
+    return BeamMemberNames.fieldName(sp, member);
   }
 }

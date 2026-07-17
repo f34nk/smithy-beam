@@ -39,6 +39,7 @@ import io.beam.dsl.elixir.Variable;
 import io.beam.dsl.elixir.VariablePattern;
 import io.beam.dsl.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamAwsQueryFormEncoder;
+import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamXmlBindingIndex;
 import io.smithy.beam.core.BeamXmlDecoder;
@@ -723,7 +724,7 @@ final class ElixirAwsQueryOperationDsl {
   }
 
   private static String fieldName(SymbolProvider sp, MemberShape member) {
-    return sp.toSymbol(member).getProperty("fieldName", String.class).orElseThrow();
+    return BeamMemberNames.fieldName(sp, member);
   }
 
   private static String xmlVarForElement(String element) {

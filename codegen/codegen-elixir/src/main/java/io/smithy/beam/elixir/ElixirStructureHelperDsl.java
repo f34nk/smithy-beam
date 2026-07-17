@@ -25,6 +25,7 @@ import io.beam.dsl.elixir.TuplePattern;
 import io.beam.dsl.elixir.Variable;
 import io.beam.dsl.elixir.VariablePattern;
 import io.smithy.beam.core.BeamEventStreamIndex;
+import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamNameUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,7 +75,7 @@ final class ElixirStructureHelperDsl {
     String structName = sp.toSymbol(structure).getName();
     List<StructField> fields = new ArrayList<>();
     for (MemberShape member : structure.members()) {
-      String fieldName = fieldName(member);
+      String fieldName = fieldName(sp, member);
       String wireKey = jsonKey(member);
       fields.add(
           StructField.of(
@@ -237,7 +238,7 @@ final class ElixirStructureHelperDsl {
       StructureShape parent,
       MemberShape member,
       String recordVar) {
-    String field = fieldName(member);
+    String field = fieldName(sp, member);
     return encodeFieldValue(
         model, sp, httpIndex, member, DotCallExpr.of(Variable.of(recordVar), field, List.of()));
   }
@@ -321,8 +322,8 @@ final class ElixirStructureHelperDsl {
     return BeamNameUtils.toSnakeCase(shape.getId().getName());
   }
 
-  private static String fieldName(MemberShape member) {
-    return BeamNameUtils.toSnakeCase(member.getMemberName());
+  private static String fieldName(SymbolProvider sp, MemberShape member) {
+    return BeamMemberNames.fieldName(sp, member);
   }
 
   private static String jsonKey(MemberShape member) {

@@ -18,6 +18,7 @@ import io.beam.dsl.elixir.TuplePattern;
 import io.beam.dsl.elixir.Variable;
 import io.beam.dsl.elixir.VariablePattern;
 import io.smithy.beam.core.BeamEventStreamIndex;
+import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamNameUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -272,9 +273,7 @@ final class ElixirJsonCodecDsl {
   }
 
   private static String fieldName(SymbolProvider sp, MemberShape member) {
-    Symbol sym = sp.toSymbol(member);
-    return sym.getProperty("fieldName", String.class)
-        .orElseGet(() -> BeamNameUtils.toSnakeCase(member.getMemberName()));
+    return BeamMemberNames.fieldName(sp, member);
   }
 
   private static String timestampEncodeHelper(HttpBindingIndex httpIndex, MemberShape member) {

@@ -37,7 +37,7 @@ import io.beam.dsl.elixir.VariablePattern;
 import io.beam.dsl.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamEventStreamIndex;
-import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamMemberNames;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -262,7 +262,7 @@ final class ElixirEventStreamDsl {
     List<MapEntry> entries = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String wireKey = jsonKey(member);
-      String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, member);
       entries.add(
           MapEntry.stringKey(
               wireKey,
@@ -281,7 +281,7 @@ final class ElixirEventStreamDsl {
     List<StructField> fields = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String wireKey = jsonKey(member);
-      String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, member);
       fields.add(
           StructField.of(
               fieldName,

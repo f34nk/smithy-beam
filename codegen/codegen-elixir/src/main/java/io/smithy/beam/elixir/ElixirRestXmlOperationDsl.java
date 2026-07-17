@@ -38,6 +38,7 @@ import io.beam.dsl.elixir.TuplePattern;
 import io.beam.dsl.elixir.Variable;
 import io.beam.dsl.elixir.VariablePattern;
 import io.beam.dsl.elixir.WildcardPattern;
+import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
 import io.smithy.beam.core.BeamXmlBindingIndex;
@@ -47,7 +48,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
@@ -1216,9 +1216,7 @@ final class ElixirRestXmlOperationDsl {
   }
 
   private static String fieldName(SymbolProvider sp, MemberShape member) {
-    Symbol sym = sp.toSymbol(member);
-    return sym.getProperty("fieldName", String.class)
-        .orElseGet(() -> BeamNameUtils.toSnakeCase(member.getMemberName()));
+    return BeamMemberNames.fieldName(sp, member);
   }
 
   private static String unionTagForMember(SymbolProvider sp, MemberShape member) {

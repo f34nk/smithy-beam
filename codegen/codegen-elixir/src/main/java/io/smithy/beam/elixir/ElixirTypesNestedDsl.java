@@ -21,8 +21,8 @@ import io.beam.dsl.elixir.TypesModule;
 import io.beam.dsl.elixir.Variable;
 import io.beam.dsl.elixir.VariablePattern;
 import io.smithy.beam.core.BeamDocumentation;
+import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamMemberNullability;
-import io.smithy.beam.core.BeamNameUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -210,10 +210,7 @@ final class ElixirTypesNestedDsl {
     List<String> defstructFields = new ArrayList<>();
     for (MemberShape member : members) {
       Symbol memberSym = sp.toSymbol(member);
-      String fieldName =
-          memberSym
-              .getProperty("fieldName", String.class)
-              .orElse(BeamNameUtils.toSnakeCase(member.getMemberName()));
+      String fieldName = BeamMemberNames.fieldName(sp, member);
       String typeStr = ElixirDirectedCodegen.renderElixirType(ctx, memberSym);
       if (BeamMemberNullability.isMemberNullable(ni, shape, member)) {
         typeStr = typeStr + " | nil";
@@ -253,11 +250,7 @@ final class ElixirTypesNestedDsl {
 
     List<String> exceptionFields = new ArrayList<>();
     for (MemberShape member : shape.members()) {
-      Symbol memberSym = sp.toSymbol(member);
-      String fieldName =
-          memberSym
-              .getProperty("fieldName", String.class)
-              .orElse(BeamNameUtils.toSnakeCase(member.getMemberName()));
+      String fieldName = BeamMemberNames.fieldName(sp, member);
       exceptionFields.add(fieldName + ": nil");
     }
     exceptionFields.add("__beam_error_kind: :" + errorTrait.getValue());
