@@ -188,6 +188,31 @@ public final class ErlangComplianceTestEmitter {
           "assert_headers($L, Request#http_request.headers),",
           BeamComplianceLiterals.erlangHeadersMap(testCase.headers()));
     }
+    if (!testCase.forbidHeaders().isEmpty()) {
+      helperNeeds.needAssertForbidHeaders();
+      writer.write(
+          "assert_forbid_headers($L, Request#http_request.headers),",
+          BeamComplianceLiterals.erlangQueryParamsList(testCase.forbidHeaders()));
+    }
+    if (!testCase.requireHeaders().isEmpty()) {
+      helperNeeds.needAssertRequireHeaders();
+      writer.write(
+          "assert_require_headers($L, Request#http_request.headers),",
+          BeamComplianceLiterals.erlangQueryParamsList(testCase.requireHeaders()));
+    }
+    if (!testCase.forbidQueryParams().isEmpty()) {
+      helperNeeds.needAssertForbidQueryParams();
+      writer.write(
+          "assert_forbid_query_params($L, Request#http_request.query),",
+          BeamComplianceLiterals.erlangQueryParamsList(testCase.forbidQueryParams()));
+    }
+    if (!testCase.requireQueryParams().isEmpty()) {
+      helperNeeds.needAssertRequireQueryParams();
+      writer.write(
+          "assert_require_query_params($L, Request#http_request.query),",
+          BeamComplianceLiterals.erlangQueryParamsList(testCase.requireQueryParams()));
+    }
+    emitHostAssert(writer, testCase);
     if (testCase.body() != null) {
       writer.write(
           "?assertEqual(<<\"$L\">>, iolist_to_binary(Request#http_request.body)),",
@@ -296,6 +321,18 @@ public final class ErlangComplianceTestEmitter {
       writer.write(
           "assert_headers($L, Response#http_response.headers),",
           BeamComplianceLiterals.erlangHeadersMap(testCase.headers()));
+    }
+    if (!testCase.forbidHeaders().isEmpty()) {
+      helperNeeds.needAssertForbidHeaders();
+      writer.write(
+          "assert_forbid_headers($L, Response#http_response.headers),",
+          BeamComplianceLiterals.erlangQueryParamsList(testCase.forbidHeaders()));
+    }
+    if (!testCase.requireHeaders().isEmpty()) {
+      helperNeeds.needAssertRequireHeaders();
+      writer.write(
+          "assert_require_headers($L, Response#http_response.headers),",
+          BeamComplianceLiterals.erlangQueryParamsList(testCase.requireHeaders()));
     }
     if (testCase.body() != null) {
       writer.write(
@@ -423,7 +460,61 @@ public final class ErlangComplianceTestEmitter {
       writer.dedent();
       writer.write("end, Expected).");
       writer.dedent();
+      writer.write("");
     }
+    if (helperNeeds.assertForbidHeaders()) {
+      writer.write("assert_forbid_headers(Forbidden, Headers) ->");
+      writer.indent();
+      writer.write("lists:foreach(fun(Name) ->");
+      writer.indent();
+      writer.write("?assertEqual(undefined, proplists:get_value(Name, Headers))");
+      writer.dedent();
+      writer.write("end, Forbidden).");
+      writer.dedent();
+      writer.write("");
+    }
+    if (helperNeeds.assertRequireHeaders()) {
+      writer.write("assert_require_headers(Required, Headers) ->");
+      writer.indent();
+      writer.write("lists:foreach(fun(Name) ->");
+      writer.indent();
+      writer.write("?assertNotEqual(undefined, proplists:get_value(Name, Headers))");
+      writer.dedent();
+      writer.write("end, Required).");
+      writer.dedent();
+      writer.write("");
+    }
+    if (helperNeeds.assertForbidQueryParams()) {
+      writer.write("assert_forbid_query_params(Forbidden, Query) ->");
+      writer.indent();
+      writer.write("lists:foreach(fun(Name) ->");
+      writer.indent();
+      writer.write("?assertEqual(false, maps:is_key(Name, Query))");
+      writer.dedent();
+      writer.write("end, Forbidden).");
+      writer.dedent();
+      writer.write("");
+    }
+    if (helperNeeds.assertRequireQueryParams()) {
+      writer.write("assert_require_query_params(Required, Query) ->");
+      writer.indent();
+      writer.write("lists:foreach(fun(Name) ->");
+      writer.indent();
+      writer.write("?assertEqual(true, maps:is_key(Name, Query))");
+      writer.dedent();
+      writer.write("end, Required).");
+      writer.dedent();
+    }
+  }
+
+  private static void emitHostAssert(
+      ErlangWriter writer, BeamHttpComplianceTests.HttpRequestTestCase testCase) {
+    String expectedHost = testCase.resolvedHost().orElse(testCase.host().orElse(null));
+    if (expectedHost == null) {
+      return;
+    }
+    writer.write(
+        "?assertEqual(<<\"$L\">>, Request#http_request.host),", escapeErlang(expectedHost));
   }
 
   private static String testFunctionName(String id) {

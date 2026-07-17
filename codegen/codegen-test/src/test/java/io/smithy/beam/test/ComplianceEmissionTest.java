@@ -54,8 +54,12 @@ class ComplianceEmissionTest {
     assertThat(tests).contains("decode_get_item_response");
     assertThat(tests).contains("headers_to_proplist");
     assertThat(tests).contains("assert_headers");
+    assertThat(tests).contains("assert_query_params");
+    assertThat(tests).contains("assert_forbid_headers");
+    assertThat(tests).contains("assert_require_headers");
+    assertThat(tests).contains("Request#http_request.host");
+    assertThat(tests).contains("prefix.example.com");
     assertThat(tests).doesNotContain("query_params_to_map");
-    assertThat(tests).doesNotContain("assert_query_params");
   }
 
   @Test
@@ -81,8 +85,8 @@ class ComplianceEmissionTest {
     assertThat(tests).contains("decode_get_item_response");
     assertThat(tests).contains("defp headers_to_list");
     assertThat(tests).contains("defp assert_headers");
+    assertThat(tests).contains("defp assert_query_params");
     assertThat(tests).doesNotContain("defp query_params_to_map");
-    assertThat(tests).doesNotContain("defp assert_query_params");
   }
 
   @Test
