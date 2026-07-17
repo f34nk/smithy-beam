@@ -21,7 +21,7 @@ import io.beam.dsl.erlang.Variable;
 import io.beam.dsl.erlang.VariablePattern;
 import io.beam.dsl.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamEventStreamIndex;
-import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamMemberNames;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -57,7 +57,7 @@ final class ErlangStructureHelperDsl {
       String helperName) {
     List<RecordField> fields = new ArrayList<>();
     for (MemberShape member : structure.members()) {
-      String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, member);
       String wireKey = ErlangJsonCodecSupport.jsonKey(member);
       Expression raw =
           ErlangCodecHelperDsl.mapsGetDefault(
@@ -158,7 +158,7 @@ final class ErlangStructureHelperDsl {
       StructureShape parent,
       MemberShape member,
       String recordVar) {
-    String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+    String fieldName = BeamMemberNames.fieldName(sp, member);
     String recordName = ErlangJsonCodecSupport.structureHelperName(sp, parent);
     Expression binding = RecordFieldAccessExpr.of(Variable.of(recordVar), recordName, fieldName);
     return encodeFieldValue(model, sp, httpIndex, member, binding);

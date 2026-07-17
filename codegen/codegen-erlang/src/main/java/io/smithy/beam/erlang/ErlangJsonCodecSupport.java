@@ -18,6 +18,7 @@ import io.beam.dsl.erlang.Variable;
 import io.beam.dsl.erlang.VariablePattern;
 import io.beam.dsl.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamEventStreamIndex;
+import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamNameUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -175,7 +176,7 @@ final class ErlangJsonCodecSupport {
       StructureShape parent,
       MemberShape member,
       String recordVar) {
-    String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+    String fieldName = BeamMemberNames.fieldName(sp, member);
     String recordName = structureHelperName(sp, parent);
     return encodeJsonValue(
         model, sp, httpIndex, member, recordVar + "#" + recordName + "." + fieldName);
@@ -205,17 +206,17 @@ final class ErlangJsonCodecSupport {
         : "decode_timestamp_date_time";
   }
 
-  static List<String> inputPatternParts(StructureShape input) {
+  static List<String> inputPatternParts(SymbolProvider sp, StructureShape input) {
     List<String> parts = new ArrayList<>();
     for (MemberShape member : input.members()) {
-      String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String field = BeamMemberNames.fieldName(sp, member);
       parts.add(field + " = " + toBindingVar(field));
     }
     return parts;
   }
 
-  static String inputPattern(StructureShape input) {
-    List<String> parts = inputPatternParts(input);
+  static String inputPattern(SymbolProvider sp, StructureShape input) {
+    List<String> parts = inputPatternParts(sp, input);
     return parts.isEmpty() ? "" : "\n    " + String.join(",\n    ", parts) + "\n";
   }
 
@@ -250,7 +251,7 @@ final class ErlangJsonCodecSupport {
       String eventStreamModule) {
     List<MapEntry> entries = new ArrayList<>();
     for (MemberShape member : members) {
-      String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, member);
       Shape target = model.expectShape(member.getTarget());
       if (target instanceof UnionShape union
           && BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {
@@ -281,7 +282,7 @@ final class ErlangJsonCodecSupport {
       String eventStreamModule) {
     List<RecordField> fields = new ArrayList<>();
     for (MemberShape member : members) {
-      String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, member);
       Shape target = model.expectShape(member.getTarget());
       if (target instanceof UnionShape union
           && BeamEventStreamIndex.of(model).isEventStreamUnion(union)) {

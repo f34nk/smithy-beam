@@ -26,6 +26,7 @@ import io.beam.dsl.erlang.VariablePattern;
 import io.beam.dsl.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamSigV4Metadata;
 import java.util.ArrayList;
 import java.util.List;
@@ -147,7 +148,7 @@ final class ErlangClientDispatchOperationDsl {
   }
 
   static String fieldName(SymbolProvider sp, MemberShape member) {
-    return sp.toSymbol(member).getProperty("fieldName", String.class).orElseThrow();
+    return BeamMemberNames.fieldName(sp, member);
   }
 
   private static DispatchContext buildContext(
