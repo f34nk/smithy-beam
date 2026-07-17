@@ -64,7 +64,8 @@ structure CreateUserOutput {
     {
         id: "GetUserRequest"
         protocol: restJson1
-        appliesTo: "client"
+        // optional only for client
+        // appliesTo: "client"
         params: {
             userId: "user-1"
         }
@@ -76,7 +77,8 @@ structure CreateUserOutput {
     {
         id: "GetUserResponse"
         protocol: restJson1
-        appliesTo: "client"
+        // optional only for client
+        // appliesTo: "client"
         params: {
             user: {
                 userId: "user-1"
@@ -89,6 +91,7 @@ structure CreateUserOutput {
             "Content-Type": "application/json"
         }
         body: "{\"user\":{\"userId\":\"user-1\",\"email\":\"ada@example.com\",\"displayName\":\"Ada\"}}"
+        bodyMediaType: "application/json"
     }
 ])
 operation GetUser {
