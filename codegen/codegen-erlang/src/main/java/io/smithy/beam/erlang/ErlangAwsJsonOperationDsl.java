@@ -19,7 +19,7 @@ import io.beam.dsl.erlang.Spec;
 import io.beam.dsl.erlang.TupleExpr;
 import io.beam.dsl.erlang.Variable;
 import io.beam.dsl.erlang.VariablePattern;
-import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamMemberNames;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -108,7 +108,7 @@ final class ErlangAwsJsonOperationDsl {
       MemberShape member = members.get(0);
       UnionShape union = model.expectShape(member.getTarget(), UnionShape.class);
       String helper = ErlangEventStreamEmitter.helperName(sp, union);
-      String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, member);
       successBody =
           TupleExpr.of(
               List.of(
