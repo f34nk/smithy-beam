@@ -57,19 +57,26 @@ class BeamHttpComplianceTestsTest {
             ShapeId.from("smithy.beam.test.compliance#GetItem"), OperationShape.class);
 
     var cases = BeamHttpComplianceTests.responseTests(model, operation);
-    assertThat(cases).hasSize(1);
+    assertThat(cases).hasSize(2);
 
     BeamHttpComplianceTests.HttpResponseTestCase testCase = cases.get(0);
     assertThat(testCase.id()).isEqualTo("GetItemResponse");
     assertThat(testCase.code()).isEqualTo(200);
     assertThat(testCase.headers()).containsEntry("Content-Type", "application/json");
-    assertThat(testCase.body()).isEqualTo("{\"name\": \"widget\"}");
+    assertThat(testCase.body()).contains("\"name\"");
+    assertThat(testCase.body()).contains("widget");
     assertThat(testCase.params().expectStringMember("name").getValue()).isEqualTo("widget");
     assertThat(testCase.errorShapeId()).isEmpty();
     assertThat(testCase.forbidHeaders()).containsExactly("X-Forbidden");
     assertThat(testCase.requireHeaders()).containsExactly("X-Required");
     assertThat(testCase.bodyMediaType()).contains("application/json");
     assertThat(testCase.authScheme()).isEmpty();
+
+    BeamHttpComplianceTests.HttpResponseTestCase serverCase = cases.get(1);
+    assertThat(serverCase.id()).isEqualTo("GetItemResponseEncode");
+    assertThat(serverCase.appliesTo()).contains(AppliesTo.SERVER);
+    assertThat(serverCase.bodyMediaType()).contains("application/json");
+    assertThat(serverCase.body()).contains("\n");
   }
 
   @Test

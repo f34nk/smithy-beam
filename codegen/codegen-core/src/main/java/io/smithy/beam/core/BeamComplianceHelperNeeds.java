@@ -12,6 +12,7 @@ public final class BeamComplianceHelperNeeds {
   private boolean assertForbidQueryParams;
   private boolean assertRequireQueryParams;
   private boolean assertResolvedHost;
+  private boolean assertJsonBody;
 
   public void needHeadersConverter() {
     headersConverter = true;
@@ -47,6 +48,10 @@ public final class BeamComplianceHelperNeeds {
 
   public void needAssertResolvedHost() {
     assertResolvedHost = true;
+  }
+
+  public void needAssertJsonBody() {
+    assertJsonBody = true;
   }
 
   public boolean headersConverter() {
@@ -85,6 +90,10 @@ public final class BeamComplianceHelperNeeds {
     return assertResolvedHost;
   }
 
+  public boolean assertJsonBody() {
+    return assertJsonBody;
+  }
+
   public boolean any() {
     return headersConverter
         || queryParamsConverter
@@ -94,6 +103,7 @@ public final class BeamComplianceHelperNeeds {
         || assertRequireHeaders
         || assertForbidQueryParams
         || assertRequireQueryParams
-        || assertResolvedHost;
+        || assertResolvedHost
+        || assertJsonBody;
   }
 }

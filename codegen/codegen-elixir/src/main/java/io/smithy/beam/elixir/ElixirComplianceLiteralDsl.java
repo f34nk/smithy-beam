@@ -12,7 +12,6 @@ import io.beam.dsl.elixir.StringExpr;
 import io.beam.dsl.elixir.StructExpr;
 import io.beam.dsl.elixir.StructField;
 import io.beam.dsl.elixir.Variable;
-import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +20,7 @@ import java.util.function.Function;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.knowledge.HttpBinding;
 import software.amazon.smithy.model.node.ArrayNode;
 import software.amazon.smithy.model.node.BooleanNode;
 import software.amazon.smithy.model.node.Node;
@@ -33,7 +33,6 @@ import software.amazon.smithy.model.shapes.IntEnumShape;
 import software.amazon.smithy.model.shapes.ListShape;
 import software.amazon.smithy.model.shapes.MapShape;
 import software.amazon.smithy.model.shapes.MemberShape;
-import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.Shape;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.traits.EnumValueTrait;
@@ -89,14 +88,12 @@ final class ElixirComplianceLiteralDsl {
     return value == null ? NilExpr.of() : StringExpr.of(value);
   }
 
-  static Expression labelMap(
-      BeamHostLabelIndex hostLabelIndex, OperationShape operation, ObjectNode params) {
+  static Expression labelMap(List<HttpBinding> labels, ObjectNode params) {
     List<MapEntry> entries = new ArrayList<>();
-    for (MemberShape member : hostLabelIndex.hostLabelMembers(operation)) {
-      String memberName = member.getMemberName();
+    for (HttpBinding label : labels) {
+      String memberName = label.getMember().getMemberName();
       if (params.getMember(memberName).isPresent()) {
-        String field = BeamNameUtils.toSnakeCase(memberName);
-        entries.add(MapEntry.atomKey(field, scalarValue(params.expectMember(memberName))));
+        entries.add(MapEntry.stringKey(memberName, scalarValue(params.expectMember(memberName))));
       }
     }
     if (entries.isEmpty()) {

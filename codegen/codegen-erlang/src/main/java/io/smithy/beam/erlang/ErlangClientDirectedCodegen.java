@@ -146,7 +146,7 @@ final class ErlangClientDirectedCodegen
 
     ErlangS3EndpointEmitter.emit(ctx, service);
     ErlangWaiterEmitter.emit(ctx, service);
-    ErlangComplianceTestEmitter.emit(ctx, service);
+    ErlangComplianceTestEmitter.emit(ctx, service, BeamCodegenKind.CLIENT);
     ErlangEventStreamEmitter.emit(ctx, service);
     BeamResourceIndex resourceIndex = BeamResourceIndex.of(ctx.model());
     for (ResourceShape resource : resourceIndex.containedResourcesSorted(service)) {

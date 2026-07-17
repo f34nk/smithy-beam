@@ -1,13 +1,12 @@
 package io.smithy.beam.erlang;
 
+import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamComplianceHelperNeeds;
 import io.smithy.beam.core.BeamComplianceLiterals;
 import io.smithy.beam.core.BeamErlangLayout;
-import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpComplianceTests;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamSettings;
-import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -24,7 +23,10 @@ public final class ErlangComplianceTestEmitter {
 
   private ErlangComplianceTestEmitter() {}
 
-  public static void emit(ErlangContext ctx, ServiceShape service) {
+  public static void emit(ErlangContext ctx, ServiceShape service, BeamCodegenKind kind) {
+    if (kind != BeamCodegenKind.CLIENT && kind != BeamCodegenKind.SERVER) {
+      return;
+    }
     BeamSettings settings = ctx.settings();
     Model model = ctx.model();
     ShapeId protocol = ctx.resolvedProtocolTraitId();
@@ -36,9 +38,12 @@ public final class ErlangComplianceTestEmitter {
         BeamHttpComplianceTests.requestTestsForService(model, service);
     List<BeamHttpComplianceTests.OperationResponseTests> responseBindings =
         BeamHttpComplianceTests.responseTestsForService(model, service);
-    if (requestBindings.isEmpty() && responseBindings.isEmpty()) {
+    if (!hasApplicableCases(requestBindings, responseBindings, protocol, kind)) {
       return;
     }
+
+    boolean emitClient = kind == BeamCodegenKind.CLIENT;
+    boolean emitServer = kind == BeamCodegenKind.SERVER;
 
     BeamErlangLayout layout =
         new BeamErlangLayout(settings, service.getId().getNamespace(), service);
@@ -46,7 +51,6 @@ public final class ErlangComplianceTestEmitter {
     String serverCodecMod = layout.serverCodecModuleName(protocol);
     SymbolProvider sp = ctx.symbolProvider();
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-    BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
     boolean encodeWithConfig =
         ErlangRestJsonSupport.serviceHasHostLabelOperations(model, service)
             || ErlangRestXmlSupport.serviceHasHostLabelOperations(model, service);
@@ -73,33 +77,35 @@ public final class ErlangComplianceTestEmitter {
                 List<HttpBinding> labels =
                     httpIndex.getRequestBindings(operation, HttpBinding.Location.LABEL);
 
-                for (BeamHttpComplianceTests.HttpRequestTestCase testCase :
-                    BeamHttpComplianceTests.clientRequestTests(binding.cases(), protocol)) {
-                  emitClientRequestTest(
-                      writer,
-                      model,
-                      testCase,
-                      opSym,
-                      input,
-                      clientCodecMod,
-                      sp,
-                      encodeWithConfig,
-                      helperNeeds);
+                if (emitClient) {
+                  for (BeamHttpComplianceTests.HttpRequestTestCase testCase :
+                      BeamHttpComplianceTests.clientRequestTests(binding.cases(), protocol)) {
+                    emitClientRequestTest(
+                        writer,
+                        model,
+                        testCase,
+                        opSym,
+                        input,
+                        clientCodecMod,
+                        sp,
+                        encodeWithConfig,
+                        helperNeeds);
+                  }
                 }
-                for (BeamHttpComplianceTests.HttpRequestTestCase testCase :
-                    BeamHttpComplianceTests.serverRequestTests(binding.cases(), protocol)) {
-                  emitServerRequestTest(
-                      writer,
-                      model,
-                      testCase,
-                      opSym,
-                      input,
-                      serverCodecMod,
-                      sp,
-                      labels,
-                      hostLabelIndex,
-                      operation,
-                      helperNeeds);
+                if (emitServer) {
+                  for (BeamHttpComplianceTests.HttpRequestTestCase testCase :
+                      BeamHttpComplianceTests.serverRequestTests(binding.cases(), protocol)) {
+                    emitServerRequestTest(
+                        writer,
+                        model,
+                        testCase,
+                        opSym,
+                        input,
+                        serverCodecMod,
+                        sp,
+                        labels,
+                        helperNeeds);
+                  }
                 }
               }
 
@@ -114,36 +120,70 @@ public final class ErlangComplianceTestEmitter {
                                 model.expectShape(
                                     operation.getOutputShape(), StructureShape.class));
 
-                for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
-                    BeamHttpComplianceTests.clientResponseTests(binding.cases(), protocol)) {
-                  emitClientResponseTest(
-                      writer,
-                      model,
-                      testCase,
-                      opSym,
-                      outputShape,
-                      clientCodecMod,
-                      sp,
-                      binding.errorShape().isPresent(),
-                      helperNeeds);
+                if (emitClient) {
+                  for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
+                      BeamHttpComplianceTests.clientResponseTests(binding.cases(), protocol)) {
+                    emitClientResponseTest(
+                        writer,
+                        model,
+                        testCase,
+                        opSym,
+                        outputShape,
+                        clientCodecMod,
+                        sp,
+                        binding.errorShape().isPresent(),
+                        helperNeeds);
+                  }
                 }
-                for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
-                    BeamHttpComplianceTests.serverResponseTests(binding.cases(), protocol)) {
-                  emitServerResponseTest(
-                      writer,
-                      model,
-                      testCase,
-                      opSym,
-                      outputShape,
-                      serverCodecMod,
-                      sp,
-                      binding.errorShape().isPresent(),
-                      helperNeeds);
+                if (emitServer) {
+                  for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
+                      BeamHttpComplianceTests.serverResponseTests(binding.cases(), protocol)) {
+                    emitServerResponseTest(
+                        writer,
+                        model,
+                        testCase,
+                        opSym,
+                        outputShape,
+                        serverCodecMod,
+                        sp,
+                        binding.errorShape().isPresent(),
+                        helperNeeds);
+                  }
                 }
               }
 
               emitAssertionHelpers(writer, helperNeeds);
             });
+  }
+
+  private static boolean hasApplicableCases(
+      List<BeamHttpComplianceTests.OperationRequestTests> requestBindings,
+      List<BeamHttpComplianceTests.OperationResponseTests> responseBindings,
+      ShapeId protocol,
+      BeamCodegenKind kind) {
+    boolean emitClient = kind == BeamCodegenKind.CLIENT;
+    boolean emitServer = kind == BeamCodegenKind.SERVER;
+    for (BeamHttpComplianceTests.OperationRequestTests binding : requestBindings) {
+      if (emitClient
+          && !BeamHttpComplianceTests.clientRequestTests(binding.cases(), protocol).isEmpty()) {
+        return true;
+      }
+      if (emitServer
+          && !BeamHttpComplianceTests.serverRequestTests(binding.cases(), protocol).isEmpty()) {
+        return true;
+      }
+    }
+    for (BeamHttpComplianceTests.OperationResponseTests binding : responseBindings) {
+      if (emitClient
+          && !BeamHttpComplianceTests.clientResponseTests(binding.cases(), protocol).isEmpty()) {
+        return true;
+      }
+      if (emitServer
+          && !BeamHttpComplianceTests.serverResponseTests(binding.cases(), protocol).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static void emitClientRequestTest(
@@ -156,7 +196,7 @@ public final class ErlangComplianceTestEmitter {
       SymbolProvider sp,
       boolean encodeWithConfig,
       BeamComplianceHelperNeeds helperNeeds) {
-    String fn = testFunctionName(testCase.id());
+    String fn = testFunctionName(testCase.id() + "_client");
     String inputLiteral =
         BeamComplianceLiterals.erlangRecordLiteral(model, input, testCase.params(), sp);
     String encodeCall =
@@ -214,9 +254,12 @@ public final class ErlangComplianceTestEmitter {
     }
     emitHostAssert(writer, testCase);
     if (testCase.body() != null) {
-      writer.write(
-          "?assertEqual(<<\"$L\">>, iolist_to_binary(Request#http_request.body)),",
-          escapeErlang(testCase.body()));
+      emitBodyAssert(
+          writer,
+          testCase.body(),
+          testCase.bodyMediaType(),
+          "Request#http_request.body",
+          helperNeeds);
     }
     writer.write("ok.");
     writer.dedent();
@@ -232,15 +275,13 @@ public final class ErlangComplianceTestEmitter {
       String codecMod,
       SymbolProvider sp,
       List<HttpBinding> labels,
-      BeamHostLabelIndex hostLabelIndex,
-      OperationShape operation,
       BeamComplianceHelperNeeds helperNeeds) {
     String fn = testFunctionName(testCase.id() + "_server");
     String decodeCall;
     if (labels.isEmpty()) {
       decodeCall = codecMod + ":decode_" + opSym.getName() + "_request(Request)";
     } else {
-      String labelMap = erlangLabelMap(hostLabelIndex, operation, testCase.params());
+      String labelMap = BeamComplianceLiterals.erlangHttpLabelMap(labels, testCase.params());
       decodeCall = codecMod + ":decode_" + opSym.getName() + "_request(Request, " + labelMap + ")";
     }
 
@@ -272,7 +313,7 @@ public final class ErlangComplianceTestEmitter {
       SymbolProvider sp,
       boolean errorCase,
       BeamComplianceHelperNeeds helperNeeds) {
-    String fn = testFunctionName(testCase.id());
+    String fn = testFunctionName(testCase.id() + "_client");
 
     writer.write("$L() ->", fn);
     writer.indent();
@@ -335,9 +376,12 @@ public final class ErlangComplianceTestEmitter {
           BeamComplianceLiterals.erlangQueryParamsList(testCase.requireHeaders()));
     }
     if (testCase.body() != null) {
-      writer.write(
-          "?assertEqual(<<\"$L\">>, iolist_to_binary(Response#http_response.body)),",
-          escapeErlang(testCase.body()));
+      emitBodyAssert(
+          writer,
+          testCase.body(),
+          testCase.bodyMediaType(),
+          "Response#http_response.body",
+          helperNeeds);
     }
     writer.write("ok.");
     writer.dedent();
@@ -386,23 +430,20 @@ public final class ErlangComplianceTestEmitter {
     }
   }
 
-  private static String erlangLabelMap(
-      BeamHostLabelIndex hostLabelIndex,
-      OperationShape operation,
-      software.amazon.smithy.model.node.ObjectNode params) {
-    List<String> entries = new ArrayList<>();
-    for (var member : hostLabelIndex.hostLabelMembers(operation)) {
-      String memberName = member.getMemberName();
-      if (params.getMember(memberName).isPresent()) {
-        String field = BeamNameUtils.toSnakeCase(memberName);
-        String value = BeamComplianceLiterals.erlangNodeValue(params.expectMember(memberName));
-        entries.add(field + " => " + value);
-      }
+  private static void emitBodyAssert(
+      ErlangWriter writer,
+      String body,
+      java.util.Optional<String> bodyMediaType,
+      String bodyExpr,
+      BeamComplianceHelperNeeds helperNeeds) {
+    if (BeamComplianceLiterals.bodyCompareMode(bodyMediaType)
+        == BeamComplianceLiterals.BodyCompareMode.JSON) {
+      helperNeeds.needAssertJsonBody();
+      writer.write("assert_json_body(<<\"$L\">>, $L),", escapeErlang(body), bodyExpr);
+      return;
     }
-    if (entries.isEmpty()) {
-      return "#{}";
-    }
-    return "#{" + String.join(", ", entries) + "}";
+    writer.write(
+        "?assertEqual(<<\"$L\">>, iolist_to_binary($L)),", escapeErlang(body), bodyExpr);
   }
 
   private static void emitAssertionHelpers(
@@ -503,6 +544,14 @@ public final class ErlangComplianceTestEmitter {
       writer.write("?assertEqual(true, maps:is_key(Name, Query))");
       writer.dedent();
       writer.write("end, Required).");
+      writer.dedent();
+      writer.write("");
+    }
+    if (helperNeeds.assertJsonBody()) {
+      writer.write("assert_json_body(Expected, Actual) ->");
+      writer.indent();
+      writer.write(
+          "?assertEqual(jsone:decode(Expected), jsone:decode(iolist_to_binary(Actual))).");
       writer.dedent();
     }
   }

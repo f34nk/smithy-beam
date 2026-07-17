@@ -135,7 +135,7 @@ final class ElixirServerDirectedCodegen
     ElixirProtocolCodecDsl.emitServerCodec(ctx, service);
 
     ElixirRouterEmitter.emit(ctx, service);
-    ElixirComplianceTestEmitter.emit(ctx, service);
+    ElixirComplianceTestEmitter.emit(ctx, service, BeamCodegenKind.SERVER);
     BeamResourceIndex resourceIndex = BeamResourceIndex.of(ctx.model());
     for (ResourceShape resource : resourceIndex.containedResourcesSorted(service)) {
       ElixirResourceEmitter.emitServer(ctx, resource);

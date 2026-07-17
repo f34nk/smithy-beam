@@ -131,7 +131,7 @@ final class ErlangServerDirectedCodegen
     ErlangProtocolCodecDsl.emitServerCodec(ctx, service);
 
     ErlangRouterEmitter.emit(ctx, service);
-    ErlangComplianceTestEmitter.emit(ctx, service);
+    ErlangComplianceTestEmitter.emit(ctx, service, BeamCodegenKind.SERVER);
     BeamResourceIndex resourceIndex = BeamResourceIndex.of(ctx.model());
     for (ResourceShape resource : resourceIndex.containedResourcesSorted(service)) {
       ErlangResourceEmitter.emitServer(ctx, resource);

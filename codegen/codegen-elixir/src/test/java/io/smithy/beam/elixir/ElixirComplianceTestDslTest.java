@@ -53,14 +53,15 @@ class ElixirComplianceTestIrTest {
 
   @Test
   void complianceTestsModuleMatchesGolden() throws IOException {
-    Module module = ElixirComplianceTestDsl.complianceTestsModule(testContext(), service);
+    Module module =
+        ElixirComplianceTestDsl.complianceTestsModule(testContext(), service, BeamCodegenKind.CLIENT);
     assertThat(ElixirRenderer.render(module))
         .isEqualTo(
             DslGoldenAssertions.readExpectedString(
                 "dsl/compliance_service_compliance_test.expected.ex"));
     String text = ElixirRenderer.render(module);
     assertThat(text).contains("use ExUnit.Case, async: true");
-    assertThat(text).contains("test \"GetItemRequest\"");
+    assertThat(text).contains("test \"GetItemRequest client\"");
     assertThat(text).contains("defp assert_headers");
     assertThat(text).contains("defp assert_forbid_headers");
     assertThat(text).contains("defp assert_require_headers");

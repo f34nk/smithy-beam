@@ -52,7 +52,11 @@ service ComplianceService {
         headers: {
             "Content-Type": "application/json"
         }
-        body: "{\"name\": \"widget\"}"
+        body: """
+            {
+                "name": "widget"
+            }
+            """
         bodyMediaType: "application/json"
         forbidHeaders: [
             "X-Forbidden"
@@ -60,6 +64,24 @@ service ComplianceService {
         requireHeaders: [
             "X-Required"
         ]
+    }
+    {
+        id: "GetItemResponseEncode"
+        protocol: restJson1
+        appliesTo: "server"
+        params: {
+            name: "widget"
+        }
+        code: 200
+        headers: {
+            "Content-Type": "application/json"
+        }
+        body: """
+            {
+                "name": "widget"
+            }
+            """
+        bodyMediaType: "application/json"
     }
 ])
 operation GetItem {

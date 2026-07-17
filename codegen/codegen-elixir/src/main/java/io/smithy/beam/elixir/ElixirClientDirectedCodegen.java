@@ -154,7 +154,7 @@ final class ElixirClientDirectedCodegen
 
     ElixirS3EndpointEmitter.emit(ctx, service);
     ElixirWaiterEmitter.emit(ctx, service);
-    ElixirComplianceTestEmitter.emit(ctx, service);
+    ElixirComplianceTestEmitter.emit(ctx, service, BeamCodegenKind.CLIENT);
     ElixirEventStreamEmitter.emit(ctx, service);
     BeamResourceIndex resourceIndex = BeamResourceIndex.of(ctx.model());
     for (ResourceShape resource : resourceIndex.containedResourcesSorted(service)) {

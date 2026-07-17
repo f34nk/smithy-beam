@@ -35,9 +35,9 @@ import io.beam.dsl.elixir.UseDirective;
 import io.beam.dsl.elixir.UseOption;
 import io.beam.dsl.elixir.Variable;
 import io.beam.dsl.elixir.VariablePattern;
+import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamComplianceHelperNeeds;
 import io.smithy.beam.core.BeamElixirLayout;
-import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpComplianceTests;
 import io.smithy.beam.core.BeamNameUtils;
 import java.util.ArrayList;
@@ -57,7 +57,11 @@ import software.amazon.smithy.model.shapes.StructureShape;
 final class ElixirComplianceTestDsl {
   private ElixirComplianceTestDsl() {}
 
-  static Module complianceTestsModule(ElixirContext ctx, ServiceShape service) {
+  static Module complianceTestsModule(
+      ElixirContext ctx, ServiceShape service, BeamCodegenKind kind) {
+    if (kind != BeamCodegenKind.CLIENT && kind != BeamCodegenKind.SERVER) {
+      return null;
+    }
     Model model = ctx.model();
     ShapeId protocol = ctx.resolvedProtocolTraitId();
     if (protocol == null) {
@@ -67,9 +71,12 @@ final class ElixirComplianceTestDsl {
         BeamHttpComplianceTests.requestTestsForService(model, service);
     List<BeamHttpComplianceTests.OperationResponseTests> responseBindings =
         BeamHttpComplianceTests.responseTestsForService(model, service);
-    if (requestBindings.isEmpty() && responseBindings.isEmpty()) {
+    if (!hasApplicableCases(requestBindings, responseBindings, protocol, kind)) {
       return null;
     }
+
+    boolean emitClient = kind == BeamCodegenKind.CLIENT;
+    boolean emitServer = kind == BeamCodegenKind.SERVER;
 
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
@@ -82,7 +89,6 @@ final class ElixirComplianceTestDsl {
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     SymbolProvider sp = ctx.symbolProvider();
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
-    BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
     boolean encodeWithConfig =
         ElixirRestJsonSupport.serviceHasHostLabelOperations(model, service)
             || ElixirRestXmlSupport.serviceHasHostLabelOperations(model, service);
@@ -98,37 +104,39 @@ final class ElixirComplianceTestDsl {
       List<HttpBinding> labels =
           httpIndex.getRequestBindings(operation, HttpBinding.Location.LABEL);
 
-      for (BeamHttpComplianceTests.HttpRequestTestCase testCase :
-          BeamHttpComplianceTests.clientRequestTests(binding.cases(), protocol)) {
-        addTestLines(
-            testLines,
-            clientRequestTest(
-                model,
-                testCase,
-                opSym,
-                input,
-                clientCodecMod,
-                sp,
-                encodeWithConfig,
-                structNameFn,
-                helperNeeds));
+      if (emitClient) {
+        for (BeamHttpComplianceTests.HttpRequestTestCase testCase :
+            BeamHttpComplianceTests.clientRequestTests(binding.cases(), protocol)) {
+          addTestLines(
+              testLines,
+              clientRequestTest(
+                  model,
+                  testCase,
+                  opSym,
+                  input,
+                  clientCodecMod,
+                  sp,
+                  encodeWithConfig,
+                  structNameFn,
+                  helperNeeds));
+        }
       }
-      for (BeamHttpComplianceTests.HttpRequestTestCase testCase :
-          BeamHttpComplianceTests.serverRequestTests(binding.cases(), protocol)) {
-        addTestLines(
-            testLines,
-            serverRequestTest(
-                model,
-                testCase,
-                opSym,
-                input,
-                serverCodecMod,
-                sp,
-                labels,
-                hostLabelIndex,
-                operation,
-                structNameFn,
-                helperNeeds));
+      if (emitServer) {
+        for (BeamHttpComplianceTests.HttpRequestTestCase testCase :
+            BeamHttpComplianceTests.serverRequestTests(binding.cases(), protocol)) {
+          addTestLines(
+              testLines,
+              serverRequestTest(
+                  model,
+                  testCase,
+                  opSym,
+                  input,
+                  serverCodecMod,
+                  sp,
+                  labels,
+                  structNameFn,
+                  helperNeeds));
+        }
       }
     }
     for (BeamHttpComplianceTests.OperationResponseTests binding : responseBindings) {
@@ -140,54 +148,94 @@ final class ElixirComplianceTestDsl {
               .orElseGet(() -> model.expectShape(operation.getOutputShape(), StructureShape.class));
       boolean errorCase = binding.errorShape().isPresent();
 
-      for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
-          BeamHttpComplianceTests.clientResponseTests(binding.cases(), protocol)) {
-        addTestLines(
-            testLines,
-            clientResponseTest(
-                model,
-                testCase,
-                opSym,
-                outputShape,
-                clientCodecMod,
-                sp,
-                errorCase,
-                structNameFn,
-                helperNeeds));
+      if (emitClient) {
+        for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
+            BeamHttpComplianceTests.clientResponseTests(binding.cases(), protocol)) {
+          addTestLines(
+              testLines,
+              clientResponseTest(
+                  model,
+                  testCase,
+                  opSym,
+                  outputShape,
+                  clientCodecMod,
+                  sp,
+                  errorCase,
+                  structNameFn,
+                  helperNeeds));
+        }
       }
-      for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
-          BeamHttpComplianceTests.serverResponseTests(binding.cases(), protocol)) {
-        addTestLines(
-            testLines,
-            serverResponseTest(
-                model,
-                testCase,
-                opSym,
-                outputShape,
-                serverCodecMod,
-                sp,
-                errorCase,
-                structNameFn,
-                helperNeeds));
+      if (emitServer) {
+        for (BeamHttpComplianceTests.HttpResponseTestCase testCase :
+            BeamHttpComplianceTests.serverResponseTests(binding.cases(), protocol)) {
+          addTestLines(
+              testLines,
+              serverResponseTest(
+                  model,
+                  testCase,
+                  opSym,
+                  outputShape,
+                  serverCodecMod,
+                  sp,
+                  errorCase,
+                  structNameFn,
+                  helperNeeds));
+        }
       }
     }
     List<Function> helpers = assertionHelperFunctions(helperNeeds);
+
+    List<Alias> aliases = new ArrayList<>();
+    aliases.add(Alias.of(typesMod, "Types"));
+    if (emitClient) {
+      aliases.add(Alias.of(clientCodecMod));
+    }
+    if (emitServer) {
+      aliases.add(Alias.of(serverCodecMod, "ServerCodec"));
+    }
+    aliases.add(Alias.of(runtimeMod, "RuntimeTypes"));
 
     return Module.of(
         moduleName,
         null,
         List.of(
             UseDirective.of("ExUnit.Case", List.of(UseOption.of("async", BooleanExpr.of(true))))),
-        List.of(
-            Alias.of(typesMod, "Types"),
-            Alias.of(clientCodecMod),
-            Alias.of(serverCodecMod, "ServerCodec"),
-            Alias.of(runtimeMod, "RuntimeTypes")),
+        aliases,
         testLines,
         List.of(),
         List.of(),
         List.of(),
         helpers);
+  }
+
+  private static boolean hasApplicableCases(
+      List<BeamHttpComplianceTests.OperationRequestTests> requestBindings,
+      List<BeamHttpComplianceTests.OperationResponseTests> responseBindings,
+      ShapeId protocol,
+      BeamCodegenKind kind) {
+    boolean emitClient = kind == BeamCodegenKind.CLIENT;
+    boolean emitServer = kind == BeamCodegenKind.SERVER;
+    for (BeamHttpComplianceTests.OperationRequestTests binding : requestBindings) {
+      if (emitClient
+          && !BeamHttpComplianceTests.clientRequestTests(binding.cases(), protocol).isEmpty()) {
+        return true;
+      }
+      if (emitServer
+          && !BeamHttpComplianceTests.serverRequestTests(binding.cases(), protocol).isEmpty()) {
+        return true;
+      }
+    }
+    for (BeamHttpComplianceTests.OperationResponseTests binding : responseBindings) {
+      if (emitClient
+          && !BeamHttpComplianceTests.clientResponseTests(binding.cases(), protocol).isEmpty()) {
+        return true;
+      }
+      if (emitServer
+          && !BeamHttpComplianceTests.serverResponseTests(binding.cases(), protocol).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static void addTestLines(List<String> target, List<String> testLines) {
@@ -293,21 +341,10 @@ final class ElixirComplianceTestDsl {
                   DotCallExpr.of(Variable.of("request"), "query", List.of()))));
     }
     hostAssert(testCase).ifPresent(body::add);
-    if (testCase.body() != null) {
-      body.add(
-          LocalCallExpr.of(
-              "assert",
-              List.of(
-                  InfixExpr.of(
-                      RemoteCallExpr.of(
-                          "IO",
-                          "iodata_to_binary",
-                          List.of(DotCallExpr.of(Variable.of("request"), "body", List.of()))),
-                      "==",
-                      StringExpr.of(testCase.body())))));
-    }
+    bodyAssert(testCase.body(), testCase.bodyMediaType(), "request", helperNeeds)
+        .ifPresent(body::add);
 
-    return renderTestLines(escapeElixir(testCase.id()), body);
+    return renderTestLines(escapeElixir(testCase.id()) + " client", body);
   }
 
   static List<String> serverRequestTest(
@@ -318,8 +355,6 @@ final class ElixirComplianceTestDsl {
       String codecMod,
       SymbolProvider sp,
       List<HttpBinding> labels,
-      BeamHostLabelIndex hostLabelIndex,
-      OperationShape operation,
       java.util.function.Function<StructureShape, String> structNameFn,
       BeamComplianceHelperNeeds helperNeeds) {
     Expression requestStruct =
@@ -345,7 +380,7 @@ final class ElixirComplianceTestDsl {
               "decode_" + opSym.getName() + "_request",
               List.of(
                   Variable.of("request"),
-                  labelMapExpr(hostLabelIndex, operation, testCase.params())));
+                  ElixirComplianceLiteralDsl.labelMap(labels, testCase.params())));
     }
 
     List<Expression> body = new ArrayList<>();
@@ -389,7 +424,7 @@ final class ElixirComplianceTestDsl {
     body.addAll(
         assertMemberAsserts(model, outputShape, testCase.params(), sp, "output", structNameFn));
 
-    return renderTestLines(escapeElixir(testCase.id()), body);
+    return renderTestLines(escapeElixir(testCase.id()) + " client", body);
   }
 
   static List<String> serverResponseTest(
@@ -449,17 +484,8 @@ final class ElixirComplianceTestDsl {
                   DotCallExpr.of(Variable.of("response"), "headers", List.of()))));
     }
     if (testCase.body() != null) {
-      body.add(
-          LocalCallExpr.of(
-              "assert",
-              List.of(
-                  InfixExpr.of(
-                      RemoteCallExpr.of(
-                          "IO",
-                          "iodata_to_binary",
-                          List.of(DotCallExpr.of(Variable.of("response"), "body", List.of()))),
-                      "==",
-                      StringExpr.of(testCase.body())))));
+      bodyAssert(testCase.body(), testCase.bodyMediaType(), "response", helperNeeds)
+          .ifPresent(body::add);
     }
 
     return renderTestLines(escapeElixir(testCase.id()) + " server", body);
@@ -517,9 +543,27 @@ final class ElixirComplianceTestDsl {
     return asserts;
   }
 
-  static Expression labelMapExpr(
-      BeamHostLabelIndex hostLabelIndex, OperationShape operation, ObjectNode params) {
-    return ElixirComplianceLiteralDsl.labelMap(hostLabelIndex, operation, params);
+  private static java.util.Optional<Expression> bodyAssert(
+      String body,
+      java.util.Optional<String> bodyMediaType,
+      String structVar,
+      BeamComplianceHelperNeeds helperNeeds) {
+    if (body == null) {
+      return java.util.Optional.empty();
+    }
+    Expression actual =
+        RemoteCallExpr.of(
+            "IO",
+            "iodata_to_binary",
+            List.of(DotCallExpr.of(Variable.of(structVar), "body", List.of())));
+    if (io.smithy.beam.core.BeamComplianceLiterals.bodyCompareMode(bodyMediaType)
+        == io.smithy.beam.core.BeamComplianceLiterals.BodyCompareMode.JSON) {
+      helperNeeds.needAssertJsonBody();
+      return java.util.Optional.of(
+          LocalCallExpr.of("assert_json_body", List.of(StringExpr.of(body), actual)));
+    }
+    return java.util.Optional.of(
+        LocalCallExpr.of("assert", List.of(InfixExpr.of(actual, "==", StringExpr.of(body)))));
   }
 
   static List<Function> assertionHelperFunctions(BeamComplianceHelperNeeds helperNeeds) {
@@ -548,6 +592,9 @@ final class ElixirComplianceTestDsl {
     }
     if (helperNeeds.assertRequireQueryParams()) {
       helpers.add(assertRequireQueryParams());
+    }
+    if (helperNeeds.assertJsonBody()) {
+      helpers.add(assertJsonBody());
     }
     return helpers;
   }
@@ -767,6 +814,20 @@ final class ElixirComplianceTestDsl {
         "assert_require_query_params",
         List.of(VariablePattern.of("required"), VariablePattern.of("query")),
         RemoteCallExpr.of("Enum", "each", List.of(Variable.of("required"), eachFn)),
+        true);
+  }
+
+  private static Function assertJsonBody() {
+    return defp(
+        "assert_json_body",
+        List.of(VariablePattern.of("expected"), VariablePattern.of("actual")),
+        LocalCallExpr.of(
+            "assert",
+            List.of(
+                InfixExpr.of(
+                    RemoteCallExpr.of("Jason", "decode!", List.of(Variable.of("expected"))),
+                    "==",
+                    RemoteCallExpr.of("Jason", "decode!", List.of(Variable.of("actual")))))),
         true);
   }
 

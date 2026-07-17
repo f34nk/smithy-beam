@@ -70,6 +70,51 @@ public final class BeamComplianceLiterals {
     return value == null ? "undefined" : erlangBinary(value);
   }
 
+  /**
+   * How generated compliance tests compare an expected body to a codec body.
+   *
+   * <ul>
+   *   <li>{@link #EXACT} - byte equality after iodata normalization (default when {@code
+   *       bodyMediaType} is absent or non-JSON)
+   *   <li>{@link #JSON} - decode both sides as JSON documents and compare values when {@code
+   *       bodyMediaType} is {@code application/json}
+   * </ul>
+   */
+  public enum BodyCompareMode {
+    EXACT,
+    JSON
+  }
+
+  public static BodyCompareMode bodyCompareMode(java.util.Optional<String> bodyMediaType) {
+    return isJsonBodyMediaType(bodyMediaType) ? BodyCompareMode.JSON : BodyCompareMode.EXACT;
+  }
+
+  public static boolean isJsonBodyMediaType(java.util.Optional<String> bodyMediaType) {
+    return bodyMediaType
+        .map(mediaType -> mediaType.equalsIgnoreCase("application/json")
+            || mediaType.toLowerCase(java.util.Locale.ROOT).startsWith("application/json;"))
+        .orElse(false);
+  }
+
+  public static String erlangHttpLabelMap(
+      java.util.List<software.amazon.smithy.model.knowledge.HttpBinding> labels,
+      ObjectNode params) {
+    if (labels.isEmpty()) {
+      return "#{}";
+    }
+    List<String> entries = new ArrayList<>();
+    for (software.amazon.smithy.model.knowledge.HttpBinding label : labels) {
+      String memberName = label.getMember().getMemberName();
+      if (params.getMember(memberName).isPresent()) {
+        entries.add(erlangBinary(memberName) + " => " + erlangNodeValue(params.expectMember(memberName)));
+      }
+    }
+    if (entries.isEmpty()) {
+      return "#{}";
+    }
+    return "#{" + String.join(", ", entries) + "}";
+  }
+
   public static String erlangMemberValue(
       Model model, MemberShape member, Node value, SymbolProvider symbolProvider) {
     return erlangValue(model, member, value, symbolProvider);

@@ -1,6 +1,7 @@
 package io.smithy.beam.elixir;
 
 import io.beam.dsl.elixir.Module;
+import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import software.amazon.smithy.model.shapes.ServiceShape;
 
@@ -9,8 +10,8 @@ public final class ElixirComplianceTestEmitter {
 
   private ElixirComplianceTestEmitter() {}
 
-  public static void emit(ElixirContext ctx, ServiceShape service) {
-    Module module = ElixirComplianceTestDsl.complianceTestsModule(ctx, service);
+  public static void emit(ElixirContext ctx, ServiceShape service, BeamCodegenKind kind) {
+    Module module = ElixirComplianceTestDsl.complianceTestsModule(ctx, service, kind);
     if (module == null) {
       return;
     }
