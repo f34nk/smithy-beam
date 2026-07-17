@@ -11,6 +11,7 @@ import io.beam.dsl.erlang.Variable;
 import io.beam.dsl.erlang.VariablePattern;
 import io.beam.dsl.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamHostLabelIndex;
+import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
 import io.smithy.beam.core.BeamXmlBindingIndex;
@@ -69,7 +70,8 @@ final class ErlangRestXmlSupport {
       clauses.add(
           FunctionClause.of(
               List.of(IntegerPattern.of(httpStatus), WildcardPattern.of()),
-              TupleExpr.of(List.of(AtomExpr.of("error"), restXmlErrorRecord(errShape, recName)))));
+              TupleExpr.of(
+                  List.of(AtomExpr.of("error"), restXmlErrorRecord(sp, errShape, recName)))));
     }
     clauses.add(
         FunctionClause.of(
@@ -79,15 +81,15 @@ final class ErlangRestXmlSupport {
     return clauses;
   }
 
-  private static RecordExpr restXmlErrorRecord(StructureShape errShape, String recName) {
+  private static RecordExpr restXmlErrorRecord(
+      SymbolProvider sp, StructureShape errShape, String recName) {
     List<RecordField> fields = new ArrayList<>();
     for (MemberShape member : errShape.members()) {
       if (member.getMemberName().equals("__beam_error_kind")) {
         continue;
       }
       fields.add(
-          RecordField.of(
-              BeamNameUtils.toSnakeCase(member.getMemberName()), AtomExpr.of("undefined")));
+          RecordField.of(BeamMemberNames.fieldName(sp, member), AtomExpr.of("undefined")));
     }
     if (fields.isEmpty()) {
       return RecordExpr.of(recName, List.of());
@@ -96,13 +98,17 @@ final class ErlangRestXmlSupport {
   }
 
   static String buildStructureXmlMap(
-      Model model, StructureShape structure, String recordVar, String recordTag) {
+      Model model,
+      SymbolProvider sp,
+      StructureShape structure,
+      String recordVar,
+      String recordTag) {
     List<String> entries = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       if (BeamXmlBindingIndex.isXmlAttribute(member)) {
         continue;
       }
-      String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String field = BeamMemberNames.fieldName(sp, member);
       String wireName = BeamXmlBindingIndex.memberElementName(member);
       entries.add("<<\"" + wireName + "\">> => " + recordVar + "#" + recordTag + "." + field);
     }

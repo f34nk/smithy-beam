@@ -29,7 +29,7 @@ import io.beam.dsl.erlang.TupleExpr;
 import io.beam.dsl.erlang.TuplePattern;
 import io.beam.dsl.erlang.Variable;
 import io.beam.dsl.erlang.VariablePattern;
-import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamMemberNames;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -262,7 +262,7 @@ final class ErlangEventStreamDsl {
     List<MapEntry> entries = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String wireKey = jsonKey(member);
-      String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, member);
       entries.add(
           MapEntry.of(
               BinaryExpr.of(wireKey),
@@ -295,7 +295,7 @@ final class ErlangEventStreamDsl {
         RemoteCallExpr.of("jsone", "decode", List.of(Variable.of(payloadVar)));
     for (MemberShape member : structure.members()) {
       String wireKey = jsonKey(member);
-      String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, member);
       fields.add(
           RecordField.of(
               fieldName,

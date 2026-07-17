@@ -41,7 +41,7 @@ import io.beam.dsl.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamHttpChecksumIndex;
-import io.smithy.beam.core.BeamNameUtils;
+import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
 import io.smithy.beam.core.BeamXmlBindingIndex;
 import java.util.ArrayList;
@@ -106,8 +106,8 @@ final class ErlangRestXmlOperationDsl {
         encodeWithConfig
             ? List.of(
                 VariablePattern.of("Config"),
-                recordBindingHead("Input", inputRecord, patternBindings))
-            : List.of(recordBindingHead("Input", inputRecord, patternBindings));
+                recordBindingHead("Input", inputRecord, patternBindings, sp))
+            : List.of(recordBindingHead("Input", inputRecord, patternBindings, sp));
 
     return Function.of(
         "encode_" + opName + "_request",
@@ -242,7 +242,7 @@ final class ErlangRestXmlOperationDsl {
             List.of(
                 MatchExpr.bindValue("XmlNs", LocalCallExpr.of("xml_namespace", List.of())),
                 MatchExpr.bindValue(
-                    "MemberMap", buildStructureXmlMapExpr(model, errShape, "Error", recName)),
+                    "MemberMap", buildStructureXmlMapExpr(model, sp, errShape, "Error", recName)),
                 MatchExpr.bindValue(
                     "Inner",
                     LocalCallExpr.of(
@@ -298,7 +298,7 @@ final class ErlangRestXmlOperationDsl {
 
     List<Expression> body = new ArrayList<>();
     for (HttpBinding lb : labels) {
-      String fieldName = BeamNameUtils.toSnakeCase(lb.getMember().getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, lb.getMember());
       body.add(
           MatchExpr.bindValue(
               ErlangRestXmlSupport.toBindingVar(fieldName),
@@ -311,7 +311,7 @@ final class ErlangRestXmlOperationDsl {
                       AtomExpr.of("undefined")))));
     }
     for (HttpBinding qb : queries) {
-      String fieldName = BeamNameUtils.toSnakeCase(qb.getMember().getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, qb.getMember());
       body.add(
           MatchExpr.bindValue(
               ErlangRestXmlSupport.toBindingVar(fieldName),
@@ -327,7 +327,7 @@ final class ErlangRestXmlOperationDsl {
       body.add(headerBindingDecodeExpr(model, sp, hb));
     }
     for (HttpBinding ph : prefixHeaders) {
-      String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, ph.getMember());
       body.add(
           MatchExpr.bindValue(
               ErlangRestXmlSupport.toBindingVar(fieldName),
@@ -341,7 +341,7 @@ final class ErlangRestXmlOperationDsl {
     for (HttpBinding b :
         ErlangRestXmlSupport.concat(
             labels, queries, queryParams, headers, prefixHeaders, payloadMembers)) {
-      String fieldName = BeamNameUtils.toSnakeCase(b.getMember().getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, b.getMember());
       recordFields.add(
           RecordField.of(fieldName, Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName))));
     }
@@ -373,7 +373,7 @@ final class ErlangRestXmlOperationDsl {
       body.add(headerBindingDecodeExpr(model, sp, hb));
     }
     for (HttpBinding ph : respPrefixHeaders) {
-      String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, ph.getMember());
       body.add(
           MatchExpr.bindValue(
               ErlangRestXmlSupport.toBindingVar(fieldName),
@@ -408,7 +408,7 @@ final class ErlangRestXmlOperationDsl {
     List<RecordField> recordFields = new ArrayList<>();
     for (HttpBinding hb :
         ErlangRestXmlSupport.concat(respHeaders, respPrefixHeaders, respPayload)) {
-      String fieldName = BeamNameUtils.toSnakeCase(hb.getMember().getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, hb.getMember());
       if (boundFields.add(fieldName)) {
         recordFields.add(
             RecordField.of(fieldName, Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName))));
@@ -416,7 +416,7 @@ final class ErlangRestXmlOperationDsl {
     }
     if (respPayload.isEmpty() && !xmlBodyMembers.isEmpty()) {
       for (MemberShape member : xmlBodyMembers) {
-        String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+        String fieldName = BeamMemberNames.fieldName(sp, member);
         if (boundFields.add(fieldName)) {
           recordFields.add(
               RecordField.of(fieldName, Variable.of(ErlangRestXmlSupport.toBindingVar(fieldName))));
@@ -467,7 +467,7 @@ final class ErlangRestXmlOperationDsl {
     String requestContentType = resolvedRequestContentType(model, op, payloadMembers);
 
     List<Expression> body = new ArrayList<>();
-    body.addAll(buildIdempotencyTokenExprs(input, inputRecord));
+    body.addAll(buildIdempotencyTokenExprs(sp, input, inputRecord));
 
     BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
     boolean hasHostLabels =
@@ -500,7 +500,7 @@ final class ErlangRestXmlOperationDsl {
                 null));
       }
     } else {
-      body.add(MatchExpr.bindValue("Path", buildPathExpression(uriTemplate, labels)));
+      body.add(MatchExpr.bindValue("Path", buildPathExpression(sp, uriTemplate, labels)));
     }
 
     if (queries.isEmpty()) {
@@ -509,7 +509,7 @@ final class ErlangRestXmlOperationDsl {
       body.add(MatchExpr.bindValue("Query", flattenBindingCasesExpr(model, sp, queries, true)));
     }
 
-    body.addAll(buildQueryParamsExprs(queryParams));
+    body.addAll(buildQueryParamsExprs(sp, queryParams));
 
     if (headers.isEmpty()) {
       body.add(
@@ -535,7 +535,7 @@ final class ErlangRestXmlOperationDsl {
     }
 
     for (HttpBinding ph : prefixHeaders) {
-      String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, ph.getMember());
       body.add(
           MatchExpr.bindValue(
               "Headers",
@@ -617,7 +617,7 @@ final class ErlangRestXmlOperationDsl {
     }
 
     for (HttpBinding ph : respPrefixHeaders) {
-      String fieldName = BeamNameUtils.toSnakeCase(ph.getMember().getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, ph.getMember());
       body.add(
           MatchExpr.bindValue(
               "Headers",
@@ -638,7 +638,7 @@ final class ErlangRestXmlOperationDsl {
       body.add(MatchExpr.bindValue("XmlNs", LocalCallExpr.of("xml_namespace", List.of())));
       List<MapEntry> entries = new ArrayList<>();
       for (MemberShape member : output.members()) {
-        String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+        String field = BeamMemberNames.fieldName(sp, member);
         String wireName = BeamXmlBindingIndex.memberElementName(member);
         entries.add(
             MapEntry.of(
@@ -684,7 +684,7 @@ final class ErlangRestXmlOperationDsl {
 
   private static MatchExpr headerBindingDecodeExpr(
       Model model, SymbolProvider sp, HttpBinding binding) {
-    String fieldName = BeamNameUtils.toSnakeCase(binding.getMember().getMemberName());
+    String fieldName = BeamMemberNames.fieldName(sp, binding.getMember());
     String bindingVar = ErlangRestXmlSupport.toBindingVar(fieldName);
     Expression headerLookup =
         RemoteCallExpr.of(
@@ -711,7 +711,7 @@ final class ErlangRestXmlOperationDsl {
     HttpBinding payload = payloadMembers.get(0);
     MemberShape member = payload.getMember();
     Shape target = model.expectShape(member.getTarget());
-    String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+    String fieldName = BeamMemberNames.fieldName(sp, member);
     String bindingVar = ErlangRestXmlSupport.toBindingVar(fieldName);
 
     if (target instanceof BlobShape || target instanceof StringShape) {
@@ -745,7 +745,7 @@ final class ErlangRestXmlOperationDsl {
       Model model, HttpBinding payload, SymbolProvider sp) {
     MemberShape member = payload.getMember();
     Shape target = model.expectShape(member.getTarget());
-    String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+    String fieldName = BeamMemberNames.fieldName(sp, member);
     String bindingVar = ErlangRestXmlSupport.toBindingVar(fieldName);
 
     if (target instanceof BlobShape || target instanceof StringShape) {
@@ -783,7 +783,7 @@ final class ErlangRestXmlOperationDsl {
     String recordTag = ErlangRestXmlSupport.recordName(sp.toSymbol(structure));
     List<RecordField> fields = new ArrayList<>();
     for (MemberShape member : structure.members()) {
-      String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String field = BeamMemberNames.fieldName(sp, member);
       Shape target = model.expectShape(member.getTarget());
       if (BeamXmlBindingIndex.isXmlAttribute(member)) {
         fields.add(
@@ -915,7 +915,7 @@ final class ErlangRestXmlOperationDsl {
 
   private static MatchExpr buildMemberFromXmlExpr(
       Model model, MemberShape member, String xmlVar, SymbolProvider sp) {
-    String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+    String field = BeamMemberNames.fieldName(sp, member);
     String bindingVar = ErlangRestXmlSupport.toBindingVar(field);
     Shape target = model.expectShape(member.getTarget());
     if (BeamXmlBindingIndex.isXmlAttribute(member)) {
@@ -997,7 +997,7 @@ final class ErlangRestXmlOperationDsl {
     HttpBinding payload = payloadMembers.get(0);
     MemberShape member = payload.getMember();
     Shape target = model.expectShape(member.getTarget());
-    String fieldName = BeamNameUtils.toSnakeCase(member.getMemberName());
+    String fieldName = BeamMemberNames.fieldName(sp, member);
     String bindingVar = ErlangRestXmlSupport.toBindingVar(fieldName);
 
     if (target instanceof BlobShape || target instanceof StringShape) {
@@ -1021,7 +1021,7 @@ final class ErlangRestXmlOperationDsl {
               List.of(
                   MatchExpr.bindValue(
                       "MemberMap",
-                      buildStructureXmlMapExpr(model, structure, "PayloadValue", recordTag)),
+                      buildStructureXmlMapExpr(model, sp, structure, "PayloadValue", recordTag)),
                   LocalCallExpr.of(
                       "encode_xml",
                       List.of(
@@ -1061,7 +1061,7 @@ final class ErlangRestXmlOperationDsl {
     MemberShape member = payload.getMember();
     Shape target = model.expectShape(member.getTarget());
     String bindingVar =
-        ErlangRestXmlSupport.toBindingVar(BeamNameUtils.toSnakeCase(member.getMemberName()));
+        ErlangRestXmlSupport.toBindingVar(BeamMemberNames.fieldName(sp, member));
 
     if (target instanceof BlobShape || target instanceof StringShape) {
       return List.of(
@@ -1087,7 +1087,7 @@ final class ErlangRestXmlOperationDsl {
                           MapEntry.of(
                               BinaryExpr.of(rootElement),
                               buildStructureXmlMapExpr(
-                                  model, structure, "PayloadValue", recordTag)))),
+                                  model, sp, structure, "PayloadValue", recordTag)))),
                   Variable.of("XmlNs")));
     } else if (target instanceof UnionShape union) {
       payloadValueExpr = buildUnionPayloadEncodeExpr(model, union, rootElement, "PayloadValue", sp);
@@ -1123,7 +1123,7 @@ final class ErlangRestXmlOperationDsl {
       Expression innerValue;
       if (memberTarget instanceof StructureShape structure) {
         String recordTag = ErlangRestXmlSupport.recordName(sp.toSymbol(structure));
-        innerValue = buildStructureXmlMapExpr(model, structure, "V", recordTag);
+        innerValue = buildStructureXmlMapExpr(model, sp, structure, "V", recordTag);
       } else {
         innerValue = Variable.of("V");
       }
@@ -1146,13 +1146,17 @@ final class ErlangRestXmlOperationDsl {
   }
 
   private static Expression buildStructureXmlMapExpr(
-      Model model, StructureShape structure, String recordVar, String recordTag) {
+      Model model,
+      SymbolProvider sp,
+      StructureShape structure,
+      String recordVar,
+      String recordTag) {
     List<MapEntry> entries = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       if (BeamXmlBindingIndex.isXmlAttribute(member)) {
         continue;
       }
-      String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String field = BeamMemberNames.fieldName(sp, member);
       String wireName = BeamXmlBindingIndex.memberElementName(member);
       entries.add(
           MapEntry.of(
@@ -1171,7 +1175,7 @@ final class ErlangRestXmlOperationDsl {
     for (HttpBinding binding : bindings) {
       String fieldVar =
           ErlangRestXmlSupport.toBindingVar(
-              BeamNameUtils.toSnakeCase(binding.getMember().getMemberName()));
+              BeamMemberNames.fieldName(sp, binding.getMember()));
       String valueVar = fieldVar + "Val";
       Expression encodedValue =
           encodeBindingWireValueExpr(model, sp, binding.getMember(), valueVar, queryValues);
@@ -1206,7 +1210,7 @@ final class ErlangRestXmlOperationDsl {
   }
 
   private static List<Expression> buildIdempotencyTokenExprs(
-      StructureShape input, String inputRecord) {
+      SymbolProvider sp, StructureShape input, String inputRecord) {
     List<MemberShape> idempotencyMembers =
         input.members().stream().filter(m -> m.hasTrait(IdempotencyTokenTrait.class)).toList();
     if (idempotencyMembers.isEmpty()) {
@@ -1216,7 +1220,7 @@ final class ErlangRestXmlOperationDsl {
     String currentInput = "Input";
     int step = 1;
     for (MemberShape member : idempotencyMembers) {
-      String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String field = BeamMemberNames.fieldName(sp, member);
       String nextInput = "Input" + step;
       exprs.add(
           MatchExpr.bindValue(
@@ -1237,7 +1241,7 @@ final class ErlangRestXmlOperationDsl {
       step++;
     }
     for (MemberShape member : idempotencyMembers) {
-      String field = BeamNameUtils.toSnakeCase(member.getMemberName());
+      String field = BeamMemberNames.fieldName(sp, member);
       exprs.add(
           MatchExpr.bindValue(
               ErlangRestXmlSupport.toBindingVar(field),
@@ -1246,7 +1250,8 @@ final class ErlangRestXmlOperationDsl {
     return exprs;
   }
 
-  private static Expression buildPathExpression(String uriTemplate, List<HttpBinding> labels) {
+  private static Expression buildPathExpression(
+      SymbolProvider sp, String uriTemplate, List<HttpBinding> labels) {
     if (labels.isEmpty()) {
       return BinaryExpr.of(uriTemplate);
     }
@@ -1263,7 +1268,16 @@ final class ErlangRestXmlOperationDsl {
       }
       int end = uriTemplate.indexOf('}', start);
       String labelName = uriTemplate.substring(start + 1, end);
-      String fieldName = BeamNameUtils.toSnakeCase(labelName);
+      MemberShape labelMember =
+          labels.stream()
+              .map(HttpBinding::getMember)
+              .filter(m -> m.getMemberName().equals(labelName))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new IllegalStateException(
+                          "No httpLabel member for path segment: " + labelName));
+      String fieldName = BeamMemberNames.fieldName(sp, labelMember);
       segments.add(
           BinarySegmentExpr.of(
               LocalCallExpr.of(
@@ -1278,13 +1292,14 @@ final class ErlangRestXmlOperationDsl {
     return BinaryExpr.of(segments);
   }
 
-  private static List<Expression> buildQueryParamsExprs(List<HttpBinding> queryParams) {
+  private static List<Expression> buildQueryParamsExprs(
+      SymbolProvider sp, List<HttpBinding> queryParams) {
     if (queryParams.isEmpty()) {
       return List.of();
     }
     List<Expression> exprs = new ArrayList<>();
     for (HttpBinding qp : queryParams) {
-      String fieldName = BeamNameUtils.toSnakeCase(qp.getMember().getMemberName());
+      String fieldName = BeamMemberNames.fieldName(sp, qp.getMember());
       String bindingVar = ErlangRestXmlSupport.toBindingVar(fieldName);
       exprs.add(
           MatchExpr.bindValue(
@@ -1349,28 +1364,29 @@ final class ErlangRestXmlOperationDsl {
     List<RecordPatternField> fields = new ArrayList<>();
     if (respPayload.isEmpty() && !output.members().isEmpty()) {
       for (MemberShape member : output.members()) {
-        addBindingField(fields, member.getMemberName());
+        addBindingField(fields, sp, member);
       }
     } else {
       for (HttpBinding binding :
           ErlangRestXmlSupport.concat(respHeaders, respPrefixHeaders, respPayload)) {
-        addBindingField(fields, binding.getMember().getMemberName());
+        addBindingField(fields, sp, binding.getMember());
       }
     }
     return RecordPattern.of(outputRecord, fields);
   }
 
-  private static void addBindingField(List<RecordPatternField> fields, String memberName) {
-    String field = BeamNameUtils.toSnakeCase(memberName);
+  private static void addBindingField(
+      List<RecordPatternField> fields, SymbolProvider sp, MemberShape member) {
+    String field = BeamMemberNames.fieldName(sp, member);
     fields.add(
         RecordPatternField.of(field, VariablePattern.of(ErlangRestXmlSupport.toBindingVar(field))));
   }
 
   private static RecordPattern recordBindingHead(
-      String alias, String recordName, List<HttpBinding> bindings) {
+      String alias, String recordName, List<HttpBinding> bindings, SymbolProvider sp) {
     List<RecordPatternField> fields = new ArrayList<>();
     for (HttpBinding binding : bindings) {
-      addBindingField(fields, binding.getMember().getMemberName());
+      addBindingField(fields, sp, binding.getMember());
     }
     return RecordPattern.bind(alias, recordName, fields);
   }
