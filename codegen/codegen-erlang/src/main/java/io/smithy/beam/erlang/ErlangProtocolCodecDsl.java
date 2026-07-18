@@ -20,23 +20,23 @@ final class ErlangProtocolCodecDsl {
     switch (protocol) {
       case ShapeId id when BeamProtocolIds.REST_JSON_1.equals(id) -> {
         Module module = ErlangRestJsonDsl.buildClientCodecModule(ctx, service);
-        ErlangCodecEmission.writeModule(ctx, layout.clientCodecModuleName(id) + ".erl", module);
+        ErlangCodecEmission.writeModule(ctx, layout.codecModuleName(id) + ".erl", module);
       }
       case ShapeId id when BeamProtocolIds.AWS_JSON_1_0.equals(id)
           || BeamProtocolIds.AWS_JSON_1_1.equals(id) -> {
         BeamAwsServiceMetadata.from(service).orElseThrow();
         Module module = ErlangAwsJsonDsl.buildClientCodecModule(ctx, service, id);
-        ErlangCodecEmission.writeModule(ctx, layout.clientCodecModuleName(id) + ".erl", module);
+        ErlangCodecEmission.writeModule(ctx, layout.codecModuleName(id) + ".erl", module);
       }
       case ShapeId id when BeamProtocolIds.AWS_QUERY.equals(id)
           || BeamProtocolIds.EC2_QUERY.equals(id) -> {
         BeamAwsServiceMetadata.from(service).orElseThrow();
         Module module = ErlangAwsQueryDsl.buildClientCodecModule(ctx, service, id);
-        ErlangCodecEmission.writeModule(ctx, layout.clientCodecModuleName(id) + ".erl", module);
+        ErlangCodecEmission.writeModule(ctx, layout.codecModuleName(id) + ".erl", module);
       }
       case ShapeId id when BeamProtocolIds.REST_XML.equals(id) -> {
         Module module = ErlangRestXmlDsl.buildClientCodecModule(ctx, service);
-        ErlangCodecEmission.writeModule(ctx, layout.clientCodecModuleName(id) + ".erl", module);
+        ErlangCodecEmission.writeModule(ctx, layout.codecModuleName(id) + ".erl", module);
       }
       default -> {
         /* no codec module for this protocol */
@@ -53,21 +53,21 @@ final class ErlangProtocolCodecDsl {
     switch (protocol) {
       case ShapeId id when BeamProtocolIds.REST_JSON_1.equals(id) -> {
         Module module = ErlangRestJsonDsl.buildServerCodecModule(ctx, service);
-        ErlangCodecEmission.writeModule(ctx, layout.serverCodecModuleName(id) + ".erl", module);
+        ErlangCodecEmission.writeModule(ctx, layout.codecModuleName(id) + ".erl", module);
       }
       case ShapeId id when BeamProtocolIds.AWS_JSON_1_0.equals(id)
           || BeamProtocolIds.AWS_JSON_1_1.equals(id) -> {
         Module module = ErlangAwsJsonDsl.buildServerCodecModule(ctx, service, id);
-        ErlangCodecEmission.writeModule(ctx, layout.serverCodecModuleName(id) + ".erl", module);
+        ErlangCodecEmission.writeModule(ctx, layout.codecModuleName(id) + ".erl", module);
       }
       case ShapeId id when BeamProtocolIds.AWS_QUERY.equals(id)
           || BeamProtocolIds.EC2_QUERY.equals(id) -> {
         Module module = ErlangAwsQueryDsl.buildServerCodecModule(ctx, service, id);
-        ErlangCodecEmission.writeModule(ctx, layout.serverCodecModuleName(id) + ".erl", module);
+        ErlangCodecEmission.writeModule(ctx, layout.codecModuleName(id) + ".erl", module);
       }
       case ShapeId id when BeamProtocolIds.REST_XML.equals(id) -> {
         Module module = ErlangRestXmlDsl.buildServerCodecModule(ctx, service);
-        ErlangCodecEmission.writeModule(ctx, layout.serverCodecModuleName(id) + ".erl", module);
+        ErlangCodecEmission.writeModule(ctx, layout.codecModuleName(id) + ".erl", module);
       }
       default -> {
         /* no codec module for this protocol */

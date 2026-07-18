@@ -173,7 +173,7 @@ final class ErlangClientDispatchOperationDsl {
         mode,
         opSym,
         opSym.getName(),
-        layout.clientCodecModuleName(ctx.resolvedProtocolTraitId(), ctx.integrations()),
+        layout.codecModuleName(ctx.resolvedProtocolTraitId(), ctx.integrations()),
         layout.runtimeHttpModuleName(),
         sigv4,
         encodeWithConfig);

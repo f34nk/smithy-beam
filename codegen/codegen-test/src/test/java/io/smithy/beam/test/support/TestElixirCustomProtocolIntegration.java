@@ -58,12 +58,12 @@ public final class TestElixirCustomProtocolIntegration implements ElixirIntegrat
     BeamElixirLayout layout =
         new BeamElixirLayout(codegenContext.settings(), service.getId().getNamespace(), service);
     String codecFile =
-        layout.clientCodecModuleName(
+        layout.codecModuleName(
                 codegenContext.resolvedProtocolTraitId(), codegenContext.integrations())
             + ".ex";
     String codecModule =
         toElixirModuleName(
-            layout.clientCodecModuleName(
+            layout.codecModuleName(
                 codegenContext.resolvedProtocolTraitId(), codegenContext.integrations()));
     SymbolProvider sp = codegenContext.symbolProvider();
     List<OperationShape> operations = new ArrayList<>();

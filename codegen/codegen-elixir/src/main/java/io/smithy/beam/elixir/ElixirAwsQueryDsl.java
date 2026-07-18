@@ -26,12 +26,12 @@ final class ElixirAwsQueryDsl {
 
   static String clientCodecFileName(
       ElixirContext ctx, ServiceShape service, ShapeId protocolTraitId) {
-    return layout(ctx, service).clientCodecModuleName(protocolTraitId) + ".ex";
+    return layout(ctx, service).codecModuleName(protocolTraitId) + ".ex";
   }
 
   static String serverCodecFileName(
       ElixirContext ctx, ServiceShape service, ShapeId protocolTraitId) {
-    return layout(ctx, service).serverCodecModuleName(protocolTraitId) + ".ex";
+    return layout(ctx, service).codecModuleName(protocolTraitId) + ".ex";
   }
 
   static Module buildClientCodecModule(
@@ -43,7 +43,7 @@ final class ElixirAwsQueryDsl {
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     SymbolProvider sp = ctx.symbolProvider();
     String moduleName =
-        ElixirSymbolProvider.toModuleName(layout.clientCodecModuleName(protocolTraitId));
+        ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocolTraitId));
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
 
@@ -71,7 +71,7 @@ final class ElixirAwsQueryDsl {
     BeamElixirLayout layout = layout(ctx, service);
     SymbolProvider sp = ctx.symbolProvider();
     String moduleName =
-        ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName(protocolTraitId));
+        ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocolTraitId));
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     Optional<String> serviceNamespace = BeamXmlBindingIndex.xmlNamespaceUri(service);

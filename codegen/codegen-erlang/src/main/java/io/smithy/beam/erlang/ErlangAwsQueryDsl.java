@@ -24,12 +24,12 @@ final class ErlangAwsQueryDsl {
 
   static String clientCodecFileName(
       ErlangContext ctx, ServiceShape service, ShapeId protocolTraitId) {
-    return layout(ctx, service).clientCodecModuleName(protocolTraitId) + ".erl";
+    return layout(ctx, service).codecModuleName(protocolTraitId) + ".erl";
   }
 
   static String serverCodecFileName(
       ErlangContext ctx, ServiceShape service, ShapeId protocolTraitId) {
-    return layout(ctx, service).serverCodecModuleName(protocolTraitId) + ".erl";
+    return layout(ctx, service).codecModuleName(protocolTraitId) + ".erl";
   }
 
   static Module buildClientCodecModule(
@@ -53,7 +53,7 @@ final class ErlangAwsQueryDsl {
         clientCodecFunctions(model, service, operations, httpIndex, sp, ec2Query);
 
     return Module.of(
-        layout.clientCodecModuleName(protocolTraitId),
+        layout.codecModuleName(protocolTraitId),
         functions,
         List.of(
             "AWS Query codecs for " + service.getId() + " (generated).",
@@ -85,7 +85,7 @@ final class ErlangAwsQueryDsl {
         serverCodecFunctions(model, service, operations, sp, serviceNamespace, ec2Query);
 
     return Module.of(
-        layout.serverCodecModuleName(protocolTraitId),
+        layout.codecModuleName(protocolTraitId),
         functions,
         List.of(
             "Server AWS Query codecs for " + service.getId() + " (generated).",

@@ -59,7 +59,7 @@ final class ErlangRouterDsl {
       ShapeId protocol,
       List<OperationShape> operations,
       SymbolProvider sp) {
-    String codecMod = layout.serverCodecModuleName(protocol);
+    String codecMod = layout.codecModuleName(protocol);
     String routerMod = layout.routerModuleName();
     String serverMod = layout.serverModuleName();
     boolean labelBindings = serviceHasLabelBindings(model, operations);

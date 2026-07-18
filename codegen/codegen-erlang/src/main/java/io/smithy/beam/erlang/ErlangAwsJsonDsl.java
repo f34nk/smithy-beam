@@ -29,11 +29,11 @@ final class ErlangAwsJsonDsl {
   private ErlangAwsJsonDsl() {}
 
   static String clientCodecFileName(ErlangContext ctx, ServiceShape service, ShapeId protocol) {
-    return layout(ctx, service).clientCodecModuleName(protocol) + ".erl";
+    return layout(ctx, service).codecModuleName(protocol) + ".erl";
   }
 
   static String serverCodecFileName(ErlangContext ctx, ServiceShape service, ShapeId protocol) {
-    return layout(ctx, service).serverCodecModuleName(protocol) + ".erl";
+    return layout(ctx, service).codecModuleName(protocol) + ".erl";
   }
 
   static Module buildClientCodecModule(ErlangContext ctx, ServiceShape service, ShapeId protocol) {
@@ -67,7 +67,7 @@ final class ErlangAwsJsonDsl {
             eventStreamModule);
 
     return Module.of(
-        layout.clientCodecModuleName(protocol),
+        layout.codecModuleName(protocol),
         functions,
         List.of(
             "AWS JSON " + versionLabel + " codecs for " + service.getId() + " (generated).",
@@ -100,7 +100,7 @@ final class ErlangAwsJsonDsl {
             model, service, operations, httpIndex, sp, contentType, eventStreamModule);
 
     return Module.of(
-        layout.serverCodecModuleName(protocol),
+        layout.codecModuleName(protocol),
         functions,
         List.of(
             "Server AWS JSON " + versionLabel + " codecs for " + service.getId() + " (generated).",

@@ -25,11 +25,11 @@ final class ElixirRestJsonDsl {
   private ElixirRestJsonDsl() {}
 
   static String clientCodecFileName(ElixirContext ctx, ServiceShape service) {
-    return layout(ctx, service).clientCodecModuleName(ctx.resolvedProtocolTraitId()) + ".ex";
+    return layout(ctx, service).codecModuleName(ctx.resolvedProtocolTraitId()) + ".ex";
   }
 
   static String serverCodecFileName(ElixirContext ctx, ServiceShape service) {
-    return layout(ctx, service).serverCodecModuleName(ctx.resolvedProtocolTraitId()) + ".ex";
+    return layout(ctx, service).codecModuleName(ctx.resolvedProtocolTraitId()) + ".ex";
   }
 
   static Module buildClientCodecModule(ElixirContext ctx, ServiceShape service) {
@@ -38,7 +38,7 @@ final class ElixirRestJsonDsl {
     BeamElixirLayout layout = layout(ctx, service);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     SymbolProvider sp = ctx.symbolProvider();
-    String moduleName = ElixirSymbolProvider.toModuleName(layout.clientCodecModuleName(protocol));
+    String moduleName = ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocol));
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     String eventStreamModule = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
@@ -74,7 +74,7 @@ final class ElixirRestJsonDsl {
     BeamElixirLayout layout = layout(ctx, service);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     SymbolProvider sp = ctx.symbolProvider();
-    String moduleName = ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName(protocol));
+    String moduleName = ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocol));
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     String eventStreamModule = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());

@@ -21,10 +21,6 @@ public final class BeamProtocolCodegenFactory {
 
   private BeamProtocolCodegenFactory() {}
 
-  public static BeamProtocolCodegen create(Model model, ShapeId resolvedProtocolTraitId) {
-    return create(model, resolvedProtocolTraitId, List.of());
-  }
-
   public static BeamProtocolCodegen create(
       Model model,
       ShapeId resolvedProtocolTraitId,

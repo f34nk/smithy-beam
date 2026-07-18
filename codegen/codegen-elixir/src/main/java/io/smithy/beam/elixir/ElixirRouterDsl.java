@@ -58,7 +58,7 @@ final class ElixirRouterDsl {
       ShapeId protocol,
       List<OperationShape> operations,
       SymbolProvider sp) {
-    String codecMod = ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName(protocol));
+    String codecMod = ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocol));
     String routerMod = ElixirSymbolProvider.toModuleName(layout.routerModuleName());
     String serverMod = ElixirSymbolProvider.toModuleName(layout.serverModuleName());
 

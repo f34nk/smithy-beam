@@ -48,8 +48,8 @@ public final class ErlangComplianceTestEmitter {
 
     BeamErlangLayout layout =
         new BeamErlangLayout(settings, service.getId().getNamespace(), service);
-    String clientCodecMod = layout.clientCodecModuleName(protocol);
-    String serverCodecMod = layout.serverCodecModuleName(protocol);
+    String clientCodecMod = layout.codecModuleName(protocol);
+    String serverCodecMod = layout.codecModuleName(protocol);
     SymbolProvider sp = ctx.symbolProvider();
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     boolean encodeWithConfig =

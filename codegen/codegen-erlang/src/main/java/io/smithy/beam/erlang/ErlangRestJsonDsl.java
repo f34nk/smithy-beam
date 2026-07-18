@@ -35,11 +35,11 @@ final class ErlangRestJsonDsl {
   private ErlangRestJsonDsl() {}
 
   static String clientCodecFileName(ErlangContext ctx, ServiceShape service) {
-    return layout(ctx, service).clientCodecModuleName(ctx.resolvedProtocolTraitId()) + ".erl";
+    return layout(ctx, service).codecModuleName(ctx.resolvedProtocolTraitId()) + ".erl";
   }
 
   static String serverCodecFileName(ErlangContext ctx, ServiceShape service) {
-    return layout(ctx, service).serverCodecModuleName(ctx.resolvedProtocolTraitId()) + ".erl";
+    return layout(ctx, service).codecModuleName(ctx.resolvedProtocolTraitId()) + ".erl";
   }
 
   static Module buildClientCodecModule(ErlangContext ctx, ServiceShape service) {
@@ -64,7 +64,7 @@ final class ErlangRestJsonDsl {
         clientCodecFunctions(model, service, operations, httpIndex, sp, layout, encodeWithConfig);
 
     return Module.of(
-        layout.clientCodecModuleName(protocol),
+        layout.codecModuleName(protocol),
         functions,
         List.of(
             "REST JSON 1 codecs for " + service.getId() + " (generated).",
@@ -102,7 +102,7 @@ final class ErlangRestJsonDsl {
         serverCodecFunctions(model, service, operations, httpIndex, sp, layout);
 
     return Module.of(
-        layout.serverCodecModuleName(protocol),
+        layout.codecModuleName(protocol),
         functions,
         List.of(
             "Server REST JSON 1 codecs for " + service.getId() + " (generated).",

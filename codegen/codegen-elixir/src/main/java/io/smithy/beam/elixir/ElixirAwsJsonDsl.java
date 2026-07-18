@@ -31,11 +31,11 @@ final class ElixirAwsJsonDsl {
   private ElixirAwsJsonDsl() {}
 
   static String clientCodecFileName(ElixirContext ctx, ServiceShape service, ShapeId protocol) {
-    return layout(ctx, service).clientCodecModuleName(protocol) + ".ex";
+    return layout(ctx, service).codecModuleName(protocol) + ".ex";
   }
 
   static String serverCodecFileName(ElixirContext ctx, ServiceShape service, ShapeId protocol) {
-    return layout(ctx, service).serverCodecModuleName(protocol) + ".ex";
+    return layout(ctx, service).codecModuleName(protocol) + ".ex";
   }
 
   static Module buildClientCodecModule(ElixirContext ctx, ServiceShape service, ShapeId protocol) {
@@ -44,7 +44,7 @@ final class ElixirAwsJsonDsl {
     BeamElixirLayout layout = layout(ctx, service);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     SymbolProvider sp = ctx.symbolProvider();
-    String moduleName = ElixirSymbolProvider.toModuleName(layout.clientCodecModuleName(protocol));
+    String moduleName = ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocol));
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     String eventStreamMod = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());
@@ -88,7 +88,7 @@ final class ElixirAwsJsonDsl {
     BeamElixirLayout layout = layout(ctx, service);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     SymbolProvider sp = ctx.symbolProvider();
-    String moduleName = ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName(protocol));
+    String moduleName = ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocol));
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     String eventStreamMod = ElixirSymbolProvider.toModuleName(layout.eventStreamModuleName());

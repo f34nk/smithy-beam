@@ -39,6 +39,6 @@ class BeamErlangLayoutTest {
 
     assertThat(layout.clientModuleFile()).isEqualTo("aws_lambda_client.erl");
     assertThat(layout.typesHeaderFile()).isEqualTo("aws_lambda_types.hrl");
-    assertThat(layout.clientCodecModuleName()).startsWith("aws_lambda_");
+    assertThat(layout.codecModuleName(BeamProtocolIds.REST_JSON_1)).startsWith("aws_lambda_");
   }
 }

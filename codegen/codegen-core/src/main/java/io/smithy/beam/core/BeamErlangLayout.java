@@ -76,30 +76,11 @@ public final class BeamErlangLayout {
     return serviceSnakeName() + "_router";
   }
 
-  public String clientCodecModuleName() {
-    return clientCodecModuleName(BeamProtocolIds.REST_JSON_1);
+  public String codecModuleName(ShapeId protocolTraitId) {
+    return codecModuleName(protocolTraitId, List.of());
   }
 
-  public String clientCodecModuleName(ShapeId protocolTraitId) {
-    return clientCodecModuleName(protocolTraitId, List.of());
-  }
-
-  public String clientCodecModuleName(
-      ShapeId protocolTraitId, List<? extends BeamProtocolIntegration> integrations) {
-    return serviceSnakeName()
-        + "_"
-        + BeamProtocolModuleSuffix.codecSuffix(protocolTraitId, integrations);
-  }
-
-  public String serverCodecModuleName() {
-    return serverCodecModuleName(BeamProtocolIds.REST_JSON_1);
-  }
-
-  public String serverCodecModuleName(ShapeId protocolTraitId) {
-    return serverCodecModuleName(protocolTraitId, List.of());
-  }
-
-  public String serverCodecModuleName(
+  public String codecModuleName(
       ShapeId protocolTraitId, List<? extends BeamProtocolIntegration> integrations) {
     return serviceSnakeName()
         + "_"

@@ -26,11 +26,11 @@ final class ErlangRestXmlDsl {
   private ErlangRestXmlDsl() {}
 
   static String clientCodecFileName(ErlangContext ctx, ServiceShape service) {
-    return layout(ctx, service).clientCodecModuleName(BeamProtocolIds.REST_XML) + ".erl";
+    return layout(ctx, service).codecModuleName(BeamProtocolIds.REST_XML) + ".erl";
   }
 
   static String serverCodecFileName(ErlangContext ctx, ServiceShape service) {
-    return layout(ctx, service).serverCodecModuleName(BeamProtocolIds.REST_XML) + ".erl";
+    return layout(ctx, service).codecModuleName(BeamProtocolIds.REST_XML) + ".erl";
   }
 
   static Module buildClientCodecModule(ErlangContext ctx, ServiceShape service) {
@@ -57,7 +57,7 @@ final class ErlangRestXmlDsl {
             model, service, operations, httpIndex, sp, serviceNamespace, encodeWithConfig);
 
     return Module.of(
-        layout.clientCodecModuleName(BeamProtocolIds.REST_XML),
+        layout.codecModuleName(BeamProtocolIds.REST_XML),
         functions,
         List.of(
             "REST-XML codecs for " + service.getId() + " (generated).",
@@ -96,7 +96,7 @@ final class ErlangRestXmlDsl {
         serverCodecFunctions(model, service, operations, httpIndex, sp, serviceNamespace);
 
     return Module.of(
-        layout.serverCodecModuleName(BeamProtocolIds.REST_XML),
+        layout.codecModuleName(BeamProtocolIds.REST_XML),
         functions,
         List.of(
             "Server REST-XML codecs for " + service.getId() + " (generated).",

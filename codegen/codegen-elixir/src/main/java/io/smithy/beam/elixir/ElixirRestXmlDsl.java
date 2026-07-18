@@ -23,11 +23,11 @@ final class ElixirRestXmlDsl {
   private ElixirRestXmlDsl() {}
 
   static String clientCodecFileName(ElixirContext ctx, ServiceShape service) {
-    return layout(ctx, service).clientCodecModuleName(BeamProtocolIds.REST_XML) + ".ex";
+    return layout(ctx, service).codecModuleName(BeamProtocolIds.REST_XML) + ".ex";
   }
 
   static String serverCodecFileName(ElixirContext ctx, ServiceShape service) {
-    return layout(ctx, service).serverCodecModuleName(BeamProtocolIds.REST_XML) + ".ex";
+    return layout(ctx, service).codecModuleName(BeamProtocolIds.REST_XML) + ".ex";
   }
 
   static Module buildClientCodecModule(ElixirContext ctx, ServiceShape service) {
@@ -36,7 +36,7 @@ final class ElixirRestXmlDsl {
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     SymbolProvider sp = ctx.symbolProvider();
     String moduleName =
-        ElixirSymbolProvider.toModuleName(layout.clientCodecModuleName(BeamProtocolIds.REST_XML));
+        ElixirSymbolProvider.toModuleName(layout.codecModuleName(BeamProtocolIds.REST_XML));
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);
@@ -78,7 +78,7 @@ final class ElixirRestXmlDsl {
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     SymbolProvider sp = ctx.symbolProvider();
     String moduleName =
-        ElixirSymbolProvider.toModuleName(layout.serverCodecModuleName(BeamProtocolIds.REST_XML));
+        ElixirSymbolProvider.toModuleName(layout.codecModuleName(BeamProtocolIds.REST_XML));
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);

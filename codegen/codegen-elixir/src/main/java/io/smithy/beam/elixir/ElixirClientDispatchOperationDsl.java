@@ -200,7 +200,7 @@ final class ElixirClientDispatchOperationDsl {
         opSym,
         opSym.getName(),
         ElixirSymbolProvider.toModuleName(
-            layout.clientCodecModuleName(ctx.resolvedProtocolTraitId(), ctx.integrations())),
+            layout.codecModuleName(ctx.resolvedProtocolTraitId(), ctx.integrations())),
         ElixirSymbolProvider.toModuleName(layout.runtimeHttpModuleName()),
         sigv4,
         encodeWithConfig);
