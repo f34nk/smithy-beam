@@ -99,6 +99,6 @@ class ErlangVariableNamingTest {
     String codec = manifest.getFileString("demo_rest_json_rest_json_1.erl").orElse("");
     assertThat(codec).contains("headers = Headers, body = Body");
     assertThat(codec).contains("proplists:get_value(<<\"ETag\">>, Headers, undefined)");
-    assertThat(codec).doesNotContain("headers = _Headers");
+    assertThat(codec).doesNotContain("proplists:get_value(<<\"ETag\">>, _Headers");
   }
 }

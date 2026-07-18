@@ -12,6 +12,7 @@ import io.beam.dsl.erlang.Module;
 import io.beam.dsl.erlang.TypeAlias;
 import io.beam.dsl.erlang.Variable;
 import io.beam.dsl.erlang.VariablePattern;
+import io.smithy.beam.core.BeamCodecHelperNeeds;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamRequestCompressionIndex;
 import java.util.ArrayList;
@@ -253,27 +254,50 @@ final class ErlangRestJsonDsl {
   }
 
   static List<Function> privateCodecHelpers(Model model, ServiceShape service) {
+    BeamCodecHelperNeeds needs = BeamCodecHelperNeeds.of(model, service);
     List<Function> functions = new ArrayList<>();
-    functions.add(ErlangCodecHelperDsl.toBinary(ErlangCodecHelperDsl.ToBinaryVariant.REST_JSON));
-    functions.add(ErlangCodecHelperDsl.encodeQueryValueRestJson());
-    functions.add(ErlangCodecHelperDsl.uriEncode());
-    functions.add(ErlangCodecHelperDsl.uriDecode());
-    functions.add(ErlangCodecHelperDsl.decodeQueryParam());
-    functions.add(ErlangCodecHelperDsl.prefixHeadersToList());
-    functions.add(ErlangCodecHelperDsl.prefixHeadersFromList());
-    functions.add(ErlangCodecHelperDsl.decodeJsonBody());
-    functions.add(ErlangCodecHelperDsl.contentTypeMatches());
-    functions.add(ErlangCodecHelperDsl.ctBase());
-    functions.add(ErlangCodecHelperDsl.decodeSparseList());
-    functions.add(ErlangCodecHelperDsl.decodeList());
-    functions.add(ErlangXmlCodecDsl.decodeSparseMap());
-    functions.add(ErlangCodecHelperDsl.encodeSparseList());
-    functions.add(ErlangCodecHelperDsl.encodeSparseMap());
-    functions.add(ErlangCodecHelperDsl.encodeTimestampEpochSeconds());
-    functions.add(ErlangCodecHelperDsl.encodeTimestampDateTime());
-    functions.add(ErlangCodecHelperDsl.decodeTimestampEpochSeconds());
-    functions.add(ErlangCodecHelperDsl.decodeTimestampDateTime());
-    functions.add(ErlangCodecHelperDsl.generateUuid());
+    if (needs.toBinary()) {
+      functions.add(ErlangCodecHelperDsl.toBinary(ErlangCodecHelperDsl.ToBinaryVariant.REST_JSON));
+    }
+    if (needs.queryValues()) {
+      functions.add(ErlangCodecHelperDsl.encodeQueryValueRestJson());
+      functions.add(ErlangCodecHelperDsl.decodeQueryParam());
+    }
+    if (needs.uriCoding()) {
+      functions.add(ErlangCodecHelperDsl.uriEncode());
+      functions.add(ErlangCodecHelperDsl.uriDecode());
+    }
+    if (needs.prefixHeaders()) {
+      functions.add(ErlangCodecHelperDsl.prefixHeadersToList());
+      functions.add(ErlangCodecHelperDsl.prefixHeadersFromList());
+    }
+    if (needs.jsonBody()) {
+      functions.add(ErlangCodecHelperDsl.decodeJsonBody());
+    }
+    if (needs.contentTypeMatches()) {
+      functions.add(ErlangCodecHelperDsl.contentTypeMatches());
+      functions.add(ErlangCodecHelperDsl.ctBase());
+    }
+    if (needs.sparseList()) {
+      functions.add(ErlangCodecHelperDsl.decodeSparseList());
+      functions.add(ErlangCodecHelperDsl.encodeSparseList());
+    }
+    if (needs.decodeList()) {
+      functions.add(ErlangCodecHelperDsl.decodeList());
+    }
+    if (needs.sparseMap()) {
+      functions.add(ErlangXmlCodecDsl.decodeSparseMap());
+      functions.add(ErlangCodecHelperDsl.encodeSparseMap());
+    }
+    if (needs.timestamps()) {
+      functions.add(ErlangCodecHelperDsl.encodeTimestampEpochSeconds());
+      functions.add(ErlangCodecHelperDsl.encodeTimestampDateTime());
+      functions.add(ErlangCodecHelperDsl.decodeTimestampEpochSeconds());
+      functions.add(ErlangCodecHelperDsl.decodeTimestampDateTime());
+    }
+    if (needs.idempotencyToken()) {
+      functions.add(ErlangCodecHelperDsl.generateUuid());
+    }
 
     boolean compressionBindings = serviceHasCompressionOperations(model, service);
     if (compressionBindings) {

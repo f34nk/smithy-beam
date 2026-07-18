@@ -4,6 +4,7 @@ import io.beam.dsl.elixir.Alias;
 import io.beam.dsl.elixir.Function;
 import io.beam.dsl.elixir.Module;
 import io.beam.dsl.elixir.Moduledoc;
+import io.smithy.beam.core.BeamCodecHelperNeeds;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamS3CustomizationIndex;
@@ -127,13 +128,21 @@ final class ElixirRestXmlDsl {
     return functions;
   }
 
-  static List<Function> sharedClientCodecHelpers() {
+  static List<Function> sharedClientCodecHelpers(Model model, ServiceShape service) {
+    BeamCodecHelperNeeds needs = BeamCodecHelperNeeds.of(model, service);
     List<Function> functions = new ArrayList<>();
-    functions.addAll(ElixirCodecHelperDsl.prefixHeadersToList());
-    functions.addAll(ElixirCodecHelperDsl.prefixHeadersFromList());
-    functions.addAll(ElixirCodecHelperDsl.headerValue());
-    functions.addAll(ElixirCodecHelperDsl.headerValueRaw());
-    functions.addAll(ElixirCodecHelperDsl.generateUuid());
+    if (needs.prefixHeaders()) {
+      functions.addAll(ElixirCodecHelperDsl.prefixHeadersToList());
+      functions.addAll(ElixirCodecHelperDsl.prefixHeadersFromList());
+    }
+    if (needs.headerValue()) {
+      functions.addAll(ElixirCodecHelperDsl.headerValue());
+      functions.addAll(ElixirCodecHelperDsl.headerValueRaw());
+    }
+    if (needs.idempotencyToken()) {
+      functions.addAll(ElixirCodecHelperDsl.generateUuid());
+    }
+    // XML encode helpers always call to_binary / encode_query_value.
     functions.addAll(ElixirCodecHelperDsl.toBinary(ElixirCodecHelperDsl.ToBinaryVariant.XML_QUERY));
     functions.addAll(ElixirCodecHelperDsl.encodeQueryValueXmlQuery());
     return functions;
@@ -172,7 +181,7 @@ final class ElixirRestXmlDsl {
     }
     functions.addAll(enumHelperFunctions(model, service, sp));
     functions.addAll(xmlHelperFunctions(serviceNamespace));
-    functions.addAll(sharedClientCodecHelpers());
+    functions.addAll(sharedClientCodecHelpers(model, service));
     if (encodeWithConfig) {
       functions.addAll(ElixirHostLabelDsl.buildHostFunctions(model, service, sp));
     }

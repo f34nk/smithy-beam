@@ -3,6 +3,7 @@ package io.smithy.beam.erlang;
 import io.beam.dsl.erlang.Function;
 import io.beam.dsl.erlang.Module;
 import io.beam.dsl.erlang.TypeAlias;
+import io.smithy.beam.core.BeamCodecHelperNeeds;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamProtocolIds;
 import io.smithy.beam.core.BeamXmlBindingIndex;
@@ -184,9 +185,14 @@ final class ErlangRestXmlDsl {
     functions.addAll(enumHelperFunctions(model, service, sp));
     functions.addAll(xmlEncodeHelpers());
     functions.addAll(xmlDecodeHelpers());
-    functions.add(ErlangCodecHelperDsl.prefixHeadersToList());
-    functions.add(ErlangCodecHelperDsl.prefixHeadersFromList());
-    functions.add(ErlangCodecHelperDsl.generateUuid());
+    BeamCodecHelperNeeds needs = BeamCodecHelperNeeds.of(model, service);
+    if (needs.prefixHeaders()) {
+      functions.add(ErlangCodecHelperDsl.prefixHeadersToList());
+      functions.add(ErlangCodecHelperDsl.prefixHeadersFromList());
+    }
+    if (needs.idempotencyToken()) {
+      functions.add(ErlangCodecHelperDsl.generateUuid());
+    }
     if (encodeWithConfig) {
       functions.addAll(ErlangHostLabelDsl.buildHostFunctions(model, service, sp));
     }

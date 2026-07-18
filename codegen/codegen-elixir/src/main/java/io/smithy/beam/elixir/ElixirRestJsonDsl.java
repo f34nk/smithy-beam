@@ -4,6 +4,7 @@ import io.beam.dsl.elixir.Alias;
 import io.beam.dsl.elixir.Function;
 import io.beam.dsl.elixir.Module;
 import io.beam.dsl.elixir.Moduledoc;
+import io.smithy.beam.core.BeamCodecHelperNeeds;
 import io.smithy.beam.core.BeamElixirLayout;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -153,29 +154,54 @@ final class ElixirRestJsonDsl {
   }
 
   static List<Function> privateCodecHelpers(Model model, ServiceShape service) {
+    BeamCodecHelperNeeds needs = BeamCodecHelperNeeds.of(model, service);
     List<Function> functions = new ArrayList<>();
-    functions.addAll(ElixirCodecHelperDsl.toBinary(ElixirCodecHelperDsl.ToBinaryVariant.REST_JSON));
-    functions.addAll(ElixirCodecHelperDsl.encodeQueryValueRestJson());
-    functions.addAll(ElixirCodecHelperDsl.uriEncode());
-    functions.addAll(ElixirCodecHelperDsl.uriDecode());
-    functions.addAll(ElixirCodecHelperDsl.decodeQueryParam());
-    functions.addAll(ElixirCodecHelperDsl.prefixHeadersToList());
-    functions.addAll(ElixirCodecHelperDsl.prefixHeadersFromList());
-    functions.addAll(ElixirCodecHelperDsl.decodeJsonBody());
-    functions.addAll(ElixirCodecHelperDsl.headerValue());
-    functions.addAll(ElixirCodecHelperDsl.headerValueRaw());
-    functions.addAll(ElixirCodecHelperDsl.contentTypeMatches());
-    functions.addAll(ElixirCodecHelperDsl.ctBase());
-    functions.addAll(ElixirCodecHelperDsl.decodeSparseList());
-    functions.addAll(ElixirCodecHelperDsl.decodeList());
-    functions.addAll(ElixirCodecHelperDsl.decodeSparseMap());
-    functions.addAll(ElixirCodecHelperDsl.encodeSparseList());
-    functions.addAll(ElixirCodecHelperDsl.encodeSparseMap());
-    functions.addAll(ElixirCodecHelperDsl.encodeTimestampEpochSeconds());
-    functions.addAll(ElixirCodecHelperDsl.encodeTimestampDateTime());
-    functions.addAll(ElixirCodecHelperDsl.decodeTimestampEpochSeconds());
-    functions.addAll(ElixirCodecHelperDsl.decodeTimestampDateTime());
-    functions.addAll(ElixirCodecHelperDsl.generateUuid());
+    if (needs.toBinary()) {
+      functions.addAll(ElixirCodecHelperDsl.toBinary(ElixirCodecHelperDsl.ToBinaryVariant.REST_JSON));
+    }
+    if (needs.queryValues()) {
+      functions.addAll(ElixirCodecHelperDsl.encodeQueryValueRestJson());
+      functions.addAll(ElixirCodecHelperDsl.decodeQueryParam());
+    }
+    if (needs.uriCoding()) {
+      functions.addAll(ElixirCodecHelperDsl.uriEncode());
+      functions.addAll(ElixirCodecHelperDsl.uriDecode());
+    }
+    if (needs.prefixHeaders()) {
+      functions.addAll(ElixirCodecHelperDsl.prefixHeadersToList());
+      functions.addAll(ElixirCodecHelperDsl.prefixHeadersFromList());
+    }
+    if (needs.jsonBody()) {
+      functions.addAll(ElixirCodecHelperDsl.decodeJsonBody());
+    }
+    if (needs.headerValue()) {
+      functions.addAll(ElixirCodecHelperDsl.headerValue());
+      functions.addAll(ElixirCodecHelperDsl.headerValueRaw());
+    }
+    if (needs.contentTypeMatches()) {
+      functions.addAll(ElixirCodecHelperDsl.contentTypeMatches());
+      functions.addAll(ElixirCodecHelperDsl.ctBase());
+    }
+    if (needs.sparseList()) {
+      functions.addAll(ElixirCodecHelperDsl.decodeSparseList());
+      functions.addAll(ElixirCodecHelperDsl.encodeSparseList());
+    }
+    if (needs.decodeList()) {
+      functions.addAll(ElixirCodecHelperDsl.decodeList());
+    }
+    if (needs.sparseMap()) {
+      functions.addAll(ElixirCodecHelperDsl.decodeSparseMap());
+      functions.addAll(ElixirCodecHelperDsl.encodeSparseMap());
+    }
+    if (needs.timestamps()) {
+      functions.addAll(ElixirCodecHelperDsl.encodeTimestampEpochSeconds());
+      functions.addAll(ElixirCodecHelperDsl.encodeTimestampDateTime());
+      functions.addAll(ElixirCodecHelperDsl.decodeTimestampEpochSeconds());
+      functions.addAll(ElixirCodecHelperDsl.decodeTimestampDateTime());
+    }
+    if (needs.idempotencyToken()) {
+      functions.addAll(ElixirCodecHelperDsl.generateUuid());
+    }
 
     boolean checksumBindings = ElixirHttpChecksumDsl.serviceHasChecksumOperations(model, service);
     boolean compressionBindings =
