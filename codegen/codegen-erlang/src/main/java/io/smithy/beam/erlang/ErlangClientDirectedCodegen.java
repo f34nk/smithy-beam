@@ -116,11 +116,11 @@ final class ErlangClientDirectedCodegen
     ErlangContext ctx = directive.context();
     ServiceShape service = ctx.service();
     BeamEdition edition = BeamEdition.fromSettings(directive.settings());
-    BeamProtocolResolver.resolve(directive.model(), service, directive.settings())
-        .ifPresent(
-            protocol ->
-                BeamProtocolResolver.assertClosureSupported(
-                    directive.model(), service, protocol, edition));
+    ShapeId protocol = ctx.resolvedProtocolTraitId();
+    if (protocol != null) {
+      BeamProtocolResolver.assertClosureSupported(
+          directive.model(), service, protocol, edition);
+    }
   }
 
   @Override

@@ -621,8 +621,7 @@ final class ErlangTypeDirectedCodegen
               writer.popState();
 
               Header header =
-                  buildStructureTypeHeader(
-                      directive.model(), directive.service(), shape, directive.settings());
+                  buildStructureTypeHeader(shape, directive.symbolProvider(), directive.model());
               // Smithy's writer.write(String) runs the string through CodeFormatter, so
               // literal {, }, and $ are treated as template syntax.
               // To bypass the formatter, write the string as a literal format argument.
@@ -630,6 +629,7 @@ final class ErlangTypeDirectedCodegen
             });
   }
 
+  /** Test helper that builds a types symbol provider; production uses the cached provider. */
   static Header buildStructureTypeHeader(
       Model model, ServiceShape service, StructureShape shape, BeamSettings settings) {
     BeamErlangLayout layout =
@@ -638,6 +638,10 @@ final class ErlangTypeDirectedCodegen
         SymbolProvider.cache(
             new ErlangSymbolProvider(
                 settings, model, service, layout.typesHeaderFile(), BeamCodegenKind.TYPES));
+    return buildStructureTypeHeader(shape, sp, model);
+  }
+
+  static Header buildStructureTypeHeader(StructureShape shape, SymbolProvider sp, Model model) {
     NullableIndex nullableIndex = NullableIndex.of(model);
     String recordName = sp.toSymbol(shape).getName().replace("()", "");
     return Header.ofEntries(
