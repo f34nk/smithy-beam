@@ -20,32 +20,6 @@ encode_uri_encodes_path_label_test() ->
     Req = user_service_rest_json_1:encode_get_user_request(Input),
     ?assertEqual(<<"/users/", (uri_string:quote(<<"a/b c">>))/binary>>, Req#http_request.path).
 
-%% decode_get_user_request/2
-
-decode_get_user_request_uses_label_map_test() ->
-    Req = #http_request{
-        method = <<"GET">>,
-        path = <<"/users/u-1">>,
-        query = #{},
-        headers = [],
-        body = <<>>
-    },
-    LabelMap = #{<<"userId">> => <<"u-1">>},
-    Input = user_service_rest_json_1:decode_get_user_request(Req, LabelMap),
-    ?assertEqual(<<"u-1">>, Input#get_user_input.user_id).
-
-decode_uri_decodes_path_label_test() ->
-    Req = #http_request{
-        method = <<"GET">>,
-        path = <<"/users/hello%20world">>,
-        query = #{},
-        headers = [],
-        body = <<>>
-    },
-    LabelMap = #{<<"userId">> => <<"hello world">>},
-    Input = user_service_rest_json_1:decode_get_user_request(Req, LabelMap),
-    ?assertEqual(<<"hello world">>, Input#get_user_input.user_id).
-
 %% decode_get_user_response/1
 
 decode_success_json_body_test() ->

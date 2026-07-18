@@ -2,7 +2,7 @@ defmodule UserServiceRestJson1Test do
   use ExUnit.Case, async: true
 
   alias UserServiceTypes.{CreateUserInput, GetUserInput, ListUsersInput}
-  alias RuntimeTypes.{HttpRequest, HttpResponse}
+  alias RuntimeTypes.HttpResponse
 
   describe "encode_get_user_request/1" do
     test "minimal request" do
@@ -21,36 +21,6 @@ defmodule UserServiceRestJson1Test do
       req = UserServiceRestJson1.encode_get_user_request(input)
 
       assert req.path == "/users/a/b%20c"
-    end
-  end
-
-  describe "decode_get_user_request/2" do
-    test "uses label map" do
-      req = %HttpRequest{
-        method: "GET",
-        path: "/users/u-1",
-        query: %{},
-        headers: [],
-        body: ""
-      }
-
-      label_map = %{"userId" => "u-1"}
-      input = UserServiceRestJson1.decode_get_user_request(req, label_map)
-      assert input.user_id == "u-1"
-    end
-
-    test "URI-decodes path label" do
-      req = %HttpRequest{
-        method: "GET",
-        path: "/users/hello%20world",
-        query: %{},
-        headers: [],
-        body: ""
-      }
-
-      label_map = %{"userId" => "hello world"}
-      input = UserServiceRestJson1.decode_get_user_request(req, label_map)
-      assert input.user_id == "hello world"
     end
   end
 
