@@ -2,7 +2,6 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
-import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamSettings;
 import java.util.List;
 import software.amazon.smithy.build.FileManifest;
@@ -101,10 +100,5 @@ public record ErlangContext(
         clientModuleBuilder,
         null,
         null);
-  }
-
-  public boolean hasWireProtocol() {
-    return BeamProtocolSupport.hasWireCodegen(
-        resolvedProtocolTraitId(), protocolCodegen(), integrations());
   }
 }

@@ -5,7 +5,6 @@ import io.beam.dsl.elixir.Moduledoc;
 import io.beam.dsl.elixir.TypesModule;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
-import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamSettings;
 import java.util.ArrayList;
 import java.util.List;
@@ -100,10 +99,5 @@ public record ElixirContext(
 
   public void addTypesFunction(Function function) {
     typesFunctions.add(function);
-  }
-
-  public boolean hasWireProtocol() {
-    return BeamProtocolSupport.hasWireCodegen(
-        resolvedProtocolTraitId(), protocolCodegen(), integrations());
   }
 }
