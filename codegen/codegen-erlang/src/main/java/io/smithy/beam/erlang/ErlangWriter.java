@@ -10,7 +10,7 @@ import software.amazon.smithy.utils.CodeSection;
  */
 public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImports> {
 
-  public ErlangWriter(String filename) {
+  public ErlangWriter() {
     super(new ErlangImports());
     setIndentText("    ");
     trimBlankLines();
@@ -18,7 +18,7 @@ public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImports
   }
 
   public static Factory<ErlangWriter> factory() {
-    return (filename, namespace) -> new ErlangWriter(filename);
+    return (filename, namespace) -> new ErlangWriter();
   }
 
   public void pushGeneratedDocumentationSection() {

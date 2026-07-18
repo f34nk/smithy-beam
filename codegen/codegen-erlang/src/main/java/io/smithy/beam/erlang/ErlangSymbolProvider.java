@@ -16,7 +16,6 @@ import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.*;
 import software.amazon.smithy.model.traits.StreamingTrait;
 
-@SuppressWarnings("unused")
 final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol> {
 
   private final BeamSettings settings;

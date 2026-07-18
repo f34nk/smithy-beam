@@ -375,18 +375,12 @@ final class ErlangTypeDirectedCodegen
 
   /**
    * Resolves a symbol to an Erlang type reference inside generated {@code -type} bodies. Built-in
-   * shapes use the symbol name. Other shapes honor {@code typeKind} on the symbol ({@code alias}
-   * for lists, maps, unions, and named scalars; {@code module} for structures, enums, and int
-   * enums). All named service types share one header file, so both kinds currently render as the
-   * type alias name from {@link Symbol#getName()}.
+   * shapes use the symbol name. Named service types share one header file and render as the type
+   * alias name from {@link Symbol#getName()}.
    */
   private static String renderErlangType(Symbol symbol) {
     boolean builtIn = symbol.getProperty("builtIn", Boolean.class).orElse(false);
     if (builtIn) {
-      return symbol.getName();
-    }
-    String typeKind = symbol.getProperty("typeKind", String.class).orElse("alias");
-    if ("module".equals(typeKind)) {
       return symbol.getName();
     }
     return symbol.getName();
@@ -460,27 +454,6 @@ final class ErlangTypeDirectedCodegen
     @SuppressWarnings("unchecked")
     Map<String, String> atomByMember =
         symbol.getProperty("enumAtomByMember", Map.class).orElseThrow();
-
-    if (atoms.isEmpty()) {
-      ctx.writerDelegator()
-          .useFileWriter(
-              definitionFile,
-              writer -> {
-                writer.pushGeneratedDocumentationSection();
-                BeamDocumentation.writeShapeDocIfPresent(writer, shape, DocTarget.ERLANG);
-                writer.write(
-                    "$L",
-                    enumTypeDeclaration(
-                        symbol,
-                        List.of(),
-                        shapeDocPreamble(shape),
-                        shape.getId(),
-                        atomByMember,
-                        List.copyOf(shape.members())));
-                writer.popState();
-              });
-      return;
-    }
 
     ctx.writerDelegator()
         .useFileWriter(

@@ -12,7 +12,7 @@ import software.amazon.smithy.utils.CodeSection;
  */
 public final class ElixirWriter extends SymbolWriter<ElixirWriter, ElixirImports> {
 
-  public ElixirWriter(String filename, String namespace) {
+  public ElixirWriter(String namespace) {
     super(new ElixirImports());
     setIndentText("  ");
     setRelativizeSymbols(namespace);
@@ -26,7 +26,7 @@ public final class ElixirWriter extends SymbolWriter<ElixirWriter, ElixirImports
   }
 
   public static Factory<ElixirWriter> factory(String namespace) {
-    return (filename, ns) -> new ElixirWriter(filename, namespace);
+    return (filename, ns) -> new ElixirWriter(namespace);
   }
 
   public void pushGeneratedDocumentationSection() {

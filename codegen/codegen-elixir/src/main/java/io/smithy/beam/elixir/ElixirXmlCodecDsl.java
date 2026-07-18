@@ -71,11 +71,6 @@ final class ElixirXmlCodecDsl {
     functions.addAll(buildXmlElement());
     functions.addAll(buildXmlChild());
     functions.addAll(xmlNamespaceAttrs());
-    @SuppressWarnings("unused")
-    List<Function> codecHelpers = new ArrayList<>();
-    codecHelpers.addAll(ElixirCodecHelperDsl.encodeQueryValueXmlQuery());
-    codecHelpers.addAll(
-        ElixirCodecHelperDsl.toBinary(ElixirCodecHelperDsl.ToBinaryVariant.XML_QUERY));
     return functions;
   }
 

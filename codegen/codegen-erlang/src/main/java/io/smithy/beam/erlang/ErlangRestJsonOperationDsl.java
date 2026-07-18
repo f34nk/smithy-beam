@@ -369,12 +369,7 @@ final class ErlangRestJsonOperationDsl {
         Edoc.of("Decode HTTP response for " + op.getId() + "."));
   }
 
-  static Function buildErrorDispatch(
-      Model model,
-      ServiceShape service,
-      OperationShape op,
-      HttpBindingIndex httpIndex,
-      SymbolProvider sp) {
+  static Function buildErrorDispatch(Model model, OperationShape op, SymbolProvider sp) {
     String opName = sp.toSymbol(op).getName();
     List<ShapeId> errors = new ArrayList<>(op.getErrors());
 
@@ -483,10 +478,6 @@ final class ErlangRestJsonOperationDsl {
         clauses,
         null,
         Edoc.of("Error dispatch for " + op.getId() + "."));
-  }
-
-  static Function buildErrorDispatch(Model model, OperationShape op, SymbolProvider sp) {
-    return buildErrorDispatch(model, null, op, HttpBindingIndex.of(model), sp);
   }
 
   static Function buildEncodeResponse(

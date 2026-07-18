@@ -160,13 +160,8 @@ final class ErlangRestJsonDsl {
         model, service, op, httpIndex, sp, layout);
   }
 
-  static Function errorDispatch(
-      Model model,
-      ServiceShape service,
-      OperationShape op,
-      HttpBindingIndex httpIndex,
-      SymbolProvider sp) {
-    return ErlangRestJsonOperationDsl.buildErrorDispatch(model, service, op, httpIndex, sp);
+  static Function errorDispatch(Model model, OperationShape op, SymbolProvider sp) {
+    return ErlangRestJsonOperationDsl.buildErrorDispatch(model, op, sp);
   }
 
   static List<Function> structureHelperFunctions(
@@ -322,7 +317,7 @@ final class ErlangRestJsonDsl {
       functions.add(decodeResponse(model, service, op, httpIndex, sp, layout));
     }
     for (OperationShape op : operations) {
-      functions.add(errorDispatch(model, service, op, httpIndex, sp));
+      functions.add(errorDispatch(model, op, sp));
     }
     functions.addAll(structureHelperFunctions(model, service, sp));
     functions.addAll(enumHelperFunctions(model, service, sp));
