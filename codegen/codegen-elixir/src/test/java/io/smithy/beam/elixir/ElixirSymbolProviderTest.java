@@ -121,37 +121,6 @@ class ElixirSymbolProviderTest {
             testSettings(), model, service, DEF_FILE, MODULE_NAMESPACE, BeamCodegenKind.TYPES);
   }
 
-  // ── toSnakeCase ───────────────────────────────────────────────────────────
-
-  @Nested
-  class ToSnakeCase {
-
-    @Test
-    void convertsLowerCamelCase() {
-      assertThat(ElixirSymbolProvider.toSnakeCase("fooBar")).isEqualTo("foo_bar");
-    }
-
-    @Test
-    void convertsUpperCamelCase() {
-      assertThat(ElixirSymbolProvider.toSnakeCase("FooBar")).isEqualTo("foo_bar");
-    }
-
-    @Test
-    void handlesConsecutiveUppercase() {
-      assertThat(ElixirSymbolProvider.toSnakeCase("HTTPRequest")).isEqualTo("http_request");
-    }
-
-    @Test
-    void preservesAlreadySnakeCase() {
-      assertThat(ElixirSymbolProvider.toSnakeCase("foo_bar")).isEqualTo("foo_bar");
-    }
-
-    @Test
-    void lowercasesSingleWord() {
-      assertThat(ElixirSymbolProvider.toSnakeCase("Foo")).isEqualTo("foo");
-    }
-  }
-
   // ── Prelude shapes ────────────────────────────────────────────────────────
 
   @Nested

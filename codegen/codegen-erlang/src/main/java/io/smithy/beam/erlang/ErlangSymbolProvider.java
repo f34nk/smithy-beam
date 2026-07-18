@@ -2,17 +2,19 @@ package io.smithy.beam.erlang;
 
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
+import io.smithy.beam.core.BeamNameIndex;
 import io.smithy.beam.core.BeamNameUtils;
 import io.smithy.beam.core.BeamScalarTypeAliases;
 import io.smithy.beam.core.BeamSettings;
-import java.util.*;
-import java.util.function.Function;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import software.amazon.smithy.codegen.core.ReservedWords;
 import software.amazon.smithy.codegen.core.ReservedWordsBuilder;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
-import software.amazon.smithy.model.neighbor.Walker;
 import software.amazon.smithy.model.shapes.*;
 import software.amazon.smithy.model.traits.StreamingTrait;
 
@@ -49,11 +51,17 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     this.atomEscaper = erlangKeywordReservedWords();
     this.functionNameEscaper =
         ReservedWords.compose(erlangKeywordReservedWords(), erlangFunctionExportShadows());
-    this.typeNames = buildTypeNames();
-    this.fieldNames = buildStructureFieldNames();
-    this.unionTagNames = buildUnionTagNames();
-    this.enumAtomNames = buildEnumAtomNames();
-    this.serviceFunctionNames = buildServiceFunctionNames();
+    BeamNameIndex nameIndex =
+        BeamNameIndex.of(
+            model,
+            service,
+            BeamNameIndex.Escapers.of(
+                typeNameEscaper, fieldNameEscaper, atomEscaper, functionNameEscaper));
+    this.typeNames = nameIndex.typeNames();
+    this.fieldNames = nameIndex.fieldNames();
+    this.unionTagNames = nameIndex.unionTagNames();
+    this.enumAtomNames = nameIndex.enumAtomNames();
+    this.serviceFunctionNames = nameIndex.serviceFunctionNames();
   }
 
   @Override
@@ -226,7 +234,9 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
   private Symbol serviceScopedFunctionSymbol(Shape shape) {
     String name =
         serviceFunctionNames.getOrDefault(
-            shape.getId(), functionNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
+            shape.getId(),
+            functionNameEscaper.escape(
+                BeamNameUtils.toSnakeCase(shape.getId().getName(service))));
     return Symbol.builder()
         .name(name)
         .namespace(service.getId().getNamespace(), ".")
@@ -288,21 +298,23 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
   String toTypeName(Shape shape) {
     return typeNames.getOrDefault(
-        shape.getId(), typeNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
+        shape.getId(),
+        typeNameEscaper.escape(BeamNameUtils.toSnakeCase(shape.getId().getName(service))));
   }
 
   String toFieldName(MemberShape member) {
     return fieldNames.getOrDefault(
-        member.getId(), fieldNameEscaper.escape(toSnakeCase(memberBaseName(member))));
+        member.getId(),
+        fieldNameEscaper.escape(BeamNameUtils.toSnakeCase(memberBaseName(member))));
   }
 
   String toUnionTagName(MemberShape member) {
     return unionTagNames.getOrDefault(
-        member.getId(), atomEscaper.escape(toSnakeCase(memberBaseName(member))));
+        member.getId(), atomEscaper.escape(BeamNameUtils.toSnakeCase(memberBaseName(member))));
   }
 
   String toFunctionName(String functionName) {
-    return functionNameEscaper.escape(toSnakeCase(functionName));
+    return functionNameEscaper.escape(BeamNameUtils.toSnakeCase(functionName));
   }
 
   List<String> toEnumAtomNames(EnumShape shape) {
@@ -320,102 +332,6 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
   private String memberBaseName(MemberShape member) {
     ShapeId id = member.getId();
     return id.getMember().orElseGet(() -> id.getName(service));
-  }
-
-  private Map<ShapeId, String> buildTypeNames() {
-    List<Shape> shapes =
-        new Walker(model)
-            .walkShapes(service).stream()
-                .filter(shape -> !isPrelude(shape))
-                .sorted(Comparator.comparing(shape -> shape.getId().toString()))
-                .toList();
-    return indexShapeNames(
-        shapes, shape -> typeNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
-  }
-
-  private Map<ShapeId, String> buildStructureFieldNames() {
-    Map<ShapeId, String> result = new HashMap<>();
-    Set<Shape> closure = new Walker(model).walkShapes(service);
-    model.getStructureShapes().stream()
-        .filter(closure::contains)
-        .forEach(
-            shape ->
-                result.putAll(
-                    indexMemberNames(
-                        new ArrayList<>(shape.members()),
-                        member -> fieldNameEscaper.escape(toSnakeCase(memberBaseName(member))))));
-    return result;
-  }
-
-  private Map<ShapeId, String> buildUnionTagNames() {
-    Map<ShapeId, String> result = new HashMap<>();
-    Set<Shape> closure = new Walker(model).walkShapes(service);
-    model.getUnionShapes().stream()
-        .filter(closure::contains)
-        .forEach(
-            shape ->
-                result.putAll(
-                    indexMemberNames(
-                        new ArrayList<>(shape.members()),
-                        member -> atomEscaper.escape(toSnakeCase(memberBaseName(member))))));
-    return result;
-  }
-
-  private Map<ShapeId, Map<String, String>> buildEnumAtomNames() {
-    Map<ShapeId, Map<String, String>> result = new HashMap<>();
-    Set<Shape> closure = new Walker(model).walkShapes(service);
-    model.getEnumShapes().stream()
-        .filter(closure::contains)
-        .forEach(
-            shape ->
-                result.put(
-                    shape.getId(),
-                    BeamNameUtils.deconflict(
-                        shape.getEnumValues().keySet().stream().toList(),
-                        name -> atomEscaper.escape(toSnakeCase(name)))));
-    model.getIntEnumShapes().stream()
-        .filter(closure::contains)
-        .forEach(
-            shape ->
-                result.put(
-                    shape.getId(),
-                    BeamNameUtils.deconflict(
-                        shape.getEnumValues().keySet().stream().toList(),
-                        name -> atomEscaper.escape(toSnakeCase(name)))));
-    return result;
-  }
-
-  private Map<ShapeId, String> buildServiceFunctionNames() {
-    List<Shape> shapes =
-        new Walker(model)
-            .walkShapes(service).stream()
-                .filter(shape -> shape.isOperationShape() || shape.isResourceShape())
-                .sorted(Comparator.comparing(shape -> shape.getId().toString()))
-                .toList();
-    return indexShapeNames(
-        shapes, shape -> functionNameEscaper.escape(toSnakeCase(shape.getId().getName(service))));
-  }
-
-  private static Map<ShapeId, String> indexShapeNames(
-      List<Shape> shapes, Function<Shape, String> escapedName) {
-    Map<ShapeId, String> result = new HashMap<>();
-    BeamNameUtils.deconflict(shapes, escapedName)
-        .forEach((shape, name) -> result.put(shape.getId(), name));
-    return result;
-  }
-
-  private static Map<ShapeId, String> indexMemberNames(
-      List<MemberShape> members, Function<MemberShape, String> escapedName) {
-    Map<ShapeId, String> result = new HashMap<>();
-    BeamNameUtils.deconflict(members, escapedName)
-        .forEach((member, name) -> result.put(member.getId(), name));
-    return result;
-  }
-
-  static String toSnakeCase(String name) {
-    return name.replaceAll("([a-z])([A-Z])", "$1_$2")
-        .replaceAll("([A-Z]+)([A-Z][a-z])", "$1_$2")
-        .toLowerCase();
   }
 
   /** Erlang reserved words for type, field, and function identifiers (language keywords). */

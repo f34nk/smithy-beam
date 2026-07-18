@@ -119,37 +119,6 @@ class ErlangSymbolProviderTest {
         new ErlangSymbolProvider(testSettings(), model, service, DEF_FILE, BeamCodegenKind.TYPES);
   }
 
-  // ── toSnakeCase ───────────────────────────────────────────────────────────
-
-  @Nested
-  class ToSnakeCase {
-
-    @Test
-    void convertsLowerCamelCase() {
-      assertThat(ErlangSymbolProvider.toSnakeCase("fooBar")).isEqualTo("foo_bar");
-    }
-
-    @Test
-    void convertsUpperCamelCase() {
-      assertThat(ErlangSymbolProvider.toSnakeCase("FooBar")).isEqualTo("foo_bar");
-    }
-
-    @Test
-    void handlesConsecutiveUppercase() {
-      assertThat(ErlangSymbolProvider.toSnakeCase("HTTPRequest")).isEqualTo("http_request");
-    }
-
-    @Test
-    void preservesAlreadySnakeCase() {
-      assertThat(ErlangSymbolProvider.toSnakeCase("foo_bar")).isEqualTo("foo_bar");
-    }
-
-    @Test
-    void lowercasesSingleWord() {
-      assertThat(ErlangSymbolProvider.toSnakeCase("Foo")).isEqualTo("foo");
-    }
-  }
-
   // ── Prelude shapes ────────────────────────────────────────────────────────
 
   @Nested
