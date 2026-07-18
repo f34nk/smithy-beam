@@ -128,16 +128,16 @@ defmodule BasicServiceRestJson1Test do
       assert out.basic_boolean == true
     end
 
-    test "invalid JSON raises" do
+    test "invalid JSON yields empty decoded fields" do
       resp = %HttpResponse{
         status: 200,
         headers: [],
         body: "{not json"
       }
 
-      assert_raise Jason.DecodeError, fn ->
-        BasicServiceRestJson1.decode_get_type_closure_response(resp)
-      end
+      assert {:ok, out} = BasicServiceRestJson1.decode_get_type_closure_response(resp)
+      assert out.basic_string == nil
+      assert out.basic_integer == nil
     end
 
     test "unknown error" do

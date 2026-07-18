@@ -58,7 +58,7 @@ public final class MinimalCustomProtocolElixirIntegration implements ElixirInteg
     BeamElixirLayout layout =
         new BeamElixirLayout(codegenContext.settings(), service.getId().getNamespace(), service);
     String codecSnakeName =
-        layout.clientCodecModuleName(
+        layout.codecModuleName(
             codegenContext.resolvedProtocolTraitId(), codegenContext.integrations());
     String codecFile = codecSnakeName + ".ex";
     String moduleName = toElixirModuleName(codecSnakeName);

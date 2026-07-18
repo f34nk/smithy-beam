@@ -58,11 +58,11 @@ public final class MinimalCustomProtocolIntegration implements ErlangIntegration
     BeamErlangLayout layout =
         new BeamErlangLayout(codegenContext.settings(), service.getId().getNamespace(), service);
     String codecFile =
-        layout.clientCodecModuleName(
+        layout.codecModuleName(
                 codegenContext.resolvedProtocolTraitId(), codegenContext.integrations())
             + ".erl";
     String codecModule =
-        layout.clientCodecModuleName(
+        layout.codecModuleName(
             codegenContext.resolvedProtocolTraitId(), codegenContext.integrations());
     SymbolProvider sp = codegenContext.symbolProvider();
     List<OperationShape> operations = new ArrayList<>();
