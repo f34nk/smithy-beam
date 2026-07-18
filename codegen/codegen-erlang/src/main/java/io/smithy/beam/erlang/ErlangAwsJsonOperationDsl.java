@@ -76,11 +76,12 @@ final class ErlangAwsJsonOperationDsl {
                                     io.beam.dsl.erlang.BinaryExpr.of(amzTarget)))))),
                 RecordField.of("body", Variable.of("Body")))));
 
-    return Function.of(
-        "encode_" + opName + "_request",
-        List.of(FunctionClause.of(List.of(inputPattern), BlockExpr.commaSeparated(body, false))),
-        Spec.of("encode_" + opName + "_request(" + inputType + ") -> #http_request{}"),
-        Edoc.of("Encode AWS JSON request for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "encode_" + opName + "_request",
+            List.of(FunctionClause.of(List.of(inputPattern), BlockExpr.commaSeparated(body, false))),
+            Spec.of("encode_" + opName + "_request(" + inputType + ") -> #http_request{}"),
+            Edoc.of("Encode AWS JSON request for " + op.getId() + ".")));
   }
 
   static Function buildDecodeResponse(
@@ -149,16 +150,17 @@ final class ErlangAwsJsonOperationDsl {
                 "decode_" + opName + "_response_error",
                 List.of(Variable.of("Status"), Variable.of("RespHeaders"), Variable.of("Body"))));
 
-    return Function.of(
-        "decode_" + opName + "_response",
-        List.of(successClause, errorClause),
-        Spec.of(
-            "decode_"
-                + opName
-                + "_response(#http_response{}) -> {'ok', "
-                + outputType
-                + "} | {'error', term()}"),
-        Edoc.of("Decode AWS JSON response for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "decode_" + opName + "_response",
+            List.of(successClause, errorClause),
+            Spec.of(
+                "decode_"
+                    + opName
+                    + "_response(#http_response{}) -> {'ok', "
+                    + outputType
+                    + "} | {'error', term()}"),
+            Edoc.of("Decode AWS JSON response for " + op.getId() + ".")));
   }
 
   static Function buildErrorDispatch(Model model, OperationShape op, SymbolProvider sp) {
@@ -196,11 +198,12 @@ final class ErlangAwsJsonOperationDsl {
               false);
     }
 
-    return Function.of(
-        "decode_" + opName + "_request",
-        List.of(FunctionClause.of(List.of(pattern), body)),
-        Spec.of("decode_" + opName + "_request(#http_request{}) -> " + inputType),
-        Edoc.of("Decode AWS JSON request for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "decode_" + opName + "_request",
+            List.of(FunctionClause.of(List.of(pattern), body)),
+            Spec.of("decode_" + opName + "_request(#http_request{}) -> " + inputType),
+            Edoc.of("Decode AWS JSON request for " + op.getId() + ".")));
   }
 
   static Function buildEncodeResponse(
@@ -238,10 +241,11 @@ final class ErlangAwsJsonOperationDsl {
                                     io.beam.dsl.erlang.BinaryExpr.of(contentType)))))),
                 RecordField.of("body", Variable.of("Body")))));
 
-    return Function.of(
-        "encode_" + opName + "_response",
-        List.of(FunctionClause.of(List.of(pattern), BlockExpr.commaSeparated(body, false))),
-        Spec.of("encode_" + opName + "_response(" + outputType + ") -> #http_response{}"),
-        Edoc.of("Encode AWS JSON response for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "encode_" + opName + "_response",
+            List.of(FunctionClause.of(List.of(pattern), BlockExpr.commaSeparated(body, false))),
+            Spec.of("encode_" + opName + "_response(" + outputType + ") -> #http_response{}"),
+            Edoc.of("Encode AWS JSON response for " + op.getId() + ".")));
   }
 }

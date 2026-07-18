@@ -166,7 +166,7 @@ final class ErlangRouterDsl {
       clauses.add(routeClause(op, httpIndex, sp, codecMod, !labels.isEmpty()));
     }
     clauses.add(notFoundClause(4));
-    return Function.of("route", clauses);
+    return ErlangUnusedBindings.prefix(Function.of("route", clauses));
   }
 
   private static Function awsJsonRoute(
@@ -231,7 +231,7 @@ final class ErlangRouterDsl {
                 VariablePattern.of("Req")),
             targetCase));
     clauses.add(notFoundClause(5));
-    return Function.of("route", clauses);
+    return ErlangUnusedBindings.prefix(Function.of("route", clauses));
   }
 
   private static FunctionClause routeClause(
@@ -262,7 +262,7 @@ final class ErlangRouterDsl {
             ? labeledRouteBody(uriTemplate, codecMod, opName, handlerFn, method)
             : literalRouteBody(codecMod, opName, handlerFn);
 
-    return FunctionClause.of(patterns, guard, body);
+    return ErlangUnusedBindings.prefix(FunctionClause.of(patterns, guard, body));
   }
 
   private static Expression labeledRouteBody(

@@ -109,17 +109,18 @@ final class ErlangRestXmlOperationDsl {
                 recordBindingHead("Input", inputRecord, patternBindings, sp))
             : List.of(recordBindingHead("Input", inputRecord, patternBindings, sp));
 
-    return Function.of(
-        "encode_" + opName + "_request",
-        List.of(
-            FunctionClause.of(
-                patterns,
-                BlockExpr.commaSeparated(
-                    buildEncodeRequestBodyExprs(
-                        model, service, op, httpIndex, sp, encodeWithConfig),
-                    false))),
-        Spec.of("encode_" + opName + "_request(" + inputArgs + ") -> #http_request{}"),
-        Edoc.of("Encode REST-XML request for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "encode_" + opName + "_request",
+            List.of(
+                FunctionClause.of(
+                    patterns,
+                    BlockExpr.commaSeparated(
+                        buildEncodeRequestBodyExprs(
+                            model, service, op, httpIndex, sp, encodeWithConfig),
+                        false))),
+            Spec.of("encode_" + opName + "_request(" + inputArgs + ") -> #http_request{}"),
+            Edoc.of("Encode REST-XML request for " + op.getId() + ".")));
   }
 
   static Function buildDecodeRequest(
@@ -135,22 +136,23 @@ final class ErlangRestXmlOperationDsl {
             ? List.of(httpRequestPattern())
             : List.of(VariablePattern.of("Labels"), httpRequestPattern());
 
-    return Function.of(
-        "decode_" + opName + "_request",
-        List.of(
-            FunctionClause.of(
-                patterns,
-                BlockExpr.commaSeparated(
-                    buildDecodeRequestBodyExprs(model, op, httpIndex, sp), false))),
-        Spec.of(
-            "decode_"
-                + opName
-                + "_request("
-                + requestArgs
-                + ") -> {'ok', "
-                + inputType
-                + "} | {'error', term()}"),
-        Edoc.of("Decode REST-XML request for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "decode_" + opName + "_request",
+            List.of(
+                FunctionClause.of(
+                    patterns,
+                    BlockExpr.commaSeparated(
+                        buildDecodeRequestBodyExprs(model, op, httpIndex, sp), false))),
+            Spec.of(
+                "decode_"
+                    + opName
+                    + "_request("
+                    + requestArgs
+                    + ") -> {'ok', "
+                    + inputType
+                    + "} | {'error', term()}"),
+            Edoc.of("Decode REST-XML request for " + op.getId() + ".")));
   }
 
   static List<Function> buildDecodeResponse(
@@ -187,25 +189,29 @@ final class ErlangRestXmlOperationDsl {
 
     List<Function> functions = new ArrayList<>();
     functions.add(
-        Function.of(
-            "decode_" + opName + "_response",
-            clauses,
-            Spec.of(
-                "decode_"
-                    + opName
-                    + "_response(#http_response{}) -> {'ok', "
-                    + outputType
-                    + "} | {'error', term()}"),
-            Edoc.of("Decode REST-XML response for " + op.getId() + ".")));
+        ErlangUnusedBindings.prefix(
+            Function.of(
+                "decode_" + opName + "_response",
+                clauses,
+                Spec.of(
+                    "decode_"
+                        + opName
+                        + "_response(#http_response{}) -> {'ok', "
+                        + outputType
+                        + "} | {'error', term()}"),
+                Edoc.of("Decode REST-XML response for " + op.getId() + "."))));
 
     if (!op.getErrors().isEmpty()) {
       functions.add(
-          Function.of(
-              "decode_" + opName + "_response_error",
-              ErlangRestXmlSupport.buildResponseErrorDispatchClauses(model, op, sp),
-              Spec.of(
-                  "decode_" + opName + "_response_error(integer(), term()) -> {'error', term()}"),
-              Edoc.of("Error dispatch for " + op.getId() + ".")));
+          ErlangUnusedBindings.prefix(
+              Function.of(
+                  "decode_" + opName + "_response_error",
+                  ErlangRestXmlSupport.buildResponseErrorDispatchClauses(model, op, sp),
+                  Spec.of(
+                      "decode_"
+                          + opName
+                          + "_response_error(integer(), term()) -> {'error', term()}"),
+                  Edoc.of("Error dispatch for " + op.getId() + "."))));
     }
     return functions;
   }
@@ -217,15 +223,16 @@ final class ErlangRestXmlOperationDsl {
     String outputRecord = ErlangRestXmlSupport.recordName(sp.toSymbol(output));
     String outputType = sp.toSymbol(output).getName();
 
-    return Function.of(
-        "encode_" + opName + "_response",
-        List.of(
-            FunctionClause.of(
-                List.of(encodeResponsePattern(model, op, httpIndex, sp, output, outputRecord)),
-                BlockExpr.commaSeparated(
-                    buildEncodeResponseBodyExprs(model, op, httpIndex, sp), false))),
-        Spec.of("encode_" + opName + "_response(" + outputType + ") -> #http_response{}"),
-        Edoc.of("Encode REST-XML response for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "encode_" + opName + "_response",
+            List.of(
+                FunctionClause.of(
+                    List.of(encodeResponsePattern(model, op, httpIndex, sp, output, outputRecord)),
+                    BlockExpr.commaSeparated(
+                        buildEncodeResponseBodyExprs(model, op, httpIndex, sp), false))),
+            Spec.of("encode_" + opName + "_response(" + outputType + ") -> #http_response{}"),
+            Edoc.of("Encode REST-XML response for " + op.getId() + ".")));
   }
 
   static Function buildErrorResponseEncoder(Model model, ShapeId errorId, SymbolProvider sp) {
@@ -276,9 +283,10 @@ final class ErlangRestXmlOperationDsl {
                         RecordField.of("body", Variable.of("Body"))))),
             false);
 
-    return Function.of(
-        "encode_" + recName + "_response",
-        List.of(FunctionClause.of(List.of(RecordPattern.of(recName, List.of())), body)));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "encode_" + recName + "_response",
+            List.of(FunctionClause.of(List.of(RecordPattern.of(recName, List.of())), body))));
   }
 
   static List<Expression> buildDecodeRequestBodyExprs(

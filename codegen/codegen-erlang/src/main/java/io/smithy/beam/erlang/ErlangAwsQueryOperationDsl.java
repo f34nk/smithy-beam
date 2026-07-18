@@ -114,11 +114,12 @@ final class ErlangAwsQueryOperationDsl {
                                     BinaryExpr.of("application/x-www-form-urlencoded")))))),
                 RecordField.of("body", Variable.of("Body")))));
 
-    return Function.of(
-        "encode_" + opName + "_request",
-        List.of(FunctionClause.of(List.of(inputPattern), BlockExpr.commaSeparated(body, false))),
-        Spec.of("encode_" + opName + "_request(" + inputType + ") -> #http_request{}"),
-        Edoc.of("Encode AWS Query request for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "encode_" + opName + "_request",
+            List.of(FunctionClause.of(List.of(inputPattern), BlockExpr.commaSeparated(body, false))),
+            Spec.of("encode_" + opName + "_request(" + inputType + ") -> #http_request{}"),
+            Edoc.of("Encode AWS Query request for " + op.getId() + ".")));
   }
 
   static Function buildFlattenQueryInput(
@@ -279,16 +280,17 @@ final class ErlangAwsQueryOperationDsl {
                 LocalCallExpr.of(
                     "decode_query_error", List.of(Variable.of("Status"), Variable.of("Body")))));
 
-    return Function.of(
-        "decode_" + opName + "_response",
-        clauses,
-        Spec.of(
-            "decode_"
-                + opName
-                + "_response(#http_response{}) -> {'ok', "
-                + outputType
-                + "} | {'error', term()}"),
-        Edoc.of("Decode AWS Query response for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "decode_" + opName + "_response",
+            clauses,
+            Spec.of(
+                "decode_"
+                    + opName
+                    + "_response(#http_response{}) -> {'ok', "
+                    + outputType
+                    + "} | {'error', term()}"),
+            Edoc.of("Decode AWS Query response for " + op.getId() + ".")));
   }
 
   private static Expression buildDecodeSuccessBody(
@@ -352,11 +354,12 @@ final class ErlangAwsQueryOperationDsl {
                 "parse_" + recordName(sp.toSymbol(input)) + "_input",
                 List.of(Variable.of("Params"))));
 
-    return Function.of(
-        "decode_" + opName + "_request",
-        List.of(FunctionClause.of(List.of(pattern), BlockExpr.commaSeparated(body, false))),
-        Spec.of("decode_" + opName + "_request(#http_request{}) -> " + inputType),
-        Edoc.of("Decode AWS Query server request for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "decode_" + opName + "_request",
+            List.of(FunctionClause.of(List.of(pattern), BlockExpr.commaSeparated(body, false))),
+            Spec.of("decode_" + opName + "_request(#http_request{}) -> " + inputType),
+            Edoc.of("Decode AWS Query server request for " + op.getId() + ".")));
   }
 
   static Function buildServerEncodeResponse(
@@ -426,11 +429,12 @@ final class ErlangAwsQueryOperationDsl {
                                     BinaryExpr.of("Content-Type"), BinaryExpr.of("text/xml")))))),
                 RecordField.of("body", Variable.of("Body")))));
 
-    return Function.of(
-        "encode_" + opName + "_response",
-        List.of(FunctionClause.of(List.of(pattern), BlockExpr.commaSeparated(body, false))),
-        Spec.of("encode_" + opName + "_response(" + outputType + ") -> #http_response{}"),
-        Edoc.of("Encode AWS Query server response for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "encode_" + opName + "_response",
+            List.of(FunctionClause.of(List.of(pattern), BlockExpr.commaSeparated(body, false))),
+            Spec.of("encode_" + opName + "_response(" + outputType + ") -> #http_response{}"),
+            Edoc.of("Encode AWS Query server response for " + op.getId() + ".")));
   }
 
   static Function buildParseInputFromForm(
@@ -458,11 +462,12 @@ final class ErlangAwsQueryOperationDsl {
       fields.add(RecordField.of(field, valueExpr));
     }
 
-    return Function.of(
-        "parse_" + inputRecord + "_input",
-        List.of(
-            FunctionClause.of(
-                List.of(VariablePattern.of("Params")), RecordExpr.of(inputRecord, fields))));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "parse_" + inputRecord + "_input",
+            List.of(
+                FunctionClause.of(
+                    List.of(VariablePattern.of("Params")), RecordExpr.of(inputRecord, fields)))));
   }
 
   private static RecordPattern inputBindingHead(

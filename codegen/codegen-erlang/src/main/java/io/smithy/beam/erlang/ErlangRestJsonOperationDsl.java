@@ -158,11 +158,12 @@ final class ErlangRestJsonOperationDsl {
     body.add(
         buildHttpRequestRecord(method, requestHeaders, streamingRequestPayload, hasHostLabels));
 
-    return Function.of(
-        "encode_" + opName + "_request",
-        List.of(FunctionClause.of(patterns, BlockExpr.commaSeparated(body, false))),
-        Spec.of(specText),
-        Edoc.of("Encode HTTP request for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "encode_" + opName + "_request",
+            List.of(FunctionClause.of(patterns, BlockExpr.commaSeparated(body, false))),
+            Spec.of(specText),
+            Edoc.of("Encode HTTP request for " + op.getId() + ".")));
   }
 
   static Function buildDecodeRequest(
@@ -218,11 +219,12 @@ final class ErlangRestJsonOperationDsl {
             reqPayload,
             streamingRequestPayload));
 
-    return Function.of(
-        "decode_" + opName + "_request",
-        List.of(FunctionClause.of(patterns, BlockExpr.commaSeparated(body, false))),
-        Spec.of(specText),
-        Edoc.of("Decode HTTP request for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "decode_" + opName + "_request",
+            List.of(FunctionClause.of(patterns, BlockExpr.commaSeparated(body, false))),
+            Spec.of(specText),
+            Edoc.of("Decode HTTP request for " + op.getId() + ".")));
   }
 
   static Function buildDecodeResponse(
@@ -362,11 +364,12 @@ final class ErlangRestJsonOperationDsl {
                 "decode_" + opName + "_response_error",
                 List.of(Variable.of("Status"), Variable.of("RespHeaders"), Variable.of("Body"))));
 
-    return Function.of(
-        "decode_" + opName + "_response",
-        List.of(successClause, errorClause),
-        Spec.of(specText),
-        Edoc.of("Decode HTTP response for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "decode_" + opName + "_response",
+            List.of(successClause, errorClause),
+            Spec.of(specText),
+            Edoc.of("Decode HTTP response for " + op.getId() + ".")));
   }
 
   static Function buildErrorDispatch(Model model, OperationShape op, SymbolProvider sp) {
@@ -473,11 +476,12 @@ final class ErlangRestJsonOperationDsl {
                               Variable.of("Body")))))));
     }
 
-    return Function.of(
-        "decode_" + opName + "_response_error",
-        clauses,
-        null,
-        Edoc.of("Error dispatch for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "decode_" + opName + "_response_error",
+            clauses,
+            null,
+            Edoc.of("Error dispatch for " + op.getId() + ".")));
   }
 
   static Function buildEncodeResponse(
@@ -489,15 +493,16 @@ final class ErlangRestJsonOperationDsl {
 
     String specText = "encode_" + opName + "_response(" + outputType + ") -> #http_response{}";
 
-    return Function.of(
-        "encode_" + opName + "_response",
-        List.of(
-            FunctionClause.of(
-                List.of(encodeResponsePattern(model, op, httpIndex, sp, output, outputRecord)),
-                BlockExpr.commaSeparated(
-                    buildEncodeResponseBodyExprs(model, op, httpIndex, sp), false))),
-        Spec.of(specText),
-        Edoc.of("Encode HTTP response for " + op.getId() + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "encode_" + opName + "_response",
+            List.of(
+                FunctionClause.of(
+                    List.of(encodeResponsePattern(model, op, httpIndex, sp, output, outputRecord)),
+                    BlockExpr.commaSeparated(
+                        buildEncodeResponseBodyExprs(model, op, httpIndex, sp), false))),
+            Spec.of(specText),
+            Edoc.of("Encode HTTP response for " + op.getId() + ".")));
   }
 
   static List<Expression> buildEncodeResponseBodyExprs(
@@ -710,11 +715,12 @@ final class ErlangRestJsonOperationDsl {
                         RecordField.of("body", Variable.of("Body"))))),
             false);
 
-    return Function.of(
-        "encode_" + recName + "_response",
-        List.of(FunctionClause.of(List.of(RecordPattern.of(recName, fields)), body)),
-        Spec.of("encode_" + recName + "_response(#" + recName + "{}) -> #http_response{}"),
-        Edoc.of("Encode HTTP error response for " + errorId + "."));
+    return ErlangUnusedBindings.prefix(
+        Function.of(
+            "encode_" + recName + "_response",
+            List.of(FunctionClause.of(List.of(RecordPattern.of(recName, fields)), body)),
+            Spec.of("encode_" + recName + "_response(#" + recName + "{}) -> #http_response{}"),
+            Edoc.of("Encode HTTP error response for " + errorId + ".")));
   }
 
   static RecordPattern memberBindingHead(
