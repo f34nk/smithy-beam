@@ -2,17 +2,12 @@ package io.smithy.beam.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import java.lang.reflect.Field;
 import java.net.URL;
-import java.util.List;
-import java.util.function.BiFunction;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import software.amazon.smithy.codegen.core.directed.CodegenDirector;
 import software.amazon.smithy.model.Model;
@@ -21,79 +16,94 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
-import software.amazon.smithy.model.transform.ModelTransformer;
+import software.amazon.smithy.model.traits.DeprecatedTrait;
+import software.amazon.smithy.model.traits.InputTrait;
+import software.amazon.smithy.model.traits.OutputTrait;
 
 class BeamCodegenTransformsTest {
 
-  private static final String SMITHY_PIN = "1.54.0";
-
   private static final ShapeId SERVICE_ID = ShapeId.from("example.com#MyService");
   private static final ShapeId ORPHAN_ID = ShapeId.from("example.com#Orphan");
+  private static final ShapeId PING_ID = ShapeId.from("example.com#Ping");
+  private static final ShapeId DEPRECATED_STRING_ID = ShapeId.from("example.com#OldName");
 
   @Test
-  void codegenDirectorReflectionFields_matchSmithyPin() throws Exception {
-    Field transformsField =
-        CodegenDirector.class.getDeclaredField(
-            BeamCodegenTransforms.CODEGEN_DIRECTOR_TRANSFORMS_FIELD);
-    Field modelField =
-        CodegenDirector.class.getDeclaredField(BeamCodegenTransforms.CODEGEN_DIRECTOR_MODEL_FIELD);
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  void applySharedCodegenTransforms_setsPrunedModelWithoutDirectorDeferredTransforms() {
+    Model model = modelWithOrphanShape();
+    CodegenDirector runner = Mockito.spy(new CodegenDirector<>());
+    runner.service(SERVICE_ID);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    settings.service(SERVICE_ID);
 
-    assertThat(transformsField.getName()).isEqualTo("transforms");
-    assertThat(modelField.getName()).isEqualTo("model");
-    assertThat(SMITHY_PIN).isEqualTo("1.54.0");
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings, model);
+
+    verify(runner, never()).performDefaultCodegenTransforms();
+    verify(runner, never()).createDedicatedInputsAndOutputs();
+    ArgumentCaptor<Model> modelCaptor = ArgumentCaptor.forClass(Model.class);
+    verify(runner).model(modelCaptor.capture());
+    Model pruned = modelCaptor.getValue();
+    assertThat(pruned.getShape(ORPHAN_ID)).isEmpty();
+    assertThat(pruned.getShape(SERVICE_ID)).isPresent();
   }
 
   @Test
   @SuppressWarnings({"unchecked", "rawtypes"})
-  void applySharedCodegenTransforms_invokesDirectorStepsIncludingRelativeFilters() {
-    CodegenDirector runner = runnerWithService();
+  void applySharedCodegenTransforms_createsDedicatedInputsAndOutputsBeforePrune() {
+    Model model = modelWithOrphanShape();
+    CodegenDirector runner = Mockito.spy(new CodegenDirector<>());
+    runner.service(SERVICE_ID);
     BeamSettings settings = new BeamSettings();
     settings.edition("2026");
     settings.service(SERVICE_ID);
-    settings.relativeDate(" 2026-06-01 ");
-    settings.relativeVersion(" 1.2.3 ");
 
-    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings, model);
 
-    InOrder order = inOrder(runner);
-    order.verify(runner).performDefaultCodegenTransforms();
-    order.verify(runner).createDedicatedInputsAndOutputs();
-    order.verify(runner).removeShapesDeprecatedBeforeDate("2026-06-01");
-    order.verify(runner).removeShapesDeprecatedBeforeVersion("1.2.3");
+    ArgumentCaptor<Model> modelCaptor = ArgumentCaptor.forClass(Model.class);
+    verify(runner).model(modelCaptor.capture());
+    Model transformed = modelCaptor.getValue();
+    OperationShape ping = transformed.expectShape(PING_ID, OperationShape.class);
+    assertThat(transformed.expectShape(ping.getInputShape()).hasTrait(InputTrait.class)).isTrue();
+    assertThat(transformed.expectShape(ping.getOutputShape()).hasTrait(OutputTrait.class)).isTrue();
+  }
+
+  @Test
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  void applySharedCodegenTransforms_appliesRelativeDeprecationFilters() {
+    Model model = modelWithDeprecatedStringInClosure();
+    CodegenDirector runner = Mockito.spy(new CodegenDirector<>());
+    runner.service(SERVICE_ID);
+    BeamSettings settings = new BeamSettings();
+    settings.edition("2026");
+    settings.service(SERVICE_ID);
+    settings.relativeDate("2026-06-01");
+
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings, model);
+
+    ArgumentCaptor<Model> modelCaptor = ArgumentCaptor.forClass(Model.class);
+    verify(runner).model(modelCaptor.capture());
+    assertThat(modelCaptor.getValue().getShape(DEPRECATED_STRING_ID)).isEmpty();
+    assertThat(modelCaptor.getValue().getShape(SERVICE_ID)).isPresent();
   }
 
   @Test
   @SuppressWarnings({"unchecked", "rawtypes"})
   void applySharedCodegenTransforms_skipsDeprecationFilters_whenRelativeFieldsBlankOrWhitespace() {
-    CodegenDirector runner = runnerWithService();
+    Model model = modelWithDeprecatedStringInClosure();
+    CodegenDirector runner = Mockito.spy(new CodegenDirector<>());
+    runner.service(SERVICE_ID);
     BeamSettings settings = new BeamSettings();
     settings.edition("2026");
     settings.service(SERVICE_ID);
     settings.relativeDate("   ");
     settings.relativeVersion("\t");
 
-    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings, model);
 
-    verify(runner).performDefaultCodegenTransforms();
-    verify(runner).createDedicatedInputsAndOutputs();
-    verify(runner, never()).removeShapesDeprecatedBeforeDate(anyString());
-    verify(runner, never()).removeShapesDeprecatedBeforeVersion(anyString());
-  }
-
-  @Test
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  void applySharedCodegenTransforms_skipsDeprecationFilters_whenRelativeFieldsUnset() {
-    CodegenDirector runner = runnerWithService();
-    BeamSettings settings = new BeamSettings();
-    settings.edition("2026");
-    settings.service(SERVICE_ID);
-
-    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
-
-    verify(runner).performDefaultCodegenTransforms();
-    verify(runner).createDedicatedInputsAndOutputs();
-    verify(runner, never()).removeShapesDeprecatedBeforeDate(anyString());
-    verify(runner, never()).removeShapesDeprecatedBeforeVersion(anyString());
+    ArgumentCaptor<Model> modelCaptor = ArgumentCaptor.forClass(Model.class);
+    verify(runner).model(modelCaptor.capture());
+    assertThat(modelCaptor.getValue().getShape(DEPRECATED_STRING_ID)).isPresent();
   }
 
   @Test
@@ -139,30 +149,22 @@ class BeamCodegenTransformsTest {
 
   @Test
   @SuppressWarnings({"rawtypes", "unchecked"})
-  void applySharedCodegenTransforms_prunesUnreachableShapesViaReflectionWithoutThrowing()
-      throws Exception {
+  void applySharedCodegenTransforms_prunesUnreachableShapesBeforeRun() {
     Model model = modelWithOrphanShape();
-    CodegenDirector runner = new CodegenDirector<>();
-    runner.model(model);
+    CodegenDirector runner = Mockito.spy(new CodegenDirector<>());
     runner.service(SERVICE_ID);
     BeamSettings settings = new BeamSettings();
     settings.edition("2026");
     settings.service(SERVICE_ID);
 
-    assertThatCode(() -> BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings))
+    assertThatCode(() -> BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings, model))
         .doesNotThrowAnyException();
 
-    Model transformed = BeamCodegenTransforms.applyDirectorTransforms(runner);
-    assertThat(transformed.getShape(ORPHAN_ID)).isEmpty();
-    assertThat(transformed.getShape(SERVICE_ID)).isPresent();
-
-    Field transformsField =
-        CodegenDirector.class.getDeclaredField(
-            BeamCodegenTransforms.CODEGEN_DIRECTOR_TRANSFORMS_FIELD);
-    transformsField.setAccessible(true);
-    List<BiFunction<Model, ModelTransformer, Model>> transforms =
-        (List<BiFunction<Model, ModelTransformer, Model>>) transformsField.get(runner);
-    assertThat(transforms).isNotEmpty();
+    ArgumentCaptor<Model> modelCaptor = ArgumentCaptor.forClass(Model.class);
+    verify(runner).model(modelCaptor.capture());
+    Model pruned = modelCaptor.getValue();
+    assertThat(pruned.getShape(ORPHAN_ID)).isEmpty();
+    assertThat(pruned.getShape(SERVICE_ID)).isPresent();
   }
 
   @Test
@@ -190,14 +192,6 @@ class BeamCodegenTransformsTest {
             BeamWaiterIndex.referencedErrorShapeIds(
                 pruned, pruned.expectShape(serviceId, ServiceShape.class)))
         .contains(errorId);
-  }
-
-  @SuppressWarnings("rawtypes")
-  private static CodegenDirector runnerWithService() {
-    CodegenDirector runner = Mockito.spy(new CodegenDirector<>());
-    runner.model(modelWithOrphanShape());
-    runner.service(SERVICE_ID);
-    return runner;
   }
 
   private static Model modelWithEnumInServiceClosure() {
@@ -229,13 +223,30 @@ class BeamCodegenTransformsTest {
 
   private static Model modelWithOrphanShape() {
     ServiceShape service =
-        ServiceShape.builder()
-            .id(SERVICE_ID)
-            .version("1")
-            .addOperation(ShapeId.from("example.com#Ping"))
-            .build();
-    OperationShape ping = OperationShape.builder().id(ShapeId.from("example.com#Ping")).build();
+        ServiceShape.builder().id(SERVICE_ID).version("1").addOperation(PING_ID).build();
+    OperationShape ping = OperationShape.builder().id(PING_ID).build();
     StructureShape orphan = StructureShape.builder().id(ORPHAN_ID).build();
     return Model.assembler().addShape(service).addShape(ping).addShape(orphan).assemble().unwrap();
+  }
+
+  private static Model modelWithDeprecatedStringInClosure() {
+    ShapeId bundleId = ShapeId.from("example.com#NameBundle");
+    ServiceShape service =
+        ServiceShape.builder().id(SERVICE_ID).version("1").addOperation(PING_ID).build();
+    OperationShape ping = OperationShape.builder().id(PING_ID).output(bundleId).build();
+    software.amazon.smithy.model.shapes.StringShape oldName =
+        software.amazon.smithy.model.shapes.StringShape.builder()
+            .id(DEPRECATED_STRING_ID)
+            .addTrait(DeprecatedTrait.builder().since("2020-01-01").build())
+            .build();
+    StructureShape bundle =
+        StructureShape.builder().id(bundleId).addMember("name", DEPRECATED_STRING_ID).build();
+    return Model.assembler()
+        .addShape(service)
+        .addShape(ping)
+        .addShape(oldName)
+        .addShape(bundle)
+        .assemble()
+        .unwrap();
   }
 }

@@ -55,7 +55,7 @@ class ErlangIntegrationSectionsTest {
     var resolvedService = settings.resolveService(context.getModel());
     runner.service(resolvedService);
 
-    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings, context.getModel());
 
     runner.run();
   }
@@ -80,7 +80,7 @@ class ErlangIntegrationSectionsTest {
     var resolvedService = settings.resolveService(context.getModel());
     runner.service(resolvedService);
 
-    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings, context.getModel());
 
     runner.run();
 
@@ -117,7 +117,7 @@ class ErlangIntegrationSectionsTest {
     var resolvedService = beamSettings.resolveService(context.getModel());
     runner.service(resolvedService);
 
-    BeamCodegenTransforms.applySharedCodegenTransforms(runner, beamSettings);
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, beamSettings, context.getModel());
 
     runner.run();
 

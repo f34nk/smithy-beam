@@ -23,13 +23,12 @@ public final class ElixirClientGeneration {
     runner.fileManifest(context.getFileManifest());
     runner.integrationSettings(context.getSettings());
     context.getPluginClassLoader().ifPresent(runner::integrationClassLoader);
-    runner.model(context.getModel());
 
     BeamSettings settings = runner.settings(BeamSettings.class, context.getSettings());
     var serviceId = settings.resolveService(context.getModel());
     runner.service(serviceId);
 
-    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings, context.getModel());
 
     runner.run();
 

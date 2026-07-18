@@ -47,7 +47,7 @@ class ClientProtocolIntegrationHookTest {
     var resolvedService = settings.resolveService(context.getModel());
     runner.service(resolvedService);
 
-    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings);
+    BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings, context.getModel());
 
     runner.run();
   }
