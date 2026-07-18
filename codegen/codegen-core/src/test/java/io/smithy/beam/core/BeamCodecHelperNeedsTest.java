@@ -39,9 +39,7 @@ class BeamCodecHelperNeedsTest {
                             id: String
                         }
 
-                        structure GetItemOutput {
-                            name: String
-                        }
+                        structure GetItemOutput {}
                         """)
             .discoverModels()
             .assemble()
@@ -104,7 +102,7 @@ class BeamCodecHelperNeedsTest {
   }
 
   @Test
-  void awsJsonWithoutErrorsNeedsNoJsonBodyHelper() {
+  void awsJsonNeedsJsonBodyHelper() {
     Model model =
         Model.assembler()
             .addUnparsedModel(
@@ -144,7 +142,7 @@ class BeamCodecHelperNeedsTest {
             ShapeId.from("smithy.beam.test.helpers#Json11Service"), ServiceShape.class);
 
     BeamCodecHelperNeeds needs = BeamCodecHelperNeeds.of(model, service);
-    assertThat(needs.jsonBody()).isFalse();
+    assertThat(needs.jsonBody()).isTrue();
     assertThat(needs.toBinary()).isFalse();
     assertThat(needs.uriCoding()).isFalse();
     assertThat(needs.idempotencyToken()).isFalse();

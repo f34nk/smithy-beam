@@ -1352,7 +1352,7 @@ final class ErlangRestJsonOperationDsl {
     return RecordExpr.of("http_request", fields);
   }
 
-  static CaseExpr decodeBodyJsonExpr() {
+  static Expression decodeBodyJsonExpr() {
     return ErlangJsonCodecSupport.decodedBodyExpr();
   }
 

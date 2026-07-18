@@ -5,7 +5,6 @@ import io.beam.dsl.elixir.Function;
 import io.beam.dsl.elixir.Module;
 import io.beam.dsl.elixir.Moduledoc;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
-import io.smithy.beam.core.BeamCodecHelperNeeds;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamProtocolIds;
 import java.util.ArrayList;
@@ -218,10 +217,6 @@ final class ElixirAwsJsonDsl {
     helpers.addAll(ElixirRestJsonDsl.unionHelperFunctions(model, service, sp));
     helpers.addAll(ElixirRestJsonDsl.mapHelperFunctions(model, service, sp));
     helpers.addAll(ElixirRestJsonDsl.privateCodecHelpers(model, service));
-    // Request/response decoders call decode_json_body for every aws-json operation.
-    if (!BeamCodecHelperNeeds.of(model, service).jsonBody()) {
-      helpers.addAll(ElixirCodecHelperDsl.decodeJsonBody());
-    }
     return helpers;
   }
 

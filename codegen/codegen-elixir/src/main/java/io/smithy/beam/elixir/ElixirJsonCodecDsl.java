@@ -4,8 +4,6 @@ import io.beam.dsl.elixir.AnonFun;
 import io.beam.dsl.elixir.AnonFunClause;
 import io.beam.dsl.elixir.DotCallExpr;
 import io.beam.dsl.elixir.Expression;
-import io.beam.dsl.elixir.IfExpr;
-import io.beam.dsl.elixir.InfixExpr;
 import io.beam.dsl.elixir.LocalCallExpr;
 import io.beam.dsl.elixir.MapEntry;
 import io.beam.dsl.elixir.MapExpr;
@@ -149,14 +147,7 @@ final class ElixirJsonCodecDsl {
   }
 
   static Expression decodedBodyExpr() {
-    return IfExpr.of(
-        InfixExpr.of(
-            InfixExpr.of(Variable.of("body"), "==", StringExpr.of("")),
-            "or",
-            RemoteCallExpr.of("Kernel", "is_nil", List.of(Variable.of("body")))),
-        MapExpr.of(List.of()),
-        RemoteCallExpr.of("Jason", "decode!", List.of(Variable.of("body"))),
-        false);
+    return LocalCallExpr.of("decode_json_body", List.of(Variable.of("body")));
   }
 
   static Expression decodeJsonExpr(

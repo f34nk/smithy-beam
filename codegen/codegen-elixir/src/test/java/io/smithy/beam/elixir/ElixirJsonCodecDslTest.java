@@ -78,6 +78,7 @@ class ElixirJsonCodecIrTest {
             .reduce((a, b) -> a + "\n" + b)
             .orElse("");
     assertThat(combined).contains("decoded");
+    assertThat(combined).contains("decode_json_body");
   }
 
   @Test

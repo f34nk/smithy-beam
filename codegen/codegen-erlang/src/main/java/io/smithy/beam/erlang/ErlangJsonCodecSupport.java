@@ -1,22 +1,14 @@
 package io.smithy.beam.erlang;
 
 import io.beam.dsl.erlang.AtomExpr;
-import io.beam.dsl.erlang.AtomPattern;
 import io.beam.dsl.erlang.BinaryExpr;
-import io.beam.dsl.erlang.BinaryPattern;
-import io.beam.dsl.erlang.CaseExpr;
-import io.beam.dsl.erlang.Clause;
 import io.beam.dsl.erlang.Expression;
 import io.beam.dsl.erlang.LocalCallExpr;
 import io.beam.dsl.erlang.MapEntry;
-import io.beam.dsl.erlang.MapExpr;
 import io.beam.dsl.erlang.MatchExpr;
 import io.beam.dsl.erlang.RecordField;
 import io.beam.dsl.erlang.RemoteCallExpr;
-import io.beam.dsl.erlang.TuplePattern;
 import io.beam.dsl.erlang.Variable;
-import io.beam.dsl.erlang.VariablePattern;
-import io.beam.dsl.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamNameUtils;
@@ -306,26 +298,8 @@ final class ErlangJsonCodecSupport {
     return List.of(MatchExpr.bindValue("Decoded", decodedBodyExpr()));
   }
 
-  static CaseExpr decodedBodyExpr() {
-    return CaseExpr.of(
-        Variable.of("Body"),
-        List.of(
-            Clause.of(BinaryPattern.of(""), MapExpr.of(List.of())),
-            Clause.of(
-                WildcardPattern.of(),
-                CaseExpr.of(
-                    RemoteCallExpr.of("jsone", "try_decode", List.of(Variable.of("Body"))),
-                    List.of(
-                        Clause.of(
-                            TuplePattern.of(
-                                List.of(
-                                    AtomPattern.of("ok"),
-                                    VariablePattern.of("Val"),
-                                    WildcardPattern.of())),
-                            Variable.of("Val")),
-                        Clause.of(
-                            TuplePattern.of(List.of(AtomPattern.of("error"), WildcardPattern.of())),
-                            MapExpr.of(List.of())))))));
+  static Expression decodedBodyExpr() {
+    return LocalCallExpr.of("decode_json_body", List.of(Variable.of("Body")));
   }
 
   static Expression decodeJsonExpr(

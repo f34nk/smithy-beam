@@ -208,10 +208,9 @@ class ErlangClientPluginTest {
     assertThat(codec).contains("encode_describe_item_request(");
     assertThat(codec).contains("decode_describe_item_response(");
     assertThat(codec).contains("http_request{");
+    assertThat(codec).contains("decode_json_body(Body)");
     assertThat(codec).contains("jsone:try_decode(Body)");
-    assertThat(codec).contains("{ok, Val, _} -> Val;");
-    assertThat(codec).contains("{error, _} -> #{}");
-    assertThat(codec).doesNotContain("{error, _} -> #{}}");
+    assertThat(codec).contains("{ok, V, _} when is_map(V) -> V;");
     assertThat(codec).contains("#describe_item_input{");
     assertThat(codec).doesNotContain("#describe_item_input(){");
     assertThat(codec).contains("(V) when V =/= undefined");

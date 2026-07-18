@@ -1,5 +1,6 @@
 package io.smithy.beam.core;
 
+import java.util.Optional;
 import java.util.Set;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.knowledge.HttpBinding;
@@ -12,8 +13,10 @@ import software.amazon.smithy.model.shapes.MemberShape;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.Shape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.TimestampShape;
+import software.amazon.smithy.model.shapes.UnionShape;
 import software.amazon.smithy.model.traits.EndpointTrait;
 import software.amazon.smithy.model.traits.IdempotencyTokenTrait;
 import software.amazon.smithy.model.traits.MediaTypeTrait;
@@ -77,6 +80,14 @@ public final class BeamCodecHelperNeeds {
     TopDownIndex topDown = TopDownIndex.of(model);
     BeamHostLabelIndex hostLabelIndex = BeamHostLabelIndex.of(model);
 
+    Optional<ShapeId> protocol = BeamProtocolResolver.resolveServiceProtocol(model, service);
+    if (protocol.isPresent()
+        && (BeamProtocolIds.AWS_JSON_1_0.equals(protocol.get())
+            || BeamProtocolIds.AWS_JSON_1_1.equals(protocol.get()))) {
+      // AWS JSON request/response decoders always call decode_json_body.
+      jsonBody = true;
+    }
+
     for (OperationShape op : topDown.getContainedOperations(service)) {
       if (!httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY).isEmpty()
           || !httpIndex.getRequestBindings(op, HttpBinding.Location.QUERY_PARAMS).isEmpty()) {
@@ -99,7 +110,7 @@ public final class BeamCodecHelperNeeds {
       if (responsePayloadRequiresContentTypeCheck(model, httpIndex, op)) {
         contentTypeMatches = true;
       }
-      if (operationNeedsJsonBodyHelper(op)) {
+      if (operationNeedsJsonBodyHelper(model, httpIndex, op)) {
         jsonBody = true;
       }
       if (!hostLabelIndex.hostLabelMembers(op).isEmpty() && op.hasTrait(EndpointTrait.class)) {
@@ -169,11 +180,33 @@ public final class BeamCodecHelperNeeds {
   }
 
   /**
-   * True when generated error dispatch calls {@code decode_json_body}. Success-path document decode
-   * still inlines try_decode in some emitters.
+   * True when generated codecs call {@code decode_json_body}: error dispatch, document/payload
+   * JSON decode, or AWS JSON request/response body decode.
    */
-  private static boolean operationNeedsJsonBodyHelper(OperationShape op) {
-    return !op.getErrors().isEmpty();
+  private static boolean operationNeedsJsonBodyHelper(
+      Model model, HttpBindingIndex httpIndex, OperationShape op) {
+    if (!op.getErrors().isEmpty()) {
+      return true;
+    }
+    if (!httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT).isEmpty()
+        || !httpIndex.getResponseBindings(op, HttpBinding.Location.DOCUMENT).isEmpty()) {
+      return true;
+    }
+    return jsonPayloadNeedsBodyDecode(model, httpIndex, op);
+  }
+
+  private static boolean jsonPayloadNeedsBodyDecode(
+      Model model, HttpBindingIndex httpIndex, OperationShape op) {
+    var payload = httpIndex.getResponseBindings(op, HttpBinding.Location.PAYLOAD);
+    if (payload.isEmpty()) {
+      return false;
+    }
+    Shape target = model.expectShape(payload.get(0).getMember().getTarget());
+    if (target.hasTrait(MediaTypeTrait.class)) {
+      return false;
+    }
+    return !(target instanceof UnionShape
+        && BeamEventStreamIndex.of(model).isEventStreamUnion((UnionShape) target));
   }
 
   public boolean queryValues() {

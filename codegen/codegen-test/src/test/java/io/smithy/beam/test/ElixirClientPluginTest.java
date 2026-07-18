@@ -246,7 +246,8 @@ class ElixirClientPluginTest {
     assertThat(codec).contains("def decode_describe_item_request(");
     assertThat(codec).contains("def decode_describe_item_response(");
     assertThat(codec).contains("%RuntimeTypes.HttpRequest{");
-    assertThat(codec).contains("Jason.decode!");
+    assertThat(codec).contains("decode_json_body(body)");
+    assertThat(codec).contains("Jason.decode(body)");
     assertThat(codec).contains("uri_encode(");
     assertThat(codec).contains("uri_decode(");
     assertThat(codec).contains("decode_query_param(");

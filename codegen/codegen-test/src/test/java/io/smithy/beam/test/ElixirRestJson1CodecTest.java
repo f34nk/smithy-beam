@@ -88,7 +88,8 @@ class ElixirRestJson1CodecTest {
     assertThat(codec).contains("decode_sparse_list(");
     assertThat(codec).contains("nil -> nil");
     assertThat(codec).contains("decode_sparse_map(");
-    assertThat(codec).contains("Jason.decode!");
+    assertThat(codec).contains("decode_json_body(");
+    assertThat(codec).contains("Jason.decode(");
   }
 
   @Test

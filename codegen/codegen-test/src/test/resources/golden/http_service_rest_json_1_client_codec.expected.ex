@@ -28,11 +28,7 @@ defmodule HttpServiceRestJson1 do
   end
 
   def decode_get_name_response(%RuntimeTypes.HttpResponse{status: 200, headers: headers, body: body}) do
-    decoded = if body == "" or Kernel.is_nil(body) do
-      %{}
-    else
-      Jason.decode!(body)
-    end
+    decoded = decode_json_body(body)
     result = {:ok, %Types.GetNameOutput{name: Map.get(decoded, "name")}}
     result
   end
@@ -53,4 +49,13 @@ defmodule HttpServiceRestJson1 do
 
   defp uri_decode(nil), do: nil
   defp uri_decode(value), do: URI.decode(value)
+
+  defp decode_json_body(""), do: %{}
+
+  defp decode_json_body(body) do
+    case Jason.decode(body) do
+      {:ok, map} when is_map(map) -> map
+      _ -> %{}
+    end
+  end
 end
