@@ -251,9 +251,13 @@ final class ElixirClientDispatchOperationDsl {
             "AwsSigv4",
             "sign",
             List.of(
-                MapExpr.of(
-                    Variable.of("config"),
-                    List.of(MapEntry.atomKey("credentials", Variable.of("creds")))),
+                RemoteCallExpr.of(
+                    "Map",
+                    "put",
+                    List.of(
+                        Variable.of("config"),
+                        AtomExpr.of("credentials"),
+                        Variable.of("creds"))),
                 AtomExpr.of(opName),
                 Variable.of("req")));
     Expression undefinedCredentialsBranch =

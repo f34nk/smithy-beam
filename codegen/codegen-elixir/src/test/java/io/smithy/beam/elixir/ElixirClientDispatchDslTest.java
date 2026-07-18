@@ -27,8 +27,7 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
-@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
-class ElixirClientDispatchIrTest {
+class ElixirClientDispatchDslTest {
   private static final String HTTP_SERVICE = "smithy.beam.demo.http#HttpService";
   private static final String PAGINATED_SERVICE = "smithy.beam.test.paginated#PaginatedService";
 
@@ -210,6 +209,7 @@ class ElixirClientDispatchIrTest {
   }
 
   @Test
+  @Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
   void restJsonOperationBodyMatchesGolden() throws IOException {
     Model model = httpModel();
     OperationShape op =
@@ -229,6 +229,7 @@ class ElixirClientDispatchIrTest {
   }
 
   @Test
+  @Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
   void restJsonOperationBodyWithRetryMatchesGolden() throws IOException {
     Model model = httpModel();
     OperationShape op =
@@ -264,11 +265,15 @@ class ElixirClientDispatchIrTest {
             false,
             ElixirClientDispatchOperationDsl.DispatchBodyMode.SINGLE_PAGE);
     assertStructural(body);
-    assertThat(ElixirClientDispatchDsl.renderBody(body))
+    String rendered = ElixirClientDispatchDsl.renderBody(body);
+    assertThat(rendered).contains("Map.put(config, :credentials, creds)");
+    assertThat(rendered).doesNotContain("%{config | credentials:");
+    assertThat(rendered)
         .isEqualTo(readExpectedString("dsl/client_dispatch_get_name_sigv4.expected.ex"));
   }
 
   @Test
+  @Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
   void paginatedPageBodyMatchesGolden() throws IOException {
     Model model = paginatedModel();
     OperationShape op =
@@ -296,7 +301,7 @@ class ElixirClientDispatchIrTest {
 
   private static String readExpectedString(String resourcePath) throws IOException {
     try (InputStream in =
-        ElixirClientDispatchIrTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
+        ElixirClientDispatchDslTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
       assertThat(in).as("resource %s", resourcePath).isNotNull();
       String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
       if (text.endsWith("\n")) {
