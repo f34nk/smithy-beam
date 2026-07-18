@@ -33,22 +33,6 @@ public final class ElixirWriter extends SymbolWriter<ElixirWriter, ElixirImports
     pushState((CodeSection) new ElixirWriterSections.GeneratedDocumentation());
   }
 
-  public void pushModuleHeaderSection() {
-    pushState((CodeSection) new ElixirWriterSections.ModuleHeader());
-  }
-
-  public void pushDependenciesSection() {
-    pushState((CodeSection) new ElixirWriterSections.Dependencies());
-  }
-
-  public void pushProtocolHookSection() {
-    pushState((CodeSection) new ElixirWriterSections.ProtocolHook());
-  }
-
-  public void pushTransportHookSection() {
-    pushState((CodeSection) new ElixirWriterSections.TransportHook());
-  }
-
   public void pushOperationBodySection() {
     pushState((CodeSection) new ElixirWriterSections.OperationBody());
   }

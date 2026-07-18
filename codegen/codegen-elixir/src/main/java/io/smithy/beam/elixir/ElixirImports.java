@@ -5,9 +5,8 @@ import software.amazon.smithy.codegen.core.Symbol;
 
 /**
  * Accumulates {@code import}, {@code alias}, and {@code require} text for symbol-driven deps.
- * Default {@code _types.ex} output keeps this empty. Emit lines inside {@code
- * pushDependenciesSection} with {@code writer.write} for {@code defmodule}-first files; do not
- * prepend the container in {@link ElixirWriter#toString()}.
+ * Default {@code _types.ex} output keeps this empty. Do not prepend the container in {@link
+ * ElixirWriter#toString()}.
  */
 final class ElixirImports implements ImportContainer {
 

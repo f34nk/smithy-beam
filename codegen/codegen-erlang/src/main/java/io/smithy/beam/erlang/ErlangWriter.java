@@ -6,9 +6,7 @@ import software.amazon.smithy.utils.CodeSection;
 /**
  * Code writer for Erlang generated sources.
  *
- * <p>Include lines are written in the {@link ErlangWriterSections.Dependencies} section after
- * {@link ErlangWriterSections.ModuleHeader}, not prepended to the file. Use ErlangWriter.factory()
- * when constructing a WriterDelegator.
+ * <p>Use ErlangWriter.factory() when constructing a WriterDelegator.
  */
 public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImports> {
 
@@ -25,22 +23,6 @@ public final class ErlangWriter extends SymbolWriter<ErlangWriter, ErlangImports
 
   public void pushGeneratedDocumentationSection() {
     pushState((CodeSection) new ErlangWriterSections.GeneratedDocumentation());
-  }
-
-  public void pushModuleHeaderSection() {
-    pushState((CodeSection) new ErlangWriterSections.ModuleHeader());
-  }
-
-  public void pushDependenciesSection() {
-    pushState((CodeSection) new ErlangWriterSections.Dependencies());
-  }
-
-  public void pushProtocolHookSection() {
-    pushState((CodeSection) new ErlangWriterSections.ProtocolHook());
-  }
-
-  public void pushTransportHookSection() {
-    pushState((CodeSection) new ErlangWriterSections.TransportHook());
   }
 
   public void pushOperationBodySection() {
