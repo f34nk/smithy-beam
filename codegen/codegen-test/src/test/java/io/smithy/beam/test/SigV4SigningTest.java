@@ -45,7 +45,9 @@ class SigV4SigningTest {
     assertThat(manifest.getFileString("sigv4test_service_presigner.erl")).isEmpty();
 
     String client = manifest.expectFileString("sigv4test_service_client.erl");
-    assertThat(client).contains("aws_sigv4:sign(Config, ping, Req)");
+    assertThat(client).contains("SignedReq = sign_request(Config, ping, Req)");
+    assertThat(client).contains("sign_request(Config, OpAtom, Req) ->");
+    assertThat(client).contains("aws_sigv4:sign(Config, OpAtom, Req)");
   }
 
   @Test
@@ -57,7 +59,9 @@ class SigV4SigningTest {
     assertThat(manifest.getFileString("aws_sigv4.ex")).isPresent();
 
     String client = manifest.expectFileString("sigv4test_service_client.ex");
-    assertThat(client).contains("AwsSigv4.sign(config, :ping, req)");
+    assertThat(client).contains("signed_req = sign_request(config, :ping, req)");
+    assertThat(client).contains("defp sign_request(config, op, req)");
+    assertThat(client).contains("AwsSigv4.sign(config, op, req)");
   }
 
   @Test

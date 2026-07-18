@@ -10,6 +10,8 @@ import io.beam.dsl.elixir.CaseExpr;
 import io.beam.dsl.elixir.Clause;
 import io.beam.dsl.elixir.DotCallExpr;
 import io.beam.dsl.elixir.Expression;
+import io.beam.dsl.elixir.Function;
+import io.beam.dsl.elixir.FunctionHead;
 import io.beam.dsl.elixir.InfixExpr;
 import io.beam.dsl.elixir.ListExpr;
 import io.beam.dsl.elixir.LocalCallExpr;
@@ -221,12 +223,35 @@ final class ElixirClientDispatchOperationDsl {
   }
 
   private static MatchExpr buildSignedRequestMatch(DispatchContext ctx) {
-    String opName = ctx.opName();
+    return MatchExpr.bind(
+        "signed_req",
+        LocalCallExpr.of(
+            "sign_request",
+            List.of(Variable.of("config"), AtomExpr.of(ctx.opName()), Variable.of("req"))));
+  }
+
+  static Function signRequestFunction() {
+    return Function.of(
+        "sign_request",
+        true,
+        List.of(
+            FunctionHead.of(
+                List.of(
+                    VariablePattern.of("config"),
+                    VariablePattern.of("op"),
+                    VariablePattern.of("req")))),
+        buildSignRequestBody(),
+        null,
+        null,
+        false);
+  }
+
+  private static Expression buildSignRequestBody() {
     Expression signWithConfig =
         RemoteCallExpr.of(
             "AwsSigv4",
             "sign",
-            List.of(Variable.of("config"), AtomExpr.of(opName), Variable.of("req")));
+            List.of(Variable.of("config"), Variable.of("op"), Variable.of("req")));
     Expression credsMap =
         MapExpr.of(
             List.of(
@@ -258,7 +283,7 @@ final class ElixirClientDispatchOperationDsl {
                         Variable.of("config"),
                         AtomExpr.of("credentials"),
                         Variable.of("creds"))),
-                AtomExpr.of(opName),
+                Variable.of("op"),
                 Variable.of("req")));
     Expression undefinedCredentialsBranch =
         CaseExpr.of(
@@ -268,14 +293,12 @@ final class ElixirClientDispatchOperationDsl {
                 Clause.of(
                     VariablePattern.of("creds0"),
                     MatchExpr.bind("creds", credsMap, signWithMergedCreds))));
-    Expression credentialsCase =
-        CaseExpr.of(
-            RemoteCallExpr.of(
-                "Map", "get", List.of(Variable.of("config"), AtomExpr.of("credentials"))),
-            List.of(
-                Clause.of(NilPattern.of(), undefinedCredentialsBranch),
-                Clause.of(VariablePattern.of("_"), signWithConfig)));
-    return MatchExpr.bind("signed_req", credentialsCase);
+    return CaseExpr.of(
+        RemoteCallExpr.of(
+            "Map", "get", List.of(Variable.of("config"), AtomExpr.of("credentials"))),
+        List.of(
+            Clause.of(NilPattern.of(), undefinedCredentialsBranch),
+            Clause.of(VariablePattern.of("_"), signWithConfig)));
   }
 
   private static Expression dispatchRequestVar(DispatchContext ctx) {

@@ -3,7 +3,9 @@ package io.smithy.beam.elixir;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.beam.dsl.elixir.CaseExpr;
+import io.beam.dsl.elixir.ElixirRenderer;
 import io.beam.dsl.elixir.Expression;
+import io.beam.dsl.elixir.Function;
 import io.beam.dsl.elixir.MatchExpr;
 import io.beam.dsl.elixir.RemoteCallExpr;
 import io.smithy.beam.core.BeamCodegenKind;
@@ -266,10 +268,21 @@ class ElixirClientDispatchDslTest {
             ElixirClientDispatchOperationDsl.DispatchBodyMode.SINGLE_PAGE);
     assertStructural(body);
     String rendered = ElixirClientDispatchDsl.renderBody(body);
-    assertThat(rendered).contains("Map.put(config, :credentials, creds)");
-    assertThat(rendered).doesNotContain("%{config | credentials:");
+    assertThat(rendered).contains("sign_request(config, :get_name, req)");
     assertThat(rendered)
         .isEqualTo(readExpectedString("dsl/client_dispatch_get_name_sigv4.expected.ex"));
+  }
+
+  @Test
+  void signRequestHelperFetchesAmbientCredentialsBeforeSign() {
+    Function helper = ElixirClientDispatchOperationDsl.signRequestFunction();
+    String rendered = ElixirRenderer.renderFunction(helper);
+    assertThat(helper.private_()).isTrue();
+    assertThat(rendered).contains("defp sign_request(config, op, req)");
+    assertThat(rendered).contains(":aws_credentials.get_credentials()");
+    assertThat(rendered).contains("Map.put(config, :credentials, creds)");
+    assertThat(rendered).contains("AwsSigv4.sign(config, op, req)");
+    assertThat(rendered).doesNotContain("%{config | credentials:");
   }
 
   @Test

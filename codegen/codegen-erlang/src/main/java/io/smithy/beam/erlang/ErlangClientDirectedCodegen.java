@@ -23,6 +23,7 @@ import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.core.BeamSigV4Metadata;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -164,6 +165,9 @@ final class ErlangClientDirectedCodegen
       if (ErlangRetryDsl.serviceHasRetryableErrors(ctx.model(), service)) {
         builder.addOperationFunctions(
             ErlangRetryDsl.clientPredicateFunctions(ctx.model(), service, sp));
+      }
+      if (BeamSigV4Metadata.from(service).isPresent()) {
+        builder.addOperationFunction(ErlangClientDispatchOperationDsl.signRequestFunction());
       }
       Module module =
           ErlangClientDsl.clientModule(layout, service, exports, builder.operationFunctions());

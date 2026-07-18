@@ -9,6 +9,8 @@ import io.beam.dsl.erlang.Expression;
 import io.beam.dsl.erlang.Fun;
 import io.beam.dsl.erlang.FunClause;
 import io.beam.dsl.erlang.FunRefExpr;
+import io.beam.dsl.erlang.Function;
+import io.beam.dsl.erlang.FunctionClause;
 import io.beam.dsl.erlang.InfixExpr;
 import io.beam.dsl.erlang.ListExpr;
 import io.beam.dsl.erlang.LocalCallExpr;
@@ -194,7 +196,26 @@ final class ErlangClientDispatchOperationDsl {
   }
 
   private static Expression buildSignedRequestMatch(DispatchContext ctx) {
-    String opName = ctx.opName();
+    return MatchExpr.bindValue(
+        "SignedReq",
+        LocalCallExpr.of(
+            "sign_request",
+            List.of(Variable.of("Config"), AtomExpr.of(ctx.opName()), Variable.of("Req"))));
+  }
+
+  static Function signRequestFunction() {
+    return Function.of(
+        "sign_request",
+        List.of(
+            FunctionClause.of(
+                List.of(
+                    VariablePattern.of("Config"),
+                    VariablePattern.of("OpAtom"),
+                    VariablePattern.of("Req")),
+                buildSignRequestBody())));
+  }
+
+  private static Expression buildSignRequestBody() {
     Expression credentialsLookup =
         RemoteCallExpr.of(
             "maps",
@@ -204,7 +225,7 @@ final class ErlangClientDispatchOperationDsl {
         RemoteCallExpr.of(
             "aws_sigv4",
             "sign",
-            List.of(Variable.of("Config"), AtomExpr.of(opName), Variable.of("Req")));
+            List.of(Variable.of("Config"), Variable.of("OpAtom"), Variable.of("Req")));
     Expression credsMap =
         MapExpr.of(
             List.of(
@@ -237,7 +258,7 @@ final class ErlangClientDispatchOperationDsl {
                 MapExpr.of(
                     Variable.of("Config"),
                     List.of(MapEntry.of(AtomExpr.of("credentials"), Variable.of("Creds")))),
-                AtomExpr.of(opName),
+                Variable.of("OpAtom"),
                 Variable.of("Req")));
     Expression undefinedCredentialsBranch =
         CaseExpr.of(
@@ -247,13 +268,11 @@ final class ErlangClientDispatchOperationDsl {
                 Clause.of(
                     VariablePattern.of("Creds0"),
                     MatchExpr.bind("Creds", credsMap, signWithMergedCreds))));
-    Expression credentialsCase =
-        CaseExpr.of(
-            credentialsLookup,
-            List.of(
-                Clause.of(AtomPattern.of("undefined"), undefinedCredentialsBranch),
-                Clause.of(WildcardPattern.of(), signWithConfig)));
-    return MatchExpr.bindValue("SignedReq", credentialsCase);
+    return CaseExpr.of(
+        credentialsLookup,
+        List.of(
+            Clause.of(AtomPattern.of("undefined"), undefinedCredentialsBranch),
+            Clause.of(WildcardPattern.of(), signWithConfig)));
   }
 
   private static Expression dispatchRequestVar(DispatchContext ctx) {

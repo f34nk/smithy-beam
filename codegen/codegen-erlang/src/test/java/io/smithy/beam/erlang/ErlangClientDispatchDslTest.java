@@ -7,6 +7,7 @@ import io.beam.dsl.erlang.BlockExpr;
 import io.beam.dsl.erlang.CaseExpr;
 import io.beam.dsl.erlang.ErlangRenderer;
 import io.beam.dsl.erlang.Expression;
+import io.beam.dsl.erlang.Function;
 import io.beam.dsl.erlang.MatchExpr;
 import io.beam.dsl.erlang.RemoteCallExpr;
 import io.smithy.beam.core.BeamCodegenKind;
@@ -248,7 +249,7 @@ class ErlangClientDispatchIrTest {
   }
 
   @Test
-  void sigv4OperationBodyFetchesAmbientCredentialsBeforeSign() {
+  void sigv4OperationBodyCallsSharedSignRequestHelper() {
     Model model = sigv4HttpModel();
     OperationShape op =
         model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
@@ -261,9 +262,19 @@ class ErlangClientDispatchIrTest {
             false,
             ErlangClientDispatchOperationDsl.DispatchBodyMode.SINGLE_PAGE);
     String rendered = renderBody(body);
+    assertThat(rendered).contains("SignedReq = sign_request(Config, get_name, Req)");
+    assertThat(rendered).doesNotContain("aws_credentials:get_credentials()");
+    assertThat(rendered).doesNotContain("http_service_sigv4:sign(");
+  }
+
+  @Test
+  void signRequestHelperFetchesAmbientCredentialsBeforeSign() {
+    Function helper = ErlangClientDispatchOperationDsl.signRequestFunction();
+    String rendered = ErlangRenderer.renderFunction(helper);
+    assertThat(rendered).contains("sign_request(Config, OpAtom, Req) ->");
     assertThat(rendered).contains("aws_credentials:get_credentials()");
     assertThat(rendered).contains("session_token => maps:get(token, Creds0, undefined)");
-    assertThat(rendered).contains("aws_sigv4:sign(");
+    assertThat(rendered).contains("aws_sigv4:sign(Config, OpAtom, Req)");
     assertThat(rendered).doesNotContain("http_service_sigv4:sign(");
   }
 

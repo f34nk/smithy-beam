@@ -23,6 +23,7 @@ import io.smithy.beam.core.BeamProtocolResolver;
 import io.smithy.beam.core.BeamProtocolSupport;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamSettings;
+import io.smithy.beam.core.BeamSigV4Metadata;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -169,6 +170,9 @@ final class ElixirClientDirectedCodegen
         functions.addAll(ElixirRetryDsl.clientPredicateFunctions(ctx.model(), service, sp, layout));
       }
       functions.addAll(builder.operationFunctions());
+      if (BeamSigV4Metadata.from(service).isPresent()) {
+        functions.add(ElixirClientDispatchOperationDsl.signRequestFunction());
+      }
       Module module = ElixirClientDsl.clientModule(layout, service, typesModuleName, functions);
       ElixirCodecEmission.writeModule(ctx, ctx.definitionFile(), module);
       if (ctx.protocolCodegen() != null) {
