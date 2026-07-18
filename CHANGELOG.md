@@ -3,7 +3,50 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-07-18
+
+### Added
+- Generated codecs emit protocol helpers only when the model needs them. Client codec modules
+  no longer ship request decoders; those stay with server generation.
+
+### Changed
+- Codegen prunes the service closure before the director runs and shares service name indexing.
+  Types emission reuses a cached symbol provider. SigV4 clients emit one shared sign_request
+  helper; shared codec module naming collapses onto layout. Unused DSL branches, SymbolWriter
+  hooks, and wire-protocol helper APIs removed.
+
+### Fixed
+- Elixir SigV4 credential injection uses Map.put. Generated Erlang codecs prefix unused
+  bindings. Stale tests and examples updated.
+
+## 2026-07-17
+
+### Added
+- BeamMemberNames centralizes escaped Smithy member field names for codecs and types.
+  HTTP compliance tests emit forbid and require asserts for Erlang and Elixir, compare JSON
+  bodies by document value, and broaden GetUser coverage.
+
+### Fixed
+- Structure and protocol codecs use symbol field names for member keys so reserved names
+  encode correctly; compliance literals align with those names.
+
+### Changed
+- Generated output directories are cleared before copy.
+
+### Docs
+- HTTP request and response compliance traits marked supported.
+
+## 2026-07-16
+
+### Added
+- HTTP compliance test emitters map the remaining request and response case fields from
+  Smithy traits.
+
 ## 2026-07-15
+
+### Added
+- GetUser HTTP protocol compliance tests on the user model. Compliance modules use a singular
+  name and emit only the assertion helpers the generated tests reference.
 
 ### Changed
 - Codegen and tests now depend on beam-dsl instead of beam-ir for structural IR types and
@@ -16,6 +59,7 @@ All notable changes to this project will be documented here.
 - Shared Erlang and Elixir runtime utils modules renamed to runtime_utils.
 - Codegen Java classes and golden fixtures renamed from Ir to Dsl naming to match beam-dsl.
 - Makefile build failure logs include the demo target name.
+- Example client rebuilds clean generated output first.
 
 ### Removed
 - Unused credential, context-param, S3 addressing, layout naming, and codec convenience
