@@ -215,14 +215,17 @@ class ErlangClientPluginTest {
     assertThat(codec).doesNotContain("#describe_item_input(){");
     assertThat(codec).contains("(V) when V =/= undefined");
     assertThat(codec).contains("uri_encode(");
-    assertThat(codec).contains("decode_describe_item_request(");
-    assertThat(codec).contains("LabelMap");
+    assertThat(codec).doesNotContain("decode_describe_item_request(");
     assertThat(codec).doesNotContain("runtime_helpers:parse_labels(Path");
     assertThat(codec).doesNotContain("beam_path:parse_labels");
 
     new ErlangServerPlugin()
         .execute(
             PluginContext.builder().model(model).fileManifest(manifest).settings(settings).build());
+
+    String serverCodec = manifest.expectFileString("demo_rest_json_rest_json_1.erl");
+    assertThat(serverCodec).contains("decode_describe_item_request(");
+    assertThat(serverCodec).contains("LabelMap");
 
     String router = manifest.expectFileString("demo_rest_json_router.erl");
     assertThat(router).contains("<<\"/items/\", NameSeg/binary>>");

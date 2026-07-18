@@ -20,13 +20,6 @@ defmodule HttpServiceRestJson1 do
     }
   end
 
-  @doc "Decode HTTP request for smithy.beam.demo.http#GetName."
-  @spec decode_get_name_request(%RuntimeTypes.HttpRequest{}, map())
-    :: HttpServiceTypes.GetNameInput.t()
-  def decode_get_name_request(%RuntimeTypes.HttpRequest{query: query, headers: headers, body: body}, label_map) do
-    %Types.GetNameInput{name: uri_decode(Map.get(label_map, "name"))}
-  end
-
   def decode_get_name_response(%RuntimeTypes.HttpResponse{status: 200, headers: headers, body: body}) do
     decoded = decode_json_body(body)
     result = {:ok, %Types.GetNameOutput{name: Map.get(decoded, "name")}}

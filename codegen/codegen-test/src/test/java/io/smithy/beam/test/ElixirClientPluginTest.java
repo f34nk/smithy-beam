@@ -243,24 +243,26 @@ class ElixirClientPluginTest {
 
     String codec = manifest.expectFileString("demo_rest_json_rest_json_1.ex");
     assertThat(codec).contains("def encode_describe_item_request(");
-    assertThat(codec).contains("def decode_describe_item_request(");
+    assertThat(codec).doesNotContain("def decode_describe_item_request(");
     assertThat(codec).contains("def decode_describe_item_response(");
     assertThat(codec).contains("%RuntimeTypes.HttpRequest{");
     assertThat(codec).contains("decode_json_body(body)");
     assertThat(codec).contains("Jason.decode(body)");
     assertThat(codec).contains("uri_encode(");
-    assertThat(codec).contains("uri_decode(");
     assertThat(codec).contains("decode_query_param(");
     assertThat(manifest.getFileString("runtime_helpers.ex")).isEmpty();
     assertThat(manifest.expectFileString("runtime_utils.ex")).contains("defmodule RuntimeUtils do");
-    assertThat(codec).contains("def decode_describe_item_request(");
-    assertThat(codec).contains("label_map");
     assertThat(codec).doesNotContain("RuntimeHelpers.parse_labels(");
     assertThat(codec).doesNotContain("BeamPath.parse_labels");
 
     new ElixirServerPlugin()
         .execute(
             PluginContext.builder().model(model).fileManifest(manifest).settings(settings).build());
+
+    String serverCodec = manifest.expectFileString("demo_rest_json_rest_json_1.ex");
+    assertThat(serverCodec).contains("def decode_describe_item_request(");
+    assertThat(serverCodec).contains("label_map");
+    assertThat(serverCodec).contains("uri_decode(");
 
     String router = manifest.expectFileString("demo_rest_json_router.ex");
     assertThat(router).contains("\" <> name_seg = path");

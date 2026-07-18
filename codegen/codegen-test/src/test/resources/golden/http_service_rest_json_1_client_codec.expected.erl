@@ -5,7 +5,6 @@
 -include("runtime_types.hrl").
 -export([
     encode_get_name_request/1,
-    decode_get_name_request/2,
     decode_get_name_response/1
 ]).
 
@@ -22,13 +21,6 @@ encode_get_name_request(_Input = #get_name_input{name = Name}) ->
         query = maps:from_list(Query),
         headers = Headers,
         body = Body
-    }.
-
-%% @doc Decode HTTP request for smithy.beam.demo.http#GetName.
--spec decode_get_name_request(#http_request{}, map()) -> get_name_input().
-decode_get_name_request(#http_request{query = _Query, headers = _Headers, body = _Body}, LabelMap) ->
-    #get_name_input{
-        name = uri_decode(maps:get(<<"name">>, LabelMap, undefined))
     }.
 
 %% @doc Decode HTTP response for smithy.beam.demo.http#GetName.

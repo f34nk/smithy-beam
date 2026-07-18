@@ -89,15 +89,16 @@ class RestXmlCodecTest {
   }
 
   @Test
-  void erlangClientCodecDecodesUnionPayload() {
+  void erlangClientCodecEncodesUnionPayload() {
     MockManifest manifest = runErlangClient(loadModel());
     String codec = manifest.expectFileString(findRestXmlErlangCodec(manifest));
-    assertThat(codec).contains("find_element(<<\"LocationConstraint\">>, element_content(Root))");
-    assertThat(codec).contains("{location_constraint,");
+    assertThat(codec).contains("{location_constraint, V}");
+    assertThat(codec).contains("<<\"CreateBucketConfiguration\">>");
+    assertThat(codec).contains("<<\"LocationConstraint\">>");
   }
 
   @Test
-  void elixirClientCodecDecodesUnionPayload() {
+  void elixirClientCodecEncodesUnionPayload() {
     MockManifest manifest = runElixirClient(loadModel());
     String codec = manifest.expectFileString(findRestXmlElixirCodec(manifest));
     assertThat(codec).contains("{:location_constraint, v}");

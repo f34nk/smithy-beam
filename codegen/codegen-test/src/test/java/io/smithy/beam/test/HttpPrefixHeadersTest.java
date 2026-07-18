@@ -178,13 +178,12 @@ class HttpPrefixHeadersTest {
   }
 
   @Test
-  void requestPrefixHeadersReconstructedFromHeadersOnErlangDecode() {
+  void requestPrefixHeadersAbsentFromErlangClientCodec() {
     String codec =
         runErlangPlugin(loadModel())
             .getFileString("prefix_headers_service_rest_json_1.erl")
             .orElse("");
-    assertThat(codec).contains("decode_put_object_request(");
-    assertThat(codec).contains("metadata = prefix_headers_from_list(Headers, <<\"x-amz-meta-\">>)");
+    assertThat(codec).doesNotContain("decode_put_object_request(");
   }
 
   @Test
@@ -198,13 +197,12 @@ class HttpPrefixHeadersTest {
   }
 
   @Test
-  void requestPrefixHeadersReconstructedFromHeadersOnElixirDecode() {
+  void requestPrefixHeadersAbsentFromElixirClientCodec() {
     String codec =
         runElixirPlugin(loadModel())
             .getFileString("prefix_headers_service_rest_json_1.ex")
             .orElse("");
-    assertThat(codec).contains("def decode_put_object_request(");
-    assertThat(codec).contains("metadata: prefix_headers_from_list(headers, \"x-amz-meta-\")");
+    assertThat(codec).doesNotContain("def decode_put_object_request(");
   }
 
   @Test

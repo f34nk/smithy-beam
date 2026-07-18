@@ -246,9 +246,6 @@ final class ElixirRestJsonDsl {
               encodeWithConfig,
               eventStreamModule));
       functions.addAll(
-          ElixirRestJsonOperationDsl.buildDecodeRequest(
-              model, op, httpIndex, sp, typesMod, runtimeMod, eventStreamModule));
-      functions.addAll(
           ElixirRestJsonOperationDsl.buildDecodeResponse(
               model, service, op, httpIndex, sp, typesMod, runtimeMod));
     }

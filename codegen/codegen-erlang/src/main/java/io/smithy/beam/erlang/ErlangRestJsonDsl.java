@@ -55,9 +55,7 @@ final class ErlangRestJsonDsl {
     List<String> exports = new ArrayList<>();
     for (OperationShape op : operations) {
       String name = sp.toSymbol(op).getName();
-      List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
       exports.add("encode_" + name + "_request/" + (encodeWithConfig ? "2" : "1"));
-      exports.add("decode_" + name + "_request/" + (labels.isEmpty() ? "1" : "2"));
       exports.add("decode_" + name + "_response/1");
     }
 
@@ -337,7 +335,6 @@ final class ErlangRestJsonDsl {
     for (OperationShape op : operations) {
       functions.add(
           encodeRequest(model, service, op, httpIndex, sp, encodeWithConfig, eventStreamModule));
-      functions.add(decodeRequest(model, op, httpIndex, sp, eventStreamModule));
       functions.add(decodeResponse(model, service, op, httpIndex, sp, layout));
     }
     for (OperationShape op : operations) {
