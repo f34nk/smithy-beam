@@ -64,7 +64,7 @@ class EmptyEnumTypesTest {
         };
 
     ErlangContext context =
-        new ErlangContext(
+        ErlangContext.forTypes(
             model,
             settings,
             emptyAtomProvider,
@@ -73,8 +73,6 @@ class EmptyEnumTypesTest {
             List.of(),
             service,
             BeamHttpBindings.from(model),
-            null,
-            null,
             "empty_enum_service",
             TYPES_FILE);
 

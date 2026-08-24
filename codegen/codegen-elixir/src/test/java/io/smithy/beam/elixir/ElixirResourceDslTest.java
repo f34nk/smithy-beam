@@ -48,7 +48,7 @@ class ElixirResourceIrTest {
                 ElixirSymbolProvider.toModuleName(layout.clientModuleName()),
                 BeamCodegenKind.CLIENT));
     ElixirContext ctx =
-        new ElixirContext(
+        ElixirContext.forTypes(
             model,
             settings,
             sp,
@@ -57,8 +57,6 @@ class ElixirResourceIrTest {
             List.of(),
             service,
             BeamHttpBindings.from(model),
-            null,
-            null,
             ElixirSymbolProvider.toModuleName(layout.clientModuleName()),
             layout.clientModuleFile());
     BeamResourceIndex index = BeamResourceIndex.of(model);
@@ -109,7 +107,7 @@ class ElixirResourceIrTest {
                 ElixirSymbolProvider.toModuleName(layout.serverModuleName()),
                 BeamCodegenKind.SERVER));
     ElixirContext ctx =
-        new ElixirContext(
+        ElixirContext.forTypes(
             model,
             settings,
             sp,
@@ -118,8 +116,6 @@ class ElixirResourceIrTest {
             List.of(),
             service,
             BeamHttpBindings.from(model),
-            null,
-            null,
             ElixirSymbolProvider.toModuleName(layout.serverModuleName()),
             layout.serverModuleFile());
     BeamResourceIndex index = BeamResourceIndex.of(model);

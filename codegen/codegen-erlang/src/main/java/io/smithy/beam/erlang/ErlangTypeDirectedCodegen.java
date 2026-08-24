@@ -18,7 +18,6 @@ import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamMemberNullability;
 import io.smithy.beam.core.BeamNameUtils;
-import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamRetryIndex;
 import io.smithy.beam.core.BeamSettings;
 import java.util.ArrayList;
@@ -28,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
@@ -85,13 +85,12 @@ final class ErlangTypeDirectedCodegen
       CreateContextDirective<BeamSettings, ErlangIntegration> directive) {
     ServiceShape service = directive.service();
     BeamHttpBindings httpBindings = BeamHttpBindings.from(directive.model());
-    BeamProtocolCodegen protocolCodegen = null;
     String ns = service.getId().getNamespace();
     BeamSettings settings = directive.settings();
     BeamErlangLayout layout = new BeamErlangLayout(settings, ns, service);
     String definitionFile = layout.typesHeaderFile();
     String moduleName = layout.typesModuleName();
-    return new ErlangContext(
+    return ErlangContext.forTypes(
         directive.model(),
         directive.settings(),
         directive.symbolProvider(),
@@ -101,8 +100,6 @@ final class ErlangTypeDirectedCodegen
         directive.integrations(),
         service,
         httpBindings,
-        protocolCodegen,
-        null,
         moduleName,
         definitionFile);
   }
@@ -156,7 +153,7 @@ final class ErlangTypeDirectedCodegen
               writeMapAliases(
                   writer, model, closure, directive.symbolProvider(), preambleAliasesEmitted);
 
-              assertPreambleAliasCoverage(
+              verifyPreambleAliasCoverage(
                   closure, directive.symbolProvider(), preambleAliasesEmitted);
             });
   }
@@ -213,18 +210,22 @@ final class ErlangTypeDirectedCodegen
 
   private static void recordPreambleAlias(Shape shape, Set<ShapeId> emitted) {
     if (!emitted.add(shape.getId())) {
-      assert false : "duplicate preamble alias for " + shape.getId();
+      throw new CodegenException("duplicate preamble alias for " + shape.getId());
     }
   }
 
-  private static void assertPreambleAliasCoverage(
+  private static void verifyPreambleAliasCoverage(
       Set<Shape> closure, SymbolProvider symbolProvider, Set<ShapeId> emitted) {
     Set<ShapeId> expected = expectedPreambleAliasShapeIds(closure, symbolProvider);
     for (ShapeId id : expected) {
-      assert emitted.contains(id) : "missing preamble alias for " + id;
+      if (!emitted.contains(id)) {
+        throw new CodegenException("missing preamble alias for " + id);
+      }
     }
     for (ShapeId id : emitted) {
-      assert expected.contains(id) : "unexpected preamble alias for " + id;
+      if (!expected.contains(id)) {
+        throw new CodegenException("unexpected preamble alias for " + id);
+      }
     }
   }
 

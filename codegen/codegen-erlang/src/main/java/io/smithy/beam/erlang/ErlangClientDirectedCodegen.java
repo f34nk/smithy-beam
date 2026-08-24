@@ -93,7 +93,7 @@ final class ErlangClientDirectedCodegen
     BeamErlangLayout layout = new BeamErlangLayout(settings, ns, service);
     String definitionFile = layout.clientModuleFile();
     String moduleName = layout.clientModuleName();
-    return new ErlangContext(
+    return ErlangContext.forClient(
         directive.model(),
         directive.settings(),
         directive.symbolProvider(),
@@ -106,8 +106,7 @@ final class ErlangClientDirectedCodegen
         protocolCodegen,
         resolvedProtocolTraitId,
         moduleName,
-        definitionFile,
-        new ErlangClientModuleBuilder());
+        definitionFile);
   }
 
   @Override

@@ -35,7 +35,7 @@ class ErlangBehaviourIrTest {
                 layout.behaviourModuleFile(),
                 io.smithy.beam.core.BeamCodegenKind.SERVER));
     ErlangContext ctx =
-        new ErlangContext(
+        ErlangContext.forTypes(
             model,
             new io.smithy.beam.core.BeamSettings(),
             sp,
@@ -44,13 +44,8 @@ class ErlangBehaviourIrTest {
             List.of(),
             service,
             io.smithy.beam.core.BeamHttpBindings.from(model),
-            null,
-            null,
             layout.serverModuleName(),
-            layout.serverModuleFile(),
-            null,
-            null,
-            null);
+            layout.serverModuleFile());
     List<OperationShape> operations = ErlangTopDown.containedOperationsSorted(model, service);
     List<Callback> callbacks =
         operations.stream().map(op -> ErlangBehaviourDsl.operationCallback(ctx, op, sp)).toList();

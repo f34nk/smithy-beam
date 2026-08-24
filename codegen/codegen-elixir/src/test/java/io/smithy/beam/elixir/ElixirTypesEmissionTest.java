@@ -134,7 +134,7 @@ class ElixirTypesEmissionTest {
             new ElixirSymbolProvider(
                 settings, model, service, typesFile, moduleName, BeamCodegenKind.TYPES));
     ElixirContext ctx =
-        new ElixirContext(
+        ElixirContext.forTypes(
             model,
             settings,
             sp,
@@ -142,8 +142,6 @@ class ElixirTypesEmissionTest {
             new WriterDelegator<>(manifest, sp, ElixirWriter.factory("test")),
             List.of(),
             service,
-            null,
-            null,
             null,
             moduleName,
             typesFile);

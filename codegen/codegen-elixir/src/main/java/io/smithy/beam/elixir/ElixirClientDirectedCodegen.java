@@ -95,7 +95,7 @@ final class ElixirClientDirectedCodegen
     BeamElixirLayout layout = new BeamElixirLayout(settings, ns, service);
     String definitionFile = layout.clientModuleFile();
     String clientModuleName = ElixirSymbolProvider.toModuleName(layout.clientModuleName());
-    return new ElixirContext(
+    return ElixirContext.forClient(
         directive.model(),
         directive.settings(),
         directive.symbolProvider(),
@@ -110,12 +110,7 @@ final class ElixirClientDirectedCodegen
         protocolCodegen,
         resolvedProtocolTraitId,
         clientModuleName,
-        definitionFile,
-        new java.util.ArrayList<>(),
-        new java.util.ArrayList<>(),
-        new ElixirClientModuleBuilder(),
-        null,
-        null);
+        definitionFile);
   }
 
   @Override

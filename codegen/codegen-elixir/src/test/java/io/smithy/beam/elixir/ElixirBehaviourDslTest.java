@@ -41,7 +41,7 @@ class ElixirBehaviourIrTest {
                 ElixirSymbolProvider.toModuleName(layout.behaviourModuleName()),
                 BeamCodegenKind.SERVER));
     ElixirContext ctx =
-        new ElixirContext(
+        ElixirContext.forTypes(
             model,
             settings,
             sp,
@@ -50,8 +50,6 @@ class ElixirBehaviourIrTest {
             List.of(),
             service,
             BeamHttpBindings.from(model),
-            null,
-            null,
             ElixirSymbolProvider.toModuleName(layout.serverModuleName()),
             layout.serverModuleFile());
     List<OperationShape> operations = ElixirTopDown.containedOperationsSorted(model, service);

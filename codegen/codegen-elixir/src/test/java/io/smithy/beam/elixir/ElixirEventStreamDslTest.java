@@ -93,7 +93,7 @@ class ElixirEventStreamIrTest {
     BeamSettings settings = new BeamSettings();
     settings.edition("2026");
     MockManifest manifest = new MockManifest();
-    return new ElixirContext(
+    return ElixirContext.forClient(
         model,
         settings,
         provider,

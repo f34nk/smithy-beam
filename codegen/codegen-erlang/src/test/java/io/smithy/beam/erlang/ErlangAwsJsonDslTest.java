@@ -166,7 +166,7 @@ class ErlangAwsJsonIrTest {
                 settings, model, service, layout.clientModuleFile(), BeamCodegenKind.CLIENT));
     MockManifest manifest = new MockManifest();
     Optional<ShapeId> resolved = BeamProtocolResolver.resolve(model, service, settings);
-    return new ErlangContext(
+    return ErlangContext.forClient(
         model,
         settings,
         sp,

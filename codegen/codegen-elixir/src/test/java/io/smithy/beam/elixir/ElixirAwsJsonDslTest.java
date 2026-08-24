@@ -153,7 +153,7 @@ class ElixirAwsJsonIrTest {
                 BeamCodegenKind.CLIENT));
     MockManifest manifest = new MockManifest();
     Optional<ShapeId> resolved = BeamProtocolResolver.resolve(model, service, settings);
-    return new ElixirContext(
+    return ElixirContext.forClient(
         model,
         settings,
         symbolProvider,

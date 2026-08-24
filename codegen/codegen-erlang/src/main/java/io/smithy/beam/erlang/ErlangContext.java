@@ -39,7 +39,36 @@ public record ErlangContext(
     ErlangServerModuleBuilder serverModuleBuilderOrNull)
     implements CodegenContext<BeamSettings, ErlangWriter, ErlangIntegration> {
 
-  public ErlangContext(
+  public static ErlangContext forTypes(
+      Model model,
+      BeamSettings settings,
+      SymbolProvider symbolProvider,
+      FileManifest fileManifest,
+      WriterDelegator<ErlangWriter> writerDelegator,
+      List<ErlangIntegration> integrations,
+      ServiceShape service,
+      BeamHttpBindings httpBindings,
+      String moduleName,
+      String definitionFile) {
+    return new ErlangContext(
+        model,
+        settings,
+        symbolProvider,
+        fileManifest,
+        writerDelegator,
+        integrations,
+        service,
+        httpBindings,
+        null,
+        null,
+        moduleName,
+        definitionFile,
+        null,
+        null,
+        null);
+  }
+
+  public static ErlangContext forClient(
       Model model,
       BeamSettings settings,
       SymbolProvider symbolProvider,
@@ -52,7 +81,7 @@ public record ErlangContext(
       ShapeId resolvedProtocolTraitId,
       String moduleName,
       String definitionFile) {
-    this(
+    return new ErlangContext(
         model,
         settings,
         symbolProvider,
@@ -65,12 +94,12 @@ public record ErlangContext(
         resolvedProtocolTraitId,
         moduleName,
         definitionFile,
-        null,
+        new ErlangClientModuleBuilder(),
         null,
         null);
   }
 
-  public ErlangContext(
+  public static ErlangContext forServer(
       Model model,
       BeamSettings settings,
       SymbolProvider symbolProvider,
@@ -82,9 +111,8 @@ public record ErlangContext(
       BeamProtocolCodegen protocolCodegen,
       ShapeId resolvedProtocolTraitId,
       String moduleName,
-      String definitionFile,
-      ErlangClientModuleBuilder clientModuleBuilder) {
-    this(
+      String definitionFile) {
+    return new ErlangContext(
         model,
         settings,
         symbolProvider,
@@ -97,8 +125,8 @@ public record ErlangContext(
         resolvedProtocolTraitId,
         moduleName,
         definitionFile,
-        clientModuleBuilder,
         null,
-        null);
+        new ErlangBehaviourModuleBuilder(),
+        new ErlangServerModuleBuilder());
   }
 }

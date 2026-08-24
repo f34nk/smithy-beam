@@ -42,7 +42,38 @@ public record ElixirContext(
     ElixirServerModuleBuilder serverModuleBuilderOrNull)
     implements CodegenContext<BeamSettings, ElixirWriter, ElixirIntegration> {
 
-  public ElixirContext(
+  public static ElixirContext forTypes(
+      Model model,
+      BeamSettings settings,
+      SymbolProvider symbolProvider,
+      FileManifest fileManifest,
+      WriterDelegator<ElixirWriter> writerDelegator,
+      List<ElixirIntegration> integrations,
+      ServiceShape service,
+      BeamHttpBindings httpBindings,
+      String moduleName,
+      String definitionFile) {
+    return new ElixirContext(
+        model,
+        settings,
+        symbolProvider,
+        fileManifest,
+        writerDelegator,
+        integrations,
+        service,
+        httpBindings,
+        null,
+        null,
+        moduleName,
+        definitionFile,
+        new ArrayList<>(),
+        new ArrayList<>(),
+        null,
+        null,
+        null);
+  }
+
+  public static ElixirContext forClient(
       Model model,
       BeamSettings settings,
       SymbolProvider symbolProvider,
@@ -55,7 +86,40 @@ public record ElixirContext(
       ShapeId resolvedProtocolTraitId,
       String moduleName,
       String definitionFile) {
-    this(
+    return new ElixirContext(
+        model,
+        settings,
+        symbolProvider,
+        fileManifest,
+        writerDelegator,
+        integrations,
+        service,
+        httpBindings,
+        protocolCodegen,
+        resolvedProtocolTraitId,
+        moduleName,
+        definitionFile,
+        new ArrayList<>(),
+        new ArrayList<>(),
+        new ElixirClientModuleBuilder(),
+        null,
+        null);
+  }
+
+  public static ElixirContext forServer(
+      Model model,
+      BeamSettings settings,
+      SymbolProvider symbolProvider,
+      FileManifest fileManifest,
+      WriterDelegator<ElixirWriter> writerDelegator,
+      List<ElixirIntegration> integrations,
+      ServiceShape service,
+      BeamHttpBindings httpBindings,
+      BeamProtocolCodegen protocolCodegen,
+      ShapeId resolvedProtocolTraitId,
+      String moduleName,
+      String definitionFile) {
+    return new ElixirContext(
         model,
         settings,
         symbolProvider,
@@ -71,8 +135,8 @@ public record ElixirContext(
         new ArrayList<>(),
         new ArrayList<>(),
         null,
-        null,
-        null);
+        new ElixirBehaviourModuleBuilder(),
+        new ElixirServerModuleBuilder());
   }
 
   public void addTypesModuledoc(Moduledoc moduledoc) {

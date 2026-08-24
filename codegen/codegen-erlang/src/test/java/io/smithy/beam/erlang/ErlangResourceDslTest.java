@@ -40,7 +40,7 @@ class ErlangResourceIrTest {
                 layout.clientModuleFile(),
                 io.smithy.beam.core.BeamCodegenKind.CLIENT));
     ErlangContext ctx =
-        new ErlangContext(
+        ErlangContext.forTypes(
             model,
             new io.smithy.beam.core.BeamSettings(),
             sp,
@@ -49,11 +49,8 @@ class ErlangResourceIrTest {
             List.of(),
             service,
             io.smithy.beam.core.BeamHttpBindings.from(model),
-            null,
-            null,
             layout.clientModuleName(),
-            layout.clientModuleFile(),
-            null);
+            layout.clientModuleFile());
     BeamResourceIndex index = BeamResourceIndex.of(model);
     Module module =
         ErlangResourceDsl.clientModule(ctx, organization, index, layout, layout.clientModuleName());
@@ -91,7 +88,7 @@ class ErlangResourceIrTest {
                 layout.serverModuleFile(),
                 io.smithy.beam.core.BeamCodegenKind.SERVER));
     ErlangContext ctx =
-        new ErlangContext(
+        ErlangContext.forTypes(
             model,
             new io.smithy.beam.core.BeamSettings(),
             sp,
@@ -100,13 +97,8 @@ class ErlangResourceIrTest {
             List.of(),
             service,
             io.smithy.beam.core.BeamHttpBindings.from(model),
-            null,
-            null,
             layout.serverModuleName(),
-            layout.serverModuleFile(),
-            null,
-            null,
-            null);
+            layout.serverModuleFile());
     BeamResourceIndex index = BeamResourceIndex.of(model);
     Module module =
         ErlangResourceDsl.serverModule(ctx, organization, index, layout, layout.serverModuleName());

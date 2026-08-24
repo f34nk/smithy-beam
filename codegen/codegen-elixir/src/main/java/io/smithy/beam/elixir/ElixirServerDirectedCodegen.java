@@ -76,7 +76,7 @@ final class ElixirServerDirectedCodegen
     BeamElixirLayout layout = new BeamElixirLayout(settings, ns, directive.service());
     String definitionFile = layout.serverModuleFile();
     String serverModuleName = ElixirSymbolProvider.toModuleName(layout.serverModuleName());
-    return new ElixirContext(
+    return ElixirContext.forServer(
         directive.model(),
         directive.settings(),
         directive.symbolProvider(),
@@ -91,12 +91,7 @@ final class ElixirServerDirectedCodegen
         protocolCodegen,
         resolvedProtocolTraitId,
         serverModuleName,
-        definitionFile,
-        new java.util.ArrayList<>(),
-        new java.util.ArrayList<>(),
-        null,
-        new ElixirBehaviourModuleBuilder(),
-        new ElixirServerModuleBuilder());
+        definitionFile);
   }
 
   @Override

@@ -6,7 +6,6 @@ import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamEndpointRuleSetEmitter;
 import io.smithy.beam.core.BeamHttpBindings;
-import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamRetryIndex;
 import io.smithy.beam.core.BeamSettings;
 import java.util.ArrayList;
@@ -16,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import software.amazon.smithy.codegen.core.CodegenException;
 import software.amazon.smithy.codegen.core.Symbol;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.codegen.core.WriterDelegator;
@@ -65,13 +65,12 @@ final class ElixirDirectedCodegen
       CreateContextDirective<BeamSettings, ElixirIntegration> directive) {
     ServiceShape service = directive.service();
     BeamHttpBindings httpBindings = BeamHttpBindings.from(directive.model());
-    BeamProtocolCodegen protocolCodegen = null;
     String ns = service.getId().getNamespace();
     BeamSettings settings = directive.settings();
     BeamElixirLayout layout = new BeamElixirLayout(settings, ns, service);
     String definitionFile = layout.typesModuleFile();
     String moduleName = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
-    return new ElixirContext(
+    return ElixirContext.forTypes(
         directive.model(),
         directive.settings(),
         directive.symbolProvider(),
@@ -81,8 +80,6 @@ final class ElixirDirectedCodegen
         directive.integrations(),
         service,
         httpBindings,
-        protocolCodegen,
-        null,
         moduleName,
         definitionFile);
   }
@@ -115,7 +112,7 @@ final class ElixirDirectedCodegen
     writeListAliases(ctx, model, closure, sp, preambleAliasesEmitted);
     writeMapAliases(ctx, model, closure, sp, preambleAliasesEmitted);
 
-    assertPreambleAliasCoverage(closure, sp, preambleAliasesEmitted);
+    verifyPreambleAliasCoverage(closure, sp, preambleAliasesEmitted);
   }
 
   static boolean isPreludeShape(Shape shape) {
@@ -162,18 +159,22 @@ final class ElixirDirectedCodegen
 
   private static void recordPreambleAlias(Shape shape, Set<ShapeId> emitted) {
     if (!emitted.add(shape.getId())) {
-      assert false : "duplicate preamble alias for " + shape.getId();
+      throw new CodegenException("duplicate preamble alias for " + shape.getId());
     }
   }
 
-  private static void assertPreambleAliasCoverage(
+  private static void verifyPreambleAliasCoverage(
       Set<Shape> closure, SymbolProvider symbolProvider, Set<ShapeId> emitted) {
     Set<ShapeId> expected = expectedPreambleAliasShapeIds(closure, symbolProvider);
     for (ShapeId id : expected) {
-      assert emitted.contains(id) : "missing preamble alias for " + id;
+      if (!emitted.contains(id)) {
+        throw new CodegenException("missing preamble alias for " + id);
+      }
     }
     for (ShapeId id : emitted) {
-      assert expected.contains(id) : "unexpected preamble alias for " + id;
+      if (!expected.contains(id)) {
+        throw new CodegenException("unexpected preamble alias for " + id);
+      }
     }
   }
 
