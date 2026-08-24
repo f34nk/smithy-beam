@@ -59,7 +59,7 @@ final class ElixirClientPaginationDsl {
             LocalCallExpr.of(
                 opName,
                 List.of(Variable.of("config"), Variable.of("input"), ListExpr.of(List.of()))),
-            Spec.of(opName + "(map(), " + inType + ") :: " + specOutput),
+            Spec.of(opName + "(client_config(), " + inType + ") :: " + specOutput),
             docOrNull,
             true);
 
@@ -85,7 +85,7 @@ final class ElixirClientPaginationDsl {
                         VariablePattern.of("acc")))),
             paginatedArity3Body(
                 ctx, service, op, wrapWithRetry, clientModule, pageBody, sp, opName),
-            Spec.of(opName + "(map(), " + inType + ", " + successReturnType + ") :: " + specOutput),
+            Spec.of(opName + "(client_config(), " + inType + ", " + successReturnType + ") :: " + specOutput),
             null,
             false);
 

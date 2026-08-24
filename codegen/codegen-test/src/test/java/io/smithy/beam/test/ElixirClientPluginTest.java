@@ -80,7 +80,7 @@ class ElixirClientPluginTest {
     assertThat(clientSource).contains("@moduledoc \"\"\"");
     assertThat(clientSource).contains("alias BasicServiceTypes, as: Types");
     assertThat(clientSource)
-        .contains("@spec get_type_closure(map(), BasicServiceTypes.GetTypeClosureInput.t())");
+        .contains("@spec get_type_closure(client_config(), BasicServiceTypes.GetTypeClosureInput.t())");
     assertThat(clientSource).contains("def get_type_closure(");
     assertThat(clientSource).contains("RuntimeHttp.dispatch");
     assertThat(clientSource).contains("@type client_config :: map()");

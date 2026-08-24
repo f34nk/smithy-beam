@@ -31,6 +31,7 @@ class ElixirClientDirectedCodegenTest {
     assertThat(client).contains("@type client_config :: map()");
     assertThat(client).contains("def get_type_closure(");
     assertThat(client).contains("@spec get_type_closure(");
+    assertThat(client).contains("@spec get_type_closure(client_config(),");
     int typeIndex = client.indexOf("@type client_config :: map()");
     int firstDefIndex = client.indexOf("def get_type_closure(");
     assertThat(typeIndex).isLessThan(firstDefIndex);
