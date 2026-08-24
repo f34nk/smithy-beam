@@ -443,8 +443,7 @@ public final class ErlangComplianceTestEmitter {
       writer.write("assert_json_body(<<\"$L\">>, $L),", escapeErlang(body), bodyExpr);
       return;
     }
-    writer.write(
-        "?assertEqual(<<\"$L\">>, iolist_to_binary($L)),", escapeErlang(body), bodyExpr);
+    writer.write("?assertEqual(<<\"$L\">>, iolist_to_binary($L)),", escapeErlang(body), bodyExpr);
   }
 
   private static void emitAssertionHelpers(
@@ -551,8 +550,7 @@ public final class ErlangComplianceTestEmitter {
     if (helperNeeds.assertJsonBody()) {
       writer.write("assert_json_body(Expected, Actual) ->");
       writer.indent();
-      writer.write(
-          "?assertEqual(jsone:decode(Expected), jsone:decode(iolist_to_binary(Actual))).");
+      writer.write("?assertEqual(jsone:decode(Expected), jsone:decode(iolist_to_binary(Actual))).");
       writer.dedent();
     }
   }

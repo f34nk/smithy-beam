@@ -180,8 +180,8 @@ public final class BeamCodecHelperNeeds {
   }
 
   /**
-   * True when generated codecs call {@code decode_json_body}: error dispatch, document/payload
-   * JSON decode, or AWS JSON request/response body decode.
+   * True when generated codecs call {@code decode_json_body}: error dispatch, document/payload JSON
+   * decode, or AWS JSON request/response body decode.
    */
   private static boolean operationNeedsJsonBodyHelper(
       Model model, HttpBindingIndex httpIndex, OperationShape op) {

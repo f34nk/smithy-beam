@@ -54,7 +54,8 @@ class ElixirComplianceTestIrTest {
   @Test
   void complianceTestsModuleMatchesGolden() throws IOException {
     Module module =
-        ElixirComplianceTestDsl.complianceTestsModule(testContext(), service, BeamCodegenKind.CLIENT);
+        ElixirComplianceTestDsl.complianceTestsModule(
+            testContext(), service, BeamCodegenKind.CLIENT);
     assertThat(ElixirRenderer.render(module))
         .isEqualTo(
             DslGoldenAssertions.readExpectedString(

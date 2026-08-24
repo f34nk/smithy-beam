@@ -88,8 +88,7 @@ final class ErlangRestXmlSupport {
       if (member.getMemberName().equals("__beam_error_kind")) {
         continue;
       }
-      fields.add(
-          RecordField.of(BeamMemberNames.fieldName(sp, member), AtomExpr.of("undefined")));
+      fields.add(RecordField.of(BeamMemberNames.fieldName(sp, member), AtomExpr.of("undefined")));
     }
     if (fields.isEmpty()) {
       return RecordExpr.of(recName, List.of());

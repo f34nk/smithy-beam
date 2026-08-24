@@ -69,8 +69,7 @@ final class ErlangUnusedBindings {
       for (RecordPatternField field : record.fields()) {
         fields.add(RecordPatternField.of(field.name(), prefixPattern(field.pattern(), used)));
       }
-      String alias =
-          record.alias() == null ? null : unusedName(record.alias(), used);
+      String alias = record.alias() == null ? null : unusedName(record.alias(), used);
       return new RecordPattern(record.name(), alias, fields);
     }
     if (pattern instanceof MatchPattern match) {
@@ -112,10 +111,10 @@ final class ErlangUnusedBindings {
       List<MapPatternEntry> entries = new ArrayList<>(map.entries().size());
       for (MapPatternEntry entry : map.entries()) {
         entries.add(
-            MapPatternEntry.of(entry.key(), prefixPattern(entry.value(), used), entry.updateOnly()));
+            MapPatternEntry.of(
+                entry.key(), prefixPattern(entry.value(), used), entry.updateOnly()));
       }
-      String variable =
-          map.variable() == null ? null : unusedName(map.variable(), used);
+      String variable = map.variable() == null ? null : unusedName(map.variable(), used);
       return new MapPattern(variable, entries);
     }
     if (pattern instanceof CatchPattern catchPattern) {

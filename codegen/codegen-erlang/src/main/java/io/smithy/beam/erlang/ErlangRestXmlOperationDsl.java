@@ -1068,8 +1068,7 @@ final class ErlangRestXmlOperationDsl {
       Model model, HttpBinding payload, SymbolProvider sp) {
     MemberShape member = payload.getMember();
     Shape target = model.expectShape(member.getTarget());
-    String bindingVar =
-        ErlangRestXmlSupport.toBindingVar(BeamMemberNames.fieldName(sp, member));
+    String bindingVar = ErlangRestXmlSupport.toBindingVar(BeamMemberNames.fieldName(sp, member));
 
     if (target instanceof BlobShape || target instanceof StringShape) {
       return List.of(
@@ -1182,8 +1181,7 @@ final class ErlangRestXmlOperationDsl {
     List<Expression> cases = new ArrayList<>();
     for (HttpBinding binding : bindings) {
       String fieldVar =
-          ErlangRestXmlSupport.toBindingVar(
-              BeamMemberNames.fieldName(sp, binding.getMember()));
+          ErlangRestXmlSupport.toBindingVar(BeamMemberNames.fieldName(sp, binding.getMember()));
       String valueVar = fieldVar + "Val";
       Expression encodedValue =
           encodeBindingWireValueExpr(model, sp, binding.getMember(), valueVar, queryValues);

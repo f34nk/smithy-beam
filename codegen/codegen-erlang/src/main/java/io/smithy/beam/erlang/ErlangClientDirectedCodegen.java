@@ -117,8 +117,7 @@ final class ErlangClientDirectedCodegen
     BeamEdition edition = BeamEdition.fromSettings(directive.settings());
     ShapeId protocol = ctx.resolvedProtocolTraitId();
     if (protocol != null) {
-      BeamProtocolResolver.assertClosureSupported(
-          directive.model(), service, protocol, edition);
+      BeamProtocolResolver.assertClosureSupported(directive.model(), service, protocol, edition);
     }
   }
 

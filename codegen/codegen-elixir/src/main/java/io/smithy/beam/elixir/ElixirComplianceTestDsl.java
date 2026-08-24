@@ -81,10 +81,8 @@ final class ElixirComplianceTestDsl {
     BeamElixirLayout layout =
         new BeamElixirLayout(ctx.settings(), service.getId().getNamespace(), service);
     String moduleName = ElixirSymbolProvider.toModuleName(layout.complianceTestsModuleName());
-    String clientCodecMod =
-        ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocol));
-    String serverCodecMod =
-        ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocol));
+    String clientCodecMod = ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocol));
+    String serverCodecMod = ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocol));
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     SymbolProvider sp = ctx.symbolProvider();

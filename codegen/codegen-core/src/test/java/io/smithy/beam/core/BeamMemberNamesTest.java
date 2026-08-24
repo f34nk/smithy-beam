@@ -21,11 +21,7 @@ class BeamMemberNamesTest {
   @Test
   void fieldName_returnsEscapedFieldNameProperty() {
     SymbolProvider sp =
-        shape ->
-            Symbol.builder()
-                .name("after")
-                .putProperty("fieldName", "after_")
-                .build();
+        shape -> Symbol.builder().name("after").putProperty("fieldName", "after_").build();
 
     assertThat(BeamMemberNames.fieldName(sp, AFTER_MEMBER)).isEqualTo("after_");
   }

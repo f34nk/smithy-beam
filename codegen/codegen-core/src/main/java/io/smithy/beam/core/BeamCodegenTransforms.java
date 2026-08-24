@@ -29,8 +29,8 @@ public final class BeamCodegenTransforms {
   /**
    * Applies shared model transforms in a fixed order, then sets the director model to the service
    * closure: default service codegen simplification (mixin flatten, service errors copied to
-   * operations), dedicated operation input and output shapes, optional relative deprecation
-   * filters from settings, removal of shapes outside the service closure.
+   * operations), dedicated operation input and output shapes, optional relative deprecation filters
+   * from settings, removal of shapes outside the service closure.
    *
    * <p>Call after {@code runner.service(...)} and {@code runner.settings(...)} (or {@code
    * runner.settings(Class, Node)}) have been set. Pass the assembled model; this method sets {@code

@@ -245,8 +245,7 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     String name =
         serviceFunctionNames.getOrDefault(
             shape.getId(),
-            functionNameEscaper.escape(
-                BeamNameUtils.toSnakeCase(shape.getId().getName(service))));
+            functionNameEscaper.escape(BeamNameUtils.toSnakeCase(shape.getId().getName(service))));
     return Symbol.builder()
         .name(name)
         .namespace(moduleNamespace, ".")
@@ -323,14 +322,12 @@ final class ElixirSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     return moduleNames.getOrDefault(
         shape.getId(),
         toModuleNameFromSnake(
-            moduleNameEscaper.escape(
-                BeamNameUtils.toSnakeCase(shape.getId().getName(service)))));
+            moduleNameEscaper.escape(BeamNameUtils.toSnakeCase(shape.getId().getName(service)))));
   }
 
   String toFieldName(MemberShape member) {
     return fieldNames.getOrDefault(
-        member.getId(),
-        fieldNameEscaper.escape(BeamNameUtils.toSnakeCase(memberBaseName(member))));
+        member.getId(), fieldNameEscaper.escape(BeamNameUtils.toSnakeCase(memberBaseName(member))));
   }
 
   String toUnionTagName(MemberShape member) {

@@ -624,9 +624,7 @@ final class ErlangRestJsonOperationDsl {
             .map(
                 hb ->
                     (Expression)
-                        Variable.of(
-                            toBindingVar(
-                                BeamMemberNames.fieldName(sp, hb.getMember()))))
+                        Variable.of(toBindingVar(BeamMemberNames.fieldName(sp, hb.getMember()))))
             .toList();
     exprs.add(
         MatchExpr.bindValue(
@@ -1211,9 +1209,7 @@ final class ErlangRestJsonOperationDsl {
               .map(
                   hb ->
                       (Expression)
-                          Variable.of(
-                              toBindingVar(
-                                  BeamMemberNames.fieldName(sp, hb.getMember()))))
+                          Variable.of(toBindingVar(BeamMemberNames.fieldName(sp, hb.getMember()))))
               .toList();
       exprs.add(
           MatchExpr.bindValue(

@@ -45,7 +45,8 @@ class BeamCodecHelperNeedsTest {
             .assemble()
             .unwrap();
     ServiceShape service =
-        model.expectShape(ShapeId.from("smithy.beam.test.helpers#LabelService"), ServiceShape.class);
+        model.expectShape(
+            ShapeId.from("smithy.beam.test.helpers#LabelService"), ServiceShape.class);
 
     BeamCodecHelperNeeds needs = BeamCodecHelperNeeds.of(model, service);
     assertThat(needs.uriCoding()).isTrue();
@@ -95,7 +96,8 @@ class BeamCodecHelperNeedsTest {
             .assemble()
             .unwrap();
     ServiceShape service =
-        model.expectShape(ShapeId.from("smithy.beam.test.helpers#TokenService"), ServiceShape.class);
+        model.expectShape(
+            ShapeId.from("smithy.beam.test.helpers#TokenService"), ServiceShape.class);
 
     BeamCodecHelperNeeds needs = BeamCodecHelperNeeds.of(model, service);
     assertThat(needs.idempotencyToken()).isTrue();

@@ -91,8 +91,10 @@ public final class BeamComplianceLiterals {
 
   public static boolean isJsonBodyMediaType(java.util.Optional<String> bodyMediaType) {
     return bodyMediaType
-        .map(mediaType -> mediaType.equalsIgnoreCase("application/json")
-            || mediaType.toLowerCase(java.util.Locale.ROOT).startsWith("application/json;"))
+        .map(
+            mediaType ->
+                mediaType.equalsIgnoreCase("application/json")
+                    || mediaType.toLowerCase(java.util.Locale.ROOT).startsWith("application/json;"))
         .orElse(false);
   }
 
@@ -106,7 +108,8 @@ public final class BeamComplianceLiterals {
     for (software.amazon.smithy.model.knowledge.HttpBinding label : labels) {
       String memberName = label.getMember().getMemberName();
       if (params.getMember(memberName).isPresent()) {
-        entries.add(erlangBinary(memberName) + " => " + erlangNodeValue(params.expectMember(memberName)));
+        entries.add(
+            erlangBinary(memberName) + " => " + erlangNodeValue(params.expectMember(memberName)));
       }
     }
     if (entries.isEmpty()) {

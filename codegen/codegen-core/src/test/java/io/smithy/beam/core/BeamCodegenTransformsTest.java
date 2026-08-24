@@ -157,7 +157,8 @@ class BeamCodegenTransformsTest {
     settings.edition("2026");
     settings.service(SERVICE_ID);
 
-    assertThatCode(() -> BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings, model))
+    assertThatCode(
+            () -> BeamCodegenTransforms.applySharedCodegenTransforms(runner, settings, model))
         .doesNotThrowAnyException();
 
     ArgumentCaptor<Model> modelCaptor = ArgumentCaptor.forClass(Model.class);

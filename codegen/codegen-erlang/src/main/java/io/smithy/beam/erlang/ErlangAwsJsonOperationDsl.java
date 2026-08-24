@@ -79,7 +79,8 @@ final class ErlangAwsJsonOperationDsl {
     return ErlangUnusedBindings.prefix(
         Function.of(
             "encode_" + opName + "_request",
-            List.of(FunctionClause.of(List.of(inputPattern), BlockExpr.commaSeparated(body, false))),
+            List.of(
+                FunctionClause.of(List.of(inputPattern), BlockExpr.commaSeparated(body, false))),
             Spec.of("encode_" + opName + "_request(" + inputType + ") -> #http_request{}"),
             Edoc.of("Encode AWS JSON request for " + op.getId() + ".")));
   }

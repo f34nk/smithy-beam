@@ -157,7 +157,8 @@ final class ElixirRestJsonDsl {
     BeamCodecHelperNeeds needs = BeamCodecHelperNeeds.of(model, service);
     List<Function> functions = new ArrayList<>();
     if (needs.toBinary()) {
-      functions.addAll(ElixirCodecHelperDsl.toBinary(ElixirCodecHelperDsl.ToBinaryVariant.REST_JSON));
+      functions.addAll(
+          ElixirCodecHelperDsl.toBinary(ElixirCodecHelperDsl.ToBinaryVariant.REST_JSON));
     }
     if (needs.queryValues()) {
       functions.addAll(ElixirCodecHelperDsl.encodeQueryValueRestJson());

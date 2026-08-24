@@ -235,8 +235,7 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
     String name =
         serviceFunctionNames.getOrDefault(
             shape.getId(),
-            functionNameEscaper.escape(
-                BeamNameUtils.toSnakeCase(shape.getId().getName(service))));
+            functionNameEscaper.escape(BeamNameUtils.toSnakeCase(shape.getId().getName(service))));
     return Symbol.builder()
         .name(name)
         .namespace(service.getId().getNamespace(), ".")
@@ -304,8 +303,7 @@ final class ErlangSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol>
 
   String toFieldName(MemberShape member) {
     return fieldNames.getOrDefault(
-        member.getId(),
-        fieldNameEscaper.escape(BeamNameUtils.toSnakeCase(memberBaseName(member))));
+        member.getId(), fieldNameEscaper.escape(BeamNameUtils.toSnakeCase(memberBaseName(member))));
   }
 
   String toUnionTagName(MemberShape member) {

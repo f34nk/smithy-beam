@@ -30,13 +30,11 @@ class ErlangUnusedBindingsTest {
                                 "http_request",
                                 List.of(
                                     RecordPatternField.of("query", VariablePattern.of("Query")),
-                                    RecordPatternField.of(
-                                        "headers", VariablePattern.of("Headers")),
+                                    RecordPatternField.of("headers", VariablePattern.of("Headers")),
                                     RecordPatternField.of("body", VariablePattern.of("Body"))))),
                         BlockExpr.commaSeparated(
                             List.of(
-                                LocalCallExpr.of(
-                                    "decode_json_body", List.of(Variable.of("Body")))),
+                                LocalCallExpr.of("decode_json_body", List.of(Variable.of("Body")))),
                             false)))));
 
     RecordPattern pattern = (RecordPattern) function.clauses().get(0).patterns().get(0);

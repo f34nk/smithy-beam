@@ -85,7 +85,14 @@ final class ElixirClientPaginationDsl {
                         VariablePattern.of("acc")))),
             paginatedArity3Body(
                 ctx, service, op, wrapWithRetry, clientModule, pageBody, sp, opName),
-            Spec.of(opName + "(client_config(), " + inType + ", " + successReturnType + ") :: " + specOutput),
+            Spec.of(
+                opName
+                    + "(client_config(), "
+                    + inType
+                    + ", "
+                    + successReturnType
+                    + ") :: "
+                    + specOutput),
             null,
             false);
 

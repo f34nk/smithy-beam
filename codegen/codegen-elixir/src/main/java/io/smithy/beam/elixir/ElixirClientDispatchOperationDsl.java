@@ -280,9 +280,7 @@ final class ElixirClientDispatchOperationDsl {
                     "Map",
                     "put",
                     List.of(
-                        Variable.of("config"),
-                        AtomExpr.of("credentials"),
-                        Variable.of("creds"))),
+                        Variable.of("config"), AtomExpr.of("credentials"), Variable.of("creds"))),
                 Variable.of("op"),
                 Variable.of("req")));
     Expression undefinedCredentialsBranch =
@@ -294,8 +292,7 @@ final class ElixirClientDispatchOperationDsl {
                     VariablePattern.of("creds0"),
                     MatchExpr.bind("creds", credsMap, signWithMergedCreds))));
     return CaseExpr.of(
-        RemoteCallExpr.of(
-            "Map", "get", List.of(Variable.of("config"), AtomExpr.of("credentials"))),
+        RemoteCallExpr.of("Map", "get", List.of(Variable.of("config"), AtomExpr.of("credentials"))),
         List.of(
             Clause.of(NilPattern.of(), undefinedCredentialsBranch),
             Clause.of(VariablePattern.of("_"), signWithConfig)));

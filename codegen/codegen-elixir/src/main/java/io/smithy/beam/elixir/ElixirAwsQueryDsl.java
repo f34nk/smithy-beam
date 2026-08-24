@@ -42,8 +42,7 @@ final class ElixirAwsQueryDsl {
     BeamElixirLayout layout = layout(ctx, service);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     SymbolProvider sp = ctx.symbolProvider();
-    String moduleName =
-        ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocolTraitId));
+    String moduleName = ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocolTraitId));
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
 
@@ -70,8 +69,7 @@ final class ElixirAwsQueryDsl {
     Model model = ctx.model();
     BeamElixirLayout layout = layout(ctx, service);
     SymbolProvider sp = ctx.symbolProvider();
-    String moduleName =
-        ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocolTraitId));
+    String moduleName = ElixirSymbolProvider.toModuleName(layout.codecModuleName(protocolTraitId));
     String runtimeMod = ElixirSymbolProvider.toModuleName(layout.runtimeTypesModuleName());
     String typesMod = ElixirSymbolProvider.toModuleName(layout.typesModuleName());
     Optional<String> serviceNamespace = BeamXmlBindingIndex.xmlNamespaceUri(service);
