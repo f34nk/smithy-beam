@@ -1,12 +1,10 @@
 [versions]
-beam-dsl = "0.1.0-SNAPSHOT"
 smithy = "1.54.0"
 junit-jupiter = "5.11.0"
 assertj = "3.26.3"
 spotless = "7.0.2"
 
 [libraries]
-beam-dsl = { module = "io.beam:beam-dsl", version.ref = "beam-dsl" }
 smithy-aws-traits = { module = "software.amazon.smithy:smithy-aws-traits", version.ref = "smithy" }
 smithy-rules-engine = { module = "software.amazon.smithy:smithy-rules-engine", version.ref = "smithy" }
 smithy-aws-endpoints = { module = "software.amazon.smithy:smithy-aws-endpoints", version.ref = "smithy" }

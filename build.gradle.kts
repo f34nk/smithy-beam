@@ -12,7 +12,10 @@ repositories {
 spotless {
     isEnforceCheck = false
     java {
-        target("codegen/**/src/**/*.java", "examples/**/codegen/src/**/*.java")
+        target(
+            "beam-dsl/src/**/*.java",
+            "codegen/**/src/**/*.java",
+            "examples/**/codegen/src/**/*.java")
         googleJavaFormat()
         removeUnusedImports()
         trimTrailingWhitespace()
