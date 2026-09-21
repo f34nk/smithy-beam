@@ -1,0 +1,8 @@
+package io.beam.lang.erlang;
+
+public record RecordPatternField(String name, Pattern pattern) {
+
+  public static RecordPatternField of(String name, Pattern pattern) {
+    return new RecordPatternField(name, pattern);
+  }
+}
