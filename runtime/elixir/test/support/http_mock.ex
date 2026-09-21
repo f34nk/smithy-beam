@@ -1,26 +1,37 @@
 defmodule HttpMock do
   @moduledoc false
+  @behaviour RuntimeHttpClient
 
-  def request(req_opts) do
-    method = Keyword.fetch!(req_opts, :method)
-    url = Keyword.fetch!(req_opts, :url)
-    body = Keyword.get(req_opts, :body, "")
+  alias RuntimeHttpClient.Request
+  alias RuntimeTypes.HttpResponse
 
-    case {method, url, body} do
-      {:get, "https://api.example/items", ""} ->
-        {:ok, %{status: 200, headers: [{"etag", "\"v1\""}], body: ~s({"ok":true})}}
+  @impl RuntimeHttpClient
+  def request(%Request{method: :get, url: "https://api.example/items", body: ""}) do
+    {:ok,
+     %HttpResponse{
+       status: 200,
+       headers: [{"etag", "\"v1\""}],
+       body: ~s({"ok":true})
+     }}
+  end
 
-      {:get, "https://api.example/items?" <> _query, ""} ->
-        {:ok, %{status: 200, headers: [], body: ""}}
+  def request(%Request{method: :get, url: "https://api.example/fail"}) do
+    {:error, :timeout}
+  end
 
-      {:get, "https://api.example/fail", _} ->
-        {:error, :timeout}
+  def request(%Request{method: :get, url: "https://api.example/items?" <> _query, body: ""}) do
+    {:ok, %HttpResponse{status: 200, headers: [], body: ""}}
+  end
 
-      {:post, "https://api.example/items", ~s({"name":"item"})} ->
-        {:ok, %{status: 201, headers: [], body: ~s({"id":1})}}
+  def request(%Request{
+        method: :post,
+        url: "https://api.example/items",
+        body: ~s({"name":"item"})
+      }) do
+    {:ok, %HttpResponse{status: 201, headers: [], body: ~s({"id":1})}}
+  end
 
-      _ ->
-        {:error, {:unexpected_request, req_opts}}
-    end
+  def request(%Request{} = req) do
+    {:error, {:unexpected_request, req}}
   end
 end
