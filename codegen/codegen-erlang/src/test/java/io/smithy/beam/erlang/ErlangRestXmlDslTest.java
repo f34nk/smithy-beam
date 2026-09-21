@@ -2,8 +2,8 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.dsl.erlang.ErlangRenderer;
-import io.beam.dsl.erlang.Function;
+import io.beam.lang.erlang.ErlangRenderer;
+import io.beam.lang.erlang.Function;
 import java.io.IOException;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -13,7 +13,7 @@ import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
 import software.amazon.smithy.model.shapes.ShapeId;
 
-class ErlangRestXmlIrTest {
+class ErlangRestXmlDslTest {
   @Test
   void restXmlHelpersMatchGolden() throws IOException {
     for (Function fn : ErlangRestXmlDsl.xmlDecodeHelpers()) {
@@ -53,10 +53,14 @@ class ErlangRestXmlIrTest {
 
   @Test
   void decodeGetNameResponseMatchesGolden() throws IOException {
+    Model model = sampleModel();
+    ServiceShape service = service(model);
+    OperationShape op = op(model);
+    ErlangSymbolProvider sp = sampleSymbolProvider(model, service);
+    HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
     String combined =
         DslGoldenAssertions.renderFunctions(
-            ErlangRestXmlOperationDsl.buildDecodeResponse(
-                sampleModel(), op(), HttpBindingIndex.of(sampleModel()), sp()));
+            ErlangRestXmlOperationDsl.buildDecodeResponse(model, op, httpIndex, sp));
     assertThat(DslGoldenAssertions.normalizeTrailingNewline(combined))
         .isEqualTo(
             DslGoldenAssertions.readExpectedString(
@@ -78,9 +82,9 @@ class ErlangRestXmlIrTest {
   @Test
   void capturedCodecBodiesDoNotDuplicateClauseTerminators() {
     Model model = sampleModel();
-    ServiceShape service = service();
-    OperationShape op = op();
-    ErlangSymbolProvider sp = sp();
+    ServiceShape service = service(model);
+    OperationShape op = op(model);
+    ErlangSymbolProvider sp = sampleSymbolProvider(model, service);
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
 
     String encodeRequest =
@@ -145,34 +149,36 @@ class ErlangRestXmlIrTest {
 
   private static Function sampleEncodeRequest() {
     Model model = sampleModel();
+    ServiceShape service = service(model);
+    OperationShape op = op(model);
+    ErlangSymbolProvider sp = sampleSymbolProvider(model, service);
     return ErlangRestXmlDsl.encodeRequest(
-        model, service(), op(), HttpBindingIndex.of(model), sp(), false);
+        model, service, op, HttpBindingIndex.of(model), sp, false);
   }
 
   private static Function decodeGetNameRequest() {
     Model model = sampleModel();
+    OperationShape op = op(model);
+    ErlangSymbolProvider sp = sampleSymbolProvider(model, service(model));
     return ErlangRestXmlOperationDsl.buildDecodeRequest(
-        model, op(), HttpBindingIndex.of(model), sp());
+        model, op, HttpBindingIndex.of(model), sp);
   }
 
   private static Function encodeGetNameResponse() {
     Model model = sampleModel();
+    OperationShape op = op(model);
+    ErlangSymbolProvider sp = sampleSymbolProvider(model, service(model));
     return ErlangRestXmlOperationDsl.buildEncodeResponse(
-        model, op(), HttpBindingIndex.of(model), sp());
+        model, op, HttpBindingIndex.of(model), sp);
   }
 
-  private static ServiceShape service() {
-    return sampleModel()
-        .expectShape(ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
+  private static ServiceShape service(Model model) {
+    return model.expectShape(
+        ShapeId.from("smithy.beam.demo.http#HttpService"), ServiceShape.class);
   }
 
-  private static OperationShape op() {
-    return sampleModel()
-        .expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
-  }
-
-  private static ErlangSymbolProvider sp() {
-    return sampleSymbolProvider(sampleModel(), service());
+  private static OperationShape op(Model model) {
+    return model.expectShape(ShapeId.from("smithy.beam.demo.http#GetName"), OperationShape.class);
   }
 
   static ErlangSymbolProvider sampleSymbolProvider(Model model, ServiceShape service) {
