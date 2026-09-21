@@ -53,7 +53,7 @@ clean:
 	#
 	# Clean the build
 	#
-	rm -rf build bin codegen/build codegen/codegen-*/build codegen/codegen-*/bin *.log
+	rm -rf build bin beam-lang/build codegen/build codegen/codegen-*/build codegen/codegen-*/bin *.log
 	rm -rf ~/.m2/repository/io/smithy/beam
 
 # Usage: make examples/clean
