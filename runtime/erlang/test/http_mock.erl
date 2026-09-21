@@ -1,27 +1,30 @@
 -module(http_mock).
--export([request/4]).
+-behaviour(runtime_http_client).
 
-request(get, {Url, _Headers}, [], [{body_format, binary}]) ->
-    case Url of
-        "https://api.example/items" ->
-            ok_response(200, [{"etag", "\"v1\""}], <<"{\"ok\":true}">>);
-        "https://api.example/fail" ->
-            {error, timeout};
-        Url ->
-            case string:prefix(Url, "https://api.example/items?") of
-                nomatch -> {error, {unexpected_request, Url}};
-                _ -> ok_response(200, [], <<>>)
-            end
-    end;
-request(post, {Url, _Headers, _Mime, Body}, [], [{body_format, binary}]) ->
-    case {Url, Body} of
-        {"https://api.example/items", <<"{\"name\":\"item\"}">>} ->
-            ok_response(201, [], <<"{\"id\":1}">>);
+-include("runtime_types.hrl").
+-include("runtime_http_client.hrl").
+
+-export([request/1]).
+
+request(#http_client_request{method = get, url = <<"https://api.example/items">>, body = <<>>}) ->
+    ok_response(200, [{<<"etag">>, <<"\"v1\"">>}], <<"{\"ok\":true}">>);
+request(#http_client_request{method = get, url = <<"https://api.example/fail">>, body = <<>>}) ->
+    {error, timeout};
+request(#http_client_request{method = get, url = Url, body = <<>>}) ->
+    case binary:match(Url, <<"https://api.example/items?">>) of
+        nomatch ->
+            {error, {unexpected_request, Url}};
         _ ->
-            {error, {unexpected_request, Url}}
+            ok_response(200, [], <<>>)
     end;
-request(_Method, Req, _HttpOpts, _Opts) ->
+request(#http_client_request{
+    method = post,
+    url = <<"https://api.example/items">>,
+    body = <<"{\"name\":\"item\"}">>
+}) ->
+    ok_response(201, [], <<"{\"id\":1}">>);
+request(#http_client_request{} = Req) ->
     {error, {unexpected_request, Req}}.
 
 ok_response(Status, Headers, Body) ->
-    {ok, {{http, Status, <<"OK">>}, Headers, Body}}.
+    {ok, #http_response{status = Status, headers = Headers, body = Body}}.
