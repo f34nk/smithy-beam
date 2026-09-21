@@ -23,6 +23,27 @@ public record BeamStaticRuntimeModule(
       module(
           "src/runtime_http.erl", "runtime_http.erl", "runtime_http", RuntimeFeature.HTTP_CLIENT);
 
+  public static final BeamStaticRuntimeModule HTTP_CLIENT_TYPES =
+      module(
+          "src/runtime_http_client.hrl",
+          "runtime_http_client.hrl",
+          "runtime_http_client",
+          RuntimeFeature.HTTP_CLIENT);
+
+  public static final BeamStaticRuntimeModule HTTP_CLIENT =
+      module(
+          "src/runtime_http_client.erl",
+          "runtime_http_client.erl",
+          "runtime_http_client",
+          RuntimeFeature.HTTP_CLIENT);
+
+  public static final BeamStaticRuntimeModule HTTP_CLIENT_HTTPC =
+      module(
+          "src/runtime_http_client_httpc.erl",
+          "runtime_http_client_httpc.erl",
+          "runtime_http_client_httpc",
+          RuntimeFeature.HTTP_CLIENT);
+
   public static final BeamStaticRuntimeModule UTILS =
       module(
           "src/runtime_utils.erl",

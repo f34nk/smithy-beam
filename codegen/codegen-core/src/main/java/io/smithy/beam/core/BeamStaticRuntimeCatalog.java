@@ -11,6 +11,9 @@ public final class BeamStaticRuntimeCatalog {
       List.of(
           BeamStaticRuntimeModule.HTTP_TYPES,
           BeamStaticRuntimeModule.HTTP_RUNTIME,
+          BeamStaticRuntimeModule.HTTP_CLIENT_TYPES,
+          BeamStaticRuntimeModule.HTTP_CLIENT,
+          BeamStaticRuntimeModule.HTTP_CLIENT_HTTPC,
           BeamStaticRuntimeModule.UTILS,
           BeamStaticRuntimeModule.AWS_SIGV4,
           BeamStaticRuntimeModule.HTTP_CHECKSUM,

@@ -67,6 +67,9 @@ public final class BeamStaticRuntimeIndex {
     if (module == BeamStaticRuntimeModule.HTTP_RUNTIME) {
       addWithDependencies(selected, BeamStaticRuntimeModule.HTTP_TYPES);
       addWithDependencies(selected, BeamStaticRuntimeModule.UTILS);
+      addWithDependencies(selected, BeamStaticRuntimeModule.HTTP_CLIENT_TYPES);
+      addWithDependencies(selected, BeamStaticRuntimeModule.HTTP_CLIENT);
+      addWithDependencies(selected, BeamStaticRuntimeModule.HTTP_CLIENT_HTTPC);
     } else if (module == BeamStaticRuntimeModule.AWS_SIGV4) {
       addWithDependencies(selected, BeamStaticRuntimeModule.HTTP_TYPES);
       addWithDependencies(selected, BeamStaticRuntimeModule.UTILS);
