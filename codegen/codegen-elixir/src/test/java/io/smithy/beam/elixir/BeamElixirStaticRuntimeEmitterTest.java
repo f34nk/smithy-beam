@@ -37,5 +37,10 @@ class BeamElixirStaticRuntimeEmitterTest {
     assertThat(manifest.getFileString("runtime_types.ex")).isPresent();
     assertThat(manifest.getFileString("aws_sigv4.ex")).isEmpty();
     assertThat(manifest.expectFileString("runtime_types.ex")).contains("defmodule RuntimeTypes");
+    assertThat(manifest.getFileString("runtime_http_client.ex")).isPresent();
+    assertThat(manifest.expectFileString("runtime_http_client.ex"))
+        .contains("defmodule RuntimeHttpClient do")
+        .contains("defmodule RuntimeHttpClient.Request do")
+        .contains("defmodule RuntimeHttpClient.Req do");
   }
 }

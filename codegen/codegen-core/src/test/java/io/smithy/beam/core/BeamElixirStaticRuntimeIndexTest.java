@@ -24,7 +24,7 @@ class BeamElixirStaticRuntimeIndexTest {
 
     assertThat(requirements.modules())
         .extracting(BeamElixirStaticRuntimeModule::moduleName)
-        .contains("RuntimeHttp", "RuntimeUtils", "RuntimeTypes");
+        .contains("RuntimeHttp", "RuntimeUtils", "RuntimeTypes", "RuntimeHttpClient");
     assertThat(requirements.modules())
         .extracting(BeamElixirStaticRuntimeModule::moduleName)
         .doesNotContain("AwsSigv4", "HttpChecksum", "AwsEventStream");
@@ -64,7 +64,7 @@ class BeamElixirStaticRuntimeIndexTest {
         .containsExactly("RuntimeTypes");
     assertThat(requirements.modules())
         .extracting(BeamElixirStaticRuntimeModule::moduleName)
-        .doesNotContain("RuntimeHttp", "AwsSigv4", "RuntimeUtils");
+        .doesNotContain("RuntimeHttp", "RuntimeHttpClient", "AwsSigv4", "RuntimeUtils");
   }
 
   @Test
