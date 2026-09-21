@@ -1,29 +1,37 @@
 defmodule RuntimeHttpMock do
   @moduledoc false
+  @behaviour RuntimeHttpClient
 
-  def request(req_opts) do
-    method = Keyword.fetch!(req_opts, :method)
-    url = Keyword.fetch!(req_opts, :url)
-    headers = Keyword.get(req_opts, :headers, [])
+  alias RuntimeHttpClient
+  alias RuntimeHttpClient.Request
+  alias RuntimeTypes.HttpResponse
 
-    case {method, url, headers} do
-      {:get, "https://api.example/items", headers} ->
-        case List.keyfind(headers, "Content-Type", 0) do
-          {"Content-Type", "application/json"} ->
-            {:ok, %{status: 200, headers: [{"etag", "\"v1\""}], body: ~s({"ok":true})}}
-
-          _ ->
-            {:error, {:unexpected_request, req_opts}}
-        end
-
-      {:get, "https://api.example/items?" <> _query, _} ->
-        {:ok, %{status: 200, headers: [], body: ""}}
-
-      {:get, "https://api.example/fail", _} ->
-        {:error, :timeout}
+  @impl RuntimeHttpClient
+  def request(%Request{method: :get, url: "https://api.example/items", headers: headers})
+      when headers != [] do
+    case RuntimeHttpClient.content_type(headers) do
+      "application/json" ->
+        {:ok,
+         %HttpResponse{
+           status: 200,
+           headers: [{"etag", "\"v1\""}],
+           body: ~s({"ok":true})
+         }}
 
       _ ->
-        {:error, {:unexpected_request, req_opts}}
+        {:error, {:unexpected_request, headers}}
     end
+  end
+
+  def request(%Request{method: :get, url: "https://api.example/items?" <> _query}) do
+    {:ok, %HttpResponse{status: 200, headers: [], body: ""}}
+  end
+
+  def request(%Request{method: :get, url: "https://api.example/fail"}) do
+    {:error, :timeout}
+  end
+
+  def request(%Request{} = req) do
+    {:error, {:unexpected_request, req}}
   end
 end

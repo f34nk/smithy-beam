@@ -19,6 +19,13 @@ public record BeamElixirStaticRuntimeModule(
   public static final BeamElixirStaticRuntimeModule HTTP_RUNTIME =
       module("lib/runtime_http.ex", "runtime_http.ex", "RuntimeHttp", RuntimeFeature.HTTP_CLIENT);
 
+  public static final BeamElixirStaticRuntimeModule HTTP_CLIENT =
+      module(
+          "lib/runtime_http_client.ex",
+          "runtime_http_client.ex",
+          "RuntimeHttpClient",
+          RuntimeFeature.HTTP_CLIENT);
+
   public static final BeamElixirStaticRuntimeModule UTILS =
       module(
           "lib/runtime_utils.ex", "runtime_utils.ex", "RuntimeUtils", RuntimeFeature.HTTP_CLIENT);
