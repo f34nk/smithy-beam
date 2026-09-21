@@ -1,5 +1,4 @@
 %% Shared smithy-beam Erlang HTTP request/response helper module.
-%% Uses httpc from OTP. Replace via adapter for testing.
 -module(runtime_http).
 -include("runtime_types.hrl").
 -export([
@@ -12,62 +11,15 @@
 -spec dispatch(#{binary() => term()}, http_request()) ->
     {ok, http_response()} | {error, term()}.
 dispatch(Config, Request) ->
-    HttpClient = maps:get(http_client, Config, httpc),
+    HttpClient = maps:get(http_client, Config, runtime_http_client_httpc),
     dispatch(HttpClient, Config, Request).
 
 %% @doc Dispatch an HTTP request through a specific HTTP client module.
 -spec dispatch(module(), #{binary() => term()}, http_request()) ->
     {ok, http_response()} | {error, term()}.
-dispatch(HttpClient, Config, #http_request{
-    method = Method, path = Path, query = Query, headers = Headers, body = Body, host = Host
-}) ->
-    BaseUrl = maps:get(base_url, Config, undefined),
-    QueryStr =
-        case maps:to_list(Query) of
-            [] ->
-                <<>>;
-            Pairs ->
-                Encoded = uri_string:compose_query([{K, V} || {K, V} <- Pairs]),
-                <<"?", Encoded/binary>>
-        end,
-    {Scheme, DefaultAuthority} = runtime_utils:split_base_url(BaseUrl),
-    Authority =
-        case Host of
-            undefined -> DefaultAuthority;
-            _ -> Host
-        end,
-    ReqUrl = <<Scheme/binary, Authority/binary, Path/binary, QueryStr/binary>>,
-    HttpcHeaders = [{binary_to_list(K), binary_to_list(V)} || {K, V} <- Headers],
-    Req =
-        case Body of
-            <<>> -> {binary_to_list(ReqUrl), HttpcHeaders};
-            _ -> {binary_to_list(ReqUrl), HttpcHeaders, mime(Headers), Body}
-        end,
-    case
-        HttpClient:request(
-            binary_to_atom(string:lowercase(Method), utf8),
-            Req,
-            [],
-            [{body_format, binary}]
-        )
-    of
-        {ok, {{_, Status, _}, RespHeaders, RespBody}} ->
-            BinHeaders = [{list_to_binary(K), list_to_binary(V)} || {K, V} <- RespHeaders],
-            {ok, #http_response{
-                status = Status,
-                headers = BinHeaders,
-                body = RespBody
-            }};
-        {error, Reason} ->
-            {error, Reason}
-    end.
-
--spec mime([{binary(), binary()}]) -> string().
-mime(Headers) ->
-    case proplists:get_value(<<"Content-Type">>, Headers) of
-        undefined -> "application/octet-stream";
-        CT -> binary_to_list(CT)
-    end.
+dispatch(HttpClient, Config, Request) ->
+    ClientReq = runtime_http_client:build_request(Config, Request),
+    HttpClient:request(ClientReq).
 
 %% @doc Invoke Fun with exponential backoff when a retryable error is returned.
 -spec with_retry(fun(() -> term()), map()) -> term().
