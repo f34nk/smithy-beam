@@ -11,6 +11,7 @@ public final class BeamElixirStaticRuntimeCatalog {
       List.of(
           BeamElixirStaticRuntimeModule.HTTP_TYPES,
           BeamElixirStaticRuntimeModule.HTTP_RUNTIME,
+          BeamElixirStaticRuntimeModule.HTTP_CLIENT,
           BeamElixirStaticRuntimeModule.UTILS,
           BeamElixirStaticRuntimeModule.AWS_SIGV4,
           BeamElixirStaticRuntimeModule.HTTP_CHECKSUM,

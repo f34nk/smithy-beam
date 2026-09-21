@@ -67,6 +67,7 @@ public final class BeamElixirStaticRuntimeIndex {
     if (module == BeamElixirStaticRuntimeModule.HTTP_RUNTIME) {
       addWithDependencies(selected, BeamElixirStaticRuntimeModule.HTTP_TYPES);
       addWithDependencies(selected, BeamElixirStaticRuntimeModule.UTILS);
+      addWithDependencies(selected, BeamElixirStaticRuntimeModule.HTTP_CLIENT);
     } else if (module == BeamElixirStaticRuntimeModule.AWS_SIGV4) {
       addWithDependencies(selected, BeamElixirStaticRuntimeModule.HTTP_TYPES);
       addWithDependencies(selected, BeamElixirStaticRuntimeModule.UTILS);
