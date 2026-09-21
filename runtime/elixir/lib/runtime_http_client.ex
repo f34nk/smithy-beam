@@ -68,3 +68,44 @@ defmodule RuntimeHttpClient do
     end
   end
 end
+
+defmodule RuntimeHttpClient.Req do
+  @moduledoc false
+  @behaviour RuntimeHttpClient
+
+  alias RuntimeHttpClient.Request
+  alias RuntimeTypes.HttpResponse
+
+  @impl RuntimeHttpClient
+  @spec request(Request.t()) :: {:ok, HttpResponse.t()} | {:error, term()}
+  def request(%Request{} = client_req) do
+    case Req.request(to_req_opts(client_req)) do
+      {:ok, response} ->
+        from_req_response(response)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @spec to_req_opts(Request.t()) :: keyword()
+  def to_req_opts(%Request{method: method, url: url, headers: headers, body: body}) do
+    [
+      method: method,
+      url: url,
+      headers: headers,
+      body: body,
+      decode_body: false
+    ]
+  end
+
+  @spec from_req_response(map()) :: {:ok, HttpResponse.t()}
+  def from_req_response(response) do
+    {:ok,
+     %HttpResponse{
+       status: response.status,
+       headers: Enum.map(response.headers, fn {k, v} -> {k, v} end),
+       body: response.body
+     }}
+  end
+end
