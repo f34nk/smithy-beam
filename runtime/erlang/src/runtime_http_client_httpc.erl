@@ -5,7 +5,7 @@
 -include("runtime_types.hrl").
 -include("runtime_http_client.hrl").
 
--export([request/1]).
+-export([request/1, to_httpc_request/1, from_httpc_response/1]).
 
 -spec request(http_client_request()) -> {ok, http_response()} | {error, term()}.
 request(ClientReq) ->
