@@ -1,6 +1,6 @@
 package io.smithy.beam.erlang;
 
-import io.beam.dsl.erlang.Module;
+import io.beam.lang.erlang.Module;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamResourceIndex;
 import io.smithy.beam.core.BeamResourceLifecycle;

@@ -2,8 +2,8 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.dsl.erlang.ErlangRenderer;
-import io.beam.dsl.erlang.Header;
+import io.beam.lang.erlang.ErlangRenderer;
+import io.beam.lang.erlang.Header;
 import org.junit.jupiter.api.Test;
 
 class ErlangTypesIrTest {

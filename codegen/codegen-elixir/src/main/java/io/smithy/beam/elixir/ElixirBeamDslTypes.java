@@ -1,12 +1,12 @@
 package io.smithy.beam.elixir;
 
-import io.beam.dsl.elixir.DefstructField;
-import io.beam.dsl.elixir.ElixirRenderer;
-import io.beam.dsl.elixir.Function;
-import io.beam.dsl.elixir.Module;
-import io.beam.dsl.elixir.Moduledoc;
-import io.beam.dsl.elixir.TypeDef;
-import io.beam.dsl.elixir.TypesModule;
+import io.beam.lang.elixir.DefstructField;
+import io.beam.lang.elixir.ElixirRenderer;
+import io.beam.lang.elixir.Function;
+import io.beam.lang.elixir.Module;
+import io.beam.lang.elixir.Moduledoc;
+import io.beam.lang.elixir.TypeDef;
+import io.beam.lang.elixir.TypesModule;
 import java.util.ArrayList;
 import java.util.List;
 

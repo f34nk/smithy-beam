@@ -1,6 +1,6 @@
 package io.smithy.beam.erlang;
 
-import io.beam.dsl.erlang.Function;
+import io.beam.lang.erlang.Function;
 import java.util.ArrayList;
 import java.util.List;
 

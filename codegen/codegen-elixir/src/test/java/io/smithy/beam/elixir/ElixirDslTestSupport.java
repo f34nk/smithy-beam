@@ -2,7 +2,7 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.dsl.elixir.Function;
+import io.beam.lang.elixir.Function;
 
 public final class ElixirDslTestSupport {
   private ElixirDslTestSupport() {}

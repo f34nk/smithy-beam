@@ -2,12 +2,12 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.dsl.elixir.CaseExpr;
-import io.beam.dsl.elixir.ElixirRenderer;
-import io.beam.dsl.elixir.Expression;
-import io.beam.dsl.elixir.Function;
-import io.beam.dsl.elixir.MatchExpr;
-import io.beam.dsl.elixir.RemoteCallExpr;
+import io.beam.lang.elixir.CaseExpr;
+import io.beam.lang.elixir.ElixirRenderer;
+import io.beam.lang.elixir.Expression;
+import io.beam.lang.elixir.Function;
+import io.beam.lang.elixir.MatchExpr;
+import io.beam.lang.elixir.RemoteCallExpr;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamHttpBindings;
@@ -211,7 +211,7 @@ class ElixirClientDispatchDslTest {
   }
 
   @Test
-  @Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
+  @Disabled("beam-lang migration: golden fixtures live in beam-lang; re-enable locally if needed")
   void restJsonOperationBodyMatchesGolden() throws IOException {
     Model model = httpModel();
     OperationShape op =
@@ -231,7 +231,7 @@ class ElixirClientDispatchDslTest {
   }
 
   @Test
-  @Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
+  @Disabled("beam-lang migration: golden fixtures live in beam-lang; re-enable locally if needed")
   void restJsonOperationBodyWithRetryMatchesGolden() throws IOException {
     Model model = httpModel();
     OperationShape op =
@@ -286,7 +286,7 @@ class ElixirClientDispatchDslTest {
   }
 
   @Test
-  @Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
+  @Disabled("beam-lang migration: golden fixtures live in beam-lang; re-enable locally if needed")
   void paginatedPageBodyMatchesGolden() throws IOException {
     Model model = paginatedModel();
     OperationShape op =

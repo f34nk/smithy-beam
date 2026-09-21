@@ -2,10 +2,10 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.dsl.elixir.ElixirRenderer;
-import io.beam.dsl.elixir.Function;
-import io.beam.dsl.elixir.Module;
-import io.beam.dsl.elixir.TypesModule;
+import io.beam.lang.elixir.ElixirRenderer;
+import io.beam.lang.elixir.Function;
+import io.beam.lang.elixir.Module;
+import io.beam.lang.elixir.TypesModule;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;

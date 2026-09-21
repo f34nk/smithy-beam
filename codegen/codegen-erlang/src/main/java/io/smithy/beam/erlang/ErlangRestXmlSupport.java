@@ -1,15 +1,15 @@
 package io.smithy.beam.erlang;
 
-import io.beam.dsl.erlang.AtomExpr;
-import io.beam.dsl.erlang.FunctionClause;
-import io.beam.dsl.erlang.IntegerPattern;
-import io.beam.dsl.erlang.LocalCallExpr;
-import io.beam.dsl.erlang.RecordExpr;
-import io.beam.dsl.erlang.RecordField;
-import io.beam.dsl.erlang.TupleExpr;
-import io.beam.dsl.erlang.Variable;
-import io.beam.dsl.erlang.VariablePattern;
-import io.beam.dsl.erlang.WildcardPattern;
+import io.beam.lang.erlang.AtomExpr;
+import io.beam.lang.erlang.FunctionClause;
+import io.beam.lang.erlang.IntegerPattern;
+import io.beam.lang.erlang.LocalCallExpr;
+import io.beam.lang.erlang.RecordExpr;
+import io.beam.lang.erlang.RecordField;
+import io.beam.lang.erlang.TupleExpr;
+import io.beam.lang.erlang.Variable;
+import io.beam.lang.erlang.VariablePattern;
+import io.beam.lang.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamHostLabelIndex;
 import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamNameUtils;

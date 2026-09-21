@@ -2,15 +2,15 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.dsl.erlang.AtomExpr;
-import io.beam.dsl.erlang.BlockExpr;
-import io.beam.dsl.erlang.Function;
-import io.beam.dsl.erlang.FunctionClause;
-import io.beam.dsl.erlang.LocalCallExpr;
-import io.beam.dsl.erlang.RecordPattern;
-import io.beam.dsl.erlang.RecordPatternField;
-import io.beam.dsl.erlang.Variable;
-import io.beam.dsl.erlang.VariablePattern;
+import io.beam.lang.erlang.AtomExpr;
+import io.beam.lang.erlang.BlockExpr;
+import io.beam.lang.erlang.Function;
+import io.beam.lang.erlang.FunctionClause;
+import io.beam.lang.erlang.LocalCallExpr;
+import io.beam.lang.erlang.RecordPattern;
+import io.beam.lang.erlang.RecordPatternField;
+import io.beam.lang.erlang.Variable;
+import io.beam.lang.erlang.VariablePattern;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;

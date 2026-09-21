@@ -1,8 +1,8 @@
 package io.smithy.beam.elixir;
 
-import io.beam.dsl.elixir.Function;
-import io.beam.dsl.elixir.Moduledoc;
-import io.beam.dsl.elixir.TypesModule;
+import io.beam.lang.elixir.Function;
+import io.beam.lang.elixir.Moduledoc;
+import io.beam.lang.elixir.TypesModule;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamSettings;

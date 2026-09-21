@@ -1,13 +1,13 @@
 package io.smithy.beam.erlang;
 
-import io.beam.dsl.erlang.AtomExpr;
-import io.beam.dsl.erlang.Function;
-import io.beam.dsl.erlang.FunctionClause;
-import io.beam.dsl.erlang.RecordPattern;
-import io.beam.dsl.erlang.Spec;
-import io.beam.dsl.erlang.TuplePattern;
-import io.beam.dsl.erlang.VariablePattern;
-import io.beam.dsl.erlang.WildcardPattern;
+import io.beam.lang.erlang.AtomExpr;
+import io.beam.lang.erlang.Function;
+import io.beam.lang.erlang.FunctionClause;
+import io.beam.lang.erlang.RecordPattern;
+import io.beam.lang.erlang.Spec;
+import io.beam.lang.erlang.TuplePattern;
+import io.beam.lang.erlang.VariablePattern;
+import io.beam.lang.erlang.WildcardPattern;
 import io.smithy.beam.core.BeamRetryIndex;
 import java.util.ArrayList;
 import java.util.Comparator;

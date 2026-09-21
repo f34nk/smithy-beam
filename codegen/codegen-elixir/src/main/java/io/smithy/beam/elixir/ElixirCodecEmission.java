@@ -1,7 +1,7 @@
 package io.smithy.beam.elixir;
 
-import io.beam.dsl.elixir.ElixirRenderer;
-import io.beam.dsl.elixir.Module;
+import io.beam.lang.elixir.ElixirRenderer;
+import io.beam.lang.elixir.Module;
 
 final class ElixirCodecEmission {
   private ElixirCodecEmission() {}

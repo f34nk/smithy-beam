@@ -1,24 +1,24 @@
 package io.smithy.beam.erlang;
 
-import io.beam.dsl.erlang.AtomExpr;
-import io.beam.dsl.erlang.BlockExpr;
-import io.beam.dsl.erlang.Edoc;
-import io.beam.dsl.erlang.Function;
-import io.beam.dsl.erlang.FunctionClause;
-import io.beam.dsl.erlang.IntegerExpr;
-import io.beam.dsl.erlang.IntegerPattern;
-import io.beam.dsl.erlang.ListExpr;
-import io.beam.dsl.erlang.LocalCallExpr;
-import io.beam.dsl.erlang.MatchExpr;
-import io.beam.dsl.erlang.RecordExpr;
-import io.beam.dsl.erlang.RecordField;
-import io.beam.dsl.erlang.RecordPattern;
-import io.beam.dsl.erlang.RecordPatternField;
-import io.beam.dsl.erlang.RemoteCallExpr;
-import io.beam.dsl.erlang.Spec;
-import io.beam.dsl.erlang.TupleExpr;
-import io.beam.dsl.erlang.Variable;
-import io.beam.dsl.erlang.VariablePattern;
+import io.beam.lang.erlang.AtomExpr;
+import io.beam.lang.erlang.BlockExpr;
+import io.beam.lang.erlang.Edoc;
+import io.beam.lang.erlang.Function;
+import io.beam.lang.erlang.FunctionClause;
+import io.beam.lang.erlang.IntegerExpr;
+import io.beam.lang.erlang.IntegerPattern;
+import io.beam.lang.erlang.ListExpr;
+import io.beam.lang.erlang.LocalCallExpr;
+import io.beam.lang.erlang.MatchExpr;
+import io.beam.lang.erlang.RecordExpr;
+import io.beam.lang.erlang.RecordField;
+import io.beam.lang.erlang.RecordPattern;
+import io.beam.lang.erlang.RecordPatternField;
+import io.beam.lang.erlang.RemoteCallExpr;
+import io.beam.lang.erlang.Spec;
+import io.beam.lang.erlang.TupleExpr;
+import io.beam.lang.erlang.Variable;
+import io.beam.lang.erlang.VariablePattern;
 import io.smithy.beam.core.BeamMemberNames;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +51,7 @@ final class ErlangAwsJsonOperationDsl {
     RecordPattern inputPattern =
         ErlangRestJsonOperationDsl.memberBindingHead("Input", inputRecord, input, sp);
 
-    List<io.beam.dsl.erlang.Expression> body = new ArrayList<>();
+    List<io.beam.lang.erlang.Expression> body = new ArrayList<>();
     body.addAll(
         ErlangRestJsonOperationDsl.buildDocumentBodyEncodeExprs(
             model, httpIndex, sp, members, eventStreamModule));
@@ -59,21 +59,21 @@ final class ErlangAwsJsonOperationDsl {
         RecordExpr.of(
             "http_request",
             List.of(
-                RecordField.of("method", io.beam.dsl.erlang.BinaryExpr.of("POST")),
-                RecordField.of("path", io.beam.dsl.erlang.BinaryExpr.of("/")),
-                RecordField.of("query", io.beam.dsl.erlang.MapExpr.of(List.of())),
+                RecordField.of("method", io.beam.lang.erlang.BinaryExpr.of("POST")),
+                RecordField.of("path", io.beam.lang.erlang.BinaryExpr.of("/")),
+                RecordField.of("query", io.beam.lang.erlang.MapExpr.of(List.of())),
                 RecordField.of(
                     "headers",
                     ListExpr.of(
                         List.of(
                             TupleExpr.of(
                                 List.of(
-                                    io.beam.dsl.erlang.BinaryExpr.of("Content-Type"),
-                                    io.beam.dsl.erlang.BinaryExpr.of(contentType))),
+                                    io.beam.lang.erlang.BinaryExpr.of("Content-Type"),
+                                    io.beam.lang.erlang.BinaryExpr.of(contentType))),
                             TupleExpr.of(
                                 List.of(
-                                    io.beam.dsl.erlang.BinaryExpr.of("X-Amz-Target"),
-                                    io.beam.dsl.erlang.BinaryExpr.of(amzTarget)))))),
+                                    io.beam.lang.erlang.BinaryExpr.of("X-Amz-Target"),
+                                    io.beam.lang.erlang.BinaryExpr.of(amzTarget)))))),
                 RecordField.of("body", Variable.of("Body")))));
 
     return ErlangUnusedBindings.prefix(
@@ -105,7 +105,7 @@ final class ErlangAwsJsonOperationDsl {
                 RecordPatternField.of("status", IntegerPattern.of(200)),
                 RecordPatternField.of("body", VariablePattern.of("Body"))));
 
-    io.beam.dsl.erlang.Expression successBody;
+    io.beam.lang.erlang.Expression successBody;
     if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
       MemberShape member = members.get(0);
       UnionShape union = model.expectShape(member.getTarget(), UnionShape.class);
@@ -184,7 +184,7 @@ final class ErlangAwsJsonOperationDsl {
         RecordPattern.of(
             "http_request", List.of(RecordPatternField.of("body", VariablePattern.of("Body"))));
 
-    io.beam.dsl.erlang.Expression body;
+    io.beam.lang.erlang.Expression body;
     if (ErlangJsonCodecSupport.isEventStreamPayload(members, model)) {
       body =
           ErlangRestJsonOperationDsl.buildDocumentRecordFromDecoded(
@@ -223,7 +223,7 @@ final class ErlangAwsJsonOperationDsl {
 
     RecordPattern pattern = ErlangRestJsonOperationDsl.outputBindingHead(outputRecord, output, sp);
 
-    List<io.beam.dsl.erlang.Expression> body = new ArrayList<>();
+    List<io.beam.lang.erlang.Expression> body = new ArrayList<>();
     body.addAll(
         ErlangRestJsonOperationDsl.buildDocumentBodyEncodeExprs(
             model, httpIndex, sp, members, eventStreamModule));
@@ -238,8 +238,8 @@ final class ErlangAwsJsonOperationDsl {
                         List.of(
                             TupleExpr.of(
                                 List.of(
-                                    io.beam.dsl.erlang.BinaryExpr.of("Content-Type"),
-                                    io.beam.dsl.erlang.BinaryExpr.of(contentType)))))),
+                                    io.beam.lang.erlang.BinaryExpr.of("Content-Type"),
+                                    io.beam.lang.erlang.BinaryExpr.of(contentType)))))),
                 RecordField.of("body", Variable.of("Body")))));
 
     return ErlangUnusedBindings.prefix(

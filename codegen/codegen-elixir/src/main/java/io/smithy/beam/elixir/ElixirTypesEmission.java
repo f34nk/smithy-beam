@@ -1,9 +1,9 @@
 package io.smithy.beam.elixir;
 
-import io.beam.dsl.elixir.ElixirRenderer;
-import io.beam.dsl.elixir.Module;
-import io.beam.dsl.elixir.Moduledoc;
-import io.beam.dsl.elixir.TypesModule;
+import io.beam.lang.elixir.ElixirRenderer;
+import io.beam.lang.elixir.Module;
+import io.beam.lang.elixir.Moduledoc;
+import io.beam.lang.elixir.TypesModule;
 import io.smithy.beam.core.BeamElixirLayout;
 import java.util.ArrayList;
 import java.util.List;

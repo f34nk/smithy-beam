@@ -2,13 +2,13 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.dsl.elixir.Function;
-import io.beam.dsl.elixir.FunctionHead;
-import io.beam.dsl.elixir.Moduledoc;
-import io.beam.dsl.elixir.Spec;
-import io.beam.dsl.elixir.TypesModule;
-import io.beam.dsl.elixir.Variable;
-import io.beam.dsl.elixir.VariablePattern;
+import io.beam.lang.elixir.Function;
+import io.beam.lang.elixir.FunctionHead;
+import io.beam.lang.elixir.Moduledoc;
+import io.beam.lang.elixir.Spec;
+import io.beam.lang.elixir.TypesModule;
+import io.beam.lang.elixir.Variable;
+import io.beam.lang.elixir.VariablePattern;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamSettings;
 import java.nio.file.Path;

@@ -1,14 +1,14 @@
 package io.smithy.beam.elixir;
 
-import io.beam.dsl.elixir.AtomExpr;
-import io.beam.dsl.elixir.AtomPattern;
-import io.beam.dsl.elixir.Expression;
-import io.beam.dsl.elixir.Function;
-import io.beam.dsl.elixir.FunctionHead;
-import io.beam.dsl.elixir.Pattern;
-import io.beam.dsl.elixir.StructPattern;
-import io.beam.dsl.elixir.TuplePattern;
-import io.beam.dsl.elixir.WildcardPattern;
+import io.beam.lang.elixir.AtomExpr;
+import io.beam.lang.elixir.AtomPattern;
+import io.beam.lang.elixir.Expression;
+import io.beam.lang.elixir.Function;
+import io.beam.lang.elixir.FunctionHead;
+import io.beam.lang.elixir.Pattern;
+import io.beam.lang.elixir.StructPattern;
+import io.beam.lang.elixir.TuplePattern;
+import io.beam.lang.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamElixirLayout;
 import io.smithy.beam.core.BeamRetryIndex;
 import java.util.ArrayList;

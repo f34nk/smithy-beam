@@ -1,26 +1,26 @@
 package io.smithy.beam.elixir;
 
-import io.beam.dsl.elixir.AtomExpr;
-import io.beam.dsl.elixir.AtomPattern;
-import io.beam.dsl.elixir.CaseExpr;
-import io.beam.dsl.elixir.Clause;
-import io.beam.dsl.elixir.Function;
-import io.beam.dsl.elixir.FunctionHead;
-import io.beam.dsl.elixir.Guard;
-import io.beam.dsl.elixir.IsTypeGuard;
-import io.beam.dsl.elixir.ListPattern;
-import io.beam.dsl.elixir.MapEntry;
-import io.beam.dsl.elixir.MapExpr;
-import io.beam.dsl.elixir.NilExpr;
-import io.beam.dsl.elixir.NilPattern;
-import io.beam.dsl.elixir.Pattern;
-import io.beam.dsl.elixir.RemoteCallExpr;
-import io.beam.dsl.elixir.StringPattern;
-import io.beam.dsl.elixir.TupleExpr;
-import io.beam.dsl.elixir.TuplePattern;
-import io.beam.dsl.elixir.Variable;
-import io.beam.dsl.elixir.VariablePattern;
-import io.beam.dsl.elixir.WildcardPattern;
+import io.beam.lang.elixir.AtomExpr;
+import io.beam.lang.elixir.AtomPattern;
+import io.beam.lang.elixir.CaseExpr;
+import io.beam.lang.elixir.Clause;
+import io.beam.lang.elixir.Function;
+import io.beam.lang.elixir.FunctionHead;
+import io.beam.lang.elixir.Guard;
+import io.beam.lang.elixir.IsTypeGuard;
+import io.beam.lang.elixir.ListPattern;
+import io.beam.lang.elixir.MapEntry;
+import io.beam.lang.elixir.MapExpr;
+import io.beam.lang.elixir.NilExpr;
+import io.beam.lang.elixir.NilPattern;
+import io.beam.lang.elixir.Pattern;
+import io.beam.lang.elixir.RemoteCallExpr;
+import io.beam.lang.elixir.StringPattern;
+import io.beam.lang.elixir.TupleExpr;
+import io.beam.lang.elixir.TuplePattern;
+import io.beam.lang.elixir.Variable;
+import io.beam.lang.elixir.VariablePattern;
+import io.beam.lang.elixir.WildcardPattern;
 import io.smithy.beam.core.BeamNameUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -113,14 +113,14 @@ final class ElixirUnionHelperDsl {
       String name,
       List<Pattern> params,
       Guard guard,
-      io.beam.dsl.elixir.Expression body,
+      io.beam.lang.elixir.Expression body,
       boolean oneLiner) {
     return Function.of(
         name, true, List.of(FunctionHead.of(params, guard)), body, null, null, oneLiner);
   }
 
   private static Function defp(
-      String name, List<Pattern> params, io.beam.dsl.elixir.Expression body, boolean oneLiner) {
+      String name, List<Pattern> params, io.beam.lang.elixir.Expression body, boolean oneLiner) {
     return Function.of(name, true, List.of(FunctionHead.of(params)), body, null, null, oneLiner);
   }
 

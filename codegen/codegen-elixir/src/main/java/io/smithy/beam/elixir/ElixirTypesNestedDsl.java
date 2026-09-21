@@ -1,25 +1,25 @@
 package io.smithy.beam.elixir;
 
-import io.beam.dsl.elixir.AtomExpr;
-import io.beam.dsl.elixir.AtomPattern;
-import io.beam.dsl.elixir.Expression;
-import io.beam.dsl.elixir.Function;
-import io.beam.dsl.elixir.FunctionHead;
-import io.beam.dsl.elixir.IntegerExpr;
-import io.beam.dsl.elixir.IntegerPattern;
-import io.beam.dsl.elixir.IsTypeGuard;
-import io.beam.dsl.elixir.ListExpr;
-import io.beam.dsl.elixir.LocalCallExpr;
-import io.beam.dsl.elixir.Moduledoc;
-import io.beam.dsl.elixir.Spec;
-import io.beam.dsl.elixir.StringPattern;
-import io.beam.dsl.elixir.StructPattern;
-import io.beam.dsl.elixir.TupleExpr;
-import io.beam.dsl.elixir.TuplePattern;
-import io.beam.dsl.elixir.TypeDef;
-import io.beam.dsl.elixir.TypesModule;
-import io.beam.dsl.elixir.Variable;
-import io.beam.dsl.elixir.VariablePattern;
+import io.beam.lang.elixir.AtomExpr;
+import io.beam.lang.elixir.AtomPattern;
+import io.beam.lang.elixir.Expression;
+import io.beam.lang.elixir.Function;
+import io.beam.lang.elixir.FunctionHead;
+import io.beam.lang.elixir.IntegerExpr;
+import io.beam.lang.elixir.IntegerPattern;
+import io.beam.lang.elixir.IsTypeGuard;
+import io.beam.lang.elixir.ListExpr;
+import io.beam.lang.elixir.LocalCallExpr;
+import io.beam.lang.elixir.Moduledoc;
+import io.beam.lang.elixir.Spec;
+import io.beam.lang.elixir.StringPattern;
+import io.beam.lang.elixir.StructPattern;
+import io.beam.lang.elixir.TupleExpr;
+import io.beam.lang.elixir.TuplePattern;
+import io.beam.lang.elixir.TypeDef;
+import io.beam.lang.elixir.TypesModule;
+import io.beam.lang.elixir.Variable;
+import io.beam.lang.elixir.VariablePattern;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamMemberNullability;
@@ -102,7 +102,7 @@ final class ElixirTypesNestedDsl {
                 toFunction,
                 i == 0 ? toSpec : null,
                 List.of(AtomPattern.of(atoms.get(i))),
-                io.beam.dsl.elixir.StringExpr.of(entry.getValue())));
+                io.beam.lang.elixir.StringExpr.of(entry.getValue())));
       }
       functions.add(
           enumOneLinerFunction(
@@ -281,8 +281,8 @@ final class ElixirTypesNestedDsl {
   private static Function enumOneLinerFunction(
       String name,
       Spec specOrNull,
-      List<io.beam.dsl.elixir.Pattern> params,
-      io.beam.dsl.elixir.Expression body) {
+      List<io.beam.lang.elixir.Pattern> params,
+      io.beam.lang.elixir.Expression body) {
     return Function.of(name, false, List.of(FunctionHead.of(params)), body, specOrNull, null, true);
   }
 

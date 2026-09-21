@@ -1,7 +1,7 @@
 package io.smithy.beam.erlang;
 
-import io.beam.dsl.erlang.ErlangRenderer;
-import io.beam.dsl.erlang.Module;
+import io.beam.lang.erlang.ErlangRenderer;
+import io.beam.lang.erlang.Module;
 
 final class ErlangCodecEmission {
   private ErlangCodecEmission() {}

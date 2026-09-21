@@ -1,11 +1,11 @@
 package io.smithy.beam.erlang;
 
-import io.beam.dsl.erlang.HeaderBlankLine;
-import io.beam.dsl.erlang.HeaderComment;
-import io.beam.dsl.erlang.HeaderDefine;
-import io.beam.dsl.erlang.HeaderEntry;
-import io.beam.dsl.erlang.HeaderTypeAliasEntry;
-import io.beam.dsl.erlang.TypeAlias;
+import io.beam.lang.erlang.HeaderBlankLine;
+import io.beam.lang.erlang.HeaderComment;
+import io.beam.lang.erlang.HeaderDefine;
+import io.beam.lang.erlang.HeaderEntry;
+import io.beam.lang.erlang.HeaderTypeAliasEntry;
+import io.beam.lang.erlang.TypeAlias;
 import java.util.ArrayList;
 import java.util.List;
 

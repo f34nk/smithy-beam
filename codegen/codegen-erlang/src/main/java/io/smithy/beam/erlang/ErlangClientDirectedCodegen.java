@@ -1,15 +1,15 @@
 package io.smithy.beam.erlang;
 
-import io.beam.dsl.erlang.AtomExpr;
-import io.beam.dsl.erlang.BlockExpr;
-import io.beam.dsl.erlang.Edoc;
-import io.beam.dsl.erlang.Expression;
-import io.beam.dsl.erlang.Function;
-import io.beam.dsl.erlang.FunctionClause;
-import io.beam.dsl.erlang.Module;
-import io.beam.dsl.erlang.Spec;
-import io.beam.dsl.erlang.TupleExpr;
-import io.beam.dsl.erlang.VariablePattern;
+import io.beam.lang.erlang.AtomExpr;
+import io.beam.lang.erlang.BlockExpr;
+import io.beam.lang.erlang.Edoc;
+import io.beam.lang.erlang.Expression;
+import io.beam.lang.erlang.Function;
+import io.beam.lang.erlang.FunctionClause;
+import io.beam.lang.erlang.Module;
+import io.beam.lang.erlang.Spec;
+import io.beam.lang.erlang.TupleExpr;
+import io.beam.lang.erlang.VariablePattern;
 import io.smithy.beam.core.BeamClientPaginationSupport;
 import io.smithy.beam.core.BeamClientRetrySupport;
 import io.smithy.beam.core.BeamCodegenKind;

@@ -2,9 +2,9 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.dsl.erlang.ErlangRenderer;
-import io.beam.dsl.erlang.Function;
-import io.beam.dsl.erlang.Module;
+import io.beam.lang.erlang.ErlangRenderer;
+import io.beam.lang.erlang.Function;
+import io.beam.lang.erlang.Module;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamSettings;

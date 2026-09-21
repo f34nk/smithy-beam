@@ -1,8 +1,8 @@
 package io.smithy.beam.erlang;
 
-import io.beam.dsl.erlang.Function;
-import io.beam.dsl.erlang.Module;
-import io.beam.dsl.erlang.TypeAlias;
+import io.beam.lang.erlang.Function;
+import io.beam.lang.erlang.Module;
+import io.beam.lang.erlang.TypeAlias;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamErlangLayout;
 import java.util.ArrayList;

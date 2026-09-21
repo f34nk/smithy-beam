@@ -2,8 +2,8 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.dsl.elixir.ElixirRenderer;
-import io.beam.dsl.elixir.Function;
+import io.beam.lang.elixir.ElixirRenderer;
+import io.beam.lang.elixir.Function;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
+@Disabled("beam-lang migration: golden fixtures live in beam-lang; re-enable locally if needed")
 class ElixirRouterLabelParsingIrTest {
   @Test
   void labelParsingFunctionsMatchGolden() throws IOException {

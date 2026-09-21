@@ -1,8 +1,8 @@
 package io.smithy.beam.elixir;
 
-import io.beam.dsl.elixir.BlockExpr;
-import io.beam.dsl.elixir.ElixirRenderer;
-import io.beam.dsl.elixir.Expression;
+import io.beam.lang.elixir.BlockExpr;
+import io.beam.lang.elixir.ElixirRenderer;
+import io.beam.lang.elixir.Expression;
 import io.smithy.beam.core.BeamElixirLayout;
 import java.util.List;
 import software.amazon.smithy.model.shapes.OperationShape;

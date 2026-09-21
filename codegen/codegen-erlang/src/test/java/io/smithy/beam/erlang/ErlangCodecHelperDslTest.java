@@ -4,7 +4,7 @@ import java.io.IOException;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
+@Disabled("beam-lang migration: golden fixtures live in beam-lang; re-enable locally if needed")
 class ErlangCodecHelperIrTest {
   @Test
   void generateUuidAsStringMatchGolden() throws IOException {

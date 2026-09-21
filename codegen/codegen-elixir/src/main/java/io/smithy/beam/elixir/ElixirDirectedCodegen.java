@@ -1,6 +1,6 @@
 package io.smithy.beam.elixir;
 
-import io.beam.dsl.elixir.Moduledoc;
+import io.beam.lang.elixir.Moduledoc;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamDocumentation;
 import io.smithy.beam.core.BeamElixirLayout;
@@ -30,7 +30,7 @@ import software.amazon.smithy.model.traits.SparseTrait;
 /**
  * DirectedCodegen implementation for the Elixir types generator.
  *
- * <p>Types are composed as beam-dsl {@link io.beam.dsl.elixir.Module} trees and emitted from {@link
+ * <p>Types are composed as beam-lang {@link io.beam.lang.elixir.Module} trees and emitted from {@link
  * #customizeAfterIntegrations} via {@link ElixirTypesEmission}. By default all types stay in one
  * file; when {@link BeamSettings#typesDefstructSplitThreshold} is lowered, only oversized structure
  * modules are written to separate files under the default {@code types/} directory.

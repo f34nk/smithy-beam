@@ -2,12 +2,12 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.dsl.erlang.ErlangRenderer;
-import io.beam.dsl.erlang.Header;
-import io.beam.dsl.erlang.HeaderRecordEntry;
-import io.beam.dsl.erlang.HeaderTypeAliasEntry;
-import io.beam.dsl.erlang.RecordDef;
-import io.beam.dsl.erlang.TypeAlias;
+import io.beam.lang.erlang.ErlangRenderer;
+import io.beam.lang.erlang.Header;
+import io.beam.lang.erlang.HeaderRecordEntry;
+import io.beam.lang.erlang.HeaderTypeAliasEntry;
+import io.beam.lang.erlang.RecordDef;
+import io.beam.lang.erlang.TypeAlias;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamRetryIndex;

@@ -1,14 +1,14 @@
 package io.smithy.beam.erlang;
 
-import io.beam.dsl.erlang.AtomExpr;
-import io.beam.dsl.erlang.BinaryExpr;
-import io.beam.dsl.erlang.Expression;
-import io.beam.dsl.erlang.LocalCallExpr;
-import io.beam.dsl.erlang.MapEntry;
-import io.beam.dsl.erlang.MatchExpr;
-import io.beam.dsl.erlang.RecordField;
-import io.beam.dsl.erlang.RemoteCallExpr;
-import io.beam.dsl.erlang.Variable;
+import io.beam.lang.erlang.AtomExpr;
+import io.beam.lang.erlang.BinaryExpr;
+import io.beam.lang.erlang.Expression;
+import io.beam.lang.erlang.LocalCallExpr;
+import io.beam.lang.erlang.MapEntry;
+import io.beam.lang.erlang.MatchExpr;
+import io.beam.lang.erlang.RecordField;
+import io.beam.lang.erlang.RemoteCallExpr;
+import io.beam.lang.erlang.Variable;
 import io.smithy.beam.core.BeamEventStreamIndex;
 import io.smithy.beam.core.BeamMemberNames;
 import io.smithy.beam.core.BeamNameUtils;

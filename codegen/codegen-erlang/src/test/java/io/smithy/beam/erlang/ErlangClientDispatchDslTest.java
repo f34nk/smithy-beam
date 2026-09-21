@@ -2,14 +2,14 @@ package io.smithy.beam.erlang;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.dsl.erlang.AtomExpr;
-import io.beam.dsl.erlang.BlockExpr;
-import io.beam.dsl.erlang.CaseExpr;
-import io.beam.dsl.erlang.ErlangRenderer;
-import io.beam.dsl.erlang.Expression;
-import io.beam.dsl.erlang.Function;
-import io.beam.dsl.erlang.MatchExpr;
-import io.beam.dsl.erlang.RemoteCallExpr;
+import io.beam.lang.erlang.AtomExpr;
+import io.beam.lang.erlang.BlockExpr;
+import io.beam.lang.erlang.CaseExpr;
+import io.beam.lang.erlang.ErlangRenderer;
+import io.beam.lang.erlang.Expression;
+import io.beam.lang.erlang.Function;
+import io.beam.lang.erlang.MatchExpr;
+import io.beam.lang.erlang.RemoteCallExpr;
 import io.smithy.beam.core.BeamCodegenKind;
 import io.smithy.beam.core.BeamErlangLayout;
 import io.smithy.beam.core.BeamHttpBindings;
@@ -208,7 +208,7 @@ class ErlangClientDispatchIrTest {
   }
 
   @Test
-  @Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
+  @Disabled("beam-lang migration: golden fixtures live in beam-lang; re-enable locally if needed")
   void restJsonOperationBodyMatchesGolden() throws IOException {
     Model model = httpModel();
     OperationShape op =
@@ -227,7 +227,7 @@ class ErlangClientDispatchIrTest {
   }
 
   @Test
-  @Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
+  @Disabled("beam-lang migration: golden fixtures live in beam-lang; re-enable locally if needed")
   void restJsonOperationBodyWithRetryMatchesGolden() throws IOException {
     Model model = httpModel();
     OperationShape op =
@@ -279,7 +279,7 @@ class ErlangClientDispatchIrTest {
   }
 
   @Test
-  @Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
+  @Disabled("beam-lang migration: golden fixtures live in beam-lang; re-enable locally if needed")
   void restJsonOperationBodyWithSigV4MatchesGolden() throws IOException {
     Model model = sigv4HttpModel();
     OperationShape op =
@@ -298,7 +298,7 @@ class ErlangClientDispatchIrTest {
   }
 
   @Test
-  @Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
+  @Disabled("beam-lang migration: golden fixtures live in beam-lang; re-enable locally if needed")
   void paginatedPageBodyMatchesGolden() throws IOException {
     Model model = paginatedModel();
     OperationShape op =

@@ -2,15 +2,15 @@ package io.smithy.beam.elixir;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.beam.dsl.elixir.ElixirRenderer;
-import io.beam.dsl.elixir.Function;
-import io.beam.dsl.elixir.Module;
-import io.beam.dsl.elixir.Moduledoc;
+import io.beam.lang.elixir.ElixirRenderer;
+import io.beam.lang.elixir.Function;
+import io.beam.lang.elixir.Module;
+import io.beam.lang.elixir.Moduledoc;
 import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-@Disabled("beam-dsl migration: golden fixtures live in beam-dsl; re-enable locally if needed")
+@Disabled("beam-lang migration: golden fixtures live in beam-lang; re-enable locally if needed")
 class ElixirTypesIrTest {
 
   @Test

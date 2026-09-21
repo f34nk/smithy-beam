@@ -1,9 +1,9 @@
 package io.smithy.beam.elixir;
 
-import io.beam.dsl.elixir.Alias;
-import io.beam.dsl.elixir.Function;
-import io.beam.dsl.elixir.Module;
-import io.beam.dsl.elixir.Moduledoc;
+import io.beam.lang.elixir.Alias;
+import io.beam.lang.elixir.Function;
+import io.beam.lang.elixir.Module;
+import io.beam.lang.elixir.Moduledoc;
 import io.smithy.beam.core.BeamAwsServiceMetadata;
 import io.smithy.beam.core.BeamElixirLayout;
 import java.util.ArrayList;
