@@ -1,6 +1,6 @@
 dependencies {
     api(project(":codegen:codegen-core"))
-    api(project(":beam-dsl"))
+    api(project(":beam-lang"))
     api(libs.smithy.model)
     api(libs.smithy.codegen.core)
 

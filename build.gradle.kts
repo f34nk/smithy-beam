@@ -13,7 +13,7 @@ spotless {
     isEnforceCheck = false
     java {
         target(
-            "beam-dsl/src/**/*.java",
+            "beam-lang/src/**/*.java",
             "codegen/**/src/**/*.java",
             "examples/**/codegen/src/**/*.java")
         googleJavaFormat()

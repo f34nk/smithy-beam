@@ -1,7 +1,7 @@
 rootProject.name = "smithy-beam"
 
 include(
-    "beam-dsl",
+    "beam-lang",
     "codegen:codegen-core",
     "codegen:codegen-erlang",
     "codegen:codegen-elixir",
