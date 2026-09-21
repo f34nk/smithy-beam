@@ -215,10 +215,13 @@ class ElixirClientPluginTest {
         .contains("REST JSON 1 codecs for smithy.beam.demo.protocoljson#DemoRestJson");
     assertThat(manifest.expectFileString("runtime_http.ex"))
         .contains("defmodule RuntimeHttp do")
-        .contains("http_client = Map.get(config, :http_client, __MODULE__.ReqClient)")
-        .contains("req = %RuntimeTypes.HttpRequest{}")
-        .contains("RuntimeUtils.split_base_url")
-        .contains("case http_client.request(req_opts) do");
+        .contains("http_client = Map.get(config, :http_client, RuntimeHttpClient.Req)")
+        .contains("req = %HttpRequest{}")
+        .contains("RuntimeHttpClient.build_request")
+        .contains("http_client.request(client_req)");
+    assertThat(manifest.expectFileString("runtime_http_client.ex"))
+        .contains("defmodule RuntimeHttpClient do")
+        .contains("RuntimeUtils.split_base_url");
     assertThat(manifest.expectFileString("demo_rest_json_client.ex"))
         .contains("HTTP request bindings for smithy.beam.demo.protocoljson#DescribeItem:")
         .contains("  id @ LABEL")
