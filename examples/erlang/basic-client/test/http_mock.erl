@@ -1,23 +1,21 @@
 -module(http_mock).
--export([request/4]).
+-behaviour(runtime_http_client).
 
-request(get, Req, [], [{body_format, binary}]) ->
-    {Url, _Mime} = request_url_and_mime(Req),
-    case Url of
-        "https://api.example/basic-items" ->
-            page1_response();
-        "https://api.example/basic-items?nextToken=page2" ->
-            page2_response();
-        _ ->
-            {error, {unexpected_request, Url}}
-    end;
-request(_Method, _Req, _HttpOpts, _Opts) ->
-    {error, unexpected_method}.
+-include("runtime_types.hrl").
+-include("runtime_http_client.hrl").
 
-request_url_and_mime({Url, _Headers}) ->
-    {Url, undefined};
-request_url_and_mime({Url, _Headers, Mime, _Body}) ->
-    {Url, Mime}.
+-export([request/1]).
+
+request(#http_client_request{method = get, url = <<"https://api.example/basic-items">>, body = <<>>}) ->
+    page1_response();
+request(#http_client_request{
+    method = get,
+    url = <<"https://api.example/basic-items?nextToken=page2">>,
+    body = <<>>
+}) ->
+    page2_response();
+request(#http_client_request{} = Req) ->
+    {error, {unexpected_request, Req}}.
 
 page1_response() ->
     Body =
@@ -29,4 +27,4 @@ page2_response() ->
     ok_response(200, [], Body).
 
 ok_response(Status, Headers, Body) ->
-    {ok, {{http, Status, <<"OK">>}, Headers, Body}}.
+    {ok, #http_response{status = Status, headers = Headers, body = Body}}.

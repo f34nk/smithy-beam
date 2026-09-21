@@ -1,7 +1,12 @@
 -module(retry_mock).
--export([request/4, call_count/0, reset/0]).
+-behaviour(runtime_http_client).
 
-request(get, _Req, [], [{body_format, binary}]) ->
+-include("runtime_types.hrl").
+-include("runtime_http_client.hrl").
+
+-export([request/1, call_count/0, reset/0]).
+
+request(#http_client_request{method = get}) ->
     N =
         case get(call_count) of
             undefined -> 1;
@@ -13,17 +18,17 @@ request(get, _Req, [], [{body_format, binary}]) ->
             Body = <<"{\"__type\":\"BasicNotFound\",\"message\":\"missing\"}">>,
             ok_response(
                 404,
-                [{"content-type", "application/json"}],
+                [{<<"content-type">>, <<"application/json">>}],
                 Body
             );
         _ ->
             ok_response(200, [], <<>>)
     end;
-request(_Method, _Req, _HttpOpts, _Opts) ->
-    {error, unexpected_method}.
+request(#http_client_request{} = Req) ->
+    {error, {unexpected_request, Req}}.
 
 ok_response(Status, Headers, Body) ->
-    {ok, {{http, Status, <<"OK">>}, Headers, Body}}.
+    {ok, #http_response{status = Status, headers = Headers, body = Body}}.
 
 call_count() ->
     case get(call_count) of
