@@ -1,3 +1,4 @@
+import org.gradle.external.javadoc.StandardJavadocDocletOptions
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 plugins {
@@ -36,6 +37,14 @@ subprojects {
         toolchain {
             languageVersion.set(JavaLanguageVersion.of(21))
         }
+        withSourcesJar()
+        withJavadocJar()
+    }
+
+    tasks.withType<Javadoc>().configureEach {
+        // First publish: do not fail the build on missing javadoc tags.
+        (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
+        isFailOnError = false
     }
 
     tasks.withType<Test> {
