@@ -56,6 +56,39 @@ subprojects {
             publications {
                 create<MavenPublication>("mavenJava") {
                     from(components["java"])
+
+                    pom {
+                        name.set(
+                            (project.findProperty("displayName") as String?)
+                                ?: project.name
+                        )
+                        description.set(
+                            project.description
+                                ?: "Smithy code generator components for BEAM languages"
+                        )
+                        url.set("https://github.com/f34nk/smithy-beam")
+                        licenses {
+                            license {
+                                name.set("Apache License 2.0")
+                                url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                                distribution.set("repo")
+                            }
+                        }
+                        developers {
+                            developer {
+                                id.set("f34nk")
+                                name.set("Frank Eickhoff")
+                                url.set("https://github.com/f34nk")
+                            }
+                        }
+                        scm {
+                            url.set("https://github.com/f34nk/smithy-beam")
+                            connection.set("scm:git:https://github.com/f34nk/smithy-beam.git")
+                            developerConnection.set(
+                                "scm:git:ssh://git@github.com/f34nk/smithy-beam.git"
+                            )
+                        }
+                    }
                 }
             }
             repositories {
