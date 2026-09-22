@@ -58,6 +58,12 @@ subprojects {
                     from(components["java"])
                 }
             }
+            repositories {
+                maven {
+                    name = "localStaging"
+                    url = rootProject.layout.buildDirectory.dir("staging-deploy").get().asFile.toURI()
+                }
+            }
         }
     } else {
         tasks.configureEach {
