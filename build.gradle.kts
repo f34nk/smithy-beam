@@ -51,10 +51,18 @@ subprojects {
         useJUnitPlatform()
     }
 
-    configure<PublishingExtension> {
-        publications {
-            create<MavenPublication>("mavenJava") {
-                from(components["java"])
+    if (name != "codegen-test") {
+        configure<PublishingExtension> {
+            publications {
+                create<MavenPublication>("mavenJava") {
+                    from(components["java"])
+                }
+            }
+        }
+    } else {
+        tasks.configureEach {
+            if (name.startsWith("publish")) {
+                enabled = false
             }
         }
     }
