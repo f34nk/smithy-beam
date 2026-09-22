@@ -3,6 +3,18 @@ All notable changes to this project will be documented here.
 
 ## [Unreleased]
 
+## 2026-09-21
+
+### Added
+- Erlang and Elixir runtimes define an explicit HTTP client behaviour for pluggable adapters,
+  with default httpc and Req implementations. Codegen emits the new runtime modules for
+  generated clients.
+
+### Changed
+- HTTP dispatch builds a native client request and calls request/1 on the configured adapter
+  instead of adapter-specific option shapes. Custom http_client modules must implement the
+  behaviour. Runtime, example, and AWS test mocks updated to match.
+
 ## 2026-07-18
 
 ### Added

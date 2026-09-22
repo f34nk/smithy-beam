@@ -46,7 +46,7 @@ Output from `erlang-client-codegen` and `elixir-client-codegen`.
 | Operation stubs | ✅ | One function per operation; supported AWS protocols wire encode, HTTP dispatch, and decode. Unsupported protocols emit `{error, not_implemented}` stubs. |
 | REST JSON 1 request encoding | ✅ | Per-service codec module encodes path labels, query params, headers, and JSON document members into an `http_request` record or map. |
 | REST JSON 1 response decoding | ✅ | Codec decodes JSON document, header, and payload bindings into typed output records or structs. |
-| HTTP dispatch | ✅ | Erlang uses OTP `httpc` via a generated `<prefix>_http` module. Elixir uses `Req`. Both honor a configurable HTTP client module in client config for tests. |
+| HTTP dispatch | ✅ | Shared `runtime_http` / `RuntimeHttp` modules dispatch over OTP `httpc` (Erlang) or `Req` (Elixir) by default. Custom adapters set `http_client` in client config and must implement the `runtime_http_client` / `RuntimeHttpClient` behaviour. |
 | Default endpoint in generated config | ✅ | Generated clients emit `default_config/0` and endpoint resolution helpers. HTTP dispatch reads `base_url` from client config. SigV4 uses `runtime_utils` / `RuntimeUtils.endpoint_host_from_config/1` for regional host fallback from `endpointPrefix` and region when `base_url` is unset. |
 | Pagination | ✅ | `@paginated` operations emit a page loop in the generated client operation that walks output tokens and returns accumulated items. |
 | Operation documentation | ✅ | `@documentation` on operations is emitted into generated client function docs. |
