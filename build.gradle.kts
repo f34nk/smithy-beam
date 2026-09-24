@@ -1,9 +1,11 @@
 import org.gradle.external.javadoc.StandardJavadocDocletOptions
 import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.jreleaser.model.Active
 
 plugins {
     java
     alias(libs.plugins.spotless)
+    alias(libs.plugins.jreleaser)
 }
 
 repositories {
@@ -106,6 +108,51 @@ subprojects {
         tasks.configureEach {
             if (name.startsWith("publish")) {
                 enabled = false
+            }
+        }
+    }
+}
+
+jreleaser {
+    project {
+        // Inherits version/group from Gradle unless overridden.
+        description.set("Smithy code generators for BEAM languages")
+        authors.set(listOf("Frank Eickhoff"))
+        license.set("Apache-2.0")
+        links {
+            homepage.set("https://github.com/f34nk/smithy-beam")
+        }
+    }
+
+    // JAR deploy only; GitHub Release can be enabled later.
+    release {
+        generic {
+            enabled = true
+            skipRelease = true
+        }
+    }
+
+    announce {
+        active = Active.NEVER
+    }
+
+    signing {
+        active = Active.ALWAYS
+        armored = true
+    }
+
+    deploy {
+        maven {
+            mavenCentral {
+                create("maven-central") {
+                    active = Active.ALWAYS
+                    url = "https://central.sonatype.com/api/v1/publisher"
+                    stagingRepository(
+                        layout.buildDirectory.dir("staging-deploy").get().asFile.path
+                    )
+                    maxRetries = 100
+                    retryDelay = 60
+                }
             }
         }
     }
