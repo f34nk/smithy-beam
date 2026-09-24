@@ -59,12 +59,16 @@ subprojects {
 
                     pom {
                         name.set(
-                            (project.findProperty("displayName") as String?)
-                                ?: project.name
+                            project.provider {
+                                (project.findProperty("pomName") as String?)
+                                    ?: project.name
+                            }
                         )
                         description.set(
-                            project.description
-                                ?: "Smithy code generator components for BEAM languages"
+                            project.provider {
+                                project.description
+                                    ?: "Smithy code generator components for BEAM languages"
+                            }
                         )
                         url.set("https://github.com/f34nk/smithy-beam")
                         licenses {
