@@ -56,6 +56,13 @@ clean:
 	rm -rf build bin beam-lang/build codegen/build codegen/codegen-*/build codegen/codegen-*/bin *.log
 	rm -rf ~/.m2/repository/io/smithy/beam
 
+# Stages Maven artifacts and runs JReleaser dry-run. Real credentials/GPG env vars
+# are still required for a meaningful dry-run beyond staging.
+.PHONY: publish-dry-run
+publish-dry-run:
+	./gradlew clean publish
+	JRELEASER_DRY_RUN=true ./gradlew jreleaserFullRelease
+
 # Usage: make examples/clean
 .PHONY: %/clean
 %/clean:
