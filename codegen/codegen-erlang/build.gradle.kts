@@ -1,3 +1,6 @@
+description = "Smithy build plugins for Erlang client, server, and types codegen"
+extra["pomName"] = "smithy-beam codegen-erlang"
+
 dependencies {
     api(project(":codegen:codegen-core"))
     api(project(":beam-lang"))

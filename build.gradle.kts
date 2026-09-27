@@ -1,8 +1,11 @@
+import org.gradle.external.javadoc.StandardJavadocDocletOptions
 import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.jreleaser.model.Active
 
 plugins {
     java
     alias(libs.plugins.spotless)
+    alias(libs.plugins.jreleaser)
 }
 
 repositories {
@@ -36,16 +39,120 @@ subprojects {
         toolchain {
             languageVersion.set(JavaLanguageVersion.of(21))
         }
+        withSourcesJar()
+        withJavadocJar()
+    }
+
+    tasks.withType<Javadoc>().configureEach {
+        // First publish: do not fail the build on missing javadoc tags.
+        (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
+        isFailOnError = false
     }
 
     tasks.withType<Test> {
         useJUnitPlatform()
     }
 
-    configure<PublishingExtension> {
-        publications {
-            create<MavenPublication>("mavenJava") {
-                from(components["java"])
+    if (name != "codegen-test") {
+        configure<PublishingExtension> {
+            publications {
+                create<MavenPublication>("mavenJava") {
+                    from(components["java"])
+
+                    pom {
+                        name.set(
+                            project.provider {
+                                (project.findProperty("pomName") as String?)
+                                    ?: project.name
+                            }
+                        )
+                        description.set(
+                            project.provider {
+                                project.description
+                                    ?: "Smithy code generator components for BEAM languages"
+                            }
+                        )
+                        url.set("https://github.com/f34nk/smithy-beam")
+                        licenses {
+                            license {
+                                name.set("Apache License 2.0")
+                                url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                                distribution.set("repo")
+                            }
+                        }
+                        developers {
+                            developer {
+                                id.set("f34nk")
+                                name.set("Frank Eickhoff")
+                                url.set("https://github.com/f34nk")
+                            }
+                        }
+                        scm {
+                            url.set("https://github.com/f34nk/smithy-beam")
+                            connection.set("scm:git:https://github.com/f34nk/smithy-beam.git")
+                            developerConnection.set(
+                                "scm:git:ssh://git@github.com/f34nk/smithy-beam.git"
+                            )
+                        }
+                    }
+                }
+            }
+            repositories {
+                maven {
+                    name = "localStaging"
+                    url = rootProject.layout.buildDirectory.dir("staging-deploy").get().asFile.toURI()
+                }
+            }
+        }
+    } else {
+        tasks.configureEach {
+            if (name.startsWith("publish")) {
+                enabled = false
+            }
+        }
+    }
+}
+
+jreleaser {
+    project {
+        // Inherits version/group from Gradle unless overridden.
+        description.set("Smithy code generators for BEAM languages")
+        authors.set(listOf("Frank Eickhoff"))
+        license.set("Apache-2.0")
+        links {
+            homepage.set("https://github.com/f34nk/smithy-beam")
+        }
+    }
+
+    // JAR deploy only; GitHub Release can be enabled later.
+    release {
+        generic {
+            enabled = true
+            skipRelease = true
+        }
+    }
+
+    announce {
+        active = Active.NEVER
+    }
+
+    signing {
+        active = Active.ALWAYS
+        armored = true
+    }
+
+    deploy {
+        maven {
+            mavenCentral {
+                create("maven-central") {
+                    active = Active.ALWAYS
+                    url = "https://central.sonatype.com/api/v1/publisher"
+                    stagingRepository(
+                        layout.buildDirectory.dir("staging-deploy").get().asFile.path
+                    )
+                    maxRetries = 100
+                    retryDelay = 60
+                }
             }
         }
     }

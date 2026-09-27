@@ -1,3 +1,6 @@
+description = "Smithy build plugins for Elixir client, server, and types codegen"
+extra["pomName"] = "smithy-beam codegen-elixir"
+
 dependencies {
     api(project(":codegen:codegen-core"))
     api(project(":beam-lang"))
