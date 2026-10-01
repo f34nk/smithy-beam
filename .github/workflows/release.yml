@@ -12,6 +12,9 @@ on:
         required: true
         type: boolean
         default: true
+  push:
+    tags:
+      - "v*"
 
 concurrency:
   group: release-${{ github.ref }}
@@ -46,11 +49,18 @@ jobs:
       - name: Resolve release meta
         id: meta
         run: |
-          VERSION="${{ inputs.version }}"
-          DRY_RUN="${{ inputs.dry_run }}"
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"
+            DRY_RUN="false"
+          else
+            VERSION="${{ inputs.version }}"
+            DRY_RUN="${{ inputs.dry_run }}"
+          fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "dry_run=${DRY_RUN}" >> "$GITHUB_OUTPUT"
-          echo "Resolved version=${VERSION} dry_run=${DRY_RUN}"
+          echo "event=${{ github.event_name }} version=${VERSION} dry_run=${DRY_RUN}"
 
       - name: Set release version
         run: |
