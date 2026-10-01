@@ -43,9 +43,18 @@ jobs:
       - name: Build and test
         run: ./gradlew build
 
+      - name: Resolve release meta
+        id: meta
+        run: |
+          VERSION="${{ inputs.version }}"
+          DRY_RUN="${{ inputs.dry_run }}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "dry_run=${DRY_RUN}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version=${VERSION} dry_run=${DRY_RUN}"
+
       - name: Set release version
         run: |
-          sed -i.bak "s/^version=.*/version=${{ inputs.version }}/" gradle.properties
+          sed -i.bak "s/^version=.*/version=${{ steps.meta.outputs.version }}/" gradle.properties
           rm -f gradle.properties.bak
           cat gradle.properties
 
