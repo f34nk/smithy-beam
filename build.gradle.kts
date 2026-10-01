@@ -53,7 +53,7 @@ subprojects {
         useJUnitPlatform()
     }
 
-    if (name != "codegen-test") {
+    if (name != "codegen-test" && name != "codegen") {
         configure<PublishingExtension> {
             publications {
                 create<MavenPublication>("mavenJava") {
