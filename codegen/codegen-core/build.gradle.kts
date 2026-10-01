@@ -1,4 +1,4 @@
-description = "Shared Smithy directed-codegen core for BEAM language generators"
+description = "smithy-beam - Shared Smithy directed-codegen core for BEAM language generators"
 extra["pomName"] = "smithy-beam codegen-core"
 
 dependencies {

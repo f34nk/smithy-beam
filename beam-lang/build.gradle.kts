@@ -1,4 +1,4 @@
-description = "BEAM language DSL helpers used by smithy-beam code generators"
+description = "smithy-beam - BEAM language DSL helpers used by smithy-beam code generators"
 extra["pomName"] = "smithy-beam beam-lang"
 
 dependencies {

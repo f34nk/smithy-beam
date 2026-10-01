@@ -1,4 +1,4 @@
-description = "Smithy build plugins for Elixir client, server, and types codegen"
+description = "smithy-beam - Smithy build plugins for Elixir client, server, and types codegen"
 extra["pomName"] = "smithy-beam codegen-elixir"
 
 dependencies {
