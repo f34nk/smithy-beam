@@ -1,7 +1,12 @@
 # Changelog
 All notable changes to this project will be documented here.
 
-## [0.2.0] - 2026-10-01 - 2026-10-01
+## [0.3.0] - 2026-10-01
+
+### Changed
+- Maven package descriptions prefixed with smithy-beam for Central listing.
+
+## [0.2.0] - 2026-10-01
 
 ## 2026-09-21
 
