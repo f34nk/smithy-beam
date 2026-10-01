@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented here.
 
+## [0.3.1] - 2026-10-01
+
+### Changed
+- Stop publishing the empty Gradle parent artifact codegen; only language plugins and shared libraries are released.
+
 ## [0.3.0] - 2026-10-01
 
 ### Changed
