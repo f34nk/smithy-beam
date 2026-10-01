@@ -1,4 +1,4 @@
-X := $(shell find aws-examples examples baseline -maxdepth 3 -name Makefile -type f -exec dirname {} \;)
+X := $(shell find aws-examples examples baseline smoke-test -maxdepth 3 -name Makefile -type f -exec dirname {} \;)
 EXAMPLES := $(foreach x,$(X),$(x)/)
 EXAMPLES_COUNT := $(words $(EXAMPLES))
 
@@ -147,10 +147,24 @@ examples:
 baseline:
 	TARGET=baseline make _run
 
+# Usage: make smoke-test
+.PHONY: smoke-test
+smoke-test:
+	TARGET=smoke-test make _run
+
+# .PHONY: smoke-test
+# smoke-test:
+# 	find smoke-test/* -type f -name smithy-build.json -maxdepth 2 -exec dirname {} \; |\
+# 	xargs -S1024 -P $(PARALLEL_JOBS) -I {} sh -c ' \
+# 		target="{}"; \
+# 		cd $$target; \
+# 		smithy build; \
+# 	';
+
 # Usage: make examples/erlang/weather-service
 .SILENT:
 .PHONY: $(EXAMPLES)
-aws-examples/% examples/% baseline/%: $(EXAMPLES)
+aws-examples/% examples/% baseline/% smoke-test/%: $(EXAMPLES)
 	target="$@"; \
 	dirname="$$(echo $$target|cut -d/ -f1)"; \
 	lang="$$(echo $$target|cut -d/ -f2)"; \
