@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented here.
 
-## [Unreleased]
+## [0.2.0] - 2026-10-01 - 2026-10-01
 
 ## 2026-09-21
 
