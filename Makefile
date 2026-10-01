@@ -17,7 +17,7 @@ build:
 	./gradlew clean build publishToMavenLocal 2>build-errors.log
 	[ -s build-errors.log ] || rm -rf build-errors.log
 	tree */build/libs
-	tree ~/.m2/repository/io/github/f34nk
+	tree ~/.m2/repository/io/github/f34nk/smithy/beam
 
 .PHONY: test
 test: test/java test/runtime
@@ -54,7 +54,7 @@ clean:
 	# Clean the build
 	#
 	rm -rf build bin beam-lang/build codegen/build codegen/codegen-*/build codegen/codegen-*/bin *.log
-	rm -rf ~/.m2/repository/io/github/f34nk
+	rm -rf ~/.m2/repository/io/github/f34nk/smithy/beam
 
 # Stages Maven artifacts and runs JReleaser dry-run. Real credentials/GPG env vars
 # are still required for a meaningful dry-run beyond staging.
