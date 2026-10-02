@@ -18,7 +18,8 @@ defmodule SmithyBeam.MixProject do
         extras: ["README.md"]
       ],
       name: "smithy_beam",
-      source_url: @source_url
+      source_url: @source_url,
+      test_ignore_filters: [~r/test\/support\//]
     ]
   end
 

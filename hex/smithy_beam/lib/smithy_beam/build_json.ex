@@ -27,7 +27,7 @@ defmodule SmithyBeam.BuildJson do
   def to_map(config) do
     %{
       "version" => "1.0",
-      "sources" => [config.models],
+      "sources" => [models_path(config)],
       "maven" => %{
         "dependencies" => maven_dependencies(config),
         "repositories" => config.maven_repositories
@@ -36,6 +36,14 @@ defmodule SmithyBeam.BuildJson do
         config.plugin => plugin_settings(config)
       }
     }
+  end
+
+  defp models_path(config) do
+    if Path.type(config.models) == :absolute do
+      config.models
+    else
+      Path.expand(config.models, config.project_root)
+    end
   end
 
   def encode!(config) do

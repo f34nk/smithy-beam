@@ -31,7 +31,7 @@ defmodule SmithyBeam.BuildJsonTest do
     map = BuildJson.to_map(elixir_config())
 
     assert map["version"] == "1.0"
-    assert map["sources"] == ["model"]
+    assert map["sources"] == [Path.expand("model", "/tmp/proj")]
     assert hd(map["maven"]["dependencies"]) == Defaults.codegen_coordinate(:elixir)
     assert Defaults.common_maven_deps() -- map["maven"]["dependencies"] == []
     assert map["plugins"]["elixir-client-codegen"] == %{"edition" => "2026"}
