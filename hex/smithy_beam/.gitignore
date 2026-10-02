@@ -3,3 +3,4 @@ deps/
 doc/
 *.ez
 rebar.lock
+smithy_beam-*.tar
