@@ -1,4 +1,4 @@
-## *Available on [Maven Central](https://central.sonatype.com/search?q=io.github.f34nk.smithy.beam)*
+## *Available on [Maven Central](https://central.sonatype.com/search?q=io.github.f34nk.smithy.beam) and [Hex](https://hex.pm/packages/smithy_beam)*
 
 ![smithy-beam](https://github.com/f34nk/smithy-beam/blob/v3/smithy-beam.png)
 
