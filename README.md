@@ -12,7 +12,7 @@ Support for **BEAM languages**: Erlang, Elixir, Gleam*.
 
 **Gleam support will follow :)*
 
-*[Hex](https://hex.pm) package is coming soon ...*
+*[Hex](https://hex.pm) package lives in-repo at [`hex/smithy_beam`](hex/smithy_beam)*
 
 ## Build and Test
 
