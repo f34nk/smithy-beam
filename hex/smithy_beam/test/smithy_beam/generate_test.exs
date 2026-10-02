@@ -47,6 +47,33 @@ defmodule SmithyBeam.GenerateTest do
     assert File.exists?(Path.join(tmp, "_build/smithy_beam/manifest"))
   end
 
+  test "second run is noop when inputs are unchanged", %{tmp: tmp} do
+    plugin = "elixir-client-codegen"
+    scratch_plugin = Path.join(tmp, "_build/smithy_beam/out/source/#{plugin}")
+    File.mkdir_p!(scratch_plugin)
+    File.write!(Path.join(scratch_plugin, "generated.ex"), "ok")
+
+    opts = [
+      config: [
+        models: "model",
+        language: :elixir,
+        kind: :client,
+        edition: "2026",
+        output: "lib/generated",
+        project_root: tmp
+      ],
+      prereqs_opts: [find_executable: fn "smithy" -> "/bin/smithy" end],
+      cli_opts: [
+        find_executable: fn "smithy" -> "/bin/smithy" end,
+        cmd: fn _bin, _args, _opts -> {"", 0} end
+      ]
+    ]
+
+    assert :ok = Generate.run(opts)
+    assert {:noop, []} = Generate.run(opts)
+    assert :ok = Generate.run(Keyword.put(opts, :force, true))
+  end
+
   @tag :smithy_cli
   test "integration with real smithy CLI", %{tmp: tmp} do
     opts = [

@@ -28,17 +28,36 @@ defmodule SmithyBeam.Generate do
     end
   end
 
-  defp maybe_skip(_config, opts) do
+  defp maybe_skip(config, opts) do
     if Keyword.get(opts, :force, false) do
       :ok
     else
-      # Manifest-based noop is filled in when incremental support lands.
-      :ok
+      scratch = scratch_dir(config)
+      manifest_path = Path.join(scratch, "manifest")
+      dest = resolve(config.project_root, config.output)
+      fingerprint = fingerprint(config)
+
+      cond do
+        not File.exists?(manifest_path) ->
+          :ok
+
+        not File.dir?(dest) ->
+          :ok
+
+        File.ls!(dest) == [] ->
+          :ok
+
+        File.read!(manifest_path) |> String.trim() == fingerprint ->
+          {:noop, []}
+
+        true ->
+          :ok
+      end
     end
   end
 
   defp do_generate(config, opts) do
-    scratch = Path.join(config.project_root, "_build/smithy_beam")
+    scratch = scratch_dir(config)
     scratch_out = Path.join(scratch, "out")
     File.mkdir_p!(scratch)
     File.mkdir_p!(scratch_out)
@@ -63,7 +82,7 @@ defmodule SmithyBeam.Generate do
          ) do
       :ok ->
         Copy.sync!(scratch_out, config.plugin, dest)
-        write_manifest(scratch, config)
+        File.write!(Path.join(scratch, "manifest"), fingerprint(config) <> "\n")
         :ok
 
       {:error, _} = error ->
@@ -71,17 +90,55 @@ defmodule SmithyBeam.Generate do
     end
   end
 
-  defp write_manifest(scratch, config) do
+  defp fingerprint(config) do
+    models = resolve(config.project_root, config.models || "")
+
+    model_entries =
+      cond do
+        config.models && File.dir?(models) ->
+          models
+          |> Path.join("**/*")
+          |> Path.wildcard()
+          |> Enum.filter(&File.regular?/1)
+          |> Enum.sort()
+          |> Enum.map(fn path ->
+            %{size: size, mtime: mtime} = File.stat!(path)
+            stamp = :calendar.datetime_to_gregorian_seconds(mtime)
+            "#{path}:#{size}:#{stamp}"
+          end)
+
+        config.models && File.regular?(models) ->
+          %{size: size, mtime: mtime} = File.stat!(models)
+          stamp = :calendar.datetime_to_gregorian_seconds(mtime)
+          ["#{models}:#{size}:#{stamp}"]
+
+        true ->
+          []
+      end
+
     payload = %{
       "plugin" => config.plugin,
       "models" => config.models,
       "output" => config.output,
       "codegen_version" => config.codegen_version,
-      "edition" => config.edition
+      "edition" => config.edition,
+      "service" => config.service,
+      "name" => config.name,
+      "protocol" => config.protocol,
+      "package_version" => config.package_version,
+      "maven_deps" => config.maven_deps,
+      "config_file" => config.config_file,
+      "package_version_hex" => SmithyBeam.version(),
+      "model_entries" => model_entries
     }
 
-    File.write!(Path.join(scratch, "manifest"), Jason.encode!(payload, pretty: true) <> "\n")
+    payload
+    |> Jason.encode!()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
   end
+
+  defp scratch_dir(config), do: Path.join(config.project_root, "_build/smithy_beam")
 
   defp resolve(root, path) do
     if Path.type(path) == :absolute, do: path, else: Path.expand(path, root)
