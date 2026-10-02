@@ -13,6 +13,59 @@ Install the Smithy CLI:
 
 Verify with `smithy --help`.
 
-## Status
+## Elixir (Mix)
 
-Package scaffold. Consumer setup docs will follow.
+```elixir
+def project do
+  [
+    compilers: [:smithy_beam] ++ Mix.compilers(),
+    elixirc_paths: ["lib", "lib/generated"],
+    smithy_beam: [
+      models: "model",
+      output: "lib/generated",
+      language: :elixir,
+      kind: :client,
+      edition: "2026"
+    ],
+    deps: [
+      {:smithy_beam, "~> 0.1", runtime: false}
+    ]
+  ]
+end
+```
+
+Or run explicitly:
+
+```shell
+mix smithy_beam.generate
+```
+
+## Erlang (rebar3)
+
+```erlang
+{plugins, [smithy_beam]}.
+
+{provider_hooks, [
+  {pre, [{compile, {smithy_beam, generate}}]}
+]}.
+
+{smithy_beam, [
+  {models, "model"},
+  {output, "src/generated"},
+  {language, erlang},
+  {kind, client},
+  {edition, "2026"}
+]}.
+```
+
+Or run explicitly:
+
+```shell
+rebar3 smithy_beam generate
+```
+
+## Notes
+
+- Hex package version and Maven codegen artifact version are independent.
+- Extra Maven coordinates can be appended with `maven_deps` / `{maven_deps, [...]}`.
+- Whether generated sources are committed is a consumer choice.

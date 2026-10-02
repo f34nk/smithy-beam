@@ -1,0 +1,10 @@
+{application, smithy_beam, [
+    {description, "Mix and rebar3 helper that runs the Smithy CLI for BEAM codegen"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {applications, [kernel, stdlib]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]},
+    {links, [{"GitHub", "https://github.com/f34nk/smithy-beam"}]}
+]}.
