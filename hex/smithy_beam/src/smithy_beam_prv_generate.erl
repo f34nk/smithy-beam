@@ -6,7 +6,7 @@
 -define(NAMESPACE, smithy_beam).
 -define(DEPS, [{default, app_discovery}]).
 
--define(CODEGEN_VERSION, "0.3.0").
+-define(CODEGEN_VERSION, "0.3.1").
 
 -define(COMMON_MAVEN_DEPS, [
     "software.amazon.smithy:smithy-aws-traits:1.64.0",

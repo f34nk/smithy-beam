@@ -1,7 +1,7 @@
 defmodule SmithyBeam.Defaults do
   @moduledoc false
 
-  @codegen_version "0.3.0"
+  @codegen_version "0.3.1"
 
   @common_maven_deps [
     "software.amazon.smithy:smithy-aws-traits:1.64.0",

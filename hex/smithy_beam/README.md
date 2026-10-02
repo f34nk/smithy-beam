@@ -77,7 +77,7 @@ rebar3 smithy_beam generate
 | `edition` | yes (auto config) | | Plugin edition, e.g. `"2026"` |
 | `service` | no | | Shape id when the model has multiple services |
 | `name` | no | | Optional module/file name stem |
-| `codegen_version` | no | `0.3.0` | Maven codegen artifact version |
+| `codegen_version` | no | `0.3.1` | Maven codegen artifact version |
 | `maven_deps` | no | `[]` | Extra GAV strings appended after defaults |
 | `config_file` | no | | Escape hatch: use an existing `smithy-build.json` |
 | `plugin` | with `config_file` | derived | Plugin id when using `config_file` |
