@@ -1,5 +1,9 @@
 # smithy_beam
 
+Hex package for the [smithy-beam](https://github.com/f34nk/smithy-beam) code generator.
+
+Generates Elixir and Erlang code from [Smithy](https://smithy.io/) models (client and server).
+
 Mix and rebar3 helper that runs the [Smithy CLI](https://smithy.io/2.0/guides/smithy-cli/index.html) to generate Elixir and Erlang code from Smithy models.
 
 The Java codegen plugins are resolved from Maven Central. This Hex package is the BEAM-native compile-time glue.
