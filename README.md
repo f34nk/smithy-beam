@@ -6,9 +6,13 @@
 
 Code generator for the [Smithy](https://smithy.io/) interface modelling language. 
 
-Support for **BEAM languages**: Erlang, Elixir, *Gleam*.
+Support for **BEAM languages**: Erlang, Elixir, Gleam*.
 
-> This implementation follows the **"official"** [Creating a Code Generator](https://smithy.io/2.0/guides/building-codegen/index.html) guidelines.
+> fully [extensible](https://smithy.io/2.0/guides/building-codegen/making-codegen-pluggable.html) with the toolchain (follows the **official** [Creating a Code Generator](https://smithy.io/2.0/guides/building-codegen/index.html) guidelines)
+
+**Gleam support will follow :)*
+
+*[Hex](https://hex.pm) package is coming soon ...*
 
 ## Build and Test
 
