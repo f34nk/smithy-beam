@@ -1,0 +1,8 @@
+{application, smoke_erlang_client, [
+    {description, "smithy_beam erlang smoke consumer"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {applications, [kernel, stdlib]},
+    {env, []},
+    {modules, []}
+]}.
