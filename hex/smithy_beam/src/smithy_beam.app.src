@@ -1,6 +1,6 @@
 {application, smithy_beam, [
     {description, "Mix and rebar3 helper that runs the Smithy CLI for BEAM codegen"},
-    {vsn, "0.1.1"},
+    {vsn, "0.1.2"},
     {registered, []},
     {applications, [kernel, stdlib]},
     {env, []},
