@@ -5,5 +5,6 @@ include(
     "codegen:codegen-core",
     "codegen:codegen-erlang",
     "codegen:codegen-elixir",
+    "codegen:codegen-gleam",
     "codegen:codegen-test"
 )
