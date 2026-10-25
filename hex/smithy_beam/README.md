@@ -92,6 +92,8 @@ Default Maven dependencies always include the matching `codegen-elixir` or `code
 
 Hex package version (`smithy_beam`) and Maven codegen versions are independent. Override the generator with `codegen_version` when needed.
 
+Keep `@version` in `mix.exs` and `{vsn, ...}` in `src/smithy_beam.app.src` equal when releasing.
+
 ## Generated sources and git
 
 Whether `lib/generated` / `src/generated` is committed is a consumer choice.
