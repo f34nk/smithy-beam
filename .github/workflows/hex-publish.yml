@@ -1,0 +1,147 @@
+name: Hex publish
+
+on:
+  push:
+    branches: [v3]
+    paths:
+      - "hex/smithy_beam/**"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run checks and mix hex.build only; do not publish"
+        type: boolean
+        default: true
+
+concurrency:
+  group: hex-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  hex:
+    name: Hex ${{ github.event_name == 'push' && github.sha || 'dispatch' }}
+    runs-on: ubuntu-latest
+    if: github.repository == 'f34nk/smithy-beam'
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: hex/smithy_beam
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up BEAM
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "26"
+          elixir-version: "1.16"
+
+      - name: Resolve versions
+        id: ver
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          MIX_VERSION=$(sed -n 's/^  @version "\(.*\)"/\1/p' hex/smithy_beam/mix.exs | head -1)
+          APP_VSN=$(sed -n 's/.*{vsn, "\(.*\)"}.*/\1/p' hex/smithy_beam/src/smithy_beam.app.src | head -1)
+          if [ -z "$MIX_VERSION" ] || [ -z "$APP_VSN" ]; then
+            echo "Could not parse Hex versions (mix=$MIX_VERSION app=$APP_VSN)"
+            exit 1
+          fi
+          if [ "$MIX_VERSION" != "$APP_VSN" ]; then
+            echo "Version mismatch mix.exs=$MIX_VERSION app.src=$APP_VSN"
+            exit 1
+          fi
+          echo "version=$MIX_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved smithy_beam version=$MIX_VERSION"
+
+      - name: Probe hex.pm
+        id: probe
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          CODE=$(curl -sS -o /tmp/hex_rel.json -w "%{http_code}" \
+            "https://hex.pm/api/packages/smithy_beam/releases/${VERSION}")
+          echo "hex.pm release ${VERSION} -> HTTP ${CODE}"
+          if [ "$CODE" = "200" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif [ "$CODE" = "404" ]; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unexpected hex.pm status ${CODE}"
+            cat /tmp/hex_rel.json || true
+            exit 1
+          fi
+
+      - name: Guard content change without bump
+        id: guard
+        if: steps.probe.outputs.exists == 'true' && github.event_name == 'push'
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          BEFORE="${{ github.event.before }}"
+          ZERO="0000000000000000000000000000000000000000"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "$ZERO" ]; then
+            echo "No usable parent commit; skip packaged-file guard."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CHANGED=$(git diff --name-only "$BEFORE" "${{ github.sha }}" -- \
+            hex/smithy_beam/lib \
+            hex/smithy_beam/src \
+            hex/smithy_beam/mix.exs \
+            hex/smithy_beam/rebar.config \
+            hex/smithy_beam/README.md \
+            hex/smithy_beam/LICENSE \
+            || true)
+          if [ -n "$CHANGED" ]; then
+            echo "Packaged Hex files changed but version ${{ steps.ver.outputs.version }} is already on hex.pm."
+            echo "Bump @version in mix.exs and vsn in smithy_beam.app.src together."
+            echo "$CHANGED"
+            exit 1
+          fi
+          echo "No packaged-file diff; nothing to publish."
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+
+      - name: Skip (version already on hex.pm)
+        if: steps.probe.outputs.exists == 'true' && github.event_name != 'push'
+        run: echo "Version ${{ steps.ver.outputs.version }} already on hex.pm; nothing to publish."
+
+      - name: Resolve dry_run
+        id: meta
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "dry_run=${{ inputs.dry_run }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: mix deps.get
+        if: steps.probe.outputs.exists == 'false'
+        run: mix deps.get
+
+      - name: mix hex.build
+        if: steps.probe.outputs.exists == 'false'
+        run: mix hex.build
+
+      - name: mix hex.publish
+        if: steps.probe.outputs.exists == 'false' && steps.meta.outputs.dry_run == 'false'
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HEX_API_KEY:-}" ]; then
+            echo "HEX_API_KEY secret is not set"
+            exit 1
+          fi
+          mix hex.publish --yes
+
+      - name: Dry-run complete
+        if: steps.probe.outputs.exists == 'false' && steps.meta.outputs.dry_run == 'true'
+        run: |
+          echo "Dry-run: built package for ${{ steps.ver.outputs.version }}; skipped mix hex.publish"

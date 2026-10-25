@@ -95,3 +95,92 @@ Hex package version (`smithy_beam`) and Maven codegen versions are independent. 
 ## Generated sources and git
 
 Whether `lib/generated` / `src/generated` is committed is a consumer choice.
+
+## Custom HTTP clients
+
+Generated clients dispatch HTTP through a pluggable adapter. By default Elixir uses `RuntimeHttpClient.Req` and Erlang uses `runtime_http_client_httpc` (OTP `httpc`). Override the adapter by setting `http_client` on the client config map passed into generated operations.
+
+The adapter must implement the runtime HTTP client behaviour: one callback, `request/1`, that takes a built client request and returns an HTTP response or an error.
+
+### Elixir
+
+Implement `@behaviour RuntimeHttpClient`. The request is a `%RuntimeHttpClient.Request{}` (`method`, `url`, `headers`, `body`). Return `{:ok, %RuntimeTypes.HttpResponse{}}` or `{:error, reason}`.
+
+```elixir
+defmodule MyHttpClient do
+  @behaviour RuntimeHttpClient
+
+  alias RuntimeHttpClient.Request
+  alias RuntimeTypes.HttpResponse
+
+  @impl RuntimeHttpClient
+  def request(%Request{method: method, url: url, headers: headers, body: body}) do
+    # call your HTTP stack with method, url, headers, and body
+    {:ok, %HttpResponse{status: 200, headers: [], body: ""}}
+  end
+end
+```
+
+Pass the module in config:
+
+```elixir
+config = %{
+  base_url: "https://api.example",
+  http_client: MyHttpClient
+}
+
+MyServiceClient.get_item(config, input)
+```
+
+### Erlang
+
+Implement `-behaviour(runtime_http_client).` Include `runtime_http_client.hrl` and `runtime_types.hrl`. The request is `#http_client_request{}` (`method`, `url`, `headers`, `body`). Return `{ok, #http_response{}}` or `{error, Reason}`.
+
+```erlang
+-module(my_http_client).
+-behaviour(runtime_http_client).
+
+-include("runtime_types.hrl").
+-include("runtime_http_client.hrl").
+
+-export([request/1]).
+
+request(#http_client_request{
+    method = Method,
+    url = Url,
+    headers = Headers,
+    body = Body
+}) ->
+    %% call your HTTP stack with Method, Url, Headers, and Body
+    {ok, #http_response{status = 200, headers = [], body = <<>>}}.
+```
+
+
+Pass the module in config:
+
+```erlang
+Config = #{
+    base_url => <<"https://api.example">>,
+    http_client => my_http_client
+},
+my_service_client:get_item(Config, Input).
+```
+
+Typical uses: swap in Finch, Gun, or another HTTP stack; inject mocks in tests; add tracing or custom TLS settings around the request.
+
+## Publishing this package
+
+Maven codegen JARs and this Hex package ship on separate channels and version lines.
+
+Hex CI (`.github/workflows/hex-publish.yml`) runs on pushes to `v3` that touch `hex/smithy_beam/**`, and on manual `workflow_dispatch` (dry-run by default).
+
+To release a new Hex version:
+
+1. Change packaged files under `hex/smithy_beam/` as needed.
+2. Bump `@version` in `mix.exs` and `vsn` in `src/smithy_beam.app.src` to the same new value.
+3. Push to `v3`. If that version is not yet on hex.pm, the workflow publishes it. If the version already exists and packaged files changed, the job fails so you bump again.
+4. Confirm at https://hex.pm/packages/smithy_beam
+
+Requires repository secret `HEX_API_KEY`. Manual fallback: `cd hex/smithy_beam && mix hex.publish`.
+
+Maven releases stay on git tags `v*` via `.github/workflows/release.yml` and do not publish Hex.
