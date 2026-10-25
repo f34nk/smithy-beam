@@ -167,20 +167,3 @@ my_service_client:get_item(Config, Input).
 ```
 
 Typical uses: swap in Finch, Gun, or another HTTP stack; inject mocks in tests; add tracing or custom TLS settings around the request.
-
-## Publishing this package
-
-Maven codegen JARs and this Hex package ship on separate channels and version lines.
-
-Hex CI (`.github/workflows/hex-publish.yml`) runs on pushes to `v3` that touch `hex/smithy_beam/**`, and on manual `workflow_dispatch` (dry-run by default).
-
-To release a new Hex version:
-
-1. Change packaged files under `hex/smithy_beam/` as needed.
-2. Bump `@version` in `mix.exs` and `vsn` in `src/smithy_beam.app.src` to the same new value.
-3. Push to `v3`. If that version is not yet on hex.pm, the workflow publishes it. If the version already exists and packaged files changed, the job fails so you bump again.
-4. Confirm at https://hex.pm/packages/smithy_beam
-
-Requires repository secret `HEX_API_KEY`. Manual fallback: `cd hex/smithy_beam && mix hex.publish`.
-
-Maven releases stay on git tags `v*` via `.github/workflows/release.yml` and do not publish Hex.
