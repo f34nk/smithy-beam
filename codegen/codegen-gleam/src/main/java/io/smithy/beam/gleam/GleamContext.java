@@ -1,9 +1,16 @@
 package io.smithy.beam.gleam;
 
+import io.beam.lang.gleam.CustomType;
+import io.beam.lang.gleam.DocComment;
+import io.beam.lang.gleam.Import;
+import io.beam.lang.gleam.TypeAlias;
 import io.smithy.beam.core.BeamHttpBindings;
 import io.smithy.beam.core.BeamProtocolCodegen;
 import io.smithy.beam.core.BeamSettings;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import software.amazon.smithy.build.FileManifest;
 import software.amazon.smithy.codegen.core.CodegenContext;
 import software.amazon.smithy.codegen.core.SymbolProvider;
@@ -31,7 +38,8 @@ public record GleamContext(
     BeamProtocolCodegen protocolCodegen,
     ShapeId resolvedProtocolTraitId,
     String moduleName,
-    String definitionFile)
+    String definitionFile,
+    GleamTypesBuilder typesBuilder)
     implements CodegenContext<BeamSettings, GleamWriter, GleamIntegration> {
 
   public static GleamContext forTypes(
@@ -57,7 +65,8 @@ public record GleamContext(
         null,
         null,
         moduleName,
-        definitionFile);
+        definitionFile,
+        new GleamTypesBuilder());
   }
 
   public static GleamContext forClient(
@@ -85,7 +94,8 @@ public record GleamContext(
         protocolCodegen,
         resolvedProtocolTraitId,
         moduleName,
-        definitionFile);
+        definitionFile,
+        new GleamTypesBuilder());
   }
 
   public static GleamContext forServer(
@@ -113,6 +123,51 @@ public record GleamContext(
         protocolCodegen,
         resolvedProtocolTraitId,
         moduleName,
-        definitionFile);
+        definitionFile,
+        new GleamTypesBuilder());
+  }
+
+  /** Mutable accumulator for types-module IR. */
+  public static final class GleamTypesBuilder {
+    private DocComment moduleDocOrNull;
+    private final Set<String> importKeys = new LinkedHashSet<>();
+    private final List<Import> imports = new ArrayList<>();
+    private final List<TypeAlias> typeAliases = new ArrayList<>();
+    private final List<CustomType> customTypes = new ArrayList<>();
+
+    public void setModuleDoc(DocComment doc) {
+      this.moduleDocOrNull = doc;
+    }
+
+    public void addImport(Import importStmt) {
+      String key = importStmt.modulePath() + "|" + String.join(",", importStmt.typeNames());
+      if (importKeys.add(key)) {
+        imports.add(importStmt);
+      }
+    }
+
+    public void addTypeAlias(TypeAlias alias) {
+      typeAliases.add(alias);
+    }
+
+    public void addCustomType(CustomType customType) {
+      customTypes.add(customType);
+    }
+
+    public DocComment moduleDocOrNull() {
+      return moduleDocOrNull;
+    }
+
+    public List<Import> imports() {
+      return List.copyOf(imports);
+    }
+
+    public List<TypeAlias> typeAliases() {
+      return List.copyOf(typeAliases);
+    }
+
+    public List<CustomType> customTypes() {
+      return List.copyOf(customTypes);
+    }
   }
 }
