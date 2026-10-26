@@ -65,6 +65,10 @@ public final class BeamGleamLayout {
     return serviceSnakeName() + "_impl";
   }
 
+  public String implModuleFile() {
+    return implModuleName() + ".gleam";
+  }
+
   public String routerModuleFile() {
     return routerModuleName() + ".gleam";
   }

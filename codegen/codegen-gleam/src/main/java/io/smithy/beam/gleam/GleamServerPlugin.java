@@ -17,6 +17,6 @@ public final class GleamServerPlugin implements SmithyBuildPlugin {
 
   @Override
   public void execute(PluginContext context) {
-    // No-op until server generation is implemented.
+    new GleamServerGeneration().generate(context);
   }
 }

@@ -24,6 +24,7 @@ class BeamGleamLayoutTest {
     assertThat(layout.clientModuleFile()).isEqualTo("basic_service_client.gleam");
     assertThat(layout.serverModuleFile()).isEqualTo("basic_service_server.gleam");
     assertThat(layout.behaviourModuleFile()).isEqualTo("basic_service_behaviour.gleam");
+    assertThat(layout.implModuleFile()).isEqualTo("basic_service_impl.gleam");
     assertThat(layout.routerModuleFile()).isEqualTo("basic_service_router.gleam");
   }
 
