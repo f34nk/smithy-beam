@@ -17,6 +17,6 @@ public final class GleamTypesPlugin implements SmithyBuildPlugin {
 
   @Override
   public void execute(PluginContext context) {
-    // No-op until type generation is implemented.
+    new GleamTypeGeneration().generate(context);
   }
 }
