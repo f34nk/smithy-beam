@@ -60,6 +60,11 @@ class GleamClientPluginTest {
         .contains("Error(NotImplemented)")
         .contains("Result(basic_service_types.GetTypeClosureOutput, ClientError)")
         .contains("Result(basic_service_types.ListBasicItemsOutput, ClientError)");
+
+    assertThat(manifest.getFileString("smithy_beam/http.gleam")).isPresent();
+    assertThat(manifest.getFileString("smithy_beam/utils.gleam")).isPresent();
+    assertThat(manifest.getFileString("smithy_beam/types.gleam")).isPresent();
+    assertThat(manifest.getFileString("smithy_beam/httpc.gleam")).isPresent();
   }
 
   @Test
