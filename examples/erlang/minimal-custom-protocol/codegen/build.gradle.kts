@@ -15,7 +15,7 @@ java {
 }
 
 dependencies {
-    implementation("io.smithy.beam:codegen-erlang:0.1.0-SNAPSHOT")
+    implementation("io.github.f34nk.smithy.beam:codegen-erlang:0.1.0-SNAPSHOT")
 }
 
 publishing {

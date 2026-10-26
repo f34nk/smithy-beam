@@ -10,7 +10,7 @@
       "software.amazon.smithy:smithy-aws-smoke-test-model:1.64.0",
       "software.amazon.smithy:smithy-aws-iam-traits:1.64.0",
       "software.amazon.smithy:smithy-waiters:1.64.0",
-      "io.smithy.beam:codegen-erlang:0.1.0-SNAPSHOT"
+      "io.github.f34nk.smithy.beam:codegen-erlang:0.1.0-SNAPSHOT"
     ],
     "repositories": [
       {

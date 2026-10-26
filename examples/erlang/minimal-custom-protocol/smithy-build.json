@@ -5,7 +5,7 @@
   ],
   "maven": {
     "dependencies": [
-      "io.smithy.beam:codegen-erlang:0.1.0-SNAPSHOT",
+      "io.github.f34nk.smithy.beam:codegen-erlang:0.1.0-SNAPSHOT",
       "io.smithy.beam.examples:minimal-custom-protocol-codegen:0.1.0-SNAPSHOT"
     ],
     "repositories": [
