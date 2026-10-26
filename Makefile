@@ -35,6 +35,7 @@ test/java:
 test/runtime:
 	make -C runtime/erlang test
 	make -C runtime/elixir test
+	make -C runtime/gleam test
 
 .PHONY: format/java
 format/java:
@@ -47,6 +48,7 @@ format/java:
 format/runtime:
 	make -C runtime/erlang format
 	make -C runtime/elixir format
+	make -C runtime/gleam format
 
 .PHONY: clean
 clean:

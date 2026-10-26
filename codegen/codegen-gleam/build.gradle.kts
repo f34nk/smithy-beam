@@ -13,6 +13,11 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-// Runtime packaging (runtime/gleam) is added when the Gleam runtime exists.
 tasks.processResources {
+    from(rootProject.file("runtime/gleam")) {
+        into("runtime/gleam")
+        exclude("build/**")
+        exclude("test/**")
+        exclude(".git/**")
+    }
 }
