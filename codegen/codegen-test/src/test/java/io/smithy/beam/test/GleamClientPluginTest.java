@@ -56,15 +56,50 @@ class GleamClientPluginTest {
         .contains("pub fn list_basic_items_request(")
         .contains("pub fn list_basic_items_response(")
         .contains("-> Request(BitArray)")
-        .contains("_response: Response(BitArray)")
-        .contains("Error(NotImplemented)")
         .contains("Result(basic_service_types.GetTypeClosureOutput, ClientError)")
-        .contains("Result(basic_service_types.ListBasicItemsOutput, ClientError)");
+        .contains("Result(basic_service_types.ListBasicItemsOutput, ClientError)")
+        .contains("beam_http.apply_base_url")
+        .contains("json.parse_bits");
 
     assertThat(manifest.getFileString("smithy_beam/http.gleam")).isPresent();
     assertThat(manifest.getFileString("smithy_beam/utils.gleam")).isPresent();
     assertThat(manifest.getFileString("smithy_beam/types.gleam")).isPresent();
     assertThat(manifest.getFileString("smithy_beam/httpc.gleam")).isPresent();
+    assertThat(manifest.getFileString("basic_service_rest_json_1.gleam")).isPresent();
+  }
+
+  @Test
+  void restJson1ClientWiresSansIoPairs() {
+    Model model =
+        Model.assembler()
+            .addImport(getClass().getResource("/model/protocol_rest_json_fixture.smithy"))
+            .discoverModels()
+            .assemble()
+            .unwrap();
+    MockManifest manifest = new MockManifest();
+    ObjectNode settings =
+        ObjectNode.builder()
+            .withMember("service", "smithy.beam.demo.protocoljson#DemoRestJson")
+            .withMember("edition", "2026")
+            .build();
+    new GleamClientPlugin()
+        .execute(
+            PluginContext.builder()
+                .model(model)
+                .fileManifest(manifest)
+                .settings(settings)
+                .build());
+
+    String client = manifest.expectFileString("demo_rest_json_client.gleam");
+    assertThat(client)
+        .contains("pub fn describe_item_request(")
+        .contains("pub fn describe_item_response(")
+        .contains("request.set_method(http.Get)")
+        .contains("beam_http.apply_base_url")
+        .contains("UnexpectedStatus")
+        .contains("json.parse_bits")
+        .doesNotContain("todo");
+    assertThat(manifest.getFileString("demo_rest_json_rest_json_1.gleam")).isPresent();
   }
 
   @Test
