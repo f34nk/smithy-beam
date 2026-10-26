@@ -25,4 +25,8 @@ public final class GleamRenderer {
   public static String render(Function function) {
     return DEFAULT.render(function);
   }
+
+  public static String render(Expression expression) {
+    return DEFAULT.render(expression);
+  }
 }

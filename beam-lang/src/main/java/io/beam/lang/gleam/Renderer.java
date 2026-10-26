@@ -10,4 +10,6 @@ public interface Renderer {
   String render(CustomType customType);
 
   String render(Function function);
+
+  String render(Expression expression);
 }
