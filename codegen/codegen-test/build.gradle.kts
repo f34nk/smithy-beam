@@ -2,6 +2,7 @@ dependencies {
     testImplementation(project(":codegen:codegen-core"))
     testImplementation(project(":codegen:codegen-erlang"))
     testImplementation(project(":codegen:codegen-elixir"))
+    testImplementation(project(":codegen:codegen-gleam"))
     testImplementation(libs.smithy.model)
     testImplementation(libs.smithy.codegen.core)
     testImplementation(libs.smithy.build)
