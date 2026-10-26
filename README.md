@@ -4,6 +4,11 @@
 
 # smithy-beam
 
+[![Release](https://github.com/f34nk/smithy-beam/actions/workflows/release.yml/badge.svg)](https://github.com/f34nk/smithy-beam/actions/workflows/release.yml)
+[![Hex publish](https://github.com/f34nk/smithy-beam/actions/workflows/hex-publish.yml/badge.svg)](https://github.com/f34nk/smithy-beam/actions/workflows/hex-publish.yml)
+[![smithy_beam version](https://img.shields.io/hexpm/v/smithy_beam.svg)](https://hex.pm/packages/smithy_beam)
+[![Hex.pm](https://img.shields.io/hexpm/dt/smithy_beam.svg)](https://hex.pm/packages/smithy_beam)
+
 Code generator for the [Smithy](https://smithy.io/) interface modelling language. 
 
 Support for **BEAM languages**: Erlang, Elixir, Gleam*.
