@@ -32,7 +32,7 @@ class GleamClientPluginTest {
   }
 
   @Test
-  void emitsTypesAndClientStubWithOperationNames() {
+  void emitsTypesAndSansIoClientStubWithOperationPairs() {
     Model model = loadModel();
     MockManifest manifest = new MockManifest();
 
@@ -43,18 +43,27 @@ class GleamClientPluginTest {
     String client = manifest.expectFileString(CLIENT_FILE);
     assertThat(client)
         .contains("import basic_service_types")
+        .contains("import gleam/http/request.{type Request}")
+        .contains("import gleam/http/response.{type Response}")
         .contains("pub type ClientConfig {")
         .contains("pub type ClientError {")
         .contains("  NotImplemented")
-        .contains("pub fn get_type_closure(")
-        .contains("pub fn list_basic_items(")
+        .contains("  UnexpectedStatus(status: Int, body: BitArray)")
+        .contains("  DecodeError(message: String)")
+        .contains("  ModeledError(name: String, message: String)")
+        .contains("pub fn get_type_closure_request(")
+        .contains("pub fn get_type_closure_response(")
+        .contains("pub fn list_basic_items_request(")
+        .contains("pub fn list_basic_items_response(")
+        .contains("-> Request(BitArray)")
+        .contains("_response: Response(BitArray)")
         .contains("Error(NotImplemented)")
         .contains("Result(basic_service_types.GetTypeClosureOutput, ClientError)")
         .contains("Result(basic_service_types.ListBasicItemsOutput, ClientError)");
   }
 
   @Test
-  void stubOnlyServiceWithoutProtocolTraitEmitsClient() {
+  void stubOnlyServiceWithoutProtocolTraitEmitsSansIoClient() {
     Model model =
         Model.assembler()
             .addUnparsedModel(
@@ -89,7 +98,9 @@ class GleamClientPluginTest {
 
     assertThat(manifest.expectFileString("stub_service_types.gleam")).contains("pub type PingInput");
     assertThat(manifest.expectFileString("stub_service_client.gleam"))
-        .contains("pub fn ping(")
+        .contains("pub fn ping_request(")
+        .contains("pub fn ping_response(")
+        .contains("todo")
         .contains("Error(NotImplemented)");
   }
 }

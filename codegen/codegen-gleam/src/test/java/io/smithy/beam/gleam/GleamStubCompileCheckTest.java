@@ -104,6 +104,7 @@ class GleamStubCompileCheckTest {
 
         [dependencies]
         gleam_stdlib = ">= 0.59.0 and < 2.0.0"
+        gleam_http = ">= 4.0.0 and < 5.0.0"
         """,
         StandardCharsets.UTF_8);
 

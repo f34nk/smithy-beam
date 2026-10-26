@@ -2,6 +2,7 @@ package io.smithy.beam.gleam;
 
 import io.beam.lang.gleam.CustomType;
 import io.beam.lang.gleam.DocComment;
+import io.beam.lang.gleam.Field;
 import io.beam.lang.gleam.Function;
 import io.beam.lang.gleam.Import;
 import io.beam.lang.gleam.Module;
@@ -30,7 +31,8 @@ final class GleamClientDsl {
       String typesModuleName) {
     List<Function> functions = new ArrayList<>();
     for (OperationShape op : GleamTopDown.containedOperationsSorted(model, service)) {
-      functions.add(stubOperation(op, model, sp, typesModuleName));
+      functions.add(stubRequest(op, model, sp, typesModuleName));
+      functions.add(stubResponse(op, model, sp, typesModuleName));
     }
 
     DocComment moduleDoc =
@@ -39,15 +41,19 @@ final class GleamClientDsl {
             .orElseGet(
                 () ->
                     DocComment.of(
-                        "Client stubs for "
+                        "Sans-io client for "
                             + layout.clientModuleName()
-                            + ".\n\nOperation stubs accept config and input and return"
-                            + " Error(NotImplemented) until a protocol codec is wired."));
+                            + ".\n\nEach operation exposes a request builder and a response"
+                            + " parser on gleam/http types. Send is left to the caller until a"
+                            + " protocol codec is wired."));
 
     return Module.of(
         layout.clientModuleName(),
         moduleDoc,
-        List.of(Import.of(typesModuleName)),
+        List.of(
+            Import.of(typesModuleName),
+            Import.type("gleam/http/request", "Request"),
+            Import.type("gleam/http/response", "Response")),
         List.of(),
         List.of(clientConfigType(), clientErrorType()),
         functions);
@@ -59,32 +65,63 @@ final class GleamClientDsl {
         List.of(
             Variant.of(
                 "ClientConfig",
-                List.of(io.beam.lang.gleam.Field.labelled("base_url", "String")))),
-        DocComment.of("Minimal client configuration for stub operations."));
+                List.of(Field.labelled("base_url", "String")))),
+        DocComment.of("Minimal client configuration for sans-io request builders."));
   }
 
   private static CustomType clientErrorType() {
     return CustomType.pub(
         "ClientError",
-        List.of(Variant.of("NotImplemented")),
+        List.of(
+            Variant.of("NotImplemented"),
+            Variant.of(
+                "UnexpectedStatus",
+                List.of(
+                    Field.labelled("status", "Int"),
+                    Field.labelled("body", "BitArray"))),
+            Variant.of(
+                "DecodeError",
+                List.of(Field.labelled("message", "String"))),
+            Variant.of(
+                "ModeledError",
+                List.of(
+                    Field.labelled("name", "String"),
+                    Field.labelled("message", "String")))),
         DocComment.of(
-            "Client error channel. Expanded later with transport, decode, and modeled errors."));
+            "Domain client errors from response parsing (unexpected status, decode failure,"
+                + " modeled service errors). Transport failures stay with the caller HTTP"
+                + " client."));
   }
 
-  private static Function stubOperation(
+  private static Function stubRequest(
       OperationShape op, Model model, SymbolProvider sp, String typesModuleName) {
     Symbol opSym = sp.toSymbol(op);
     StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
-    StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
     String inputType = GleamTopDown.qualifiedType(typesModuleName, sp.toSymbol(input));
-    String outputType = GleamTopDown.qualifiedType(typesModuleName, sp.toSymbol(output));
-    String returnType = "Result(" + outputType + ", ClientError)";
-    DocComment doc = BeamDocumentation.forShape(op).map(DocComment::of).orElse(null);
+    String name = opSym.getName() + "_request";
+    DocComment doc =
+        BeamDocumentation.forShape(op)
+            .map(text -> DocComment.of(text + "\n\nBuilds a gleam/http Request (stub)."))
+            .orElse(DocComment.of("Builds a gleam/http Request for " + opSym.getName() + " (stub)."));
     List<Param> params =
         List.of(Param.of("_config", "ClientConfig"), Param.of("_input", inputType));
-    if (doc == null) {
-      return Function.pub(opSym.getName(), params, returnType, "Error(NotImplemented)");
-    }
-    return Function.pub(opSym.getName(), params, returnType, "Error(NotImplemented)", doc);
+    return Function.pub(name, params, "Request(BitArray)", "todo", doc);
+  }
+
+  private static Function stubResponse(
+      OperationShape op, Model model, SymbolProvider sp, String typesModuleName) {
+    Symbol opSym = sp.toSymbol(op);
+    StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
+    String outputType = GleamTopDown.qualifiedType(typesModuleName, sp.toSymbol(output));
+    String name = opSym.getName() + "_response";
+    String returnType = "Result(" + outputType + ", ClientError)";
+    DocComment doc =
+        BeamDocumentation.forShape(op)
+            .map(text -> DocComment.of(text + "\n\nParses a gleam/http Response (stub)."))
+            .orElse(
+                DocComment.of(
+                    "Parses a gleam/http Response for " + opSym.getName() + " (stub)."));
+    List<Param> params = List.of(Param.of("_response", "Response(BitArray)"));
+    return Function.pub(name, params, returnType, "Error(NotImplemented)", doc);
   }
 }
