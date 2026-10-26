@@ -1,0 +1,3 @@
+io.smithy.beam.gleam.GleamTypesPlugin
+io.smithy.beam.gleam.GleamClientPlugin
+io.smithy.beam.gleam.GleamServerPlugin

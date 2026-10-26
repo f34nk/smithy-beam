@@ -6,6 +6,7 @@ dependencies {
     api(project(":beam-lang"))
     api(libs.smithy.model)
     api(libs.smithy.codegen.core)
+    api(libs.smithy.build)
 
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.assertj.core)
