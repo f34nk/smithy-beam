@@ -45,8 +45,21 @@ final class GleamClientDsl {
     HttpBindingIndex httpIndex = HttpBindingIndex.of(model);
 
     List<Function> functions = new ArrayList<>();
+    boolean needsBitArray = false;
+    boolean needsOption = false;
     for (OperationShape op : GleamTopDown.containedOperationsSorted(model, service)) {
       if (restJson && op.hasTrait(HttpTrait.class)) {
+        List<HttpBinding> labels = httpIndex.getRequestBindings(op, HttpBinding.Location.LABEL);
+        List<HttpBinding> documents =
+            httpIndex.getRequestBindings(op, HttpBinding.Location.DOCUMENT);
+        List<HttpBinding> payload =
+            httpIndex.getRequestBindings(op, HttpBinding.Location.PAYLOAD);
+        if (!labels.isEmpty()) {
+          needsOption = true;
+        }
+        if (!documents.isEmpty() || !payload.isEmpty()) {
+          needsBitArray = true;
+        }
         functions.add(wiredRequest(op, model, sp, typesModuleName, codecModule, httpIndex));
         functions.add(wiredResponse(op, model, sp, typesModuleName, codecModule, httpIndex));
       } else {
@@ -73,9 +86,13 @@ final class GleamClientDsl {
     if (restJson) {
       imports.add(Import.of(codecModule));
       imports.add(Import.of("gleam/http"));
-      imports.add(Import.of("gleam/http/request"));
-      imports.add(Import.of("gleam/bit_array"));
+      if (needsBitArray) {
+        imports.add(Import.of("gleam/bit_array"));
+      }
       imports.add(Import.of("gleam/json"));
+      if (needsOption) {
+        imports.add(Import.of("gleam/option"));
+      }
       imports.add(Import.of("gleam/string"));
       imports.add(Import.of("smithy_beam/http as beam_http"));
     }
@@ -163,11 +180,12 @@ final class GleamClientDsl {
       for (HttpBinding label : labels) {
         String field = BeamMemberNames.fieldName(sp, label.getMember());
         String token = "{" + label.getMember().getMemberName() + "}";
+        // Input labels are Option under CLIENT NullableIndex; unwrap for path segments.
         body.append("\n  |> string.replace(\"")
             .append(escape(token))
-            .append("\", ")
+            .append("\", option.unwrap(")
             .append(field)
-            .append(')');
+            .append(", \"\"))");
       }
     }
     body.append('\n');

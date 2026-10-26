@@ -5,9 +5,11 @@ import io.beam.lang.gleam.LocalCallExpr;
 import io.beam.lang.gleam.RawExpr;
 import io.beam.lang.gleam.RemoteCallExpr;
 import io.beam.lang.gleam.Variable;
+import io.smithy.beam.core.BeamMemberNullability;
 import java.util.List;
 import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
+import software.amazon.smithy.model.knowledge.NullableIndex;
 import software.amazon.smithy.model.shapes.BigDecimalShape;
 import software.amazon.smithy.model.shapes.BlobShape;
 import software.amazon.smithy.model.shapes.BooleanShape;
@@ -23,7 +25,6 @@ import software.amazon.smithy.model.shapes.StringShape;
 import software.amazon.smithy.model.shapes.StructureShape;
 import software.amazon.smithy.model.shapes.TimestampShape;
 import software.amazon.smithy.model.shapes.UnionShape;
-import software.amazon.smithy.model.traits.RequiredTrait;
 
 /**
  * First-cut member encode/decode expressions for restJson1 JSON object codecs. Complex wire formats
@@ -33,23 +34,34 @@ final class GleamJsonMemberCoding {
 
   private GleamJsonMemberCoding() {}
 
-  static Expression memberDecoder(Model model, MemberShape member, SymbolProvider sp) {
+  static Expression memberDecoder(
+      Model model, StructureShape container, MemberShape member, SymbolProvider sp) {
     Shape target = model.expectShape(member.getTarget());
     Expression inner = shapeDecoder(model, target, sp);
-    if (member.hasTrait(RequiredTrait.class)) {
+    NullableIndex index = NullableIndex.of(model);
+    if (!BeamMemberNullability.isMemberNullable(index, container, member)) {
       return RemoteCallExpr.of(
           "decode", "field", List.of(StringExprOf(GleamCodecNames.jsonKey(member)), inner));
     }
+    // optional_field(key, default, decoder, next) -- default None when the key is absent.
     return RemoteCallExpr.of(
         "decode",
         "optional_field",
-        List.of(StringExprOf(GleamCodecNames.jsonKey(member)), optionalWrap(inner, target)));
+        List.of(
+            StringExprOf(GleamCodecNames.jsonKey(member)),
+            Variable.of("option.None"),
+            RemoteCallExpr.of("decode", "optional", List.of(inner))));
   }
 
   static Expression encodeMemberValue(
-      Model model, MemberShape member, SymbolProvider sp, Expression valueExpr) {
+      Model model,
+      StructureShape container,
+      MemberShape member,
+      SymbolProvider sp,
+      Expression valueExpr) {
     Shape target = model.expectShape(member.getTarget());
-    if (member.hasTrait(RequiredTrait.class)) {
+    NullableIndex index = NullableIndex.of(model);
+    if (!BeamMemberNullability.isMemberNullable(index, container, member)) {
       return encodeShape(model, target, sp, valueExpr);
     }
     return RemoteCallExpr.of(
@@ -67,14 +79,11 @@ final class GleamJsonMemberCoding {
         shapeDecoder(model, model.expectShape(member.getTarget()), sp));
   }
 
-  private static Expression optionalWrap(Expression inner, Shape target) {
-    if (target instanceof DocumentShape) {
-      return inner;
-    }
-    return RemoteCallExpr.of("decode", "optional", List.of(inner));
-  }
-
   private static Expression shapeDecoder(Model model, Shape shape, SymbolProvider sp) {
+    // Enum/IntEnum before String/Number: EnumShape extends StringShape in the model API.
+    if (shape instanceof EnumShape || shape instanceof IntEnumShape) {
+      return LocalCallExpr.of(GleamCodecNames.decoderName(shape), List.of());
+    }
     if (shape instanceof StringShape) {
       return Variable.of("decode.string");
     }
@@ -86,9 +95,6 @@ final class GleamJsonMemberCoding {
         return Variable.of("decode.float");
       }
       return Variable.of("decode.int");
-    }
-    if (shape instanceof EnumShape || shape instanceof IntEnumShape) {
-      return LocalCallExpr.of(GleamCodecNames.decoderName(shape), List.of());
     }
     if (shape instanceof StructureShape || shape instanceof UnionShape) {
       return LocalCallExpr.of(GleamCodecNames.decoderName(shape), List.of());
@@ -135,6 +141,12 @@ final class GleamJsonMemberCoding {
 
   private static Expression encodeShape(
       Model model, Shape shape, SymbolProvider sp, Expression value) {
+    if (shape instanceof EnumShape
+        || shape instanceof IntEnumShape
+        || shape instanceof StructureShape
+        || shape instanceof UnionShape) {
+      return LocalCallExpr.of(GleamCodecNames.toJsonName(shape), List.of(value));
+    }
     if (shape instanceof StringShape) {
       return RemoteCallExpr.of("json", "string", List.of(value));
     }
@@ -147,12 +159,6 @@ final class GleamJsonMemberCoding {
       }
       return RemoteCallExpr.of("json", "int", List.of(value));
     }
-    if (shape instanceof EnumShape
-        || shape instanceof IntEnumShape
-        || shape instanceof StructureShape
-        || shape instanceof UnionShape) {
-      return LocalCallExpr.of(GleamCodecNames.toJsonName(shape), List.of(value));
-    }
     if (shape instanceof ListShape list) {
       Shape element = model.expectShape(list.getMember().getTarget());
       return RemoteCallExpr.of(
@@ -163,8 +169,12 @@ final class GleamJsonMemberCoding {
         return LocalCallExpr.of(GleamCodecNames.toJsonName(map), List.of(value));
       }
       Shape valueShape = model.expectShape(map.getValue().getTarget());
-      return RemoteCallExpr.of(
-          "json", "dict", List.of(value, encodeFn(model, valueShape, sp)));
+      return RawExpr.of(
+          "json.dict("
+              + io.beam.lang.gleam.GleamRenderer.render(value)
+              + ", fn(k) { k }, "
+              + io.beam.lang.gleam.GleamRenderer.render(encodeFn(model, valueShape, sp))
+              + ")");
     }
     if (shape instanceof TimestampShape) {
       return RemoteCallExpr.of(
@@ -183,7 +193,8 @@ final class GleamJsonMemberCoding {
       return RemoteCallExpr.of("json", "null", List.of());
     }
     if (shape instanceof BlobShape) {
-      return RemoteCallExpr.of("json", "string", List.of(RawExpr.of("<<>>")));
+      // Deferred: base64 (G4.4b). Placeholder empty string keeps types compiling.
+      return RemoteCallExpr.of("json", "string", List.of(io.beam.lang.gleam.StringExpr.of("")));
     }
     if (shape instanceof BigDecimalShape) {
       return RemoteCallExpr.of(
@@ -199,6 +210,13 @@ final class GleamJsonMemberCoding {
   }
 
   private static Expression encodeFn(Model model, Shape shape, SymbolProvider sp) {
+    if (shape instanceof EnumShape
+        || shape instanceof IntEnumShape
+        || shape instanceof StructureShape
+        || shape instanceof UnionShape
+        || (shape instanceof MapShape map && GleamMapHelperDsl.mapNeedsTypedHelper(model, map))) {
+      return Variable.of(GleamCodecNames.toJsonName(shape));
+    }
     if (shape instanceof StringShape) {
       return Variable.of("json.string");
     }
@@ -208,12 +226,32 @@ final class GleamJsonMemberCoding {
     if (shape instanceof NumberShape && !(shape instanceof BigDecimalShape)) {
       return isFloat(shape) ? Variable.of("json.float") : Variable.of("json.int");
     }
-    if (shape instanceof EnumShape
-        || shape instanceof IntEnumShape
-        || shape instanceof StructureShape
-        || shape instanceof UnionShape
-        || (shape instanceof MapShape map && GleamMapHelperDsl.mapNeedsTypedHelper(model, map))) {
-      return Variable.of(GleamCodecNames.toJsonName(shape));
+    if (shape instanceof ListShape list) {
+      Shape element = model.expectShape(list.getMember().getTarget());
+      return RawExpr.of(
+          "fn(items) { json.array(items, "
+              + io.beam.lang.gleam.GleamRenderer.render(encodeFn(model, element, sp))
+              + ") }");
+    }
+    if (shape instanceof MapShape map) {
+      Shape valueShape = model.expectShape(map.getValue().getTarget());
+      return RawExpr.of(
+          "fn(d) { json.dict(d, fn(k) { k }, "
+              + io.beam.lang.gleam.GleamRenderer.render(encodeFn(model, valueShape, sp))
+              + ") }");
+    }
+    if (shape instanceof TimestampShape) {
+      return RawExpr.of(
+          "fn(ts) { json.int(float.truncate(timestamp.to_unix_seconds(ts))) }");
+    }
+    if (shape instanceof DocumentShape) {
+      return RawExpr.of("fn(_) { json.null() }");
+    }
+    if (shape instanceof BlobShape) {
+      return RawExpr.of("fn(_) { json.string(\"\") }");
+    }
+    if (shape instanceof BigDecimalShape) {
+      return RawExpr.of("fn(v) { json.string(bigdecimal.to_string(v)) }");
     }
     return Variable.of("json.string");
   }

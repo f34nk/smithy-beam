@@ -48,7 +48,9 @@ final class GleamEnumHelperDsl {
 
   private static Function toJson(EnumShape shape, SymbolProvider sp, String typesModule) {
     String type = GleamCodecNames.qualifiedType(typesModule, sp, shape);
-    String unknown = GleamCodecNames.unknownConstructor(sp, shape);
+    String unknown =
+        GleamCodecNames.qualifiedConstructor(
+            typesModule, GleamCodecNames.unknownConstructor(sp, shape));
     List<CaseClause> clauses = new ArrayList<>();
     for (MemberShape member : shape.members()) {
       String wire =
@@ -56,7 +58,10 @@ final class GleamEnumHelperDsl {
               .getTrait(EnumValueTrait.class)
               .flatMap(EnumValueTrait::getStringValue)
               .orElse(member.getMemberName());
-      String ctor = GleamCodecNames.constructorForMember(sp, shape, member.getMemberName());
+      String ctor =
+          GleamCodecNames.qualifiedConstructor(
+              typesModule,
+              GleamCodecNames.constructorForMember(sp, shape, member.getMemberName()));
       clauses.add(
           CaseClause.of(
               ConstructorPattern.of(ctor),
@@ -76,7 +81,9 @@ final class GleamEnumHelperDsl {
 
   private static Function decoder(EnumShape shape, SymbolProvider sp, String typesModule) {
     String type = GleamCodecNames.qualifiedType(typesModule, sp, shape);
-    String unknown = GleamCodecNames.unknownConstructor(sp, shape);
+    String unknown =
+        GleamCodecNames.qualifiedConstructor(
+            typesModule, GleamCodecNames.unknownConstructor(sp, shape));
     List<CaseClause> clauses = new ArrayList<>();
     for (MemberShape member : shape.members()) {
       String wire =
@@ -84,7 +91,10 @@ final class GleamEnumHelperDsl {
               .getTrait(EnumValueTrait.class)
               .flatMap(EnumValueTrait::getStringValue)
               .orElse(member.getMemberName());
-      String ctor = GleamCodecNames.constructorForMember(sp, shape, member.getMemberName());
+      String ctor =
+          GleamCodecNames.qualifiedConstructor(
+              typesModule,
+              GleamCodecNames.constructorForMember(sp, shape, member.getMemberName()));
       clauses.add(
           CaseClause.of(StringPattern.of(wire), ConstructorExpr.of(ctor)));
     }
@@ -125,11 +135,16 @@ final class GleamEnumHelperDsl {
 
   private static Function intToJson(IntEnumShape shape, SymbolProvider sp, String typesModule) {
     String type = GleamCodecNames.qualifiedType(typesModule, sp, shape);
-    String unknown = GleamCodecNames.unknownConstructor(sp, shape);
+    String unknown =
+        GleamCodecNames.qualifiedConstructor(
+            typesModule, GleamCodecNames.unknownConstructor(sp, shape));
     List<CaseClause> clauses = new ArrayList<>();
     for (MemberShape member : shape.members()) {
       int wire = member.expectTrait(EnumValueTrait.class).expectIntValue();
-      String ctor = GleamCodecNames.constructorForMember(sp, shape, member.getMemberName());
+      String ctor =
+          GleamCodecNames.qualifiedConstructor(
+              typesModule,
+              GleamCodecNames.constructorForMember(sp, shape, member.getMemberName()));
       clauses.add(
           CaseClause.of(
               ConstructorPattern.of(ctor),
@@ -149,11 +164,16 @@ final class GleamEnumHelperDsl {
 
   private static Function intDecoder(IntEnumShape shape, SymbolProvider sp, String typesModule) {
     String type = GleamCodecNames.qualifiedType(typesModule, sp, shape);
-    String unknown = GleamCodecNames.unknownConstructor(sp, shape);
+    String unknown =
+        GleamCodecNames.qualifiedConstructor(
+            typesModule, GleamCodecNames.unknownConstructor(sp, shape));
     List<CaseClause> clauses = new ArrayList<>();
     for (MemberShape member : shape.members()) {
       int wire = member.expectTrait(EnumValueTrait.class).expectIntValue();
-      String ctor = GleamCodecNames.constructorForMember(sp, shape, member.getMemberName());
+      String ctor =
+          GleamCodecNames.qualifiedConstructor(
+              typesModule,
+              GleamCodecNames.constructorForMember(sp, shape, member.getMemberName()));
       clauses.add(CaseClause.of(IntegerPattern.of(wire), ConstructorExpr.of(ctor)));
     }
     clauses.add(

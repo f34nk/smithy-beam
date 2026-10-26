@@ -41,7 +41,9 @@ final class GleamStructureHelperDsl {
   private static Function toJson(
       Model model, StructureShape structure, SymbolProvider sp, String typesModule) {
     String type = GleamCodecNames.qualifiedType(typesModule, sp, structure);
-    String ctor = GleamCodecNames.structureConstructor(sp, structure);
+    String ctor =
+        GleamCodecNames.qualifiedConstructor(
+            typesModule, GleamCodecNames.structureConstructor(sp, structure));
     List<PatternField> shorthand = new ArrayList<>();
     List<Expression> entries = new ArrayList<>();
     for (MemberShape member : structure.members()) {
@@ -52,7 +54,7 @@ final class GleamStructureHelperDsl {
               List.of(
                   StringExpr.of(GleamCodecNames.jsonKey(member)),
                   GleamJsonMemberCoding.encodeMemberValue(
-                      model, member, sp, Variable.of(field)))));
+                      model, structure, member, sp, Variable.of(field)))));
     }
     return Function.pub(
         GleamCodecNames.toJsonName(structure),
@@ -67,13 +69,15 @@ final class GleamStructureHelperDsl {
   private static Function decoder(
       Model model, StructureShape structure, SymbolProvider sp, String typesModule) {
     String type = GleamCodecNames.qualifiedType(typesModule, sp, structure);
-    String ctor = GleamCodecNames.structureConstructor(sp, structure);
+    String ctor =
+        GleamCodecNames.qualifiedConstructor(
+            typesModule, GleamCodecNames.structureConstructor(sp, structure));
     List<Expression> statements = new ArrayList<>();
     List<LabelledArg> ctorArgs = new ArrayList<>();
     for (MemberShape member : structure.members()) {
       String field = BeamMemberNames.fieldName(sp, member);
       statements.add(
-          UseExpr.of(field, GleamJsonMemberCoding.memberDecoder(model, member, sp)));
+          UseExpr.of(field, GleamJsonMemberCoding.memberDecoder(model, structure, member, sp)));
       ctorArgs.add(LabelledArg.labelled(field, Variable.of(field)));
     }
     statements.add(

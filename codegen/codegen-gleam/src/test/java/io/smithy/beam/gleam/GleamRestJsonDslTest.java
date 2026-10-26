@@ -37,7 +37,7 @@ class GleamRestJsonDslTest {
         .contains("import gleam/json")
         .contains("pub fn item_status_to_json(")
         .contains("pub fn json_to_item_status(")
-        .contains("Unknown(value) -> json.string(value)")
+        .contains("demo_rest_json_types.Unknown(value) -> json.string(value)")
         .contains("pub fn item_payload_to_json(")
         .contains("pub fn json_to_item_payload(")
         .contains("pub fn item_payload_decoder(")
@@ -92,10 +92,10 @@ class GleamRestJsonDslTest {
 
     String codec = manifest.expectFileString("s_rest_json_1.gleam");
     assertThat(codec)
-        .contains("Active -> json.string(\"ACTIVE\")")
-        .contains("Inactive -> json.string(\"INACTIVE\")")
-        .contains("Unknown(value) -> json.string(value)")
-        .contains("\"ACTIVE\" -> Active")
-        .contains("other -> Unknown(other)");
+        .contains("s_types.Active -> json.string(\"ACTIVE\")")
+        .contains("s_types.Inactive -> json.string(\"INACTIVE\")")
+        .contains("s_types.Unknown(value) -> json.string(value)")
+        .contains("\"ACTIVE\" -> s_types.Active")
+        .contains("other -> s_types.Unknown(other)");
   }
 }

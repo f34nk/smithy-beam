@@ -38,10 +38,15 @@ final class GleamUnionHelperDsl {
   private static Function toJson(
       Model model, UnionShape union, SymbolProvider sp, String typesModule) {
     String type = GleamCodecNames.qualifiedType(typesModule, sp, union);
-    String unknown = GleamCodecNames.unknownConstructor(sp, union);
+    String unknown =
+        GleamCodecNames.qualifiedConstructor(
+            typesModule, GleamCodecNames.unknownConstructor(sp, union));
     List<CaseClause> clauses = new ArrayList<>();
     for (MemberShape member : union.members()) {
-      String ctor = GleamCodecNames.constructorForMember(sp, union, member.getMemberName());
+      String ctor =
+          GleamCodecNames.qualifiedConstructor(
+              typesModule,
+              GleamCodecNames.constructorForMember(sp, union, member.getMemberName()));
       String wireKey = member.getMemberName();
       Expression encoded =
           GleamJsonMemberCoding.encodeRequiredValue(model, member, sp, Variable.of("inner"));
@@ -88,17 +93,23 @@ final class GleamUnionHelperDsl {
         GleamCodecNames.decoderName(union),
         List.of(),
         "decode.Decoder(" + type + ")",
-        RawExpr.of(unionDecoderSource(model, union, sp)));
+        RawExpr.of(unionDecoderSource(model, union, sp, typesModule)));
   }
 
-  private static String unionDecoderSource(Model model, UnionShape union, SymbolProvider sp) {
-    String unknown = GleamCodecNames.unknownConstructor(sp, union);
+  private static String unionDecoderSource(
+      Model model, UnionShape union, SymbolProvider sp, String typesModule) {
+    String unknown =
+        GleamCodecNames.qualifiedConstructor(
+            typesModule, GleamCodecNames.unknownConstructor(sp, union));
     StringBuilder raw = new StringBuilder();
     raw.append("decode.dict(decode.string, decode.dynamic)\n");
     raw.append("  |> decode.then(fn(entries) {\n");
     raw.append("    case dict.to_list(entries) {\n");
     for (MemberShape member : union.members()) {
-      String ctor = GleamCodecNames.constructorForMember(sp, union, member.getMemberName());
+      String ctor =
+          GleamCodecNames.qualifiedConstructor(
+              typesModule,
+              GleamCodecNames.constructorForMember(sp, union, member.getMemberName()));
       String wireKey = member.getMemberName();
       String innerDecoder = GleamJsonMemberCoding.shapeDecoderSource(model, member, sp);
       raw.append("      [#(\"")

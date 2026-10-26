@@ -73,4 +73,9 @@ final class GleamCodecNames {
   static String qualifiedType(String typesModule, SymbolProvider sp, Shape shape) {
     return GleamTopDown.qualifiedType(typesModule, sp.toSymbol(shape));
   }
+
+  /** Qualify a custom-type constructor for use outside the types module. */
+  static String qualifiedConstructor(String typesModule, String constructor) {
+    return typesModule + "." + constructor;
+  }
 }

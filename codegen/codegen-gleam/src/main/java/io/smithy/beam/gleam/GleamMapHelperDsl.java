@@ -47,7 +47,7 @@ final class GleamMapHelperDsl {
             GleamCodecNames.toJsonName(map),
             List.of(Param.of("value", type)),
             "json.Json",
-            RawExpr.of("json.dict(value, " + valueToJson + ")")));
+            RawExpr.of("json.dict(value, fn(k) { k }, " + valueToJson + ")")));
     functions.add(
         Function.pub(
             GleamCodecNames.decoderName(map),
