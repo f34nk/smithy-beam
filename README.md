@@ -31,6 +31,10 @@ make test
 
 ## Examples
 
+`make build` publishes SNAPSHOT codegen plugins to the local Maven repository under
+`io.github.f34nk.smithy.beam`. Example `smithy-build.json` files depend on that group.
+Run examples with Java 21+.
+
 ```shell
 make examples
 make aws-examples
@@ -52,7 +56,7 @@ Create a `smithy-build.json`.
   ],
   "maven": {
     "dependencies": [
-      "io.github.f34nk.smithy.beam:codegen-elixir:0.3.0",
+      "io.github.f34nk.smithy.beam:codegen-elixir:0.3.1",
       "software.amazon.smithy:smithy-aws-traits:1.54.0"
     ],
     "repositories": [

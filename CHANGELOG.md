@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented here.
 
+## 2026-10-26
+
+### Fixed
+- Example and AWS sample builds resolve codegen plugins under the published Maven group
+  io.github.f34nk.smithy.beam, matching make build and Maven Central.
+
 ## [0.3.1] - 2026-10-01
 
 ### Changed

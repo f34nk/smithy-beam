@@ -86,7 +86,9 @@ rebar3 smithy_beam generate
 | `config_file` | no | | Escape hatch: use an existing `smithy-build.json` |
 | `plugin` | with `config_file` | derived | Plugin id when using `config_file` |
 
-Default Maven dependencies always include the matching `codegen-elixir` or `codegen-erlang` coordinate plus common Smithy AWS-related artifacts. Consumer `maven_deps` are appended.
+Default Maven dependencies always include
+`io.github.f34nk.smithy.beam:codegen-elixir` or `codegen-erlang` plus common Smithy
+AWS-related artifacts. Consumer `maven_deps` are appended.
 
 ## Versioning
 
