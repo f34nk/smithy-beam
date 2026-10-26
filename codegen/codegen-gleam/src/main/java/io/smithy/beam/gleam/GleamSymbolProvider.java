@@ -160,12 +160,22 @@ final class GleamSymbolProvider implements SymbolProvider, ShapeVisitor<Symbol> 
 
   @Override
   public Symbol unionShape(UnionShape shape) {
-    return namedCustomType(shape);
+    Map<String, String> constructors =
+        constructorNames.getOrDefault(shape.getId(), Map.of());
+    return namedCustomType(shape).toBuilder()
+        .putProperty("unknownConstructor", constructors.get(UNKNOWN_MEMBER))
+        .putProperty("unionConstructorByMember", constructors)
+        .build();
   }
 
   @Override
   public Symbol structureShape(StructureShape shape) {
-    return namedCustomType(shape);
+    Symbol base = namedCustomType(shape);
+    String ctor =
+        constructorNames
+            .getOrDefault(shape.getId(), Map.of())
+            .getOrDefault(shape.getId().getName(), base.getName());
+    return base.toBuilder().putProperty("constructorName", ctor).build();
   }
 
   @Override
