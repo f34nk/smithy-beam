@@ -22,3 +22,6 @@ build: generate
 	else \
 		echo "Gleam CLI not found; skipping gleam build (optional prerequisite)."; \
 	fi
+
+.PHONY: demo
+demo: build
