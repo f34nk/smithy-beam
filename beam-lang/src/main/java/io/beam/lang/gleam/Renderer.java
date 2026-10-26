@@ -8,4 +8,6 @@ public interface Renderer {
   String render(TypeAlias typeAlias);
 
   String render(CustomType customType);
+
+  String render(Function function);
 }

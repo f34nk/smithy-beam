@@ -27,6 +27,11 @@ class GoldenGleamRendererTest {
     assertGolden("syntax_custom_type.expected.gleam", renderer.render(syntaxCustomType()));
   }
 
+  @Test
+  void rendersSyntaxFunction() throws IOException {
+    assertGolden("syntax_function.expected.gleam", renderer.render(syntaxFunction()));
+  }
+
   private static Module syntaxTypesModule() {
     return Module.of(
         "basic_service_types",
@@ -66,6 +71,17 @@ class GoldenGleamRendererTest {
             Variant.of("Low"),
             Variant.of("Unknown", List.of(Field.positional("Int")))),
         DocComment.of("Preference enum with unknown wire value."));
+  }
+
+  private static Function syntaxFunction() {
+    return Function.pub(
+        "get_type_closure",
+        List.of(
+            Param.of("_config", "ClientConfig"),
+            Param.of("_input", "basic_service_types.GetTypeClosureInput")),
+        "Result(basic_service_types.GetTypeClosureOutput, ClientError)",
+        "Error(NotImplemented)",
+        DocComment.of("Fetch a resource by name."));
   }
 
   private static void assertGolden(String resourceName, String actual) throws IOException {

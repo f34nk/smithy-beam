@@ -11,7 +11,24 @@ public record Module(
     DocComment moduleDocOrNull,
     List<Import> imports,
     List<TypeAlias> typeAliases,
-    List<CustomType> customTypes) {
+    List<CustomType> customTypes,
+    List<Function> functions) {
+
+  public static Module of(
+      String name,
+      DocComment moduleDocOrNull,
+      List<Import> imports,
+      List<TypeAlias> typeAliases,
+      List<CustomType> customTypes,
+      List<Function> functions) {
+    return new Module(
+        name,
+        moduleDocOrNull,
+        List.copyOf(imports),
+        List.copyOf(typeAliases),
+        List.copyOf(customTypes),
+        List.copyOf(functions));
+  }
 
   public static Module of(
       String name,
@@ -19,15 +36,10 @@ public record Module(
       List<Import> imports,
       List<TypeAlias> typeAliases,
       List<CustomType> customTypes) {
-    return new Module(
-        name,
-        moduleDocOrNull,
-        List.copyOf(imports),
-        List.copyOf(typeAliases),
-        List.copyOf(customTypes));
+    return of(name, moduleDocOrNull, imports, typeAliases, customTypes, List.of());
   }
 
   public static Module of(String name, List<TypeAlias> typeAliases, List<CustomType> customTypes) {
-    return of(name, null, List.of(), typeAliases, customTypes);
+    return of(name, null, List.of(), typeAliases, customTypes, List.of());
   }
 }

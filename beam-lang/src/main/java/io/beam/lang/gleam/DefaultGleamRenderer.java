@@ -27,6 +27,10 @@ final class DefaultGleamRenderer implements Renderer {
       parts.add(render(customType).stripTrailing());
     }
 
+    for (Function function : module.functions()) {
+      parts.add(render(function).stripTrailing());
+    }
+
     if (parts.isEmpty()) {
       return "\n";
     }
@@ -67,7 +71,49 @@ final class DefaultGleamRenderer implements Renderer {
     return out.toString();
   }
 
+  @Override
+  public String render(Function function) {
+    StringBuilder out = new StringBuilder();
+    if (function.docOrNull() != null) {
+      out.append(renderDoc(function.docOrNull(), "///")).append('\n');
+    }
+    if (function.pub()) {
+      out.append("pub ");
+    }
+    out.append("fn ").append(function.name()).append("(");
+    List<Param> params = function.params();
+    if (!params.isEmpty()) {
+      out.append('\n');
+      for (int i = 0; i < params.size(); i++) {
+        Param param = params.get(i);
+        out.append("  ").append(param.name()).append(": ").append(param.typeExpression());
+        if (i < params.size() - 1) {
+          out.append(',');
+        }
+        out.append('\n');
+      }
+    }
+    out.append(')');
+    if (function.returnTypeOrNull() != null && !function.returnTypeOrNull().isEmpty()) {
+      out.append(" -> ").append(function.returnTypeOrNull());
+    }
+    out.append(" {\n");
+    for (String line : function.body().split("\n", -1)) {
+      if (line.isEmpty()) {
+        out.append('\n');
+      } else {
+        out.append("  ").append(line).append('\n');
+      }
+    }
+    out.append("}\n");
+    return out.toString();
+  }
+
   private String renderImport(Import importStmt) {
+    if (importStmt.modulePath().contains(" as ")) {
+      // Alias form is carried in modulePath as "path as alias" when needed.
+      return "import " + importStmt.modulePath();
+    }
     if (importStmt.typeNames().isEmpty()) {
       return "import " + importStmt.modulePath();
     }

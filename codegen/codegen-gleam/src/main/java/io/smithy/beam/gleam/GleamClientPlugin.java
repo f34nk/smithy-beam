@@ -17,6 +17,6 @@ public final class GleamClientPlugin implements SmithyBuildPlugin {
 
   @Override
   public void execute(PluginContext context) {
-    // No-op until client generation is implemented.
+    new GleamClientGeneration().generate(context);
   }
 }

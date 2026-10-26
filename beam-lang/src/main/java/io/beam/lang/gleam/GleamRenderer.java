@@ -21,4 +21,8 @@ public final class GleamRenderer {
   public static String render(CustomType customType) {
     return DEFAULT.render(customType);
   }
+
+  public static String render(Function function) {
+    return DEFAULT.render(function);
+  }
 }
