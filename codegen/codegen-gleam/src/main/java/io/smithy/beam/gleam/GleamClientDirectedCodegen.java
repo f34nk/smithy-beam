@@ -118,6 +118,7 @@ final class GleamClientDirectedCodegen
             directive.symbolProvider(),
             layout.typesModuleName());
     GleamClientEmission.writeModule(ctx, ctx.definitionFile(), module);
+    GleamProtocolCodecDsl.emitClientCodec(ctx, service);
   }
 
   @Override

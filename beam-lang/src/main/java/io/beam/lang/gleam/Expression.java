@@ -17,4 +17,5 @@ public sealed interface Expression
         LetExpr,
         CaseExpr,
         UseExpr,
-        BlockExpr {}
+        BlockExpr,
+        AnonFun {}

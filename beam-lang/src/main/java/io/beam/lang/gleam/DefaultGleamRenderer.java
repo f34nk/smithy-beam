@@ -88,7 +88,10 @@ final class DefaultGleamRenderer implements Renderer {
       out.append('\n');
       for (int i = 0; i < params.size(); i++) {
         Param param = params.get(i);
-        out.append(INDENT).append(param.name()).append(": ").append(param.typeExpression());
+        out.append(INDENT).append(param.name());
+        if (param.typeExpression() != null && !param.typeExpression().isEmpty()) {
+          out.append(": ").append(param.typeExpression());
+        }
         if (i < params.size() - 1) {
           out.append(',');
         }
@@ -167,6 +170,7 @@ final class DefaultGleamRenderer implements Renderer {
         out.append(" <- ");
         render(use.callback(), out, indent);
       }
+      case AnonFun anon -> renderAnonFun(anon, out, indent);
       case BlockExpr block -> {
         // Nested blocks render as parenthesized sequences only when needed; top-level bodies
         // use renderIndentedBody. Inline nested blocks join with newlines under indent.
@@ -265,6 +269,23 @@ final class DefaultGleamRenderer implements Renderer {
     merged.addAll(callArgs);
     merged.addAll(extraArgs);
     return merged;
+  }
+
+  private void renderAnonFun(AnonFun anon, StringBuilder out, String indent) {
+    out.append("fn(");
+    for (int i = 0; i < anon.params().size(); i++) {
+      if (i > 0) {
+        out.append(", ");
+      }
+      Param param = anon.params().get(i);
+      out.append(param.name());
+      if (param.typeExpression() != null && !param.typeExpression().isEmpty()) {
+        out.append(": ").append(param.typeExpression());
+      }
+    }
+    out.append(") { ");
+    render(anon.body(), out, indent);
+    out.append(" }");
   }
 
   private void renderCase(CaseExpr caseExpr, StringBuilder out, String indent) {

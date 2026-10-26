@@ -35,4 +35,13 @@ public record Function(
   public static Function pubTodo(String name, List<Param> params, String returnType) {
     return pub(name, params, returnType, RawExpr.of("todo"));
   }
+
+  public static Function priv(
+      String name, List<Param> params, String returnType, Expression body) {
+    return new Function(name, List.copyOf(params), returnType, body, null, false);
+  }
+
+  public static Function priv(String name, List<Param> params, String returnType, String body) {
+    return priv(name, params, returnType, RawExpr.of(body));
+  }
 }
