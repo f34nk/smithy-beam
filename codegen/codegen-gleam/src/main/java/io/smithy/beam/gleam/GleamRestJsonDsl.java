@@ -36,6 +36,18 @@ final class GleamRestJsonDsl {
     GleamClientEmission.writeModule(ctx, layout.codecModuleFile(protocol), module);
   }
 
+  static void emitServerCodecModule(GleamContext ctx, ServiceShape service) {
+    ShapeId protocol = ctx.resolvedProtocolTraitId();
+    if (protocol == null || !BeamProtocolIds.REST_JSON_1.equals(protocol)) {
+      return;
+    }
+    BeamGleamLayout layout =
+        new BeamGleamLayout(ctx.settings(), service.getId().getNamespace(), service);
+    // Shape-level helpers are shared; operation wiring lives in the router.
+    Module module = buildClientCodecModule(ctx, service, layout);
+    GleamModuleEmission.writeModule(ctx, layout.codecModuleFile(protocol), module);
+  }
+
   static Module buildClientCodecModule(
       GleamContext ctx, ServiceShape service, BeamGleamLayout layout) {
     Model model = ctx.model();

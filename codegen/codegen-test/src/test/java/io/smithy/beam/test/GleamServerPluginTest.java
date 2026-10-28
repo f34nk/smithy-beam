@@ -54,6 +54,15 @@ class GleamServerPluginTest {
     assertThat(server).contains("pub fn start(").contains("ServerConfig");
 
     String router = manifest.expectFileString("basic_service_router.gleam");
-    assertThat(router).contains("pub fn route(").contains("Error(\"not_implemented\")");
+    assertThat(router)
+        .contains("pub fn route(")
+        .contains("pub type Handlers")
+        .contains("parse_labels(")
+        .contains("Response(BitArray)")
+        .doesNotContain("panic")
+        .doesNotContain("let assert")
+        .doesNotContain("Error(\"not_implemented\")");
+
+    assertThat(manifest.getFileString("basic_service_rest_json_1.gleam")).isPresent();
   }
 }

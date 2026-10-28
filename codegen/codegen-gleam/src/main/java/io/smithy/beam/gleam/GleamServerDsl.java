@@ -90,7 +90,8 @@ final class GleamServerDsl {
                 "Error(\"not_implemented\")")));
   }
 
-  static Module routerModule(BeamGleamLayout layout, ServiceShape service) {
+  /** Stub router used when no restJson1 (or other) protocol is selected. */
+  static Module stubRouterModule(BeamGleamLayout layout, ServiceShape service) {
     return Module.of(
         layout.routerModuleName(),
         DocComment.of(

@@ -17,4 +17,14 @@ final class GleamProtocolCodecDsl {
       GleamRestJsonDsl.emitClientCodecModule(ctx, service);
     }
   }
+
+  static void emitServerCodec(GleamContext ctx, ServiceShape service) {
+    ShapeId protocol = ctx.resolvedProtocolTraitId();
+    if (protocol == null) {
+      return;
+    }
+    if (BeamProtocolIds.REST_JSON_1.equals(protocol)) {
+      GleamRestJsonDsl.emitServerCodecModule(ctx, service);
+    }
+  }
 }
