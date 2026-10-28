@@ -32,6 +32,9 @@ expected if no server is listening.
 
 ## Cross-language smoke
 
-Manual: run a compatible restJson1 server for the same model, then `make demo`
-against that base URL (edit `base_url` in the entry module if the port differs).
+| Direction | How |
+|-----------|-----|
+| Gleam client -> Elixir/Erlang server | Run a compatible restJson1 server for the same model, then `make demo` (edit `base_url` if the port differs). |
+| Elixir/Erlang client -> Gleam server | See `examples/gleam/basic-server` (pure `handle/2`; listening adapter is caller-owned). |
+
 Automated cross-language CI is not required for this milestone.

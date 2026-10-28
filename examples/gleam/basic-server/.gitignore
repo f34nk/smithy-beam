@@ -1,0 +1,7 @@
+build/
+src/basic_service_*.gleam
+.gleam_deps/
+gleam.lock
+manifest.toml
+*.beam
+erl_crash.dump
