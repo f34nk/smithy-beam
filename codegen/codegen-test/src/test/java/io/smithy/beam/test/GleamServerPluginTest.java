@@ -51,7 +51,11 @@ class GleamServerPluginTest {
         .contains("todo");
 
     String server = manifest.expectFileString("basic_service_server.gleam");
-    assertThat(server).contains("pub fn start(").contains("ServerConfig");
+    assertThat(server)
+        .contains("pub fn start(")
+        .contains("ServerConfig")
+        .contains("pub fn handle(")
+        .contains("basic_service_router.route(request, handlers)");
 
     String router = manifest.expectFileString("basic_service_router.gleam");
     assertThat(router)

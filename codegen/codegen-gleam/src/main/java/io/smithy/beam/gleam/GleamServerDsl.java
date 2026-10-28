@@ -7,9 +7,11 @@ import io.beam.lang.gleam.Function;
 import io.beam.lang.gleam.Import;
 import io.beam.lang.gleam.Module;
 import io.beam.lang.gleam.Param;
+import io.beam.lang.gleam.RawExpr;
 import io.beam.lang.gleam.TypeAlias;
 import io.beam.lang.gleam.Variant;
 import io.smithy.beam.core.BeamGleamLayout;
+import io.smithy.beam.core.BeamProtocolIds;
 import java.util.ArrayList;
 import java.util.List;
 import software.amazon.smithy.codegen.core.Symbol;
@@ -17,6 +19,7 @@ import software.amazon.smithy.codegen.core.SymbolProvider;
 import software.amazon.smithy.model.Model;
 import software.amazon.smithy.model.shapes.OperationShape;
 import software.amazon.smithy.model.shapes.ServiceShape;
+import software.amazon.smithy.model.shapes.ShapeId;
 import software.amazon.smithy.model.shapes.StructureShape;
 
 final class GleamServerDsl {
@@ -67,13 +70,21 @@ final class GleamServerDsl {
         functions);
   }
 
-  static Module serverModule(BeamGleamLayout layout, ServiceShape service) {
+  static Module serverModule(
+      BeamGleamLayout layout, ServiceShape service, ShapeId protocolTraitId) {
+    if (protocolTraitId != null && BeamProtocolIds.REST_JSON_1.equals(protocolTraitId)) {
+      return restJsonServerModule(layout, service);
+    }
+    return stubServerModule(layout, service);
+  }
+
+  private static Module stubServerModule(BeamGleamLayout layout, ServiceShape service) {
     return Module.of(
         layout.serverModuleName(),
         DocComment.of(
             "HTTP server adapter stub for "
                 + service.getId()
-                + ".\n\nWire an HTTP stack in a later pass."),
+                + ".\n\nWire an HTTP stack when a protocol is selected."),
         List.of(),
         List.of(),
         List.of(
@@ -88,6 +99,53 @@ final class GleamServerDsl {
                 List.of(Param.of("_config", "ServerConfig")),
                 "Result(Nil, String)",
                 "Error(\"not_implemented\")")));
+  }
+
+  /**
+   * Thin I/O edge: feed a gleam/http Request into the pure router. Generated code does not import
+   * mist/wisp; callers bind this handle function to their HTTP stack.
+   */
+  private static Module restJsonServerModule(BeamGleamLayout layout, ServiceShape service) {
+    String routerModule = layout.routerModuleName();
+    List<Import> imports =
+        List.of(
+            Import.of(routerModule),
+            Import.type("gleam/http/request", "Request"),
+            Import.type("gleam/http/response", "Response"));
+    List<Function> functions =
+        List.of(
+            Function.pub(
+                "handle",
+                List.of(
+                    Param.of("request", "Request(BitArray)"),
+                    Param.of("handlers", routerModule + ".Handlers")),
+                "Response(BitArray)",
+                RawExpr.of(routerModule + ".route(request, handlers)"),
+                DocComment.of(
+                    "Feed a request into the pure router and return the Response.\n\n"
+                        + "Bind this from your HTTP server loop.")),
+            Function.pub(
+                "start",
+                List.of(Param.of("_config", "ServerConfig")),
+                "Result(Nil, String)",
+                "Error(\"use handle/2 with your HTTP stack; no embedded listener\")",
+                DocComment.of(
+                    "No embedded listener. Call handle/2 from your HTTP stack adapter.")));
+    return Module.of(
+        layout.serverModuleName(),
+        DocComment.of(
+            "Thin HTTP adapter for "
+                + service.getId()
+                + ".\n\nCalls the pure router; does not own a listen loop or import HTTP frameworks."),
+        imports,
+        List.of(),
+        List.of(
+            CustomType.pub(
+                "ServerConfig",
+                List.of(
+                    Variant.of(
+                        "ServerConfig", List.of(Field.labelled("port", "Int")))))),
+        functions);
   }
 
   /** Stub router used when no restJson1 (or other) protocol is selected. */

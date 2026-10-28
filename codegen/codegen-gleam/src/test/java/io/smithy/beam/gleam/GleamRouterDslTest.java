@@ -44,5 +44,12 @@ class GleamRouterDslTest {
         .doesNotContain("let assert");
 
     assertThat(manifest.getFileString("demo_rest_json_rest_json_1.gleam")).isPresent();
+
+    String server = manifest.expectFileString("demo_rest_json_server.gleam");
+    assertThat(server)
+        .contains("pub fn handle(")
+        .contains("demo_rest_json_router.route(request, handlers)")
+        .doesNotContain("mist")
+        .doesNotContain("wisp");
   }
 }
