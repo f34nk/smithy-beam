@@ -48,13 +48,16 @@ class GleamServerPluginTest {
     assertThat(impl)
         .contains("pub fn handle_get_type_closure(")
         .contains("pub fn handle_list_basic_items(")
-        .contains("todo");
+        .contains("Error(\"not_implemented\")")
+        .doesNotContain("todo");
 
     String server = manifest.expectFileString("basic_service_server.gleam");
     assertThat(server)
         .contains("pub fn start(")
         .contains("ServerConfig")
         .contains("pub fn handle(")
+        .contains("pub fn default_handlers(")
+        .contains("pub fn handle_default(")
         .contains("basic_service_router.route(request, handlers)");
 
     String router = manifest.expectFileString("basic_service_router.gleam");

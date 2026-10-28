@@ -48,8 +48,12 @@ class GleamRouterDslTest {
     String server = manifest.expectFileString("demo_rest_json_server.gleam");
     assertThat(server)
         .contains("pub fn handle(")
+        .contains("pub fn default_handlers(")
         .contains("demo_rest_json_router.route(request, handlers)")
         .doesNotContain("mist")
         .doesNotContain("wisp");
+
+    String impl = manifest.expectFileString("demo_rest_json_impl.gleam");
+    assertThat(impl).contains("Error(\"not_implemented\")").doesNotContain("todo");
   }
 }

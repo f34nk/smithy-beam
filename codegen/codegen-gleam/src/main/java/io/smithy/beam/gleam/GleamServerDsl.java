@@ -56,14 +56,14 @@ final class GleamServerDsl {
       String typesModuleName) {
     List<Function> functions = new ArrayList<>();
     for (OperationShape op : GleamTopDown.containedOperationsSorted(model, service)) {
-      functions.add(handlerTodo(op, model, sp, typesModuleName));
+      functions.add(handlerStub(op, model, sp, typesModuleName));
     }
     return Module.of(
         layout.implModuleName(),
         DocComment.of(
             "Handler implementation stubs for "
                 + service.getId()
-                + ".\n\nReplace todo bodies with real handlers."),
+                + ".\n\nReplace Error(\"not_implemented\") bodies with real handlers."),
         List.of(Import.of(typesModuleName)),
         List.of(),
         List.of(),
@@ -71,9 +71,13 @@ final class GleamServerDsl {
   }
 
   static Module serverModule(
-      BeamGleamLayout layout, ServiceShape service, ShapeId protocolTraitId) {
+      BeamGleamLayout layout,
+      ServiceShape service,
+      Model model,
+      SymbolProvider sp,
+      ShapeId protocolTraitId) {
     if (protocolTraitId != null && BeamProtocolIds.REST_JSON_1.equals(protocolTraitId)) {
-      return restJsonServerModule(layout, service);
+      return restJsonServerModule(layout, service, model, sp);
     }
     return stubServerModule(layout, service);
   }
@@ -105,32 +109,72 @@ final class GleamServerDsl {
    * Thin I/O edge: feed a gleam/http Request into the pure router. Generated code does not import
    * mist/wisp; callers bind this handle function to their HTTP stack.
    */
-  private static Module restJsonServerModule(BeamGleamLayout layout, ServiceShape service) {
+  private static Module restJsonServerModule(
+      BeamGleamLayout layout, ServiceShape service, Model model, SymbolProvider sp) {
     String routerModule = layout.routerModuleName();
+    String implModule = layout.implModuleName();
     List<Import> imports =
         List.of(
             Import.of(routerModule),
+            Import.of(implModule),
             Import.type("gleam/http/request", "Request"),
             Import.type("gleam/http/response", "Response"));
-    List<Function> functions =
-        List.of(
-            Function.pub(
-                "handle",
-                List.of(
-                    Param.of("request", "Request(BitArray)"),
-                    Param.of("handlers", routerModule + ".Handlers")),
-                "Response(BitArray)",
-                RawExpr.of(routerModule + ".route(request, handlers)"),
-                DocComment.of(
-                    "Feed a request into the pure router and return the Response.\n\n"
-                        + "Bind this from your HTTP server loop.")),
-            Function.pub(
-                "start",
-                List.of(Param.of("_config", "ServerConfig")),
-                "Result(Nil, String)",
-                "Error(\"use handle/2 with your HTTP stack; no embedded listener\")",
-                DocComment.of(
-                    "No embedded listener. Call handle/2 from your HTTP stack adapter.")));
+
+    StringBuilder handlersBody = new StringBuilder();
+    handlersBody.append(routerModule).append(".Handlers(\n");
+    List<OperationShape> operations = GleamTopDown.containedOperationsSorted(model, service);
+    for (int i = 0; i < operations.size(); i++) {
+      String handler = handlerName(sp.toSymbol(operations.get(i)).getName());
+      handlersBody
+          .append("  ")
+          .append(handler)
+          .append(": ")
+          .append(implModule)
+          .append('.')
+          .append(handler);
+      if (i < operations.size() - 1) {
+        handlersBody.append(',');
+      }
+      handlersBody.append('\n');
+    }
+    handlersBody.append(')');
+
+    List<Function> functions = new ArrayList<>();
+    functions.add(
+        Function.pub(
+            "default_handlers",
+            List.of(),
+            routerModule + ".Handlers",
+            RawExpr.of(handlersBody.toString()),
+            DocComment.of(
+                "Build Handlers from the generated impl module stubs.\n\n"
+                    + "Override individual fields when wiring custom handlers.")));
+    functions.add(
+        Function.pub(
+            "handle",
+            List.of(
+                Param.of("request", "Request(BitArray)"),
+                Param.of("handlers", routerModule + ".Handlers")),
+            "Response(BitArray)",
+            RawExpr.of(routerModule + ".route(request, handlers)"),
+            DocComment.of(
+                "Feed a request into the pure router and return the Response.\n\n"
+                    + "Bind this from your HTTP server loop.")));
+    functions.add(
+        Function.pub(
+            "handle_default",
+            List.of(Param.of("request", "Request(BitArray)")),
+            "Response(BitArray)",
+            RawExpr.of("handle(request, default_handlers())"),
+            DocComment.of("Convenience: handle using default_handlers/0.")));
+    functions.add(
+        Function.pub(
+            "start",
+            List.of(Param.of("_config", "ServerConfig")),
+            "Result(Nil, String)",
+            "Error(\"use handle/2 with your HTTP stack; no embedded listener\")",
+            DocComment.of(
+                "No embedded listener. Call handle/2 from your HTTP stack adapter.")));
     return Module.of(
         layout.serverModuleName(),
         DocComment.of(
@@ -181,17 +225,19 @@ final class GleamServerDsl {
     return TypeAlias.pub(handlerTypeName(opSym.getName()), definition);
   }
 
-  private static Function handlerTodo(
+  private static Function handlerStub(
       OperationShape op, Model model, SymbolProvider sp, String typesModuleName) {
     Symbol opSym = sp.toSymbol(op);
     StructureShape input = model.expectShape(op.getInputShape(), StructureShape.class);
     StructureShape output = model.expectShape(op.getOutputShape(), StructureShape.class);
     String inType = GleamTopDown.qualifiedType(typesModuleName, sp.toSymbol(input));
     String outType = GleamTopDown.qualifiedType(typesModuleName, sp.toSymbol(output));
-    return Function.pubTodo(
+    return Function.pub(
         handlerName(opSym.getName()),
         List.of(Param.of("_input", inType)),
-        "Result(" + outType + ", String)");
+        "Result(" + outType + ", String)",
+        "Error(\"not_implemented\")",
+        DocComment.of("Stub handler for " + op.getId() + ". Replace with a real implementation."));
   }
 
   static String handlerName(String operationSnakeName) {

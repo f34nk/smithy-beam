@@ -125,7 +125,8 @@ final class GleamServerDirectedCodegen
     GleamModuleEmission.writeModule(
         ctx,
         layout.serverModuleFile(),
-        GleamServerDsl.serverModule(layout, service, ctx.resolvedProtocolTraitId()));
+        GleamServerDsl.serverModule(
+            layout, service, directive.model(), sp, ctx.resolvedProtocolTraitId()));
     GleamProtocolCodecDsl.emitServerCodec(ctx, service);
     GleamModuleEmission.writeModule(
         ctx,
