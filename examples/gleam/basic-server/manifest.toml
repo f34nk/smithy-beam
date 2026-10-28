@@ -1,0 +1,26 @@
+# Do not manually edit this file, it is managed by Gleam.
+#
+# This file locks the dependency versions used, to make your build
+# deterministic and to prevent unexpected versions from being included
+# in your application.
+#
+# You should check this file into your source control repository.
+
+packages = [
+  { name = "bigdecimal", version = "1.4.0", build_tools = ["gleam"], requirements = ["bigi", "gleam_stdlib"], otp_app = "bigdecimal", source = "hex", outer_checksum = "1727A26F1D166BF8FDD07B431E10CEFA7FE037014D649E6DEB870DF91EBAEE0C" },
+  { name = "bigi", version = "4.1.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "bigi", source = "hex", outer_checksum = "44FEDF1DF5C1F426A80B67C32B976D0828D66524E11BDC2DD22B78D37C883BA7" },
+  { name = "gleam_http", version = "4.5.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "splitter"], otp_app = "gleam_http", source = "hex", outer_checksum = "38D7E5698759D44F21436F365259F7015104F6FAFA23181CD0B2BB0E5B67BE2B" },
+  { name = "gleam_json", version = "3.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_json", source = "hex", outer_checksum = "44FDAA8847BE8FC48CA7A1C089706BD54BADCC4C45B237A992EDDF9F2CDB2836" },
+  { name = "gleam_stdlib", version = "1.0.5", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "CEE5B6C076A85B45F60C585F4316C63EC8B7127C119D5738C3958A9C4D50404E" },
+  { name = "gleam_time", version = "1.11.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_time", source = "hex", outer_checksum = "3AB789C3ED4EB9DDA7283F46C3CF83A5487C9CFB790DC3FF8F8ACB5BF7B7A6C1" },
+  { name = "gleeunit", version = "1.11.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "EC31ABA74256AEA531EDF8169931D775BBB384FED0A8A1BDC4DD9354E3E21826" },
+  { name = "splitter", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "splitter", source = "hex", outer_checksum = "8F1485306E0D59168A39E12ED8844F9F616EC59C3C63AFCFDAE04DBD68690CBC" },
+]
+
+[requirements]
+bigdecimal = { version = ">= 1.0.0 and < 2.0.0" }
+gleam_http = { version = ">= 4.0.0 and < 5.0.0" }
+gleam_json = { version = ">= 3.0.0 and < 4.0.0" }
+gleam_stdlib = { version = ">= 0.59.0 and < 2.0.0" }
+gleam_time = { version = ">= 1.0.0 and < 2.0.0" }
+gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
